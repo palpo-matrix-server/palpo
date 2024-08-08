@@ -1,0 +1,25 @@
+[package]
+categories.workspace = true
+description = "Procedural macros used by the palpo crates."
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "palpo-macros"
+readme = "README.md"
+repository.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+once_cell.workspace = true
+proc-macro-crate = "3.0.0"
+proc-macro2 = "1.0.24"
+quote = "1.0.8"
+palpo-identifiers-validation = { workspace = true }
+serde = { workspace = true }
+syn = { version = "2.0.2", features = ["extra-traits", "full", "visit"] }
+toml = { version = "0.8.2", default-features = false, features = ["parse"] }

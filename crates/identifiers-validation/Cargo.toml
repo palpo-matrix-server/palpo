@@ -1,0 +1,26 @@
+[package]
+name = "palpo-identifiers-validation"
+description = "Validation logic for palpo-core and palpo-macros"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+# Allow IDs to exceed 255 bytes.
+compat-arbitrary-length-ids = []
+
+# Don't validate the version part in `key_id::validate`.
+compat-key-id = []
+
+# Allow some user IDs that are invalid even with the specified historical
+# user ID scheme.
+compat-user-id = []
+
+[dependencies]
+thiserror = { workspace = true }

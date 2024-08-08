@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+/.cargo
+.env.local
+debug.log
+Cargo.lock
+.idea

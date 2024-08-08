@@ -1,0 +1,65 @@
+[package]
+name = "palpo-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+
+[dependencies]
+palpo-macros = { workspace = true }
+palpo-identifiers-validation = { workspace = true }
+
+as_variant = { workspace = true }
+async-trait = { workspace = true }
+base64.workspace = true
+bytes = { workspace = true }
+cruet = { workspace = true }
+bcrypt = { workspace = true }
+bigdecimal = { workspace = true, features = ["serde"] }
+chrono = { workspace = true, features = ["serde"] }
+config = { workspace = true }
+cookie = { workspace = true }
+diesel = { workspace = true }
+dotenvy = { workspace = true }
+ed25519-dalek = { workspace = true, features = ["pkcs8", "rand_core"] }
+futures-util = { workspace = true, features = ["io"] }
+form_urlencoded = { workspace = true }
+globwalk = { workspace = true }
+http = { workspace = true }
+indexmap = { workspace = true }
+itertools ={ workspace = true }
+jsonwebtoken = { workspace = true }
+konst = { workspace = true }
+maplit ={ workspace = true }
+mime = { workspace = true }
+oauth2 = { workspace = true }
+once_cell = { workspace = true }
+path-slash = { workspace = true }
+percent-encoding = { workspace = true }
+pkcs8 = { workspace = true, features = ["alloc"] }
+rand = { workspace = true }
+redis = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+salvo = { workspace = true, features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
+sanitize-filename = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde-aux = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tempfile = { workspace = true }
+textnonce = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
+tokio-stream = { workspace = true, features = ["sync"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+url = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+serde_with = { workspace = true }
+ulid = { workspace = true }
+wildmatch = { workspace = true }

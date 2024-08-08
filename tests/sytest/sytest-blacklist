@@ -1,0 +1,7 @@
+# This test checks for a room-alias key in the response which is not in the spec, we must add it back in whitelist when https://github.com/matrix-org/sytest/pull/880 is merged
+POST /createRoom makes a public room
+# These fails because they use a endpoint which is not in the spec, we must add them back in whitelist when https://github.com/matrix-org/sytest/issues/878 is closed
+POST /createRoom makes a room with a name
+POST /createRoom makes a room with a topic
+Can /sync newly created room
+POST /createRoom ignores attempts to set the room version via creation_content

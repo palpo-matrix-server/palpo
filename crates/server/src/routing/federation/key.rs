@@ -1,0 +1,76 @@
+//! Endpoints for handling keys for end-to-end encryption
+use std::collections::BTreeMap;
+use std::time::Duration;
+use std::time::SystemTime;
+
+use salvo::prelude::*;
+
+use crate::core::client::account::IdentityServerInfo;
+use crate::core::client::uiaa::AuthData;
+use crate::core::federation::directory::ServerKeysResBody;
+use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
+use crate::core::serde::{Base64, CanonicalJsonValue, RawJson};
+use crate::core::{OwnedServerSigningKeyId, UnixMillis};
+use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+
+pub fn router() -> Router {
+    Router::with_path("key").oapi_tag("federation").push(
+        Router::with_path("v2")
+            .push(
+                Router::with_path("query")
+                    .post(query_keys)
+                    .push(Router::with_path("<server_name>").get(query_keys_from_server)),
+            )
+            .push(Router::with_path("server").get(server_signing_keys)),
+    )
+}
+
+#[endpoint]
+async fn query_keys(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+    // TODDO: todo
+    empty_ok()
+}
+
+#[endpoint]
+async fn query_keys_from_server(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+    // TODDO: todo
+    empty_ok()
+}
+
+// #GET /_matrix/key/v2/server
+/// Gets the public signing keys of this server.
+///
+/// - Matrix does not support invalidating public keys, so the key returned by this will be valid
+/// forever.
+// Response type for this endpoint is Json because we need to calculate a signature for the response
+#[endpoint]
+async fn server_signing_keys(_aa: AuthArgs, depot: &mut Depot, res: &mut Response) -> JsonResult<ServerKeysResBody> {
+    // BTreeMap<std::string::String, CanonicalJsonValue>
+    let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
+    verify_keys.insert(
+        format!("ed25519:{}", crate::keypair().version())
+            .try_into()
+            .expect("found invalid server signing keys in DB"),
+        VerifyKey {
+            key: Base64::new(crate::keypair().public_key().to_vec()),
+        },
+    );
+    let server_key = ServerSigningKeys {
+        server_name: crate::config().server_name.clone(),
+        verify_keys,
+        old_verify_keys: BTreeMap::new(),
+        signatures: BTreeMap::new(),
+        valid_until_ts: UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(86400 * 7))
+            .expect("time is valid"),
+    };
+    let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_key)?;
+    let mut server_key = serde_json::from_slice(&buf)?;
+
+    crate::core::signatures::sign_json(&crate::config().server_name.as_str(), crate::keypair(), &mut server_key)
+        .unwrap();
+    let server_key = serde_json::to_string(&server_key)?;
+
+    json_ok(ServerKeysResBody {
+        server_key: RawJson::from_string(server_key).expect("static conversion, no errors"),
+    })
+}

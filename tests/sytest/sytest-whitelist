@@ -1,0 +1,516 @@
+/event/ does not allow access to events before the user joined
+/event/ on joined room works
+/event/ on non world readable room does not work
+/joined_members return joined members
+/joined_rooms returns only joined rooms
+/whois
+3pid invite join valid signature but revoked keys are rejected
+3pid invite join valid signature but unreachable ID server are rejected
+3pid invite join with wrong but valid signature are rejected
+A change to displayname should appear in incremental /sync
+A full_state incremental update returns all state
+A full_state incremental update returns only recent timeline
+A message sent after an initial sync appears in the timeline of an incremental sync.
+A next_batch token can be used in the v1 messages API
+A pair of events which redact each other should be ignored
+A pair of servers can establish a join in a v2 room
+A prev_batch token can be used in the v1 messages API
+AS can create a user
+AS can create a user with an underscore
+AS can create a user with inhibit_login
+AS can set avatar for ghosted users
+AS can set displayname for ghosted users
+AS can't set displayname for random users
+AS cannot create users outside its own namespace
+AS user (not ghost) can join room without registering
+AS user (not ghost) can join room without registering, with user_id query param
+After changing password, a different session no longer works by default
+After changing password, can log in with new password
+After changing password, can't log in with old password
+After changing password, different sessions can optionally be kept
+After changing password, existing session still works
+After deactivating account, can't log in with an email
+After deactivating account, can't log in with password
+Alias creators can delete alias with no ops
+Alias creators can delete canonical alias with no ops
+Alternative server names do not cause a routing loop
+An event which redacts an event in a different room should be ignored
+An event which redacts itself should be ignored
+Asking for a remote rooms list, but supplying the local server's name, returns the local rooms list
+Backfill checks the events requested belong to the room
+Backfill works correctly with history visibility set to joined
+Backfilled events whose prev_events are in a different room do not allow cross-room back-pagination
+Banned servers cannot /event_auth
+Banned servers cannot /invite
+Banned servers cannot /make_join
+Banned servers cannot /make_leave
+Banned servers cannot /send_join
+Banned servers cannot /send_leave
+Banned servers cannot backfill
+Banned servers cannot get missing events
+Banned servers cannot get room state
+Banned servers cannot get room state ids
+Banned servers cannot send events
+Banned user is kicked and may not rejoin until unbanned
+Both GET and PUT work
+Can /sync newly created room
+Can add account data
+Can add account data to room
+Can add tag
+Can claim one time key using POST
+Can claim remote one time key using POST
+Can create filter
+Can deactivate account
+Can delete canonical alias
+Can download file 'ascii'
+Can download file 'name with spaces'
+Can download file 'name;with;semicolons'
+Can download filter
+Can download specifying a different ASCII file name
+Can download specifying a different Unicode file name
+Can download with Unicode file name locally
+Can download with Unicode file name over federation
+Can download without a file name locally
+Can download without a file name over federation
+Can forget room you've been kicked from
+Can get 'm.room.name' state for a departed room (SPEC-216)
+Can get account data without syncing
+Can get remote public room list
+Can get room account data without syncing
+Can get rooms/{room_id}/members
+Can get rooms/{room_id}/members for a departed room (SPEC-216)
+Can get rooms/{room_id}/state for a departed room (SPEC-216)
+Can invite users to invite-only rooms
+Can list tags for a room
+Can logout all devices
+Can logout current device
+Can paginate public room list
+Can pass a JSON filter as a query parameter
+Can query device keys using POST
+Can query remote device keys using POST
+Can query specific device keys using POST
+Can re-join room if re-invited
+Can read configuration endpoint
+Can receive redactions from regular users over federation in room version 1
+Can receive redactions from regular users over federation in room version 2
+Can receive redactions from regular users over federation in room version 3
+Can receive redactions from regular users over federation in room version 4
+Can receive redactions from regular users over federation in room version 5
+Can receive redactions from regular users over federation in room version 6
+Can recv a device message using /sync
+Can recv a device message using /sync 
+Can recv device messages over federation 
+Can recv device messages until they are acknowledged
+Can recv device messages until they are acknowledged 
+Can reject invites over federation for rooms with version 1
+Can reject invites over federation for rooms with version 2
+Can reject invites over federation for rooms with version 3
+Can reject invites over federation for rooms with version 4
+Can reject invites over federation for rooms with version 5
+Can reject invites over federation for rooms with version 6
+Can remove tag
+Can search public room list
+Can send a message directly to a device using PUT /sendToDevice
+Can send a message directly to a device using PUT /sendToDevice 
+Can send a to-device message to two users which both receive it using /sync
+Can send image in room message
+Can send messages with a wildcard device id
+Can send messages with a wildcard device id 
+Can send messages with a wildcard device id to two devices
+Can send messages with a wildcard device id to two devices 
+Can sync
+Can sync a joined room
+Can sync a room with a message with a transaction id
+Can sync a room with a single message
+Can upload device keys
+Can upload with ASCII file name
+Can upload with Unicode file name
+Can upload without a file name
+Can't deactivate account with wrong password
+Can't forget room you're still in
+Changes to state are included in an gapped incremental sync
+Changes to state are included in an incremental sync
+Changing the actions of an unknown default rule fails with 404
+Changing the actions of an unknown rule fails with 404
+Checking local federation server
+Creators can delete alias
+Current state appears in timeline in private history
+Current state appears in timeline in private history with many messages before
+DELETE /device/{deviceId}
+DELETE /device/{deviceId} requires UI auth user to match device owner
+DELETE /device/{deviceId} with no body gives a 401
+Deleted tags appear in an incremental v2 /sync
+Deleting a non-existent alias should return a 404
+Device list doesn't change if remote server is down
+Device messages over federation wake up /sync 
+Device messages wake up /sync
+Device messages wake up /sync 
+Device messages with the same txn_id are deduplicated
+Device messages with the same txn_id are deduplicated 
+Enabling an unknown default rule fails with 404
+Event size limits
+Event with an invalid signature in the send_join response should not cause room join to fail
+Events come down the correct room
+Events whose auth_events are in the wrong room do not mess up the room state
+Existing members see new members' join events
+Federation key API allows unsigned requests for keys
+Federation key API can act as a notary server via a GET request
+Federation key API can act as a notary server via a POST request
+Federation rejects inbound events where the prev_events cannot be found
+Fetching eventstream a second time doesn't yield the message again
+Forgetting room does not show up in v2 /sync
+Full state sync includes joined rooms
+GET /capabilities is present and well formed for registered user 
+GET /device/{deviceId}
+GET /device/{deviceId} gives a 404 for unknown devices
+GET /devices
+GET /directory/room/:room_alias yields room ID
+GET /events initially
+GET /events with negative 'limit'
+GET /events with non-numeric 'limit'
+GET /events with non-numeric 'timeout'
+GET /initialSync initially
+GET /joined_rooms lists newly-created room
+GET /login yields a set of flows
+GET /media/r0/download can fetch the value again
+GET /profile/:user_id/avatar_url publicly accessible
+GET /profile/:user_id/displayname publicly accessible
+GET /publicRooms includes avatar URLs
+GET /publicRooms lists newly-created room
+GET /publicRooms lists rooms
+GET /r0/capabilities is not public
+GET /register yields a set of flows
+GET /rooms/:room_id/joined_members fetches my membership
+GET /rooms/:room_id/messages returns a message
+GET /rooms/:room_id/state fetches entire room state
+GET /rooms/:room_id/state/m.room.member/:user_id fetches my membership
+GET /rooms/:room_id/state/m.room.member/:user_id?format=event fetches my membership event
+GET /rooms/:room_id/state/m.room.name gets name
+GET /rooms/:room_id/state/m.room.power_levels can fetch levels
+GET /rooms/:room_id/state/m.room.power_levels fetches powerlevels
+GET /rooms/:room_id/state/m.room.topic gets topic
+Get left notifs for other users in sync and /keys/changes when user leaves
+Getting messages going forward is limited for a departed room (SPEC-216)
+Getting push rules doesn't corrupt the cache SYN-390
+Getting state IDs checks the events requested belong to the room
+Getting state checks the events requested belong to the room
+Ghost user must register before joining room
+Guest non-joined user cannot call /events on default room
+Guest non-joined user cannot call /events on invited room
+Guest non-joined user cannot call /events on joined room
+Guest non-joined user cannot call /events on shared room
+Guest non-joined users can get individual state for world_readable rooms
+Guest non-joined users can get individual state for world_readable rooms after leaving
+Guest non-joined users can get state for world_readable rooms
+Guest non-joined users cannot room initalSync for non-world_readable rooms
+Guest non-joined users cannot send messages to guest_access rooms if not joined
+Guest user can set display names
+Guest user cannot call /events globally
+Guest user cannot upgrade other users
+Guest users can accept invites to private rooms over federation
+Guest users can join guest_access rooms
+Guest users can send messages to guest_access rooms if joined
+If a device list update goes missing, the server resyncs on the next one
+If remote user leaves room we no longer receive device updates
+If remote user leaves room, changes device and rejoins we see update in /keys/changes
+If remote user leaves room, changes device and rejoins we see update in sync
+Inbound /make_join rejects attempts to join rooms where all users have left
+Inbound /v1/make_join rejects remote attempts to join local users to rooms
+Inbound /v1/send_join rejects incorrectly-signed joins
+Inbound /v1/send_join rejects joins from other servers
+Inbound /v1/send_leave rejects leaves from other servers
+Inbound federation accepts a second soft-failed event
+Inbound federation accepts attempts to join v2 rooms from servers with support
+Inbound federation can backfill events
+Inbound federation can get public room list
+Inbound federation can get state for a room
+Inbound federation can get state_ids for a room
+Inbound federation can query profile data
+Inbound federation can query room alias directory
+Inbound federation can receive events
+Inbound federation can receive invites via v1 API
+Inbound federation can receive invites via v2 API
+Inbound federation can receive redacted events
+Inbound federation can receive v1 /send_join
+Inbound federation can receive v2 /send_join
+Inbound federation can return events
+Inbound federation can return missing events for invite visibility
+Inbound federation can return missing events for world_readable visibility
+Inbound federation correctly soft fails events
+Inbound federation of state requires event_id as a mandatory paramater
+Inbound federation of state_ids requires event_id as a mandatory paramater
+Inbound federation rejects attempts to join v1 rooms from servers without v1 support
+Inbound federation rejects attempts to join v2 rooms from servers lacking version support
+Inbound federation rejects attempts to join v2 rooms from servers only supporting v1
+Inbound federation rejects invite rejections which include invalid JSON for room version 6
+Inbound federation rejects invites which include invalid JSON for room version 6
+Inbound federation rejects receipts from wrong remote
+Inbound federation rejects remote attempts to join local users to rooms
+Inbound federation rejects remote attempts to kick local users to rooms
+Inbound federation rejects typing notifications from wrong remote
+Inbound: send_join rejects invalid JSON for room version 6
+Invalid JSON floats
+Invalid JSON integers
+Invalid JSON special values
+Invited user can reject invite
+Invited user can reject invite over federation
+Invited user can reject invite over federation for empty room
+Invited user can reject invite over federation several times
+Invited user can see room metadata
+Inviting an AS-hosted user asks the AS server
+Lazy loading parameters in the filter are strictly boolean
+Left rooms appear in the leave section of full state sync
+Local delete device changes appear in v2 /sync
+Local device key changes appear in /keys/changes
+Local device key changes appear in v2 /sync
+Local device key changes get to remote servers
+Local new device changes appear in v2 /sync
+Local non-members don't see posted message events
+Local room members can get room messages
+Local room members see posted message events
+Local update device changes appear in v2 /sync
+Local users can peek by room alias
+Local users can peek into world_readable rooms by room ID
+Message history can be paginated
+Message history can be paginated over federation
+Name/topic keys are correct
+New account data appears in incremental v2 /sync
+New read receipts appear in incremental v2 /sync
+New room members see their own join event
+New users appear in /keys/changes
+Newly banned rooms appear in the leave section of incremental sync
+Newly joined room is included in an incremental sync
+Newly joined room is included in an incremental sync after invite
+Newly left rooms appear in the leave section of gapped sync
+Newly left rooms appear in the leave section of incremental sync
+Newly updated tags appear in an incremental v2 /sync
+Non-numeric ports in server names are rejected
+Outbound federation can backfill events
+Outbound federation can query profile data
+Outbound federation can query room alias directory
+Outbound federation can query v1 /send_join
+Outbound federation can query v2 /send_join
+Outbound federation can request missing events
+Outbound federation can send events
+Outbound federation can send invites via v1 API
+Outbound federation can send invites via v2 API
+Outbound federation can send room-join requests
+Outbound federation correctly handles unsupported room versions
+Outbound federation passes make_join failures through to the client
+Outbound federation rejects backfill containing invalid JSON for events in room version 6
+Outbound federation rejects m.room.create events with an unknown room version
+Outbound federation rejects send_join responses with no m.room.create event
+Outbound federation sends receipts
+Outbound federation will ignore a missing event with bad JSON for room version 6
+POST /createRoom creates a room with the given version
+POST /createRoom ignores attempts to set the room version via creation_content
+POST /createRoom makes a private room
+POST /createRoom makes a private room with invites
+POST /createRoom makes a public room
+POST /createRoom makes a room with a name
+POST /createRoom makes a room with a topic
+POST /createRoom rejects attempts to create rooms with numeric versions
+POST /createRoom rejects attempts to create rooms with unknown versions
+POST /createRoom with creation content
+POST /join/:room_alias can join a room
+POST /join/:room_alias can join a room with custom content
+POST /join/:room_id can join a room
+POST /join/:room_id can join a room with custom content
+POST /login as non-existing user is rejected
+POST /login can log in as a user
+POST /login can log in as a user with just the local part of the id
+POST /login returns the same device_id as that in the request
+POST /login wrong password is rejected
+POST /media/r0/upload can create an upload
+POST /redact disallows redaction of event in different room
+POST /register allows registration of usernames with '-'
+POST /register allows registration of usernames with '.'
+POST /register allows registration of usernames with '/'
+POST /register allows registration of usernames with '3'
+POST /register allows registration of usernames with '='
+POST /register allows registration of usernames with '_'
+POST /register allows registration of usernames with 'q'
+POST /register can create a user
+POST /register downcases capitals in usernames
+POST /register rejects registration of usernames with '!'
+POST /register rejects registration of usernames with '"'
+POST /register rejects registration of usernames with '''
+POST /register rejects registration of usernames with ':'
+POST /register rejects registration of usernames with '?'
+POST /register rejects registration of usernames with '@'
+POST /register rejects registration of usernames with '['
+POST /register rejects registration of usernames with '\'
+POST /register rejects registration of usernames with '\n'
+POST /register rejects registration of usernames with ']'
+POST /register rejects registration of usernames with '{'
+POST /register rejects registration of usernames with '|'
+POST /register rejects registration of usernames with '}'
+POST /register rejects registration of usernames with '£'
+POST /register rejects registration of usernames with 'é'
+POST /register returns the same device_id as that in the request
+POST /rooms/:room_id/ban can ban a user
+POST /rooms/:room_id/invite can send an invite
+POST /rooms/:room_id/join can join a room
+POST /rooms/:room_id/leave can leave a room
+POST /rooms/:room_id/read_markers can create read marker
+POST /rooms/:room_id/receipt can create receipts
+POST /rooms/:room_id/redact/:event_id as original message sender redacts message
+POST /rooms/:room_id/redact/:event_id as power user redacts message
+POST /rooms/:room_id/redact/:event_id as random user does not redact message
+POST /rooms/:room_id/send/:event_type sends a message
+POST /rooms/:room_id/state/m.room.name sets name
+POST /rooms/:room_id/state/m.room.topic sets topic
+POST /rooms/:room_id/upgrade can upgrade a room version
+POST rejects invalid utf-8 in JSON
+POSTed media can be thumbnailed
+PUT /device/{deviceId} gives a 404 for unknown devices
+PUT /device/{deviceId} updates device fields
+PUT /directory/room/:room_alias creates alias
+PUT /profile/:user_id/avatar_url sets my avatar
+PUT /profile/:user_id/displayname sets my name
+PUT /rooms/:room_id/send/:event_type/:txn_id deduplicates the same txn id
+PUT /rooms/:room_id/send/:event_type/:txn_id sends a message
+PUT /rooms/:room_id/state/m.room.power_levels can set levels
+PUT /rooms/:room_id/typing/:user_id sets typing notification
+PUT power_levels should not explode if the old power levels were empty
+Peeked rooms only turn up in the sync for the device who peeked them
+Previously left rooms don't appear in the leave section of sync
+Push rules come down in an initial /sync
+Read markers appear in incremental v2 /sync
+Read markers appear in initial v2 /sync
+Read markers can be updated
+Read receipts appear in initial v2 /sync
+Real non-joined user cannot call /events on default room
+Real non-joined user cannot call /events on invited room
+Real non-joined user cannot call /events on joined room
+Real non-joined user cannot call /events on shared room
+Real non-joined users can get individual state for world_readable rooms
+Real non-joined users can get individual state for world_readable rooms after leaving
+Real non-joined users can get state for world_readable rooms
+Real non-joined users cannot room initalSync for non-world_readable rooms
+Real non-joined users cannot send messages to guest_access rooms if not joined
+Receipts must be m.read
+Redaction of a redaction redacts the redaction reason
+Regular users can add and delete aliases in the default room configuration
+Regular users can add and delete aliases when m.room.aliases is restricted
+Regular users cannot create room aliases within the AS namespace
+Regular users cannot register within the AS namespace
+Remote media can be thumbnailed
+Remote room alias queries can handle Unicode
+Remote room members also see posted message events
+Remote room members can get room messages
+Remote user can backfill in a room with version 1
+Remote user can backfill in a room with version 2
+Remote user can backfill in a room with version 3
+Remote user can backfill in a room with version 4
+Remote user can backfill in a room with version 5
+Remote user can backfill in a room with version 6
+Remote users can join room by alias
+Remote users may not join unfederated rooms
+Request to logout with invalid an access token is rejected
+Request to logout without an access token is rejected
+Room aliases can contain Unicode
+Room creation reports m.room.create to myself
+Room creation reports m.room.member to myself
+Room members can join a room with an overridden displayname
+Room members can override their displayname on a room-specific basis
+Room state at a rejected message event is the same as its predecessor
+Room state at a rejected state event is the same as its predecessor
+Rooms a user is invited to appear in an incremental sync
+Rooms a user is invited to appear in an initial sync
+Rooms can be created with an initial invite list (SYN-205)
+Server correctly handles incoming m.device_list_update
+Server correctly handles transactions that break edu limits
+Server correctly resyncs when client query keys and there is no remote cache
+Server correctly resyncs when server leaves and rejoins a room
+Server rejects invalid JSON in a version 6 room
+Setting room topic reports m.room.topic to myself
+Should not be able to take over the room by pretending there is no PL event
+Should reject keys claiming to belong to a different user
+State from remote users is included in the state in the initial sync
+State from remote users is included in the timeline in an incremental sync
+State is included in the timeline in the initial sync
+Sync can be polled for updates
+Sync is woken up for leaves
+Syncing a new room with a large timeline limit isn't limited
+Tags appear in an initial v2 /sync
+Trying to get push rules with unknown rule_id fails with 404
+Typing can be explicitly stopped
+Typing events appear in gapped sync
+Typing events appear in incremental sync
+Typing events appear in initial sync
+Typing notification sent to local room members
+Typing notifications also sent to remote room members
+Typing notifications don't leak
+Uninvited users cannot join the room
+Unprivileged users can set m.room.topic if it only needs level 0
+User appears in user directory
+User in private room doesn't appear in user directory
+User joining then leaving public room appears and dissappears from directory 
+User in shared private room does appear in user directory until leave 
+User can create and send/receive messages in a room with version 1
+User can create and send/receive messages in a room with version 2
+User can create and send/receive messages in a room with version 3
+User can create and send/receive messages in a room with version 4
+User can create and send/receive messages in a room with version 5
+User can create and send/receive messages in a room with version 6
+User can invite local user to room with version 1
+User can invite local user to room with version 2
+User can invite local user to room with version 3
+User can invite local user to room with version 4
+User can invite local user to room with version 5
+User can invite local user to room with version 6
+User can invite remote user to room with version 1
+User can invite remote user to room with version 2
+User can invite remote user to room with version 3
+User can invite remote user to room with version 4
+User can invite remote user to room with version 5
+User can invite remote user to room with version 6
+User directory correctly update on display name change
+User in dir while user still shares private rooms
+User in shared private room does appear in user directory
+User is offline if they set_presence=offline in their sync
+User signups are forbidden from starting with '_'
+Users can't delete other's aliases
+Users cannot invite a user that is already in the room
+Users cannot invite themselves to a room
+Users cannot kick users from a room they are not in
+Users cannot kick users who have already left a room
+Users cannot set ban powerlevel higher than their own
+Users cannot set kick powerlevel higher than their own
+Users cannot set notifications powerlevel higher than their own
+Users cannot set redact powerlevel higher than their own
+Users receive device_list updates for their own devices
+Users with sufficient power-level can delete other's aliases
+Version responds 200 OK with valid structure
+We can't peek into rooms with invited history_visibility
+We can't peek into rooms with joined history_visibility
+We can't peek into rooms with shared history_visibility
+We don't send redundant membership state across incremental syncs by default
+We should see our own leave event when rejecting an invite, even if history_visibility is restricted (riot-web/3462)
+We should see our own leave event, even if history_visibility is restricted (SYN-662)
+Wildcard device messages over federation wake up /sync 
+Wildcard device messages wake up /sync
+Wildcard device messages wake up /sync 
+avatar_url updates affect room member events
+displayname updates affect room member events
+local user can join room with version 1
+local user can join room with version 2
+local user can join room with version 3
+local user can join room with version 4
+local user can join room with version 5
+local user can join room with version 6
+m.room.history_visibility == "joined" allows/forbids appropriately for Guest users
+m.room.history_visibility == "joined" allows/forbids appropriately for Real users
+m.room.history_visibility == "world_readable" allows/forbids appropriately for Guest users
+m.room.history_visibility == "world_readable" allows/forbids appropriately for Real users
+query for user with no keys returns empty key dict
+remote user can join room with version 1
+remote user can join room with version 2
+remote user can join room with version 3
+remote user can join room with version 4
+remote user can join room with version 5
+remote user can join room with version 6
+setting 'm.room.name' respects room powerlevel
+setting 'm.room.power_levels' respects room powerlevel
+Federation publicRoom Name/topic keys are correct

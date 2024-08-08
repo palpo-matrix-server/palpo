@@ -1,0 +1,207 @@
+use std::{collections::BTreeMap, iter::FromIterator, str};
+
+use diesel::prelude::*;
+use palpo_core::UnixMillis;
+use salvo::prelude::*;
+use salvo::{
+    http::{
+        headers::{
+            authorization::{Authorization, Bearer, Credentials},
+            HeaderMapExt,
+        },
+        HeaderValue, ParseError,
+    },
+    Scribe,
+};
+use serde::Deserialize;
+use tracing::{debug, error, warn};
+
+use crate::core::serde::CanonicalJsonValue;
+use crate::core::{signatures, AuthScheme, OwnedDeviceId, OwnedServerName, UserId};
+use crate::schema::*;
+use crate::user::{DbAccessToken, DbUser, DbUserDevice};
+use crate::{db, AppError, AppResult, AuthArgs, AuthedInfo, MatrixError};
+
+#[handler]
+pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
+    let token = aa.require_access_token()?;
+
+    let access_token = user_access_tokens::table
+        .filter(user_access_tokens::token.eq(token))
+        .first::<DbAccessToken>(&mut *db::connect()?)
+        .ok();
+    if let Some(access_token) = access_token {
+        let user = users::table
+            .find(&access_token.user_id)
+            .first::<DbUser>(&mut *db::connect()?)?;
+        let user_device = user_devices::table
+            .filter(user_devices::device_id.eq(&access_token.device_id))
+            .filter(user_devices::user_id.eq(&user.id))
+            .first::<DbUserDevice>(&mut *db::connect()?)?;
+
+        depot.inject(AuthedInfo {
+            user,
+            user_device,
+            appservice: None,
+        });
+        Ok(())
+    } else {
+        Err(MatrixError::unauthorized("Invalid access token").into())
+    }
+}
+
+#[handler]
+pub async fn auth_by_signatures(
+    aa: AuthArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+    res: &mut Response,
+) -> AppResult<()> {
+    let (user, device, _server_name, appservice) = {
+        let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
+            warn!("Missing or invalid Authorization header");
+            return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
+        };
+
+        let origin_signatures = BTreeMap::from_iter([(x_matrix.key.clone(), CanonicalJsonValue::String(x_matrix.sig))]);
+
+        let signatures = BTreeMap::from_iter([(
+            x_matrix.origin.as_str().to_owned(),
+            CanonicalJsonValue::Object(origin_signatures),
+        )]);
+
+        let mut request_map = BTreeMap::from_iter([
+            (
+                "method".to_owned(),
+                CanonicalJsonValue::String(req.method().to_string()),
+            ),
+            ("uri".to_owned(), CanonicalJsonValue::String(req.uri().to_string())),
+            (
+                "origin".to_owned(),
+                CanonicalJsonValue::String(x_matrix.origin.as_str().to_owned()),
+            ),
+            (
+                "destination".to_owned(),
+                CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+            ),
+            ("signatures".to_owned(), CanonicalJsonValue::Object(signatures)),
+        ]);
+
+        let json_body = req
+            .payload()
+            .await
+            .ok()
+            .and_then(|payload| serde_json::from_slice::<CanonicalJsonValue>(payload).ok());
+
+        if let Some(json_body) = &json_body {
+            request_map.insert("content".to_owned(), json_body.clone());
+        };
+
+        let keys_result =
+            crate::event::handler::fetch_signing_keys(&x_matrix.origin, vec![x_matrix.key.to_owned()]).await;
+
+        let keys = match keys_result {
+            Ok(b) => b,
+            Err(e) => {
+                warn!("Failed to fetch signing keys: {}", e);
+                return Err(MatrixError::forbidden("Failed to fetch signing keys.").into());
+            }
+        };
+
+        // Only verify_keys that are currently valid should be used for validating requests
+        // as per MSC4029
+        let pub_key_map = BTreeMap::from_iter([(
+            x_matrix.origin.as_str().to_owned(),
+            if keys.valid_until_ts > UnixMillis::now() {
+                keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect()
+            } else {
+                BTreeMap::new()
+            },
+        )]);
+
+        match signatures::verify_json(&pub_key_map, &request_map) {
+            Ok(()) => (None, None, Some(x_matrix.origin), None),
+            Err(e) => {
+                warn!(
+                    "Failed to verify json request from {}: {}\n{:?}",
+                    x_matrix.origin, e, request_map
+                );
+
+                if req.uri().to_string().contains('@') {
+                    warn!(
+                        "Request uri contained '@' character. Make sure your \
+                                         reverse proxy gives Palpus the raw uri (apache: use \
+                                         nocanon)"
+                    );
+                }
+
+                return Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into());
+            }
+        }
+    };
+
+    if let (Some(user), Some(user_device)) = (user, device) {
+        depot.inject(AuthedInfo {
+            user,
+            user_device,
+            appservice,
+        });
+        Ok(())
+    } else {
+        Err(MatrixError::forbidden("Forbidden login type.").into())
+    }
+}
+
+struct XMatrix {
+    origin: OwnedServerName,
+    key: String, // KeyName?
+    sig: String,
+}
+
+impl Credentials for XMatrix {
+    const SCHEME: &'static str = "X-Matrix";
+
+    fn decode(value: &HeaderValue) -> Option<Self> {
+        debug_assert!(
+            value.as_bytes().starts_with(b"X-Matrix "),
+            "HeaderValue to decode should start with \"X-Matrix ..\", received = {value:?}",
+        );
+
+        let parameters = str::from_utf8(&value.as_bytes()["X-Matrix ".len()..])
+            .ok()?
+            .trim_start();
+
+        let mut origin = None;
+        let mut key = None;
+        let mut sig = None;
+
+        for entry in parameters.split_terminator(',') {
+            let (name, value) = entry.split_once('=')?;
+
+            // It's not at all clear why some fields are quoted and others not in the spec,
+            // let's simply accept either form for every field.
+            let value = value
+                .strip_prefix('"')
+                .and_then(|rest| rest.strip_suffix('"'))
+                .unwrap_or(value);
+
+            // FIXME: Catch multiple fields of the same name
+            match name {
+                "origin" => origin = Some(value.try_into().ok()?),
+                "key" => key = Some(value.to_owned()),
+                "sig" => sig = Some(value.to_owned()),
+                _ => debug!("Unexpected field `{}` in X-Matrix Authorization header", name),
+            }
+        }
+
+        Some(Self {
+            origin: origin?,
+            key: key?,
+            sig: sig?,
+        })
+    }
+
+    fn encode(&self) -> HeaderValue {
+        todo!()
+    }
+}

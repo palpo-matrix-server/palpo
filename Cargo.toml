@@ -1,0 +1,99 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+authors = ["Chrislearn Young <chris@sonc.ai>"]
+edition = "2021"
+rust-version = "1.80"
+description = """
+
+"""
+homepage = " https://privoce.com"
+repository = "https://github.com/palpo-rs/palpo.git"
+documentation = "https://docs.rs/palpo/"
+readme = "./README.md"
+categories = ["api-bindings", "web-programming"]
+keywords = ["http", "async", "web", "framework", "server"]
+license = ""
+
+[workspace.dependencies]
+palpo-core = { version = "0.0.1", path = "crates/core" }
+palpo-macros = { version = "0.0.1", path = "crates/macros" }
+palpo-identifiers-validation = { version = "0.0.1", path = "crates/identifiers-validation" }
+
+rust-argon2 = "2.1.0"
+anyhow = "1.0.44"
+async-trait = "0.1.48"
+as_variant = "1"
+base64 = "0.22"
+bcrypt = "0.15.0"
+bigdecimal = "0.4"
+blurhash = "0.2"
+bytes = "1.1.0"
+chksum = "0.3.0"
+chrono = { version = "0.4.19", features = ["serde"] }
+clap = { version = "4.5.1", default-features = false }
+config = "0.14.0"
+cookie = "0.18.0"
+cruet = "0.14"
+data-encoding = "2.5.0"
+diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
+diesel_migrations = "2"
+dotenvy = "0.15.0"
+ed25519-dalek = "2"
+fast32 = "1"
+figment = "0.10.8"
+futures-util = { version = "0.3.24", features = ["io"] }
+form_urlencoded = "1"
+globwalk = "0.9.0"
+hickory-resolver = "0.24"
+hmac = "0.12"
+http = "1"
+image = "0.25"
+indexmap = "2"
+itertools = "0.13"
+jsonwebtoken = "9.1"
+konst = "0.3"
+lru-cache = "0.1"
+maplit = "1"
+mime = "0.3.16"
+mime_guess = "2.0.4"
+oauth2 = { version = "4.2.3" }
+once_cell = "1.15.0"
+path-slash = "0.2.1"
+percent-encoding = "2"
+pkcs8 = "0.10.2"
+rand = "0.8.3"
+redis = "0.25.0"
+regex = "1.6.0"
+reqwest = { version = "0.12", features = ["json"] }
+ring = "0.17.7"
+salvo = { version = "0.68", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "size-limiter"] }
+#salvo = { version = "0.68", path = "D:/Soncai/salvo-rs/salvo/crates/salvo", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "size-limiter"] }
+sanitize-filename = "0.5.0"
+scheduled-thread-pool = "0.2.0"
+secrecy = "0.8.0"
+serde = { version = "1.0.118", features = ["derive"] }
+serde-aux = "4.0.0"
+serde_json = { version = "1.0.64" }
+serde_with = "3.0.0"
+serde_yaml = { version = "0.9.32" }
+sha2 = "0.10.8"
+sha1 = "0.10.6"
+strum = "0.26.1"
+strum_macros = "0.26.1"
+tempfile = "3.6.0"
+textnonce = "1.0.0"
+thiserror = "1.0.26"
+tokio = { version = "1.21.1", features = ["macros", "parking_lot", "process"] }
+tokio-stream = { version = "0.1.9", features = ["sync"] }
+tokio-util = { version = "0.7.4", features = ["io"] }
+tracing = { version = "0.1.36", features = ["release_max_level_debug", "max_level_debug"] }
+tracing-futures = "0.2.5"
+tracing-subscriber = { version = "0.3.15", features = ["env-filter", "json"] }
+url = "2.3.1"
+uuid = { version = "1.1.2", features = ["v4"] }
+ulid = "1.1.0"
+wildmatch = "2.1.0"
