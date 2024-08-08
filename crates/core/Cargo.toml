@@ -1,9 +1,13 @@
 [package]
 name = "palpo-core"
+description = "Procedural macros used by the palpo crates."
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-
+homepage.workspace = true
+keywords.workspace = true
+repository.workspace = true
+license.workspace = true
 
 [dependencies]
 palpo-macros = { workspace = true }

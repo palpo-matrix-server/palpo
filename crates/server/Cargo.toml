@@ -1,8 +1,13 @@
 [package]
 name = "palpo"
+description.workspace = true
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+repository.workspace = true
+license.workspace = true
 
 # [features]
 # manage = []
