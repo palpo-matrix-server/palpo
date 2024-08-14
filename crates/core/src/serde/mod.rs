@@ -1,4 +1,4 @@
-//! (De)serialization helpers for other Palpus  use   crate::s.
+//! (De)serialization helpers for other Palpo  use   crate::s.
 //!
 //! Part of that is a fork of [serde_urlencoded], with support for sequences in `Deserialize` /
 //! `Serialize` structs (e.g. `Vec<Something>`) that are (de)serialized as `field=val1&field=val2`.

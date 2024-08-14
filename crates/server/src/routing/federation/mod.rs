@@ -80,7 +80,7 @@ async fn get_versions(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 async fn version(depot: &mut Depot) -> JsonResult<ServerVersionResBody> {
     json_ok(ServerVersionResBody {
         server: Some(Server {
-            name: Some("Palpus".to_owned()),
+            name: Some("Palpo".to_owned()),
             version: Some(env!("CARGO_PKG_VERSION").to_owned()),
         }),
     })

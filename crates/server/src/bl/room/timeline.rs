@@ -672,8 +672,8 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
                 if content.membership == MembershipState::Leave {
                     if target == server_user {
-                        warn!("Palpus user cannot leave from admins room");
-                        return Err(MatrixError::forbidden("Palpus user cannot leave from admins room.").into());
+                        warn!("Palpo user cannot leave from admins room");
+                        return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
                     }
 
                     let count = crate::room::get_joined_users(room_id)?
@@ -689,8 +689,8 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
                 if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
                     if target == server_user {
-                        warn!("Palpus user cannot be banned in admins room");
-                        return Err(MatrixError::forbidden("Palpus user cannot be banned in admins room.").into());
+                        warn!("Palpo user cannot be banned in admins room");
+                        return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
 
                     let count = crate::room::get_joined_users(room_id)?

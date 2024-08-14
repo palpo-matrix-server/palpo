@@ -578,9 +578,9 @@ mod tests {
         assert!("palpo⚡️".matches_word("⚡️"));
         assert!("⚡️palpo".matches_word("palpo"));
         assert!("⚡️palpo".matches_word("⚡️"));
-        assert!("Palpus Dev👩‍💻".matches_word("Dev"));
-        assert!("Palpus Dev👩‍💻".matches_word("👩‍💻"));
-        assert!("Palpus Dev👩‍💻".matches_word("Dev👩‍💻"));
+        assert!("Palpo Dev👩‍💻".matches_word("Dev"));
+        assert!("Palpo Dev👩‍💻".matches_word("👩‍💻"));
+        assert!("Palpo Dev👩‍💻".matches_word("Dev👩‍💻"));
 
         // Regex syntax is escaped
         assert!(!"matrix".matches_word(r"\w*"));

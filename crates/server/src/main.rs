@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .unshift(doc.into_router("/api-doc/openapi.json"))
         .unshift(
             Scalar::new("/api-doc/openapi.json")
-                .title("Palpus - Scalar")
+                .title("Palpo - Scalar")
                 .into_router("/scalar"),
         )
         .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));

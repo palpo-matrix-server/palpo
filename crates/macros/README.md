@@ -2,6 +2,6 @@
 
 Forked from palpo-macros
 
-**palpo-macros** provides procedural macros for easily generating types for [Palpus] crates.
+**palpo-macros** provides procedural macros for easily generating types for [Palpo] crates.
 
-[Palpus]: https://github.com/palpo/palpo/
+[Palpo]: https://github.com/palpo/palpo/

@@ -351,8 +351,8 @@ impl<C: StaticStateEventContent> InitialStateEvent<C> {
 
     /// Shorthand for `RawJson::new(self).unwrap()`.
     ///
-    /// Since none of the content types in Palpus ever return an error in serialization, this will
-    /// never panic with `C` being a type from Palpus. However, if you use a custom content type
+    /// Since none of the content types in Palpo ever return an error in serialization, this will
+    /// never panic with `C` being a type from Palpo. However, if you use a custom content type
     /// with a `Serialize` implementation that can error (for example because it contains an
     /// `enum` with one or more variants that use the `#[serde(skip)]` attribute), this method
     /// can panic.
@@ -362,8 +362,8 @@ impl<C: StaticStateEventContent> InitialStateEvent<C> {
 
     /// Shorthand for `self.to_raw().cast::<AnyInitialStateEvent>()`.
     ///
-    /// Since none of the content types in Palpus ever return an error in serialization, this will
-    /// never panic with `C` being a type from Palpus. However, if you use a custom content type
+    /// Since none of the content types in Palpo ever return an error in serialization, this will
+    /// never panic with `C` being a type from Palpo. However, if you use a custom content type
     /// with a `Serialize` implementation that can error (for example because it contains an
     /// `enum` with one or more variants that use the `#[serde(skip)]` attribute), this method
     /// can panic.

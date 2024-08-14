@@ -11,7 +11,7 @@ Improvements:
 - Don't require room IDs to contain a server name
   - Room IDs being splittable into localpart and servername does not have
     much inherent value and there are proposals like [MSC4051] that propose
-    changing the format. Relaxing the rules makes Palpus forwards-compatible
+    changing the format. Relaxing the rules makes Palpo forwards-compatible
     with those proposals. The server_name accessor is kept because it is
     used by at least one downstream, but is updated to return an `Option`.
 
@@ -43,7 +43,7 @@ Breaking changes:
 
 * Remove `room_name` module
   * Room name size limits were never enforced, so they are now just regular
-    `String`s in Palpus ([Spec change removing the size limit][spec])
+    `String`s in Palpo ([Spec change removing the size limit][spec])
 
 [spec]: https://github.com/matrix-org/matrix-spec-proposals/pull/3669
 

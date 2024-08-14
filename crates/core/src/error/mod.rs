@@ -176,7 +176,7 @@ impl Scribe for MatrixError {
     }
 }
 
-/// An error that happens when Palpus cannot understand a Matrix version.
+/// An error that happens when Palpo cannot understand a Matrix version.
 #[derive(Debug)]
 pub struct UnknownVersionError;
 

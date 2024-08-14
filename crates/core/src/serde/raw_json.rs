@@ -17,7 +17,7 @@ use crate::serde::{JsonValue, RawJsonValue};
 /// definition to allow request and response types to contain that said type represented by
 /// the generic argument `Ev`.
 ///
-/// Palpus offers the `RawJson` wrapper to enable passing around JSON text that is only partially
+/// Palpo offers the `RawJson` wrapper to enable passing around JSON text that is only partially
 /// validated. This is useful when a client receives events that do not follow the spec perfectly
 /// or a server needs to generate reference hashes with the original canonical JSON string.
 /// All event structs and enums implement `Serialize` / `Deserialize`, `Raw` should be used

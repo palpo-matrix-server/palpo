@@ -745,7 +745,7 @@ fn check_power_levels(
     let user_content: RoomPowerLevelsEventContent =
         deserialize_power_levels(power_event.content().get(), room_version)?;
 
-    // Validation of users is done in Palpus, synapse for loops validating user_ids and integers here
+    // Validation of users is done in Palpo, synapse for loops validating user_ids and integers here
     info!("validation of power event finished");
 
     let current_state = match previous_power_event {

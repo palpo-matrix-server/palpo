@@ -57,7 +57,7 @@
 //! anymore and those should be ignored. There is not yet a definition of the deprecated legacy
 //! types in extensible events rooms.
 //!
-//! # How to use them in Palpus
+//! # How to use them in Palpo
 //!
 //! First, you can enable the `unstable-extensible-events` feature from the `palpo` crate, that
 //! will enable all the MSCs for the extensible events that correspond to the legacy types. It

@@ -1,5 +1,5 @@
 //! (De)serializable types for the events in the [Matrix](https://matrix.org) specification.
-//! These types are used by other Palpus  use   crate::s.
+//! These types are used by other Palpo  use   crate::s.
 //!
 //! All data exchanged over Matrix is expressed as an event.
 //! Different event types represent different actions, such as joining a room or sending a message.
@@ -18,7 +18,7 @@
 //! Rust type for that event type's `content` field, and any other supporting types required by the
 //! event's other fields.
 //!
-//! # Extending Palpus with custom events
+//! # Extending Palpo with custom events
 //!
 //! For our examples we will start with a simple custom state event. `palpo_event`
 //! specifies the state event's `type` and its `kind`.

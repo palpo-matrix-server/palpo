@@ -48,7 +48,7 @@ impl Response {
 
     /// Extracts known Matrix versions from this response.
     ///
-    /// Matrix versions that Palpus cannot parse, or does not know about, are discarded.
+    /// Matrix versions that Palpo cannot parse, or does not know about, are discarded.
     ///
     /// The versions returned will be sorted from oldest to latest. Use [`.find()`][Iterator::find]
     /// or [`.rfind()`][DoubleEndedIterator::rfind] to look for a minimum or maximum version to use

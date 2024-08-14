@@ -130,7 +130,7 @@ pub async fn auth_by_signatures(
                 if req.uri().to_string().contains('@') {
                     warn!(
                         "Request uri contained '@' character. Make sure your \
-                                         reverse proxy gives Palpus the raw uri (apache: use \
+                                         reverse proxy gives Palpo the raw uri (apache: use \
                                          nocanon)"
                     );
                 }

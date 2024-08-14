@@ -34,7 +34,7 @@ pub use self::change::{Change, MembershipChange, MembershipDetails};
 /// directly will fail.
 ///
 /// This event may also include an `invite_room_state` key inside the event's unsigned data, but
-/// Palpus doesn't currently expose this; see [#998](https://github.com/palpo/palpo/issues/998).
+/// Palpo doesn't currently expose this; see [#998](https://github.com/palpo/palpo/issues/998).
 ///
 /// The user for which a membership applies is represented by the `state_key`. Under some
 /// conditions, the `sender` and `state_key` may not match - this may be interpreted as the

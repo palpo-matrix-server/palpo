@@ -10,7 +10,7 @@ use serde::{Deserializer, Serialize};
 use super::error::UnknownVersionError;
 use crate::RoomVersionId;
 
-// /// The complete history of this endpoint as far as Palpus knows, together with all variants on
+// /// The complete history of this endpoint as far as Palpo knows, together with all variants on
 // /// versions stable and unstable.
 // ///
 // /// The amount and positioning of path variables are the same over all path variants.
@@ -348,7 +348,7 @@ use crate::RoomVersionId;
 //     Removed,
 // }
 
-/// The Matrix versions Palpus currently understands to exist.
+/// The Matrix versions Palpo currently understands to exist.
 ///
 /// Matrix, since fall 2021, has a quarterly release schedule, using a global `vX.Y` versioning
 /// scheme.
@@ -358,7 +358,7 @@ use crate::RoomVersionId;
 ///
 /// Matrix has a deprecation policy, read more about it here: <https://spec.matrix.org/latest/#deprecation-policy>.
 ///
-/// Palpus keeps track of when endpoints are added, deprecated, and removed. It'll automatically
+/// Palpo keeps track of when endpoints are added, deprecated, and removed. It'll automatically
 /// select the right endpoint stability variation to use depending on which Matrix versions you
 /// pass to [`try_into_http_request`](super::OutgoingRequest::try_into_http_request), see its
 /// respective documentation for more information.
