@@ -394,22 +394,22 @@ CREATE TABLE stats_room_currents (
     completed_delta_stream_id bigint NOT NULL default 0
 );
 
-drop table if exists room_profiles CASCADE;
-CREATE TABLE room_profiles (
-    id bigserial NOT NULL PRIMARY KEY,
-    room_id text NOT NULL,
-    name text,
-    canonical_alias text,
-    join_rules text,
-    history_visibility text,
-    encryption text,
-    avatar text,
-    guest_access text,
-    is_federatable boolean,
-    topic text,
-    room_kind text,
-    crated_at bigint NOT NULL
-);
+-- drop table if exists room_profiles CASCADE;
+-- CREATE TABLE room_profiles (
+--     id bigserial NOT NULL PRIMARY KEY,
+--     room_id text NOT NULL,
+--     name text,
+--     canonical_alias text,
+--     join_rules text,
+--     history_visibility text,
+--     encryption text,
+--     avatar text,
+--     guest_access text,
+--     is_federatable boolean,
+--     topic text,
+--     room_kind text,
+--     crated_at bigint NOT NULL
+-- );
 
 DROP TABLE IF EXISTS user_dehydrated_devices CASCADE;
 CREATE TABLE user_dehydrated_devices

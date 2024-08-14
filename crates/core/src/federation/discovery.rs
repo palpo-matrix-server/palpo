@@ -82,3 +82,19 @@ impl ServerSigningKeys {
         }
     }
 }
+
+
+/// Response type for the `discover_homeserver` endpoint.
+#[derive(ToSchema, Serialize, Debug)]
+pub struct ServerWellKnownResBody {
+    /// The server name to delegate server-server communications to, with optional port.
+    #[serde(rename = "m.server")]
+    pub server: OwnedServerName,
+}
+
+impl ServerWellKnownResBody {
+    /// Creates a new `Response` with the given homeserver.
+    pub fn new(server: OwnedServerName) -> Self {
+        Self { server }
+    }
+}

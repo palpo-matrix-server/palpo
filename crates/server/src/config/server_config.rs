@@ -13,13 +13,18 @@ use oauth2::{ClientId, ClientSecret};
 use palpo_core::OwnedUserId;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
+use url::Url;
+
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct WellKnownConfig {
+    pub client: Option<String>,
+    pub server: Option<OwnedServerName>,
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-    #[serde(default = "default_address")]
-    pub address: IpAddr,
-    #[serde(default = "default_port")]
-    pub port: u16,
+    #[serde(default = "default_server_addr")]
+    pub server_addr: String,
     pub tls: Option<TlsConfig>,
 
     pub server_name: OwnedServerName,
@@ -91,6 +96,8 @@ pub struct ServerConfig {
     pub space_path: String,
 
     pub keypair: String,
+
+    pub well_known: WellKnownConfig,
 }
 
 fn default_space_path() -> String {
@@ -192,12 +199,8 @@ pub struct TlsConfig {
     pub key: String,
 }
 
-fn default_address() -> IpAddr {
-    Ipv4Addr::LOCALHOST.into()
-}
-
-fn default_port() -> u16 {
-    8000
+fn default_server_addr() -> String {
+    "127.0.0.1:8008".into()
 }
 
 fn default_database_backend() -> String {

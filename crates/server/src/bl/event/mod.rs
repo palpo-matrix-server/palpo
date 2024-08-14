@@ -93,8 +93,7 @@ pub fn gen_event_id_canonical_json(
     let event_id = format!(
         "${}",
         // Anything higher than version3 behaves the same
-        crate::core::signatures::reference_hash(&value, room_version_id)
-            .expect("palpo can calculate reference hashes")
+        crate::core::signatures::reference_hash(&value, room_version_id).expect("palpo can calculate reference hashes")
     )
     .try_into()
     .expect("palpo's reference hashes are valid event ids");

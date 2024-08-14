@@ -91,9 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     salvo::http::request::set_secure_max_size(1024 * 1024 * 100);
 
     let raw_config = Figment::new()
-        .merge(Toml::file(
-            Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml"),
-        ))
+        .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
         .merge(Env::prefixed("PALPO_").global());
 
     let conf = match raw_config.extract::<ServerConfig>() {
@@ -123,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::db::DIESEL_POOL.set(db_primary);
     crate::config::CONFIG.set(conf);
 
-    let acceptor = TcpListener::new(crate::server_name().as_str()).bind().await;
+    let acceptor = TcpListener::new(crate::server_addr()).bind().await;
     salvo::http::request::set_secure_max_size(8 * 1024 * 1024);
 
     let router = routing::router();
@@ -140,7 +138,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Cors::new()
             .allow_origin(cors::Any)
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
-            .allow_headers(AllowHeaders::any())
+            .allow_headers(AllowHeaders::list([
+                salvo::http::header::ACCEPT,
+                salvo::http::header::CONTENT_TYPE,
+                salvo::http::header::AUTHORIZATION,
+                salvo::http::header::RANGE,
+            ]))
             .max_age(Duration::from_secs(86400))
             .into_handler(),
     );

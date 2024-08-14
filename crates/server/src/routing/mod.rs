@@ -4,8 +4,8 @@ mod federation;
 mod identity;
 mod push;
 
-use std::time::Duration;
-
+use palpo_core::client::discovery::{ClientWellKnownResBody, HomeServerInfo, SlidingSyncProxyInfo};
+use palpo_core::federation::discovery::ServerWellKnownResBody;
 use salvo::http::header::{self, HeaderName};
 use salvo::http::headers::authorization::{Authorization, Bearer};
 use salvo::http::headers::HeaderMapExt;
@@ -15,8 +15,7 @@ use salvo::serve_static::StaticDir;
 use salvo::size_limiter;
 use url::Url;
 
-use crate::{AppResult, DepotExt, JsonResult};
-use crate::{AuthArgs, AuthedInfo};
+use crate::{json_ok, AppResult, AuthArgs, DepotExt, JsonResult};
 
 #[handler]
 pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
@@ -43,34 +42,12 @@ pub fn router() -> Router {
                 .push(appservice::router())
                 .push(push::router()),
         )
+        .push(
+            Router::with_path(".well-known/matrix")
+                .push(Router::with_path("client").get(well_known_client))
+                .push(Router::with_path("server").get(well_known_server)),
+        )
         .push(Router::with_path("<*path>").get(StaticDir::new("./static")))
-}
-#[handler]
-async fn access_control(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
-    let host = get_origin_host(req).unwrap_or_default();
-    let headers = res.headers_mut();
-    if host.ends_with(".sonc.ai") || host == "sonc.ai" || host.ends_with(".agora.pub") || host.ends_with(".sonc.ai") {
-        headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
-        headers.insert(
-            "Access-Control-Allow-Methods",
-            "GET,POST,PUT,DELETE,PATCH,OPTIONS".parse().unwrap(),
-        );
-        headers.insert(
-            "Access-Control-Allow-Headers",
-            "Accept,Content-Type,Authorization,Range".parse().unwrap(),
-        );
-        headers.insert(
-            "Access-Control-Expose-Headers",
-            "Access-Token,Response-Status,Content-Length,Content-Range"
-                .parse()
-                .unwrap(),
-        );
-        headers.insert("Access-Control-Allow-Credentials", "true".parse().unwrap());
-    }
-    headers.insert("Content-Security-Policy", "frame-ancestors 'self'".parse().unwrap());
-    ctrl.call_next(req, depot, res).await;
-    // headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
-    // headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
 }
 fn get_origin_host(req: &mut Request) -> Option<String> {
     let origin = req
@@ -96,4 +73,24 @@ async fn require_authed(aa: AuthArgs, req: &mut Request, _depot: &mut Depot, res
     //     None => params.access_token.as_deref(),
     // };
     // depot.inject(sender);
+}
+
+#[endpoint]
+fn well_known_client() -> JsonResult<ClientWellKnownResBody> {
+    let client_url = crate::well_known_client();
+    json_ok(ClientWellKnownResBody {
+        homeserver: HomeServerInfo {
+            base_url: client_url.clone(),
+        },
+        identity_server: None,
+        tile_server: None,
+        authentication: None,
+        sliding_sync_proxy: Some(SlidingSyncProxyInfo { url: client_url }),
+    })
+}
+#[endpoint]
+fn well_known_server() -> JsonResult<ServerWellKnownResBody> {
+    json_ok(ServerWellKnownResBody {
+        server: crate::well_known_server(),
+    })
 }

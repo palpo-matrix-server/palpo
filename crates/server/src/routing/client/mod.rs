@@ -124,18 +124,6 @@ pub fn router() -> Router {
                 .push(Router::with_path("search").post(search)),
         )
         .push(Router::with_path("versions").get(supported_versions))
-        .push(Router::with_path("wellknown").get(wellknown))
-}
-
-// #GET /.well-known/matrix/client
-#[endpoint]
-async fn wellknown(depot: &mut Depot) -> JsonResult<JsonValue> {
-    let client_url = crate::well_known_client().ok_or(MatrixError::not_found("Not found."))?;
-
-    json_ok(serde_json::json!({
-        "m.homeserver": {"base_url": client_url},
-        "org.matrix.msc3575.proxy": {"url": client_url}
-    }))
 }
 
 // #POST /_matrix/client/r0/search
@@ -473,9 +461,8 @@ pub async fn sync_events_v4(
 
                 let since_encryption =
                     crate::room::state::get_pdu(since_frame_id, &StateEventType::RoomEncryption, "")?;
-
                 let joined_since_last_sync =
-                    since_sender_member.map_or(true, |member| member.membership != MembershipState::Join);
+                    crate::room::user::joined_sn(authed.user_id(), room_id)? >= global_since_sn;
 
                 let new_encrypted_room = encrypted_room && since_encryption.is_none();
                 if encrypted_room {

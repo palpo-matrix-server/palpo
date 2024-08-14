@@ -759,8 +759,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     crate::room::ensure_room(&room_id, created_by)?;
 
     // Create a user for the server
-    let palpo_user =
-        UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
+    let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
     if let Err(e) = crate::user::create_user(&palpo_user, None) {
         tracing::error!(error = ?e, "create palpo admin user failed.");
@@ -947,8 +946,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
     let room_id = get_admin_room()?.expect("Admin room must exist");
 
     // Use the server user to grant the new admin's power level
-    let palpo_user =
-        UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
+    let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
     // Invite and join the real user
     crate::room::timeline::build_and_append_pdu(

@@ -421,25 +421,9 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        let since_sender_member: Option<RoomMemberEventContent> = since_frame_id
-            .and_then(|since_frame_id| {
-                crate::room::state::get_pdu(since_frame_id, &StateEventType::RoomMember, sender_user_id.as_str())
-                    .transpose()
-            })
-            .transpose()?
-            .and_then(|pdu| {
-                serde_json::from_str(pdu.content.get())
-                    .map_err(|_| AppError::public("Invalid PDU in database."))
-                    .ok()
-            });
+        let joined_since_last_sync = crate::room::user::joined_sn(sender_user_id, room_id)? >= since_sn;
 
-        let joined_since_last_sync = if since_frame_id.is_none() {
-            false
-        } else {
-            since_sender_member.map_or(true, |member| member.membership != MembershipState::Join)
-        };
-
-        if since_frame_id.is_none() && since_sn <= 0 || joined_since_last_sync {
+        if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -463,10 +447,10 @@ async fn load_joined_room(
                     };
                     state_events.push(pdu);
                 } else if !lazy_load_enabled
-        || full_state
-        || timeline_users.contains(&state_key)
-        // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
-        || *sender_user_id == state_key
+                    || full_state
+                    || timeline_users.contains(&state_key)
+                    // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
+                    || *sender_user_id == state_key
                 {
                     let pdu = match crate::room::timeline::get_pdu(&id)? {
                         Some(pdu) => pdu,

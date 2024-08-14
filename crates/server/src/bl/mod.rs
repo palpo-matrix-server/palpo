@@ -217,6 +217,31 @@ pub fn keypair() -> &'static Ed25519KeyPair {
     })
 }
 
+pub fn well_known_client() -> String {
+    let config = crate::config();
+    if let Some(url) = &config.well_known.client {
+        url.to_string()
+    } else {
+        format!("https://{}", config.server_name)
+    }
+}
+
+pub fn well_known_server() -> OwnedServerName {
+    let config = crate::config();
+    match &config.well_known.server {
+        Some(server_name) => server_name.to_owned(),
+        None => {
+            if config.server_name.port().is_some() {
+                config.server_name.to_owned()
+            } else {
+                format!("{}:443", config.server_name.host())
+                    .try_into()
+                    .expect("Host from valid hostname + :443 must be valid")
+            }
+        }
+    }
+}
+
 // /// Returns a reqwest client which can be used to send requests
 // pub fn default_client() -> reqwest::Client {
 //     // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
@@ -334,6 +359,9 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
 
 pub fn server_name() -> &'static ServerName {
     config().server_name.as_ref()
+}
+pub fn server_addr() -> &'static str {
+    config().server_addr.deref()
 }
 
 pub fn max_request_size() -> u32 {
@@ -656,10 +684,6 @@ pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     r.push(server_name);
     r.push(media_id);
     r
-}
-
-pub fn well_known_client() -> Option<&'static str> {
-    config().well_known_client.as_deref()
 }
 
 pub fn shutdown() {

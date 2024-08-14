@@ -138,6 +138,15 @@ pub fn keys_changed_users(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) ->
     }
 }
 
+pub fn joined_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("join"))
+        .select(room_users::event_sn)
+        .first::<i64>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
 pub fn joined_count(room_id: &RoomId) -> AppResult<i64> {
     let count = room_users::table
         .filter(room_users::room_id.eq(room_id))
