@@ -95,11 +95,11 @@ pub fn get_threads(
     Ok((events, next_token))
 }
 
-pub fn add_to_thread(root_event_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
-    let root_pdu = crate::room::timeline::get_pdu(root_event_id)?
+pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
+    let root_pdu = crate::room::timeline::get_pdu(thread_id)?
         .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found."))?;
 
-    let mut root_pdu_json = crate::room::timeline::get_pdu_json(root_event_id)?
+    let mut root_pdu_json = crate::room::timeline::get_pdu_json(thread_id)?
         .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
 
     if let CanonicalJsonValue::Object(unsigned) = root_pdu_json
@@ -138,39 +138,14 @@ pub fn add_to_thread(root_event_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
             );
         }
 
-        crate::room::timeline::replace_pdu(root_event_id, &root_pdu_json)?;
+        crate::room::timeline::replace_pdu(thread_id, &root_pdu_json)?;
     }
 
-    let mut users = Vec::new();
-    if let Some(user_ids) = get_participants(&root_event_id)? {
-        users.extend_from_slice(&user_ids);
-        users.push(pdu.sender.clone());
-    } else {
-        users.push(root_pdu.sender);
-        users.push(pdu.sender.clone());
+    for user_id in [&root_pdu.sender, &pdu.sender] {
+        diesel::insert_into(thread_users::table).values((
+            thread_users::thread_id.eq(thread_id),
+            thread_users::user_id.eq(user_id),
+            )).on_conflict_do_nothing().execute(&mut *db::connect()?)?;
     }
-    // TODO: fixme
-    // update_participants(root_event_id, &users)?;
     Ok(())
-}
-
-fn get_participants(root_id: &EventId) -> AppResult<Option<Vec<OwnedUserId>>> {
-    // TODO: fixme
-    panic!("fixme")
-    // if let Some(users) = self.threadid_user_ids.get(root_id)? {
-    //     Ok(Some(
-    //         users
-    //             .split(|b| *b == 0xff)
-    //             .map(|bytes| {
-    //                 UserId::parse(
-    //                     utils::string_from_bytes(bytes)
-    //                         .map_err(|_| AppError::public("Invalid UserId bytes in threadid_user_ids."))?,
-    //                 )
-    //                 .map_err(|_| AppError::public("Invalid UserId in threadid_user_ids."))
-    //             })
-    //             .collect(),
-    //     ))
-    // } else {
-    //     Ok(None)
-    // }
 }

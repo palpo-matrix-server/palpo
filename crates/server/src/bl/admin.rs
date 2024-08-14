@@ -4,10 +4,10 @@ use std::{
     sync::Arc,
     time::Instant,
 };
+use std::sync::OnceLock;
 
 use clap::Parser;
 use diesel::prelude::*;
-use once_cell::sync::OnceCell;
 use palpo_core::UnixMillis;
 use regex::Regex;
 use serde_json::value::to_raw_value;
@@ -174,7 +174,7 @@ pub enum AdminRoomEvent {
     SendMessage(RoomMessageEventContent),
 }
 
-static SENDER: OnceCell<UnboundedSender<AdminRoomEvent>> = OnceCell::new();
+static SENDER: OnceLock<UnboundedSender<AdminRoomEvent>> = OnceLock::new();
 pub fn supervise() {
     let (sender, receiver) = mpsc::unbounded_channel();
     SENDER.set(sender);

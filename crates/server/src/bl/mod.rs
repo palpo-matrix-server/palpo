@@ -25,14 +25,13 @@ use std::net::IpAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, LazyLock, OnceLock, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
 use diesel::prelude::*;
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use hickory_resolver::TokioAsyncResolver;
 use lru_cache::LruCache;
-use once_cell::sync::{Lazy, OnceCell};
 use palpo_core::client::sync_events::SyncEventsResBodyV3;
 use palpo_core::{JsonValue, UnixMillis};
 use salvo::oapi::ToSchema;
@@ -69,8 +68,8 @@ type RateLimitState = (Instant, u32); // Time if last failed try, number of fail
 
 // pub actual_destination_cache: Arc<RwLock<WellKnownMap>>, // actual_destination, host
 // pub tls_name_override: Arc<RwLock<TlsNameMap>>,
-type LazyLock<T> = Lazy<RwLock<T>>;
-pub static STABLE_ROOM_VERSIONS: Lazy<Vec<RoomVersionId>> = Lazy::new(|| {
+type LazyRwLock<T> = LazyLock<RwLock<T>>;
+pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
     vec![
         RoomVersionId::V6,
         RoomVersionId::V7,
@@ -80,16 +79,16 @@ pub static STABLE_ROOM_VERSIONS: Lazy<Vec<RoomVersionId>> = Lazy::new(|| {
         RoomVersionId::V11,
     ]
 });
-pub static UNSTABLE_ROOM_VERSIONS: Lazy<Vec<RoomVersionId>> =
-    Lazy::new(|| vec![RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
-pub static BAD_EVENT_RATE_LIMITER: LazyLock<HashMap<OwnedEventId, RateLimitState>> = Lazy::new(Default::default);
-pub static BAD_SIGNATURE_RATE_LIMITER: LazyLock<HashMap<Vec<String>, RateLimitState>> = Lazy::new(Default::default);
-pub static BAD_QUERY_RATE_LIMITER: LazyLock<HashMap<OwnedServerName, RateLimitState>> = Lazy::new(Default::default);
-pub static SERVER_NAME_RATE_LIMITER: LazyLock<HashMap<OwnedServerName, Arc<Semaphore>>> = Lazy::new(Default::default);
-pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
-    Lazy::new(Default::default);
-pub static SYNC_RECEIVERS: LazyLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> = Lazy::new(Default::default);
-pub static STATERES_MUTEX: Lazy<Mutex<()>> = Lazy::new(Default::default);
+pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> =
+    LazyLock::new(|| vec![RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
+pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
+pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> = LazyLock::new(Default::default);
+pub static BAD_QUERY_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, RateLimitState>> = LazyLock::new(Default::default);
+pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Semaphore>>> = LazyLock::new(Default::default);
+pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
+    LazyLock::new(Default::default);
+pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> = LazyLock::new(Default::default);
+pub static STATERES_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
 // pub rotate: RotationHandler,
 
 // pub shutdown: AtomicBool,
@@ -209,7 +208,7 @@ pub fn curr_sn() -> AppResult<i64> {
 
 /// Returns this server's keypair.
 pub fn keypair() -> &'static Ed25519KeyPair {
-    static KEYPAIR: OnceCell<Ed25519KeyPair> = OnceCell::new();
+    static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
     KEYPAIR.get_or_init(|| {
         let bytes = base64::decode(&crate::config().keypair).expect("server keypair is invalid base64 string");
         let bytes = base64::decode(&crate::config().keypair).expect("server keypair is invalid base64 string");
@@ -409,7 +408,7 @@ pub fn trusted_servers() -> &'static [OwnedServerName] {
 }
 
 pub fn dns_resolver() -> Result<&'static TokioAsyncResolver, &'static AppError> {
-    static DNS_RESOLVER: OnceCell<Result<TokioAsyncResolver, AppError>> = OnceCell::new();
+    static DNS_RESOLVER: OnceLock<Result<TokioAsyncResolver, AppError>> = OnceLock::new();
     DNS_RESOLVER
         .get_or_init(|| {
             TokioAsyncResolver::tokio_from_system_conf().map_err(|e| {
@@ -421,7 +420,7 @@ pub fn dns_resolver() -> Result<&'static TokioAsyncResolver, &'static AppError> 
 }
 
 pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
-    static JWT_DECODING_KEY: OnceCell<Option<jsonwebtoken::DecodingKey>> = OnceCell::new();
+    static JWT_DECODING_KEY: OnceLock<Option<jsonwebtoken::DecodingKey>> = OnceLock::new();
     JWT_DECODING_KEY
         .get_or_init(|| {
             config()

@@ -15,7 +15,6 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-once_cell.workspace = true
 proc-macro-crate = "3.0.0"
 proc-macro2 = "1.0.24"
 quote = "1.0.8"

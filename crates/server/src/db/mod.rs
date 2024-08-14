@@ -1,10 +1,9 @@
 use std::ops::Deref;
-use std::time::Duration;
+use std::sync::OnceLock;
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager, CustomizeConnection, State};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use once_cell::sync::OnceCell;
 use secrecy::{ExposeSecret, SecretString};
 use url::Url;
 
@@ -15,8 +14,8 @@ use crate::db;
 pub use pool::{DieselPool, PgPooledConnection, PoolError};
 // pub mod users;
 
-pub static DIESEL_POOL: OnceCell<DieselPool> = OnceCell::new();
-pub static REPLICA_POOL: OnceCell<Option<DieselPool>> = OnceCell::new();
+pub static DIESEL_POOL: OnceLock<DieselPool> = OnceLock::new();
+pub static REPLICA_POOL: OnceLock<Option<DieselPool>> = OnceLock::new();
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 pub fn migrate() {

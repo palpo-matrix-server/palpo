@@ -1,6 +1,6 @@
+use std::sync::LazyLock;
+
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
-use salvo::oapi::ToParameters;
 
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;

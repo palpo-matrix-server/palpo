@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, LazyLock};
 
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 use palpo_core::OwnedEventId;
 use tracing::error;
 
@@ -13,7 +12,7 @@ use crate::event::PduEvent;
 use crate::schema::*;
 use crate::{db, AppResult};
 
-pub static STATE_INFO_CACHE: Lazy<
+pub static STATE_INFO_CACHE: LazyLock<
     Mutex<
         LruCache<
             i64,
@@ -25,7 +24,7 @@ pub static STATE_INFO_CACHE: Lazy<
             )>,
         >,
     >,
-> = Lazy::new(|| Mutex::new(LruCache::new(100_000)));
+> = LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
 
 /// Returns a stack with info on state_hash, full state, added diff and removed diff for the selected state_hash and each parent layer.
 pub fn load_frame_info(

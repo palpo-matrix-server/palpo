@@ -298,24 +298,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    room_profiles (id) {
-        id -> Int8,
-        room_id -> Text,
-        name -> Nullable<Text>,
-        canonical_alias -> Nullable<Text>,
-        join_rules -> Nullable<Text>,
-        history_visibility -> Nullable<Text>,
-        encryption -> Nullable<Text>,
-        avatar -> Nullable<Text>,
-        guest_access -> Nullable<Text>,
-        is_federatable -> Nullable<Bool>,
-        topic -> Nullable<Text>,
-        room_kind -> Nullable<Text>,
-        crated_at -> Int8,
-    }
-}
-
-diesel::table! {
     room_servers (id) {
         id -> Int8,
         room_id -> Text,
@@ -412,18 +394,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    server_signature_keys (id) {
-        id -> Int8,
-        server_id -> Text,
-        key_id -> Text,
-        from_server -> Text,
-        verify_key -> Bytea,
-        valid_until -> Int8,
-        created_at -> Int8,
-    }
-}
-
-diesel::table! {
     server_signing_keys (server_id) {
         server_id -> Text,
         key_data -> Jsonb,
@@ -461,6 +431,24 @@ diesel::table! {
         device_id -> Text,
         user_agent -> Nullable<Text>,
         created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    thread_users (id) {
+        id -> Int8,
+        thread_id -> Text,
+        user_id -> Text,
+    }
+}
+
+diesel::table! {
+    threads (id) {
+        id -> Text,
+        room_id -> Text,
+        latest_event_id -> Text,
+        topological_ordering -> Int8,
+        stream_ordering -> Int8,
     }
 }
 
@@ -506,21 +494,6 @@ diesel::table! {
         next_link -> Nullable<Text>,
         expired_at -> Int8,
         created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    track_actions (id) {
-        id -> Int8,
-        code -> Text,
-        name -> Nullable<Text>,
-        once -> Nullable<Text>,
-        realm_id -> Int8,
-        user_id -> Nullable<Int8>,
-        ip_addr -> Nullable<Text>,
-        entity -> Text,
-        record_id -> Int8,
-        created_at -> Timestamptz,
     }
 }
 
@@ -695,14 +668,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    user_signature_stream (id) {
-        id -> Int8,
-        from_user_id -> Text,
-        user_ids -> Text,
-    }
-}
-
-diesel::table! {
     user_threepids (id) {
         id -> Int8,
         user_id -> Text,
@@ -760,7 +725,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     media_metadatas,
     media_thumbnails,
     room_aliases,
-    room_profiles,
     room_servers,
     room_state_deltas,
     room_state_fields,
@@ -770,16 +734,16 @@ diesel::allow_tables_to_appear_in_same_query!(
     room_threads,
     room_users,
     rooms,
-    server_signature_keys,
     server_signing_keys,
     stats_monthly_active_users,
     stats_room_currents,
     stats_user_daily_visits,
+    thread_users,
+    threads,
     threepid_guests,
     threepid_id_servers,
     threepid_validation_sessions,
     threepid_validation_tokens,
-    track_actions,
     user_access_tokens,
     user_datas,
     user_dehydrated_devices,
@@ -794,7 +758,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_refresh_tokens,
     user_registration_tokens,
     user_sessions,
-    user_signature_stream,
     user_threepids,
     users,
 );

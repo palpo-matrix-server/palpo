@@ -10,7 +10,7 @@ use crate::config::{self, DbConfig};
 pub type PgPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PgPooledConnection = r2d2::PooledConnection<ConnectionManager<PgConnection>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DieselPool {
     inner: PgPool,
 }

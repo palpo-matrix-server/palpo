@@ -23,16 +23,14 @@ pub use session::*;
 mod presence;
 pub use presence::*;
 
-use chksum::md5::default;
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, LazyLock},
 };
 
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
 use palpo_core::JsonValue;
 use salvo::oapi::ToParameters;
 use salvo::prelude::*;
@@ -132,8 +130,8 @@ pub fn invited_rooms(
     Ok(list)
 }
 
-pub const CONNECTIONS: Lazy<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
-    Lazy::new(|| Default::default());
+pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
+    LazyLock::new(|| Default::default());
 
 /// Check if a user has an account on this homeserver.
 pub fn user_exists(user_id: &UserId) -> AppResult<bool> {

@@ -48,7 +48,6 @@ maplit = { workspace = true }
 mime = { workspace = true }
 mime_guess = { workspace = true }
 oauth2 = { workspace = true }
-once_cell = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }

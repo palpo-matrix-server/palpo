@@ -120,11 +120,7 @@ pub struct PublicRoomFilter {
     /// The room types to include in the results.
     ///
     /// Includes all room types if it is empty.
-    ///
-    /// If the `compat-null` feature is enabled, a `null` value is allowed in deserialization, and
-    /// treated the same way as an empty list.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    #[cfg_attr(feature = "compat-null", serde(deserialize_with = "crate::serde::none_as_default"))]
+    #[serde(default, skip_serializing_if = "Vec::is_empty", deserialize_with = "crate::serde::none_as_default")]
     pub room_types: Vec<RoomTypeFilter>,
 }
 

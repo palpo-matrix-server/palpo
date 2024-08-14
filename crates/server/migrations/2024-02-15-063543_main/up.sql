@@ -446,8 +446,8 @@ CREATE TABLE events (
 --     stream_ordering bigint
 );
 
-drop table if exists room_threads CASCADE;
-CREATE TABLE room_threads
+drop table if exists threads CASCADE;
+CREATE TABLE threads
 (
     id text NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
@@ -455,9 +455,18 @@ CREATE TABLE room_threads
     topological_ordering bigint NOT NULL,
     stream_ordering bigint NOT NULL
 );
-CREATE INDEX room_threads_ordering_idx
-    ON room_threads USING btree
+CREATE INDEX threads_ordering_idx
+    ON threads USING btree
     (room_id ASC NULLS LAST, topological_ordering ASC NULLS LAST, stream_ordering ASC NULLS LAST);
+
+drop table if exists thread_users CASCADE;
+CREATE TABLE thread_users
+(
+    id bigserial not null PRIMARY KEY,
+    thread_id text NOT NULL,
+    user_id text NOT NULL,
+    CONSTRAINT thread_users_ukey UNIQUE (thread_id, user_id)
+);
 
 drop table if exists event_datas CASCADE;
 CREATE TABLE event_datas

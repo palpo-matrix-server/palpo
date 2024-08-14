@@ -8,12 +8,11 @@ mod point;
 pub use point::*;
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, LazyLock};
 
 use diesel::prelude::*;
 use futures_util::StreamExt;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 use palpo_core::JsonValue;
 use serde::Deserialize;
 use tracing::warn;
@@ -51,10 +50,10 @@ pub struct DbRoomStateDelta {
 //     pub remove_data: Vec<u8>,
 // }
 
-pub const SERVER_VISIBILITY_CACHE: Lazy<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
-    Lazy::new(|| Mutex::new(LruCache::new(100)));
-pub const USER_VISIBILITY_CACHE: Lazy<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
-    Lazy::new(|| Mutex::new(LruCache::new(100)));
+pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100)));
+pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 /// Set the room to the given state_hash and update caches.
 pub fn force_state(

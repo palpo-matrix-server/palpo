@@ -1,9 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, LazyLock};
 
 use crate::room::state::DbRoomStateField;
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 use tracing::{debug, error, warn};
 
 use crate::core::{
@@ -41,8 +40,8 @@ pub struct CachedSpaceChunk {
     join_rule: CachedJoinRule,
 }
 
-pub static ROOM_ID_SPACE_CHUNK_CACHE: Lazy<Mutex<LruCache<OwnedRoomId, Option<CachedSpaceChunk>>>> =
-    Lazy::new(|| Mutex::new(LruCache::new(100)));
+pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Option<CachedSpaceChunk>>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 pub async fn get_hierarchy(
     user_id: &UserId,

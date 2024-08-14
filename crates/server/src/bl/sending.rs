@@ -1,14 +1,13 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::Debug,
-    sync::Arc,
+    sync::{LazyLock, Arc},
     time::{Duration, Instant},
 };
 
 use base64::{engine::general_purpose, Engine as _};
 use diesel::prelude::*;
 use futures_util::stream::FuturesUnordered;
-use once_cell::sync::Lazy;
 use palpo_core::OwnedEventId;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, warn};
@@ -43,7 +42,7 @@ pub enum SendingEventType {
 }
 
 /// The state for a given state hash.
-pub(super) static MAXIMUM_REQUESTS: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(1)));
+pub(super) static MAXIMUM_REQUESTS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(1)));
 // pub sender: mpsc::UnboundedSender<(OutgoingKind, SendingEventType, Vec<u8>)>;
 // receiver: Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, Vec<u8>)>>;
 

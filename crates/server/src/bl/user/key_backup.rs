@@ -1,8 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
+use std::sync::LazyLock;
 
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
-use salvo::prelude::*;
 
 use crate::core::client::backup::{BackupAlgorithm, KeyBackupData, RoomKeyBackup};
 use crate::core::identifiers::*;

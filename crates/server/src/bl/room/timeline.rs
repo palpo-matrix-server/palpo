@@ -3,11 +3,10 @@ use std::arch::is_aarch64_feature_detected;
 use std::cmp::Ordering;
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::mem::size_of;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, LazyLock};
 
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
@@ -39,8 +38,8 @@ use crate::{
     JsonValue,
 };
 
-pub static LAST_TIMELINE_COUNT_CACHE: Lazy<Mutex<HashMap<OwnedRoomId, i64>>> = Lazy::new(Default::default);
-// pub static PDU_CACHE: Lazy<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = Lazy::new(Default::default);
+pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
+// pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
 
 #[tracing::instrument]
 pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {

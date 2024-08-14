@@ -2,10 +2,10 @@ use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
 };
+use std::sync::LazyLock;
 
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 use tracing::{error, warn};
 
 use crate::core::identifiers::*;
@@ -20,8 +20,8 @@ pub struct DbEventAuthChain {
     pub sequence_number: i64,
 }
 
-static AUTH_CHAIN_CACHE: Lazy<Mutex<LruCache<Arc<OwnedEventId>, Arc<HashSet<i64>>>>> =
-    Lazy::new(|| Mutex::new(LruCache::new(100_000)));
+static AUTH_CHAIN_CACHE: LazyLock<Mutex<LruCache<Arc<OwnedEventId>, Arc<HashSet<i64>>>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
 
 pub fn get_cached_event_auth_chain(event_id: &EventId) -> AppResult<Option<Arc<HashSet<i64>>>> {
     // Check RAM cache

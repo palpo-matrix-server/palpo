@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
+use std::sync::{LazyLock, OnceLock};
 
-use once_cell::sync::{Lazy, OnceCell};
 use tokio::sync::{broadcast, RwLock};
 use ulid::Ulid;
 
@@ -11,9 +11,9 @@ use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::{db, utils, AppError, AppResult};
 
-pub static TYPING: Lazy<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> = Lazy::new(Default::default); // u64 is unix timestamp of timeout
-pub static LAST_TYPING_UPDATE: Lazy<RwLock<BTreeMap<OwnedRoomId, i64>>> = Lazy::new(Default::default); // timestamp of the last change to typing users
-pub static TYPING_UPDATE_SENDER: Lazy<broadcast::Sender<OwnedRoomId>> = Lazy::new(|| broadcast::channel(100).0);
+pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> = LazyLock::new(Default::default); // u64 is unix timestamp of timeout
+pub static LAST_TYPING_UPDATE: LazyLock<RwLock<BTreeMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default); // timestamp of the last change to typing users
+pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> = LazyLock::new(|| broadcast::channel(100).0);
 
 /// Sets a user as typing until the timeout timestamp is reached or roomremove_typing is
 /// called.

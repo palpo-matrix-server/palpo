@@ -37,7 +37,6 @@ konst = { workspace = true }
 maplit ={ workspace = true }
 mime = { workspace = true }
 oauth2 = { workspace = true }
-once_cell = { workspace = true }
 path-slash = { workspace = true }
 percent-encoding = { workspace = true }
 pkcs8 = { workspace = true, features = ["alloc"] }

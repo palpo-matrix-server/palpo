@@ -1,5 +1,7 @@
+
+use std::sync::LazyLock;
+
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
 use salvo::oapi::ToParameters;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};

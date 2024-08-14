@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use once_cell::sync::Lazy;
 
 use super::{room_state_deltas, DbRoomStateDelta};
 use crate::room::state::ensure_point;

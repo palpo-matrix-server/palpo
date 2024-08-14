@@ -26,10 +26,7 @@ use crate::OwnedRoomId;
 )]
 pub struct RoomTombstoneEventContent {
     /// A server-defined message.
-    ///
-    /// If the `compat-optional` feature is enabled, this field being absent in JSON will result
-    /// in an empty string instead of an error when deserializing.
-    #[cfg_attr(feature = "compat-optional", serde(default))]
+    #[serde(default)]
     pub body: String,
 
     /// The new room the client should be visiting.

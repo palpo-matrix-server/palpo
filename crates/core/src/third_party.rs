@@ -22,10 +22,7 @@ pub struct Protocol {
     pub location_fields: Vec<String>,
 
     /// A content URI representing an icon for the third party protocol.
-    ///
-    /// If the `compat-optional` feature is enabled, this field being absent in JSON will result
-    /// in an empty string instead of an error when deserializing.
-    #[cfg_attr(feature = "compat-optional", serde(default))]
+    #[serde(default)]
     pub icon: String,
 
     /// The type definitions for the fields defined in `user_fields` and `location_fields`.

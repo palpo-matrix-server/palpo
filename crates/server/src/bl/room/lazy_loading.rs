@@ -1,17 +1,16 @@
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
 use std::{
     collections::{HashMap, HashSet},
-    sync::Mutex,
 };
+use std::sync::{Mutex, LazyLock};
 
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};
 use crate::schema::*;
 use crate::{db, diesel_exists, AppError, AppResult};
 
-pub const LAZY_LOAD_WAITING: Lazy<
+pub const LAZY_LOAD_WAITING: LazyLock<
     Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,
-> = Lazy::new(Default::default);
+> = LazyLock::new(Default::default);
 
 #[tracing::instrument]
 pub fn lazy_load_was_sent_before(

@@ -19,10 +19,9 @@ pub mod thread;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::mem;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex,LazyLock, RwLock};
 
 use diesel::prelude::*;
-use once_cell::sync::Lazy;
 use salvo::oapi::ToParameters;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};

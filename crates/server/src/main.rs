@@ -118,8 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         DieselPool::new(&conf.db.url, &conf.db, db_config).unwrap()
     };
-    crate::db::DIESEL_POOL.set(db_primary);
-    crate::config::CONFIG.set(conf);
+    crate::db::DIESEL_POOL.set(db_primary).expect("diesel pool should be set");
+    crate::config::CONFIG.set(conf).expect("config should be set");
 
     let acceptor = TcpListener::new(crate::server_addr()).bind().await;
     salvo::http::request::set_secure_max_size(8 * 1024 * 1024);

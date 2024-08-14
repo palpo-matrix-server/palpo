@@ -19,24 +19,15 @@ use crate::serde::Base64;
 #[palpo_event(type = "m.room.third_party_invite", kind = State, state_key_type = String)]
 pub struct RoomThirdPartyInviteEventContent {
     /// A user-readable string which represents the user who has been invited.
-    ///
-    /// If the `compat-optional` feature is enabled, this field being absent in JSON will result
-    /// in an empty string instead of an error when deserializing.
-    #[cfg_attr(feature = "compat-optional", serde(default))]
+    #[serde(default)]
     pub display_name: String,
 
     /// A URL which can be fetched to validate whether the key has been revoked.
-    ///
-    /// If the `compat-optional` feature is enabled, this field being absent in JSON will result
-    /// in an empty string instead of an error when deserializing.
-    #[cfg_attr(feature = "compat-optional", serde(default))]
+    #[serde(default)]
     pub key_validity_url: String,
 
     /// A base64-encoded Ed25519 key with which the token must be signed.
-    ///
-    /// If the `compat-optional` feature is enabled, this field being absent in JSON will result
-    /// in an empty string instead of an error when deserializing.
-    #[cfg_attr(feature = "compat-optional", serde(default = "Base64::empty"))]
+    #[serde(default = "Base64::empty")]
     pub public_key: Base64,
 
     /// Keys with which the token may be signed.
