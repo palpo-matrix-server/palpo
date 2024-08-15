@@ -23,10 +23,10 @@ pub struct WellKnownConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-    #[serde(default = "default_server_addr")]
-    pub server_addr: String,
     pub tls: Option<TlsConfig>,
 
+    #[serde(default = "default_listen_addr")]
+    pub listen_addr: String,
     pub server_name: OwnedServerName,
     pub db: DbConfig,
     #[serde(default = "true_value")]
@@ -199,7 +199,7 @@ pub struct TlsConfig {
     pub key: String,
 }
 
-fn default_server_addr() -> String {
+fn default_listen_addr() -> String {
     "127.0.0.1:8008".into()
 }
 

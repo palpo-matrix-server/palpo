@@ -1005,8 +1005,8 @@ mod tests {
         let matrix_uri = MatrixUri::parse("matrix:r/palpo:notareal.hs").expect("Failed to create MatrixToUri.");
         assert_eq!(matrix_uri.id(), &room_alias_id!("#palpo:notareal.hs").into());
 
-        let matrix_uri = MatrixUri::parse("matrix:roomid/palpo:notareal.hs?via=notareal.hs")
-            .expect("Failed to create MatrixToUri.");
+        let matrix_uri =
+            MatrixUri::parse("matrix:roomid/palpo:notareal.hs?via=notareal.hs").expect("Failed to create MatrixToUri.");
         assert_eq!(matrix_uri.id(), &room_id!("!palpo:notareal.hs").into());
         assert_eq!(matrix_uri.via(), &[server_name!("notareal.hs").to_owned()]);
         assert_eq!(matrix_uri.action(), None);

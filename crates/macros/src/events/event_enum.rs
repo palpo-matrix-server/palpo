@@ -90,12 +90,7 @@ pub fn expand_event_enums(input: &EventEnumDecl) -> syn::Result<TokenStream> {
 
     if matches!(kind, EventKind::State) {
         res.extend(expand_full_content_enum(
-            kind,
-            events,
-            docs,
-            attrs,
-            variants,
-            palpo_core,
+            kind, events, docs, attrs, variants, palpo_core,
         ));
         res.extend(
             expand_event_enum(kind, V::Stripped, events, docs, attrs, variants, palpo_core)

@@ -26,7 +26,7 @@ pub use presence::*;
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
-    sync::{Arc, Mutex, LazyLock},
+    sync::{Arc, LazyLock, Mutex},
 };
 
 use diesel::dsl::count_distinct;

@@ -96,10 +96,7 @@ mod tests {
             EventEncryptionAlgorithm::OlmV1Curve25519AesSha2,
             json!("m.olm.v1.curve25519-aes-sha2"),
         );
-        serde_json_eq(
-            EventEncryptionAlgorithm::from("io.palpo.test"),
-            json!("io.palpo.test"),
-        );
+        serde_json_eq(EventEncryptionAlgorithm::from("io.palpo.test"), json!("io.palpo.test"));
     }
 
     #[test]

@@ -19,10 +19,7 @@
 
 # YOU NEED TO EDIT THIS
 server_name = "your.server.name"
-
-[db]
-url = "postgres://postgres:root@127.0.0.1:5432/palpo_main_local"
-pool_size = 1
+listen_addr = "127.0.0.1:8008"
 
 # The local address that the server listens on.
 #listen_addr = "127.0.0.1:8008"
@@ -46,8 +43,14 @@ enable_lightning_bolt = true
 # servers.)
 trusted_servers = ["matrix.org"]
 
+keypair = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAELqWFgDu6Ap47RzE1ehee2XCvGamRzu6u0N66lsgOJ0="
+
 #max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 #log = "warn,state=warn,rocket=off,_=off,sled=off"
+
+[db]
+url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
+pool_size = 1
 
 [well_known]
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access conduit with the host

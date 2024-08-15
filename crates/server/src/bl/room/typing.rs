@@ -11,7 +11,8 @@ use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::{db, utils, AppError, AppResult};
 
-pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> = LazyLock::new(Default::default); // u64 is unix timestamp of timeout
+pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
+    LazyLock::new(Default::default); // u64 is unix timestamp of timeout
 pub static LAST_TYPING_UPDATE: LazyLock<RwLock<BTreeMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default); // timestamp of the last change to typing users
 pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> = LazyLock::new(|| broadcast::channel(100).0);
 

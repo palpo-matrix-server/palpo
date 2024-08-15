@@ -65,7 +65,6 @@ pub struct RelatingEventsWithRelTypeAndEventTypeReqArgs {
     #[salvo(parameter(parameter_in = Query))]
     pub dir: Direction,
 
-
     /// The pagination token to stop returning results at.
     ///
     /// If `None`, results continue up to `limit` or until there are no more events.

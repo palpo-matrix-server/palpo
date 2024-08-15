@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::Debug,
-    sync::{LazyLock, Arc},
+    sync::{Arc, LazyLock},
     time::{Duration, Instant},
 };
 

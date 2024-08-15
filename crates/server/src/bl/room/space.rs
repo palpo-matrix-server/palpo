@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::room::state::DbRoomStateField;
 use diesel::prelude::*;

@@ -8,6 +8,7 @@ homepage.workspace = true
 keywords.workspace = true
 repository.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 palpo-macros = { workspace = true }

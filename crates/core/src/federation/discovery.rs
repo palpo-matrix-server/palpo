@@ -83,7 +83,6 @@ impl ServerSigningKeys {
     }
 }
 
-
 /// Response type for the `discover_homeserver` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 pub struct ServerWellKnownResBody {

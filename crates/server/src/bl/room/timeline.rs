@@ -3,7 +3,7 @@ use std::arch::is_aarch64_feature_detected;
 use std::cmp::Ordering;
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::mem::size_of;
-use std::sync::{Arc, Mutex, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
 use lru_cache::LruCache;

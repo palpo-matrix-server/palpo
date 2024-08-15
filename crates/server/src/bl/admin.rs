@@ -1,10 +1,10 @@
+use std::sync::OnceLock;
 use std::{
     collections::BTreeMap,
     convert::{TryFrom, TryInto},
     sync::Arc,
     time::Instant,
 };
-use std::sync::OnceLock;
 
 use clap::Parser;
 use diesel::prelude::*;

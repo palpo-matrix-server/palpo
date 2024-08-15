@@ -79,12 +79,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if let Err(e) = dotenv() {
         println!("dotenv error: {:?}", e);
     }
-    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "palpo=warn,palpo_core=warn,salvo=warn".to_owned());
-    tracing_subscriber::fmt()
-        .pretty()
-        .with_env_filter(filter)
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
+    let filter = env::var("RUST_LOG").unwrap_or_else(|_| "palpo=warn,palpo_core=warn,salvo=warn".to_owned());
+    if env::var("LOG_FORMAT").unwrap_or_default() == "json" {
+        tracing_subscriber::fmt()
+            .json()
+            .with_env_filter(filter)
+            .with_span_events(FmtSpan::CLOSE)
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .pretty()
+            .with_env_filter(filter)
+            .with_span_events(FmtSpan::CLOSE)
+            .init();
+    }
 
     println!("RUST_LOG: {}", env::var("RUST_LOG").unwrap_or_default());
 
@@ -118,10 +126,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         DieselPool::new(&conf.db.url, &conf.db, db_config).unwrap()
     };
-    crate::db::DIESEL_POOL.set(db_primary).expect("diesel pool should be set");
+    crate::db::DIESEL_POOL
+        .set(db_primary)
+        .expect("diesel pool should be set");
     crate::config::CONFIG.set(conf).expect("config should be set");
+    crate::db::migrate();
 
-    let acceptor = TcpListener::new(crate::server_addr()).bind().await;
+    let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
     salvo::http::request::set_secure_max_size(8 * 1024 * 1024);
 
     let router = routing::router();

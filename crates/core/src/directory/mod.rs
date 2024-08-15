@@ -120,7 +120,11 @@ pub struct PublicRoomFilter {
     /// The room types to include in the results.
     ///
     /// Includes all room types if it is empty.
-    #[serde(default, skip_serializing_if = "Vec::is_empty", deserialize_with = "crate::serde::none_as_default")]
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "crate::serde::none_as_default"
+    )]
     pub room_types: Vec<RoomTypeFilter>,
 }
 

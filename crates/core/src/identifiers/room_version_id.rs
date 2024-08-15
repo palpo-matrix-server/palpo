@@ -389,8 +389,8 @@ mod tests {
 
     #[test]
     fn deserialize_custom_room_id() {
-        let deserialized = serde_json::from_str::<RoomVersionId>(r#""io.palpo.1""#)
-            .expect("Failed to convert RoomVersionId to JSON.");
+        let deserialized =
+            serde_json::from_str::<RoomVersionId>(r#""io.palpo.1""#).expect("Failed to convert RoomVersionId to JSON.");
 
         assert_eq!(
             deserialized,

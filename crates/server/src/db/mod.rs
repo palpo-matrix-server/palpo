@@ -19,7 +19,7 @@ pub static REPLICA_POOL: OnceLock<Option<DieselPool>> = OnceLock::new();
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 pub fn migrate() {
-    let conn = &mut db::connect().unwrap();
+    let conn = &mut db::connect().expect("db connect should worked");
     println!(
         "Has pending migration: {}",
         conn.has_pending_migration(MIGRATIONS).unwrap()

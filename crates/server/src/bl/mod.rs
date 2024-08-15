@@ -25,7 +25,7 @@ use std::net::IpAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, LazyLock, OnceLock, RwLock};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
 use diesel::prelude::*;
@@ -82,12 +82,16 @@ pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(||
 pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> =
     LazyLock::new(|| vec![RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
 pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
-pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> = LazyLock::new(Default::default);
-pub static BAD_QUERY_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, RateLimitState>> = LazyLock::new(Default::default);
-pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Semaphore>>> = LazyLock::new(Default::default);
+pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> =
+    LazyLock::new(Default::default);
+pub static BAD_QUERY_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, RateLimitState>> =
+    LazyLock::new(Default::default);
+pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Semaphore>>> =
+    LazyLock::new(Default::default);
 pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
     LazyLock::new(Default::default);
-pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> = LazyLock::new(Default::default);
+pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> =
+    LazyLock::new(Default::default);
 pub static STATERES_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
 // pub rotate: RotationHandler,
 
@@ -359,8 +363,8 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
 pub fn server_name() -> &'static ServerName {
     config().server_name.as_ref()
 }
-pub fn server_addr() -> &'static str {
-    config().server_addr.deref()
+pub fn listen_addr() -> &'static str {
+    config().listen_addr.deref()
 }
 
 pub fn max_request_size() -> u32 {

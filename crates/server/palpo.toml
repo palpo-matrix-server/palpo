@@ -20,18 +20,9 @@
 # YOU NEED TO EDIT THIS
 server_name = "your.server.name"
 
-[db]
-url = "postgres://postgres:root@127.0.0.1:5432/palpo_main_local"
-pool_size = 1
-
-#address = "127.0.0.1" # This makes sure Palpo can only be reached using the reverse proxy
-#address = "0.0.0.0" # If Palpo is running in a container, make sure the reverse proxy (ie. Traefik) can reach it.
-
-# The port Palpo will be running on. You need to set up a reverse proxy in
-# your web server (e.g. apache or nginx), so all requests to /_matrix on port
-# 443 and 8448 will be forwarded to the Palpo instance running on this port
-# Docker users: Don't change this, you'll need to map an external port to this.
-#port = 8008
+# The local address that the server listens on.
+#listen_addr = "127.0.0.1:8008"
+#server_name= "127.0.0.1"
 
 # Max size for uploads
 max_request_size = 20_000_000 # in bytes
@@ -53,6 +44,10 @@ trusted_servers = ["matrix.org"]
 
 #max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 #log = "warn,state=warn,rocket=off,_=off,sled=off"
+
+[db]
+url = "postgres://postgres:root@127.0.0.1:5432/palpo_main_local"
+pool_size = 1
 
 [well_known]
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access conduit with the host

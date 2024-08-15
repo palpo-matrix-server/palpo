@@ -19,7 +19,7 @@ pub mod thread;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::mem;
-use std::sync::{Arc, Mutex,LazyLock, RwLock};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 use diesel::prelude::*;
 use salvo::oapi::ToParameters;

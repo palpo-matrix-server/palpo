@@ -1,4 +1,3 @@
-
 use std::sync::LazyLock;
 
 use diesel::prelude::*;

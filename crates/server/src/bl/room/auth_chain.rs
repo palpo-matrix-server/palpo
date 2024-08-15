@@ -1,8 +1,8 @@
+use std::sync::LazyLock;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
 };
-use std::sync::LazyLock;
 
 use diesel::prelude::*;
 use lru_cache::LruCache;

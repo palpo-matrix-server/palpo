@@ -142,10 +142,10 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
     }
 
     for user_id in [&root_pdu.sender, &pdu.sender] {
-        diesel::insert_into(thread_users::table).values((
-            thread_users::thread_id.eq(thread_id),
-            thread_users::user_id.eq(user_id),
-            )).on_conflict_do_nothing().execute(&mut *db::connect()?)?;
+        diesel::insert_into(thread_users::table)
+            .values((thread_users::thread_id.eq(thread_id), thread_users::user_id.eq(user_id)))
+            .on_conflict_do_nothing()
+            .execute(&mut *db::connect()?)?;
     }
     Ok(())
 }

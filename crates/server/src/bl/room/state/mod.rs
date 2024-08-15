@@ -8,7 +8,7 @@ mod point;
 pub use point::*;
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
 use futures_util::StreamExt;
