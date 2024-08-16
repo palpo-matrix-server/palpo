@@ -38,6 +38,8 @@ pub enum AppError {
     SerdeJson(#[from] serde_json::error::Error),
     #[error("diesel: `{0}`")]
     Diesel(#[from] diesel::result::Error),
+    #[error("regex: `{0}`")]
+    Regex(#[from] regex::Error),
     #[error("http: `{0}`")]
     StatusError(#[from] salvo::http::StatusError),
     #[error("http parse: `{0}`")]

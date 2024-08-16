@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 
+use diesel::prelude::*;
 use regex::RegexSet;
+use serde::{Deserialize, Serialize};
 
 use crate::core::appservice::{Namespace, Registration};
 use crate::core::identifiers::*;
-use crate::AppResult;
+use crate::schema::*;
+use crate::{appservice, db, AppError, AppResult, JsonValue};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]
@@ -89,9 +92,16 @@ impl RegistrationInfo {
         self.users.is_exclusive_match(user_id.as_str()) || self.registration.sender_localpart == user_id.localpart()
     }
 }
+impl AsRef<Registration> for RegistrationInfo {
+    fn as_ref(&self) -> &Registration {
+        &self.registration
+    }
+}
 
 impl TryFrom<Registration> for RegistrationInfo {
-    fn try_from(value: Registration) -> Result<RegistrationInfo, regex::Error> {
+    type Error = regex::Error;
+
+    fn try_from(value: Registration) -> Result<RegistrationInfo, Self::Error> {
         Ok(RegistrationInfo {
             users: value.namespaces.users.clone().try_into()?,
             aliases: value.namespaces.aliases.clone().try_into()?,
@@ -99,18 +109,117 @@ impl TryFrom<Registration> for RegistrationInfo {
             registration: value,
         })
     }
+}
+impl TryFrom<DbRegistration> for RegistrationInfo {
+    type Error = AppError;
+    fn try_from(value: DbRegistration) -> Result<RegistrationInfo, Self::Error> {
+        let value: Registration = value.try_into()?;
+        Ok(RegistrationInfo {
+            users: value.namespaces.users.clone().try_into()?,
+            aliases: value.namespaces.aliases.clone().try_into()?,
+            rooms: value.namespaces.rooms.clone().try_into()?,
+            registration: value,
+        })
+    }
+}
 
-    type Error = regex::Error;
+#[derive(Identifiable, Queryable, Insertable, Serialize, Deserialize, Clone, Debug)]
+#[diesel(table_name = appservice_registrations)]
+pub struct DbRegistration {
+    /// A unique, user - defined ID of the application service which will never change.
+    pub id: String,
+
+    /// The URL for the application service.
+    ///
+    /// Optionally set to `null` if no traffic is required.
+    pub url: Option<String>,
+
+    /// A unique token for application services to use to authenticate requests to HomeServers.
+    pub as_token: String,
+
+    /// A unique token for HomeServers to use to authenticate requests to application services.
+    pub hs_token: String,
+
+    /// The localpart of the user associated with the application service.
+    pub sender_localpart: String,
+
+    /// A list of users, aliases and rooms namespaces that the application service controls.
+    pub namespaces: JsonValue,
+
+    /// Whether requests from masqueraded users are rate-limited.
+    ///
+    /// The sender is excluded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limited: Option<bool>,
+
+    /// The external protocols which the application service provides (e.g. IRC).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocols: Option<JsonValue>,
+}
+
+impl From<Registration> for DbRegistration {
+    fn from(value: Registration) -> Self {
+        let Registration {
+            id,
+            url,
+            as_token,
+            hs_token,
+            sender_localpart,
+            namespaces,
+            rate_limited,
+            protocols,
+        } = value;
+        Self {
+            id,
+            url,
+            as_token,
+            hs_token,
+            sender_localpart,
+            namespaces: serde_json::to_value(namespaces).unwrap_or_default(),
+            rate_limited,
+            protocols: protocols.map(|protocols| serde_json::to_value(protocols).unwrap_or_default()),
+        }
+    }
+}
+impl TryFrom<DbRegistration> for Registration {
+    type Error = serde_json::Error;
+
+    fn try_from(value: DbRegistration) -> Result<Self, Self::Error> {
+        let DbRegistration {
+            id,
+            url,
+            as_token,
+            hs_token,
+            sender_localpart,
+            namespaces,
+            rate_limited,
+            protocols,
+        } = value;
+        let protocols = if let Some(protocols) = protocols {
+            serde_json::from_value(protocols)?
+        } else {
+            None
+        };
+        Ok(Self {
+            id,
+            url,
+            as_token,
+            hs_token,
+            sender_localpart,
+            namespaces: serde_json::from_value(namespaces)?,
+            rate_limited,
+            protocols,
+        })
+    }
 }
 
 /// Registers an appservice and returns the ID to the caller
-pub fn register_appservice(yaml: Registration) -> AppResult<String> {
-    // TODO: fixme
-    let id = yaml.id.as_str();
-    // self.id_appserviceregistrations
-    //     .insert(id.as_bytes(), serde_yaml::to_string(&yaml).unwrap().as_bytes())?;
-
-    Ok(id.to_owned())
+pub fn register_appservice(registration: Registration) -> AppResult<String> {
+    let db_registration: DbRegistration = registration.into();
+    diesel::insert_into(appservice_registrations::table)
+        .values(&db_registration)
+        .execute(&mut *db::connect()?)?;
+    Ok(db_registration.id)
 }
 
 /// Remove an appservice registration
@@ -118,22 +227,21 @@ pub fn register_appservice(yaml: Registration) -> AppResult<String> {
 /// # Arguments
 ///
 /// * `service_name` - the name you send to register the service previously
-pub fn unregister_appservice(service_name: &str) -> AppResult<()> {
-    // TODO: fixme
-    // self.id_appserviceregistrations.remove(service_name.as_bytes())?;
+pub fn unregister_appservice(id: &str) -> AppResult<()> {
+    diesel::delete(appservice_registrations::table.find(id)).execute(&mut *db::connect()?)?;
     Ok(())
 }
 
 pub fn get_registration(id: &str) -> AppResult<Option<Registration>> {
-    // TODO: fixme
-    Ok(None)
-    // self.id_appserviceregistrations
-    //     .get(id.as_bytes())?
-    //     .map(|bytes| {
-    //         serde_yaml::from_slice(&bytes)
-    //             .map_err(|_| AppError::public("Invalid registration bytes in id_appserviceregistrations."))
-    //     })
-    //     .transpose()
+    if let Some(registration) = appservice_registrations::table
+        .find(id)
+        .first::<DbRegistration>(&mut *db::connect()?)
+        .optional()?
+    {
+        Ok(Some(registration.try_into()?))
+    } else {
+        Ok(None)
+    }
 }
 pub async fn find_from_token(token: &str) -> Option<RegistrationInfo> {
     // TODO: fixme
@@ -159,15 +267,16 @@ pub async fn is_exclusive_room_id(room_id: &RoomId) -> bool {
 }
 
 pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
-    // TODO: fixme
-    Ok(BTreeMap::new())
-    // self.iter_ids()?
-    //     .filter_map(|id| id.ok())
-    //     .map(move |id| {
-    //         Ok((
-    //             id.clone(),
-    //             get_registration(&id)?.expect("iter_ids only returns appservices that exist"),
-    //         ))
-    //     })
-    //     .collect()
+    Ok(appservice_registrations::table
+        .load::<DbRegistration>(&mut *db::connect()?)?
+        .into_iter()
+        .filter_map(|db_registration| {
+            let info: Option<RegistrationInfo> = db_registration.try_into().ok();
+            if let Some(info) = info {
+                Some((info.registration.id.clone(), info))
+            } else {
+                None
+            }
+        })
+        .collect())
 }

@@ -7,6 +7,19 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    appservice_registrations (id) {
+        id -> Text,
+        url -> Nullable<Text>,
+        as_token -> Text,
+        hs_token -> Text,
+        sender_localpart -> Text,
+        namespaces -> Jsonb,
+        rate_limited -> Nullable<Bool>,
+        protocols -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
     device_inboxes (id) {
         id -> Int8,
         user_id -> Text,
@@ -700,6 +713,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    appservice_registrations,
     device_inboxes,
     device_streams,
     e2e_cross_signing_keys,

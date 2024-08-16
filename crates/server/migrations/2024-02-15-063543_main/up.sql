@@ -915,3 +915,16 @@ CREATE TABLE lazy_load_deliveries (
    confirmed_user_id text,
    CONSTRAINT lazy_loads_ukey UNIQUE (user_id, device_id, room_id, confirmed_user_id)
 );
+
+
+drop table if exists appservice_registrations CASCADE;
+CREATE TABLE appservice_registrations (
+    id text NOT NULL PRIMARY KEY,
+    url text,
+    as_token text NOT NULL,
+    hs_token text NOT NULL,
+    sender_localpart text NOT NULL,
+    namespaces jsonb NOT NULL,
+    rate_limited boolean,
+    protocols jsonb
+);
