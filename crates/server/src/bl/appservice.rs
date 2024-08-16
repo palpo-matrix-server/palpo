@@ -243,27 +243,43 @@ pub fn get_registration(id: &str) -> AppResult<Option<Registration>> {
         Ok(None)
     }
 }
-pub async fn find_from_token(token: &str) -> Option<RegistrationInfo> {
-    // TODO: fixme
-    panic!("TODO")
+pub async fn find_from_token(token: &str) -> AppResult<Option<RegistrationInfo>> {
+    Ok(
+        all()?
+            .values()
+            .find(|info| info.registration.as_token == token)
+            .cloned(),
+    )
 }
 
 // Checks if a given user id matches any exclusive appservice regex
-pub fn is_exclusive_user_id(user_id: &UserId) -> bool {
-    // TODO: fixme
-    false
+pub fn is_exclusive_user_id(user_id: &UserId) -> AppResult<bool> {
+    for info in all()?.values() {
+        if info.is_exclusive_user_match(user_id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 // Checks if a given room alias matches any exclusive appservice regex
-pub async fn is_exclusive_alias(alias: &RoomAliasId) -> bool {
-    // TODO: fixme
-    false
+pub async fn is_exclusive_alias(alias: &RoomAliasId) -> AppResult<bool> {
+    for info in all()?.values() {
+        if info.aliases.is_exclusive_match(alias.as_str()) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 // Checks if a given room id matches any exclusive appservice regex
-pub async fn is_exclusive_room_id(room_id: &RoomId) -> bool {
-    // TODO: fixme
-    false
+pub async fn is_exclusive_room_id(room_id: &RoomId) -> AppResult<bool> {
+    for info in all()?.values() {
+        if info.rooms.is_exclusive_match(room_id.as_str()) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {

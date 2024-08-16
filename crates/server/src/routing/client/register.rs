@@ -85,7 +85,7 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
         } else {
             return Err(MatrixError::missing_token("Missing appservice token.").into());
         }
-    } else if crate::appservice::is_exclusive_user_id(&user_id) {
+    } else if crate::appservice::is_exclusive_user_id(&user_id)? {
         return Err(MatrixError::exclusive("User id reserved by appservice.").into());
     }
 
