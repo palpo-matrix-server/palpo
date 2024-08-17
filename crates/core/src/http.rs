@@ -1,9 +1,9 @@
 use salvo::prelude::*;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use crate::events::{GlobalAccountDataEventType, StateEventType};
 use crate::push::{RuleKind, RuleScope};
-use crate::{OwnedEventId, OwnedRoomId, OwnedUserId};
+use crate::{OwnedEventId,OwnedMxcUri, OwnedRoomId, OwnedUserId};
 
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RoomEventReqArgs {
@@ -116,4 +116,59 @@ pub struct ScopeKindRuleReqArgs {
     /// The identifier for the rule.
     #[salvo(parameter(parameter_in = Path))]
     pub rule_id: String,
+}
+
+///  GET /_matrix/federation/v1/query/profile
+/// `GET /_matrix/client/*/profile/{user_id}`
+///
+/// Get all profile information of an user.
+/// `/v3/` ([spec])
+///
+/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuser_id
+// const METADATA: Metadata = metadata! {
+//     method: GET,
+//     rate_limited: false,
+//     authentication: None,
+//     history: {
+//         1.0 => "/_matrix/client/r0/profile/:user_id",
+//         1.1 => "/_matrix/client/v3/profile/:user_id",
+//     }
+// };
+
+// /// Request type for the `get_profile` endpoint.
+
+/// Response type for the `get_profile` endpoint.
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+pub struct ProfileResBody {
+    /// The user's avatar URL, if set.
+    ///
+    /// If you activate the `compat-empty-string-null` feature, this field being an empty
+    /// string in JSON will result in `None` here during deserialization.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        feature = "compat-empty-string-null",
+        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
+    )]
+    pub avatar_url: Option<OwnedMxcUri>,
+
+    /// The user's display name, if set.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "displayname")]
+    pub display_name: Option<String>,
+
+    /// The [BlurHash](https://blurha.sh) for the avatar pointed to by `avatar_url`.
+    ///
+    /// This uses the unstable prefix in
+    /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
+    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    pub blurhash: Option<String>,
+}
+impl ProfileResBody {
+    /// Creates a new `Response` with the given avatar URL and display name.
+    pub fn new(avatar_url: Option<OwnedMxcUri>, display_name: Option<String>) -> Self {
+        Self {
+            avatar_url,
+            display_name,
+            blurhash: None,
+        }
+    }
 }

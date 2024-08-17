@@ -25,6 +25,7 @@ use std::net::IpAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -93,9 +94,10 @@ pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (Owne
 pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> =
     LazyLock::new(Default::default);
 pub static STATERES_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
-// pub rotate: RotationHandler,
-
-// pub shutdown: AtomicBool,
+pub static APPSERVICE_IN_ROOM_CACHE: LazyRwLock<HashMap<OwnedRoomId, HashMap<String, bool>>> =
+    LazyRwLock::new(Default::default);
+pub static ROTATE: LazyLock<RotationHandler> = LazyLock::new(Default::default);
+pub static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 
 /// Handles "rotation" of long-polling requests. "Rotation" in this context is similar to "rotation" of log files and the like.
 ///
@@ -161,54 +163,6 @@ pub fn curr_sn() -> AppResult<i64> {
         .get_result::<i64>(&mut *db::connect()?)
         .map_err(Into::into)
 }
-
-// pub fn load(db: &'static dyn Data, config: Config) -> Result<Self> {
-//     // Supported and stable room versions
-//     let STABLE_ROOM_VERSIONS = vec![
-//         RoomVersionId::V6,
-//         RoomVersionId::V7,
-//         RoomVersionId::V8,
-//         RoomVersionId::V9,
-//         RoomVersionId::V10,
-//     ];
-//     // Experimental, partially supported room versions
-//     let UNSTABLE_ROOM_VERSIONS = vec![RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5];
-
-//     let mut s = Self {
-//         db,
-//         config,
-//         keypair: Arc::new(keypair),
-//         dns_resolver: TokioAsyncResolver::tokio_from_system_conf().map_err(|e| {
-//             error!("Failed to set up trust dns resolver with system config: {}", e);
-//             AppError::public("Failed to set up trust dns resolver with system config.")
-//         })?,
-//         actual_destination_cache: Arc::new(RwLock::new(WellKnownMap::new())),
-//         tls_name_override,
-//         federation_client,
-//         default_client,
-//         jwt_decoding_key,
-//         STABLE_ROOM_VERSIONS,
-//         UNSTABLE_ROOM_VERSIONS,
-//         BAD_EVENT_RATE_LIMITER: Arc::new(RwLock::new(HashMap::new())),
-//         BAD_SIGNATURE_RATE_LIMITER: Arc::new(RwLock::new(HashMap::new())),
-//         BAD_QUERY_RATE_LIMITER: Arc::new(RwLock::new(HashMap::new())),
-//         SERVER_NAME_RATE_LIMITER: Arc::new(RwLock::new(HashMap::new())),
-//         ROOM_ID_MUTEX_INSERT: RwLock::new(HashMap::new()),
-//         ROOM_ID_FEDERATION_HANDLE_TIME: RwLock::new(HashMap::new()),
-//         STATERES_MUTEX: Arc::new(Mutex::new(())),
-//         SYNC_RECEIVERS: RwLock::new(HashMap::new()),
-//         rotate: RotationHandler::new(),
-//         shutdown: AtomicBool::new(false),
-//     };
-
-//     fs::create_dir_all(s.get_media_space_path())?;
-
-//     if !s.supported_room_versions().contains(&s.config.default_room_version) {
-//         error!(config=?s.config.default_room_version, fallback=?crate::config::default_room_version(), "Room version in config isn't supported, falling back to default version");
-//         s.config.default_room_version = crate::config::default_room_version();
-//     };
-
-//     Ok(s)
 
 /// Returns this server's keypair.
 pub fn keypair() -> &'static Ed25519KeyPair {
@@ -690,11 +644,10 @@ pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
 }
 
 pub fn shutdown() {
-    // shutdown.store(true, atomic::Ordering::Relaxed);
+    SHUTDOWN.store(true, std::sync::atomic::Ordering::Relaxed);
     // On shutdown
     info!(target: "shutdown-sync", "Received shutdown notification, notifying sync helpers...");
-    // TODO: fixme
-    // rotate.fire();
+    ROTATE.fire();
 }
 
 // fn reqwest_client_builder(config: &Config) -> AppResult<reqwest::ClientBuilder> {

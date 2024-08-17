@@ -40,7 +40,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedServerName, UnixMillis};
 use crate::schema::rooms::state_frame_id;
 use crate::schema::*;
-use crate::{db, diesel_exists, utils, AppError, AppResult, MatrixError};
+use crate::{db, diesel_exists, utils, AppError, AppResult, MatrixError, APPSERVICE_IN_ROOM_CACHE};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -423,35 +423,39 @@ pub fn get_our_real_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
 }
 
 pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> AppResult<bool> {
-    // TODO: fixme
-    panic!("fixmes")
-    // let maybe = APPSERVICE_IN_ROOM_CACHE
-    //     .read()
-    //     .unwrap()
-    //     .get(room_id)
-    //     .and_then(|map| map.get(&appservice.registration.id))
-    //     .copied();
+    let maybe = APPSERVICE_IN_ROOM_CACHE
+        .read()
+        .unwrap()
+        .get(room_id)
+        .and_then(|map| map.get(&appservice.registration.id))
+        .copied();
 
-    // if let Some(b) = maybe {
-    //     Ok(b)
-    // } else {
-    // let bridge_user_id =
-    //     UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), crate::server_name()).ok();
+    if let Some(b) = maybe {
+        Ok(b)
+    } else {
+        let bridge_user_id =
+            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), crate::server_name())
+                .ok();
 
-    // let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id).unwrap_or(false))
-    //     || self
-    //         .room_members(room_id)
-    //         .any(|user_id| user_id.map_or(false, |user_id| appservice.users.is_match(user_id.as_str())));
+        let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id).unwrap_or(false)) || {
+            let user_ids = room_users::table
+                .filter(room_users::room_id.eq(room_id))
+                .select(room_users::user_id)
+                .load::<String>(&mut *db::connect()?)?;
+            user_ids
+                .iter()
+                .any(|user_id| appservice.users.is_match(user_id.as_str()))
+        };
 
-    // APPSERVICE_IN_ROOM_CACHE
-    //     .write()
-    //     .unwrap()
-    //     .entry(room_id.to_owned())
-    //     .or_default()
-    //     .insert(appservice.registration.id.clone(), in_room);
+        APPSERVICE_IN_ROOM_CACHE
+            .write()
+            .unwrap()
+            .entry(room_id.to_owned())
+            .or_default()
+            .insert(appservice.registration.id.clone(), in_room);
 
-    // Ok(in_room)
-    // }
+        Ok(in_room)
+    }
 }
 pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     let query = room_servers::table

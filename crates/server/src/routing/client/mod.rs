@@ -277,7 +277,7 @@ async fn supported_versions(depot: &mut Depot) -> JsonResult<VersionsResBody> {
 
 #[endpoint]
 async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: get_notifications
     let authed = depot.authed_info()?;
     empty_ok()
 }

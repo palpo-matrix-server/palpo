@@ -12,6 +12,7 @@ use crate::core::client::membership::{
     BanUserReqBody, InviteUserReqBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody,
     MemberEventsResBody, RoomMember,
 };
+use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
@@ -365,9 +366,45 @@ pub(super) async fn kick_user(
 
     empty_ok()
 }
+
 #[endpoint]
-pub(crate) async fn knock_room(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+pub(crate) async fn knock_room(
+    _aa: AuthArgs,
+    args: KnockReqArgs,
+    body: JsonBody<KnockReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
+    let room_id = match OwnedRoomId::try_from(args.room_id_or_alias) {
+        Ok(room_id) => room_id,
+        Err(room_alias) => {
+            let response = crate::room::get_alias_response(room_alias).await?;
+            response.room_id
+        }
+    };
+
+    let mut event: RoomMemberEventContent = RoomMemberEventContent::new(MembershipState::Knock);
+    event.reason = body.into_inner().reason;
+
+    let pdu = crate::room::timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomMember,
+            content: to_raw_value(&event).expect("event is valid, we just created it"),
+            unsigned: None,
+            state_key: Some(authed.user_id().to_string()),
+            redacts: None,
+        },
+        authed.user_id(),
+        &room_id,
+    )?;
+    crate::room::update_membership(
+        &pdu.event_id,
+        pdu.event_sn,
+        &room_id,
+        authed.user_id(),
+        MembershipState::Knock,
+        authed.user_id(),
+        None,
+    )?;
     empty_ok()
 }

@@ -82,10 +82,15 @@ impl DbPresence {
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId) -> AppResult<()> {
-    // TODO: fixme
-    // self.user_id_lastpresenceupdate
-    //     .insert(user_id.as_bytes(), &UnixMillis::now().to_be_bytes())?;
-
+    diesel::insert_into(user_presences::table)
+        .values((
+            user_presences::user_id.eq(user_id),
+            user_presences::last_active_at.eq(UnixMillis::now().0 as i64),
+        ))
+        .on_conflict(user_presences::user_id)
+        .do_update()
+        .set(user_presences::last_active_at.eq(UnixMillis::now().0 as i64))
+        .execute(&mut *db::connect()?)?;
     Ok(())
 }
 pub fn get_last_presence(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<DbPresence>> {
@@ -118,9 +123,9 @@ pub fn remove_presence(user_id: &UserId) -> AppResult<()> {
 }
 
 /// Returns the most recent presence updates that happened after the event with id `since`.
-pub fn presence_since(room_id: &RoomId, since_sn: i64) -> AppResult<(OwnedUserId, i64, PresenceEvent)> {
-    // TODO: fixme
-    panic!("presence_sinceNot implemented")
+pub fn presence_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
+    // TODO: presence_since
+    Ok(HashMap::new())
 }
 
 fn parse_presence_event(bytes: &[u8]) -> AppResult<PresenceEvent> {

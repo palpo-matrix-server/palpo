@@ -10,9 +10,9 @@ pub fn search_pdus(room_id: &RoomId, search_string: &str) -> AppResult<Option<(V
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
         .collect();
+    Ok(None)
 
-    // TODO: fixme
-    panic!("search_pdus Not implemented")
+    // TODO: search_pdus
     // let iterators = words.clone().into_iter().map(move |word| {
     //     let mut prefix2 = prefix.clone();
     //     prefix2.extend_from_slice(word.as_bytes());

@@ -5,10 +5,10 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::account::IdentityServerInfo;
-use crate::core::client::profile::ProfileResBody;
 use crate::core::client::uiaa::AuthData;
 use crate::core::federation::event::RoomStateResBody;
 use crate::core::federation::query::RoomInfoResBody;
+use crate::core::http::ProfileResBody;
 use crate::core::identifiers::*;
 use crate::core::user::ProfileField;
 use crate::user::DbProfile;

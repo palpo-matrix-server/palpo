@@ -273,7 +273,8 @@ pub(super) async fn send_redact(
         },
         authed.user_id(),
         &args.room_id,
-    )?;
+    )?
+    .event_id;
 
     let event_id = (*event_id).to_owned();
     json_ok(RedactEventResBody { event_id })

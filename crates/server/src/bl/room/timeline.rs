@@ -640,7 +640,7 @@ pub fn create_hash_and_sign_event(
 
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
-pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<Arc<EventId>> {
+pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -743,7 +743,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         crate::sending::send_pdu(server, &pdu.event_id)?;
     }
 
-    Ok(pdu.event_id)
+    Ok(pdu)
 }
 
 /// Append the incoming event setting the state snapshot to the state from the

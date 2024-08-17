@@ -15,8 +15,8 @@ use crate::exts::*;
 use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
 
 pub fn router() -> Router {
-    Router::with_path("appservice").oapi_tag("appservice").push(
-        Router::with_path("v2")
+    Router::with_path("app").oapi_tag("appservice").push(
+        Router::with_path("v1")
             .push(Router::with_path("ping").post(ping))
             .push(Router::with_path("rooms/<room_alias>").get(query_rooms))
             .push(Router::with_path("users/<user_id>").get(query_users))
@@ -27,19 +27,19 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn ping(depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: ping
     let authed = depot.authed_info()?;
     empty_ok()
 }
 #[endpoint]
 async fn query_rooms(depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: query_rooms
     let authed = depot.authed_info()?;
     empty_ok()
 }
 #[endpoint]
 async fn query_users(depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: query_users
     let authed = depot.authed_info()?;
     empty_ok()
 }

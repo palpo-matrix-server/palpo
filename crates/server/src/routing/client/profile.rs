@@ -6,6 +6,8 @@ use serde_json::value::to_raw_value;
 use crate::core::client::profile::*;
 use crate::core::client::uiaa::AuthData;
 use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::federation::query::ProfileReqArgs;
+use crate::core::http::ProfileResBody;
 use crate::core::presence::PresenceState;
 use crate::core::user::ProfileField;
 use crate::core::{identifiers::*, OwnedServerName};
@@ -38,22 +40,15 @@ pub fn authed_router() -> Router {
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        // TODO: fixme
-        // let response = crate::sending::send_federation_request(
-        //     body.user_id.server_name(),
-        //     // federation::query::get_profile_information::v1::Request {
-        //     ProfileInformationReqBody {
-        //         user_id: body.user_id.clone(),
-        //         field: None,
-        //     },
-        // )
-        // .await?;
+        let profile = crate::sending::get(
+            user_id
+                .server_name()
+                .build_url(&format!("/federation/v1/query/profile?user_id={}", user_id))?,
+        )
+        .send()
+        .await?;
 
-        // return Ok(ProfileResBody {
-        //     display_name: response.display_name,
-        //     avatar_url: response.avatar_url,
-        //     blurhash: response.blurhash,
-        // });
+        return json_ok(profile);
     }
     let DbProfile {
         blurhash,

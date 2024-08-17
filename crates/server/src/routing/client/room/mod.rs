@@ -275,7 +275,8 @@ async fn upgrade(
         },
         authed.user_id(),
         &room_id,
-    )?;
+    )?
+    .event_id;
 
     // Get the old room creation event
     let mut create_event_content = serde_json::from_str::<CanonicalJsonObject>(

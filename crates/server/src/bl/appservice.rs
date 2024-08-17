@@ -244,12 +244,10 @@ pub fn get_registration(id: &str) -> AppResult<Option<Registration>> {
     }
 }
 pub async fn find_from_token(token: &str) -> AppResult<Option<RegistrationInfo>> {
-    Ok(
-        all()?
-            .values()
-            .find(|info| info.registration.as_token == token)
-            .cloned(),
-    )
+    Ok(all()?
+        .values()
+        .find(|info| info.registration.as_token == token)
+        .cloned())
 }
 
 // Checks if a given user id matches any exclusive appservice regex

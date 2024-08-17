@@ -80,39 +80,6 @@ pub struct ProfileReqArgs {
     pub field: Option<ProfileField>,
 }
 
-/// Response type for the `get_profile_information` endpoint.
-#[derive(ToSchema, Serialize, Default, Debug)]
-
-pub struct ProfileResBody {
-    /// Display name of the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
-
-    /// Avatar URL for the user's avatar.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
-    pub avatar_url: Option<OwnedMxcUri>,
-
-    /// The [BlurHash](https://blurha.sh) for the avatar pointed to by `avatar_url`.
-    ///
-    /// This uses the unstable prefix in
-    /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
-    pub blurhash: Option<String>,
-}
-
-impl ProfileResBody {
-    /// Creates an empty `Response`.
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
 
 /// `GET /_matrix/federation/*/query/{queryType}`
 ///

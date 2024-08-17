@@ -169,7 +169,8 @@ pub(super) async fn send_message(
         },
         authed.user_id(),
         &args.room_id,
-    )?;
+    )?
+    .event_id;
 
     crate::transaction_id::add_txn_id(
         &event_id,

@@ -255,7 +255,6 @@ CREATE TABLE user_threepids (
     added_at bigint NOT NULL
 );
 
-
 drop table if exists user_registration_tokens CASCADE;
 CREATE TABLE user_registration_tokens (
     id bigserial NOT NULL PRIMARY KEY,
@@ -927,4 +926,16 @@ CREATE TABLE appservice_registrations (
     namespaces jsonb NOT NULL,
     rate_limited boolean,
     protocols jsonb
+);
+
+
+
+drop table if exists user_uiaa_datas CASCADE;
+CREATE TABLE user_uiaa_datas (
+    id text NOT NULL PRIMARY KEY,
+    user_id text NOT NULL,
+    device_id text NOT NULL,
+    session text NOT NULL,
+    uiaa_info jsonb NOT NULL,
+   CONSTRAINT user_uiaa_datas_ukey UNIQUE (user_id, device_id, session)
 );

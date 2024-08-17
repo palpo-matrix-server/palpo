@@ -494,16 +494,19 @@ pub struct KnockReqArgs {
     #[salvo(parameter(parameter_in = Path))]
     pub room_id_or_alias: OwnedRoomOrAliasId,
 
-    /// The reason for joining a room.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-
     /// The servers to attempt to knock on the room through.
     ///
     /// One of the servers must be participating in the room.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub server_name: Vec<OwnedServerName>,
+}
+/// Request type for the `knock_room` endpoint.
+#[derive(ToSchema, Deserialize, Debug)]
+pub struct KnockReqBody {
+    /// The reason for joining a room.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 /// Response type for the `knock_room` endpoint.

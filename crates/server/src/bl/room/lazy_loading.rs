@@ -70,7 +70,12 @@ pub fn lazy_load_confirm_delivery(
 
 #[tracing::instrument]
 pub fn lazy_load_reset(user_id: &UserId, device_id: &DeviceId, room_id: &RoomId) -> AppResult<()> {
-    // TODO: fixme
-
+    diesel::delete(
+        lazy_load_deliveries::table
+            .filter(lazy_load_deliveries::user_id.eq(user_id))
+            .filter(lazy_load_deliveries::device_id.eq(device_id))
+            .filter(lazy_load_deliveries::room_id.eq(room_id)),
+    )
+    .execute(&mut db::connect()?)?;
     Ok(())
 }

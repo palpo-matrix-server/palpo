@@ -28,6 +28,8 @@ use crate::core::{
 use crate::schema::*;
 use crate::{db, utils, AppError, AppResult, PduEvent};
 
+use super::curr_sn;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OutgoingKind {
     Appservice(String),
@@ -204,12 +206,12 @@ fn select_events(
 #[tracing::instrument(skip(server_name))]
 pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
     let mut events = Vec::new();
-    let mut max_edu_sn = last_edu_sn(server_name)?;
+    let mut max_edu_sn = curr_sn()?;
     let mut device_list_changes = HashSet::new();
     let conf = crate::config();
 
-    // u64: count of last edu
-    let since_sn = last_edu_sn(server_name)?;
+    // u64: count of last
+    let since_sn = curr_sn()?;
 
     'outer: for room_id in crate::room::server_rooms(server_name)? {
         // Look for device list updates in this room
@@ -218,31 +220,6 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
                 .into_iter()
                 .filter(|user_id| user_id.server_name() == &conf.server_name),
         );
-        if crate::allow_outcoming_presence() {
-            // Look for presence updates in this room
-            let mut presence_updates = Vec::new();
-
-            for (user_id, sn, presence_event) in crate::user::presence_since(&room_id, since_sn) {
-                if sn > max_edu_sn {
-                    max_edu_sn = sn;
-                }
-
-                if user_id.server_name() != &conf.server_name {
-                    continue;
-                }
-
-                presence_updates.push(PresenceUpdate {
-                    user_id,
-                    presence: presence_event.content.presence,
-                    currently_active: presence_event.content.currently_active.unwrap_or(false),
-                    last_active_ago: presence_event.content.last_active_ago.unwrap_or(0),
-                    status_msg: presence_event.content.status_msg,
-                });
-            }
-
-            let presence_content = Edu::Presence(PresenceContent::new(presence_updates));
-            events.push(serde_json::to_vec(&presence_content).expect("PresenceEvent can be serialized"));
-        }
 
         // Look for read receipts in this room
         for (user_id, event_id, read_receipt) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
@@ -704,15 +681,4 @@ fn mark_as_active(events: &[(SendingEventType, Vec<u8>)]) -> AppResult<()> {
     // }
 
     Ok(())
-}
-
-fn last_edu_sn(server_name: &ServerName) -> AppResult<i64> {
-    // TODO: fixme
-    panic!("todo")
-    // Ok(events::table.filter(events::server_id.eq(server_name))
-    //     .find(event_id)
-    //     .select(events::sn)
-    //     .order(events::sn.desc())
-    //     .first::<i64>()?
-    //     .map(|sn| sn as u64))
 }

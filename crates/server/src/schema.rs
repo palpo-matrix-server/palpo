@@ -692,6 +692,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_uiaa_datas (id) {
+        id -> Text,
+        user_id -> Text,
+        device_id -> Text,
+        session -> Text,
+        uiaa_info -> Jsonb,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Text,
         user_type -> Nullable<Text>,
@@ -773,5 +783,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_registration_tokens,
     user_sessions,
     user_threepids,
+    user_uiaa_datas,
     users,
 );

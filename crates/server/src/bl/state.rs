@@ -48,7 +48,8 @@ pub async fn send_state_event_for_key(
         },
         user_id,
         room_id,
-    )?;
+    )?
+    .event_id;
 
     Ok(event_id)
 }

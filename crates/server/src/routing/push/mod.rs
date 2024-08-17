@@ -21,7 +21,7 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn notify(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: notify
     let authed = depot.authed_info()?;
     empty_ok()
 }
