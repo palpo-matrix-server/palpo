@@ -1,13 +1,9 @@
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::key::UploadSigningKeysReqBody;
-use crate::core::client::uiaa::{AuthData, AuthFlow, AuthType, UiaaInfo};
-use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, SESSION_ID_LENGTH,
-};
+use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::{empty_ok, utils, AuthArgs, DepotExt, EmptyResult, SESSION_ID_LENGTH};
 
 // #POST /_matrix/client/r0/keys/device_signing/upload
 /// Uploads end-to-end key information for the sender user.

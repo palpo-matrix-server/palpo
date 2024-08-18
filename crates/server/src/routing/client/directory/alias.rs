@@ -1,23 +1,16 @@
-use regex::Regex;
-
 use diesel::prelude::*;
 use rand::seq::SliceRandom;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
-use crate::core::client::uiaa::AuthData;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::exts::*;
 use crate::room::RoomAlias;
 use crate::schema::*;
-use crate::{
-    db, diesel_exists, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 // #GET /_matrix/client/r0/directory/room/{room_alias}
 /// Resolve an alias locally or over federation.
@@ -113,11 +106,7 @@ pub(super) async fn upsert_alias(
 /// - TODO: additional access control checks
 /// - TODO: Update canonical alias event
 #[endpoint]
-pub(super) async fn delete_alias(
-    _aa: AuthArgs,
-    room_alias: PathParam<OwnedRoomAliasId>,
-    depot: &mut Depot,
-) -> EmptyResult {
+pub(super) async fn delete_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> EmptyResult {
     let alias = room_alias.into_inner();
     if alias.is_remote() {
         return Err(MatrixError::invalid_param("Alias is from another server.").into());

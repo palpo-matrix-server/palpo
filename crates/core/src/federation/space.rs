@@ -12,14 +12,8 @@ use serde::{Deserialize, Serialize};
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyParentSummary {
     /// The canonical alias of the room, if any.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub canonical_alias: Option<OwnedRoomAliasId>,
 
     /// The name of the room, if any.
@@ -45,14 +39,8 @@ pub struct SpaceHierarchyParentSummary {
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty string in
-    /// JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The join rule of the room.
@@ -144,14 +132,8 @@ impl From<SpaceHierarchyParentSummaryInit> for SpaceHierarchyParentSummary {
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyChildSummary {
     /// The canonical alias of the room, if any.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty string in
-    /// JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub canonical_alias: Option<OwnedRoomAliasId>,
 
     /// The name of the room, if any.
@@ -177,14 +159,7 @@ pub struct SpaceHierarchyChildSummary {
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty string in
-    /// JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The join rule of the room.

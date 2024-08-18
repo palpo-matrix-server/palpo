@@ -1,16 +1,8 @@
-use core::panic;
-
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::room::{ThreadsReqArgs, ThreadsResBody};
-use crate::core::client::uiaa::AuthData;
-use crate::core::OwnedRoomId;
 use crate::room::thread::ThreadsNextBatch;
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, JsonResult, MatrixError,
-};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/threads
 #[endpoint]

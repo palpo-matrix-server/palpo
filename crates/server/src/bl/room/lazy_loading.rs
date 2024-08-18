@@ -4,7 +4,7 @@ use std::sync::{LazyLock, Mutex};
 
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};
 use crate::schema::*;
-use crate::{db, diesel_exists, AppError, AppResult};
+use crate::{db, diesel_exists, AppResult};
 
 pub const LAZY_LOAD_WAITING: LazyLock<
     Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,

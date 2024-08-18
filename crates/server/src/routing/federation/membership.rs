@@ -1,21 +1,16 @@
-use std::sync::Arc;
-
-use palpo_core::RawJson;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::core::client::uiaa::AuthData;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
-use crate::core::http::{RoomEventReqArgs, RoomUserReqArgs};
+use crate::core::http::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{EventId, OwnedUserId};
 use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, PduBuilder, PduEvent,
+    empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent,
 };
 
 pub fn router_v1() -> Router {
@@ -240,7 +235,7 @@ async fn send_join_event_v1(
     json_ok(SendJoinEventResBodyV2 { room_state })
 }
 #[endpoint]
-async fn send_leave_event(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn send_leave_event(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

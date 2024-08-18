@@ -11,7 +11,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
-use futures_util::StreamExt;
 use lru_cache::LruCache;
 use palpo_core::JsonValue;
 use serde::Deserialize;

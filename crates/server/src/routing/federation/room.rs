@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
@@ -8,10 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult, MatrixError,
-    PduEvent,
-};
+use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -68,11 +63,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
 // #GET /_matrix/federation/v1/publicRooms
 /// Lists the public rooms on this server.
 #[endpoint]
-async fn get_public_rooms(
-    _aa: AuthArgs,
-    args: PublicRoomsReqArgs,
-    depot: &mut Depot,
-) -> JsonResult<PublicRoomsResBody> {
+async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         None,
         args.limit,
@@ -90,7 +81,6 @@ async fn get_public_rooms(
 async fn get_filtered_public_rooms(
     _aa: AuthArgs,
     args: JsonBody<PublicRoomsFilteredReqBody>,
-    depot: &mut Depot,
 ) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         args.server.as_deref(),

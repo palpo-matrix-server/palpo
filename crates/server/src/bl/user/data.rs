@@ -10,7 +10,7 @@ use crate::core::{
     UnixMillis,
 };
 use crate::schema::*;
-use crate::{db, diesel_exists, utils, AppError, AppResult, JsonValue, MatrixError};
+use crate::{db, AppError, AppResult, JsonValue};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_datas)]

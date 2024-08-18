@@ -7,12 +7,10 @@ use palpo_core::client::key::KeyChangesReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::key::{ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody};
 use crate::core::client::key::{UploadKeysReqBody, UploadKeysResBody};
-use crate::core::client::uiaa::AuthData;
 use crate::user::key;
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("keys")
@@ -27,11 +25,7 @@ pub fn authed_router() -> Router {
 // #POST /_matrix/client/r0/keys/claim
 /// Claims one-time keys
 #[endpoint]
-async fn claim_keys(
-    _aa: AuthArgs,
-    body: JsonBody<ClaimKeysReqBody>,
-    depot: &mut Depot,
-) -> JsonResult<ClaimKeysResBody> {
+async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResult<ClaimKeysResBody> {
     json_ok(key::claim_keys(&body.one_time_keys).await?)
 }
 

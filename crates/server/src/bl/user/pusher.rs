@@ -1,8 +1,6 @@
 use std::fmt::Debug;
 
-use bytes::BytesMut;
 use diesel::prelude::*;
-use diesel::PgConnection;
 use palpo_core::push::PusherIds;
 use url::Url;
 
@@ -308,7 +306,7 @@ pub fn get_push_keys(user_id: &UserId) -> AppResult<Vec<String>> {
         .map_err(Into::into)
 }
 
-#[tracing::instrument(skip(unread, pusher, tweaks, event))]
+#[tracing::instrument(skip_all)]
 async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: &PduEvent) -> AppResult<()> {
     // TODO: email
     match &pusher.kind {

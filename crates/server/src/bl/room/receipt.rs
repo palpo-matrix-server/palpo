@@ -1,17 +1,13 @@
-use core::panic;
-use std::mem;
-
 use diesel::prelude::*;
-use futures_util::TryFutureExt;
 use palpo_core::JsonValue;
 
 use crate::core::events::receipt::ReceiptEvent;
 use crate::core::events::receipt::ReceiptType;
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, RawJson};
+use crate::core::serde::RawJson;
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{db, utils, AppError, AppResult};
+use crate::{db, AppResult};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = event_receipts)]
@@ -60,7 +56,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
                         ))
                         .do_update()
                         .set((event_receipts::receipt_at.eq(receipt_at),))
-                        .execute(&mut *db::connect()?);
+                        .execute(&mut *db::connect()?)?;
                 }
             }
         }
@@ -87,7 +83,7 @@ pub fn read_receipts(
     receipts
         .into_iter()
         .map(move |DbReceipt { user_id, event_id, .. }| {
-            let mut json = event_datas::table
+            let json = event_datas::table
                 .filter(event_datas::event_id.eq(&event_id))
                 .select(event_datas::json_data)
                 .first::<JsonValue>(&mut *db::connect()?)?;

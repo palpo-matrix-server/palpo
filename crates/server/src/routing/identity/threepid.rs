@@ -1,8 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("3pid")
@@ -12,18 +10,18 @@ pub fn router() -> Router {
 }
 
 #[endpoint]
-async fn bind(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn bind(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 #[endpoint]
-async fn unbind(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn unbind(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn validated(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn validated(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

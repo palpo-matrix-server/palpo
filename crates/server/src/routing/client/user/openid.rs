@@ -1,12 +1,9 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::core::client::account::IdentityServerInfo;
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 #[endpoint]
-pub(super) async fn request_token(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn request_token(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

@@ -6,18 +6,14 @@ use std::{
 };
 
 use base64::{engine::general_purpose, Engine as _};
-use diesel::prelude::*;
-use futures_util::stream::FuturesUnordered;
 use palpo_core::OwnedEventId;
 use tokio::sync::Semaphore;
-use tracing::{debug, error, warn};
 
 use crate::core::appservice::event::PushEventsReqBody;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap};
 use crate::core::federation::transaction::Edu;
 use crate::core::federation::transaction::{SendMessageReqBody, SendMessageResBody};
 use crate::core::identifiers::*;
-use crate::core::presence::{PresenceContent, PresenceUpdate};
 pub use crate::core::sending::*;
 use crate::core::{
     device::DeviceListUpdateContent,
@@ -25,8 +21,7 @@ use crate::core::{
     events::{push_rules::PushRulesEvent, receipt::ReceiptType, AnySyncEphemeralRoomEvent, GlobalAccountDataEventType},
     push, OwnedServerName, OwnedUserId, ServerName, UnixMillis, UserId,
 };
-use crate::schema::*;
-use crate::{db, utils, AppError, AppResult, PduEvent};
+use crate::{utils, AppError, AppResult, PduEvent};
 
 use super::curr_sn;
 
@@ -394,7 +389,7 @@ async fn handle_events(
                 })?;
             let req_body = PushEventsReqBody { events: pdu_jsons };
 
-            let txn_id = (&*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
                 &events
                     .iter()
                     .map(|e| match e {
@@ -402,7 +397,7 @@ async fn handle_events(
                         SendingEventType::Pdu(b) => b.as_bytes(),
                     })
                     .collect::<Vec<_>>(),
-            )));
+            ));
             let url = registration
                 .build_url(&format!("/app/v1/transactions/{}", txn_id))
                 .map_err(|e| (kind.clone(), e.into()))?;

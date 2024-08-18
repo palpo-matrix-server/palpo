@@ -100,8 +100,6 @@
 //! ));
 //! ```
 
-#![warn(missing_docs)]
-
 // Needs to be public for trybuild tests
 #[doc(hidden)]
 pub mod _custom;

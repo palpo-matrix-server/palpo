@@ -2,15 +2,12 @@ use std::collections::BTreeMap;
 use std::collections::HashSet;
 
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::core::client::message::{
     CreateMessageEventReqArgs, MessageEventsReqArgs, MessageEventsResBody, SendMessageEventResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::{
-    db, empty_ok, exts::*, hoops, json_ok, utils, AppError, AppResult, AuthArgs, JsonResult, MatrixError, PduBuilder,
-};
+use crate::{exts::*, json_ok, AuthArgs, JsonResult, MatrixError, PduBuilder};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.

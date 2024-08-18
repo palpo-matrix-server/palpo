@@ -1,10 +1,8 @@
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::filter::{CreateFilterReqBody, CreateFilterResBody, FilterResBody};
-use crate::core::client::uiaa::AuthData;
-use crate::{db, empty_ok, hoops, json_ok, AppError, AuthArgs, AuthedInfo, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 // #GET /_matrix/client/r0/user/{user_id}/filter/{filter_id}
 /// Loads a filter that was previously created.

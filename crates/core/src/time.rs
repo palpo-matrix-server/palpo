@@ -100,11 +100,7 @@ impl UnixSeconds {
 
     /// The current system-time as seconds since the unix epoch.
     pub fn now() -> Self {
-        #[cfg(not(all(target_arch = "wasm32", target_os = "unknown", feature = "js")))]
         return Self::from_system_time(SystemTime::now()).expect("date out of range");
-
-        #[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "js"))]
-        return Self(f64_to_uint(js_sys::Date::now() / 1000.0));
     }
 
     /// Creates a new `SystemTime` from `self`, if it can be represented.
@@ -136,13 +132,6 @@ impl ToSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
     fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, pg::Pg>) -> diesel::serialize::Result {
         ToSql::<sql_types::BigInt, pg::Pg>::to_sql(&(self.0 as i64), &mut out.reborrow())
     }
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "js"))]
-fn f64_to_uint(val: f64) -> u64 {
-    // u64::MAX milliseconds is ~285 616 years, we do not account for that
-    // (or for dates before the unix epoch which would have to be negative)
-    u64::try_from(val as u64).expect("date out of range")
 }
 
 #[cfg(test)]

@@ -1,9 +1,8 @@
-use std::collections::{BTreeMap, HashMap};
-use std::sync::LazyLock;
+use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::client::backup::{BackupAlgorithm, KeyBackupData, RoomKeyBackup};
+use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::UnixMillis;
@@ -107,6 +106,7 @@ pub fn get_latest_room_key(user_id: &OwnedUserId) -> AppResult<Option<DbRoomKey>
 pub fn get_room_key(user_id: &UserId, room_id: &RoomId, version: i64) -> AppResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
+        .filter(e2e_room_keys::room_id.eq(room_id))
         .order(e2e_room_keys::version.eq(version))
         .first::<DbRoomKey>(&mut *db::connect()?)
         .optional()

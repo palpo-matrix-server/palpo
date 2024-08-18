@@ -3,11 +3,6 @@ mod room;
 
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::core::client::account::IdentityServerInfo;
-use crate::{empty_ok, hoops, json_ok, DepotExt, JsonResult};
-
 pub fn public_router() -> Router {
     Router::with_path("directory")
         .push(Router::with_path("room/<room_alias>").get(alias::get_alias))

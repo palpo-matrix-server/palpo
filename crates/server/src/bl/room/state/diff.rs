@@ -4,16 +4,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use diesel::prelude::*;
-use lru_cache::LruCache;
 
 use super::{room_state_deltas, DbRoomStateDelta};
+use crate::core::{EventId, RoomId};
 use crate::room::state::ensure_point;
-use crate::schema::*;
-use crate::{
-    core::{EventId, RoomId},
-    room,
-};
-use crate::{db, utils, AppError, AppResult};
+use crate::{db, utils, AppResult};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,

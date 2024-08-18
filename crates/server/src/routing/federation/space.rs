@@ -1,15 +1,13 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("hierarchy/<room_id>").put(tree)
 }
 
 #[endpoint]
-async fn tree(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn tree(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

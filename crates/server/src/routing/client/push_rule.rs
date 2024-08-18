@@ -4,7 +4,6 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
-use std::str::FromStr;
 
 use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
@@ -13,12 +12,12 @@ use crate::core::client::push::{
     RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody, SetRuleActionsReqBody, SetRuleEnabledReqBody,
     SetRuleReqBody,
 };
-use crate::core::events::push_rules::{PushRulesEvent, PushRulesEventContent};
+use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::http::ScopeKindRuleReqArgs;
 use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope};
 
-use crate::{db, empty_ok, hoops, json_ok, AppResult, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{empty_ok, hoops, json_ok, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushrules")

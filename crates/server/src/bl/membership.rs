@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
-use diesel::PgConnection;
 use tokio::sync::RwLock;
 
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
@@ -164,8 +163,6 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
-    let conf = crate::config();
-
     // Ask a remote server if we are not participating in this room
     if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
         info!("Joining {room_id} over federation.");
@@ -833,7 +830,6 @@ pub fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 }
 
 pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
-    let conf = crate::config();
     // Ask a remote server if we don't have this room
     if !crate::room::exists(room_id)? && room_id.server_name().map_err(AppError::public)? != crate::server_name() {
         tokio::spawn({
@@ -900,7 +896,6 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
 }
 
 async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
-    let conf = crate::config();
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
 
     let invite_state = crate::room::state::get_invite_state(user_id, room_id)?

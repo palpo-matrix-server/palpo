@@ -5,7 +5,7 @@ use std::{
 };
 
 use salvo::prelude::*;
-use serde::{Deserializer, Serialize};
+use serde::{ Serialize};
 
 use super::error::UnknownVersionError;
 use crate::RoomVersionId;

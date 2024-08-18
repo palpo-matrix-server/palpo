@@ -1,11 +1,9 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-use crate::core::federation::backfill::BackfillReqArgs;
-use crate::core::federation::backfill::BackfillResBody;
+use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{user_id, UnixMillis};
 use crate::PduEvent;
-use crate::{db, empty_ok, hoops, json_ok, AppError, AuthArgs, AuthedInfo, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("backfill/<room_id>").get(history)

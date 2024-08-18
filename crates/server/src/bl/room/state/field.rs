@@ -2,7 +2,7 @@ use diesel::prelude::*;
 
 use crate::core::events::StateEventType;
 use crate::schema::*;
-use crate::{db, AppError, AppResult};
+use crate::{db, AppResult};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_fields)]

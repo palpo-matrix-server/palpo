@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use diesel::prelude::*;
 
 use crate::core::identifiers::*;

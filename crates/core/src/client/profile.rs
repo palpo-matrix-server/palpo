@@ -31,14 +31,8 @@ use crate::{OwnedMxcUri, OwnedUserId};
 #[derive(ToSchema, Serialize, Debug)]
 pub struct AvatarUrlResBody {
     /// The user's avatar URL, if set.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The [BlurHash](https://blurha.sh) for the avatar pointed to by `avatar_url`.
@@ -111,31 +105,16 @@ pub struct SetAvatarUrlReqBody {
     /// The new avatar URL for the user.
     ///
     /// `None` is used to unset the avatar.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    ///
-    /// If you active the `compat-unset-avatar` feature, this field being `None` will result
-    /// in an empty string in serialization, which is the same thing Element Web does (c.f.
-    /// <https://github.com/matrix-org/matrix-spec/issues/378#issuecomment-1055831264>).
-    // #[cfg_attr(
-    //     feature = "compat-empty-string-null",
-    //     serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    // )]
-    // #[cfg_attr(feature = "compat-unset-avatar", serde(serialize_with = "crate::serde::none_as_empty_string"))]
-    // #[cfg_attr(not(feature = "compat-unset-avatar"), serde(skip_serializing_if = "Option::is_none"))]
-
-    #[serde(default, with = "::serde_with::rust::double_option")]
-    pub avatar_url: Option<Option<OwnedMxcUri>>,
+    #[serde(default, deserialize_with = "crate::serde::empty_string_as_none")]
+    pub avatar_url: Option<OwnedMxcUri>,
 
     /// The [BlurHash](https://blurha.sh) for the avatar pointed to by `avatar_url`.
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    // #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
-
-    #[serde(default, with = "::serde_with::rust::double_option")]
-    pub blurhash: Option<Option<String>>,
+    /// #[cfg(feature = "unstable-msc2448")]
+    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    pub blurhash: Option<String>,
 }
 
 /// `PUT /_matrix/client/*/profile/{user_id}/display_name`

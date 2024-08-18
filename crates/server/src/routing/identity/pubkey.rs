@@ -1,8 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("pubkey")
@@ -12,19 +10,19 @@ pub fn router() -> Router {
 }
 
 #[endpoint]
-async fn public_key(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn public_key(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn is_valid(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn is_valid(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn ephemeral_is_valid(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn ephemeral_is_valid(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

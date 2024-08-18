@@ -4,26 +4,19 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
-use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_core::client::device;
 use salvo::oapi::extract::{JsonBody, PathParam};
-use salvo::oapi::ToParameters;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use crate::core::client::account::{IdentityServerInfo, LoginType, RegistrationKind};
 use crate::core::client::device::{
     DeleteDeviceReqBody, DeleteDevicesReqBody, DeviceResBody, DevicesResBody, UpdatedDeviceReqBody,
 };
-use crate::core::client::uiaa::{AuthData, AuthFlow, AuthType, UiaaInfo};
-use crate::core::{push, OwnedDeviceId, OwnedUserId, UserId};
+use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::core::OwnedDeviceId;
 use crate::schema::*;
 use crate::user::DbUserDevice;
-use crate::{
-    db, empty_ok, json_ok, routing, utils, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH,
-};
+use crate::{db, empty_ok, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -79,7 +72,6 @@ fn update_device(
     _aa: AuthArgs,
     device_id: PathParam<OwnedDeviceId>,
     body: JsonBody<UpdatedDeviceReqBody>,
-    depot: &mut Depot,
 ) -> EmptyResult {
     let device_id = device_id.into_inner();
     let device = user_devices::table
@@ -130,7 +122,7 @@ async fn delete_device(
     crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
     diesel::delete(
         user_devices::table
-            .filter(user_devices::device_id.eq(authed.device_id()))
+            .filter(user_devices::device_id.eq(device_id))
             .filter(user_devices::user_id.eq(authed.user_id())),
     )
     .execute(&mut *db::connect()?)?;
@@ -174,7 +166,7 @@ async fn delete_devices(_aa: AuthArgs, body: JsonBody<DeleteDevicesReqBody>, dep
 }
 
 #[endpoint]
-pub(super) async fn dehydrated(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn dehydrated(_aa: AuthArgs) -> EmptyResult {
     //TODO: Later
     empty_ok()
 }
@@ -187,7 +179,7 @@ pub(super) async fn delete_dehydrated(_aa: AuthArgs, depot: &mut Depot) -> Empty
 }
 
 #[endpoint]
-pub(super) async fn upsert_dehydrated(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn upsert_dehydrated(_aa: AuthArgs) -> EmptyResult {
     //TODO: Later
     empty_ok()
 }

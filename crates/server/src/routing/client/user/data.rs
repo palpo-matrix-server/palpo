@@ -1,19 +1,14 @@
 use palpo_core::JsonValue;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
-use serde_json::value::to_raw_value as to_raw_json_value;
 
-use crate::core::client::account::data::{GlobalDataResBody, SetGlobalDataReqBody};
-use crate::core::client::account::IdentityServerInfo;
+use crate::core::client::account::data::GlobalDataResBody;
 use crate::core::events::{AnyGlobalAccountDataEvent, AnyGlobalAccountDataEventContent};
 use crate::core::http::UserEventTypeReqArgs;
-use crate::core::serde::{RawJson, RawJsonValue};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::core::serde::RawJson;
+use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 #[derive(Deserialize)]
 struct ExtractGlobalEventContent {

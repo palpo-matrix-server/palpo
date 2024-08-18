@@ -33,13 +33,10 @@ use palpo_core::client::sync_events::{
 use palpo_core::device::DeviceLists;
 use palpo_core::events::room::member::{MembershipState, RoomMemberEventContent};
 use palpo_core::events::{StateEventType, TimelineEventType};
-use palpo_core::{UnixMillis, UserId};
+use palpo_core::UserId;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde_json::Value as JsonValue;
-use ulid::Ulid;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -47,12 +44,7 @@ use crate::core::client::discovery::{
 use crate::core::client::search::{
     EventContextResult, ResultCategories, ResultRoomEvents, SearchReqArgs, SearchReqBody, SearchResBody, SearchResult,
 };
-use crate::core::client::uiaa::AuthData;
-use crate::routing::client::room::{get_filtered_public_rooms, get_public_rooms};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");
@@ -231,7 +223,7 @@ fn search(
 // #GET /_matrix/client/r0/capabilities
 /// Get information on the supported feature set and other relevent capabilities of this server.
 #[endpoint]
-async fn get_capabilities(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<CapabilitiesResBody> {
+async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     let mut available = BTreeMap::new();
     for room_version in &*crate::UNSTABLE_ROOM_VERSIONS {
         available.insert(room_version.clone(), RoomVersionStability::Unstable);
@@ -260,7 +252,7 @@ async fn get_capabilities(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<Capabi
 /// Note: Unstable features are used while developing new features. Clients should avoid using
 /// unstable features in their stable releases
 #[endpoint]
-async fn supported_versions(depot: &mut Depot) -> JsonResult<VersionsResBody> {
+async fn supported_versions() -> JsonResult<VersionsResBody> {
     json_ok(VersionsResBody {
         versions: vec![
             "r0.5.0".to_owned(),
@@ -278,7 +270,7 @@ async fn supported_versions(depot: &mut Depot) -> JsonResult<VersionsResBody> {
 #[endpoint]
 async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     // TODO: get_notifications
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }
 

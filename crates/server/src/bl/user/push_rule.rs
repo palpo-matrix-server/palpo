@@ -2,7 +2,6 @@ use std::{fmt::Debug, mem};
 
 use bytes::BytesMut;
 use diesel::prelude::*;
-use diesel::PgConnection;
 use palpo_core::push::PusherIds;
 use tracing::{info, warn};
 

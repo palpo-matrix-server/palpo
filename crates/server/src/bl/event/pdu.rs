@@ -1,6 +1,5 @@
 use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
@@ -13,8 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::{UnixMillis, UserId};
-use crate::schema::events;
-use crate::{db, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult};
 
 /// Content hashes of a PDU.
 #[derive(Clone, Debug, Deserialize, Serialize)]

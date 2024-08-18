@@ -1,31 +1,22 @@
 use std::collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet};
-use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 
-use diesel::prelude::*;
-use futures_util::TryFutureExt;
-use salvo::oapi::extract::*;
 use tokio::sync::watch::Sender;
-use ulid::Ulid;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
 use crate::core::client::sync_events::{
-    self, AccountDataV4, E2eeV4, EphemeralV3, ExtensionsV4, FilterV3, GlobalAccountDataV3, InviteStateV3,
-    InvitedRoomV3, JoinedRoomV3, LeftRoomV3, PresenceV3, ReceiptsV4, RoomAccountDataV3, RoomSummaryV3, RoomsV3,
-    SlidingOpV4, StateV3, SyncEventsReqArgsV3, SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4,
-    SyncListV4, SyncOpV4, TimelineV3, ToDeviceV3, ToDeviceV4, TypingV4, UnreadNotificationsCount,
+    EphemeralV3, FilterV3, GlobalAccountDataV3, InviteStateV3, InvitedRoomV3, JoinedRoomV3, LeftRoomV3, PresenceV3,
+    RoomAccountDataV3, RoomSummaryV3, RoomsV3, StateV3, SyncEventsReqArgsV3, SyncEventsResBodyV3, TimelineV3,
+    ToDeviceV3, UnreadNotificationsCount,
 };
-use crate::core::client::uiaa::UiaaInfo;
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{presence::PresenceEvent, StateEventType, TimelineEventType};
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::core::UnixMillis;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{db, exts::*, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult};
 
 pub async fn sync_events(
     sender_user_id: OwnedUserId,
@@ -211,7 +202,7 @@ pub async fn sync_events(
         );
     }
 
-    let mut invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_user_id, since_sn)?
+    let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_user_id, since_sn)?
         .into_iter()
         .map(|(room_id, invite_state_events)| {
             (

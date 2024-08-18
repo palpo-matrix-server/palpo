@@ -1,8 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("3pid/onbind").put(on_bind)

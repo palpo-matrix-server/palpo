@@ -4,17 +4,13 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
-use std::time::Duration;
-
 use diesel::prelude::*;
 use salvo::oapi::extract::{JsonBody, QueryParam};
-use salvo::oapi::ToParameters;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::core::client::account::{LoginType, RegistrationKind};
 use crate::core::client::register::*;
-use crate::core::client::uiaa::{AuthData, AuthFlow, AuthType, UiaaInfo};
+use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::events::push_rules::{PushRulesEvent, PushRulesEventContent};
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::GlobalAccountDataEventType;
@@ -23,8 +19,8 @@ use crate::core::push::Ruleset;
 use crate::schema::*;
 use crate::user::NewDbProfile;
 use crate::{
-    config, db, diesel_exists, empty_ok, exts::*, hoops, json_ok, routing, utils, AppError, AuthArgs, AuthedInfo,
-    EmptyResult, JsonResult, MatrixError, DEVICE_ID_LENGTH, RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH,
+    db, diesel_exists, empty_ok, exts::*, hoops, utils, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError,
+    DEVICE_ID_LENGTH, RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH,
 };
 
 pub fn public_router() -> Router {
@@ -255,7 +251,7 @@ async fn available(username: QueryParam<String, true>) -> JsonResult<AvailableRe
 // };
 #[endpoint]
 async fn validate_token(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }
 
@@ -268,7 +264,7 @@ async fn validate_token(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 
 #[endpoint]
 async fn token_via_email(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }
 
@@ -289,6 +285,6 @@ async fn token_via_email(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 // };
 #[endpoint]
 async fn token_via_msisdn(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }

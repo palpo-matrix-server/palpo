@@ -177,7 +177,7 @@ pub enum AdminRoomEvent {
 static SENDER: OnceLock<UnboundedSender<AdminRoomEvent>> = OnceLock::new();
 pub fn supervise() {
     let (sender, receiver) = mpsc::unbounded_channel();
-    SENDER.set(sender);
+    SENDER.set(sender).expect("set sender failed");
     tokio::spawn(async move {
         handle(receiver).await;
     });

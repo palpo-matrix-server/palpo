@@ -3,8 +3,6 @@
 //!
 //! [appservice-api]: https://spec.matrix.org/latest/application-service-api/
 
-#![warn(missing_docs)]
-
 use serde::{Deserialize, Serialize};
 use url::Url;
 

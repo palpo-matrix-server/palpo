@@ -1,7 +1,6 @@
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex};
 
 use crate::room::state::DbRoomStateField;
-use diesel::prelude::*;
 use lru_cache::LruCache;
 use tracing::{debug, error, warn};
 
@@ -27,7 +26,7 @@ use crate::core::{
     },
 };
 use crate::PduEvent;
-use crate::{db, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError};
 
 pub enum CachedJoinRule {
     //Simplified(SpaceRoomJoinRule),

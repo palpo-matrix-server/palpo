@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Duration;
 
 use crate::core::{
     events::presence::{PresenceEvent, PresenceEventContent},
@@ -8,16 +7,12 @@ use crate::core::{
 };
 
 use diesel::prelude::*;
-use diesel::PgConnection;
-use futures_util::stream::FuturesUnordered;
-use serde::{Deserialize, Serialize};
-use tokio::{sync::mpsc, time::sleep};
 
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::schema::*;
 use crate::user::DbProfile;
-use crate::{db, diesel_exists, utils, AppError, AppResult, JsonValue};
+use crate::{db, diesel_exists, AppError, AppResult, JsonValue};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]

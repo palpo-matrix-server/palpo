@@ -1,7 +1,4 @@
-use std::borrow::Cow;
 use std::fmt::Write;
-use std::fs::File;
-use std::io::{self, Read};
 use std::path::Path;
 
 use chksum::sha2_256;

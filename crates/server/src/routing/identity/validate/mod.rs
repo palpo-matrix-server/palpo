@@ -3,11 +3,6 @@ mod msisdn;
 
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, DepotExt, JsonResult};
-use crate::{AuthArgs, AuthedInfo};
-
 pub fn router() -> Router {
     Router::with_path("validate")
         .push(

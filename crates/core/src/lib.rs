@@ -1,3 +1,5 @@
+#![allow(missing_docs, dead_code)]
+
 pub mod appservice;
 pub mod authentication;
 pub mod client;

@@ -1,9 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::core::client::account::IdentityServerInfo;
-use crate::{empty_ok, exts::*, json_ok, AuthArgs, AuthedInfo, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("admin/whois/<user_id>").get(whois)

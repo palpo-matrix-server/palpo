@@ -1,19 +1,11 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::net::{IpAddr, Ipv4Addr};
-use std::str::FromStr;
-use std::{env, fmt};
+use std::fmt;
 
 use super::DbConfig;
-use crate::core::signatures::Ed25519KeyPair;
 use crate::core::{OwnedServerName, RoomVersionId};
-use crate::env_vars::{required_var, var, var_parsed};
+use crate::env_vars::required_var;
 use crate::{false_value, true_value};
-use anyhow::{anyhow, Context};
-use oauth2::{ClientId, ClientSecret};
-use palpo_core::OwnedUserId;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
-use url::Url;
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct WellKnownConfig {

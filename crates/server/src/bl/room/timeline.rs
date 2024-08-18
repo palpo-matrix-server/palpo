@@ -1,16 +1,9 @@
-use core::panic;
-use std::arch::is_aarch64_feature_detected;
-use std::cmp::Ordering;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
-use std::mem::size_of;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
-use lru_cache::LruCache;
-use regex::Regex;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use tokio::sync::MutexGuard;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use ulid::Ulid;
@@ -25,10 +18,10 @@ use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEv
 use crate::core::federation::backfill::BackfillResBody;
 use crate::core::identifiers::*;
 use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::serde::{to_canonical_value, Base64, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
+use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::Event;
 use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
-use crate::event::{DbEvent, DbEventData, NewDbEvent};
+use crate::event::{DbEventData, NewDbEvent};
 use crate::room::state::CompressedStateEvent;
 use crate::schema::*;
 use crate::{db, utils, AppError, AppResult, MatrixError, SigningKeys};
@@ -433,7 +426,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
         }
     }
-    Ok((()))
+    Ok(())
 }
 
 fn increment_notification_counts(
@@ -851,7 +844,6 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> {
-    let conf = crate::config();
     let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id)?;
     let first_pdu = pdus.first();
 

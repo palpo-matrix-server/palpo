@@ -2,26 +2,19 @@ use diesel::prelude::*;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::directory::SetRoomVisibilityReqBody;
 use crate::core::client::directory::VisibilityResBody;
 use crate::core::identifiers::*;
-use crate::core::room::{self, Visibility};
+use crate::core::room::Visibility;
 use crate::room::DbRoom;
 use crate::schema::*;
-use crate::{db, diesel_exists, AuthArgs, AuthedInfo};
-use crate::{empty_ok, json_ok, AppError, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{db, diesel_exists, AuthArgs};
+use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
 
 // #GET /_matrix/client/r0/directory/list/room/{room_id}
 /// Gets the visibility of a given room in the room directory.
 #[endpoint]
-pub(super) async fn get_visibility(
-    _aa: AuthArgs,
-    room_id: PathParam<OwnedRoomId>,
-    depot: &mut Depot,
-) -> JsonResult<VisibilityResBody> {
+pub(super) async fn get_visibility(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>) -> JsonResult<VisibilityResBody> {
     let room_id = room_id.into_inner();
     let query = rooms::table
         .filter(rooms::id.eq(&room_id))
@@ -54,7 +47,7 @@ pub(super) async fn set_visibility(
 }
 
 #[endpoint]
-pub(super) async fn set_visibility_with_network_id(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn set_visibility_with_network_id(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

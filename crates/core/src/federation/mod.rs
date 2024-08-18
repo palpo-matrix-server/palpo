@@ -3,7 +3,6 @@
 //!
 //! [federation-api]: https://spec.matrix.org/latest/server-server-api/
 
-#![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 mod serde;
 

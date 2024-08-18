@@ -1,16 +1,12 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 
-use palpo_core::client::room::ReportContentReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::core::client::filter::{LazyLoadOptions, RoomEventFilter};
+use crate::core::client::filter::LazyLoadOptions;
 use crate::core::client::redact::{RedactEventReqArgs, RedactEventReqBody, RedactEventResBody};
 use crate::core::client::room::{ContextReqArgs, ContextResBody, ReportContentReqBody, RoomEventResBody};
-use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
-use crate::core::client::uiaa::AuthData;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -18,10 +14,7 @@ use crate::core::http::RoomEventReqArgs;
 use crate::room::state::DbRoomStateField;
 use crate::utils::HtmlEscape;
 use crate::PduBuilder;
-use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
 /// Gets a single event.
@@ -280,7 +273,7 @@ pub(super) async fn send_redact(
     json_ok(RedactEventResBody { event_id })
 }
 #[endpoint]
-pub(super) async fn timestamp_to_event(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn timestamp_to_event(_aa: AuthArgs) -> EmptyResult {
     //TODO:??
     // let authed = depot.authed_info()?;
     empty_ok()

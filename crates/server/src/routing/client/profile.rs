@@ -1,22 +1,14 @@
 use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde_json::value::to_raw_value;
 
 use crate::core::client::profile::*;
-use crate::core::client::uiaa::AuthData;
-use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::query::ProfileReqArgs;
 use crate::core::http::ProfileResBody;
-use crate::core::presence::PresenceState;
+use crate::core::identifiers::*;
 use crate::core::user::ProfileField;
-use crate::core::{identifiers::*, OwnedServerName};
 use crate::exts::*;
-use crate::user::{DbProfile, NewDbProfile};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, PduBuilder,
-};
+use crate::user::DbProfile;
+use crate::{db, empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 use crate::{diesel_exists, schema::*};
 
 pub fn public_router() -> Router {
@@ -37,7 +29,7 @@ pub fn authed_router() -> Router {
 ///
 /// - If user is on another server: Fetches profile over federation
 #[endpoint]
-async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<ProfileResBody> {
+async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         let profile = crate::sending::get(
@@ -75,7 +67,6 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut
 async fn get_avatar_url(
     _aa: AuthArgs,
     user_id: PathParam<OwnedUserId>,
-    depot: &mut Depot,
 ) -> JsonResult<AvatarUrlResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
@@ -117,10 +108,9 @@ async fn set_avatar_url(
     _aa: AuthArgs,
     user_id: PathParam<OwnedUserId>,
     body: JsonBody<SetAvatarUrlReqBody>,
-    depot: &mut Depot,
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
-    let authed = depot.authed_info()?;
+    // let authed = depot.authed_info()?;
     let SetAvatarUrlReqBody { avatar_url, blurhash } = body.into_inner();
 
     let query = user_profiles::table
@@ -128,10 +118,10 @@ async fn set_avatar_url(
         .filter(user_profiles::room_id.is_null());
     if diesel_exists!(query, &mut *db::connect()?)? {
         #[derive(AsChangeset, Debug)]
-        #[diesel(table_name = user_profiles)]
+        #[diesel(table_name = user_profiles, treat_none_as_null = true)]
         struct UpdateParams {
-            avatar_url: Option<Option<OwnedMxcUri>>,
-            blurhash: Option<Option<String>>,
+            avatar_url: Option<OwnedMxcUri>,
+            blurhash: Option<String>,
         }
         let updata_params = UpdateParams { avatar_url, blurhash };
         diesel::update(query).set(updata_params).execute(&mut *db::connect()?)?;
@@ -194,7 +184,6 @@ async fn set_avatar_url(
 async fn get_display_name(
     _aa: AuthArgs,
     user_id: PathParam<OwnedUserId>,
-    depot: &mut Depot,
 ) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {

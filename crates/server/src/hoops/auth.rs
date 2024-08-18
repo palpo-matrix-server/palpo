@@ -2,25 +2,20 @@ use std::{collections::BTreeMap, iter::FromIterator, str};
 
 use diesel::prelude::*;
 use palpo_core::UnixMillis;
-use salvo::prelude::*;
-use salvo::{
-    http::{
-        headers::{
-            authorization::{Authorization, Bearer, Credentials},
-            HeaderMapExt,
-        },
-        HeaderValue, ParseError,
+use salvo::http::{
+    headers::{
+        authorization::{Authorization, Credentials},
+        HeaderMapExt,
     },
-    Scribe,
+    HeaderValue,
 };
-use serde::Deserialize;
-use tracing::{debug, error, warn};
+use salvo::prelude::*;
 
 use crate::core::serde::CanonicalJsonValue;
-use crate::core::{signatures, AuthScheme, OwnedDeviceId, OwnedServerName, UserId};
+use crate::core::{signatures, OwnedServerName};
 use crate::schema::*;
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
-use crate::{db, AppError, AppResult, AuthArgs, AuthedInfo, MatrixError};
+use crate::{db, AppResult, AuthArgs, AuthedInfo, MatrixError};
 
 #[handler]
 pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
@@ -51,12 +46,7 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
 }
 
 #[handler]
-pub async fn auth_by_signatures(
-    aa: AuthArgs,
-    req: &mut Request,
-    depot: &mut Depot,
-    res: &mut Response,
-) -> AppResult<()> {
+pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
     let (user, device, _server_name, appservice) = {
         let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
             warn!("Missing or invalid Authorization header");

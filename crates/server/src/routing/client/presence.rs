@@ -8,22 +8,12 @@ use std::time::Duration;
 
 use salvo::oapi::extract::JsonBody;
 use salvo::oapi::extract::*;
-use salvo::oapi::ToParameters;
 use salvo::prelude::*;
 
-use crate::core::client::device::DeleteDeviceReqBody;
 use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
-use crate::core::client::register::*;
-use crate::core::client::uiaa::{AuthData, AuthFlow, AuthType, UiaaInfo};
-use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::GlobalAccountDataEventType;
-use crate::core::UnixMillis;
-use crate::core::{push, OwnedDeviceId, OwnedUserId, UserId};
+use crate::core::OwnedUserId;
 use crate::user::NewDbPresence;
-use crate::{
-    config, db, empty_ok, hoops, json_ok, routing, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt,
-    EmptyResult, JsonResult, MatrixError,
-};
+use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn authed_router() -> Router {
     Router::with_path("presence/<user_id>/status")

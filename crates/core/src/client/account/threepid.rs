@@ -27,8 +27,7 @@ pub struct ThreepidsResBody {
     ///
     /// If the `compat-get-3pids` feature is enabled, this field will always be serialized,
     /// even if its value is an empty list.
-    #[serde(default)]
-    #[cfg_attr(not(feature = "compat-get-3pids"), serde(skip_serializing_if = "Vec::is_empty"))]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub three_pids: Vec<ThirdPartyIdentifier>,
 }
 impl ThreepidsResBody {
@@ -150,14 +149,8 @@ pub struct TokenViaEmailResBody {
     /// URL to submit validation token to.
     ///
     /// If omitted, verification happens without client.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub submit_url: Option<String>,
 }
 
@@ -208,13 +201,7 @@ pub struct TokenViaMsisdnResBody {
     /// URL to submit validation token to.
     ///
     /// If omitted, verification happens without client.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty
-    /// string in JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "crate::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
+    ]
     pub submit_url: Option<String>,
 }

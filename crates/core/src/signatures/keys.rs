@@ -7,7 +7,6 @@ use std::{
 
 use ed25519_dalek::{pkcs8::ALGORITHM_OID, SecretKey, Signer, SigningKey, PUBLIC_KEY_LENGTH};
 use pkcs8::{der::zeroize::Zeroizing, DecodePrivateKey, EncodePrivateKey, ObjectIdentifier, PrivateKeyInfo};
-use serde::{Deserialize, Deserializer};
 
 use crate::serde::Base64;
 use crate::signatures::{Algorithm, Error, ParseError, Signature};
@@ -106,24 +105,7 @@ impl Ed25519KeyPair {
     /// generated from the private key. This is a fallback and extra validation against
     /// corruption or
     pub fn from_der(document: &[u8], version: String) -> Result<Self, Error> {
-        #[cfg(feature = "ring-compat")]
-        use self::compat::CompatibleDocument;
-
-        let signing_key;
-
-        #[cfg(feature = "ring-compat")]
-        {
-            signing_key = match CompatibleDocument::from_bytes(document) {
-                CompatibleDocument::WellFormed(bytes) => SigningKey::from_pkcs8_der(bytes).map_err(Error::DerParse)?,
-                CompatibleDocument::CleanedFromRing(vec) => {
-                    SigningKey::from_pkcs8_der(&vec).map_err(Error::DerParse)?
-                }
-            }
-        }
-        #[cfg(not(feature = "ring-compat"))]
-        {
-            signing_key = SigningKey::from_pkcs8_der(document).map_err(Error::DerParse)?;
-        }
+        let signing_key = SigningKey::from_pkcs8_der(document).map_err(Error::DerParse)?;
 
         Ok(Self { signing_key, version })
     }

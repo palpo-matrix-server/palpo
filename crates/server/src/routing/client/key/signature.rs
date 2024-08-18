@@ -4,8 +4,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::key::{UploadSignaturesReqBody, UploadSignaturesResBody};
-use crate::core::client::uiaa::AuthData;
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 // #POST /_matrix/client/r0/keys/signatures/upload
 /// Uploads end-to-end key signatures from the sender user.

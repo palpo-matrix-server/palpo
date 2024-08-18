@@ -1,22 +1,20 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 #[endpoint]
-pub(super) async fn create_session(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn create_session(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-pub(super) async fn validate(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn validate(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 #[endpoint]
-pub(super) async fn validate_by_end_user(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn validate_by_end_user(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

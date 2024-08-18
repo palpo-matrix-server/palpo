@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use serde::Deserialize;
 
 use crate::core::{client::filter::FilterDefinition, identifiers::*, JsonValue, UnixMillis};
 use crate::schema::*;

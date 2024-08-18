@@ -8,21 +8,18 @@ mod thread;
 
 use std::cmp::max;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::CreateRoomResBody;
 use crate::core::client::room::{
     AliasesResBody, CreateRoomReqBody, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
 };
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
-use crate::core::client::uiaa::AuthData;
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -43,10 +40,7 @@ use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonObject};
 use crate::core::UnixMillis;
 use crate::event::PduBuilder;
-use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")
@@ -128,7 +122,7 @@ pub fn authed_router() -> Router {
 }
 
 #[endpoint]
-async fn initial_sync(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn initial_sync(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 // #POST /_matrix/client/r0/rooms/{room_id}/read_markers
@@ -435,7 +429,6 @@ async fn upgrade(
 pub(super) async fn get_public_rooms(
     _aa: AuthArgs,
     args: PublicRoomsReqArgs,
-    depot: &mut Depot,
 ) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         args.server.as_deref(),
@@ -455,7 +448,6 @@ pub(super) async fn get_public_rooms(
 pub(super) async fn get_filtered_public_rooms(
     _aa: AuthArgs,
     args: JsonBody<PublicRoomsFilteredReqBody>,
-    depot: &mut Depot,
 ) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         args.server.as_deref(),

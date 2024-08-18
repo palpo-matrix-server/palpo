@@ -10,6 +10,71 @@ repository.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+html = []
+html-matrix = []
+markdown = []
+
+ring-compat = []
+
+# unstable: by using any of these, you opt out of all semver guarantees Ruma
+#           otherwise provides!
+unstable-exhaustive-types = []
+unstable-extensible-events = [
+    "unstable-msc3246",
+    "unstable-msc3488",
+    "unstable-msc3553",
+    "unstable-msc3954",
+    "unstable-msc3955",
+]
+unstable-msc1767 = []
+unstable-msc2409 = []
+unstable-msc2448 = []
+unstable-msc2654 = []
+unstable-msc2666 = []
+unstable-msc2747 = []
+unstable-msc2867 = []
+unstable-msc2870 = []
+unstable-msc2965 = []
+unstable-msc2967 = []
+unstable-msc3061 = []
+unstable-msc3202 = []
+unstable-msc3245 = []
+# Support the m.room.message fallback fields from the first version of MSC3245,
+# implemented in Element Web and documented at
+# https://github.com/matrix-org/matrix-spec-proposals/blob/83f6c5b469c1d78f714e335dcaa25354b255ffa5/proposals/3245-voice-messages.md
+unstable-msc3245-v1-compat = []
+unstable-msc3246 = []
+unstable-msc3266 = []
+unstable-msc3381 = []
+unstable-msc3401 = []
+unstable-msc3488 = []
+unstable-msc3489 = []
+unstable-msc3551 = []
+unstable-msc3552 = []
+unstable-msc3553 = []
+unstable-msc3554 = []
+unstable-msc3575 = []
+unstable-msc3618 = []
+unstable-msc3723 = []
+unstable-msc3814 = []
+unstable-msc3843 = []
+unstable-msc3927 = []
+unstable-msc3930 = []
+unstable-msc3931 = []
+unstable-msc3932 = []
+unstable-msc3954 = []
+unstable-msc3955 = []
+unstable-msc3956 = []
+unstable-msc3983 = []
+unstable-msc4075 = []
+unstable-msc4108 = []
+unstable-msc4121 = []
+unstable-msc4125 = []
+unstable-msc4140 = []
+unstable-pdu = []
+unstable-unspecified = []
+
 [dependencies]
 palpo-macros = { workspace = true }
 palpo-identifiers-validation = { workspace = true }

@@ -5,7 +5,7 @@ use crate::core::{
     EventId, RoomId, UserId,
 };
 use crate::event::PduBuilder;
-use crate::{db, AppError, AppResult, MatrixError};
+use crate::{AppResult, MatrixError};
 
 pub async fn send_state_event_for_key(
     user_id: &UserId,

@@ -1,12 +1,5 @@
-use argon2::{Config, Variant};
 use rand::prelude::*;
-use ring::digest;
-use std::{
-    cmp::Ordering,
-    fmt,
-    str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{cmp::Ordering, fmt, str::FromStr};
 
 use crate::core::{
     canonical_json::{try_from_json_map, CanonicalJsonError, CanonicalJsonObject},

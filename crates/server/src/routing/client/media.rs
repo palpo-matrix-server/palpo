@@ -2,7 +2,6 @@ use std::fs;
 use std::path::Path;
 
 use crate::core::client::media::*;
-use crate::core::identifiers::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use diesel::prelude::*;
 use salvo::fs::NamedFile;
@@ -11,8 +10,7 @@ use salvo::prelude::*;
 use crate::media::*;
 use crate::schema::*;
 use crate::{
-    db, empty_ok, hoops, join_path, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult,
-    JsonResult, MatrixError, MXC_LENGTH,
+    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
 };
 
 pub fn router() -> Router {
@@ -45,13 +43,7 @@ pub fn router() -> Router {
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-async fn get_content(
-    _aa: AuthArgs,
-    args: ContentReqArgs,
-    req: &mut Request,
-    depot: &mut Depot,
-    res: &mut Response,
-) -> AppResult<()> {
+async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
         let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
@@ -83,7 +75,6 @@ async fn get_content_with_filename(
     _aa: AuthArgs,
     args: ContentWithFileNameReqArgs,
     req: &mut Request,
-    depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
     let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
@@ -110,7 +101,7 @@ async fn get_content_with_filename(
     }
 }
 #[endpoint]
-fn create_mxc_uri(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<CreateMxcUriResBody> {
+fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     let media_id = utils::random_string(crate::MXC_LENGTH);
     let mxc = format!("mxc://{}/{}", crate::server_name(), media_id);
     // TODO: ?
@@ -133,14 +124,14 @@ fn create_mxc_uri(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<CreateMxcUriRe
 /// - Media will be saved in the media/ directory
 #[endpoint]
 async fn upload(
-    aa: AuthArgs,
+    _aa: AuthArgs,
     args: UploadContentReqArgs,
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<UploadContentResBody> {
     let authed = depot.take_authed_info()?;
 
-    let mut file = req.first_file().await.unwrap();
+    let file = req.first_file().await.unwrap();
     let upload_name = file.name().unwrap_or_default();
     let ext = utils::fs::get_file_ext(&upload_name);
     let checksum = utils::hash::hash_file_sha2_256(file.path())?;
@@ -207,19 +198,19 @@ async fn upload(
 // #GET /_matrix/media/r0/config
 /// Returns max upload size.
 #[endpoint]
-async fn get_config(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<ConfigResBody> {
+async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
     json_ok(ConfigResBody {
         upload_size: crate::max_request_size().into(),
     })
 }
 
 #[endpoint]
-async fn preview_url(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn preview_url(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
-// #GET /_matrix/media/r0/thumbnail/{server_name}/{media_id}
+/// #GET /_matrix/media/r0/thumbnail/{server_name}/{media_id}
 /// Load media thumbnail from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true

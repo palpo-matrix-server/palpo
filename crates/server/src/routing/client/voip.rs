@@ -6,11 +6,9 @@ use hmac::{Hmac, Mac};
 use salvo::prelude::*;
 use sha1::Sha1;
 
-use crate::core::client::account::IdentityServerInfo;
-use crate::core::client::uiaa::AuthData;
 use crate::core::client::voip::TurnServerResBody;
 use crate::core::UnixSeconds;
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, JsonResult};
+use crate::{hoops, json_ok, AuthArgs, DepotExt, JsonResult};
 
 type HmacSha1 = Hmac<Sha1>;
 

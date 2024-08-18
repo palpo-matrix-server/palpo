@@ -1,8 +1,7 @@
 use salvo::prelude::*;
 
 use crate::core::client::third_party::ProtocolsResBody;
-use crate::core::client::uiaa::AuthData;
-use crate::{empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("thirdparty")

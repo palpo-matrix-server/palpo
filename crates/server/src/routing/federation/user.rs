@@ -4,13 +4,12 @@ use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
 use crate::core::federation::device::{Device, DevicesResBody};
 use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBody, KeysResBody};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, json_ok, AppError, AppResult, DepotExt, JsonResult};
-use crate::{AuthArgs, AuthedInfo};
+use crate::AuthArgs;
+use crate::{db, json_ok, AppError, DepotExt, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("user")

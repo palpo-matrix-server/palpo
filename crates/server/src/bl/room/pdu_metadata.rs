@@ -1,20 +1,15 @@
-use std::mem;
-use std::sync::Arc;
-
 use diesel::prelude::*;
 use serde::Deserialize;
 
 use crate::core::client::relation::RelationEventsResBody;
 use crate::core::identifiers::*;
-use crate::core::UnixMillis;
 use crate::core::{
     events::{relation::RelationType, TimelineEventType},
     Direction, EventId, RoomId, UserId,
 };
 use crate::event::PduEvent;
 use crate::schema::*;
-use crate::utils::u64_to_i64;
-use crate::{db, utils, AppError, AppResult, MatrixError};
+use crate::{db, AppResult};
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {
@@ -249,7 +244,7 @@ pub fn get_relations(
 pub fn mark_event_soft_failed(event_id: &EventId) -> AppResult<()> {
     diesel::update(events::table.filter(events::id.eq(event_id)))
         .set(events::soft_failed.eq(true))
-        .execute(&mut db::connect()?);
+        .execute(&mut db::connect()?)?;
     Ok(())
 }
 

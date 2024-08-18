@@ -4,18 +4,12 @@ use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::backup::UpdateVersionReqBody;
 use crate::core::client::backup::*;
-use crate::core::client::search::SearchReqArgs;
-use crate::core::client::uiaa::AuthData;
 use crate::core::serde::RawJson;
 use crate::schema::*;
 use crate::user::key_backup::{self, DbRoomKey, DbRoomKeysVersion};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    JsonValue, MatrixError,
-};
+use crate::{db, empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, JsonValue, MatrixError};
 
 pub fn authed_router() -> Router {
     Router::with_path("room_keys")

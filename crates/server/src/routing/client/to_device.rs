@@ -1,16 +1,12 @@
 use std::collections::BTreeMap;
 
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use ulid::Ulid;
 
 use crate::core::device::DirectDeviceContent;
 use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{empty_ok, AuthArgs, DepotExt, EmptyResult, MatrixError};
 
 pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/<event_type>/<txn_id>").put(send_to_device)

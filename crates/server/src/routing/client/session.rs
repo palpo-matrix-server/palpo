@@ -1,14 +1,13 @@
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::core::client::session::*;
-use crate::core::client::uiaa::{AuthData, UserIdentifier};
+use crate::core::client::uiaa::UserIdentifier;
 use crate::core::identifiers::*;
 use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, DEVICE_ID_LENGTH, TOKEN_LENGTH,
+    empty_ok, hoops, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, DEVICE_ID_LENGTH,
+    TOKEN_LENGTH,
 };
 
 #[derive(Debug, Deserialize)]
@@ -60,7 +59,7 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
 /// Note: You can use [`GET /_matrix/client/r0/login`](fn.get_supported_versions_route.html) to see
 /// supported login types.
 #[endpoint]
-async fn login(_aa: AuthArgs, body: JsonBody<LoginReqBody>, depot: &mut Depot) -> JsonResult<LoginResBody> {
+async fn login(_aa: AuthArgs, body: JsonBody<LoginReqBody>) -> JsonResult<LoginResBody> {
     // Validate login method
     // TODO: Other login methods
     let user_id = match &body.login_info {
@@ -182,7 +181,7 @@ async fn logout_all(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 }
 
 #[endpoint]
-async fn refresh_token(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn refresh_token(_aa: AuthArgs) -> EmptyResult {
     // TODO: fixme
     panic!("refresh_tokenNot implemented")
     // let authed = depot.authed_info()?;

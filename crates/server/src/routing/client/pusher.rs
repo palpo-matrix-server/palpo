@@ -4,26 +4,14 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
-use std::str::FromStr;
 
 use salvo::oapi::extract::JsonBody;
-use salvo::oapi::ToParameters;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use crate::core::client::account::{IdentityServerInfo, LoginType, RegistrationKind};
 use crate::core::client::push::pusher::PushersResBody;
 use crate::core::client::push::SetPusherReqBody;
-use crate::core::client::register::*;
-use crate::core::client::uiaa::{AuthData, AuthFlow, AuthType, UiaaInfo};
-use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::identifiers::*;
 use crate::core::push::Pusher;
-use crate::core::{push, OwnedDeviceId, OwnedUserId, UserId};
-use crate::{
-    config, db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult,
-    JsonResult, DEVICE_ID_LENGTH, RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH,
-};
+use crate::{empty_ok, hoops, json_ok, AppError, DepotExt, EmptyResult, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushers")

@@ -1,17 +1,14 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-use crate::core::presence::PresenceUpdate;
-
-use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
-use crate::{exts::*, AuthArgs, AuthedInfo};
+use crate::AuthArgs;
+use crate::{empty_ok, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("transactions/<txn_id>").put(send_event)
 }
 
 #[endpoint]
-async fn send_event(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn send_event(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

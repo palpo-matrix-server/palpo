@@ -3,8 +3,6 @@
 //!
 //! [identity-api]: https://spec.matrix.org/latest/identity-service-api/
 
-#![warn(missing_docs)]
-
 use std::fmt;
 
 pub mod association;

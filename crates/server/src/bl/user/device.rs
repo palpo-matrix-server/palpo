@@ -1,14 +1,11 @@
 use diesel::prelude::*;
-use salvo::oapi::ToParameters;
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
 use crate::core::{client::device::Device, RawJson, UnixMillis};
 use crate::schema::*;
 use crate::user::NewDbAccessToken;
-use crate::{db, diesel_exists, utils, AppError, AppResult, JsonValue, MatrixError};
+use crate::{db, diesel_exists, AppError, AppResult, JsonValue};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]

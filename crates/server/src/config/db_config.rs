@@ -12,14 +12,10 @@
 //! - `DB_TCP_TIMEOUT_MS`: TCP timeout in milliseconds. See the doc comment for more details.
 
 use std::fmt;
-use std::time::Duration;
 
-use anyhow::anyhow;
-use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 
-use crate::env_vars::{required_var, var, var_parsed};
-use crate::{false_value, true_value};
+use crate::false_value;
 
 fn default_db_pooll_size() -> u32 {
     10

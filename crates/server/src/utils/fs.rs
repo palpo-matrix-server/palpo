@@ -1,15 +1,12 @@
 use std::ffi::OsStr;
-use std::fs::{self, File};
-use std::io;
+use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use salvo::http::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use textnonce::TextNonce;
 
-use crate::{join_path, AppError, AppResult};
+use crate::AppResult;
 
 pub fn is_safe_dir_path(dir_path: &str) -> bool {
     !dir_path.contains('.') && !dir_path.contains(':') && !dir_path.contains('\\') && !dir_path.starts_with('/')

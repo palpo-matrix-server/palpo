@@ -39,9 +39,6 @@
 //! To verify a signature on arbitrary JSON, use the `verify_json` function. To verify the
 //! signatures and hashes on an event, use the `verify_event` function. See the documentation for
 //! these respective functions for more details and full examples of use.
-
-#![warn(missing_docs)]
-
 use crate::serde::{AsRefStr, DisplayAsRefStr};
 
 pub use self::{
@@ -83,9 +80,6 @@ fn split_id(id: &str) -> Result<(Algorithm, String), Error> {
 
     let version = signature_id[1];
 
-    #[cfg(feature = "compat-signature-id")]
-    const EXTRA_ALLOWED: [u8; 3] = [b'_', b'+', b'/'];
-    #[cfg(not(feature = "compat-signature-id"))]
     const EXTRA_ALLOWED: [u8; 1] = [b'_'];
     if !version
         .bytes()

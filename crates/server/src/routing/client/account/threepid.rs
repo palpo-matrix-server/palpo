@@ -9,12 +9,7 @@
 use salvo::prelude::*;
 
 use crate::core::client::account::threepid::ThreepidsResBody;
-use crate::core::client::account::IdentityServerInfo;
-use crate::core::client::account::ThirdPartyIdRemovalStatus;
-use crate::core::client::uiaa::AuthData;
-use crate::core::third_party::ThirdPartyIdentifier;
-use crate::core::{OwnedClientSecret, OwnedSessionId};
-use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("3pid")
@@ -33,26 +28,31 @@ pub fn authed_router() -> Router {
 ///
 /// - Currently always returns empty list
 #[endpoint]
-async fn get(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<ThreepidsResBody> {
+async fn get(_aa: AuthArgs) -> JsonResult<ThreepidsResBody> {
+    // TODO: fixme
     json_ok(ThreepidsResBody::new(Vec::new()))
 }
 
 #[endpoint]
-async fn add(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn add(_aa: AuthArgs) -> EmptyResult {
+    // TODO: fixme
     empty_ok()
 }
 
 #[endpoint]
-async fn bind(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn bind(_aa: AuthArgs) -> EmptyResult {
+    // TODO: fixme
     empty_ok()
 }
 
 #[endpoint]
 async fn unbind(_aa: AuthArgs) -> EmptyResult {
+    // TODO: fixme
     empty_ok()
 }
 
 #[endpoint]
-async fn delete(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn delete(_aa: AuthArgs) -> EmptyResult {
+    // TODO: fixme
     empty_ok()
 }

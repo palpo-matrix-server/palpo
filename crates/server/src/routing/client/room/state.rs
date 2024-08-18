@@ -1,29 +1,23 @@
-use std::collections::{BTreeMap, HashSet};
-use std::sync::Arc;
+use std::collections::BTreeMap;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde_json::value::to_raw_value;
 
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
     SendStateEventResBody, StateEventsForKeyReqArgs, StateEventsForKeyResBody, StateEventsResBody,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
-use crate::core::client::uiaa::AuthData;
 use crate::core::events::receipt::{
     Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::{AnyStateEventContent, RoomAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::events::{AnyStateEventContent, RoomAccountDataEventType, StateEventType};
 use crate::core::http::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::utils::HtmlEscape;
-use crate::{
-    db, empty_ok, hoops, json_ok, utils, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, PduBuilder,
-};
+use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/state
 /// Get all state events for a room.
@@ -315,6 +309,6 @@ pub async fn send_typing(
 #[endpoint]
 pub(super) async fn timestamp(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     //TODO:??
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }

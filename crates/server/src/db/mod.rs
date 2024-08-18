@@ -1,13 +1,11 @@
-use std::ops::Deref;
 use std::sync::OnceLock;
 
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager, CustomizeConnection, State};
+use diesel::r2d2::{self, CustomizeConnection, State};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use secrecy::{ExposeSecret, SecretString};
 use url::Url;
 
-use crate::config::{self, DbConfig};
+use crate::config::DbConfig;
 
 pub mod pool;
 use crate::db;

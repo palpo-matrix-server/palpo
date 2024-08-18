@@ -40,14 +40,8 @@ impl Serialize for PresenceEvent {
 #[palpo_event(type = "m.presence")]
 pub struct PresenceEventContent {
     /// The current avatar URL for this user.
-    ///
-    /// If you activate the `compat-empty-string-null` feature, this field being an empty string in
-    /// JSON will result in `None` here during deserialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-empty-string-null",
-        serde(default, deserialize_with = "palpo_core::serde::empty_string_as_none")
-    )]
+    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "palpo_core::serde::empty_string_as_none")
+    ]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// Whether or not the user is currently active.
@@ -139,8 +133,6 @@ mod tests {
         assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
         assert_eq!(ev.sender, "@example:localhost");
 
-        #[cfg(feature = "compat-empty-string-null")]
-        {
             let json = json!({
                 "content": {
                     "avatar_url": "",
@@ -161,6 +153,5 @@ mod tests {
             assert_eq!(ev.content.presence, PresenceState::Online);
             assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
             assert_eq!(ev.sender, "@example:localhost");
-        }
     }
 }

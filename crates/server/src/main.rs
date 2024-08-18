@@ -1,8 +1,8 @@
-#![allow(dead_code)]
+#![allow(dead_code, missing_docs)]
 // #![deny(unused_crate_dependencies)]
-#[macro_use]
-extern crate diesel;
-extern crate dotenvy;
+// #[macro_use]
+// extern crate diesel;
+// extern crate dotenvy;
 // #[macro_use]
 // extern crate thiserror;
 // #[macro_use]
@@ -32,8 +32,8 @@ pub use error::AppError;
 pub use palpo_core as core;
 #[macro_use]
 mod macros;
-#[macro_use]
-use serde_json;
+// #[macro_use]
+// use serde_json;
 pub(crate) use serde_json::Value as JsonValue;
 
 use std::env;
@@ -47,7 +47,6 @@ use figment::{
     Figment,
 };
 use salvo::cors::{self, AllowHeaders, Cors};
-use salvo::http::header::{self, HeaderName};
 use salvo::http::Method;
 use salvo::logging::Logger;
 

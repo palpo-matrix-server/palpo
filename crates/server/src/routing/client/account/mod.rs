@@ -6,12 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::client::account::{DeactivateReqBody, DeactivateResBody, ThirdPartyIdRemovalStatus, WhoamiResBody};
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::{OwnedDeviceId, OwnedUserId};
-use crate::{
-    db, empty_ok, exts::*, hoops, json_ok, utils, AppError, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError,
-    SESSION_ID_LENGTH,
-};
+use crate::{exts::*, hoops, json_ok, utils, AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH};
 
 pub fn public_router() -> Router {
     Router::with_path("account")
@@ -51,7 +46,7 @@ pub fn authed_router() -> Router {
 ///
 /// - 403 signals that The homeserver does not allow the third party identifier as a contact option.
 #[endpoint]
-async fn token_via_email(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn token_via_email(_aa: AuthArgs) -> EmptyResult {
     Err(MatrixError::threepid_denied("Third party identifier is not allowed").into())
 }
 
@@ -60,7 +55,7 @@ async fn token_via_email(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 ///
 /// - 403 signals that The homeserver does not allow the third party identifier as a contact option.
 #[endpoint]
-async fn token_via_msisdn(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn token_via_msisdn(_aa: AuthArgs) -> EmptyResult {
     Err(MatrixError::threepid_denied("Third party identifier is not allowed").into())
 }
 

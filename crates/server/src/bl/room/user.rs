@@ -1,13 +1,11 @@
-use core::panic;
 use std::collections::HashSet;
 
 use diesel::prelude::*;
 
-use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{db, utils, AppResult, JsonValue};
+use crate::{db, AppResult, JsonValue};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_users)]

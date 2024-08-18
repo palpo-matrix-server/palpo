@@ -17,7 +17,6 @@ pub mod pusher;
 pub use key::*;
 pub mod key_backup;
 pub mod session;
-pub use data::*;
 pub use key_backup::*;
 pub use session::*;
 mod presence;
@@ -32,21 +31,16 @@ use std::{
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 use palpo_core::JsonValue;
-use salvo::oapi::ToParameters;
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use crate::core::client::sync_events;
 use crate::core::client::sync_events::{
     ExtensionsConfigV4, RoomSubscriptionV4, SyncEventsReqBodyV4, SyncRequestListV4,
 };
-use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::core::events::{AnyStrippedStateEvent, AnyToDeviceEvent};
+use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::core::{DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, OwnedServerName, UnixMillis};
+use crate::core::{OwnedMxcUri, OwnedRoomId, UnixMillis};
 use crate::schema::*;
-use crate::{db, diesel_exists, utils, AppError, AppResult, MatrixError};
+use crate::{db, diesel_exists, AppError, AppResult};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]

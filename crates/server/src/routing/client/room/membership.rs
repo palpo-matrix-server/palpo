@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use palpo_core::client::membership::{InvitationRecipient, UnbanUserReqBody};
 use palpo_core::client::membership::{JoinRoomReqBody, JoinRoomResBody};
@@ -7,7 +6,6 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::core::client::account::IdentityServerInfo;
 use crate::core::client::membership::{
     BanUserReqBody, InviteUserReqBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody,
     MemberEventsResBody, RoomMember,
@@ -18,10 +16,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::room::state;
 use crate::user::DbProfile;
-use crate::{
-    db, empty_ok, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult, MatrixError,
-    PduBuilder,
-};
+use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder};
 
 // #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room (TODO: at a specific point in time, with a specific membership).

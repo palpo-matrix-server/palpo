@@ -2,17 +2,12 @@
 //! These types are used by server code.
 //!
 //! [federation-api]: https://spec.matrix.org/latest/server-server-api/
-
-#![warn(missing_docs)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-
 mod third_party;
 mod transaction;
 
 use salvo::prelude::*;
 
-use crate::exts::*;
-use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
+use crate::{empty_ok, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("app").oapi_tag("appservice").push(
@@ -26,20 +21,20 @@ pub fn router() -> Router {
 }
 
 #[endpoint]
-async fn ping(depot: &mut Depot) -> EmptyResult {
+async fn ping() -> EmptyResult {
     // TODO: ping
-    let authed = depot.authed_info()?;
+    // let _authed = depot.authed_info()?;
     empty_ok()
 }
 #[endpoint]
-async fn query_rooms(depot: &mut Depot) -> EmptyResult {
+async fn query_rooms() -> EmptyResult {
     // TODO: query_rooms
-    let authed = depot.authed_info()?;
+    // let _authed = depot.authed_info()?;
     empty_ok()
 }
 #[endpoint]
-async fn query_users(depot: &mut Depot) -> EmptyResult {
+async fn query_users() -> EmptyResult {
     // TODO: query_users
-    let authed = depot.authed_info()?;
+    // let _authed = depot.authed_info()?;
     empty_ok()
 }

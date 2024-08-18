@@ -5,7 +5,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 use super::connection_url;
-use crate::config::{self, DbConfig};
+use crate::config::DbConfig;
 
 pub type PgPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PgPooledConnection = r2d2::PooledConnection<ConnectionManager<PgConnection>>;

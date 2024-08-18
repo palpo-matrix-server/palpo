@@ -2,16 +2,13 @@ use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
-use crate::core::client::search::SearchReqArgs;
-use crate::core::client::uiaa::AuthData;
 use crate::core::client::user_directory::SearchedUser;
 use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody, SearchUsersResBody};
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, JsonResult};
+use crate::{db, hoops, json_ok, AuthArgs, DepotExt, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")
@@ -32,7 +29,7 @@ fn search(
     depot: &mut Depot,
 ) -> JsonResult<SearchUsersResBody> {
     let authed = depot.authed_info()?;
-    let mut user_ids = users::table
+    let user_ids = users::table
         .select(users::id)
         .load::<OwnedUserId>(&mut *db::connect()?)?;
 

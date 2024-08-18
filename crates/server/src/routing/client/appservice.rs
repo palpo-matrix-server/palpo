@@ -1,8 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyObject, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("appservice/<appservice_id>/ping").post(ping)

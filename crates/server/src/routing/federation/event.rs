@@ -1,18 +1,12 @@
-use std::sync::Arc;
-
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
 use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::http::RoomEventReqArgs;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError, PduEvent,
-};
+use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -98,7 +92,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonR
 }
 
 #[endpoint]
-async fn event_by_timestamp(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
@@ -172,7 +166,7 @@ fn missing_events(
 }
 
 #[endpoint]
-async fn exchange_third_party_invite(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn exchange_third_party_invite(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::user::ProfileField;
-use crate::{OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedUserId};
+use crate::{ OwnedRoomId, OwnedServerName, OwnedUserId};
 
 /// `/v1/` ([spec])
 ///

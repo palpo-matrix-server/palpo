@@ -1,8 +1,5 @@
-use diesel::prelude::*;
-
 use crate::core::identifiers::*;
-use crate::schema::*;
-use crate::{utils, AppResult, PduEvent};
+use crate::AppResult;
 
 pub fn search_pdus(room_id: &RoomId, search_string: &str) -> AppResult<Option<(Vec<OwnedEventId>, Vec<String>)>> {
     let words: Vec<_> = search_string

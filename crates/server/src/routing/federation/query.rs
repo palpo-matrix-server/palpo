@@ -4,17 +4,11 @@ use palpo_core::federation::query::ProfileReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
-use crate::core::client::uiaa::AuthData;
-use crate::core::federation::event::RoomStateResBody;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::http::ProfileResBody;
 use crate::core::identifiers::*;
 use crate::core::user::ProfileField;
-use crate::user::DbProfile;
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult, MatrixError,
-};
+use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -58,11 +52,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
 // #GET /_matrix/federation/v1/query/directory
 /// Resolve a room alias to a room id.
 #[endpoint]
-async fn get_directory(
-    _aa: AuthArgs,
-    room_alias: QueryParam<OwnedRoomAliasId, true>,
-    depot: &mut Depot,
-) -> JsonResult<RoomInfoResBody> {
+async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, true>) -> JsonResult<RoomInfoResBody> {
     let room_id =
         crate::room::resolve_local_alias(&room_alias)?.ok_or(MatrixError::not_found("Room alias not found."))?;
 
@@ -72,7 +62,7 @@ async fn get_directory(
     })
 }
 #[endpoint]
-async fn query_by_type(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn query_by_type(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

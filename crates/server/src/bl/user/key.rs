@@ -1,24 +1,19 @@
-use core::panic;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
-use std::time::{Duration, Instant};
+use std::collections::{hash_map, BTreeMap, HashMap};
+use std::time::Instant;
 
 use diesel::prelude::*;
-use futures_util::stream::FuturesUnordered;
 use palpo_core::UnixMillis;
 use serde_json::json;
 
 use crate::core::client;
-use crate::core::client::device::Device;
 use crate::core::client::key::ClaimKeysResBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::events::StateEventType;
-use crate::core::federation;
 use crate::core::identifiers::*;
 use crate::core::{serde::RawJson, DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
-use crate::schema::events::sender;
 use crate::schema::*;
 use crate::user::{clean_signatures, DbUserDevice};
-use crate::{db, diesel_exists, utils, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
+use crate::{db, diesel_exists, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
@@ -180,7 +175,7 @@ pub async fn get_keys<F: Fn(&UserId) -> bool>(
         } else {
             for device_id in device_ids {
                 let mut container = BTreeMap::new();
-                if let Some(mut keys) = crate::user::get_device_keys(user_id, device_id)? {
+                if let Some(keys) = crate::user::get_device_keys(user_id, device_id)? {
                     container.insert(device_id.to_owned(), keys);
                 }
                 device_keys.insert(user_id.to_owned(), container);

@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
-use std::str::FromStr;
-use std::sync::{LazyLock, OnceLock};
+use std::sync::LazyLock;
 
 use tokio::sync::{broadcast, RwLock};
-use ulid::Ulid;
 
 use crate::core::events::typing::TypingEventContent;
 use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
-use crate::{db, utils, AppError, AppResult};
+use crate::{AppError, AppResult};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
     LazyLock::new(Default::default); // u64 is unix timestamp of timeout

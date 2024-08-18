@@ -2,8 +2,6 @@ use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
 use diesel::prelude::*;
-use tracing::error;
-use tracing_subscriber::fmt::format::JsonVisitor;
 
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
@@ -13,7 +11,7 @@ use crate::core::{
 };
 use crate::schema::*;
 use crate::SESSION_ID_LENGTH;
-use crate::{db, utils, AppError, AppResult, MatrixError};
+use crate::{db, utils, AppResult, MatrixError};
 
 use super::LazyRwLock;
 
@@ -62,7 +60,7 @@ pub fn update_session(
                 user_uiaa_datas::session,
             ))
             .do_update()
-            .set((user_uiaa_datas::uiaa_info.eq(&uiaa_info)))
+            .set(user_uiaa_datas::uiaa_info.eq(&uiaa_info))
             .execute(&mut *db::connect()?)?;
     } else {
         diesel::delete(
@@ -77,7 +75,8 @@ pub fn update_session(
     Ok(())
 }
 pub fn get_session(user_id: &UserId, device_id: &DeviceId, session: &str) -> AppResult<UiaaInfo> {
-    let uiaa_info = user_uiaa_datas::table.filter(user_uiaa_datas::user_id.eq(user_id))
+    let uiaa_info = user_uiaa_datas::table
+        .filter(user_uiaa_datas::user_id.eq(user_id))
         .filter(user_uiaa_datas::device_id.eq(device_id))
         .filter(user_uiaa_datas::session.eq(session))
         .select(user_uiaa_datas::uiaa_info)

@@ -1,19 +1,13 @@
 use std::collections::BTreeMap;
 
-use diesel::prelude::*;
-use salvo::oapi::extract::PathParam;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody};
-use crate::core::client::uiaa::AuthData;
 use crate::core::events::tag::{TagEvent, TagEventContent};
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::http::UserRoomReqArgs;
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult,
-    MatrixError,
-};
+use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 
 // #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.

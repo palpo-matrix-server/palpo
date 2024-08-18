@@ -1,8 +1,6 @@
 //! Matrix-spec compliant server names.
 
-use std::fmt::Display;
 use std::net::Ipv4Addr;
-use std::ops::Deref;
 
 use diesel::expression::AsExpression;
 use palpo_macros::IdZst;

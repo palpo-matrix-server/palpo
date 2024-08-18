@@ -404,9 +404,8 @@ impl CreateFilterResBody {
     }
 }
 
-#[cfg(all(test, any(feature = "client", feature = "server")))]
+#[cfg(test)]
 mod tests {
-    #[cfg(feature = "server")]
     #[test]
     fn deserialize_request() {
         crateapi::IncomingRequest as _;
@@ -476,7 +475,7 @@ impl FilterResBody {
     }
 }
 
-#[cfg(all(test, any(feature = "client", feature = "server")))]
+#[cfg(test)]
 mod tests {
 
     #[test]
@@ -488,7 +487,6 @@ mod tests {
         assert!(res.filter.is_empty());
     }
 
-    #[cfg(feature = "server")]
     #[test]
     fn serialize_response() {
         crateapi::OutgoingResponse;

@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use std::time::Instant;
 
 use salvo::oapi::extract::*;
@@ -7,17 +6,15 @@ use salvo::prelude::*;
 use tokio::sync::RwLock;
 
 use crate::core::canonical_json::CanonicalJsonObject;
-use crate::core::client::uiaa::AuthData;
 use crate::core::device::{DeviceListUpdateContent, DirectDeviceContent};
 use crate::core::events::receipt::{ReceiptEvent, ReceiptEventContent, ReceiptType};
-use crate::core::federation::directory::RemoteServerKeysReqArgs;
 use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::federation::transaction::{SendMessageReqBody, SendMessageResBody};
 use crate::core::identifiers::*;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::UnixMillis;
 use crate::user::NewDbPresence;
-use crate::{db, empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AppError, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("send/<txn_id>").put(send_message)

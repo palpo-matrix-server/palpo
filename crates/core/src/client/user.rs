@@ -7,9 +7,10 @@
 
 use std::time::Duration;
 
-use crate::{authentication::TokenType, OwnedServerName};
 use salvo::prelude::*;
-use serde::{Deserializer, Serialize};
+use serde::{ Serialize};
+
+use crate::{authentication::TokenType, OwnedServerName};
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

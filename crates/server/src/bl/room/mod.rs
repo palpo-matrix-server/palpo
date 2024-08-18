@@ -17,14 +17,9 @@ pub use current::*;
 pub use user::*;
 pub mod thread;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::mem;
-use std::sync::{Arc, LazyLock, Mutex, RwLock};
+use std::collections::HashMap;
 
 use diesel::prelude::*;
-use salvo::oapi::ToParameters;
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::appservice::RegistrationInfo;
 use crate::config::default_room_version;
@@ -38,9 +33,8 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedServerName, UnixMillis};
-use crate::schema::rooms::state_frame_id;
 use crate::schema::*;
-use crate::{db, diesel_exists, utils, AppError, AppResult, MatrixError, APPSERVICE_IN_ROOM_CACHE};
+use crate::{db, diesel_exists, AppError, AppResult, APPSERVICE_IN_ROOM_CACHE};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]

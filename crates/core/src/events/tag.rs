@@ -174,10 +174,6 @@ pub struct TagInfo {
     /// If you activate the `compat-tag-info` feature, this field can be decoded as a stringified
     /// floating-point value, instead of a number as it should be according to the specification.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "compat-tag-info",
-        serde(default, deserialize_with = "deserialize_as_optional_f64_or_string")
-    )]
     pub order: Option<f64>,
 }
 

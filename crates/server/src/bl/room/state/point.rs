@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
 use diesel::prelude::*;
-use lru_cache::LruCache;
 use palpo_core::OwnedEventId;
 
-use crate::core::events::StateEventType;
 use crate::core::{EventId, RoomId};
-use crate::event::PduEvent;
 use crate::schema::*;
-use crate::{db, AppError, AppResult};
+use crate::{db, AppResult};
 
 /// Returns (state_hash, already_existed)
 pub fn ensure_point(room_id: &RoomId, event_id: &EventId, event_sn: i64) -> AppResult<i64> {

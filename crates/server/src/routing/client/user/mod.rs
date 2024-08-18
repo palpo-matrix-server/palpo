@@ -5,8 +5,6 @@ mod room;
 
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
 use crate::hoops;
 
 pub fn authed_router() -> Router {

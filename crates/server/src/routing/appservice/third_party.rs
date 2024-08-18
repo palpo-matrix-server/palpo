@@ -1,8 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::uiaa::AuthData;
-
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("thirdparty")
@@ -20,35 +18,35 @@ pub fn router() -> Router {
 }
 
 #[endpoint]
-async fn protocols(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn protocols(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 #[endpoint]
-async fn protocol(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn protocol(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 #[endpoint]
-async fn locations(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODDO: todo
-    empty_ok()
-}
-
-#[endpoint]
-async fn protocol_locations(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn locations(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn users(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn protocol_locations(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn protocol_users(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn users(_aa: AuthArgs) -> EmptyResult {
+    // TODDO: todo
+    empty_ok()
+}
+
+#[endpoint]
+async fn protocol_users(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

@@ -9,8 +9,6 @@ use diesel::prelude::*;
 use futures_util::{stream::FuturesUnordered, Future, StreamExt};
 use palpo_core::federation::event::EventResBody;
 use tokio::sync::{RwLock, RwLockWriteGuard, Semaphore};
-use tracing::{debug, error, info, trace, warn};
-use url::Url;
 
 use crate::core::directory::QueryCriteria;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -22,7 +20,7 @@ use crate::core::federation::directory::{
 use crate::core::federation::event::RoomStateIdsResBody;
 use crate::core::federation::membership::SendJoinEventResBodyV2;
 use crate::core::identifiers::*;
-use crate::core::serde::{Base64, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::{self, RoomVersion, StateMap};
 use crate::core::{OwnedServerName, ServerName, UnixMillis};
 use crate::event::{NewDbEvent, PduEvent};
@@ -197,7 +195,7 @@ pub(crate) async fn handle_incoming_pdu(
         room_id,
         pub_key_map,
     )
-    .await;
+    .await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -312,7 +310,7 @@ fn handle_outlier_pdu<'a>(
                 room_version_id,
                 pub_key_map,
             )
-            .await;
+            .await?;
         }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -1336,7 +1334,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
 
     trace!("Loading signing keys for {}", origin);
 
-    let mut result = crate::signing_keys_for(origin)?;
+    let result = crate::signing_keys_for(origin)?;
 
     let mut expires_soon_or_has_expired = false;
 

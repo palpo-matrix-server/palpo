@@ -592,43 +592,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "client"))]
-mod client_tests {
-    use std::time::Duration;
-
-    use crate::api::{MatrixVersion, OutgoingRequest as _, SendAccessToken};
-
-    use super::{Filter, PresenceState, Request};
-
-    #[test]
-    fn serialize_all_params() {
-        let req: http::Request<Vec<u8>> = Request {
-            filter: Some(Filter::FilterId("66696p746572".to_owned())),
-            since: Some("s72594_4483_1934".to_owned()),
-            full_state: true,
-            set_presence: PresenceState::Offline,
-            timeout: Some(Duration::from_millis(30000)),
-        }
-        .try_into_http_request(
-            "https://homeserver.tld",
-            SendAccessToken::IfRequired("auth_tok"),
-            &[MatrixVersion::V1_1],
-        )
-        .unwrap();
-
-        let uri = req.uri();
-        let query = uri.query().unwrap();
-
-        assert_eq!(uri.path(), "/_matrix/client/v3/sync");
-        assert!(query.contains("filter=66696p746572"));
-        assert!(query.contains("since=s72594_4483_1934"));
-        assert!(query.contains("full_state=true"));
-        assert!(query.contains("set_presence=offline"));
-        assert!(query.contains("timeout=30000"));
-    }
-}
-
-#[cfg(all(test, feature = "server"))]
+#[cfg(all(test))]
 mod server_tests {
     use std::time::Duration;
 

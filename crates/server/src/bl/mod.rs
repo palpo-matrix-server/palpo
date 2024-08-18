@@ -32,12 +32,11 @@ use std::time::{Duration, Instant, SystemTime};
 use diesel::prelude::*;
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use hickory_resolver::TokioAsyncResolver;
-use lru_cache::LruCache;
 use palpo_core::client::sync_events::SyncEventsResBodyV3;
 use palpo_core::{JsonValue, UnixMillis};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, watch::Receiver, Mutex as TokioMutex, Semaphore};
+use tokio::sync::{broadcast, watch::Receiver, Semaphore};
 
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::identifiers::*;
@@ -46,7 +45,7 @@ use crate::core::signatures::Ed25519KeyPair;
 use crate::core::{OwnedServerName, ServerName};
 use crate::federation::FedDest;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonResult, MatrixError};
+use crate::{db, AppError, AppResult, MatrixError};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
@@ -168,7 +167,6 @@ pub fn curr_sn() -> AppResult<i64> {
 pub fn keypair() -> &'static Ed25519KeyPair {
     static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
     KEYPAIR.get_or_init(|| {
-        let bytes = base64::decode(&crate::config().keypair).expect("server keypair is invalid base64 string");
         let bytes = base64::decode(&crate::config().keypair).expect("server keypair is invalid base64 string");
         Ed25519KeyPair::from_der(&bytes, "".into()).expect("invalid server Ed25519KeyPair")
     })
@@ -452,8 +450,7 @@ pub fn add_signing_key_from_trusted_server(
         .first::<JsonValue>(&mut *db::connect()?)
         .optional()?;
 
-    let mut prev_keys: Option<ServerSigningKeys> =
-        key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {
@@ -506,8 +503,7 @@ pub fn add_signing_key_from_origin(origin: &ServerName, new_keys: ServerSigningK
         .first::<JsonValue>(&mut *db::connect()?)
         .optional()?;
 
-    let mut prev_keys: Option<ServerSigningKeys> =
-        key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {

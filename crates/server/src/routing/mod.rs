@@ -6,16 +6,12 @@ mod push;
 
 use palpo_core::client::discovery::{ClientWellKnownResBody, HomeServerInfo, SlidingSyncProxyInfo};
 use palpo_core::federation::discovery::ServerWellKnownResBody;
-use salvo::http::header::{self, HeaderName};
-use salvo::http::headers::authorization::{Authorization, Bearer};
-use salvo::http::headers::HeaderMapExt;
-use salvo::http::{Method, StatusCode};
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use salvo::size_limiter;
 use url::Url;
 
-use crate::{json_ok, AppResult, AuthArgs, DepotExt, JsonResult};
+use crate::{json_ok, AppResult, JsonResult};
 
 #[handler]
 pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
@@ -63,16 +59,6 @@ fn get_origin_host(req: &mut Request) -> Option<String> {
 #[handler]
 pub async fn limit_rate() -> AppResult<()> {
     Ok(())
-}
-
-#[handler]
-async fn require_authed(aa: AuthArgs, req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-    let auth_header = req.headers().typed_get::<Authorization<Bearer>>();
-    // let token = match &auth_header {
-    //     Some(Authorization(bearer)) => Some(bearer.token()),
-    //     None => params.access_token.as_deref(),
-    // };
-    // depot.inject(sender);
 }
 
 #[endpoint]

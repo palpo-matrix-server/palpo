@@ -1,14 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
 use lru_cache::LruCache;
-use palpo_core::OwnedEventId;
-use tracing::error;
 
 use super::{CompressedStateEvent, StateDiff};
-use crate::core::{EventId, OwnedServerName, OwnedUserId, RoomId, ServerName, UserId};
-use crate::event::PduEvent;
+use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{db, AppResult};
 

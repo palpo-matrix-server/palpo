@@ -1,16 +1,12 @@
 use diesel::prelude::*;
 use palpo_core::client::account::ChangePasswordReqBody;
 use salvo::oapi::extract::*;
-use salvo::oapi::ToSchema;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use crate::core::client::account::WhoamiResBody;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::core::{OwnedDeviceId, OwnedUserId, UnixMillis};
 use crate::exts::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, utils, AppResult, AuthArgs, EmptyResult, SESSION_ID_LENGTH};
+use crate::{db, empty_ok, hoops, utils, AuthArgs, EmptyResult, SESSION_ID_LENGTH};
 
 pub fn authed_router() -> Router {
     Router::with_path("password")

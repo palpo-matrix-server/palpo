@@ -1,7 +1,6 @@
 use salvo::prelude::*;
 
-use crate::core::client::account::IdentityServerInfo;
-use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyObject, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, EmptyResult};
 
 pub fn public_router() -> Router {
     Router::with_path("login/sso/redirect")
@@ -10,13 +9,13 @@ pub fn public_router() -> Router {
 }
 
 #[endpoint]
-async fn redirect(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn redirect(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
 
 #[endpoint]
-async fn provider_url(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+async fn provider_url(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }

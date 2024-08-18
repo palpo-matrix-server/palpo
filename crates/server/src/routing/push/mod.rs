@@ -3,15 +3,9 @@
 //!
 //! [federation-api]: https://spec.matrix.org/latest/server-server-api/
 
-#![warn(missing_docs)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-
-use std::fmt;
-
 use salvo::prelude::*;
 
-use crate::exts::*;
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, AuthedInfo, DepotExt, EmptyResult, JsonResult};
+use crate::{empty_ok, AuthArgs, DepotExt, EmptyResult};
 
 pub fn router() -> Router {
     Router::with_path("push")
@@ -22,6 +16,6 @@ pub fn router() -> Router {
 #[endpoint]
 async fn notify(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     // TODO: notify
-    let authed = depot.authed_info()?;
+    let _authed = depot.authed_info()?;
     empty_ok()
 }
