@@ -43,9 +43,10 @@ CREATE TABLE user_datas (
     data_type text NOT NULL,
     json_data jsonb NOT NULL,
     occur_sn bigint not null default nextval('occur_sn_seq'),
-    created_at bigint NOT NULL
+    created_at bigint NOT NULL,
+    CONSTRAINT user_datas_ukey UNIQUE (user_id, room_id, data_type)
 );
-CREATE UNIQUE INDEX user_datas_idx ON user_datas USING btree (user_id, room_id, data_type);
+-- CREATE UNIQUE INDEX user_datas_idx ON user_datas USING btree (user_id, room_id, data_type);
 
 drop table if exists user_devices CASCADE;
 CREATE TABLE user_devices
@@ -149,12 +150,12 @@ CREATE TABLE user_access_tokens
     is_used bool not null default  false,
     expired_at bigint,
     created_at bigint not null,
-    CONSTRAINT user_access_tokens_token_key UNIQUE (token)
+    CONSTRAINT user_access_tokens_token_ukey UNIQUE (user_id, device_id)
 );
-DROP INDEX IF EXISTS user_access_tokens_device_id;
-CREATE INDEX user_access_tokens_device_id
-    ON user_access_tokens USING btree
-    (user_id ASC NULLS LAST, device_id ASC NULLS LAST);
+-- DROP INDEX IF EXISTS user_access_tokens_device_id;
+-- CREATE INDEX user_access_tokens_device_id
+--     ON user_access_tokens USING btree
+--     (user_id ASC NULLS LAST, device_id ASC NULLS LAST);
 
 drop table if exists room_aliases CASCADE;
 CREATE TABLE room_aliases (
@@ -195,7 +196,7 @@ CREATE TABLE user_presences (
     user_id text NOT NULL,
     room_id text,
     stream_id bigint,
-    state jsonb NOT NULL,
+    state_data jsonb,
     status_msg text,
     last_active_at bigint,
     last_federation_update_at bigint,

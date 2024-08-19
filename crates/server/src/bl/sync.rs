@@ -18,6 +18,7 @@ use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
 use crate::{AppError, AppResult};
 
+#[tracing::instrument(skip_all)]
 pub async fn sync_events(
     sender_user_id: OwnedUserId,
     sender_device_id: OwnedDeviceId,
@@ -316,6 +317,7 @@ pub async fn sync_events(
     Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 async fn load_joined_room(
     sender_user_id: &UserId,
     sender_device_id: &DeviceId,
@@ -692,6 +694,7 @@ async fn load_joined_room(
     })
 }
 
+#[tracing::instrument]
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
@@ -708,6 +711,7 @@ pub(crate) fn load_timeline(
     }
 }
 
+#[tracing::instrument]
 pub(crate) fn share_encrypted_room(sender_id: &UserId, user_id: &UserId, ignore_room: &RoomId) -> AppResult<bool> {
     let shared_rooms = crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()

@@ -89,7 +89,7 @@ impl Writer for AppError {
             Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo."),
             Self::FrequentlyRequest => MatrixError::unknown("frequently request resource."),
             Self::Public(msg) => MatrixError::unknown(msg),
-            Self::Internal(msg) => MatrixError::unknown("unknown error."),
+            Self::Internal(_msg) => MatrixError::unknown("unknown error."),
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
                 res.status_code(StatusCode::UNAUTHORIZED);

@@ -82,7 +82,7 @@ pub fn ping_presence(user_id: &UserId) -> AppResult<()> {
             user_presences::user_id.eq(user_id),
             user_presences::last_active_at.eq(UnixMillis::now().0 as i64),
         ))
-        .on_conflict(user_presences::user_id)
+        .on_conflict((user_presences::user_id, crate::schema::user_presences::room_id))
         .do_update()
         .set(user_presences::last_active_at.eq(UnixMillis::now().0 as i64))
         .execute(&mut *db::connect()?)?;

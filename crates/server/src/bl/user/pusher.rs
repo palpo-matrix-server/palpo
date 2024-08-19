@@ -345,7 +345,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
             if event_id_only {
                 crate::sending::post(Url::parse(&http.url)?)
                     .stuff(SendEventNotificationReqBody::new(notification))?
-                    .send()
+                    .send::<()>()
                     .await?;
             } else {
                 notification.sender = Some(event.sender.clone());
@@ -362,7 +362,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
 
                 crate::sending::post(Url::parse(&http.url)?)
                     .stuff(SendEventNotificationReqBody::new(notification))?
-                    .send()
+                    .send::<()>()
                     .await?;
             }
 
