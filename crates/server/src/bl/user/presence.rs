@@ -22,7 +22,7 @@ pub struct DbPresence {
     pub user_id: OwnedUserId,
     pub room_id: Option<OwnedRoomId>,
     pub stream_id: Option<i64>,
-    pub state: JsonValue,
+    pub state: Option<String>,
     pub status_msg: Option<String>,
     pub last_active_at: Option<i64>,
     pub last_federation_update_at: Option<i64>,
@@ -36,7 +36,7 @@ pub struct NewDbPresence {
     pub user_id: OwnedUserId,
     pub room_id: Option<OwnedRoomId>,
     pub stream_id: Option<i64>,
-    pub state: JsonValue,
+    pub state: Option<String>,
     pub status_msg: Option<String>,
     pub last_active_at: Option<i64>,
     pub last_federation_update_at: Option<i64>,
@@ -48,7 +48,7 @@ impl DbPresence {
     /// Creates a PresenceEvent from available data.
     pub fn to_presence_event(&self, user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<PresenceEvent> {
         let now = UnixMillis::now();
-        let state = serde_json::from_value(self.state.clone())?;
+        let state = self.state.as_deref().map(PresenceState::from).unwrap_or_default();
         let last_active_ago = if state == PresenceState::Online {
             None
         } else {

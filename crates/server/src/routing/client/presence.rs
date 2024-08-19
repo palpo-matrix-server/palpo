@@ -46,7 +46,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
             last_active_ago: presence
                 .last_active_at
                 .map(|millis| Duration::from_millis(millis as u64)),
-            presence: serde_json::from_value(presence.state)?,
+            presence: presence.state.map(Into::into).unwrap_or_default(),
         })
     } else {
         Err(MatrixError::not_found("Presence state for this user was not found").into())
@@ -72,7 +72,7 @@ async fn set_status(
             user_id: authed.user_id().to_owned(),
             room_id: Some(room_id),
             stream_id: None,
-            state: serde_json::to_value(&body.presence)?,
+            state: Some(body.presence.to_string()),
             status_msg: body.status_msg.clone(),
             last_active_at: None,
             last_federation_update_at: None,

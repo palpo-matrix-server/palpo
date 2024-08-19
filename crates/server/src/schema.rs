@@ -602,7 +602,7 @@ diesel::table! {
         user_id -> Text,
         room_id -> Nullable<Text>,
         stream_id -> Nullable<Int8>,
-        state -> Jsonb,
+        state -> Nullable<Text>,
         status_msg -> Nullable<Text>,
         last_active_at -> Nullable<Int8>,
         last_federation_update_at -> Nullable<Int8>,
@@ -693,7 +693,7 @@ diesel::table! {
 
 diesel::table! {
     user_uiaa_datas (id) {
-        id -> Text,
+        id -> Int8,
         user_id -> Text,
         device_id -> Text,
         session -> Text,

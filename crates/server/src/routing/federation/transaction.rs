@@ -112,7 +112,7 @@ async fn send_message(
                             user_id: update.user_id.clone(),
                             room_id: Some(room_id),
                             stream_id: None,
-                            state: serde_json::to_value(update.presence.clone())?,
+                            state: Some(update.presence.to_string()),
                             status_msg: update.status_msg.clone(),
                             last_active_at: Some(update.last_active_ago as i64),
                             last_federation_update_at: None,

@@ -101,18 +101,26 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
     };
 
     if body.login_type != Some(LoginType::Appservice) && !is_guest {
-        let Some(auth) = &body.auth else {
+        if let Some(auth) = &body.auth {
+            let (worked, uiaa) = crate::uiaa::try_auth(
+                &UserId::parse_with_server_name("", &conf.server_name).expect("we know this is valid"),
+                "".into(),
+                &auth,
+                &uiaa_info,
+            )?;
+            if !worked {
+                return Err(AppError::Uiaa(uiaa));
+            }
+        } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+            crate::uiaa::update_session(
+                &UserId::parse_with_server_name("", crate::server_name())
+                    .expect("we know this is valid"),
+                "".into(),
+                uiaa_info.session.as_ref().expect("session is always set"),
+                Some(&uiaa_info),
+            )?;
             return Err(uiaa_info.into());
-        };
-        let (worked, uiaa) = crate::uiaa::try_auth(
-            &UserId::parse_with_server_name("", &conf.server_name).expect("we know this is valid"),
-            "".into(),
-            &auth,
-            &uiaa_info,
-        )?;
-        if !worked {
-            return Err(AppError::Uiaa(uiaa));
         }
     }
 
