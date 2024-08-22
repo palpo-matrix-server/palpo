@@ -40,8 +40,11 @@ impl Serialize for PresenceEvent {
 #[palpo_event(type = "m.presence")]
 pub struct PresenceEventContent {
     /// The current avatar URL for this user.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "palpo_core::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "palpo_core::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// Whether or not the user is currently active.
@@ -133,25 +136,25 @@ mod tests {
         assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
         assert_eq!(ev.sender, "@example:localhost");
 
-            let json = json!({
-                "content": {
-                    "avatar_url": "",
-                    "currently_active": false,
-                    "last_active_ago": 2_478_593,
-                    "presence": "online",
-                    "status_msg": "Making cupcakes"
-                },
-                "sender": "@example:localhost",
-                "type": "m.presence"
-            });
+        let json = json!({
+            "content": {
+                "avatar_url": "",
+                "currently_active": false,
+                "last_active_ago": 2_478_593,
+                "presence": "online",
+                "status_msg": "Making cupcakes"
+            },
+            "sender": "@example:localhost",
+            "type": "m.presence"
+        });
 
-            let ev = from_json_value::<PresenceEvent>(json).unwrap();
-            assert_eq!(ev.content.avatar_url, None);
-            assert_eq!(ev.content.currently_active, Some(false));
-            assert_eq!(ev.content.display_name, None);
-            assert_eq!(ev.content.last_active_ago, Some(uint!(2_478_593)));
-            assert_eq!(ev.content.presence, PresenceState::Online);
-            assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
-            assert_eq!(ev.sender, "@example:localhost");
+        let ev = from_json_value::<PresenceEvent>(json).unwrap();
+        assert_eq!(ev.content.avatar_url, None);
+        assert_eq!(ev.content.currently_active, Some(false));
+        assert_eq!(ev.content.display_name, None);
+        assert_eq!(ev.content.last_active_ago, Some(uint!(2_478_593)));
+        assert_eq!(ev.content.presence, PresenceState::Online);
+        assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
+        assert_eq!(ev.sender, "@example:localhost");
     }
 }

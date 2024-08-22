@@ -64,10 +64,7 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
 ///
 /// - If user is on another server: Fetches avatar_url and blurhash over federation
 #[endpoint]
-async fn get_avatar_url(
-    _aa: AuthArgs,
-    user_id: PathParam<OwnedUserId>,
-) -> JsonResult<AvatarUrlResBody> {
+async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<AvatarUrlResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         // TODO
@@ -181,10 +178,7 @@ async fn set_avatar_url(
 ///
 /// - If user is on another server: Fetches display_name over federation
 #[endpoint]
-async fn get_display_name(
-    _aa: AuthArgs,
-    user_id: PathParam<OwnedUserId>,
-) -> JsonResult<DisplayNameResBody> {
+async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         let url = user_id.server_name().build_url(&format!(

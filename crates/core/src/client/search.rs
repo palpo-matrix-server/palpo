@@ -444,8 +444,11 @@ impl SearchResult {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UserProfile {
     /// The user's avatar URL, if set.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "crate::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The user's display name, if set.

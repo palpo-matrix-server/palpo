@@ -36,7 +36,7 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResu
 #[endpoint]
 async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> JsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
-    let result = crate::user::get_keys(None, &body.device_keys, |u| u.server_name() == authed.server_name()).await?;
+    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == authed.server_name()).await?;
 
     json_ok(KeysResBody {
         device_keys: result.device_keys,
@@ -65,7 +65,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
         .load::<(OwnedDeviceId, Option<String>)>(&mut *db::connect()?)?
     {
         devices.push(Device {
-            keys: crate::user::get_device_keys(&user_id, &device_id)?
+            keys: crate::user::get_device_keys_and_sigs(&user_id, &device_id)?
                 .ok_or_else(|| AppError::public("server keys not found"))?,
             device_id,
             device_display_name: display_name,

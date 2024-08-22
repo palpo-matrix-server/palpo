@@ -15,7 +15,11 @@ use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, PrivOwnedStr, UnixMillis
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PublicRoomsChunk {
     /// The canonical alias of the room, if any.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "crate::serde::empty_string_as_none"
+    )]
     pub canonical_alias: Option<OwnedRoomAliasId>,
 
     /// The name of the room, if any.
@@ -41,8 +45,11 @@ pub struct PublicRoomsChunk {
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "crate::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The join rule of the room.

@@ -35,7 +35,7 @@ pub use pusher::*;
 pub use ruleset::Ruleset;
 pub use simple_push_rule::*;
 
-use std::hash::{Hash, };
+use std::hash::Hash;
 
 use indexmap::{Equivalent, IndexSet};
 use salvo::prelude::ToSchema;

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::user::ProfileField;
-use crate::{ OwnedRoomId, OwnedServerName, OwnedUserId};
+use crate::{OwnedRoomId, OwnedServerName, OwnedUserId};
 
 /// `/v1/` ([spec])
 ///
@@ -79,7 +79,6 @@ pub struct ProfileReqArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<ProfileField>,
 }
-
 
 /// `GET /_matrix/federation/*/query/{queryType}`
 ///

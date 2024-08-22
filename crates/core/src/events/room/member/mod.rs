@@ -54,8 +54,11 @@ pub use self::change::{Change, MembershipChange, MembershipDetails};
 )]
 pub struct RoomMemberEventContent {
     /// The avatar URL for this user, if any.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "palpo_core::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "palpo_core::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The display name for this user, if any.

@@ -53,8 +53,8 @@ diesel::table! {
         origin_user_id -> Text,
         origin_key_id -> Text,
         target_user_id -> Text,
-        target_key_id -> Text,
-        signature -> Jsonb,
+        target_device_id -> Text,
+        signature -> Text,
     }
 }
 
@@ -77,7 +77,7 @@ diesel::table! {
         device_id -> Text,
         algorithm -> Text,
         key_id -> Text,
-        key_data -> Text,
+        key_data -> Jsonb,
         used_at -> Nullable<Int8>,
         created_at -> Int8,
     }
@@ -98,8 +98,8 @@ diesel::table! {
         id -> Int8,
         user_id -> Text,
         device_id -> Text,
-        key_id -> Text,
         algorithm -> Text,
+        key_id -> Text,
         key_data -> Jsonb,
         created_at -> Int8,
     }

@@ -75,19 +75,19 @@ pub struct KeysResBody {
 
     /// Information on the queried devices.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, RawJson<DeviceKeys>>>,
+    pub device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeys>>,
 
     /// Information on the master cross-signing keys of the queried users.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub master_keys: BTreeMap<OwnedUserId, RawJson<CrossSigningKey>>,
+    pub master_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 
     /// Information on the self-signing keys of the queried users.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub self_signing_keys: BTreeMap<OwnedUserId, RawJson<CrossSigningKey>>,
+    pub self_signing_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 
     /// Information on the user-signing keys of the queried users.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub user_signing_keys: BTreeMap<OwnedUserId, RawJson<CrossSigningKey>>,
+    pub user_signing_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 }
 
 /// `POST /_matrix/client/*/keys/upload`

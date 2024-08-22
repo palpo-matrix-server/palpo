@@ -15,7 +15,7 @@ use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 pub fn authed_router() -> Router {
     Router::with_path("keys")
         .push(Router::with_path("claim").post(claim_keys))
-        .push(Router::with_path("query").post(get_keys))
+        .push(Router::with_path("query").post(query_keys))
         .push(Router::with_path("upload").post(upload_keys))
         .push(Router::with_path("changes").get(get_key_changes))
         .push(Router::with_path("signatures/upload").post(signature::upload))
@@ -36,9 +36,9 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResu
 /// - Gets master keys, self-signing keys, user signing keys and device keys.
 /// - The master and self-signing keys contain signatures that the user is allowed to see
 #[endpoint]
-async fn get_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> JsonResult<KeysResBody> {
+async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> JsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
-    json_ok(key::get_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
+    json_ok(key::query_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
 }
 
 // #POST /_matrix/client/r0/keys/upload

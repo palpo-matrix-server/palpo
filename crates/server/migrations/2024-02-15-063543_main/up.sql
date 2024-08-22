@@ -647,15 +647,13 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_sigs
     origin_user_id text NOT NULL,
     origin_key_id text NOT NULL,
     target_user_id text NOT NULL,
-    target_key_id text NOT NULL,
-    signature jsonb NOT NULL,
-    CONSTRAINT e2e_cross_signing_sigs_ukey UNIQUE (origin_user_id, origin_key_id, target_user_id, target_key_id)
+    target_device_id text NOT NULL,
+    signature text NOT NULL,
+    CONSTRAINT e2e_cross_signing_sigs_ukey UNIQUE (origin_user_id, origin_key_id, target_user_id, target_device_id)
 );
 CREATE INDEX IF NOT EXISTS e2e_cross_signing_sigs_idx
     ON e2e_cross_signing_sigs USING btree
-    (origin_user_id ASC NULLS LAST, target_user_id ASC NULLS LAST, target_key_id ASC NULLS LAST);
-
-
+    (origin_user_id ASC NULLS LAST, target_user_id ASC NULLS LAST, target_device_id ASC NULLS LAST);
 
 drop table if exists e2e_room_keys CASCADE;
 CREATE TABLE e2e_room_keys (
@@ -708,15 +706,13 @@ CREATE TABLE e2e_one_time_keys (
     id bigserial not null PRIMARY KEY,
     user_id text NOT NULL,
     device_id text NOT NULL,
-    key_id text NOT NULL,
     algorithm text NOT NULL,
+    key_id text not null,
     key_data jsonb NOT NULL,
-    created_at bigint NOT NULL
+    created_at bigint NOT NULL,
+    CONSTRAINT e2e_one_time_keys_ukey UNIQUE (user_id, device_id, algorithm, key_id)
 );
-ALTER TABLE ONLY e2e_one_time_keys
-    ADD CONSTRAINT e2e_one_time_keys_ukey UNIQUE (user_id, device_id, key_id, algorithm);
 CREATE INDEX e2e_one_time_keys_idx ON e2e_one_time_keys USING btree (user_id, device_id);
-
 
 drop table if exists e2e_fallback_keys CASCADE;
 CREATE TABLE e2e_fallback_keys (
@@ -725,7 +721,7 @@ CREATE TABLE e2e_fallback_keys (
     device_id text NOT NULL,
     algorithm text NOT NULL,
     key_id text NOT NULL,
-    key_data text NOT NULL,
+    key_data jsonb NOT NULL,
     used_at bigint,
     created_at bigint NOT NULL
 );

@@ -114,8 +114,7 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
-                &UserId::parse_with_server_name("", crate::server_name())
-                    .expect("we know this is valid"),
+                &UserId::parse_with_server_name("", crate::server_name()).expect("we know this is valid"),
                 "".into(),
                 uiaa_info.session.as_ref().expect("session is always set"),
                 Some(&uiaa_info),

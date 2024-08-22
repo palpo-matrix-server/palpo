@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use salvo::prelude::*;
-use serde::{ Serialize};
+use serde::Serialize;
 
 use crate::{authentication::TokenType, OwnedServerName};
 

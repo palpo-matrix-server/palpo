@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::key::{SignedKeys, SignedKeysIter};
 use crate::identifiers::*;
-use crate::serde::{JsonValue, RawJson, RawJsonValue};
+use crate::serde::{JsonValue, RawJsonValue};
 use crate::{encryption::OneTimeKey, DeviceKeyAlgorithm};
 
 impl<'a> IntoIterator for &'a SignedKeys {
@@ -81,4 +81,4 @@ impl ClaimKeysResBody {
 }
 
 /// The one-time keys for a given device.
-pub type OneTimeKeys = BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, RawJson<OneTimeKey>>>;
+pub type OneTimeKeys = BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, OneTimeKey>>;

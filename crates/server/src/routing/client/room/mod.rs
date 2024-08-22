@@ -426,10 +426,7 @@ async fn upgrade(
 ///
 /// - Rooms are ordered by the number of joined members
 #[endpoint]
-pub(super) async fn get_public_rooms(
-    _aa: AuthArgs,
-    args: PublicRoomsReqArgs,
-) -> JsonResult<PublicRoomsResBody> {
+pub(super) async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         args.server.as_deref(),
         args.limit,

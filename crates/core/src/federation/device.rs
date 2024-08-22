@@ -52,11 +52,11 @@ pub struct DevicesResBody {
 
     /// The user's master key.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub master_key: Option<RawJson<CrossSigningKey>>,
+    pub master_key: Option<CrossSigningKey>,
 
     /// The users's self-signing key.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub self_signing_key: Option<RawJson<CrossSigningKey>>,
+    pub self_signing_key: Option<CrossSigningKey>,
 }
 impl DevicesResBody {
     /// Creates a new `Response` with the given user id and stream id.
@@ -80,7 +80,7 @@ pub struct Device {
     pub device_id: OwnedDeviceId,
 
     /// Identity keys for the device.
-    pub keys: RawJson<DeviceKeys>,
+    pub keys: DeviceKeys,
 
     /// Optional display name for the device
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -89,7 +89,7 @@ pub struct Device {
 
 impl Device {
     /// Creates a new `Device` with the given device id and keys.
-    pub fn new(device_id: OwnedDeviceId, keys: RawJson<DeviceKeys>) -> Self {
+    pub fn new(device_id: OwnedDeviceId, keys: DeviceKeys) -> Self {
         Self {
             device_id,
             keys,

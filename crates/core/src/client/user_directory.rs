@@ -86,8 +86,11 @@ pub struct SearchedUser {
     pub display_name: Option<String>,
 
     /// The avatar url, as an MXC, if one exists.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "crate::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 }
 

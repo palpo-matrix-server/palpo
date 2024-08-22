@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use salvo::oapi::ToSchema;
-use serde::{Deserialize, };
+use serde::Deserialize;
 
 use crate::events::relation::{CustomRelation, InReplyTo, RelationType, Replacement, Thread};
 use crate::serde::JsonObject;

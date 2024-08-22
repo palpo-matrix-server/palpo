@@ -62,7 +62,7 @@ impl ClaimKeysResBody {
 pub type OneTimeKeyClaims = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>;
 
 /// One time keys for use in pre-key messages
-pub type OneTimeKeys = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, RawJson<OneTimeKey>>>>;
+pub type OneTimeKeys = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, OneTimeKey>>>;
 
 /// A key and its signature
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,19 +111,19 @@ pub struct KeysReqBody {
 
 pub struct KeysResBody {
     /// Keys from the queried devices.
-    pub device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, RawJson<DeviceKeys>>>,
+    pub device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeys>>,
 
     /// Information on the master cross-signing keys of the queried users.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub master_keys: BTreeMap<OwnedUserId, RawJson<CrossSigningKey>>,
+    pub master_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 
     /// Information on the self-signing keys of the queried users.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub self_signing_keys: BTreeMap<OwnedUserId, RawJson<CrossSigningKey>>,
+    pub self_signing_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 }
 impl KeysResBody {
     /// Creates a new `Response` with the given device keys.
-    pub fn new(device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, RawJson<DeviceKeys>>>) -> Self {
+    pub fn new(device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeys>>) -> Self {
         Self {
             device_keys,
             ..Default::default()

@@ -1,9 +1,9 @@
 use salvo::prelude::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::events::{GlobalAccountDataEventType, StateEventType};
 use crate::push::{RuleKind, RuleScope};
-use crate::{OwnedEventId,OwnedMxcUri, OwnedRoomId, OwnedUserId};
+use crate::{OwnedEventId, OwnedMxcUri, OwnedRoomId, OwnedUserId};
 
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RoomEventReqArgs {
@@ -141,8 +141,11 @@ pub struct ScopeKindRuleReqArgs {
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct ProfileResBody {
     /// The user's avatar URL, if set.
-    #[serde(skip_serializing_if = "Option::is_none",default, deserialize_with = "crate::serde::empty_string_as_none")
-    ]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "crate::serde::empty_string_as_none"
+    )]
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The user's display name, if set.

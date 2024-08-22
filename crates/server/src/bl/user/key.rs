@@ -15,7 +15,7 @@ use crate::schema::*;
 use crate::user::{clean_signatures, DbUserDevice};
 use crate::{db, diesel_exists, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
 
-#[derive(Identifiable, Queryable, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
 pub struct DbCrossSigningKey {
     pub id: i64,
@@ -38,31 +38,31 @@ pub struct DbCrossSignature {
     pub id: i64,
 
     pub origin_user_id: OwnedUserId,
-    pub origin_key_id: String,
+    pub origin_key_id: OwnedDeviceKeyId,
     pub target_user_id: OwnedUserId,
-    pub target_key_id: String,
-    pub signature: JsonValue,
+    pub target_device_id: OwnedDeviceId,
+    pub signature: String,
 }
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_sigs)]
 pub struct NewDbCrossSignature {
     pub origin_user_id: OwnedUserId,
-    pub origin_key_id: String,
+    pub origin_key_id: OwnedDeviceKeyId,
     pub target_user_id: OwnedUserId,
-    pub target_key_id: String,
-    pub signature: JsonValue,
+    pub target_device_id: OwnedDeviceId,
+    pub signature: String,
 }
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_fallback_keys)]
-pub struct DbCrossFallbackKey {
-    pub id: i64,
+pub struct DbFallbackKey {
+    pub id: String,
 
     pub user_id: OwnedUserId,
     pub device_id: OwnedDeviceId,
     pub algorithm: String,
-    pub key_id: String,
-    pub key_data: String,
+    pub key_id: OwnedDeviceKeyId,
+    pub key_data: JsonValue,
     pub used_at: Option<i64>,
     pub created_at: UnixMillis,
 }
@@ -72,11 +72,12 @@ pub struct NewDbFallbackKey {
     pub user_id: OwnedUserId,
     pub device_id: OwnedDeviceId,
     pub algorithm: String,
-    pub key_id: String,
-    pub key_data: String,
+    pub key_id: OwnedDeviceKeyId,
+    pub key_data: JsonValue,
     pub used_at: Option<i64>,
     pub created_at: UnixMillis,
 }
+
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_one_time_keys)]
@@ -85,8 +86,8 @@ pub struct DbOneTimeKey {
 
     pub user_id: OwnedUserId,
     pub device_id: OwnedDeviceId,
-    pub key_id: OwnedDeviceKeyId,
     pub algorithm: String,
+    pub key_id: OwnedDeviceKeyId,
     pub key_data: JsonValue,
     pub created_at: UnixMillis,
 }
@@ -95,15 +96,15 @@ pub struct DbOneTimeKey {
 pub struct NewDbOneTimeKey {
     pub user_id: OwnedUserId,
     pub device_id: OwnedDeviceId,
-    pub key_id: OwnedDeviceKeyId,
     pub algorithm: String,
+    pub key_id: OwnedDeviceKeyId,
     pub key_data: JsonValue,
     pub created_at: UnixMillis,
 }
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_device_keys)]
-pub struct DbUserDeviceKey {
+pub struct DbDeviceKey {
     pub id: i64,
 
     pub user_id: OwnedUserId,
@@ -116,7 +117,7 @@ pub struct DbUserDeviceKey {
 }
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = e2e_device_keys)]
-pub struct NewDbUserDeviceKey {
+pub struct NewDbDeviceKey {
     pub user_id: OwnedUserId,
     pub device_id: OwnedDeviceId,
     pub stream_id: i64,
@@ -142,7 +143,7 @@ pub struct NewDbKeyChange {
     pub changed_at: UnixMillis,
 }
 
-pub async fn get_keys<F: Fn(&UserId) -> bool>(
+pub async fn query_keys<F: Fn(&UserId) -> bool>(
     sender_id: Option<&UserId>,
     device_keys_input: &BTreeMap<OwnedUserId, Vec<OwnedDeviceId>>,
     allowed_signatures: F,
@@ -165,9 +166,11 @@ pub async fn get_keys<F: Fn(&UserId) -> bool>(
         if device_ids.is_empty() {
             let mut container = BTreeMap::new();
             for device_id in crate::user::all_device_ids(user_id)? {
-                if let Some(mut keys) = crate::user::get_device_keys(user_id, &device_id)? {
+                if let Some(mut keys) = crate::user::get_device_keys_and_sigs(user_id, &device_id)? {
                     let device = crate::user::get_device(user_id, &device_id)?;
-                    add_unsigned_device_display_name(&mut keys, &device)?;
+                    if let Some(display_name) = &device.display_name {
+                        keys.unsigned.device_display_name = display_name.to_owned().into();
+                    }
                     container.insert(device_id, keys);
                 }
             }
@@ -175,7 +178,7 @@ pub async fn get_keys<F: Fn(&UserId) -> bool>(
         } else {
             for device_id in device_ids {
                 let mut container = BTreeMap::new();
-                if let Some(keys) = crate::user::get_device_keys(user_id, device_id)? {
+                if let Some(keys) = crate::user::get_device_keys_and_sigs(user_id, device_id)? {
                     container.insert(device_id.to_owned(), keys);
                 }
                 device_keys.insert(user_id.to_owned(), container);
@@ -204,7 +207,7 @@ pub async fn get_keys<F: Fn(&UserId) -> bool>(
         hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
     };
 
-    // TODO: fixme
+    // TODO: fixme0
     // let mut futures: FuturesUnordered<_> = get_over_federation
     //     .into_iter()
     //     .map(|(server, vec)| async move {
@@ -281,20 +284,6 @@ pub async fn get_keys<F: Fn(&UserId) -> bool>(
         failures,
     })
 }
-fn add_unsigned_device_display_name(keys: &mut RawJson<DeviceKeys>, device: &DbUserDevice) -> serde_json::Result<()> {
-    if let Some(display_name) = &device.display_name {
-        let mut object = keys.deserialize_as::<serde_json::Map<String, serde_json::Value>>()?;
-
-        let unsigned = object.entry("unsigned").or_insert_with(|| json!({}));
-        if let serde_json::Value::Object(unsigned_object) = unsigned {
-            unsigned_object.insert("device_display_name".to_owned(), display_name.to_owned().into());
-        }
-
-        *keys = RawJson::from_raw_value(serde_json::value::to_raw_value(&object)?);
-    }
-
-    Ok(())
-}
 
 pub async fn claim_keys(
     one_time_keys_input: &BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>,
@@ -366,7 +355,7 @@ pub fn get_master_key(
     sender_id: Option<&UserId>,
     user_id: &UserId,
     allowed_signatures: &dyn Fn(&UserId) -> bool,
-) -> AppResult<Option<RawJson<CrossSigningKey>>> {
+) -> AppResult<Option<CrossSigningKey>> {
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("master"))
@@ -375,7 +364,7 @@ pub fn get_master_key(
         .optional()?;
     if let Some(mut key_data) = key_data {
         clean_signatures(&mut key_data, sender_id, user_id, allowed_signatures)?;
-        Ok(RawJson::from_value(key_data).ok())
+        Ok(serde_json::from_value(key_data).ok())
     } else {
         Ok(None)
     }
@@ -385,7 +374,7 @@ pub fn get_self_signing_key(
     sender_id: Option<&UserId>,
     user_id: &UserId,
     allowed_signatures: &dyn Fn(&UserId) -> bool,
-) -> AppResult<Option<RawJson<CrossSigningKey>>> {
+) -> AppResult<Option<CrossSigningKey>> {
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("self_signing"))
@@ -394,18 +383,18 @@ pub fn get_self_signing_key(
         .optional()?;
     if let Some(mut key_data) = key_data {
         clean_signatures(&mut key_data, sender_id, user_id, allowed_signatures)?;
-        Ok(RawJson::from_value(key_data).ok())
+        Ok(serde_json::from_value(key_data).ok())
     } else {
         Ok(None)
     }
 }
-pub fn get_user_signing_key(user_id: &OwnedUserId) -> AppResult<Option<RawJson<CrossSigningKey>>> {
+pub fn get_user_signing_key(user_id: &OwnedUserId) -> AppResult<Option<CrossSigningKey>> {
     e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("user_signing"))
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut *db::connect()?)
-        .map(|data| RawJson::from_value(data).ok())
+        .map(|data| serde_json::from_value(data).ok())
         .optional()
         .map(|v| v.flatten())
         .map_err(Into::into)
@@ -421,8 +410,8 @@ pub fn add_one_time_key(
         .values(&NewDbOneTimeKey {
             user_id: user_id.to_owned(),
             device_id: device_id.to_owned(),
-            key_id: key_id.to_owned(),
             algorithm: key_id.algorithm().to_string(),
+            key_id: key_id.to_owned(),
             key_data: serde_json::to_value(one_time_key).unwrap(),
             created_at: UnixMillis::now(),
         })
@@ -434,7 +423,7 @@ pub fn take_one_time_key(
     user_id: &OwnedUserId,
     device_id: &DeviceId,
     key_algorithm: &DeviceKeyAlgorithm,
-) -> AppResult<Option<(OwnedDeviceKeyId, RawJson<OneTimeKey>)>> {
+) -> AppResult<Option<(OwnedDeviceKeyId, OneTimeKey)>> {
     let one_time_key = e2e_one_time_keys::table
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))
@@ -442,10 +431,12 @@ pub fn take_one_time_key(
         .order(e2e_one_time_keys::id.desc())
         .first::<DbOneTimeKey>(&mut *db::connect()?)
         .optional()?;
-    if let Some(one_time_key) = &one_time_key {
-        diesel::delete(one_time_key).execute(&mut db::connect()?)?;
+    if let Some(DbOneTimeKey{id, key_id, key_data, ..}) = one_time_key {
+        diesel::delete(e2e_one_time_keys::table.find(id)).execute(&mut db::connect()?)?;
+        Ok(Some((key_id, serde_json::from_value::<OneTimeKey>(key_data)?)))
+    } else {
+        Ok(None)
     }
-    Ok(one_time_key.map(|k| (k.key_id, RawJson::from_value(k.key_data).unwrap())))
 }
 
 pub fn count_one_time_keys(
@@ -465,7 +456,7 @@ pub fn count_one_time_keys(
 
 pub fn add_device_keys(user_id: &OwnedUserId, device_id: &OwnedDeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
     diesel::insert_into(e2e_device_keys::table)
-        .values(&NewDbUserDeviceKey {
+        .values(&NewDbDeviceKey {
             user_id: user_id.to_owned(),
             device_id: device_id.to_owned(),
             stream_id: 0,
@@ -544,34 +535,35 @@ pub fn add_cross_signing_keys(
 }
 
 pub fn sign_key(
-    target_id: &UserId,
-    target_key_id: &str,
+    target_user_id: &UserId,
+    target_device_id: &str,
     signature: (String, String),
     sender_id: &UserId,
 ) -> AppResult<()> {
-    let cross_signing_key = e2e_cross_signing_keys::table
-        .filter(e2e_cross_signing_keys::user_id.eq(target_id))
-        .order_by(e2e_cross_signing_keys::id.desc())
-        .first::<DbCrossSigningKey>(&mut *db::connect()?)?;
-    let mut cross_signing_key: CrossSigningKey = serde_json::from_value(cross_signing_key.key_data.clone())?;
-    let key_id = DeviceKeyId::parse(&signature.0)?.to_owned();
+    // let cross_signing_key = e2e_cross_signing_keys::table
+    //     .filter(e2e_cross_signing_keys::user_id.eq(target_id))
+    //     .filter(e2e_cross_signing_keys::key_type.eq("master"))
+    //     .order_by(e2e_cross_signing_keys::id.desc())
+    //     .first::<DbCrossSigningKey>(&mut *db::connect()?)?;
+    // let mut cross_signing_key: CrossSigningKey = serde_json::from_value(cross_signing_key.key_data.clone())?;
+    let origin_key_id = DeviceKeyId::parse(&signature.0)?.to_owned();
+
+    // cross_signing_key
+    //     .signatures
+    //     .entry(sender_id.to_owned())
+    //     .or_defaut()
+    //     .insert(key_id.clone(), signature.1);
 
     diesel::insert_into(e2e_cross_signing_sigs::table)
         .values(NewDbCrossSignature {
             origin_user_id: sender_id.to_owned(),
-            origin_key_id: key_id.to_string(),
-            target_user_id: target_id.to_owned(),
-            target_key_id: target_key_id.to_string(),
-            signature: serde_json::to_value(&signature)?,
+            origin_key_id,
+            target_user_id: target_user_id.to_owned(),
+            target_device_id: OwnedDeviceId::from(target_device_id),
+            signature: signature.1,
         })
         .execute(&mut db::connect()?)?;
-
-    cross_signing_key
-        .signatures
-        .entry(sender_id.to_owned())
-        .or_insert_with(BTreeMap::new)
-        .insert(key_id.clone(), signature.1);
-    mark_device_key_update(target_id)
+    mark_device_key_update(target_user_id)
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
@@ -602,15 +594,35 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
     Ok(())
 }
 
-pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<RawJson<DeviceKeys>>> {
+pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<DeviceKeys>> {
     e2e_device_keys::table
         .filter(e2e_device_keys::user_id.eq(user_id))
         .filter(e2e_device_keys::device_id.eq(device_id))
         .select(e2e_device_keys::key_data)
         .first::<JsonValue>(&mut *db::connect()?)
         .optional()?
-        .map(|v| RawJson::from_value(v).map_err(Into::into))
+        .map(|v| serde_json::from_value(v).map_err(Into::into))
         .transpose()
+}
+
+pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<DeviceKeys>> {
+    let Some(mut device_keys) = get_device_keys(user_id, device_id)? else {
+       return Ok(None);
+    };
+    let signatures = e2e_cross_signing_sigs::table
+        .filter(e2e_cross_signing_sigs::origin_user_id.eq(user_id))
+        .filter(e2e_cross_signing_sigs::target_user_id.eq(user_id))
+        .filter(e2e_cross_signing_sigs::target_device_id.eq(device_id))
+        .load::<DbCrossSignature>(&mut *db::connect()?)?;
+    for DbCrossSignature {
+        origin_key_id,
+        signature,
+        ..
+    } in signatures
+    {
+        device_keys.signatures.entry(user_id.to_owned()).or_default().insert(origin_key_id, signature);
+    }
+    Ok(Some(device_keys))
 }
 
 pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<bool> {

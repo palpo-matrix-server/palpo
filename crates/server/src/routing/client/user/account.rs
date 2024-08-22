@@ -4,10 +4,10 @@ use salvo::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::core::http::UserRoomEventTypeReqArgs;
-use crate::core::client::account::data::{RoomAccountDataResBody, GlobalAccountDataResBody};
-use crate::core::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyGlobalAccountDataEventContent};
+use crate::core::client::account::data::{GlobalAccountDataResBody, RoomAccountDataResBody};
+use crate::core::events::{AnyGlobalAccountDataEvent, AnyGlobalAccountDataEventContent, AnyRoomAccountDataEvent};
 use crate::core::http::UserEventTypeReqArgs;
+use crate::core::http::UserRoomEventTypeReqArgs;
 use crate::core::serde::RawJson;
 use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
@@ -70,9 +70,12 @@ pub(super) async fn get_room_data(
 ) -> JsonResult<RoomAccountDataResBody> {
     let authed = depot.authed_info()?;
 
-    let account_data =
-        crate::user::get_data::<AnyRoomAccountDataEvent>(authed.user_id(), Some(&*args.room_id), &args.event_type.to_string())?
-            .ok_or(MatrixError::not_found("User data not found."))?;
+    let account_data = crate::user::get_data::<AnyRoomAccountDataEvent>(
+        authed.user_id(),
+        Some(&*args.room_id),
+        &args.event_type.to_string(),
+    )?
+    .ok_or(MatrixError::not_found("User data not found."))?;
 
     json_ok(RoomAccountDataResBody {
         account_data: account_data.content(),
