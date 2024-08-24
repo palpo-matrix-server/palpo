@@ -4,6 +4,7 @@ use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
+use crate::core::federation::query::directory_request;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
@@ -20,13 +21,7 @@ use crate::{db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, EmptyResul
 pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
     let room_alias = room_alias.into_inner();
     if room_alias.is_remote() {
-        let response = crate::sending::get(
-            room_alias
-                .server_name()
-                .build_url(&format!("/federation/v1/query/directory?room_alias={}", room_alias))?,
-        )
-        .send::<RoomInfoResBody>()
-        .await?;
+        let response = directory_request(&room_alias)?.send::<RoomInfoResBody>().await?;
 
         let mut servers = response.servers;
         servers.shuffle(&mut rand::thread_rng());

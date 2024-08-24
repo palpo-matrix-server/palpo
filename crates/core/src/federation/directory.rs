@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server};
 use crate::federation::discovery::ServerSigningKeys;
-use crate::serde::RawJson;
-use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis};
+use crate::serde::RawJson;use crate::sending::{SendResult,SendRequest};
+use crate::{EventId, OwnedServerName, OwnedServerSigningKeyId, RoomId, ServerName, UnixMillis};
 
 /// `POST /_matrix/federation/*/publicRooms`
 ///
@@ -28,6 +28,11 @@ use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis};
 //         1.0 => "/_matrix/federation/v1/publicRooms",
 //     }
 // };
+
+pub fn public_rooms_request(server: &ServerName, body: PublicRoomsReqBody) -> SendResult<SendRequest> {
+    crate::sending::get(server.build_url("federation/v1/publicRooms")?)
+        .stuff(body)
+}
 
 /// Request type for the `get_filtered_public_rooms` endpoint.
 

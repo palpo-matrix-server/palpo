@@ -1,19 +1,20 @@
 use std::collections::{hash_map, BTreeMap, HashMap};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
+use futures_util::stream::{FuturesUnordered, StreamExt};
 use palpo_core::UnixMillis;
 use serde_json::json;
 
-use crate::core::client;
 use crate::core::client::key::ClaimKeysResBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
-use crate::core::{serde::RawJson, DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
+use crate::core::{client, federation};
+use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
 use crate::schema::*;
-use crate::user::{clean_signatures, DbUserDevice};
-use crate::{db, diesel_exists, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
+use crate::user::clean_signatures;
+use crate::{db, diesel_exists, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
@@ -77,7 +78,6 @@ pub struct NewDbFallbackKey {
     pub used_at: Option<i64>,
     pub created_at: UnixMillis,
 }
-
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_one_time_keys)]
@@ -198,7 +198,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         }
     }
 
-    let failures = BTreeMap::new();
+    let mut failures = BTreeMap::new();
 
     let back_off = |id| match BAD_QUERY_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
@@ -207,74 +207,78 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
     };
 
-    // TODO: fixme0
-    // let mut futures: FuturesUnordered<_> = get_over_federation
-    //     .into_iter()
-    //     .map(|(server, vec)| async move {
-    //         if let Some((time, tries)) = BAD_QUERY_RATE_LIMITER.read().unwrap().get(&*server) {
-    //             // Exponential backoff
-    //             let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
-    //             if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-    //                 min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-    //             }
+    let mut futures: FuturesUnordered<_> = get_over_federation
+        .into_iter()
+        .map(|(server, vec)| async move {
+            // TODO: fixme0
+            //         if let Some((time, tries)) = BAD_QUERY_RATE_LIMITER.read().unwrap().get(&*server) {
+            //             // Exponential backoff
+            //             let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
+            //             if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
+            //                 min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
+            //             }
 
-    //             if time.elapsed() < min_elapsed_duration {
-    //                 debug!("Backing off query from {:?}", server);
-    //                 return (server, Err(AppError::public("bad query, still backing off")));
-    //             }
-    //         }
+            //             if time.elapsed() < min_elapsed_duration {
+            //                 debug!("Backing off query from {:?}", server);
+            //                 return (server, Err(AppError::public("bad query, still backing off")));
+            //             }
+            //         }
 
-    //         let mut device_keys_input_fed = BTreeMap::new();
-    //         for (user_id, keys) in vec {
-    //             device_keys_input_fed.insert(user_id.to_owned(), keys.clone());
-    //         }
+            let mut device_keys_input_fed = BTreeMap::new();
+            for (user_id, keys) in vec {
+                device_keys_input_fed.insert(user_id.to_owned(), keys.clone());
+            }
 
-    //         let mut request = reqwest::Request::new(Method::POST, reqwest::Url::parse(&server.to_string()).unwrap());
-    //         let body = serde_json::to_vec(&federation::key::KeysReqBody {
-    //             device_keys: device_keys_input_fed,
-    //         })
-    //         .unwrap();
-    //         (*request.body_mut()) = Some(body.into());
-    //         (
-    //             server,
-    //             tokio::time::timeout(
-    //                 Duration::from_secs(25),
-    //                 crate::sending::send_federation_request(request),
-    //             )
-    //             .await
-    //             .map_err(|e| AppError::public("Query took too long")),
-    //         )
-    //     })
-    //     .collect();
+            let target_url = reqwest::Url::parse(&server.to_string()).unwrap();
+            (
+                server,
+                tokio::time::timeout(
+                    Duration::from_secs(25),
+                    crate::sending::post(target_url)
+                        .stuff(federation::key::KeysReqBody {
+                            device_keys: device_keys_input_fed,
+                        })
+                        .unwrap()
+                        .send::<federation::key::KeysResBody>(),
+                )
+                .await
+                .map_err(|e| AppError::public("Query took too long")),
+            )
+        })
+        .collect();
 
-    // while let Some((server, response)) = futures.next().await {
-    //     match response {
-    //         Ok(Ok(response)) => {
-    //             for (user, masterkey) in response.master_keys {
-    //                 let (master_key_id, mut master_key) = crate::user::parse_master_key(&user, &masterkey)?;
+    while let Some((server, response)) = futures.next().await {
+        match response {
+            Ok(Ok(response)) => {
+                for (user, mut master_key) in response.master_keys {
+                    // TODO: fixme
+                    // let (master_key_id, mut master_key) = crate::user::parse_master_key(&user, &master_key)?;
+                    //
+                    // if let Some(our_master_key) = e2e_cross_signing_keys::table.filter(
+                    //     e2e_cross_signing_keys::user_id.eq
+                    // )
+                    // {
+                    //     let (_, our_master_key) = crate::user::parse_master_key(&user, &our_master_key)?;
+                    //     master_key.signatures.extend(our_master_key.signatures);
+                    // }
+                    let json = serde_json::to_value(master_key).expect("to_value always works");
+                    let raw = serde_json::from_value(json).expect("RawJson::from_value always works");
+                    crate::user::add_cross_signing_keys(
+                        &user, &raw, &None, &None,
+                        false, // Dont notify. A notification would trigger another key request resulting in an endless loop
+                    )?;
+                    master_keys.insert(user.to_owned(), raw);
+                }
 
-    //                 if let Some(our_master_key) = crate::user::get_key(&master_key_id, user_id, &user, &allowed_signatures)? {
-    //                     let (_, our_master_key) = crate::user::parse_master_key(&user, &our_master_key)?;
-    //                     master_key.signatures.extend(our_master_key.signatures);
-    //                 }
-    //                 let json = serde_json::to_value(master_key).expect("to_value always works");
-    //                 let raw = serde_json::from_value(json).expect("RawJson::from_value always works");
-    //                 crate::user::add_cross_signing_keys(
-    //                     &user, &raw, &None, &None,
-    //                     false, // Dont notify. A notification would trigger another key request resulting in an endless loop
-    //                 )?;
-    //                 master_keys.insert(user, raw);
-    //             }
-
-    //             self_signing_keys.extend(response.self_signing_keys);
-    //             device_keys.extend(response.device_keys);
-    //         }
-    //         _ => {
-    //             back_off(server.to_owned());
-    //             failures.insert(server.to_string(), json!({}));
-    //         }
-    //     }
-    // }
+                self_signing_keys.extend(response.self_signing_keys);
+                device_keys.extend(response.device_keys);
+            }
+            _ => {
+                back_off(server.to_owned());
+                failures.insert(server.to_string(), json!({}));
+            }
+        }
+    }
 
     Ok(client::key::KeysResBody {
         master_keys,
@@ -323,7 +327,7 @@ pub async fn claim_keys(
     //         (
     //             server,
     //             crate::sending
-    //                 .send_federation_request(
+    //                 .post(
     //                     server,
     //                     federation::key::ClaimKeysReqBody {
     //                         one_time_keys: one_time_keys_input_fed,
@@ -333,7 +337,7 @@ pub async fn claim_keys(
     //         )
     //     })
     //     .collect();
-
+    //
     // while let Some((server, response)) = futures.next().await {
     //     match response {
     //         Ok(keys) => {
@@ -431,7 +435,10 @@ pub fn take_one_time_key(
         .order(e2e_one_time_keys::id.desc())
         .first::<DbOneTimeKey>(&mut *db::connect()?)
         .optional()?;
-    if let Some(DbOneTimeKey{id, key_id, key_data, ..}) = one_time_key {
+    if let Some(DbOneTimeKey {
+        id, key_id, key_data, ..
+    }) = one_time_key
+    {
         diesel::delete(e2e_one_time_keys::table.find(id)).execute(&mut db::connect()?)?;
         Ok(Some((key_id, serde_json::from_value::<OneTimeKey>(key_data)?)))
     } else {
@@ -607,7 +614,7 @@ pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<Opti
 
 pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<DeviceKeys>> {
     let Some(mut device_keys) = get_device_keys(user_id, device_id)? else {
-       return Ok(None);
+        return Ok(None);
     };
     let signatures = e2e_cross_signing_sigs::table
         .filter(e2e_cross_signing_sigs::origin_user_id.eq(user_id))
@@ -620,7 +627,11 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
         ..
     } in signatures
     {
-        device_keys.signatures.entry(user_id.to_owned()).or_default().insert(origin_key_id, signature);
+        device_keys
+            .signatures
+            .entry(user_id.to_owned())
+            .or_default()
+            .insert(origin_key_id, signature);
     }
     Ok(Some(device_keys))
 }

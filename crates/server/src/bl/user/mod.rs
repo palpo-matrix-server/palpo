@@ -262,7 +262,6 @@ pub fn update_sync_request_with_cache(
         .clone());
 
     cached.extensions = req_body.extensions.clone();
-
     cached.known_rooms.clone()
 }
 
@@ -420,7 +419,6 @@ pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> AppResult<()> {
         .execute(&mut db::connect()?)?;
 
     diesel::delete(user_threepids::table.filter(user_threepids::user_id.eq(user_id))).execute(&mut db::connect()?)?;
-
     diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
         .execute(&mut db::connect()?)?;
 

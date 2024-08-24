@@ -3,6 +3,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::profile::*;
+use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::http::ProfileResBody;
 use crate::core::identifiers::*;
 use crate::core::user::ProfileField;
@@ -32,13 +33,9 @@ pub fn authed_router() -> Router {
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        let profile = crate::sending::get(
-            user_id
-                .server_name()
-                .build_url(&format!("/federation/v1/query/profile?user_id={}", user_id))?,
-        )
-        .send()
-        .await?;
+        let profile = profile_request(ProfileReqArgs{
+            user_id, field: None,
+        })?.send().await?;
 
         return json_ok(profile);
     }
@@ -181,12 +178,10 @@ async fn set_avatar_url(
 async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        let url = user_id.server_name().build_url(&format!(
-            "federation/v1/query/profile?user_id={}&field={}",
+        let body = profile_request(ProfileReqArgs {
             user_id,
-            ProfileField::DisplayName
-        ))?;
-        let body = crate::sending::get(url).send::<DisplayNameResBody>().await?;
+            field: Some(ProfileField::DisplayName),
+        })?.send::<DisplayNameResBody>().await?;
         json_ok(body)
     } else {
         json_ok(DisplayNameResBody {

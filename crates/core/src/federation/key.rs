@@ -17,7 +17,7 @@ use crate::{
 };
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
-
+use palpo_core::sending::SendRequest;
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -27,8 +27,14 @@ use serde::{Deserialize, Serialize};
 //     }
 // };
 
-/// Request type for the `claim_keys` endpoint.
+// pub fn claim_keys_request(txn_id: &str, body: ClaimKeysReqBody) -> SendRequest {
+//     let url = registration
+//         .build_url(&format!("/app/v1/transactions/{}", txn_id))
+//     crate::sending::post(url)
+//         .stuff(req_body)
+// }
 
+/// Request type for the `claim_keys` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct ClaimKeysReqBody {
     #[serde(
@@ -105,9 +111,10 @@ pub struct KeysReqBody {
     /// Gives all keys for a given user if the list of device ids is empty.
     pub device_keys: BTreeMap<OwnedUserId, Vec<OwnedDeviceId>>,
 }
+crate::json_body_modifier!(KeysReqBody);
 
 /// Response type for the `get_keys` endpoint.
-#[derive(ToSchema, Serialize, Default, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Debug)]
 
 pub struct KeysResBody {
     /// Keys from the queried devices.

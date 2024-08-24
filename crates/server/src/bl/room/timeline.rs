@@ -15,6 +15,7 @@ use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::federation::backfill::backfill_request;
 use crate::core::federation::backfill::BackfillResBody;
 use crate::core::identifiers::*;
 use crate::core::push::{Action, Ruleset, Tweak};
@@ -872,12 +873,9 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     // Request backfill
     for backfill_server in admin_servers {
         info!("Asking {backfill_server} for backfill");
-        let response = crate::sending::get(backfill_server.build_url(&format!(
-            "/federation/v1/backfill/{room_id}&limit=100&v={}",
-            first_pdu.1.event_id
-        ))?)
-        .send::<BackfillResBody>()
-        .await;
+        let response = backfill_request(backfill_server, room_id, &*first_pdu.1.event_id, 100)?
+            .send::<BackfillResBody>()
+            .await;
         match response {
             Ok(response) => {
                 let mut pub_key_map = RwLock::new(BTreeMap::new());

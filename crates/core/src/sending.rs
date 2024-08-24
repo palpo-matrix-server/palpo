@@ -51,7 +51,17 @@ pub enum SendError {
     Reqwest(#[from] reqwest::Error),
     #[error("json: `{0}`")]
     Json(#[from] serde_json::Error),
+    #[error("other: `{0}`")]
+    Other(String),
 }
+
+impl SendError {
+    pub fn other(msg: impl Into<String>) -> Self {
+        Self::Other(msg.into())
+    }
+}
+
+pub type SendResult<T> = Result<T, SendError>;
 
 impl SendRequest {
     method!(get, GET);

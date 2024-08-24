@@ -1,3 +1,4 @@
+use itertools::Itertools;
 /// Endpoints for handling room knocking.
 /// `GET /_matrix/federation/*/make_knock/{room_id}/{user_id}`
 ///
@@ -5,15 +6,15 @@
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1make_knockroomiduser_id
-use crate::{OwnedUserId, RoomVersionId};
+use crate::{OwnedUserId, RoomAliasId, RoomVersionId};
 
-use crate::events::AnyStrippedStateEvent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::serde::{RawJson, RawJsonValue};
-use crate::OwnedRoomId;
-
+use crate::{RoomId, UserId, OwnedRoomId};
+use crate::events::AnyStrippedStateEvent;
+use crate::sending::{SendError, SendRequest, SendResult};
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -24,9 +25,21 @@ use crate::OwnedRoomId;
 //     }
 // };
 
+pub fn make_knock_request(args: MakeKnockReqArgs) -> SendResult<SendRequest> {
+    let ver = args.ver.iter().map(|v|format!("ver={v}")).join("&");
+    let  ver = if ver.is_empty() {
+        ""
+    } else {
+        &*format!("?{}", ver)
+    };
+    Ok(crate::sending::get(args.room_id.server_name().map_err(SendError::other)?.build_url(&format!(
+        "federation/v1/make_knock/{}/{}{}", args.room_id, args.user_id, ver
+    ))?))
+}
+
 /// Request type for the `create_knock_event_template` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct CreateKnockEventTemplateReqArgs {
+pub struct MakeKnockReqArgs {
     /// The room ID that should receive the knock.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -45,7 +58,7 @@ pub struct CreateKnockEventTemplateReqArgs {
 /// Response type for the `create_knock_event_template` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct CreateKnockEventTemplateResBody {
+pub struct MakeKnockResBody {
     /// The version of the room where the server is trying to knock.
     pub room_version: RoomVersionId,
 
@@ -56,7 +69,7 @@ pub struct CreateKnockEventTemplateResBody {
     pub event: Box<RawJsonValue>,
 }
 
-impl CreateKnockEventTemplateResBody {
+impl MakeKnockResBody {
     /// Creates a new `Response` with the given room version ID and event.
     pub fn new(room_version: RoomVersionId, event: Box<RawJsonValue>) -> Self {
         Self { room_version, event }

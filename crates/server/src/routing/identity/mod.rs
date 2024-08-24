@@ -32,36 +32,36 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn status(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     empty_ok()
 }
 #[endpoint]
 async fn versions(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     empty_ok()
 }
 #[endpoint]
 async fn account(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     empty_ok()
 }
 
 #[endpoint]
 async fn lookup(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     let _authed = depot.authed_info()?;
     empty_ok()
 }
 
 #[endpoint]
 async fn store_invite(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     empty_ok()
 }
 
 #[endpoint]
 async fn hash_details(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     let _authed = depot.authed_info()?;
     empty_ok()
 }
@@ -75,14 +75,14 @@ async fn sign_ed25519(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 
 #[endpoint]
 async fn accept_terms(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     let _authed = depot.authed_info()?;
     empty_ok()
 }
 
 #[endpoint]
 async fn terms(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
-    // TODO: fixme
+    // TODO: LATER
     let _authed = depot.authed_info()?;
     empty_ok()
 }

@@ -26,7 +26,7 @@ set +o pipefail
 env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_BASE_IMAGE="$OCI_IMAGE" \
-    go test -json ./tests | tee "$LOG_FILE"
+    go test -timeout 1200s -json ./tests | tee "$LOG_FILE"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

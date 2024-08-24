@@ -10,7 +10,10 @@ use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEv
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::membership::{InviteUserResBodyV2, MakeLeaveEventResBody, SendLeaveEventReqBodyV2};
+use crate::core::federation::knock::MakeKnockReqArgs;
+use crate::core::federation::membership::{
+    make_leave_request, InviteUserResBodyV2, MakeLeaveEventResBody, SendLeaveEventReqBodyV2,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::{
     to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
@@ -911,10 +914,11 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .collect();
 
     for remote_server in servers {
-        let make_leave_response =
-            sending::get(remote_server.build_url(&format!("/federation/v1/make_leave/{}/{}", room_id, user_id))?)
-                .send::<MakeLeaveEventResBody>()
-                .await;
+        let make_leave_response = make_leave_request(
+            room_id,
+            user_id)?
+        .send::<MakeLeaveEventResBody>()
+        .await;
 
         make_leave_response_and_server = make_leave_response.map(|r| (r, remote_server)).map_err(Into::into);
 

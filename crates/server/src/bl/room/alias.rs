@@ -5,6 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 
 use crate::core::client::room::AliasResBody;
+use crate::core::federation::query::directory_request;
 use crate::schema::*;
 use crate::{db, AppError, AppResult, MatrixError};
 
@@ -54,10 +55,7 @@ pub fn set_alias(
 
 pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<AliasResBody> {
     if room_alias.server_name() != crate::server_name() {
-        let url = room_alias
-            .server_name()
-            .build_url(&format!("federation/v1/query/directory?room_alias={}", room_alias))?;
-        let mut body: AliasResBody = crate::sending::get(url).send().await?;
+        let mut body: AliasResBody = directory_request(&room_alias)?.send().await?;
 
         body.servers.shuffle(&mut rand::thread_rng());
 

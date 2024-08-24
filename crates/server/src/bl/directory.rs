@@ -7,7 +7,7 @@ use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHisto
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::StateEventType;
-use crate::core::federation::directory::PublicRoomsReqBody;
+use crate::core::federation::directory::{public_rooms_request, PublicRoomsReqBody};
 use crate::core::ServerName;
 use crate::{AppError, AppResult, MatrixError};
 
@@ -19,8 +19,9 @@ pub async fn get_public_rooms(
     network: &RoomNetwork,
 ) -> AppResult<PublicRoomsResBody> {
     if let Some(other_server) = server.filter(|server| *server != crate::server_name().as_str()) {
-        let body = crate::sending::post(other_server.build_url("federation/v1/publicRooms")?)
-            .stuff(PublicRoomsReqBody {
+        let body = public_rooms_request(
+            other_server,
+            PublicRoomsReqBody {
                 limit,
                 since: since.map(ToOwned::to_owned),
                 filter: PublicRoomFilter {
@@ -28,9 +29,10 @@ pub async fn get_public_rooms(
                     room_types: filter.room_types.clone(),
                 },
                 room_network: RoomNetwork::Matrix,
-            })?
-            .send()
-            .await?;
+            },
+        )?
+        .send()
+        .await?;
 
         Ok(body)
     } else {

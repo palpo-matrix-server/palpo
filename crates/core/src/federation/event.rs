@@ -75,7 +75,7 @@ impl EventByTimestampResBody {
 
 /// Request type for the `get_event` endpoint.
 
-// pub struct Reqxuest {
+// pub struct Request {
 //     /// The event ID to get.
 //     #[salvo(parameter(parameter_in = Path))]
 //     pub event_id: OwnedEventId,

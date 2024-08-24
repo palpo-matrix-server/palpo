@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::events::{room::member::RoomMemberEventContent, AnyStrippedStateEvent, StateEventType};
 use crate::identifiers::*;
 use crate::{serde::RawJson, RawJsonValue, UnixMillis};
+use crate::federation::directory::PublicRoomsReqBody;
+use crate::sending::{SendError, SendRequest, SendResult};
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct InviteUserReqBodyV2 {
@@ -255,6 +257,10 @@ pub struct RequestInitV1 {
 //         1.0 => "/_matrix/federation/v1/make_leave/:room_id/:user_id",
 //     }
 // };
+
+pub fn make_leave_request(room_id: &RoomId, user_id: &UserId) -> SendResult<SendRequest> {
+    Ok(crate::sending::get(room_id.server_name().map_err(SendError::other)?.build_url(&format!("federation/v1/make_leave/{room_id}/{user_id}"))?))
+}
 
 /// Response type for the `get_leave_event` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
