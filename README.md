@@ -1,4 +1,4 @@
-# Palpo: Another matrix server implementation
+# Palpo: A Rust Matrix Server Implementation
 
 This is a matrix server project under development and is not yet available.
 
