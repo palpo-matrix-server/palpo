@@ -185,7 +185,7 @@ impl TryFrom<JsonValue> for CanonicalJsonValue {
             JsonValue::Object(obj) => Self::Object(
                 obj.into_iter()
                     .map(|(k, v)| Ok((k, v.try_into()?)))
-                    .collect::<Result<CanonicalJsonObject, _>>()?,
+                    .collect::<Result<CanonicalJsonObject, CanonicalJsonError>>()?,
             ),
             JsonValue::Null => Self::Null,
         })

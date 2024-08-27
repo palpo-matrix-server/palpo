@@ -29,30 +29,30 @@ pub fn authed_router() -> Router {
 /// - Currently always returns empty list
 #[endpoint]
 async fn get(_aa: AuthArgs) -> JsonResult<ThreepidsResBody> {
-    // TODO: fixme
+    // TODO: later
     json_ok(ThreepidsResBody::new(Vec::new()))
 }
 
 #[endpoint]
 async fn add(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: later
     empty_ok()
 }
 
 #[endpoint]
 async fn bind(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: later
     empty_ok()
 }
 
 #[endpoint]
 async fn unbind(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: later
     empty_ok()
 }
 
 #[endpoint]
 async fn delete(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
+    // TODO: later
     empty_ok()
 }

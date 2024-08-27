@@ -9,7 +9,7 @@ use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBo
 use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::AuthArgs;
-use crate::{db, json_ok, AppError, DepotExt, JsonResult};
+use crate::{cjson_ok, db, json_ok, AppError, CjsonResult, DepotExt, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("user")
@@ -24,21 +24,21 @@ pub fn router() -> Router {
 // #POST /_matrix/federation/v1/user/keys/claim
 /// Claims one-time keys.
 #[endpoint]
-async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResult<ClaimKeysResBody> {
+async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
     let result = crate::user::claim_keys(&body.one_time_keys).await?;
 
-    json_ok(ClaimKeysResBody {
+    cjson_ok(ClaimKeysResBody {
         one_time_keys: result.one_time_keys,
     })
 }
 // #POST /_matrix/federation/v1/user/keys/query
 /// Gets devices and identity keys for the given users.
 #[endpoint]
-async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> JsonResult<KeysResBody> {
+async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
     let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == authed.server_name()).await?;
 
-    json_ok(KeysResBody {
+    cjson_ok(KeysResBody {
         device_keys: result.device_keys,
         master_keys: result.master_keys,
         self_signing_keys: result.self_signing_keys,

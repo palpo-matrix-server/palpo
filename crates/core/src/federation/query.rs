@@ -5,13 +5,12 @@
 /// Get mapped room ID and resident homeservers for a given room alias.
 use std::collections::BTreeMap;
 
+use crate::sending::{SendRequest, SendResult};
+use crate::user::ProfileField;
+use crate::{OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use tracing_subscriber::fmt::format;
-use crate::user::ProfileField;
-use crate::{EventId, OwnedRoomAliasId, UserId, RoomAliasId, OwnedRoomId, OwnedServerName, OwnedUserId, RoomId, ServerName};
-use crate::sending::{SendRequest, SendResult};
 
 /// `/v1/` ([spec])
 ///
@@ -74,8 +73,7 @@ impl RoomInfoResBody {
 // };
 
 pub fn profile_request(args: ProfileReqArgs) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(args.user_id
-        .server_name().build_url(&format!(
+    Ok(crate::sending::get(args.user_id.server_name().build_url(&format!(
         "/federation/v1/query/profile?user_id={}{}",
         args.user_id,
         args.field.map(|field|format!("&field={}", field.to_string())).unwrap_or_default()

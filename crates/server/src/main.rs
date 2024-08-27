@@ -61,10 +61,14 @@ use crate::db::{ConnectionConfig, DieselPool};
 
 pub type AppResult<T> = Result<T, crate::AppError>;
 pub type JsonResult<T> = Result<Json<T>, crate::AppError>;
+pub type CjsonResult<T> = Result<Cjson<T>, crate::AppError>;
 pub type EmptyResult = Result<Json<EmptyObject>, crate::AppError>;
 
 pub fn json_ok<T>(data: T) -> JsonResult<T> {
     Ok(Json(data))
+}
+pub fn cjson_ok<T>(data: T) -> CjsonResult<T> {
+    Ok(Cjson(data))
 }
 pub fn empty_ok() -> JsonResult<EmptyObject> {
     Ok(Json(EmptyObject {}))

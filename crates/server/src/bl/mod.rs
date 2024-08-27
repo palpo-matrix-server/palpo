@@ -15,6 +15,8 @@ pub mod transaction_id;
 pub mod uiaa;
 pub mod user;
 pub use exts::*;
+mod cjson;
+pub use cjson::Cjson;
 pub mod sync;
 
 pub use event::{PduBuilder, PduEvent};

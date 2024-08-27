@@ -15,9 +15,9 @@ use crate::{
     serde::{Base64, RawJson},
     DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId,
 };
+use palpo_core::sending::SendRequest;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
-use palpo_core::sending::SendRequest;
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,

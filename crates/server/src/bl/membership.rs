@@ -914,11 +914,9 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .collect();
 
     for remote_server in servers {
-        let make_leave_response = make_leave_request(
-            room_id,
-            user_id)?
-        .send::<MakeLeaveEventResBody>()
-        .await;
+        let make_leave_response = make_leave_request(room_id, user_id)?
+            .send::<MakeLeaveEventResBody>()
+            .await;
 
         make_leave_response_and_server = make_leave_response.map(|r| (r, remote_server)).map_err(Into::into);
 

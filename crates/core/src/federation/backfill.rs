@@ -9,8 +9,9 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::RawJsonValue;use crate::sending::{SendResult,SendRequest};
-use crate::{OwnedEventId, EventId, OwnedRoomId, OwnedServerName, RoomId, ServerName, UnixMillis};
+use crate::sending::{SendRequest, SendResult};
+use crate::serde::RawJsonValue;
+use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, RoomId, ServerName, UnixMillis};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -21,7 +22,12 @@ use crate::{OwnedEventId, EventId, OwnedRoomId, OwnedServerName, RoomId, ServerN
 //     }
 // };
 
-pub fn backfill_request(server: &ServerName, room_id: &RoomId, event_id: &EventId, limit: usize) -> SendResult<SendRequest> {
+pub fn backfill_request(
+    server: &ServerName,
+    room_id: &RoomId,
+    event_id: &EventId,
+    limit: usize,
+) -> SendResult<SendRequest> {
     Ok(crate::sending::get(server.build_url(&format!(
         "/federation/v1/backfill/{room_id}&limit={limit}&v={event_id}"
     ))?))

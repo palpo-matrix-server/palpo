@@ -29,6 +29,11 @@ impl fmt::Display for CanonicalJsonError {
 }
 
 impl std::error::Error for CanonicalJsonError {}
+impl From<serde_json::Error> for CanonicalJsonError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::SerDe(value)
+    }
+}
 
 /// Errors that can happen in redaction.
 #[derive(Debug)]
