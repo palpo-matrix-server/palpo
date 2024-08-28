@@ -52,6 +52,7 @@ pub(super) async fn get_relation_by_rel_type(
         chunk: res.chunk,
         next_batch: res.next_batch,
         prev_batch: res.prev_batch,
+        recursion_depth: res.recursion_depth,
     })
 }
 
@@ -81,5 +82,6 @@ pub(super) async fn get_relation_by_rel_type_and_event_type(
         chunk: res.chunk,
         next_batch: res.next_batch,
         prev_batch: res.prev_batch,
+        recursion_depth: res.recursion_depth,
     })
 }

@@ -136,6 +136,7 @@ pub fn paginate_relations_with_filter(
                 chunk: events_after,
                 next_batch: next_token.map(|t| t.to_string()),
                 prev_batch: from.map(|from| from.to_string()),
+                recursion_depth: if recurse { Some(depth.into()) } else { None },
             })
         }
         crate::core::Direction::Backward => {
@@ -176,6 +177,7 @@ pub fn paginate_relations_with_filter(
                 chunk: events_before,
                 next_batch: next_token.map(|t| t.to_string()),
                 prev_batch: from.map(|from| from.to_string()),
+                recursion_depth: if recurse { Some(depth.into()) } else { None },
             })
         }
     }

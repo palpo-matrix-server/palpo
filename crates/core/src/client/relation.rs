@@ -293,4 +293,10 @@ pub struct RelationEventsResBody {
     /// batch/page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prev_batch: Option<String>,
+
+    /// If `recurse` was set on the request, the depth to which the server recursed.
+    ///
+    /// If `recurse` was not set, this field must be absent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recursion_depth: Option<u64>,
 }
