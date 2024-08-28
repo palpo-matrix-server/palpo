@@ -407,7 +407,7 @@ pub async fn sync_events_v4(
     let all_joined_rooms = crate::user::joined_rooms(&authed.user_id(), 0)?;
 
     if body.extensions.to_device.enabled.unwrap_or(false) {
-        crate::user::remove_to_device_events(authed.user_id(), authed.device_id(), global_since_sn)?;
+        crate::user::remove_to_device_events(authed.user_id(), authed.device_id(), global_since_sn - 1)?;
     }
 
     let mut left_encrypted_users = HashSet::new(); // Users that have left any encrypted rooms the sender was in

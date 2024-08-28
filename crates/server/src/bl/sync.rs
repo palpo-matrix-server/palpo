@@ -237,7 +237,7 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    crate::user::remove_to_device_events(&sender_user_id, &sender_device_id, since_sn)?;
+    crate::user::remove_to_device_events(&sender_user_id, &sender_device_id, since_sn - 1)?;
 
     let response = SyncEventsResBodyV3 {
         next_batch: next_batch.to_string(),

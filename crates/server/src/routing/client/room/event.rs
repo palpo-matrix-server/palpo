@@ -36,9 +36,7 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
     let mut event = event.clone();
     event.add_age()?;
 
-    json_ok(RoomEventResBody {
-        event: event.to_room_event(),
-    })
+    json_ok(RoomEventResBody::new(event.to_room_event()))
 }
 
 // #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}

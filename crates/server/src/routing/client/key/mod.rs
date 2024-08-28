@@ -7,10 +7,9 @@ use palpo_core::client::key::KeyChangesReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::key::{ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody};
-use crate::core::client::key::{UploadKeysReqBody, UploadKeysResBody};
+use crate::core::client::key::{ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody, UploadKeysReqBody, UploadKeysResBody};
 use crate::user::key;
-use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
+use crate::{json_ok, cjson_ok, AuthArgs, DepotExt, JsonResult, CjsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("keys")
@@ -25,8 +24,8 @@ pub fn authed_router() -> Router {
 // #POST /_matrix/client/r0/keys/claim
 /// Claims one-time keys
 #[endpoint]
-async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResult<ClaimKeysResBody> {
-    json_ok(key::claim_keys(&body.one_time_keys).await?)
+async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
+    cjson_ok(key::claim_keys(&body.one_time_keys).await?)
 }
 
 // #POST /_matrix/client/r0/keys/query
@@ -36,9 +35,9 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> JsonResu
 /// - Gets master keys, self-signing keys, user signing keys and device keys.
 /// - The master and self-signing keys contain signatures that the user is allowed to see
 #[endpoint]
-async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> JsonResult<KeysResBody> {
+async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
-    json_ok(key::query_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
+    cjson_ok(key::query_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
 }
 
 // #POST /_matrix/client/r0/keys/upload

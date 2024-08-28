@@ -41,7 +41,7 @@ CREATE TABLE user_datas (
     user_id text NOT NULL,
     room_id text,
     data_type text NOT NULL,
-    json_data jsonb NOT NULL,
+    json_data json NOT NULL,
     occur_sn bigint not null default nextval('occur_sn_seq'),
     created_at bigint NOT NULL,
     CONSTRAINT user_datas_ukey UNIQUE (user_id, room_id, data_type)
@@ -97,7 +97,7 @@ CREATE TABLE user_sessions (
     user_id text NOT NULL,
     session_id text NOT NULL,
     session_type text not null,
-    value jsonb not null,
+    value json not null,
     expired_at bigint NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT user_sessions_ukey UNIQUE (user_id, session_id)
@@ -171,7 +171,7 @@ CREATE TABLE room_tags (
     user_id text NOT NULL,
     room_id text NOT NULL,
     tag text NOT NULL,
-    content jsonb NOT NULL,
+    content json NOT NULL,
     created_by text NOT NULL,
     created_at bigint NOT NULL
 );
@@ -281,7 +281,7 @@ CREATE TABLE user_pushers (
     profile_tag text,
     pushkey text NOT NULL,
     lang text NOT NULL,
-    data jsonb NOT NULL,
+    data json NOT NULL,
     enabled bool not null,
     last_stream_ordering bigint,
     last_success bigint,
@@ -305,7 +305,7 @@ CREATE TABLE rooms (
 drop table if exists server_signing_keys CASCADE;
 CREATE TABLE server_signing_keys (
      server_id text NOT NULL PRIMARY KEY,
-     key_data jsonb NOT NULL,
+     key_data json NOT NULL,
      updated_at bigint NOT NULL,
      created_at bigint NOT NULL
 );
@@ -316,7 +316,7 @@ CREATE TABLE server_signing_keys (
 --     key_id text NOT NULL,
 --     from_server text NOT NULL,
 --     expired_at bigint NOT NULL,
---     key_data jsonb NOT NULL,
+--     key_data json NOT NULL,
 --     updated_at bigint NOT NULL,
 --     created_at bigint NOT NULL,
 --     CONSTRAINT server_signing_keys_ukey UNIQUE (server_id, key_id, from_server)
@@ -341,7 +341,7 @@ drop table if exists user_filters CASCADE;
 CREATE TABLE user_filters (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
-    filter jsonb NOT NULL,
+    filter json NOT NULL,
     created_at bigint NOT NULL
 );
 CREATE INDEX user_filters_user_id_idx ON user_filters USING btree (user_id);
@@ -417,7 +417,7 @@ CREATE TABLE user_dehydrated_devices
     id bigserial not null PRIMARY KEY,
     user_id text NOT NULL,
     device_id text NOT NULL,
-    device_data jsonb NOT NULL
+    device_data json NOT NULL
 );
 CREATE INDEX IF NOT EXISTS user_dehydrated_devices_user_idx
     ON user_dehydrated_devices USING btree
@@ -474,7 +474,7 @@ CREATE TABLE event_datas
     event_id text NOT NULL PRIMARY KEY,
     event_sn bigserial not null,
     room_id text NOT NULL,
-    internal_metadata jsonb,
+    internal_metadata json,
     format_version bigint,
     json_data json NOT NULL,
     CONSTRAINT event_datas_ukey UNIQUE (event_id, event_sn)
@@ -622,7 +622,7 @@ CREATE TABLE room_users
     forgotten boolean not null DEFAULT false,
     display_name text,
     avatar_url text,
-    state_data jsonb,
+    state_data json,
     created_at bigint NOT NULL,
     CONSTRAINT room_users_ukey UNIQUE (event_id)
 );
@@ -633,7 +633,7 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_keys
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     key_type text NOT NULL,
-    key_data jsonb NOT NULL
+    key_data json NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_idx
     ON e2e_cross_signing_keys USING btree
@@ -665,7 +665,7 @@ CREATE TABLE e2e_room_keys (
     first_message_index bigint,
     forwarded_count bigint,
     is_verified boolean DEFAULT false NOT NULL,
-    session_data jsonb NOT NULL,
+    session_data json NOT NULL,
     created_at bigint NOT NULL
 );
 
@@ -679,8 +679,8 @@ CREATE TABLE e2e_room_keys_versions (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     version bigint NOT NULL,
-    algorithm jsonb NOT NULL,
-    auth_data jsonb NOT NULL,
+    algorithm json NOT NULL,
+    auth_data json NOT NULL,
     is_trashed bool DEFAULT false NOT NULL,
     etag bigint NOT NULL default 0,
     created_at bigint NOT NULL
@@ -695,7 +695,7 @@ CREATE TABLE e2e_device_keys (
     device_id text NOT NULL,
     stream_id bigint NOT NULL,
     display_name text,
-    key_data jsonb NOT NULL,
+    key_data json NOT NULL,
     created_at bigint NOT NULL
 );
 ALTER TABLE ONLY e2e_device_keys
@@ -708,7 +708,7 @@ CREATE TABLE e2e_one_time_keys (
     device_id text NOT NULL,
     algorithm text NOT NULL,
     key_id text not null,
-    key_data jsonb NOT NULL,
+    key_data json NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT e2e_one_time_keys_ukey UNIQUE (user_id, device_id, algorithm, key_id)
 );
@@ -721,7 +721,7 @@ CREATE TABLE e2e_fallback_keys (
     device_id text NOT NULL,
     algorithm text NOT NULL,
     key_id text NOT NULL,
-    key_data jsonb NOT NULL,
+    key_data json NOT NULL,
     used_at bigint,
     created_at bigint NOT NULL
 );
@@ -920,9 +920,9 @@ CREATE TABLE appservice_registrations (
     as_token text NOT NULL,
     hs_token text NOT NULL,
     sender_localpart text NOT NULL,
-    namespaces jsonb NOT NULL,
+    namespaces json NOT NULL,
     rate_limited boolean,
-    protocols jsonb
+    protocols json
 );
 
 
@@ -933,6 +933,6 @@ CREATE TABLE user_uiaa_datas (
     user_id text NOT NULL,
     device_id text NOT NULL,
     session text NOT NULL,
-    uiaa_info jsonb NOT NULL,
+    uiaa_info json NOT NULL,
     CONSTRAINT user_uiaa_datas_ukey UNIQUE (user_id, device_id, session)
 );

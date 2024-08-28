@@ -13,9 +13,9 @@ diesel::table! {
         as_token -> Text,
         hs_token -> Text,
         sender_localpart -> Text,
-        namespaces -> Jsonb,
+        namespaces -> Json,
         rate_limited -> Nullable<Bool>,
-        protocols -> Nullable<Jsonb>,
+        protocols -> Nullable<Json>,
     }
 }
 
@@ -43,7 +43,7 @@ diesel::table! {
         id -> Int8,
         user_id -> Text,
         key_type -> Text,
-        key_data -> Jsonb,
+        key_data -> Json,
     }
 }
 
@@ -65,7 +65,7 @@ diesel::table! {
         device_id -> Text,
         stream_id -> Int8,
         display_name -> Nullable<Text>,
-        key_data -> Jsonb,
+        key_data -> Json,
         created_at -> Int8,
     }
 }
@@ -77,7 +77,7 @@ diesel::table! {
         device_id -> Text,
         algorithm -> Text,
         key_id -> Text,
-        key_data -> Jsonb,
+        key_data -> Json,
         used_at -> Nullable<Int8>,
         created_at -> Int8,
     }
@@ -100,7 +100,7 @@ diesel::table! {
         device_id -> Text,
         algorithm -> Text,
         key_id -> Text,
-        key_data -> Jsonb,
+        key_data -> Json,
         created_at -> Int8,
     }
 }
@@ -115,7 +115,7 @@ diesel::table! {
         first_message_index -> Nullable<Int8>,
         forwarded_count -> Nullable<Int8>,
         is_verified -> Bool,
-        session_data -> Jsonb,
+        session_data -> Json,
         created_at -> Int8,
     }
 }
@@ -125,8 +125,8 @@ diesel::table! {
         id -> Int8,
         user_id -> Text,
         version -> Int8,
-        algorithm -> Jsonb,
-        auth_data -> Jsonb,
+        algorithm -> Json,
+        auth_data -> Json,
         is_trashed -> Bool,
         etag -> Int8,
         created_at -> Int8,
@@ -154,7 +154,7 @@ diesel::table! {
         event_id -> Text,
         event_sn -> Int8,
         room_id -> Text,
-        internal_metadata -> Nullable<Jsonb>,
+        internal_metadata -> Nullable<Json>,
         format_version -> Nullable<Int8>,
         json_data -> Json,
     }
@@ -360,7 +360,7 @@ diesel::table! {
         user_id -> Text,
         room_id -> Text,
         tag -> Text,
-        content -> Jsonb,
+        content -> Json,
         created_by -> Text,
         created_at -> Int8,
     }
@@ -388,7 +388,7 @@ diesel::table! {
         forgotten -> Bool,
         display_name -> Nullable<Text>,
         avatar_url -> Nullable<Text>,
-        state_data -> Nullable<Jsonb>,
+        state_data -> Nullable<Json>,
         created_at -> Int8,
     }
 }
@@ -409,7 +409,7 @@ diesel::table! {
 diesel::table! {
     server_signing_keys (server_id) {
         server_id -> Text,
-        key_data -> Jsonb,
+        key_data -> Json,
         updated_at -> Int8,
         created_at -> Int8,
     }
@@ -531,7 +531,7 @@ diesel::table! {
         user_id -> Text,
         room_id -> Nullable<Text>,
         data_type -> Text,
-        json_data -> Jsonb,
+        json_data -> Json,
         occur_sn -> Int8,
         created_at -> Int8,
     }
@@ -542,7 +542,7 @@ diesel::table! {
         id -> Int8,
         user_id -> Text,
         device_id -> Text,
-        device_data -> Jsonb,
+        device_data -> Json,
     }
 }
 
@@ -564,7 +564,7 @@ diesel::table! {
     user_filters (id) {
         id -> Int8,
         user_id -> Text,
-        filter -> Jsonb,
+        filter -> Json,
         created_at -> Int8,
     }
 }
@@ -634,7 +634,7 @@ diesel::table! {
         profile_tag -> Nullable<Text>,
         pushkey -> Text,
         lang -> Text,
-        data -> Jsonb,
+        data -> Json,
         enabled -> Bool,
         last_stream_ordering -> Nullable<Int8>,
         last_success -> Nullable<Int8>,
@@ -674,7 +674,7 @@ diesel::table! {
         user_id -> Text,
         session_id -> Text,
         session_type -> Text,
-        value -> Jsonb,
+        value -> Json,
         expired_at -> Int8,
         created_at -> Int8,
     }
@@ -697,7 +697,7 @@ diesel::table! {
         user_id -> Text,
         device_id -> Text,
         session -> Text,
-        uiaa_info -> Jsonb,
+        uiaa_info -> Json,
     }
 }
 

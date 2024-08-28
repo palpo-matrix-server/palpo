@@ -289,15 +289,15 @@ pub struct EventByTimestampResBody {
 
 /// Response type for the `get_room_event` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct RoomEventResBody {
+pub struct RoomEventResBody (
     /// Arbitrary JSON of the event body.
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub event: RawJson<AnyTimelineEvent>,
-}
+    pub RawJson<AnyTimelineEvent>,
+);
 impl RoomEventResBody {
     /// Creates a new `Response` with the given event.
     pub fn new(event: RawJson<AnyTimelineEvent>) -> Self {
-        Self { event }
+        Self(event)
     }
 }
 /// `POST /_matrix/client/*/rooms/{room_id}/report/{event_id}`
