@@ -8,10 +8,10 @@ use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}
 #[endpoint]
-pub(super) fn get_relation(_aa: AuthArgs, args: RelatingEventsReqArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) fn get_relation(_aa: AuthArgs, args: RelatingEventsReqArgs, depot: &mut Depot) -> JsonResult<RelationEventsResBody> {
     let authed = depot.authed_info()?;
 
-    crate::room::pdu_metadata::paginate_relations_with_filter(
+    let res = crate::room::pdu_metadata::paginate_relations_with_filter(
         authed.user_id(),
         &args.room_id,
         &args.event_id,
@@ -23,7 +23,7 @@ pub(super) fn get_relation(_aa: AuthArgs, args: RelatingEventsReqArgs, depot: &m
         args.recurse,
         args.dir,
     )?;
-    empty_ok()
+    json_ok(res)
 }
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}
@@ -48,12 +48,7 @@ pub(super) async fn get_relation_by_rel_type(
         args.dir,
     )?;
 
-    json_ok(RelationEventsResBody {
-        chunk: res.chunk,
-        next_batch: res.next_batch,
-        prev_batch: res.prev_batch,
-        recursion_depth: res.recursion_depth,
-    })
+    json_ok(res)
 }
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}/{event_type}
@@ -78,10 +73,5 @@ pub(super) async fn get_relation_by_rel_type_and_event_type(
         args.dir,
     )?;
 
-    json_ok(RelationEventsResBody {
-        chunk: res.chunk,
-        next_batch: res.next_batch,
-        prev_batch: res.prev_batch,
-        recursion_depth: res.recursion_depth,
-    })
+    json_ok(res)
 }
