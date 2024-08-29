@@ -7,9 +7,12 @@ use palpo_core::client::key::KeyChangesReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::key::{ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody, UploadKeysReqBody, UploadKeysResBody};
+use crate::core::client::key::{
+    ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody, UploadKeysReqBody,
+    UploadKeysResBody,
+};
 use crate::user::key;
-use crate::{json_ok, cjson_ok, AuthArgs, DepotExt, JsonResult, CjsonResult};
+use crate::{cjson_ok, json_ok, AuthArgs, CjsonResult, DepotExt, JsonResult};
 
 pub fn authed_router() -> Router {
     Router::with_path("keys")

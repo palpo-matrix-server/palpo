@@ -8,7 +8,6 @@ pub mod directory;
 pub mod encryption;
 pub mod events;
 pub mod federation;
-pub mod http;
 pub mod identifiers;
 mod percent_encode;
 pub mod power_levels;

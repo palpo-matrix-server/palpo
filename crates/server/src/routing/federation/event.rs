@@ -3,8 +3,8 @@ use salvo::prelude::*;
 
 use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
-use crate::core::http::RoomEventReqArgs;
 use crate::core::identifiers::*;
+use crate::core::room::RoomEventReqArgs;
 use crate::core::UnixMillis;
 use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
 

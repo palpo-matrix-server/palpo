@@ -8,7 +8,11 @@ use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}
 #[endpoint]
-pub(super) fn get_relation(_aa: AuthArgs, args: RelatingEventsReqArgs, depot: &mut Depot) -> JsonResult<RelationEventsResBody> {
+pub(super) fn get_relation(
+    _aa: AuthArgs,
+    args: RelatingEventsReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<RelationEventsResBody> {
     let authed = depot.authed_info()?;
 
     let res = crate::room::pdu_metadata::paginate_relations_with_filter(

@@ -6,7 +6,7 @@ use salvo::prelude::*;
 use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody};
 use crate::core::events::tag::{TagEvent, TagEventContent};
 use crate::core::events::RoomAccountDataEventType;
-use crate::core::http::UserRoomReqArgs;
+use crate::core::user::UserRoomReqArgs;
 use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 
 // #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags

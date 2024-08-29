@@ -6,7 +6,7 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
-use crate::core::http::RoomEventReqArgs;
+use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{EventId, OwnedUserId};
 use crate::{

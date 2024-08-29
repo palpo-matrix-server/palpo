@@ -138,3 +138,19 @@ pub struct PushRule {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pattern: Option<String>,
 }
+
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct ScopeKindRuleReqArgs {
+    /// The scope to fetch rules from.
+    #[salvo(parameter(parameter_in = Path))]
+    pub scope: RuleScope,
+
+    /// The kind of rule.
+    #[salvo(parameter(parameter_in = Path))]
+    pub kind: RuleKind,
+
+    /// The identifier for the rule.
+    #[salvo(parameter(parameter_in = Path))]
+    pub rule_id: String,
+}

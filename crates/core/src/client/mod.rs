@@ -25,7 +25,6 @@ pub mod space;
 pub mod state;
 pub mod sync_events;
 pub mod tag;
-pub mod third_party;
 pub mod typing;
 pub mod uiaa;
 pub mod user;

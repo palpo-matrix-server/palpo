@@ -10,7 +10,7 @@ use crate::core::client::room::{ContextReqArgs, ContextResBody, ReportContentReq
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::http::RoomEventReqArgs;
+use crate::core::room::RoomEventReqArgs;
 use crate::room::state::DbRoomStateField;
 use crate::utils::HtmlEscape;
 use crate::PduBuilder;

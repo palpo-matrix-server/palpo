@@ -4,8 +4,8 @@ use salvo::prelude::*;
 
 use crate::core::client::profile::*;
 use crate::core::federation::query::{profile_request, ProfileReqArgs};
-use crate::core::http::ProfileResBody;
 use crate::core::identifiers::*;
+use crate::core::user::ProfileResBody;
 use crate::core::user::ProfileField;
 use crate::exts::*;
 use crate::user::DbProfile;

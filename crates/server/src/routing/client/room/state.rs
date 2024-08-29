@@ -13,8 +13,8 @@ use crate::core::events::receipt::{
 };
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::{AnyStateEventContent, RoomAccountDataEventType, StateEventType};
-use crate::core::http::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::core::identifiers::*;
+use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::core::UnixMillis;
 use crate::utils::HtmlEscape;
 use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};

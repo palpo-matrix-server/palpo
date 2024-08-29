@@ -5,8 +5,8 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::federation::query::RoomInfoResBody;
-use crate::core::http::ProfileResBody;
 use crate::core::identifiers::*;
+use crate::core::user::ProfileResBody;
 use crate::core::user::ProfileField;
 use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
 

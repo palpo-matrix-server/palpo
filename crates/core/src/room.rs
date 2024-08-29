@@ -1,8 +1,9 @@
 //! Common types for rooms.
 
 use salvo::prelude::*;
-
-use crate::{serde::StringEnum, PrivOwnedStr};
+use serde::Deserialize;
+use crate::{serde::StringEnum, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::events::StateEventType;
 
 /// An enum of possible room types.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
@@ -34,4 +35,47 @@ pub enum Visibility {
     #[doc(hidden)]
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
+}
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct RoomEventReqArgs {
+    /// Room in which the event to be reported is located.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// Event to report.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+}
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct RoomTypingReqArgs {
+    /// Room in which the event to be reported is located.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// Event to report.
+    #[salvo(parameter(parameter_in = Path))]
+    pub user_id: OwnedUserId,
+}
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct RoomUserReqArgs {
+    /// Room in which the event to be reported is located.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// Event to report.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+}
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct RoomEventTypeReqArgs {
+    /// The ID of the room the event is in.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The ID of the event.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_type: StateEventType,
 }
