@@ -186,30 +186,25 @@ pub struct ContentWithFileNameReqArgs {
 //     }
 // };
 
-// /// Request type for the `create_media_content` endpoint.
-// #[derive(ToSchema, Deserialize, Debug)]
-// pub struct CreateContentReqBody {
-//     /// The name of the file being uploaded.
-//     #[salvo(parameter(parameter_in = Query))]
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub filename: Option<String>,
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct UploadContentReqArgs {
+    /// The name of the file being uploaded.
+    #[salvo(parameter(parameter_in = Query))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
 
-//     /// The content type of the file being uploaded.
-//     #[palpo_api(header = CONTENT_TYPE)]
-//     pub content_type: Option<String>,
+    /// The content type of the file being uploaded.
+    #[salvo(parameter(parameter_in = Header))]
+    pub content_type: Option<String>,
 
-//     /// Should the server return a blurhash or not.
-//     ///
-//     /// This uses the unstable prefix in
-//     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-//     #[salvo(parameter(parameter_in = Query))]
-//     #[serde(default, skip_serializing_if = "crate::serde::is_default", rename = "xyz.amorgan.generate_blurhash")]
-//     pub generate_blurhash: bool,
-
-//     /// The file contents to upload.
-//     #[palpo_api(raw_body)]
-//     pub file: Vec<u8>,
-// }
+    /// Should the server return a blurhash or not.
+    ///
+    /// This uses the unstable prefix in
+    /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
+    #[salvo(parameter(parameter_in = Query))]
+    #[serde(default, skip_serializing_if = "crate::serde::is_default", rename = "xyz.amorgan.generate_blurhash")]
+    pub generate_blurhash: bool,
+}
 
 /// Response type for the `create_media_content` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
@@ -250,30 +245,30 @@ impl UploadContentResBody {
 // };
 
 /// Request type for the `create_content_async` endpoint.
-#[derive(ToParameters, Deserialize, Debug)]
-pub struct UploadContentReqArgs {
-    /// The server name from the mxc:// URI (the authoritory component).
-    #[salvo(parameter(parameter_in = Path))]
-    pub server_name: OwnedServerName,
-
-    /// The media ID from the mxc:// URI (the path component).
-    #[salvo(parameter(parameter_in = Path))]
-    pub media_id: String,
-
-    /// The file contents to upload.
-    // #[palpo_api(raw_body)]
-    // pub file: Vec<u8>,
-
-    // /// The content type of the file being uploaded.
-    // #[palpo_api(header = CONTENT_TYPE)]
-    // pub content_type: Option<String>,
-
-    /// The name of the file being uploaded.
-    #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub filename: Option<String>,
-    // TODO: How does this and msc2448 (blurhash) interact?
-}
+// #[derive(ToParameters, Deserialize, Debug)]
+// pub struct UploadContentReqArgs {
+//     /// The server name from the mxc:// URI (the authoritory component).
+//     #[salvo(parameter(parameter_in = Path))]
+//     pub server_name: OwnedServerName,
+//
+//     /// The media ID from the mxc:// URI (the path component).
+//     #[salvo(parameter(parameter_in = Path))]
+//     pub media_id: String,
+//
+//     /// The file contents to upload.
+//     // #[palpo_api(raw_body)]
+//     // pub file: Vec<u8>,
+//
+//     // /// The content type of the file being uploaded.
+//     // #[palpo_api(header = CONTENT_TYPE)]
+//     // pub content_type: Option<String>,
+//
+//     /// The name of the file being uploaded.
+//     #[salvo(parameter(parameter_in = Query))]
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub filename: Option<String>,
+//     // TODO: How does this and msc2448 (blurhash) interact?
+// }
 /// `GET /_matrix/media/*/download/{serverName}/{mediaId}/{fileName}`
 ///
 /// Retrieve content from the media store, specifying a filename to return.

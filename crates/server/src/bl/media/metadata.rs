@@ -10,9 +10,10 @@ use crate::{db, AppResult};
 pub struct DbMetadata {
     pub id: i64,
     pub media_id: String,
-    pub media_origin: OwnedServerName,
-    pub media_type: String,
+    pub origin_server: OwnedServerName,
+    pub content_type: String,
     pub upload_name: String,
+    pub file_extension: Option<String>,
     pub file_size: i64,
     pub hash: String,
     pub created_by: Option<OwnedUserId>,
@@ -22,9 +23,10 @@ pub struct DbMetadata {
 #[diesel(table_name = media_metadatas)]
 pub struct NewDbMetadata {
     pub media_id: String,
-    pub media_origin: OwnedServerName,
-    pub media_type: String,
+    pub origin_server: OwnedServerName,
+    pub content_type: String,
     pub upload_name: String,
+    pub file_extension: Option<String>,
     pub file_size: i64,
     pub hash: String,
     pub created_by: Option<OwnedUserId>,
@@ -34,7 +36,7 @@ pub struct NewDbMetadata {
 pub fn get_metadata(server_name: &ServerName, media_id: &str) -> AppResult<DbMetadata> {
     media_metadatas::table
         .filter(media_metadatas::media_id.eq(media_id))
-        .filter(media_metadatas::media_origin.eq(server_name))
+        .filter(media_metadatas::origin_server.eq(server_name))
         .first::<DbMetadata>(&mut *db::connect()?)
         .map_err(Into::into)
 }

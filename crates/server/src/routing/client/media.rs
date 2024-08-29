@@ -1,12 +1,13 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
 use std::path::Path;
 
-use crate::core::client::media::*;
-use crate::core::{OwnedMxcUri, UnixMillis};
 use diesel::prelude::*;
 use salvo::fs::NamedFile;
 use salvo::prelude::*;
 
+use crate::core::client::media::*;
+use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::media::*;
 use crate::schema::*;
 use crate::{
@@ -44,13 +45,13 @@ pub fn router() -> Router {
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    let path = crate::media_path(&args.server_name, &args.media_id);
+    let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
+    let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
     if Path::new(&path).exists() {
-        let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
         NamedFile::builder(path)
             .content_type(
                 metadata
-                    .media_type
+                    .content_type
                     .parse()
                     .map_err(|_| AppError::public("invalid content type."))?,
             )
@@ -79,12 +80,12 @@ async fn get_content_with_filename(
 ) -> AppResult<()> {
     let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
 
-    let path = crate::media_path(&args.server_name, &args.media_id);
+    let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
     if Path::new(&path).exists() {
         NamedFile::builder(path)
             .content_type(
                 metadata
-                    .media_type
+                    .content_type
                     .parse()
                     .map_err(|_| AppError::public("invalid content type."))?,
             )
@@ -129,26 +130,35 @@ async fn upload(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<UploadContentResBody> {
-    let authed = depot.take_authed_info()?;
+    // let authed = depot.take_authed_info()?;
 
-    let file = req.first_file().await.unwrap();
-    let upload_name = file.name().unwrap_or_default();
-    let ext = utils::fs::get_file_ext(&upload_name);
-    let checksum = utils::hash::hash_file_sha2_256(file.path())?;
+    let upload_name = args.filename.clone().unwrap_or_default().to_owned();
+    let file_extension = utils::fs::get_file_ext(&upload_name);
+
+    let payload = req
+        .payload_with_max_size(crate::max_request_size() as usize)
+        .await
+        .unwrap();
+    let checksum = utils::hash::hash_data_sha2_256(payload)?;
     let media_id = checksum.to_base32_crockford();
     let mxc = format!("mxc://{}/{}", crate::config().server_name, media_id);
 
     let conf = crate::config();
 
-    let dest_path = crate::media_path(&conf.server_name, &media_id);
+    let dest_path = crate::media_path(&conf.server_name, &media_id, Some(&*file_extension));
     let metadata = NewDbMetadata {
         media_id,
-        media_origin: conf.server_name.clone(),
-        media_type: file.content_type().unwrap().to_string(),
-        upload_name: upload_name.to_owned(),
-        file_size: file.size() as i64,
+        origin_server: conf.server_name.clone(),
+        content_type: args.content_type.clone().unwrap_or_default(),
+        upload_name,
+        file_extension: if file_extension.is_empty() {
+            None
+        } else {
+            Some(file_extension)
+        },
+        file_size: payload.len() as i64,
         hash: checksum.to_hex_uppercase(),
-        created_by: Some(authed.user_id().clone()),
+        created_by: None,
         created_at: UnixMillis::now(),
     };
 
@@ -156,10 +166,21 @@ async fn upload(
         .values(&metadata)
         .execute(&mut *db::connect()?)?;
 
-    if !Path::new(&dest_path).exists() {
+    let dest_path = Path::new(&dest_path);
+    if dest_path.exists() {
+        let metadata = fs::metadata(dest_path)?;
+        if metadata.len() != payload.len() as u64 {
+            if let Err(e) = fs::remove_file(dest_path) {
+                tracing::error!(error = ?e, "remove media file failed");
+            }
+        }
+    }
+    if !dest_path.exists() {
         let parent_dir = utils::fs::get_parent_dir(&dest_path);
         fs::create_dir_all(&parent_dir)?;
-        fs::copy(file.path(), dest_path)?;
+
+        let mut file = File::create(dest_path)?;
+        file.write_all(&payload)?;
 
         //TODO: thumbnail support
     }

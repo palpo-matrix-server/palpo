@@ -5,7 +5,6 @@ use salvo::prelude::*;
 
 use crate::core::third_party::*;
 
-
 pub fn router() -> Router {
     Router::with_path("thirdparty")
         .push(Router::with_path("protocol/<protocol>").get(protocol))

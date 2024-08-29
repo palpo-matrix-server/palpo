@@ -10,29 +10,30 @@ drop table if exists media_metadatas CASCADE;
 CREATE TABLE media_metadatas (
     id bigserial not null PRIMARY KEY,
     media_id text NOT NULL,
-    media_origin text NOT NULL,
-    media_type text NOT NULL,
+    origin_server text NOT NULL,
+    content_type text NOT NULL,
     upload_name text NOT NULL,
+    file_extension text,
     file_size bigint NOT NULL,
     hash text NOT NULL,
     created_by text,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_metadatas_index ON media_metadatas USING btree (media_id, media_origin);
+CREATE UNIQUE INDEX media_metadatas_index ON media_metadatas USING btree (media_id, origin_server);
 
 drop table if exists media_thumbnails CASCADE;
 CREATE TABLE media_thumbnails (
     id bigserial not null PRIMARY KEY,
     media_id text NOT NULL,
-    media_origin text NOT NULL,
-    media_type text NOT NULL,
+    origin_server text NOT NULL,
+    content_type text NOT NULL,
     file_size bigint NOT NULL,
     width integer NOT NULL,
     height integer NOT NULL,
     resize_method text NOT NULL,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_thumbnail_index ON media_thumbnails USING btree (media_id, media_origin, width, height, resize_method);
+CREATE UNIQUE INDEX media_thumbnail_index ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
 
 
 drop table if exists user_datas CASCADE;

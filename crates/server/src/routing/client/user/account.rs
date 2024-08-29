@@ -6,8 +6,8 @@ use serde_json::json;
 
 use crate::core::client::account::data::{GlobalAccountDataResBody, RoomAccountDataResBody};
 use crate::core::events::{AnyGlobalAccountDataEvent, AnyGlobalAccountDataEventContent, AnyRoomAccountDataEvent};
-use crate::core::user::{UserEventTypeReqArgs, UserRoomEventTypeReqArgs};
 use crate::core::serde::RawJson;
+use crate::core::user::{UserEventTypeReqArgs, UserRoomEventTypeReqArgs};
 use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 #[derive(Deserialize)]

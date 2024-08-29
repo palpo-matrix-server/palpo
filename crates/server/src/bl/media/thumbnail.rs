@@ -10,8 +10,8 @@ use crate::{db, AppResult};
 pub struct DbThumbnail {
     pub id: i64,
     pub media_id: String,
-    pub media_origin: OwnedServerName,
-    pub media_type: String,
+    pub origin_server: OwnedServerName,
+    pub content_type: String,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -22,8 +22,8 @@ pub struct DbThumbnail {
 #[diesel(table_name = media_thumbnails)]
 pub struct NewDbThumbnail {
     pub media_id: String,
-    pub media_origin: OwnedServerName,
-    pub media_type: String,
+    pub origin_server: OwnedServerName,
+    pub content_type: String,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -34,7 +34,7 @@ pub struct NewDbThumbnail {
 pub fn get_thumbnail(media_id: &str, origin: &ServerName) -> AppResult<DbThumbnail> {
     media_thumbnails::table
         .filter(media_thumbnails::media_id.eq(media_id))
-        .filter(media_thumbnails::media_origin.eq(origin))
+        .filter(media_thumbnails::origin_server.eq(origin))
         .first::<DbThumbnail>(&mut *db::connect()?)
         .map_err(Into::into)
 }

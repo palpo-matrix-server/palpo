@@ -14,7 +14,7 @@ use crate::core::client::push::{
 };
 use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::GlobalAccountDataEventType;
-use crate::core::push::{InsertPushRuleError, ScopeKindRuleReqArgs, RemovePushRuleError, RuleScope};
+use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
 
 use crate::{empty_ok, hoops, json_ok, DepotExt, EmptyResult, JsonResult, MatrixError};
 

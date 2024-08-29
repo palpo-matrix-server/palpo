@@ -23,13 +23,12 @@ impl Checksum {
 }
 
 pub fn hash_file_sha2_256(file: impl AsRef<Path>) -> Result<Checksum, std::io::Error> {
-    // let mut file = File::open(file.as_ref())?;
-    let chksum = sha2_256::chksum(file.as_ref()).unwrap();
-    Ok(Checksum(chksum.as_bytes().to_vec()))
+    let digest = sha2_256::chksum(file.as_ref()).unwrap();
+    Ok(Checksum(digest.as_bytes().to_vec()))
 }
-pub fn hash_str_sha2_256(value: impl AsRef<str>) -> Result<Checksum, std::io::Error> {
-    let bytes = value.as_ref().as_bytes();
-    Ok(Checksum(bytes.to_vec()))
+pub fn hash_data_sha2_256(value: &[u8]) -> Result<Checksum, std::io::Error> {
+    let digest = sha2_256::chksum(value).unwrap();
+    Ok(Checksum(digest.as_bytes().to_vec()))
 }
 
 //https://docs.rs/crate/checksums/0.6.0/source/src/hashing/mod.rs

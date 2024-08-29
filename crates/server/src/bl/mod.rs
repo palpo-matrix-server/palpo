@@ -627,7 +627,7 @@ pub fn space_path() -> &'static str {
     config().space_path.deref()
 }
 
-pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
+pub fn media_path(server_name: &ServerName, media_id: &str, extension: Option<&str>) -> PathBuf {
     let server_name = if server_name == crate::server_name().as_str() {
         "_"
     } else {
@@ -637,7 +637,12 @@ pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     r.push(space_path());
     r.push("media");
     r.push(server_name);
-    r.push(media_id);
+    let extension = extension.unwrap_or_default();
+    if !extension.is_empty() {
+        r.push(format!("{media_id}.{extension}"));
+    } else {
+        r.push(media_id);
+    }
     r
 }
 

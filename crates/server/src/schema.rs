@@ -277,9 +277,10 @@ diesel::table! {
     media_metadatas (id) {
         id -> Int8,
         media_id -> Text,
-        media_origin -> Text,
-        media_type -> Text,
+        origin_server -> Text,
+        content_type -> Text,
         upload_name -> Text,
+        file_extension -> Nullable<Text>,
         file_size -> Int8,
         hash -> Text,
         created_by -> Nullable<Text>,
@@ -291,8 +292,8 @@ diesel::table! {
     media_thumbnails (id) {
         id -> Int8,
         media_id -> Text,
-        media_origin -> Text,
-        media_type -> Text,
+        origin_server -> Text,
+        content_type -> Text,
         file_size -> Int8,
         width -> Int4,
         height -> Int4,
