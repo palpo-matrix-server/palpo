@@ -16,7 +16,7 @@ CREATE TABLE media_metadatas (
     upload_name text,
     file_extension text,
     file_size bigint NOT NULL,
-    hash text NOT NULL,
+    file_hash text,
     created_by text,
     created_at bigint NOT NULL
 );

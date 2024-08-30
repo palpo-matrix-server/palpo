@@ -21,13 +21,16 @@ impl Checksum {
         result
     }
 }
+pub fn base32_crockford(data: &[u8]) -> String {
+    CROCKFORD.encode(data)
+}
 
 pub fn hash_file_sha2_256(file: impl AsRef<Path>) -> Result<Checksum, std::io::Error> {
     let digest = sha2_256::chksum(file.as_ref()).unwrap();
     Ok(Checksum(digest.as_bytes().to_vec()))
 }
-pub fn hash_data_sha2_256(value: &[u8]) -> Result<Checksum, std::io::Error> {
-    let digest = sha2_256::chksum(value).unwrap();
+pub fn hash_data_sha2_256(data: &[u8]) -> Result<Checksum, std::io::Error> {
+    let digest = sha2_256::chksum(data).unwrap();
     Ok(Checksum(digest.as_bytes().to_vec()))
 }
 

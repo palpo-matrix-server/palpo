@@ -283,7 +283,7 @@ diesel::table! {
         upload_name -> Nullable<Text>,
         file_extension -> Nullable<Text>,
         file_size -> Int8,
-        hash -> Text,
+        file_hash -> Nullable<Text>,
         created_by -> Nullable<Text>,
         created_at -> Int8,
     }

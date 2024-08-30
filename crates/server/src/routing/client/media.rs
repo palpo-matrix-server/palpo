@@ -1,12 +1,14 @@
 use std::fs::{self, File};
-use std::io::Write;use std::str::FromStr;
+use std::io::Write;
 use std::path::Path;
+use std::str::FromStr;
 
 use diesel::prelude::*;
 use mime::Mime;
 use salvo::fs::NamedFile;
 use salvo::http::HeaderValue;
 use salvo::prelude::*;
+use uuid::Uuid;
 
 use crate::core::client::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
@@ -48,13 +50,17 @@ pub fn router() -> Router {
 #[endpoint]
 async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
-    let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
+    let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
         NamedFile::builder(path)
-            .content_type(metadata.content_type.as_deref()
-                .map(|c|Mime::from_str(c).ok())
-                .flatten()
-                .unwrap_or(mime::APPLICATION_OCTET_STREAM))
+            .content_type(
+                metadata
+                    .content_type
+                    .as_deref()
+                    .map(|c| Mime::from_str(c).ok())
+                    .flatten()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+            )
             .send(req.headers(), res)
             .await;
 
@@ -80,18 +86,20 @@ async fn get_content_with_filename(
 ) -> AppResult<()> {
     let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
 
-    let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
+    let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
         let mut file = NamedFile::builder(path)
             .content_type(
                 metadata
-                    .content_type.as_deref()
-                    .map(|c|Mime::from_str(c).ok())
+                    .content_type
+                    .as_deref()
+                    .map(|c| Mime::from_str(c).ok())
                     .flatten()
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM),
             )
             .attached_name(args.filename)
-            .build().await?;
+            .build()
+            .await?;
         if let Some(Ok(content_disposition)) = metadata.content_disposition.as_deref().map(HeaderValue::from_str) {
             file.set_content_disposition(content_disposition);
         }
@@ -143,13 +151,15 @@ async fn upload(
         .payload_with_max_size(crate::max_request_size() as usize)
         .await
         .unwrap();
-    let checksum = utils::hash::hash_data_sha2_256(payload)?;
-    let media_id = checksum.to_base32_crockford();
+    // let checksum = utils::hash::hash_data_sha2_256(payload)?;
+    // let media_id = checksum.to_base32_crockford();
+
+    let media_id = utils::base32_crockford(Uuid::new_v4().as_bytes());
     let mxc = format!("mxc://{}/{}", crate::config().server_name, media_id);
 
     let conf = crate::config();
 
-    let dest_path = crate::media_path(&conf.server_name, &media_id, file_extension.as_deref());
+    let dest_path = crate::media_path(&conf.server_name, &media_id);
     let metadata = NewDbMetadata {
         media_id,
         origin_server: conf.server_name.clone(),
@@ -161,7 +171,7 @@ async fn upload(
         upload_name,
         file_extension,
         file_size: payload.len() as i64,
-        hash: checksum.to_hex_uppercase(),
+        file_hash: None,
         created_by: None,
         created_at: UnixMillis::now(),
     };

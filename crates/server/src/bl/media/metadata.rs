@@ -16,7 +16,7 @@ pub struct DbMetadata {
     pub upload_name: Option<String>,
     pub file_extension: Option<String>,
     pub file_size: i64,
-    pub hash: String,
+    pub file_hash: Option<String>,
     pub created_by: Option<OwnedUserId>,
     pub created_at: UnixMillis,
 }
@@ -30,7 +30,7 @@ pub struct NewDbMetadata {
     pub upload_name: Option<String>,
     pub file_extension: Option<String>,
     pub file_size: i64,
-    pub hash: String,
+    pub file_hash: Option<String>,
     pub created_by: Option<OwnedUserId>,
     pub created_at: UnixMillis,
 }
