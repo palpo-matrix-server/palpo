@@ -1,9 +1,11 @@
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::Write;use std::str::FromStr;
 use std::path::Path;
 
 use diesel::prelude::*;
+use mime::Mime;
 use salvo::fs::NamedFile;
+use salvo::http::HeaderValue;
 use salvo::prelude::*;
 
 use crate::core::client::media::*;
@@ -49,12 +51,10 @@ async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res
     let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
     if Path::new(&path).exists() {
         NamedFile::builder(path)
-            .content_type(
-                metadata
-                    .content_type
-                    .parse()
-                    .map_err(|_| AppError::public("invalid content type."))?,
-            )
+            .content_type(metadata.content_type.as_deref()
+                .map(|c|Mime::from_str(c).ok())
+                .flatten()
+                .unwrap_or(mime::APPLICATION_OCTET_STREAM))
             .send(req.headers(), res)
             .await;
 
@@ -82,16 +82,20 @@ async fn get_content_with_filename(
 
     let path = crate::media_path(&args.server_name, &args.media_id, metadata.file_extension.as_deref());
     if Path::new(&path).exists() {
-        NamedFile::builder(path)
+        let mut file = NamedFile::builder(path)
             .content_type(
                 metadata
-                    .content_type
-                    .parse()
-                    .map_err(|_| AppError::public("invalid content type."))?,
+                    .content_type.as_deref()
+                    .map(|c|Mime::from_str(c).ok())
+                    .flatten()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
             )
             .attached_name(args.filename)
-            .send(req.headers(), res)
-            .await;
+            .build().await?;
+        if let Some(Ok(content_disposition)) = metadata.content_disposition.as_deref().map(HeaderValue::from_str) {
+            file.set_content_disposition(content_disposition);
+        }
+        file.send(req.headers(), res).await;
 
         Ok(())
     } else if &*args.server_name != crate::server_name() && args.allow_remote {
@@ -132,8 +136,8 @@ async fn upload(
 ) -> JsonResult<UploadContentResBody> {
     // let authed = depot.take_authed_info()?;
 
-    let upload_name = args.filename.clone().unwrap_or_default().to_owned();
-    let file_extension = utils::fs::get_file_ext(&upload_name);
+    let upload_name = args.filename.clone();
+    let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
 
     let payload = req
         .payload_with_max_size(crate::max_request_size() as usize)
@@ -145,17 +149,17 @@ async fn upload(
 
     let conf = crate::config();
 
-    let dest_path = crate::media_path(&conf.server_name, &media_id, Some(&*file_extension));
+    let dest_path = crate::media_path(&conf.server_name, &media_id, file_extension.as_deref());
     let metadata = NewDbMetadata {
         media_id,
         origin_server: conf.server_name.clone(),
-        content_type: args.content_type.clone().unwrap_or_default(),
+        content_disposition: args
+            .filename
+            .clone()
+            .map(|filename| format!("inline; filename={filename}")),
+        content_type: args.content_type.clone(),
         upload_name,
-        file_extension: if file_extension.is_empty() {
-            None
-        } else {
-            Some(file_extension)
-        },
+        file_extension,
         file_size: payload.len() as i64,
         hash: checksum.to_hex_uppercase(),
         created_by: None,
