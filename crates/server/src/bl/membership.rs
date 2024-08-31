@@ -44,7 +44,7 @@ pub async fn send_join_event_v1(
 
     crate::event::handler::acl_check(server_name, room_id)?;
 
-    // TODO: Conduit does not implement restricted join rules yet, we always reject
+    // TODO: Palpo does not implement restricted join rules yet, we always reject
     let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "")?;
 
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
@@ -62,7 +62,7 @@ pub async fn send_join_event_v1(
             join_rules_event_content.join_rule,
             JoinRule::Restricted { .. } | JoinRule::KnockRestricted { .. }
         ) {
-            return Err(MatrixError::unable_to_authorize_join("Conduit does not support restricted rooms yet.").into());
+            return Err(MatrixError::unable_to_authorize_join("Palpo does not support restricted rooms yet.").into());
         }
     }
 

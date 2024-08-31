@@ -7,9 +7,9 @@ use std::time::Duration;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
+use crate::sending::{SendRequest, SendResult};
 use crate::serde::StringEnum;
 use crate::{EventId, OwnedMxcUri, OwnedServerName, PrivOwnedStr, RoomId, ServerName, UnixMillis};
-use crate::sending::{SendRequest, SendResult};
 
 /// The default duration that the client should be willing to wait to start receiving data.
 pub(crate) fn default_download_timeout() -> Duration {
@@ -148,13 +148,8 @@ impl ConfigResBody {
 //         })
 //     }
 // }
-pub fn thumbnail_request(
-    server: &ServerName,
-    args: ThumbnailReqArgs,
-) -> SendResult<SendRequest> {
-    let mut url = server.build_url(&format!(
-        "/media/v3/thumbnaill/{server}/{}", args.media_id
-    ))?;
+pub fn thumbnail_request(server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+    let mut url = server.build_url(&format!("/media/v3/thumbnaill/{server}/{}", args.media_id))?;
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("width", &args.width.to_string());

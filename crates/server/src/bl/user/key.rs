@@ -250,24 +250,19 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     while let Some((server, response)) = futures.next().await {
         match response {
             Ok(Ok(response)) => {
-                for (user, mut master_key) in response.master_keys {
-                    // TODO: fixme
-                    // let (master_key_id, mut master_key) = crate::user::parse_master_key(&user, &master_key)?;
-                    //
-                    // if let Some(our_master_key) = e2e_cross_signing_keys::table.filter(
-                    //     e2e_cross_signing_keys::user_id.eq
-                    // )
-                    // {
-                    //     let (_, our_master_key) = crate::user::parse_master_key(&user, &our_master_key)?;
-                    //     master_key.signatures.extend(our_master_key.signatures);
-                    // }
+                for (user_id, mut master_key) in response.master_keys {
+
+                    if let Some(our_master_key) =  crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
+                    {
+                        master_key.signatures.extend(our_master_key.signatures);
+                    }
                     let json = serde_json::to_value(master_key).expect("to_value always works");
                     let raw = serde_json::from_value(json).expect("RawJson::from_value always works");
                     crate::user::add_cross_signing_keys(
-                        &user, &raw, &None, &None,
+                        &user_id, &raw, &None, &None,
                         false, // Dont notify. A notification would trigger another key request resulting in an endless loop
                     )?;
-                    master_keys.insert(user.to_owned(), raw);
+                    master_keys.insert(user_id, raw);
                 }
 
                 self_signing_keys.extend(response.self_signing_keys);
