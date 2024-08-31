@@ -8,7 +8,8 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, UnixMillis};
+use crate::{EventId, OwnedMxcUri, OwnedServerName, PrivOwnedStr, RoomId, ServerName, UnixMillis};
+use crate::sending::{SendRequest, SendResult};
 
 /// The default duration that the client should be willing to wait to start receiving data.
 pub(crate) fn default_download_timeout() -> Duration {
@@ -147,6 +148,23 @@ impl ConfigResBody {
 //         })
 //     }
 // }
+pub fn thumbnail_request(
+    server: &ServerName,
+    args: ThumbnailReqArgs,
+) -> SendResult<SendRequest> {
+    let mut url = server.build_url(&format!(
+        "/media/v3/thumbnaill/{server}/{}", args.media_id
+    ))?;
+    {
+        let mut query = url.query_pairs_mut();
+        query.append_pair("width", &args.width.to_string());
+        query.append_pair("height", &args.height.to_string());
+        query.append_pair("allow_remote", &args.allow_remote.to_string());
+        query.append_pair("timeout_ms", &args.timeout_ms.as_millis().to_string());
+        query.append_pair("allow_redirect", &args.allow_redirect.to_string());
+    }
+    Ok(crate::sending::get(url))
+}
 
 /// Request type for the `get_content_thumbnail` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
@@ -168,13 +186,13 @@ pub struct ThumbnailReqArgs {
     ///
     /// The actual thumbnail may not match the size specified.
     #[salvo(parameter(parameter_in = Query))]
-    pub width: u64,
+    pub width: u32,
 
     /// The *desired* height of the thumbnail.
     ///
     /// The actual thumbnail may not match the size specified.
     #[salvo(parameter(parameter_in = Query))]
-    pub height: u64,
+    pub height: u32,
 
     /// Whether to fetch media deemed remote.
     ///
@@ -231,11 +249,11 @@ pub struct ThumbnailReqArgs {
 //     ///
 //     /// The Cross-Origin Resource Policy defaults to `cross-origin`.
 //     pub fn new(file: Vec<u8>) -> Self {
-//         Self {
 //             file,
 //             content_type: None,
 //             cross_origin_resource_policy: Some("cross-origin".to_owned()),
 //         }
+//         Self {
 //     }
 // }
 

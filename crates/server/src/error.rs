@@ -64,6 +64,10 @@ pub enum AppError {
     IdParse(#[from] palpo_core::identifiers::IdParseError),
     #[error("CanonicalJson error: `{0}`")]
     CanonicalJson(#[from] palpo_core::serde::CanonicalJsonError),
+    #[error("MxcUriError: `{0}`")]
+    MxcUriError(#[from] palpo_core::identifiers::MxcUriError),
+    #[error("ImageError: `{0}`")]
+    ImageError(#[from] image::ImageError),
 }
 
 impl AppError {

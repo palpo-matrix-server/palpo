@@ -202,7 +202,11 @@ pub struct UploadContentReqArgs {
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(default, skip_serializing_if = "crate::serde::is_default", rename = "xyz.amorgan.generate_blurhash")]
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        rename = "xyz.amorgan.generate_blurhash"
+    )]
     pub generate_blurhash: bool,
 }
 

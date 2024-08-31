@@ -1,13 +1,17 @@
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs;
+use std::io::{Cursor, Write};
 use std::path::Path;
 use std::str::FromStr;
+use std::time::Duration;
 
 use diesel::prelude::*;
+use image::imageops::FilterType;
 use mime::Mime;
 use salvo::fs::NamedFile;
-use salvo::http::HeaderValue;
+use salvo::http::{header, ResBody, HeaderValue};
 use salvo::prelude::*;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
 use crate::core::client::media::*;
@@ -36,7 +40,7 @@ pub fn router() -> Router {
                         )
                         .push(Router::with_path("config").get(get_config))
                         .push(Router::with_path("preview_url").get(preview_url))
-                        .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(thumbnail)),
+                        .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(get_thumbnail)),
                 ),
         )
     }
@@ -193,8 +197,8 @@ async fn upload(
         let parent_dir = utils::fs::get_parent_dir(&dest_path);
         fs::create_dir_all(&parent_dir)?;
 
-        let mut file = File::create(dest_path)?;
-        file.write_all(&payload)?;
+        let mut file = File::create(dest_path).await?;
+        file.write_all(&payload).await?;
 
         //TODO: thumbnail support
     }
@@ -263,138 +267,218 @@ async fn preview_url(_aa: AuthArgs) -> EmptyResult {
 ///
 /// For width,height <= 96 the server uses another thumbnailing algorithm which crops the image afterwards.
 #[endpoint]
-async fn thumbnail(_aa: AuthArgs, args: ThumbnailReqArgs, depot: &mut Depot) -> EmptyResult {
-    // let mxc = format!("mxc://{}/{}", body.server_name, body.media_id);
+async fn get_thumbnail(
+    _aa: AuthArgs,
+    args: ThumbnailReqArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+    res: &mut Response,
+) -> AppResult<()> {
+    if let Ok(DbThumbnail {
+        content_disposition,
+        content_type,
+        ..
+    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height)
+    {
+        let thumb_path = crate::media_path(
+            &args.server_name,
+            &format!("{}.{}x{}", args.media_id, args.width, args.height),
+        );
 
-    // if let Some(FileMeta { content_type, file, .. }) = crate::media::thumbnail::get_thumbnail(
-    //     mxc.clone(),
-    //     body.width.try_into().map_err(|_| MatrixError::invalid_param("Width is invalid."))?,
-    //     body.height.try_into().map_err(|_| MatrixError::invalid_param("Width is invalid."))?,
-    // )
-    // .await?
-    // {
-    //     json_ok(ThumbnailResBody {
-    //         file,
-    //         content_type,
-    //         cross_origin_resource_policy: Some("cross-origin".to_owned()),
-    //     })
-    // } else if &*body.server_name != &crate::config().server_name && body.allow_remote {
-    //     let get_thumbnail_response = crate::sending::send_federation_request(
-    //         &body.server_name,
-    //         ThumbnailReqArgs {
-    //             allow_remote: false,
-    //             height: body.height,
-    //             width: body.width,
-    //             method: body.method.clone(),
-    //             server_name: body.server_name.clone(),
-    //             media_id: body.media_id.clone(),
-    //             timeout_ms: Duration::from_secs(20),
-    //             allow_redirect: false,
-    //         },
-    //     )
-    //     .await?;
+        res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
+        let mut file = NamedFile::builder(&thumb_path)
+            .content_type(
+                Mime::from_str(&content_type)
+                    .ok()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+            )
+            .build()
+            .await?;
+        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+            file.set_content_disposition(content_disposition);
+        }
 
-    //     crate::media::thumbnail::upload_thumbnail(
-    //         mxc,
-    //         None,
-    //         get_thumbnail_response.content_type.as_deref(),
-    //         body.width.try_into().expect("all UInts are valid u32s"),
-    //         body.height.try_into().expect("all UInts are valid u32s"),
-    //         &get_thumbnail_response.file,
-    //     )
-    //     .await?;
+        return Ok(());
+    } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
+        let response = thumbnail_request(
+            &args.server_name,
+            ThumbnailReqArgs {
+                allow_remote: false,
+                height: args.height,
+                width: args.width,
+                method: args.method.clone(),
+                server_name: args.server_name.clone(),
+                media_id: args.media_id.clone(),
+                timeout_ms: Duration::from_secs(20),
+                allow_redirect: false,
+            },
+        )?
+        .exec()
+        .await?;
+        *res.headers_mut() = response.headers().clone();
+        let bytes = response.bytes().await?;
 
-    //     json_ok(get_thumbnail_response)
-    // } else {
-    //     Err(MatrixError::not_found("Media not found."))
-    // }
+        let thumb_path = crate::media_path(
+            &args.server_name,
+            &format!("{}.{}x{}", args.media_id, args.width, args.height),
+        );
+        let mut f = File::create(&thumb_path).await?;
+        f.write_all(&bytes).await?;
 
-    // let (width, height, crop) = thumbnail_properties(width, height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
+        res.body = ResBody::Once(bytes);
+        return Ok(());
+    } else {
+        return Err(MatrixError::not_found("Media not found.").into());
+    }
 
-    // if let Ok((content_disposition, content_type, key)) = db::search_file_metadata(mxc.clone(), width, height) {
-    //     // Using saved thumbnail
-    //     let path = crate::media_path(&key);
-    //     let mut file = Vec::new();
-    //     File::open(path).await?.read_to_end(&mut file).await?;
+    let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    //     Ok(Some(FileMeta {
-    //         content_disposition,
-    //         content_type,
-    //         file: file.to_vec(),
-    //     }))
-    // } else if let Ok((content_disposition, content_type, key)) = db::search_file_metadata(mxc.clone(), 0, 0) {
-    //     // Generate a thumbnail
-    //     let path = crate::media_path(&key);
-    //     let mut file = Vec::new();
-    //     File::open(path).await?.read_to_end(&mut file).await?;
+    let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
+    if let Ok(DbThumbnail {
+        media_id,
+        width,
+        height,
+        content_disposition,
+        content_type,
+        ..
+    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)
+    {
+        // Using saved thumbnail
 
-    //     if let Ok(image) = image::load_from_memory(&file) {
-    //         let original_width = image.width();
-    //         let original_height = image.height();
-    //         if width > original_width || height > original_height {
-    //             return Ok(Some(FileMeta {
-    //                 content_disposition,
-    //                 content_type,
-    //                 file: file.to_vec(),
-    //             }));
-    //         }
+        let mut file = NamedFile::builder(&thumb_path)
+            .content_type(
+                Mime::from_str(&content_type)
+                    .ok()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+            )
+            .build()
+            .await?;
+        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+            file.set_content_disposition(content_disposition);
+        }
+        file.send(req.headers(), res).await;
 
-    //         let thumbnail = if crop {
-    //             image.resize_to_fill(width, height, FilterType::CatmullRom)
-    //         } else {
-    //             let (exact_width, exact_height) = {
-    //                 // Copied from image::dynimage::resize_dimensions
-    //                 let ratio = u64::from(original_width) * u64::from(height);
-    //                 let nratio = u64::from(width) * u64::from(original_height);
+        Ok(())
+    } else if let Ok(DbMetadata {
+        content_disposition,
+        content_type,
+        media_id,
+        ..
+    }) = crate::media::get_metadata(&args.server_name, &args.media_id)
+    {
+        // Generate a thumbnail
+        let image_path = crate::media_path(&args.server_name, &args.media_id);
+        if let Ok(image) = image::open(&image_path) {
+            let original_width = image.width();
+            let original_height = image.height();
+            if width > original_width || height > original_height {
+                let mut file = NamedFile::builder(&thumb_path)
+                    .content_type(
+                        content_type
+                            .as_deref()
+                            .map(|c| Mime::from_str(c).ok())
+                            .flatten()
+                            .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+                    )
+                    .build()
+                    .await?;
+                if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+                    file.set_content_disposition(content_disposition);
+                }
+                file.send(req.headers(), res).await;
+                return Ok(());
+            }
 
-    //                 let use_width = nratio <= ratio;
-    //                 let intermediate = if use_width {
-    //                     u64::from(original_height) * u64::from(width) / u64::from(original_width)
-    //                 } else {
-    //                     u64::from(original_width) * u64::from(height) / u64::from(original_height)
-    //                 };
-    //                 if use_width {
-    //                     if intermediate <= u64::from(::std::u32::MAX) {
-    //                         (width, intermediate as u32)
-    //                     } else {
-    //                         ((u64::from(width) * u64::from(::std::u32::MAX) / intermediate) as u32, ::std::u32::MAX)
-    //                     }
-    //                 } else if intermediate <= u64::from(::std::u32::MAX) {
-    //                     (intermediate as u32, height)
-    //                 } else {
-    //                     (::std::u32::MAX, (u64::from(height) * u64::from(::std::u32::MAX) / intermediate) as u32)
-    //                 }
-    //             };
+            let thumbnail = if crop {
+                image.resize_to_fill(width, height, FilterType::CatmullRom)
+            } else {
+                let (exact_width, exact_height) = {
+                    // Copied from image::dynimage::resize_dimensions
+                    let ratio = u64::from(original_width) * u64::from(height);
+                    let nratio = u64::from(width) * u64::from(original_height);
 
-    //             image.thumbnail_exact(exact_width, exact_height)
-    //         };
+                    let use_width = nratio <= ratio;
+                    let intermediate = if use_width {
+                        u64::from(original_height) * u64::from(width) / u64::from(original_width)
+                    } else {
+                        u64::from(original_width) * u64::from(height) / u64::from(original_height)
+                    };
+                    if use_width {
+                        if intermediate <= u64::from(::std::u32::MAX) {
+                            (width, intermediate as u32)
+                        } else {
+                            (
+                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                                ::std::u32::MAX,
+                            )
+                        }
+                    } else if intermediate <= u64::from(::std::u32::MAX) {
+                        (intermediate as u32, height)
+                    } else {
+                        (
+                            ::std::u32::MAX,
+                            (u64::from(height) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                        )
+                    }
+                };
 
-    //         let mut thumbnail_bytes = Vec::new();
-    //         thumbnail.write_to(&mut Cursor::new(&mut thumbnail_bytes), image::ImageOutputFormat::Png)?;
+                image.thumbnail_exact(exact_width, exact_height)
+            };
 
-    //         // Save thumbnail in database so we don't have to generate it again next time
-    //         let thumbnail_key = db::create_file_metadata(mxc, width, height, content_disposition.as_deref(), content_type.as_deref())?;
+            let mut thumbnail_bytes = Vec::new();
+            thumbnail.write_to(&mut Cursor::new(&mut thumbnail_bytes), image::ImageFormat::Png)?;
 
-    //         let path = crate::media_path(&thumbnail_key);
-    //         let mut f = File::create(path).await?;
-    //         f.write_all(&thumbnail_bytes).await?;
+            // Save thumbnail in database so we don't have to generate it again next time
+            diesel::insert_into(media_thumbnails::table)
+                .values(&NewDbThumbnail {
+                    media_id: args.media_id.clone(),
+                    origin_server: args.server_name.clone(),
+                    content_type: "mage/png".into(),
+                    content_disposition: None,
+                    file_size: thumbnail_bytes.len() as i64,
+                    width: width as i32,
+                    height: height as i32,
+                    resize_method: "_".into(),
+                    created_at: UnixMillis::now(),
+                })
+                .execute(&mut *db::connect()?)?;
+            let mut f = File::create(&thumb_path).await?;
+            f.write_all(&thumbnail_bytes).await?;
 
-    //         Ok(Some(FileMeta {
-    //             content_disposition,
-    //             content_type,
-    //             file: thumbnail_bytes.to_vec(),
-    //         }))
-    //     } else {
-    //         // Couldn't parse file to generate thumbnail, send original
-    //         Ok(Some(FileMeta {
-    //             content_disposition,
-    //             content_type,
-    //             file: file.to_vec(),
-    //         }))
-    //     }
-    // } else {
-    //     Ok(None)
-    // }
-
-    empty_ok()
+            let mut file = NamedFile::builder(&thumb_path)
+                .content_type(
+                    content_type
+                        .as_deref()
+                        .map(|c| Mime::from_str(c).ok())
+                        .flatten()
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+                )
+                .build()
+                .await?;
+            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+                file.set_content_disposition(content_disposition);
+            }
+            file.send(req.headers(), res).await;
+            Ok(())
+        } else {
+            // Couldn't parse file to generate thumbnail, send original
+            let mut file = NamedFile::builder(&image_path)
+                .content_type(
+                    content_type
+                        .as_deref()
+                        .map(|c| Mime::from_str(c).ok())
+                        .flatten()
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+                )
+                .build()
+                .await?;
+            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+                file.set_content_disposition(content_disposition);
+            }
+            file.send(req.headers(), res).await;
+            Ok(())
+        }
+    } else {
+        Err(MatrixError::not_found("file not found").into())
+    }
 }

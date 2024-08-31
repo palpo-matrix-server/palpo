@@ -289,7 +289,7 @@ pub struct EventByTimestampResBody {
 
 /// Response type for the `get_room_event` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct RoomEventResBody (
+pub struct RoomEventResBody(
     /// Arbitrary JSON of the event body.
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub RawJson<AnyTimelineEvent>,

@@ -1,9 +1,10 @@
-use salvo::prelude::*;
 use salvo::oapi::{ToParameters, ToSchema};
+use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::StringEnum;use crate::events::{StateEventType, GlobalAccountDataEventType};
-use crate::{PrivOwnedStr, OwnedUserId,OwnedMxcUri, OwnedRoomId};
+use crate::events::{GlobalAccountDataEventType, StateEventType};
+use crate::serde::StringEnum;
+use crate::{OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr};
 
 /// Profile fields to specify in query.
 ///
@@ -26,7 +27,6 @@ pub enum ProfileField {
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
 }
-
 
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct UserRoomReqArgs {
@@ -53,7 +53,6 @@ pub struct UserEventTypeReqArgs {
     #[salvo(parameter(parameter_in = Path))]
     pub event_type: GlobalAccountDataEventType,
 }
-
 
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct UserRoomEventTypeReqArgs {

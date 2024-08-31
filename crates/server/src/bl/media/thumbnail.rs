@@ -12,6 +12,7 @@ pub struct DbThumbnail {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: String,
+    pub content_disposition: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -24,6 +25,7 @@ pub struct NewDbThumbnail {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: String,
+    pub content_disposition: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -31,10 +33,12 @@ pub struct NewDbThumbnail {
     pub created_at: UnixMillis,
 }
 
-pub fn get_thumbnail(media_id: &str, origin: &ServerName) -> AppResult<DbThumbnail> {
+pub fn get_thumbnail(origin_server: &ServerName, media_id: &str, width: u32, height: u32) -> AppResult<DbThumbnail> {
     media_thumbnails::table
+        .filter(media_thumbnails::origin_server.eq(origin_server))
         .filter(media_thumbnails::media_id.eq(media_id))
-        .filter(media_thumbnails::origin_server.eq(origin))
+        .filter(media_thumbnails::width.eq(width as i32))
+        .filter(media_thumbnails::height.eq(height as i32))
         .first::<DbThumbnail>(&mut *db::connect()?)
         .map_err(Into::into)
 }

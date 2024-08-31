@@ -356,14 +356,14 @@ impl ProtocolsResBody {
 
 /// Response type for the `get_protocol` endpoint.
 #[derive(ToSchema, Serialize, Clone, Default, Debug)]
-pub struct ProtocolResBody (
+pub struct ProtocolResBody(
     /// Metadata about the protocol.
     pub Protocol,
 );
 impl ProtocolResBody {
     /// Creates a new `Response` with the given protocol.
     pub fn new(protocol: Protocol) -> Self {
-        Self ( protocol )
+        Self(protocol)
     }
 }
 
@@ -503,10 +503,9 @@ pub struct UsersResBody(
 impl UsersResBody {
     /// Creates a new `Response` with the given users.
     pub fn new(users: Vec<User>) -> Self {
-        Self (users)
+        Self(users)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

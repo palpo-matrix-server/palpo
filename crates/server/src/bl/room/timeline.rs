@@ -7,7 +7,7 @@ use serde_json::value::to_raw_value;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use ulid::Ulid;
-
+use palpo_core::federation::backfill::BackfillReqArgs;
 use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -873,7 +873,9 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     // Request backfill
     for backfill_server in admin_servers {
         info!("Asking {backfill_server} for backfill");
-        let response = backfill_request(backfill_server, room_id, &*first_pdu.1.event_id, 100)?
+        let response = backfill_request(backfill_server,BackfillReqArgs {
+            room_id: room_id.to_owned(), v:vec![(&*first_pdu.1.event_id).to_owned()], limit: 100
+        } )?
             .send::<BackfillResBody>()
             .await;
         match response {

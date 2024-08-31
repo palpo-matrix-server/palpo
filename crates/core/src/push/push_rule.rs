@@ -139,7 +139,6 @@ pub struct PushRule {
     pub pattern: Option<String>,
 }
 
-
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct ScopeKindRuleReqArgs {
     /// The scope to fetch rules from.

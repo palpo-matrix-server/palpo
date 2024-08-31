@@ -24,12 +24,10 @@ use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, RoomId, ServerN
 
 pub fn backfill_request(
     server: &ServerName,
-    room_id: &RoomId,
-    event_id: &EventId,
-    limit: usize,
+    args: BackfillReqArgs,
 ) -> SendResult<SendRequest> {
     Ok(crate::sending::get(server.build_url(&format!(
-        "/federation/v1/backfill/{room_id}&limit={limit}&v={event_id}"
+        "/federation/v1/backfill/{}&limit={}&{}", &args.room_id, args.limit, args.v.iter().map(|v|format!("v={v}")).collect::<Vec<_>>().join("&")
     ))?))
 }
 

@@ -1,9 +1,9 @@
 //! Common types for rooms.
 
+use crate::events::StateEventType;
+use crate::{serde::StringEnum, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr};
 use salvo::prelude::*;
 use serde::Deserialize;
-use crate::{serde::StringEnum, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr};
-use crate::events::StateEventType;
 
 /// An enum of possible room types.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

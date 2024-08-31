@@ -2,6 +2,7 @@ mod metadata;
 mod thumbnail;
 
 pub use metadata::*;
+pub use thumbnail::*;
 
 use salvo::Response;
 
