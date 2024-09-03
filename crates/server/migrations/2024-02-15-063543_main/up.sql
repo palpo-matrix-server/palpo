@@ -939,3 +939,17 @@ CREATE TABLE user_uiaa_datas (
     uiaa_info json NOT NULL,
     CONSTRAINT user_uiaa_datas_ukey UNIQUE (user_id, device_id, session)
 );
+
+drop table if exists outgoing_requests CASCADE;
+CREATE TABLE outgoing_requests (
+    id bigserial NOT NULL PRIMARY KEY,
+    kind text not null,
+    appservice_id text,
+    user_id text,
+    pushkey text,
+    server_id text,
+    pdu_id text,
+    edu_json bytea,
+    state text NOT NULL DEFAULT 'pending',
+    data bytea
+);

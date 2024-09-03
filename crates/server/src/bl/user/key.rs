@@ -251,8 +251,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         match response {
             Ok(Ok(response)) => {
                 for (user_id, mut master_key) in response.master_keys {
-
-                    if let Some(our_master_key) =  crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
+                    if let Some(our_master_key) = crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
                     {
                         master_key.signatures.extend(our_master_key.signatures);
                     }

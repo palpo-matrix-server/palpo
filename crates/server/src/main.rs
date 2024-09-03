@@ -28,6 +28,7 @@ pub mod utils;
 
 pub mod error;
 pub use crate::core::error::MatrixError;
+use crate::core::ServerName;
 pub use error::AppError;
 pub use palpo_core as core;
 #[macro_use]
@@ -35,6 +36,7 @@ mod macros;
 // #[macro_use]
 // use serde_json;
 pub(crate) use serde_json::Value as JsonValue;
+use tokio::sync::Semaphore;
 
 use std::env;
 use std::sync::Arc;
@@ -112,7 +114,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             std::process::exit(1);
         }
     };
-
     let thread_pool = Arc::new(ScheduledThreadPool::new(conf.db.helper_threads));
 
     let db_primary = {
@@ -134,6 +135,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .expect("diesel pool should be set");
     crate::config::CONFIG.set(conf).expect("config should be set");
     crate::db::migrate();
+
+    crate::sending::start_handler();
 
     let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
     salvo::http::request::set_secure_max_size(8 * 1024 * 1024);

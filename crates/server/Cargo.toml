@@ -40,6 +40,7 @@ figment = { workspace = true, features = ["env", "toml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
 hickory-resolver = { workspace = true }
+hyper-util = { workspace = true, features = ["client"] }
 hmac = { workspace = true }
 image = { workspace = true }
 jsonwebtoken = { workspace = true }
@@ -69,6 +70,7 @@ strum_macros = { workspace = true }
 tempfile = { workspace = true }
 textnonce = { workspace = true }
 thiserror = { workspace = true }
+tower-service = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }

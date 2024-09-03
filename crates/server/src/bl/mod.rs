@@ -22,32 +22,37 @@ pub mod sync;
 pub use event::{PduBuilder, PduEvent};
 
 use std::collections::{BTreeMap, HashMap};
+use std::error::Error as StdError;
 use std::future::Future;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant, SystemTime};
+use std::{future, iter};
 
 use diesel::prelude::*;
-use futures_util::{stream::FuturesUnordered, StreamExt};
+use futures_util::{stream::FuturesUnordered, FutureExt, StreamExt};
 use hickory_resolver::TokioAsyncResolver;
-use palpo_core::client::sync_events::SyncEventsResBodyV3;
-use palpo_core::{JsonValue, UnixMillis};
+use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
+use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, watch::Receiver, Semaphore};
+use tower_service::Service as TowerService;
 
+use crate::core::client::sync_events::SyncEventsResBodyV3;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJsonValue};
 use crate::core::signatures::Ed25519KeyPair;
-use crate::core::{OwnedServerName, ServerName};
-use crate::federation::FedDest;
+use crate::core::UnixMillis;
+use crate::federation::{DestinationResponse, FedDest};
 use crate::schema::*;
-use crate::{db, AppError, AppResult, MatrixError};
+use crate::{db, AppError, AppResult, JsonValue, MatrixError, ServerConfig};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
@@ -60,7 +65,7 @@ type SyncHandle = (
     Option<String>,                                   // since
     Receiver<Option<AppResult<SyncEventsResBodyV3>>>, // rx
 );
-type WellKnownMap = HashMap<OwnedServerName, (FedDest, String)>;
+type WellKnownMap = HashMap<OwnedServerName, DestinationResponse>;
 type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries
                                       // type SyncHandle = (
@@ -68,9 +73,9 @@ type RateLimitState = (Instant, u32); // Time if last failed try, number of fail
                                       //     Receiver<Option<AppResult<sync_events::v3::Response>>>, // rx
                                       // );
 
-// pub actual_destination_cache: Arc<RwLock<WellKnownMap>>, // actual_destination, host
-// pub tls_name_override: Arc<RwLock<TlsNameMap>>,
 type LazyRwLock<T> = LazyLock<RwLock<T>>;
+pub static ACTUAL_DESTINATION_CACHE: LazyRwLock<WellKnownMap> = LazyLock::new(Default::default); // actual_destination, host
+pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);
 pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
     vec![
         RoomVersionId::V6,
@@ -130,6 +135,52 @@ impl RotationHandler {
 impl Default for RotationHandler {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct Resolver {
+    inner: GaiResolver,
+    overrides: Arc<RwLock<TlsNameMap>>,
+}
+
+impl Resolver {
+    pub fn new(overrides: Arc<RwLock<TlsNameMap>>) -> Self {
+        Resolver {
+            inner: GaiResolver::new(),
+            overrides,
+        }
+    }
+}
+
+impl Resolve for Resolver {
+    fn resolve(&self, name: Name) -> Resolving {
+        self.overrides
+            .read()
+            .unwrap()
+            .get(name.as_str())
+            .and_then(|(override_name, port)| {
+                override_name.first().map(|first_name| {
+                    let x: Box<dyn Iterator<Item = SocketAddr> + Send> =
+                        Box::new(iter::once(SocketAddr::new(*first_name, *port)));
+                    let x: Resolving = Box::pin(future::ready(Ok(x)));
+                    x
+                })
+            })
+            .unwrap_or_else(|| {
+                let this = &mut self.inner.clone();
+                Box::pin(
+                    TowerService::<HyperName>::call(
+                        this,
+                        // Beautiful hack, please remove this in the future.
+                        HyperName::from_str(name.as_str()).expect("reqwest Name is just wrapper for hyper-util Name"),
+                    )
+                    .map(|result| {
+                        result
+                            .map(|addrs| -> Addrs { Box::new(addrs) })
+                            .map_err(|err| -> Box<dyn StdError + Send + Sync> { Box::new(err) })
+                    }),
+                )
+            })
     }
 }
 
@@ -199,34 +250,43 @@ pub fn well_known_server() -> OwnedServerName {
     }
 }
 
-// /// Returns a reqwest client which can be used to send requests
-// pub fn default_client() -> reqwest::Client {
-//     // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-//     reqwest_client_builder(config())?.build()?;
-// }
+/// Returns a reqwest client which can be used to send requests
+pub fn default_client() -> reqwest::Client {
+    // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
+    static DEFAULT_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    DEFAULT_CLIENT
+        .get_or_init(|| {
+            reqwest_client_builder(crate::config())
+                .expect("failed to build request clinet")
+                .build()
+                .expect("failed to build request clinet")
+        })
+        .clone()
+}
 
-// /// Returns a client used for resolving .well-knowns
-// pub fn federation_client() -> reqwest::Client {
-//     let conf = config();
-//     // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-//     let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
+/// Returns a client used for resolving .well-knowns
+pub fn federation_client() -> reqwest::Client {
+    static FEDERATION_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    FEDERATION_CLIENT
+        .get_or_init(|| {
+            let conf = config();
+            // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
+            let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
 
-//     let jwt_decoding_key = conf
-//         .jwt_secret
-//         .as_ref()
-//         .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
+            let jwt_decoding_key = conf
+                .jwt_secret
+                .as_ref()
+                .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
 
-//     let name_override = Arc::clone(&tls_name_override);
-//     let federation_client = reqwest_client_builder(conf)?
-//         .resolve_fn(move |domain| {
-//             let read_guard = name_override.read().unwrap();
-//             let (override_name, port) = read_guard.get(&domain)?;
-//             let first_name = override_name.get(0)?;
-//             Some(SocketAddr::new(*first_name, *port))
-//         })
-//         .build()?;
-//     Ok(federation_client)
-// }
+            let name_override = Arc::clone(&tls_name_override);
+            reqwest_client_builder(conf)
+                .expect("build reqwest client failed")
+                .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
+                .build()
+                .expect("build reqwest client failed")
+        })
+        .clone()
+}
 
 pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let inbox_id = device_inboxes::table
@@ -365,16 +425,11 @@ pub fn trusted_servers() -> &'static [OwnedServerName] {
     &config().trusted_servers
 }
 
-pub fn dns_resolver() -> Result<&'static TokioAsyncResolver, &'static AppError> {
-    static DNS_RESOLVER: OnceLock<Result<TokioAsyncResolver, AppError>> = OnceLock::new();
-    DNS_RESOLVER
-        .get_or_init(|| {
-            TokioAsyncResolver::tokio_from_system_conf().map_err(|e| {
-                error!("Failed to set up trust dns resolver with system config: {}", e);
-                AppError::public("Failed to set up trust dns resolver with system config.")
-            })
-        })
-        .as_ref()
+pub fn dns_resolver() -> &'static TokioAsyncResolver {
+    static DNS_RESOLVER: OnceLock<TokioAsyncResolver> = OnceLock::new();
+    DNS_RESOLVER.get_or_init(|| {
+        TokioAsyncResolver::tokio_from_system_conf().expect("failed to set up trust dns resolver with system config")
+    })
 }
 
 pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
@@ -653,18 +708,19 @@ pub fn shutdown() {
     ROTATE.fire();
 }
 
-// fn reqwest_client_builder(config: &Config) -> AppResult<reqwest::ClientBuilder> {
-//     let mut reqwest_client_builder = reqwest::Client::builder()
-//         .pool_max_idle_per_host(0)
-//         .connect_timeout(Duration::from_secs(30))
-//         .timeout(Duration::from_secs(60 * 3));
+fn reqwest_client_builder(config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
+    let mut reqwest_client_builder = reqwest::Client::builder()
+        .pool_max_idle_per_host(0)
+        .connect_timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(60 * 3));
 
-//     if let Some(proxy) = config.proxy.to_proxy()? {
-//         reqwest_client_builder = reqwest_client_builder.proxy(proxy);
-//     }
+    // TODO: add proxy support
+    // if let Some(proxy) = config.to_proxy()? {
+    //     reqwest_client_builder = reqwest_client_builder.proxy(proxy);
+    // }
 
-//     Ok(reqwest_client_builder)
-// }
+    Ok(reqwest_client_builder)
+}
 
 pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {

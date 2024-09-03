@@ -120,9 +120,7 @@ pub async fn send_join_event_v1(
         .select(room_servers::server_id)
         .load::<OwnedServerName>(&mut *db::connect()?)?;
 
-    for server in &servers {
-        crate::sending::send_pdu(server, &event_id)?;
-    }
+    crate::sending::send_pdu(servers.into_iter(), &event_id)?;
     Ok(RoomStateV1 {
         auth_chain: auth_chain_ids
             .into_iter()
@@ -785,9 +783,7 @@ pub(crate) async fn invite_user(
             .into_iter()
             .filter(|server| server != crate::server_name());
 
-        for server in servers {
-            crate::sending::send_pdu(&server, &event_id)?;
-        }
+        crate::sending::send_pdu(servers, &event_id)?;
         return Ok(());
     }
 

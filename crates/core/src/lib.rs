@@ -2,6 +2,7 @@
 
 pub mod appservice;
 pub mod authentication;
+pub mod authorization;
 pub mod client;
 pub mod device;
 pub mod directory;
@@ -28,6 +29,7 @@ pub use error::{MatrixError, UnknownVersionError};
 pub mod sending;
 pub mod state;
 pub mod user;
+pub mod http_headers;
 
 pub use crate::state::RoomVersion;
 

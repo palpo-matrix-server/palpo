@@ -1,29 +1,56 @@
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    fmt::Debug,
-    sync::{Arc, LazyLock},
-    time::{Duration, Instant},
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Debug;
+use std::sync::{Arc, OnceLock};
+use std::time::{Duration, Instant};
 
 use base64::{engine::general_purpose, Engine as _};
-use palpo_core::OwnedEventId;
-use tokio::sync::Semaphore;
+use diesel::prelude::*;
+use futures_util::stream::{FuturesUnordered, StreamExt};
+use serde::Deserialize;
+use tokio::sync::{mpsc, Mutex, Semaphore};
 
 use crate::core::appservice::event::PushEventsReqBody;
+use crate::core::appservice::Registration;
+use crate::core::device::DeviceListUpdateContent;
+use crate::core::events::push_rules::PushRulesEvent;
+use crate::core::events::receipt::ReceiptType;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap};
-use crate::core::federation::transaction::Edu;
-use crate::core::federation::transaction::{SendMessageReqBody, SendMessageResBody};
+use crate::core::events::{AnySyncEphemeralRoomEvent, GlobalAccountDataEventType};
+use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
-use crate::core::{
-    device::DeviceListUpdateContent,
-    device_id,
-    events::{push_rules::PushRulesEvent, receipt::ReceiptType, AnySyncEphemeralRoomEvent, GlobalAccountDataEventType},
-    push, OwnedServerName, OwnedUserId, ServerName, UnixMillis, UserId,
-};
-use crate::{utils, AppError, AppResult, PduEvent};
+use crate::core::{device_id, push, UnixMillis};
+use crate::schema::*;
+use crate::{db, utils, AppError, AppResult, PduEvent};
 
-use super::curr_sn;
+use super::room::user;
+use super::{curr_sn, outgoing_requests};
+
+#[derive(Identifiable, Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = outgoing_requests)]
+pub struct DbOutgoingRequest {
+    pub id: i64,
+    pub kind: String,
+    pub appservice_id: Option<String>,
+    pub user_id: Option<OwnedUserId>,
+    pub pushkey: Option<String>,
+    pub server_id: Option<OwnedServerName>,
+    pub pdu_id: Option<OwnedEventId>,
+    pub edu_json: Option<Vec<u8>>,
+    pub state: String,
+    pub data: Option<Vec<u8>>,
+}
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = outgoing_requests)]
+pub struct NewDbOutgoingRequest {
+    pub kind: String,
+    pub appservice_id: Option<String>,
+    pub user_id: Option<OwnedUserId>,
+    pub pushkey: Option<String>,
+    pub server_id: Option<OwnedServerName>,
+    pub pdu_id: Option<OwnedEventId>,
+    pub edu_json: Option<Vec<u8>>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OutgoingKind {
@@ -32,16 +59,41 @@ pub enum OutgoingKind {
     Normal(OwnedServerName),
 }
 
+impl OutgoingKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            OutgoingKind::Appservice(_) => "appservice",
+            OutgoingKind::Push(_, _) => "push",
+            OutgoingKind::Normal(_) => "normal",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SendingEventType {
     Pdu(OwnedEventId), // pduid
     Edu(Vec<u8>),      // pdu json
 }
 
+pub static MPSC_SENDER: OnceLock<mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)>> = OnceLock::new();
+pub static MPSC_RECEIVER: OnceLock<Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, i64)>>> =
+    OnceLock::new();
+
+pub fn sender() -> mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)> {
+    MPSC_SENDER.get().expect("sender should set").clone()
+}
+
 /// The state for a given state hash.
-pub(super) static MAXIMUM_REQUESTS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(1)));
-// pub sender: mpsc::UnboundedSender<(OutgoingKind, SendingEventType, Vec<u8>)>;
-// receiver: Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, Vec<u8>)>>;
+pub fn max_request() -> Arc<Semaphore> {
+    static MAX_REQUESTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
+    MAX_REQUESTS
+        .get_or_init(|| Arc::new(Semaphore::new(crate::config().max_concurrent_requests as usize)))
+        .clone()
+}
+pub async fn acquire_request() {
+    let semaphore = max_request();
+    semaphore.acquire().await;
+}
 
 enum TransactionStatus {
     Running,
@@ -50,97 +102,94 @@ enum TransactionStatus {
 }
 
 pub fn start_handler() {
+    let (sender, receiver) = mpsc::unbounded_channel();
+    MPSC_SENDER.set(sender);
+    MPSC_RECEIVER.set(Mutex::new(receiver));
     tokio::spawn(async move {
         handler().await.unwrap();
     });
 }
 
 async fn handler() -> AppResult<()> {
-    // TODO: fixme
-    panic!("fixme")
-    // let mut receiver = receiver.lock().await;
-    // let mut futures = FuturesUnordered::new();
-    // let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
+    let mut receiver = MPSC_RECEIVER.get().expect("receiver should exist").lock().await;
+    let mut futures = FuturesUnordered::new();
+    let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
 
-    // // Retry requests we could not finish yet
-    // let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
+    // Retry requests we could not finish yet
+    let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
 
-    // for (key, outgoing_kind, event) in inactive_requests() {
-    //     let entry = initial_transactions
-    //         .entry(outgoing_kind.clone())
-    //         .or_insert_with(Vec::new);
+    for (id, outgoing_kind, event) in active_requests()? {
+        let entry = initial_transactions
+            .entry(outgoing_kind.clone())
+            .or_insert_with(Vec::new);
 
-    //     if entry.len() > 30 {
-    //         warn!(
-    //             "Dropping some current events: {:?} {:?} {:?}",
-    //             key, outgoing_kind, event
-    //         );
-    //         delete_active_request(key)?;
-    //         continue;
-    //     }
+        if entry.len() > 30 {
+            warn!("Dropping some current events: {:?} {:?} {:?}", id, outgoing_kind, event);
+            delete_request(id)?;
+            continue;
+        }
 
-    //     entry.push(event);
-    // }
+        entry.push(event);
+    }
 
-    // for (outgoing_kind, events) in initial_transactions {
-    //     current_transaction_status.insert(outgoing_kind.clone(), TransactionStatus::Running);
-    //     futures.push(handle_events(outgoing_kind.clone(), events));
-    // }
+    for (outgoing_kind, events) in initial_transactions {
+        current_transaction_status.insert(outgoing_kind.clone(), TransactionStatus::Running);
+        futures.push(handle_events(outgoing_kind.clone(), events));
+    }
 
-    // loop {
-    //     select! {
-    //         Some(response) = futures.next() => {
-    //             match response {
-    //                 Ok(outgoing_kind) => {
-    //                     delete_all_active_requests_for(&outgoing_kind)?;
+    loop {
+        tokio::select! {
+            Some(response) = futures.next() => {
+                match response {
+                    Ok(outgoing_kind) => {
+                        delete_all_active_requests_for(&outgoing_kind)?;
 
-    //                     // Find events that have been added since starting the last request
-    //                     let new_events = queued_requests(&outgoing_kind).into_iter().take(30).collect::<Vec<_>>();
+                        // Find events that have been added since starting the last request
+                        let new_events = queued_requests(&outgoing_kind).unwrap_or_default().into_iter().take(30).collect::<Vec<_>>();
 
-    //                     if !new_events.is_empty() {
-    //                         // Insert pdus we found
-    //                         mark_as_active(&new_events)?;
+                        if !new_events.is_empty() {
+                            // Insert pdus we found
+                            mark_as_active(&new_events)?;
 
-    //                         futures.push(
-    //                             handle_events(
-    //                                 outgoing_kind.clone(),
-    //                                 new_events.into_iter().map(|(event, _)| event).collect(),
-    //                             )
-    //                         );
-    //                     } else {
-    //                         current_transaction_status.remove(&outgoing_kind);
-    //                     }
-    //                 }
-    //                 Err((outgoing_kind, _)) => {
-    //                     current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
-    //                         TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
-    //                         TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
-    //                         TransactionStatus::Failed(_, _) => {
-    //                             error!("Request that was not even running failed?!");
-    //                             return
-    //                         },
-    //                     });
-    //                 }
-    //             };
-    //         },
-    //         Some((outgoing_kind, event, key)) = receiver.recv() => {
-    //             if let Ok(Some(events)) = select_events(
-    //                 &outgoing_kind,
-    //                 vec![(event, key)],
-    //                 &mut current_transaction_status,
-    //                 &mut *db::connect()?,
-    //             ) {
-    //                 futures.push(handle_events(outgoing_kind, events));
-    //             }
-    //         }
-    //     }
-    // }
+                            futures.push(
+                                handle_events(
+                                    outgoing_kind.clone(),
+                                    new_events.into_iter().map(|(_, event)| event).collect(),
+                                )
+                            );
+                        } else {
+                            current_transaction_status.remove(&outgoing_kind);
+                        }
+                    }
+                    Err((outgoing_kind, _)) => {
+                        current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
+                            TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
+                            TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
+                            TransactionStatus::Failed(_, _) => {
+                                error!("Request that was not even running failed?!");
+                                return
+                            },
+                        });
+                    }
+                };
+            },
+            Some((outgoing_kind, event, id)) = receiver.recv() => {
+                if let Ok(Some(events)) = select_events(
+                    &outgoing_kind,
+                    vec![(id, event)],
+                    &mut current_transaction_status,
+                ) {
+                    futures.push(handle_events(outgoing_kind, events));
+                }
+            }
+        }
+    }
 }
 
 #[tracing::instrument(skip_all)]
 fn select_events(
     outgoing_kind: &OutgoingKind,
-    new_events: Vec<(SendingEventType, Vec<u8>)>, // Events we want to send: event and full key
+    new_events: Vec<(i64, SendingEventType)>, // Events we want to send: event and full key
     current_transaction_status: &mut HashMap<OutgoingKind, TransactionStatus>,
 ) -> AppResult<Option<Vec<SendingEventType>>> {
     let mut retry = false;
@@ -176,24 +225,23 @@ fn select_events(
 
     let mut events = Vec::new();
 
-    // TODO: fixme
-    // if retry {
-    //     // We retry the previous transaction
-    //     for (_, e) in active_requests_for(outgoing_kind) {
-    //         events.push(e);
-    //     }
-    // } else {
-    //     mark_as_active(&new_events)?;
-    //     for (e, _) in new_events {
-    //         events.push(e);
-    //     }
-    //
-    //     if let OutgoingKind::Normal(server_name) = outgoing_kind {
-    //         if let Ok((select_edus, last_count)) = select_edus(server_name) {
-    //             events.extend(select_edus.into_iter().map(SendingEventType::Edu));
-    //         }
-    //     }
-    // }
+    if retry {
+        // We retry the previous transaction
+        for (_, e) in active_requests_for(outgoing_kind)?.into_iter() {
+            events.push(e);
+        }
+    } else {
+        mark_as_active(&new_events)?;
+        for (_, e) in new_events {
+            events.push(e);
+        }
+
+        if let OutgoingKind::Normal(server_name) = outgoing_kind {
+            if let Ok((select_edus, last_count)) = select_edus(server_name) {
+                events.extend(select_edus.into_iter().map(SendingEventType::Edu));
+            }
+        }
+    }
 
     Ok(Some(events))
 }
@@ -306,43 +354,40 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
     Ok(())
 }
 
-#[tracing::instrument(skip(server, pdu_id))]
-pub fn send_pdu(server: &ServerName, pdu_id: &EventId) -> AppResult<()> {
-    // TODO: fixme
-    // let requests = servers
-    //     .into_iter()
-    //     .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
-    //     .collect::<Vec<_>>();
-    // let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
-    // for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
-    //     sender.send((outgoing_kind.to_owned(), event, key)).unwrap();
-    // }
+#[tracing::instrument(skip(servers, pdu_id))]
+pub fn send_pdu<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
+    let requests = servers
+        .into_iter()
+        .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
+        .collect::<Vec<_>>();
+    let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
+    for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
+        sender().send((outgoing_kind.to_owned(), event, key)).unwrap();
+    }
 
     Ok(())
 }
 
 #[tracing::instrument(skip(server, serialized))]
 pub fn send_reliable_edu(server: &ServerName, serialized: Vec<u8>, id: &str) -> AppResult<()> {
-    // TODO: fixme
-    // let outgoing_kind = OutgoingKind::Normal(server.to_owned());
-    // let event = SendingEventType::Edu(serialized);
-    // let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
-    // sender
-    //     .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
-    //     .unwrap();
+    let outgoing_kind = OutgoingKind::Normal(server.to_owned());
+    let event = SendingEventType::Edu(serialized);
+    let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
+    sender()
+        .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
+        .unwrap();
 
     Ok(())
 }
 
 #[tracing::instrument]
 pub fn send_pdu_appservice(appservice_id: String, pdu_id: &EventId) -> AppResult<()> {
-    // TODO: fixme
-    // let outgoing_kind = OutgoingKind::Appservice(appservice_id);
-    // let event = SendingEventType::Pdu(pdu_id.to_owned());
-    // let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
-    // sender
-    //     .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
-    //     .unwrap();
+    let outgoing_kind = OutgoingKind::Appservice(appservice_id);
+    let event = SendingEventType::Pdu(pdu_id.to_owned());
+    let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
+    sender()
+        .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
+        .unwrap();
 
     Ok(())
 }
@@ -365,7 +410,7 @@ async fn handle_events(
                                 (
                                     kind.clone(),
                                     AppError::internal(
-                                        "[Appservice] Event in servernameevent_data not found in database.",
+                                        "[Appservice] Event in outgoing_requests not found in database.",
                                     ),
                                 )
                             })?
@@ -377,7 +422,7 @@ async fn handle_events(
                 }
             }
 
-            let permit = crate::sending::MAXIMUM_REQUESTS.acquire().await;
+            let permit = crate::sending::acquire_request().await;
 
             let registration = crate::appservice::get_registration(id)
                 .map_err(|e| (kind.clone(), e))?
@@ -467,7 +512,7 @@ async fn handle_events(
                     .try_into()
                     .expect("notification count can't go that high");
 
-                let permit = crate::sending::MAXIMUM_REQUESTS.acquire().await;
+                let permit = crate::sending::acquire_request().await;
 
                 let _response = crate::user::pusher::send_push_notice(user_id, unread, &pusher, rules_for_user, &pdu)
                     .await
@@ -509,7 +554,7 @@ async fn handle_events(
                 }
             }
 
-            let permit = crate::sending::MAXIMUM_REQUESTS.acquire().await;
+            let permit = crate::sending::acquire_request().await;
 
             let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
                 &events
@@ -551,129 +596,181 @@ async fn handle_events(
     }
 }
 
-// #[tracing::instrument(skip(request))]
-// pub async fn send_federation_request<T>(request: reqwest::Request) -> AppResult<T>
-// where
-//     T: Debug,
-// {
-//     debug!("Waiting for permit");
-//     let permit = MAXIMUM_REQUESTS.acquire().await;
-//     debug!("Got permit");
-//     let response = tokio::time::timeout(Duration::from_secs(2 * 60), crate::federation::send_request(request))
-//         .await
-//         .map_err(|_| {
-//             warn!("Timeout waiting for server response of {}", request.url());
-//             AppError::public("Timeout waiting for server response")
-//         })?;
-//     drop(permit);
+#[tracing::instrument(skip(request))]
+pub async fn send_federation_request<T>(destination: &ServerName, request: reqwest::Request) -> AppResult<T>
+where
+    T: for<'de> Deserialize<'de> + Debug,
+{
+    debug!("Waiting for permit");
+    let permit = acquire_request().await;
+    debug!("Got permit");
+    let url = request.url().clone();
+    let response = tokio::time::timeout(
+        Duration::from_secs(2 * 60),
+        crate::federation::send_request(destination, request),
+    )
+    .await
+    .map_err(|_| {
+        warn!("Timeout waiting for server response of {}", url);
+        AppError::public("Timeout waiting for server response")
+    })?;
+    drop(permit);
 
-//     response
-// }
+    response?.json().await.map_err(Into::into)
+}
 
 // #[tracing::instrument(skip(registration, request))]
 // pub async fn send_appservice_request<T>(registration: Registration, request: T) -> AppResult<T::IncomingResponse>
 // where
 //     T: Debug,
 // {
-//     let permit = MAXIMUM_REQUESTS.acquire().await;
+//     let permit = acquire_request().await;
 //     let response = crate::appservice::send_request(registration, request).await;
 //     drop(permit);
 
 //     response
 // }
 
-fn active_requests() -> AppResult<Vec<(Vec<u8>, OutgoingKind, SendingEventType)>> {
-    // self.servercurrentevent_data
-    //     .iter()
-    //     .map(|(key, v)| parse_servercurrentevent(&key, v).map(|(k, e)| (key, k, e))),
-    // TODO: fixme
-    panic!("not implemented")
+fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
+    Ok(outgoing_requests::table
+        .filter(outgoing_requests::state.eq("pending"))
+        .load::<DbOutgoingRequest>(&mut *db::connect()?)?
+        .into_iter()
+        .filter_map(|item| {
+            let kind = match item.kind.as_str() {
+                "appservice" => {
+                    if let Some(appservice_id) = &item.appservice_id {
+                        OutgoingKind::Appservice(appservice_id.clone())
+                    } else {
+                        return None;
+                    }
+                }
+                "push" => {
+                    if let (Some(user_id), Some(pushkey)) = (item.user_id.clone(), item.pushkey.clone()) {
+                        OutgoingKind::Push(user_id, pushkey)
+                    } else {
+                        return None;
+                    }
+                }
+                "normal" => {
+                    if let Some(server_id) = &item.server_id {
+                        OutgoingKind::Normal(server_id.to_owned())
+                    } else {
+                        return None;
+                    }
+                }
+                _ => return None,
+            };
+            let event = if let Some(value) = item.edu_json {
+                SendingEventType::Edu(value)
+            } else if let Some(pdu_id) = item.pdu_id {
+                SendingEventType::Pdu(pdu_id)
+            } else {
+                return None;
+            };
+            Some((item.id, kind, event))
+        })
+        .collect())
 }
 
-fn active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(Vec<u8>, SendingEventType)>> {
-    // let prefix = outgoing_kind.get_prefix();
-    //     self.servercurrentevent_data
-    //         .scan_prefix(prefix)
-    //         .map(|(key, v)| parse_servercurrentevent(&key, v).map(|(_, e)| (key, e))),
-    // TODO: fixme
-    panic!("not implemented")
-}
-
-fn delete_active_request(key: Vec<u8>) -> AppResult<()> {
-    // TODO: fixme
-    panic!("not implemented")
-    // self.servercurrentevent_data.remove(&key)
+fn delete_request(id: i64) -> AppResult<()> {
+    diesel::delete(outgoing_requests::table.find(id)).execute(&mut *db::connect()?)?;
+    Ok(())
 }
 
 fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
-    // TODO: fixme
-    // let prefix = outgoing_kind.get_prefix();
-    // for (key, _) in self.servercurrentevent_data.scan_prefix(prefix) {
-    //     self.servercurrentevent_data.remove(&key)?;
-    // }
+    diesel::delete(
+        outgoing_requests::table
+            .filter(outgoing_requests::kind.eq(outgoing_kind.name()))
+            .filter(outgoing_requests::state.eq("pending")),
+    )
+    .execute(&mut *db::connect()?)?;
 
     Ok(())
 }
 
 fn delete_all_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
-    // TODO: fixme
-    // let prefix = outgoing_kind.get_prefix();
-    // for (key, _) in self.servercurrentevent_data.scan_prefix(prefix.clone()) {
-    //     self.servercurrentevent_data.remove(&key).unwrap();
-    // }
-
-    // for (key, _) in self.servernameevent_data.scan_prefix(prefix) {
-    //     self.servernameevent_data.remove(&key).unwrap();
-    // }
+    diesel::delete(outgoing_requests::table.filter(outgoing_requests::kind.eq(outgoing_kind.name())))
+        .execute(&mut *db::connect()?)?;
 
     Ok(())
 }
 
-fn queue_requests(requests: &[(&OutgoingKind, SendingEventType)]) -> AppResult<Vec<Vec<u8>>> {
-    // TODO: fixme
-    panic!("not implemented")
-
-    // let mut batch = Vec::new();
-    // let mut keys = Vec::new();
-    // for (outgoing_kind, event) in requests {
-    //     let mut key = outgoing_kind.get_prefix();
-    //     if let SendingEventType::Pdu(value) = &event {
-    //         key.extend_from_slice(value)
-    //     } else {
-    //         key.extend_from_slice(&crate::next_sn()?.to_be_bytes())
-    //     }
-    //     let value = if let SendingEventType::Edu(value) = &event {
-    //         &**value
-    //     } else {
-    //         &[]
-    //     };
-    //     batch.push((key.clone(), value.to_owned()));
-    //     keys.push(key);
-    // }
-    // self.servernameevent_data.insert_batch(&mut batch.into_iter())?;
-    // Ok(keys)
+fn queue_requests(requests: &[(&OutgoingKind, SendingEventType)]) -> AppResult<Vec<i64>> {
+    let mut ids = Vec::new();
+    for (outgoing_kind, event) in requests {
+        let appservice_id = if let OutgoingKind::Appservice(service_id) = outgoing_kind {
+            Some(service_id.clone())
+        } else {
+            None
+        };
+        let (user_id, pushkey) = if let OutgoingKind::Push(user_id, pushkey) = outgoing_kind {
+            (Some(user_id.clone()), Some(pushkey.clone()))
+        } else {
+            (None, None)
+        };
+        let server_id = if let OutgoingKind::Normal(server_id) = outgoing_kind {
+            Some(server_id.clone())
+        } else {
+            None
+        };
+        let (pdu_id, edu_json) = match event {
+            SendingEventType::Pdu(pdu_id) => (Some(pdu_id.to_owned()), None),
+            SendingEventType::Edu(edu_json) => (None, Some(edu_json.clone())),
+        };
+        let id = diesel::insert_into(outgoing_requests::table)
+            .values(&NewDbOutgoingRequest {
+                kind: outgoing_kind.name().to_owned(),
+                appservice_id,
+                user_id,
+                pushkey,
+                server_id,
+                pdu_id,
+                edu_json,
+            })
+            .returning(outgoing_requests::id)
+            .get_result::<i64>(&mut *db::connect()?)?;
+        ids.push(id);
+    }
+    Ok(ids)
 }
 
-fn queued_requests(outgoing_kind: &OutgoingKind) -> AppResult<(SendingEventType, Vec<u8>)> {
-    // TODO: fixme
-    panic!("not implemented")
-
+fn active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(i64, SendingEventType)>> {
     // let prefix = outgoing_kind.get_prefix();
-    // self.servernameevent_data
-    //     .scan_prefix(prefix)
-    //     .map(|(k, v)| parse_servercurrentevent(&k, v).map(|(_, ev)| (ev, k)))
-}
-fn mark_as_active(events: &[(SendingEventType, Vec<u8>)]) -> AppResult<()> {
+    //     self.servercurrentevent_data
+    //         .scan_prefix(prefix)
+    //         .map(|(key, v)| parse_servercurrentevent(&key, v).map(|(_, e)| (key, e))),
     // TODO: fixme
-    // for (e, key) in events {
-    //     let value = if let SendingEventType::Edu(value) = &e {
-    //         &**value
-    //     } else {
-    //         &[]
-    //     };
-    //     self.servercurrentevent_data.insert(key, value)?;
-    //     self.servernameevent_data.remove(key)?;
-    // }
+    Ok(vec![])
+}
+
+fn queued_requests(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(i64, SendingEventType)>> {
+    Ok(outgoing_requests::table
+        .filter(outgoing_requests::kind.eq(outgoing_kind.name()))
+        .load::<DbOutgoingRequest>(&mut *db::connect()?)?
+        .into_iter()
+        .filter_map(|r| {
+            if let Some(value) = r.edu_json {
+                Some((r.id, SendingEventType::Edu(value)))
+            } else if let Some(pdu_id) = r.pdu_id {
+                Some((r.id, SendingEventType::Pdu(pdu_id)))
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+fn mark_as_active(events: &[(i64, SendingEventType)]) -> AppResult<()> {
+    for (id, e) in events {
+        let value = if let SendingEventType::Edu(value) = &e {
+            &**value
+        } else {
+            &[]
+        };
+        diesel::update(outgoing_requests::table.find(id))
+            .set((outgoing_requests::data.eq(value), outgoing_requests::state.eq("done")))
+            .execute(&mut *db::connect()?)?;
+    }
 
     Ok(())
 }

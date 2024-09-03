@@ -96,6 +96,7 @@ futures-util = { workspace = true, features = ["io"] }
 form_urlencoded = { workspace = true }
 globwalk = { workspace = true }
 http = { workspace = true }
+http-auth = { version = "0.1.9", default-features = false }
 indexmap = { workspace = true }
 itertools ={ workspace = true }
 jsonwebtoken = { workspace = true }

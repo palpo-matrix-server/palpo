@@ -1,5 +1,16 @@
 use std::fmt::Debug;
-use std::net::SocketAddr;
+use std::mem;
+use std::net::{IpAddr, SocketAddr};
+use std::time::{Duration, Instant};
+
+use salvo::http::header::AUTHORIZATION;
+use salvo::http::headers::authorization::Credentials;
+use salvo::http::headers::{CacheControl, Header};
+use salvo::http::StatusError;
+
+use crate::core::authorization::XMatrix;
+use crate::core::{signatures, MatrixError, MatrixVersion, SendAccessToken, ServerName};
+use crate::{AppError, AppResult};
 
 /// Wraps either an literal IP address plus port, or a hostname plus complement
 /// (colon-plus-port if it was specified).
@@ -53,4 +64,454 @@ impl FedDest {
             Self::Named(_, port) => port[1..].parse().ok(),
         }
     }
+}
+
+#[tracing::instrument(skip(request))]
+pub(crate) async fn send_request(
+    destination: &ServerName,
+    mut request: reqwest::Request,
+) -> AppResult<reqwest::Response> {
+    if !crate::config().allow_federation {
+        return Err(AppError::public("Federation is disabled."));
+    }
+
+    if destination == crate::server_name() {
+        return Err(AppError::public("Won't send federation request to ourselves"));
+    }
+
+    debug!("Preparing to send request to {destination}");
+
+    let cached_result = crate::ACTUAL_DESTINATION_CACHE
+        .read()
+        .unwrap()
+        .get(destination)
+        .cloned();
+
+    let actual_destination = if let Some(DestinationResponse {
+        actual_destination,
+        dest_type,
+    }) = cached_result
+    {
+        match dest_type {
+            DestType::IsIpOrHasPort => actual_destination,
+            DestType::LookupFailed {
+                well_known_retry,
+                well_known_backoff_mins,
+            } => {
+                if well_known_retry < Instant::now() {
+                    find_actual_destination(destination, None, false, Some(well_known_backoff_mins)).await
+                } else {
+                    actual_destination
+                }
+            }
+
+            DestType::WellKnown { expires } => {
+                if expires < Instant::now() {
+                    find_actual_destination(destination, None, false, None).await
+                } else {
+                    actual_destination
+                }
+            }
+            DestType::WellKnownSrv {
+                srv_expires,
+                well_known_expires,
+                well_known_host,
+            } => {
+                if well_known_expires < Instant::now() {
+                    find_actual_destination(destination, None, false, None).await
+                } else if srv_expires < Instant::now() {
+                    find_actual_destination(destination, Some(well_known_host), true, None).await
+                } else {
+                    actual_destination
+                }
+            }
+            DestType::Srv {
+                well_known_retry,
+                well_known_backoff_mins,
+                srv_expires,
+            } => {
+                if well_known_retry < Instant::now() {
+                    find_actual_destination(destination, None, false, Some(well_known_backoff_mins)).await
+                } else if srv_expires < Instant::now() {
+                    find_actual_destination(destination, None, true, Some(well_known_backoff_mins)).await
+                } else {
+                    actual_destination
+                }
+            }
+        }
+    } else {
+        find_actual_destination(destination, None, false, None).await
+    };
+
+    let actual_destination_str = actual_destination.clone().into_https_string();
+
+    // let mut http_request = request
+    //     .try_into_http_request::<Vec<u8>>(
+    //         &actual_destination_str,
+    //         SendAccessToken::IfRequired(""),
+    //         &[MatrixVersion::V1_4],
+    //     )
+    //     .map_err(|e| {
+    //         warn!("Failed to find destination {}: {}", actual_destination_str, e);
+    //         StatusError::bad_request().brief("invalid destination").into()
+    //     })?;
+
+    let mut request_map = serde_json::Map::new();
+
+    if let Some(body) = request.body() {
+        request_map.insert(
+            "content".to_owned(),
+            serde_json::from_slice(body.as_bytes().unwrap_or_default())
+                .expect("body is valid json, we just created it"),
+        );
+    };
+
+    // request_map.insert("method".to_owned(), T::METADATA.method.to_string().into());
+    // request_map.insert(
+    //     "uri".to_owned(),
+    //     request
+    //         .url()
+    //         .path_and_query()
+    //         .expect("all requests have a path")
+    //         .to_string()
+    //         .into(),
+    // );
+    request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
+    request_map.insert("destination".to_owned(), destination.as_str().into());
+
+    let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
+
+    signatures::sign_json(crate::server_name().as_str(), crate::keypair(), &mut request_json)
+        .expect("our request json is what ruma expects");
+
+    let request_json: serde_json::Map<String, serde_json::Value> =
+        serde_json::from_slice(&serde_json::to_vec(&request_json).unwrap()).unwrap();
+
+    let signatures = request_json["signatures"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|v| v.as_object().unwrap().iter().map(|(k, v)| (k, v.as_str().unwrap())));
+
+    for signature_server in signatures {
+        for s in signature_server {
+            request.headers_mut().insert(
+                AUTHORIZATION,
+                XMatrix::parse(&format!(
+                    "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
+                    crate::server_name(),
+                    destination,
+                    s.0,
+                    s.1
+                ))
+                .expect("When Ruma signs JSON, it produces a valid base64 signature. All other types are valid ServerNames or OwnedKeyId")
+                .encode(),
+            );
+        }
+    }
+
+    let url = request.url().clone();
+
+    debug!("Sending request to {destination} at {url}");
+    let response = crate::federation_client().execute(request).await;
+    debug!("Received response from {destination} at {url}");
+
+    match response {
+        Ok(mut response) => {
+            let status = response.status();
+
+            if status == 200 {
+                Ok(response)
+            } else {
+                let body = response.text().await.unwrap_or_default();
+                warn!("{} {}: {}", url, status, body);
+                let err_msg = format!("Answer from {destination}: {body}");
+                debug!("Returning error from {destination}");
+                Err(MatrixError::unknown(err_msg).into())
+            }
+        }
+        Err(e) => {
+            warn!(
+                "Could not send request to {} at {}: {}",
+                destination, actual_destination_str, e
+            );
+            Err(e.into())
+        }
+    }
+}
+
+fn get_ip_with_port(destination_str: &str) -> Option<FedDest> {
+    if let Ok(destination) = destination_str.parse::<SocketAddr>() {
+        Some(FedDest::Literal(destination))
+    } else if let Ok(ip_addr) = destination_str.parse::<IpAddr>() {
+        Some(FedDest::Literal(SocketAddr::new(ip_addr, 8448)))
+    } else {
+        None
+    }
+}
+
+fn add_port_to_hostname(destination_str: &str) -> FedDest {
+    let (host, port) = match destination_str.find(':') {
+        None => (destination_str, ":8448"),
+        Some(pos) => destination_str.split_at(pos),
+    };
+    FedDest::Named(host.to_owned(), port.to_owned())
+}
+
+#[derive(Clone)]
+pub struct DestinationResponse {
+    pub actual_destination: FedDest,
+    pub dest_type: DestType,
+}
+
+#[derive(Clone)]
+pub enum DestType {
+    WellKnownSrv {
+        srv_expires: Instant,
+        well_known_expires: Instant,
+        well_known_host: String,
+    },
+    WellKnown {
+        expires: Instant,
+    },
+    Srv {
+        srv_expires: Instant,
+        well_known_retry: Instant,
+        well_known_backoff_mins: u16,
+    },
+    IsIpOrHasPort,
+    LookupFailed {
+        well_known_retry: Instant,
+        well_known_backoff_mins: u16,
+    },
+}
+
+/// Implemented according to the specification at <https://spec.matrix.org/v1.11/server-server-api/#resolving-server-names>
+/// Numbers in comments below refer to bullet points in linked section of specification
+async fn find_actual_destination(
+    destination: &'_ ServerName,
+    // The host used to potentially lookup SRV records against, only used when only_request_srv is true
+    well_known_dest: Option<String>,
+    // Should be used when only the SRV lookup has expired
+    only_request_srv: bool,
+    // The backoff time for the last well known failure, if any
+    well_known_backoff_mins: Option<u16>,
+) -> FedDest {
+    debug!("Finding actual destination for {destination}");
+    let destination_str = destination.to_string();
+    let next_backoff_mins = well_known_backoff_mins
+        // Errors are recommended to be cached for up to an hour
+        .map(|mins| (mins * 2).min(60))
+        .unwrap_or(1);
+
+    let (actual_destination, dest_type) = if only_request_srv {
+        let destination_str = well_known_dest.unwrap_or(destination_str);
+        let (dest, expires) = get_srv_destination(destination_str).await;
+        let well_known_retry = Instant::now() + Duration::from_secs((60 * next_backoff_mins).into());
+        (
+            dest,
+            if let Some(expires) = expires {
+                DestType::Srv {
+                    well_known_backoff_mins: next_backoff_mins,
+                    srv_expires: expires,
+
+                    well_known_retry,
+                }
+            } else {
+                DestType::LookupFailed {
+                    well_known_retry,
+                    well_known_backoff_mins: next_backoff_mins,
+                }
+            },
+        )
+    } else {
+        match get_ip_with_port(&destination_str) {
+            Some(host_port) => {
+                debug!("1: IP literal with provided or default port");
+                (host_port, DestType::IsIpOrHasPort)
+            }
+            None => {
+                if let Some(pos) = destination_str.find(':') {
+                    debug!("2: Hostname with included port");
+                    let (host, port) = destination_str.split_at(pos);
+                    (
+                        FedDest::Named(host.to_owned(), port.to_owned()),
+                        DestType::IsIpOrHasPort,
+                    )
+                } else {
+                    debug!("Requesting well known for {destination_str}");
+                    match request_well_known(destination_str.as_str()).await {
+                        Some((delegated_hostname, timestamp)) => {
+                            debug!("3: A .well-known file is available");
+                            match get_ip_with_port(&delegated_hostname) {
+                                // 3.1: IP literal in .well-known file
+                                Some(host_and_port) => (host_and_port, DestType::WellKnown { expires: timestamp }),
+                                None => {
+                                    if let Some(pos) = delegated_hostname.find(':') {
+                                        debug!("3.2: Hostname with port in .well-known file");
+                                        let (host, port) = delegated_hostname.split_at(pos);
+                                        (
+                                            FedDest::Named(host.to_owned(), port.to_owned()),
+                                            DestType::WellKnown { expires: timestamp },
+                                        )
+                                    } else {
+                                        debug!("Delegated hostname has no port in this branch");
+                                        let (dest, srv_expires) = get_srv_destination(delegated_hostname.clone()).await;
+                                        (
+                                            dest,
+                                            if let Some(srv_expires) = srv_expires {
+                                                DestType::WellKnownSrv {
+                                                    srv_expires,
+                                                    well_known_expires: timestamp,
+                                                    well_known_host: delegated_hostname,
+                                                }
+                                            } else {
+                                                DestType::WellKnown { expires: timestamp }
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            debug!("4: No .well-known or an error occured");
+                            let (dest, expires) = get_srv_destination(destination_str).await;
+                            let well_known_retry =
+                                Instant::now() + Duration::from_secs((60 * next_backoff_mins).into());
+                            (
+                                dest,
+                                if let Some(expires) = expires {
+                                    DestType::Srv {
+                                        srv_expires: expires,
+                                        well_known_retry,
+                                        well_known_backoff_mins: next_backoff_mins,
+                                    }
+                                } else {
+                                    DestType::LookupFailed {
+                                        well_known_retry,
+                                        well_known_backoff_mins: next_backoff_mins,
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    debug!("Actual destination: {actual_destination:?}");
+
+    let response = DestinationResponse {
+        actual_destination,
+        dest_type,
+    };
+
+    if let Ok(mut cache) = crate::ACTUAL_DESTINATION_CACHE.write() {
+        cache.insert(destination.to_owned(), response.clone());
+    }
+
+    response.actual_destination
+}
+
+/// Looks up the SRV records for federation usage
+///
+/// If no timestamp is returned, that means no SRV record was found
+async fn get_srv_destination(delegated_hostname: String) -> (FedDest, Option<Instant>) {
+    if let Some((hostname_override, timestamp)) = query_srv_record(&delegated_hostname).await {
+        debug!("SRV lookup successful");
+        let force_port = hostname_override.port();
+
+        if let Ok(override_ip) = crate::dns_resolver().lookup_ip(hostname_override.hostname()).await {
+            crate::TLS_NAME_OVERRIDE.write().unwrap().insert(
+                delegated_hostname.clone(),
+                (override_ip.iter().collect(), force_port.unwrap_or(8448)),
+            );
+        } else {
+            // Removing in case there was previously a SRV record
+            crate::TLS_NAME_OVERRIDE.write().unwrap().remove(&delegated_hostname);
+            warn!("Using SRV record, but could not resolve to IP");
+        }
+
+        if let Some(port) = force_port {
+            (FedDest::Named(delegated_hostname, format!(":{port}")), Some(timestamp))
+        } else {
+            (add_port_to_hostname(&delegated_hostname), Some(timestamp))
+        }
+    } else {
+        // Removing in case there was previously a SRV record
+        crate::TLS_NAME_OVERRIDE.write().unwrap().remove(&delegated_hostname);
+        debug!("No SRV records found");
+        (add_port_to_hostname(&delegated_hostname), None)
+    }
+}
+
+async fn query_given_srv_record(record: &str) -> Option<(FedDest, Instant)> {
+    crate::dns_resolver()
+        .srv_lookup(record)
+        .await
+        .map(|srv| {
+            srv.iter().next().map(|result| {
+                (
+                    FedDest::Named(
+                        result.target().to_string().trim_end_matches('.').to_owned(),
+                        format!(":{}", result.port()),
+                    ),
+                    srv.as_lookup().valid_until(),
+                )
+            })
+        })
+        .unwrap_or(None)
+}
+
+async fn query_srv_record(hostname: &'_ str) -> Option<(FedDest, Instant)> {
+    let hostname = hostname.trim_end_matches('.');
+
+    if let Some(host_port) = query_given_srv_record(&format!("_matrix-fed._tcp.{hostname}.")).await {
+        Some(host_port)
+    } else {
+        query_given_srv_record(&format!("_matrix._tcp.{hostname}.")).await
+    }
+}
+
+async fn request_well_known(destination: &str) -> Option<(String, Instant)> {
+    let response = crate::default_client()
+        .get(&format!("https://{destination}/.well-known/matrix/server"))
+        .send()
+        .await;
+    debug!("Got well known response");
+    let response = match response {
+        Err(e) => {
+            debug!("Well known error: {e:?}");
+            return None;
+        }
+        Ok(r) => r,
+    };
+
+    let mut headers = response.headers().values();
+
+    let cache_for = CacheControl::decode(&mut headers)
+        .ok()
+        .and_then(|cc| {
+            // Servers should respect the cache control headers present on the response, or use a sensible default when headers are not present.
+            if cc.no_store() || cc.no_cache() {
+                Some(Duration::ZERO)
+            } else {
+                cc.max_age()
+                    // Servers should additionally impose a maximum cache time for responses: 48 hours is recommended.
+                    .map(|age| age.min(Duration::from_secs(60 * 60 * 48)))
+            }
+        })
+        // The recommended sensible default is 24 hours.
+        .unwrap_or_else(|| Duration::from_secs(60 * 60 * 24));
+
+    let text = response.text().await;
+    debug!("Got well known response text");
+
+    let host = || {
+        let body: serde_json::Value = serde_json::from_str(&text.ok()?).ok()?;
+        body.get("m.server")?.as_str().map(ToOwned::to_owned)
+    };
+
+    host().map(|host| (host, Instant::now() + cache_for))
 }

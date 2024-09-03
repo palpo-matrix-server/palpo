@@ -49,6 +49,7 @@ futures-util = { version = "0.3.24", features = ["io"] }
 form_urlencoded = "1"
 globwalk = "0.9.0"
 hickory-resolver = "0.24"
+hyper-util = "0.1"
 hmac = "0.12"
 http = "1"
 image = "0.25"
@@ -87,6 +88,7 @@ textnonce = "1.0.0"
 thiserror = "1.0.26"
 tokio = { version = "1.21.1", features = ["macros", "parking_lot", "process"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
+tower-service = "0.3"
 tokio-util = { version = "0.7.4", features = ["io"] }
 tracing = { version = "0.1.36", features = ["release_max_level_debug", "max_level_debug"] }
 tracing-futures = "0.2.5"

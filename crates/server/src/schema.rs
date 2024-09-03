@@ -305,6 +305,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    outgoing_requests (id) {
+        id -> Int8,
+        kind -> Text,
+        appservice_id -> Nullable<Text>,
+        user_id -> Nullable<Text>,
+        pushkey -> Nullable<Text>,
+        server_id -> Nullable<Text>,
+        pdu_id -> Nullable<Text>,
+        edu_json -> Nullable<Bytea>,
+        state -> Text,
+        data -> Nullable<Bytea>,
+    }
+}
+
+diesel::table! {
     room_aliases (alias) {
         alias -> Text,
         room_id -> Text,
@@ -751,6 +766,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     lazy_load_deliveries,
     media_metadatas,
     media_thumbnails,
+    outgoing_requests,
     room_aliases,
     room_servers,
     room_state_deltas,

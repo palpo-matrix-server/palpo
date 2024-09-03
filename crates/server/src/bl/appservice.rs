@@ -1,13 +1,18 @@
 use std::collections::BTreeMap;
+use std::fmt;
+use std::time::Duration;
 
+use bytes::BytesMut;
 use diesel::prelude::*;
 use regex::RegexSet;
 use serde::{Deserialize, Serialize};
 
 use crate::core::appservice::{Namespace, Registration};
 use crate::core::identifiers::*;
+use crate::core::MatrixVersion;
+use crate::core::SendAccessToken;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue};
+use crate::{db, utils, AppError, AppResult, JsonValue};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]
@@ -293,4 +298,78 @@ pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
             }
         })
         .collect())
+}
+
+/// Sends a request to an appservice
+///
+/// Only returns None if there is no url specified in the appservice registration file
+#[tracing::instrument(skip(request))]
+pub(crate) async fn send_request(
+    registration: Registration,
+    mut request: reqwest::Request,
+) -> AppResult<reqwest::Response> {
+    let destination = match registration.url {
+        Some(url) => url,
+        None => {
+            return Err(AppError::public("destination is none"));
+        }
+    };
+
+    let hs_token = registration.hs_token.as_str();
+
+    // let mut http_request = request
+    //     .try_into_http_request::<BytesMut>(
+    //         &destination,
+    //         SendAccessToken::IfRequired(hs_token),
+    //         &[MatrixVersion::V1_0],
+    //     )
+    //     .unwrap()
+    //     .map(|body| body.freeze());
+
+    request
+        .url_mut()
+        .query_pairs_mut()
+        .append_pair("access_token", hs_token);
+
+    // let mut reqwest_request = reqwest::Request::try_from(http_request)?;
+
+    *request.timeout_mut() = Some(Duration::from_secs(30));
+
+    let url = request.url().clone();
+    let mut response = match crate::default_client().execute(request).await {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(
+                "Could not send request to appservice {:?} at {}: {}",
+                registration.id, destination, e
+            );
+            return Err(e.into());
+        }
+    };
+
+    // reqwest::Response -> http::Response conversion
+    let status = response.status();
+    // std::mem::swap(
+    //     response.headers_mut(),
+    //     http_response_builder
+    //         .headers_mut()
+    //         .expect("http::response::Builder is usable"),
+    // );
+
+    // let body = response.bytes().await.unwrap_or_else(|e| {
+    //     warn!("server error: {}", e);
+    //     Vec::new().into()
+    // }); // TODO: handle timeout
+
+    if status != 200 {
+        warn!("Appservice returned bad response {} {}\n{}", destination, status, url,);
+    }
+
+    // let response = T::IncomingResponse::try_from_http_response(
+    //     http_response_builder
+    //         .body(body)
+    //         .expect("reqwest body is valid http body"),
+    // );
+
+    Ok(response)
 }

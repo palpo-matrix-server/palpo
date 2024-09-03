@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
 use salvo::fs::NamedFile;
-use salvo::http::{header, ResBody, HeaderValue};
+use salvo::http::{header, HeaderValue, ResBody};
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;

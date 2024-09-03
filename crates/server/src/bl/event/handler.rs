@@ -1,12 +1,12 @@
-use std::{
-    collections::{hash_map, BTreeMap, HashMap, HashSet},
-    pin::Pin,
-    sync::Arc,
-    time::{Duration, Instant, SystemTime},
-};
+use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
+use std::future::{self, Future};
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
+use std::{error::Error as StdError, iter, pin::Pin};
 
 use diesel::prelude::*;
-use futures_util::{stream::FuturesUnordered, Future, StreamExt};
+use futures_util::{stream::FuturesUnordered, FutureExt, StreamExt};
 use palpo_core::federation::event::EventResBody;
 use tokio::sync::{RwLock, RwLockWriteGuard, Semaphore};
 
