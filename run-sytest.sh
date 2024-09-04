@@ -55,7 +55,7 @@ main() {
            -e LOGS_GROUP=$(id -g) \
            -v "$PWD:/src/" \
            -v "$sytestout/logs:/logs/" \
-           -v "$sytestplugin:/sytest/plugins/sytest-palpo/" \
+           -v "$sytestplugin:/sytest/plugins/palpo/" \
            "${runargs[@]}" \
            matrixdotorg/sytest-palpo:latest "$@"
 }
