@@ -123,6 +123,13 @@ pub struct DeactivateReqBody {
     /// identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id_server: Option<String>,
+
+    /// Whether the user would like their content to be erased as much as possible from the
+    /// server.
+    ///
+    /// Defaults to `false`.
+    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
+    pub erase: bool,
 }
 
 /// Response type for the `deactivate` endpoint.

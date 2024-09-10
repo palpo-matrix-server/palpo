@@ -225,10 +225,6 @@ pub struct KickUserReqBody {
 /// Request type for the `invite_user` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct InviteUserReqBody {
-    /// The room where the user should be invited.
-    #[salvo(parameter(parameter_in = Path))]
-    pub room_id: OwnedRoomId,
-
     /// The user to invite.
     #[serde(flatten)]
     pub recipient: InvitationRecipient,
@@ -257,10 +253,6 @@ pub struct InviteUserReqBody {
 /// Request type for the `leave_room` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct LeaveRoomReqBody {
-    /// The room to leave.
-    #[salvo(parameter(parameter_in = Path))]
-    pub room_id: OwnedRoomId,
-
     /// Optional reason to be included as the `reason` on the subsequent membership event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,

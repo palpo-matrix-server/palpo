@@ -41,7 +41,7 @@ async fn pushers(depot: &mut Depot) -> JsonResult<PushersResBody> {
 async fn set_pusher(body: JsonBody<SetPusherReqBody>, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    crate::user::pusher::set_pusher(authed.user_id(), body.action.clone())?;
+    crate::user::pusher::set_pusher(authed.user_id(), body.into_inner().0)?;
 
     empty_ok()
 }

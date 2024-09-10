@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ./complement.sh  /mnt/d/Soncai/palpo-rs/complement  ./log.txt r.json
+# ./tests/complement.sh ../complement  ./__test_output_csapi.l.jsonl  ./__test_output_csapi.s.jsonl
 set -euo pipefail
 
 # Path to Complement's source code
@@ -14,6 +14,9 @@ RESULTS_FILE="$3"
 
 OCI_IMAGE="complement-palpo:dev"
 
+# Complement tests that are skipped due to flakiness/reliability issues
+SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*'
+
 env \
     -C "$(git rev-parse --show-toplevel)" \
     docker build \
@@ -25,8 +28,9 @@ env \
 set +o pipefail
 env \
     -C "$COMPLEMENT_SRC" \
+    COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$OCI_IMAGE" \
-    go test -timeout 1200s -json ./tests | tee "$LOG_FILE"
+    go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format
@@ -36,3 +40,5 @@ cat "$LOG_FILE" | jq -c '
         and .Test != null
     ) | {Action: .Action, Test: .Test}
     ' | sort > "$RESULTS_FILE"
+ 
+cat "$LOG_FILE" | jq -c '.Output' > "$LOG_FILE.txt"

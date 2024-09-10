@@ -50,12 +50,9 @@ impl PushersResBody {
 //     }
 // };
 
-/// Request type for the `set_pusher` endpoint.    
+/// Request type for the `set_pusher` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct SetPusherReqBody {
-    /// The action to take.
-    pub action: PusherAction,
-}
+pub struct SetPusherReqBody(pub PusherAction);
 
 // impl Request {
 //     /// Creates a new `Request` for the given action.
@@ -76,6 +73,7 @@ pub struct SetPusherReqBody {
 
 /// The action to take for the pusher.
 #[derive(ToSchema, Deserialize, Clone, Debug)]
+#[serde(untagged)]
 pub enum PusherAction {
     /// Create or update the given pusher.
     Post(PusherPostData),

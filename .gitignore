@@ -6,3 +6,5 @@ debug.log
 Cargo.lock
 .idea
 /tests/_output*.*
+sytestout
+__test_output_*

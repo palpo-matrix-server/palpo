@@ -179,23 +179,9 @@ pub struct DevicesResBody {
 /// Request type for the `update_device` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct UpdatedDeviceReqBody {
-    /// The device to update.
-    #[salvo(parameter(parameter_in = Path))]
-    pub device_id: OwnedDeviceId,
-
     /// The new display name for this device.
     ///
     /// If this is `None`, the display name won't be changed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
-}
-
-impl UpdatedDeviceReqBody {
-    /// Creates a new `Request` with the given device ID.
-    pub fn new(device_id: OwnedDeviceId) -> Self {
-        Self {
-            device_id,
-            display_name: None,
-        }
-    }
 }
