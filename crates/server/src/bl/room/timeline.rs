@@ -202,10 +202,13 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             continue;
         }
 
-        let rules_for_user =
-            crate::user::get_data::<PushRulesEventContent>(user, None, &GlobalAccountDataEventType::PushRules.to_string())?
-                .map(|content: PushRulesEventContent| content.global)
-                .unwrap_or_else(|| Ruleset::server_default(user));
+        let rules_for_user = crate::user::get_data::<PushRulesEventContent>(
+            user,
+            None,
+            &GlobalAccountDataEventType::PushRules.to_string(),
+        )?
+        .map(|content: PushRulesEventContent| content.global)
+        .unwrap_or_else(|| Ruleset::server_default(user));
 
         let mut highlight = false;
         let mut notify = false;

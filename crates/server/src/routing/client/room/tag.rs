@@ -75,7 +75,7 @@ pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &m
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(||  TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
 
     user_data_content.tags.remove(&args.tag.clone().into());
 

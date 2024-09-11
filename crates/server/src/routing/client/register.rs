@@ -153,8 +153,8 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
         &user_id,
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-        serde_json::to_value( PushRulesEventContent {
-                global: Ruleset::server_default(&user_id),
+        serde_json::to_value(PushRulesEventContent {
+            global: Ruleset::server_default(&user_id),
         })
         .expect("to json always works"),
     )?;

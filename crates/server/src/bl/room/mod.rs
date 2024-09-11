@@ -264,10 +264,7 @@ pub fn update_membership(
                 &GlobalAccountDataEventType::IgnoredUserList.to_string(),
             )?
             .map_or(false, |ignored| {
-                ignored
-                    .ignored_users
-                    .iter()
-                    .any(|(user, _details)| user == sender)
+                ignored.ignored_users.iter().any(|(user, _details)| user == sender)
             });
 
             if is_ignored {

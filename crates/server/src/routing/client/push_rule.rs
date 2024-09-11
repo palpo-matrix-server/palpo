@@ -83,7 +83,7 @@ async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyRes
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
     if let Err(error) =
-    user_data_content
+        user_data_content
             .global
             .insert(body.rule.clone(), body.after.as_deref(), body.before.as_deref())
     {

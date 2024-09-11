@@ -11,7 +11,7 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use crate::error::ErrorKind;
+pub use crate::error::ErrorKind;
 use crate::serde::{from_raw_json_value, JsonObject, JsonValue, RawJsonValue, StringEnum};
 use crate::third_party::Medium;
 use crate::{OwnedClientSecret, OwnedSessionId, OwnedUserId, PrivOwnedStr};

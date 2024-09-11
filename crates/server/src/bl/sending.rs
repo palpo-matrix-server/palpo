@@ -502,7 +502,7 @@ async fn handle_events(
                 let rules_for_user = crate::user::get_data::<PushRulesEventContent>(
                     user_id,
                     None,
-                    &GlobalAccountDataEventType::PushRules.to_string(), 
+                    &GlobalAccountDataEventType::PushRules.to_string(),
                 )
                 .unwrap_or_default()
                 .map(|content: PushRulesEventContent| content.global)

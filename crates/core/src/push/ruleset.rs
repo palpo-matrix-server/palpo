@@ -20,7 +20,7 @@ use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr};
 ///
 /// For example, some rules may only be applied for messages from a particular sender, a particular
 /// room, or by default. The push ruleset contains the entire set of scopes and rules.
-#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct Ruleset {
     /// These rules configure behavior for (unencrypted) messages that match certain patterns.
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]

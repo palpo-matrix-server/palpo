@@ -3,12 +3,12 @@ use std::io;
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
+use palpo_core::error::ErrorKind;
 use palpo_core::MatrixError;
 use salvo::http::{StatusCode, StatusError};
 use salvo::oapi::{self, EndpointOutRegister, ToSchema};
 use salvo::prelude::{Depot, Request, Response, Writer};
 use thiserror::Error;
-
 // use crate::User;
 // use crate::DepotExt;
 
@@ -96,7 +96,21 @@ impl Writer for AppError {
             Self::Internal(_msg) => MatrixError::unknown("unknown error."),
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
-                res.status_code(StatusCode::UNAUTHORIZED);
+                use crate::core::client::uiaa::ErrorKind;
+                let code = if let Some(error) = &uiaa.auth_error {
+                    match &error.kind {
+                        ErrorKind::Forbidden => StatusCode::FORBIDDEN,
+                        ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                        ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadStatus | ErrorKind::BadAlias => {
+                            StatusCode::BAD_REQUEST
+                        }
+                        ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    }
+                } else {
+                    StatusCode::UNAUTHORIZED
+                };
+                res.status_code(code);
                 res.add_header(salvo::http::header::CONTENT_TYPE, "application/json", true)
                     .ok();
                 let body: Vec<u8> = crate::core::serde::json_to_buf(&uiaa).unwrap();
