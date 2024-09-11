@@ -7,6 +7,8 @@ pub mod lazy_loading;
 pub mod pdu_metadata;
 pub mod receipt;
 mod search;
+use palpo_core::events::direct::DirectEventContent;
+use palpo_core::events::ignored_user_list::IgnoredUserListEventContent;
 pub use search::*;
 pub mod space;
 pub mod state;
@@ -189,7 +191,7 @@ pub fn update_membership(
                     //     .ok();
 
                     // Copy old tags to new room
-                    if let Some(tag_event) = crate::user::get_data::<JsonValue>(
+                    if let Some(tag_event_content) = crate::user::get_data::<JsonValue>(
                         user_id,
                         Some(&predecessor.room_id),
                         &RoomAccountDataEventType::Tag.to_string(),
@@ -198,20 +200,20 @@ pub fn update_membership(
                             user_id,
                             Some(room_id.to_owned()),
                             &RoomAccountDataEventType::Tag.to_string(),
-                            tag_event,
+                            tag_event_content,
                         )
                         .ok();
                     };
 
                     // Copy direct chat flag
-                    if let Some(mut direct_event) = crate::user::get_data::<DirectEvent>(
+                    if let Some(mut direct_event_content) = crate::user::get_data::<DirectEventContent>(
                         user_id,
                         None,
                         &GlobalAccountDataEventType::Direct.to_string(),
                     )? {
                         let mut room_ids_updated = false;
 
-                        for room_ids in direct_event.content.0.values_mut() {
+                        for room_ids in direct_event_content.0.values_mut() {
                             if room_ids.iter().any(|r| r == &predecessor.room_id) {
                                 room_ids.push(room_id.to_owned());
                                 room_ids_updated = true;
@@ -223,7 +225,7 @@ pub fn update_membership(
                                 user_id,
                                 None,
                                 &GlobalAccountDataEventType::Direct.to_string(),
-                                serde_json::to_value(&direct_event)?,
+                                serde_json::to_value(&direct_event_content)?,
                             )?;
                         }
                     };
@@ -256,14 +258,13 @@ pub fn update_membership(
         }
         MembershipState::Invite => {
             // We want to know if the sender is ignored by the receiver
-            let is_ignored = crate::user::get_data::<IgnoredUserListEvent>(
+            let is_ignored = crate::user::get_data::<IgnoredUserListEventContent>(
                 user_id, // Receiver
                 None,    // Ignored users are in global account data
                 &GlobalAccountDataEventType::IgnoredUserList.to_string(),
             )?
             .map_or(false, |ignored| {
                 ignored
-                    .content
                     .ignored_users
                     .iter()
                     .any(|(user, _details)| user == sender)
@@ -508,7 +509,7 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
             .select(event_datas::json_data)
             .load::<JsonValue>(&mut *db::connect()?)?
             .into_iter()
-            .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(value).ok())
+            .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())
             .collect::<Vec<_>>();
         room_events.insert(room_id, events);
     }

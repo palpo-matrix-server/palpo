@@ -25,13 +25,10 @@ pub(super) async fn get_global_data(
 ) -> JsonResult<GlobalAccountDataResBody> {
     let authed = depot.authed_info()?;
 
-    let account_data =
-        crate::user::get_data::<AnyGlobalAccountDataEvent>(authed.user_id(), None, &args.event_type.to_string())?
-            .ok_or(MatrixError::not_found("User data not found."))?;
+    let content = crate::user::get_data::<JsonValue>(authed.user_id(), None, &args.event_type.to_string())?
+        .ok_or(MatrixError::not_found("User data not found."))?;
 
-    json_ok(GlobalAccountDataResBody {
-        account_data: account_data.content(),
-    })
+    json_ok(GlobalAccountDataResBody(RawJson::from_value(&content)?))
 }
 
 // #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
@@ -47,15 +44,7 @@ pub(super) async fn set_global_data(
 
     let event_type = args.event_type.to_string();
 
-    crate::user::set_data(
-        authed.user_id(),
-        None,
-        &event_type,
-        json!({
-            "type": event_type,
-            "content": body.into_inner(),
-        }),
-    )?;
+    crate::user::set_data(authed.user_id(), None, &event_type, body.into_inner())?;
     empty_ok()
 }
 
@@ -69,16 +58,11 @@ pub(super) async fn get_room_data(
 ) -> JsonResult<RoomAccountDataResBody> {
     let authed = depot.authed_info()?;
 
-    let account_data = crate::user::get_data::<AnyRoomAccountDataEvent>(
-        authed.user_id(),
-        Some(&*args.room_id),
-        &args.event_type.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("User data not found."))?;
+    let content =
+        crate::user::get_data::<JsonValue>(authed.user_id(), Some(&*args.room_id), &args.event_type.to_string())?
+            .ok_or(MatrixError::not_found("User data not found."))?;
 
-    json_ok(RoomAccountDataResBody {
-        account_data: account_data.content(),
-    })
+    json_ok(RoomAccountDataResBody(RawJson::from_value(&content)?))
 }
 
 // #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
@@ -94,14 +78,6 @@ pub(super) async fn set_room_data(
 
     let event_type = args.event_type.to_string();
 
-    crate::user::set_data(
-        authed.user_id(),
-        Some(args.room_id),
-        &event_type,
-        json!({
-            "type": event_type,
-            "content": body.into_inner(),
-        }),
-    )?;
+    crate::user::set_data(authed.user_id(), Some(args.room_id), &event_type, body.into_inner())?;
     empty_ok()
 }

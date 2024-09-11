@@ -243,7 +243,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
                 authed.user_id(),
                 Some(args.room_id.clone()),
                 &RoomAccountDataEventType::FullyRead.to_string(),
-                serde_json::to_value(fully_read_event).expect("to json value always works"),
+                serde_json::to_value(fully_read_event.content).expect("to json value always works"),
             )?;
         }
         ReceiptType::Read => {

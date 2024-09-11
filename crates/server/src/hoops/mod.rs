@@ -8,6 +8,14 @@ mod auth;
 pub use auth::{auth_by_access_token, auth_by_signatures};
 
 #[handler]
+pub async fn ensure_accpet(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
+    if req.accept().is_empty() {
+        req.headers_mut()
+            .insert("Accept", "application/json".parse().expect("should not fail"));
+    }
+}
+
+#[handler]
 pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
     let mut max_size = 1024 * 1024 * 16;
     if let Some(ctype) = req.content_type() {

@@ -89,7 +89,7 @@ pub fn read_receipts(
                 .first::<JsonValue>(&mut *db::connect()?)?;
             // json.remove("room_id");
 
-            Ok((user_id, event_id, RawJson::from_value(json)?))
+            Ok((user_id, event_id, RawJson::from_value(&json)?))
         })
         .collect::<Result<_, _>>()
 }

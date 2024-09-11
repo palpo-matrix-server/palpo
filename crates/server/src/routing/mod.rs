@@ -11,23 +11,12 @@ use salvo::serve_static::StaticDir;
 use salvo::size_limiter;
 use url::Url;
 
-use crate::{json_ok, AppResult, JsonResult};
-
-#[handler]
-pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
-    let mut max_size = 1024 * 1024 * 16;
-    if let Some(ctype) = req.content_type() {
-        if ctype.type_() == mime::MULTIPART {
-            max_size = 1024 * 1024 * 1024;
-        }
-    }
-    let limiter = size_limiter::max_size(max_size);
-    limiter.handle(req, depot, res, ctrl).await;
-}
+use crate::{hoops, json_ok, AppResult, JsonResult};
 
 pub fn router() -> Router {
     Router::new()
-        .hoop(limit_size)
+        .hoop(hoops::ensure_accpet)
+        .hoop(hoops::limit_size)
         .push(
             Router::with_path("_matrix")
                 .push(client::router())

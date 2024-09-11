@@ -176,7 +176,14 @@ pub(super) async fn invite_user(
     let InvitationRecipient::UserId { user_id } = &body.recipient else {
         return Err(MatrixError::not_found("User not found.").into());
     };
-    crate::membership::invite_user(authed.user_id(), user_id, &room_id.into_inner(), body.reason.clone(), false).await?;
+    crate::membership::invite_user(
+        authed.user_id(),
+        user_id,
+        &room_id.into_inner(),
+        body.reason.clone(),
+        false,
+    )
+    .await?;
     empty_ok()
 }
 

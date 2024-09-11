@@ -144,7 +144,7 @@ async fn upload(
     _aa: AuthArgs,
     args: UploadContentReqArgs,
     req: &mut Request,
-    depot: &mut Depot,
+    _depot: &mut Depot,
 ) -> JsonResult<UploadContentResBody> {
     // let authed = depot.take_authed_info()?;
 

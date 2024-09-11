@@ -96,7 +96,7 @@ pub fn get_data_changes(
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);
-        let event: RawJson<AnyEphemeralRoomEvent> = RawJson::from_value(db_data.json_data)
+        let event: RawJson<AnyEphemeralRoomEvent> = RawJson::from_value(&db_data.json_data)
             .map_err(|_| AppError::public("Database contains invalid account data."))?;
         user_datas.insert(kind, event);
     }

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
-use crate::core::events::push_rules::PushRulesEvent;
+use crate::core::events::push_rules::{PushRulesEvent, PushRulesEventContent};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encrypted::Relation;
@@ -203,8 +203,8 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         }
 
         let rules_for_user =
-            crate::user::get_data::<PushRulesEvent>(user, None, &GlobalAccountDataEventType::PushRules.to_string())?
-                .map(|ev: PushRulesEvent| ev.content.global)
+            crate::user::get_data::<PushRulesEventContent>(user, None, &GlobalAccountDataEventType::PushRules.to_string())?
+                .map(|content: PushRulesEventContent| content.global)
                 .unwrap_or_else(|| Ruleset::server_default(user));
 
         let mut highlight = false;

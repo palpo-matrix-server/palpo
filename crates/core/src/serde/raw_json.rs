@@ -67,8 +67,8 @@ impl<T> RawJson<T> {
     }
 
     /// Create a `Raw` from a boxed `RawValue`.
-    pub fn from_value(val: JsonValue) -> serde_json::Result<Self> {
-        to_raw_json_value(&val).map(Self::from_raw_value)
+    pub fn from_value(val: &JsonValue) -> serde_json::Result<Self> {
+        to_raw_json_value(val).map(Self::from_raw_value)
     }
     pub fn from_raw_value(inner: Box<RawJsonValue>) -> Self {
         Self {

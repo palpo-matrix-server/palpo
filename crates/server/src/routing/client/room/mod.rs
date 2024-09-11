@@ -149,7 +149,7 @@ fn set_read_markers(
             authed.user_id(),
             Some(room_id.clone()),
             &RoomAccountDataEventType::FullyRead.to_string(),
-            serde_json::to_value(fully_read_event).expect("to json value always works"),
+            serde_json::to_value(fully_read_event.content).expect("to json value always works"),
         )?;
     }
 

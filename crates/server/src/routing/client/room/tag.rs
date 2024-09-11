@@ -17,17 +17,15 @@ use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut Depot) -> JsonResult<TagsResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data = crate::user::get_data::<TagEvent>(
+    let user_data_content = crate::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEvent {
-        content: TagEventContent { tags: BTreeMap::new() },
-    });
+    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
 
     json_ok(TagsResBody {
-        tags: user_data.content.tags,
+        tags: user_data_content.tags,
     })
 }
 
@@ -44,17 +42,14 @@ pub(super) async fn upsert_tag(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data = crate::user::get_data::<TagEvent>(
+    let mut user_data_content = crate::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEvent {
-        content: TagEventContent { tags: BTreeMap::new() },
-    });
+    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
 
-    user_data
-        .content
+    user_data_content
         .tags
         .insert(args.tag.clone().into(), body.tag_info.clone());
 
@@ -62,7 +57,7 @@ pub(super) async fn upsert_tag(
         authed.user_id(),
         Some(args.room_id.clone()),
         &RoomAccountDataEventType::Tag.to_string(),
-        serde_json::to_value(user_data).expect("to json value always works"),
+        serde_json::to_value(user_data_content).expect("to json value always works"),
     )?;
     empty_ok()
 }
@@ -75,22 +70,20 @@ pub(super) async fn upsert_tag(
 pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data = crate::user::get_data::<TagEvent>(
+    let mut user_data_content = crate::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEvent {
-        content: TagEventContent { tags: BTreeMap::new() },
-    });
+    .unwrap_or_else(||  TagEventContent { tags: BTreeMap::new() });
 
-    user_data.content.tags.remove(&args.tag.clone().into());
+    user_data_content.tags.remove(&args.tag.clone().into());
 
     crate::user::set_data(
         authed.user_id(),
         Some(args.room_id.clone()),
         &RoomAccountDataEventType::Tag.to_string(),
-        serde_json::to_value(user_data).expect("to json value always works"),
+        serde_json::to_value(user_data_content).expect("to json value always works"),
     )?;
     empty_ok()
 }

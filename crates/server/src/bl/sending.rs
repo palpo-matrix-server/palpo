@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use base64::{engine::general_purpose, Engine as _};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
+use palpo_core::events::push_rules::PushRulesEventContent;
 use serde::Deserialize;
 use tokio::sync::{mpsc, Mutex, Semaphore};
 
@@ -498,13 +499,13 @@ async fn handle_events(
                     None => continue,
                 };
 
-                let rules_for_user = crate::user::get_data::<PushRulesEvent>(
+                let rules_for_user = crate::user::get_data::<PushRulesEventContent>(
                     user_id,
                     None,
-                    &GlobalAccountDataEventType::PushRules.to_string(),
+                    &GlobalAccountDataEventType::PushRules.to_string(), 
                 )
                 .unwrap_or_default()
-                .map(|ev: PushRulesEvent| ev.content.global)
+                .map(|content: PushRulesEventContent| content.global)
                 .unwrap_or_else(|| push::Ruleset::server_default(user_id));
 
                 let unread = crate::room::user::notification_count(user_id, &pdu.room_id)

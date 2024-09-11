@@ -52,7 +52,7 @@ impl AuthArgs {
         } else if let Some(access_token) = self.access_token.as_deref() {
             Ok(access_token)
         } else {
-            Err(MatrixError::missing_token("Ttoken not found.").into())
+            Err(MatrixError::missing_token("Token not found.").into())
         }
     }
 }

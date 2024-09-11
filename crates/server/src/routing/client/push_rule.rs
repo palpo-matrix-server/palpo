@@ -5,6 +5,7 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 
+use palpo_core::events::push_rules::PushRulesEventContent;
 use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
@@ -44,15 +45,14 @@ async fn global() -> EmptyResult {
 fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data = crate::user::get_data::<PushRulesEvent>(
+    let user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    let rule = user_data
-        .content
+    let rule = user_data_content
         .global
         .get(args.kind.clone(), &args.rule_id)
         .map(Into::into);
@@ -75,7 +75,7 @@ async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyRes
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let mut user_data = crate::user::get_data::<PushRulesEvent>(
+    let mut user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
@@ -83,8 +83,7 @@ async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyRes
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
     if let Err(error) =
-        user_data
-            .content
+    user_data_content
             .global
             .insert(body.rule.clone(), body.after.as_deref(), body.before.as_deref())
     {
@@ -112,7 +111,7 @@ async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyRes
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-        serde_json::to_value(user_data)?,
+        serde_json::to_value(user_data_content)?,
     )?;
 
     empty_ok()
@@ -128,14 +127,14 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let mut user_data = crate::user::get_data::<PushRulesEvent>(
+    let mut user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if let Err(error) = user_data.content.global.remove(args.kind.clone(), &args.rule_id) {
+    if let Err(error) = user_data_content.global.remove(args.kind.clone(), &args.rule_id) {
         let err = match error {
             RemovePushRuleError::ServerDefault => {
                 MatrixError::invalid_param("Cannot delete a server-default pushrule.")
@@ -151,7 +150,7 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-        serde_json::to_value(user_data)?,
+        serde_json::to_value(user_data_content)?,
     )?;
     empty_ok()
 }
@@ -162,7 +161,7 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
 async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data = crate::user::get_data::<PushRulesEvent>(
+    let user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
@@ -170,7 +169,7 @@ async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
     json_ok(RulesResBody {
-        global: user_data.content.global,
+        global: user_data_content.global,
     })
 }
 
@@ -184,15 +183,14 @@ async fn get_actions(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResul
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let user_data = crate::user::get_data::<PushRulesEvent>(
+    let user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    let actions = user_data
-        .content
+    let actions = user_data_content
         .global
         .get(args.kind.clone(), &args.rule_id)
         .map(|rule| rule.actions().to_owned())
@@ -211,15 +209,14 @@ fn set_actions(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleActionsReqBody>
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let mut user_data = crate::user::get_data::<PushRulesEvent>(
+    let mut user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if user_data
-        .content
+    if user_data_content
         .global
         .set_actions(args.kind.clone(), &args.rule_id, body.actions.clone())
         .is_err()
@@ -231,7 +228,7 @@ fn set_actions(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleActionsReqBody>
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-        serde_json::to_value(user_data).expect("to json value always works"),
+        serde_json::to_value(user_data_content).expect("to json value always works"),
     )?;
 
     empty_ok()
@@ -247,15 +244,14 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let user_data = crate::user::get_data::<PushRulesEvent>(
+    let user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    let enabled = user_data
-        .content
+    let enabled = user_data_content
         .global
         .get(args.kind.clone(), &args.rule_id)
         .map(|r| r.enabled())
@@ -274,15 +270,14 @@ fn set_enabled(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleEnabledReqBody>
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    let mut user_data = crate::user::get_data::<PushRulesEvent>(
+    let mut user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if user_data
-        .content
+    if user_data_content
         .global
         .set_enabled(args.kind.clone(), &args.rule_id, body.enabled)
         .is_err()
@@ -294,7 +289,7 @@ fn set_enabled(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleEnabledReqBody>
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-        serde_json::to_value(user_data)?,
+        serde_json::to_value(user_data_content)?,
     )?;
 
     empty_ok()

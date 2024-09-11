@@ -30,7 +30,7 @@ pub(super) async fn create(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
                 Some(&body.room_id),
                 authed.user_id(),
                 RoomAccountDataEventType::FullyRead,
-                &serde_json::to_value(fully_read_event).expect("to json value always works"),
+                &serde_json::to_value(fully_read_event.content).expect("to json value always works"),
             )?;
         }
         create_receipt::v3::ReceiptType::Read => {

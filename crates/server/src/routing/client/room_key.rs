@@ -1,6 +1,3 @@
-
-
-
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
@@ -63,7 +60,7 @@ async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Dep
             let DbRoomKey {
                 room_id, session_data, ..
             } = rk;
-            (room_id, RawJson::<RoomKeyBackup>::from_value(session_data).unwrap())
+            (room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())
         })
         .collect();
     json_ok(KeysResBody { rooms })
@@ -83,7 +80,7 @@ async fn get_keys_for_room(
     } = key_backup::get_room_key(authed.user_id(), &args.room_id, args.version)?
         .ok_or(MatrixError::not_found("Backup key not found for this user's room."))?;
     json_ok(KeysForRoomResBody::new(BTreeMap::from_iter(
-        [(room_id, RawJson::<RoomKeyBackup>::from_value(session_data).unwrap())].into_iter(),
+        [(room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())].into_iter(),
     )))
 }
 // #GET /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
@@ -106,7 +103,7 @@ async fn get_session_keys(
         .ok_or(MatrixError::not_found("Backup key not found for this user's session."))?;
 
     json_ok(KeysForSessionResBody {
-        key_data: RawJson::from_value(session_data)?,
+        key_data: RawJson::from_value(&session_data)?,
     })
 }
 
@@ -229,7 +226,7 @@ async fn get_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) 
         .algorithm;
 
     json_ok(VersionResBody {
-        algorithm: RawJson::from_value(algorithm)?,
+        algorithm: RawJson::from_value(&algorithm)?,
         count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
         etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),
@@ -287,7 +284,7 @@ async fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionR
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
 
     json_ok(VersionResBody {
-        algorithm: RawJson::from_value(algorithm)?,
+        algorithm: RawJson::from_value(&algorithm)?,
         count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
         etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),

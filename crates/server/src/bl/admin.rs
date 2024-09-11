@@ -506,10 +506,8 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 &user_id,
                 None,
                 &crate::core::events::GlobalAccountDataEventType::PushRules.to_string(),
-                serde_json::to_value(crate::core::events::push_rules::PushRulesEvent {
-                    content: crate::core::events::push_rules::PushRulesEventContent {
+                serde_json::to_value(crate::core::events::push_rules::PushRulesEventContent {
                         global: crate::core::push::Ruleset::server_default(&user_id),
-                    },
                 })
                 .expect("to json value always works"),
             )?;

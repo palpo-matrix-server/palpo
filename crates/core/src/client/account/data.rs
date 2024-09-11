@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Response type for the `get_global_account_data` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct GlobalAccountDataResBody {
+pub struct GlobalAccountDataResBody (
     /// Account data content for the given type.
     ///
     /// Since the inner type of the `RawJson` does not implement `Deserialize`, you need to use
@@ -16,14 +16,14 @@ pub struct GlobalAccountDataResBody {
     ///
     /// [`SecretStorageKeyEventContent`]: palpo_core::events::secret_storage::key::SecretStorageKeyEventContent
 
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    #[serde(flatten)]
-    pub account_data: AnyGlobalAccountDataEventContent,
-}
+    // #[salvo(schema(value_type = Object, additional_properties = true))]
+    // #[serde(flatten)]
+    pub  RawJson<AnyGlobalAccountDataEventContent>,
+);
 
 /// Response type for the `get_room_account_data` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct RoomAccountDataResBody {
+pub struct RoomAccountDataResBody (
     /// Account data content for the given type.
     ///
     /// Since the inner type of the `RawJson` does not implement `Deserialize`, you need to use
@@ -33,10 +33,10 @@ pub struct RoomAccountDataResBody {
     ///
     /// [`SecretStorageKeyEventContent`]: palpo_core::events::secret_storage::key::SecretStorageKeyEventContent
 
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    #[serde(flatten)]
-    pub account_data: AnyRoomAccountDataEventContent,
-}
+    // #[salvo(schema(value_type = Object, additional_properties = true))]
+    // #[serde(flatten)]
+    pub RawJson<AnyRoomAccountDataEventContent>,
+);
 
 /// `PUT /_matrix/client/*/user/{user_id}/account_data/{type}`
 ///

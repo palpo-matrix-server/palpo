@@ -217,7 +217,7 @@ pub(crate) async fn send_request(
     debug!("Received response from {destination} at {url}");
 
     match response {
-        Ok(mut response) => {
+        Ok(response) => {
             let status = response.status();
 
             if status == 200 {
