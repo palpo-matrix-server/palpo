@@ -70,30 +70,30 @@ pub struct CreateRoomReqBody {
 
     /// If this is included, an `m.room.name` event will be sent into the room to indicate the
     /// name of the room.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
     /// Power level content to override in the default power level event.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub power_level_content_override: Option<RoomPowerLevelsEventContent>,
 
     /// Convenience parameter for setting various default state events based on a preset.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preset: Option<RoomPreset>,
 
     /// The desired room alias local part.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_alias_name: Option<String>,
 
     /// Room version to set for the room.
     ///
     /// Defaults to homeserver's default if not specified.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_version: Option<RoomVersionId>,
 
     /// If this is included, an `m.room.topic` event will be sent into the room to indicate
     /// the topic for the room.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
 
     /// A public visibility indicates that the room will be shown in the published room list.

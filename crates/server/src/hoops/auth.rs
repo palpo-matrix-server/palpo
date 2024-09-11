@@ -29,12 +29,12 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
         let user = users::table
             .find(&access_token.user_id)
             .first::<DbUser>(&mut *db::connect()?)
-            .map_err(|_| MatrixError::unauthorized("User not found"))?;
+            .map_err(|_| MatrixError::unknown_token(true, "User not found"))?;
         let user_device = user_devices::table
             .filter(user_devices::device_id.eq(&access_token.device_id))
             .filter(user_devices::user_id.eq(&user.id))
             .first::<DbUserDevice>(&mut *db::connect()?)
-            .map_err(|_| MatrixError::unauthorized("User device not found"))?;
+            .map_err(|_| MatrixError::unknown_token(true, "User device not found"))?;
 
         depot.inject(AuthedInfo {
             user,
@@ -43,7 +43,7 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
         });
         Ok(())
     } else {
-        Err(MatrixError::unauthorized("Invalid access token").into())
+        Err(MatrixError::missing_token("Missing access token").into())
     }
 }
 

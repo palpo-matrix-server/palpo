@@ -478,11 +478,9 @@ pub(super) async fn create_room(
     body: JsonBody<CreateRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<CreateRoomResBody> {
-    use RoomPreset;
     let authed = depot.authed_info()?;
 
     let room_id = RoomId::new(&crate::config().server_name);
-
     crate::room::ensure_room(&room_id, authed.user_id())?;
 
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {

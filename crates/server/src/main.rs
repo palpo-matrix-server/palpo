@@ -163,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             ]))
             .max_age(Duration::from_secs(86400))
             .into_handler(),
-    );
+    ).hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
     Server::new(acceptor)
         .serve(service)

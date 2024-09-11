@@ -139,10 +139,6 @@ pub struct SetAvatarUrlReqBody {
 /// Request type for the `set_display_name` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct SetDisplayNameReqBody {
-    /// The user whose display name will be set.
-    #[salvo(parameter(parameter_in = Path))]
-    pub user_id: OwnedUserId,
-
     /// The new display name for the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(alias = "displayname")]

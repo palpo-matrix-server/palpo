@@ -39,7 +39,7 @@ pub fn authed_router() -> Router {
                 .push(
                     Router::with_path("<version>")
                         .get(get_version)
-                        .put(update_version)
+                        .post(update_version)
                         .delete(delete_version),
                 ),
         )
