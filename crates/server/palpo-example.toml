@@ -56,5 +56,5 @@ pool_size = 1
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access palpo with the host
 # server_name and port 443 by default.
 # If you want to override these defaults, uncomment and edit the following lines accordingly:
-server = "127.0.0.1:8008"
-client = "http://127.0.0.1:8008"
+server = "your.server.name:8008"
+client = "http://your.server.name:8008"

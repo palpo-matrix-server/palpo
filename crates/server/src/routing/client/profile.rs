@@ -16,13 +16,13 @@ pub fn public_router() -> Router {
     Router::with_path("profile/<user_id>")
         .get(get_profile)
         .push(Router::with_path("avatar_url").get(get_avatar_url))
-        .push(Router::with_path("display_name").put(get_display_name))
+        .push(Router::with_path("displayname").get(get_display_name))
 }
 pub fn authed_router() -> Router {
     Router::with_path("profile/<user_id>")
         .hoop(hoops::limit_rate)
         .push(Router::with_path("avatar_url").put(set_avatar_url))
-        .push(Router::with_path("display_name").put(set_display_name))
+        .push(Router::with_path("displayname").put(set_display_name))
 }
 
 // #GET /_matrix/client/r0/profile/{user_d}

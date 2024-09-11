@@ -35,7 +35,7 @@ pub fn authed_router() -> Router {
         .push(
             Router::with_path("logout")
                 .post(logout)
-                .push(Router::with_path("all").post(logout)),
+                .push(Router::with_path("all").post(logout_all)),
         )
 }
 
