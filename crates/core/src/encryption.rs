@@ -32,6 +32,7 @@ pub struct DeviceKeys {
     pub keys: BTreeMap<OwnedDeviceKeyId, String>,
 
     /// Signatures for the device key object.
+    #[serde(default)]
     pub signatures: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>,
 
     /// Additional data added to the device key information by intermediate servers, and

@@ -27,16 +27,16 @@ pub struct PublicRoomsFilteredReqBody {
     /// The server to fetch the public room lists from.
     ///
     /// `None` means the server this request is sent to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub server: Option<OwnedServerName>,
 
     /// Limit for the number of results to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
 
     /// Pagination token from a previous request.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
 
     /// Filter to apply to the results.
@@ -70,19 +70,19 @@ pub struct PublicRoomsFilteredReqBody {
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct PublicRoomsReqArgs {
     /// Limit for the number of results to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub limit: Option<usize>,
 
     /// Pagination token from a previous request.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub since: Option<String>,
 
     /// The server to fetch the public room lists from.
     ///
     /// `None` means the server this request is sent to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub server: Option<OwnedServerName>,
 }

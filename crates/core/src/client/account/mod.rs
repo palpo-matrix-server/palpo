@@ -76,7 +76,7 @@ pub struct WhoamiResBody {
     pub user_id: OwnedUserId,
 
     /// The device ID associated with the access token, if any.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_id: Option<OwnedDeviceId>,
 
     /// If `true`, the user is a guest user.
@@ -116,12 +116,12 @@ impl WhoamiResBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct DeactivateReqBody {
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 
     /// Identity server from which to unbind the user's third party
     /// identifier.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id_server: Option<String>,
 
     /// Whether the user would like their content to be erased as much as possible from the
@@ -167,7 +167,7 @@ pub struct ChangePasswordReqBody {
     pub logout_devices: bool,
 
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
 
@@ -193,7 +193,7 @@ pub struct TokenViaEmailReqBody {
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_link: Option<String>,
 }
 

@@ -48,7 +48,7 @@ pub struct RedactEventReqArgs {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct RedactEventReqBody {
     /// The reason for the redaction.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 

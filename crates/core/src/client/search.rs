@@ -63,7 +63,7 @@ impl SearchResBody {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Categories {
     /// Criteria for searching room events.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_events: Option<Criteria>,
 }
 
@@ -83,7 +83,7 @@ pub struct Criteria {
     /// The keys to search for.
     ///
     /// Defaults to all keys.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keys: Option<Vec<SearchKeys>>,
 
     /// A `Filter` to apply to the search.
@@ -91,7 +91,7 @@ pub struct Criteria {
     pub filter: RoomEventFilter,
 
     /// The order in which to search for results.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub order_by: Option<OrderBy>,
 
     /// Configures whether any context for the events returned are included in the response.
@@ -99,7 +99,7 @@ pub struct Criteria {
     pub event_context: EventContext,
 
     /// Requests the server return the current state for each room returned.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_state: Option<bool>,
 
     /// Requests that the server partitions the result set based on the provided list of keys.
@@ -182,7 +182,7 @@ impl Default for EventContext {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct EventContextResult {
     /// Pagination token for the end of the chunk.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end: Option<String>,
 
     /// Events just after the result.
@@ -198,7 +198,7 @@ pub struct EventContextResult {
     pub profile_info: BTreeMap<OwnedUserId, UserProfile>,
 
     /// Pagination token for the start of the chunk.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start: Option<String>,
 }
 
@@ -343,7 +343,7 @@ pub struct ResultRoomEvents {
     /// parameter to the next call.
     ///
     /// If this field is absent, there are no more results.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_batch: Option<String>,
 
     /// List of results in the requested order.
@@ -386,11 +386,11 @@ pub struct ResultGroup {
     /// `next_batch` parameter to the next call.
     ///
     /// If this field is absent, there are no more results in this group.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_batch: Option<String>,
 
     /// Key that can be used to order different groups.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub order: Option<u64>,
 
     /// Which results are in this group.
@@ -414,17 +414,17 @@ impl ResultGroup {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SearchResult {
     /// Context for result, if requested.
-    #[serde(skip_serializing_if = "EventContextResult::is_empty")]
+    #[serde(default, skip_serializing_if = "EventContextResult::is_empty")]
     pub context: EventContextResult,
 
     /// A number that describes how closely this result matches the search.
     ///
     /// Higher is closer.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rank: Option<f64>,
 
     /// The event that matched.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<RawJson<AnyTimelineEvent>>,
 }
 
@@ -452,7 +452,7 @@ pub struct UserProfile {
     pub avatar_url: Option<OwnedMxcUri>,
 
     /// The user's display name, if set.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 }
 

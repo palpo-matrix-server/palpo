@@ -26,12 +26,12 @@ use crate::{OwnedRoomId, UnixMillis};
 pub struct NotificationsReqBody {
     /// Pagination token given to retrieve the next set of events.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub from: Option<String>,
 
     /// Limit on the number of events to return in this request.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
 
     /// Allows basic filtering of events returned.
@@ -39,7 +39,7 @@ pub struct NotificationsReqBody {
     /// Supply "highlight" to return only events where the notification had the 'highlight'
     /// tweak set.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub only: Option<String>,
 }
 
@@ -73,7 +73,7 @@ pub struct NotificationsResBody {
     /// request more events.
     ///
     /// If this is absent, there are no more results.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_token: Option<String>,
 
     /// The list of events that triggered notifications.
@@ -99,7 +99,7 @@ pub struct Notification {
     pub event: RawJson<AnySyncTimelineEvent>,
 
     /// The profile tag of the rule that matched this event.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile_tag: Option<String>,
 
     /// Indicates whether the user has sent a read receipt indicating that they have read this

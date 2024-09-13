@@ -39,7 +39,7 @@ pub struct SyncEventsReqArgsV4 {
     /// Should be a token from the `pos` field of a previous `/sync`
     /// response.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pos: Option<String>,
 
     /// The maximum time to poll before responding to this request.
@@ -65,7 +65,7 @@ pub struct SyncEventsReqBodyV4 {
     /// to consider before implementing this.
     ///
     /// [MSC]: https://github.com/matrix-org/matrix-spec-proposals/blob/kegan/sync-v3/proposals/3575-sync.md#bandwidth-optimisations-for-persistent-clients
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delta_token: Option<String>,
 
     /// A unique string identifier for this connection to the server.
@@ -77,12 +77,12 @@ pub struct SyncEventsReqBodyV4 {
     ///
     /// Limitation: it must not contain more than 16 chars, due to it being required with every
     /// request.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conn_id: Option<String>,
 
     /// Allows clients to know what request params reached the server,
     /// functionally similar to txn IDs on /send for events.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub txn_id: Option<String>,
 
     /// The list configurations of rooms we are interested in mapped by
@@ -112,7 +112,7 @@ pub struct SyncEventsResBodyV4 {
     pub initial: bool,
 
     /// Matches the `txn_id` sent by the request. Please see [`Request::txn_id`].
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub txn_id: Option<String>,
 
     /// The token to supply in the `pos` param of the next `/sync` request.
@@ -177,7 +177,7 @@ pub struct SyncRequestListFiltersV4 {
     /// Flag which only returns rooms present (or not) in the DM section of account data.
     /// If unset, both DM rooms and non-DM rooms are returned. If false, only non-DM rooms
     /// are returned. If true, only DM rooms are returned.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_dm: Option<bool>,
 
     /// Only list rooms that are spaces of these or all.
@@ -195,7 +195,7 @@ pub struct SyncRequestListFiltersV4 {
     /// Flag which only returns rooms which have an `m.room.encryption` state event. If
     /// unset, both encrypted and unencrypted rooms are returned. If false, only unencrypted
     /// rooms are returned. If true, only encrypted rooms are returned.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_encrypted: Option<bool>,
 
     /// Whether to return invited Rooms, only joined rooms or both.
@@ -203,7 +203,7 @@ pub struct SyncRequestListFiltersV4 {
     /// Flag which only returns rooms the user is currently invited to. If unset, both
     /// invited and joined rooms are returned. If false, no invited rooms are returned. If
     /// true, only invited rooms are returned.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_invite: Option<bool>,
 
     /// Whether to return Rooms with tombstones, only rooms without tombstones or both.
@@ -211,7 +211,7 @@ pub struct SyncRequestListFiltersV4 {
     /// Flag which only returns rooms which have an `m.room.tombstone` state event. If unset,
     /// both tombstoned and un-tombstoned rooms are returned. If false, only un-tombstoned rooms
     /// are returned. If true, only tombstoned rooms are returned.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_tombstoned: Option<bool>,
 
     /// Only list rooms of given create-types or all.
@@ -234,7 +234,7 @@ pub struct SyncRequestListFiltersV4 {
     ///
     /// Filter the room name. Case-insensitive partial matching e.g 'foo' matches 'abFooab'.
     /// The term 'like' is inspired by SQL 'LIKE', and the text here is similar to '%foo%'.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_name_like: Option<String>,
 
     /// Filter the room based on its room tags.
@@ -286,11 +286,11 @@ pub struct SyncRequestListV4 {
     pub room_details: RoomDetailsConfigV4,
 
     /// If tombstoned rooms should be returned and if so, with what information attached
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_old_rooms: Option<IncludeOldRoomsV4>,
 
     /// Filters to apply to the list before sorting. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filters: Option<SyncRequestListFiltersV4>,
 
     /// An allow-list of event types which should be considered recent activity when sorting
@@ -318,7 +318,7 @@ pub struct RoomDetailsConfigV4 {
     pub required_state: Vec<(StateEventType, String)>,
 
     /// The maximum number of timeline events to return per room. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeline_limit: Option<usize>,
 }
 
@@ -333,7 +333,7 @@ pub struct IncludeOldRoomsV4 {
     pub required_state: Vec<(StateEventType, String)>,
 
     /// The maximum number of timeline events to return per room. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeline_limit: Option<usize>,
 }
 
@@ -348,7 +348,7 @@ pub struct RoomSubscriptionV4 {
     pub required_state: Vec<(StateEventType, String)>,
 
     /// The maximum number of timeline events to return per room. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeline_limit: Option<usize>,
 }
 
@@ -402,7 +402,7 @@ pub struct SyncOpV4 {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SlidingSyncRoomV4 {
     /// The name of the room as calculated by the server.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
     /// The avatar of the room.
@@ -410,16 +410,16 @@ pub struct SlidingSyncRoomV4 {
     pub avatar: Option<OwnedMxcUri>,
 
     /// Was this an initial response.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initial: Option<bool>,
 
     /// This is a direct message.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_dm: Option<bool>,
 
     /// If this is `Some(_)`, this is a not-yet-accepted invite containing the given stripped state
     /// events.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invite_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 
     /// Counts of unread notifications for this room.
@@ -436,7 +436,7 @@ pub struct SlidingSyncRoomV4 {
     pub required_state: Vec<RawJson<AnySyncStateEvent>>,
 
     /// The prev_batch allowing you to paginate through the messages before the given ones.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prev_batch: Option<String>,
 
     /// True if the number of events returned was limited by the limit on the filter.
@@ -444,15 +444,15 @@ pub struct SlidingSyncRoomV4 {
     pub limited: bool,
 
     /// The number of users with membership of `join`, including the client’s own user ID.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub joined_count: Option<u64>,
 
     /// The number of users with membership of `invite`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invited_count: Option<u64>,
 
     /// The number of timeline events which have just occurred and are not historical.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub num_live: Option<u64>,
 
     /// The timestamp of the room.
@@ -461,7 +461,7 @@ pub struct SlidingSyncRoomV4 {
     /// timeline. `bump_event_types` might "ignore” some events when computing the
     /// timestamp of the room. Thus, using this `timestamp` value is more accurate than
     /// relying on the latest event.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<UnixMillis>,
 }
 
@@ -517,7 +517,7 @@ impl ExtensionsConfigV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ExtensionsV4 {
     /// To-device extension in response.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_device: Option<ToDeviceV4>,
 
     /// E2ee extension in response.
@@ -556,15 +556,15 @@ impl ExtensionsV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ToDeviceConfigV4 {
     /// Activate or deactivate this extension. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
     /// Max number of to-device messages per response.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
 
     /// Give messages since this token only.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
 
     /// List of list names for which to-device events should be enabled.
@@ -573,7 +573,7 @@ pub struct ToDeviceConfigV4 {
     /// If defined and empty, will be disabled for all the lists.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<String>>,
 
     /// List of room names for which to-device events should be enabled.
@@ -582,7 +582,7 @@ pub struct ToDeviceConfigV4 {
     /// If defined and empty, will be disabled for all the rooms.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
@@ -612,7 +612,7 @@ pub struct ToDeviceV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct E2eeConfigV4 {
     /// Activate or deactivate this extension. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 }
 
@@ -644,7 +644,7 @@ pub struct E2eeV4 {
     ///
     /// The presence of this field indicates that the server supports
     /// fallback keys.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_unused_fallback_key_types: Option<Vec<DeviceKeyAlgorithm>>,
 }
 
@@ -664,7 +664,7 @@ impl E2eeV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct AccountDataConfigV4 {
     /// Activate or deactivate this extension. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
     /// List of list names for which account data should be enabled.
@@ -675,7 +675,7 @@ pub struct AccountDataConfigV4 {
     /// If defined and empty, will be disabled for all the lists.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<String>>,
 
     /// List of room names for which account data should be enabled.
@@ -686,7 +686,7 @@ pub struct AccountDataConfigV4 {
     /// If defined and empty, will be disabled for all the rooms.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
@@ -760,7 +760,7 @@ impl<'de> Deserialize<'de> for RoomReceiptConfigV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ReceiptsConfigV4 {
     /// Activate or deactivate this extension. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
     /// List of list names for which receipts should be enabled.
@@ -769,7 +769,7 @@ pub struct ReceiptsConfigV4 {
     /// If defined and empty, will be disabled for all the lists.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<String>>,
 
     /// List of room names for which receipts should be enabled.
@@ -778,7 +778,7 @@ pub struct ReceiptsConfigV4 {
     /// If defined and empty, will be disabled for all the rooms.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<RoomReceiptConfigV4>>,
 }
 
@@ -814,7 +814,7 @@ impl ReceiptsV4 {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct TypingConfigV4 {
     /// Activate or deactivate this extension. Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
     /// List of list names for which typing notifications should be enabled.
@@ -823,7 +823,7 @@ pub struct TypingConfigV4 {
     /// If defined and empty, will be disabled for all the lists.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<String>>,
 
     /// List of room names for which typing notifications should be enabled.
@@ -832,7 +832,7 @@ pub struct TypingConfigV4 {
     /// If defined and empty, will be disabled for all the rooms.
     ///
     /// Sticky.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 

@@ -21,26 +21,26 @@ pub struct RegisterReqBody {
     ///
     /// May be empty for accounts that should not be able to log in again
     /// with a password, e.g., for guest or application service accounts.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
 
     /// Localpart of the desired Matrix ID.
     ///
     /// If omitted, the homeserver MUST generate a Matrix ID local part.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
 
     /// ID of the client device.
     ///
     /// If this does not correspond to a known client device, a new device will be created.
     /// The server will auto-generate a device_id if this is not specified.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_id: Option<OwnedDeviceId>,
 
     /// A display name to assign to the newly-created device.
     ///
     /// Ignored if `device_id` corresponds to a known device.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initial_device_display_name: Option<String>,
 
     /// Additional authentication information for the user-interactive authentication API.
@@ -49,7 +49,7 @@ pub struct RegisterReqBody {
     /// authenticated, but is instead used to authenticate the register call itself.
     /// It should be left empty, or omitted, unless an earlier call returned an response
     /// with status code 401.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 
     /// Kind of account to register
@@ -70,7 +70,7 @@ pub struct RegisterReqBody {
     /// token in the header and setting this login `type` to `m.login.application_service`.
     ///
     /// [admin]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub login_type: Option<LoginType>,
 
     /// If set to `true`, the client supports [refresh tokens].
@@ -88,7 +88,7 @@ pub struct RegisterResBody {
     /// This access token can then be used to authorize other requests.
     ///
     /// Required if the request's `inhibit_login` was set to `false`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
 
     /// The fully-qualified Matrix ID that has been registered.
@@ -110,7 +110,7 @@ pub struct RegisterResBody {
     ///
     /// [refresh token]: https://spec.matrix.org/latest/client-server-api/#refreshing-access-tokens
     /// [`refresh_token`]: crate::session::refresh_token
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
 
     /// The lifetime of the access token, in milliseconds.
@@ -216,7 +216,7 @@ pub struct TokenVisEmailReqBody {
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_link: Option<String>,
 }
 
@@ -271,7 +271,7 @@ pub struct TokenVisMsisdnReqBody {
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_link: Option<String>,
 }
 

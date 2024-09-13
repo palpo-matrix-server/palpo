@@ -106,13 +106,16 @@ pub fn try_auth(
         }) => {
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
-                _ => return Err(MatrixError::unrecognized("Identifier type not recognized.").into()),
+                _ => return Err(MatrixError::unauthorized("Identifier type not recognized.").into()),
             };
 
             let user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
-                .map_err(|_| MatrixError::invalid_param("User ID is invalid."))?;
+                .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
 
-            crate::user::vertify_password(&user_id, &password)?;
+            let Some(user) = crate::user::get_user(&user_id)? else {
+                return Err(MatrixError::unauthorized("User not found.").into())
+            };
+            crate::user::vertify_password(&user, &password)?;
         }
         AuthData::RegistrationToken(t) => {
             if Some(t.token.trim()) == conf.registration_token.as_deref() {

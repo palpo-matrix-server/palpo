@@ -106,7 +106,9 @@ async fn deactivate(
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     };
-    crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
+    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err(){
+        return Err(MatrixError::forbidden("Authentication failed.").into());
+    }
 
     // Remove devices and mark account as deactivated
     crate::user::deactivate(authed.user_id(), authed.user_id())?;

@@ -190,7 +190,7 @@ pub struct ContentWithFileNameReqArgs {
 pub struct UploadContentReqArgs {
     /// The name of the file being uploaded.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
 
     /// The content type of the file being uploaded.

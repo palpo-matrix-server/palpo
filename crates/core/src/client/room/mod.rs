@@ -128,13 +128,13 @@ pub struct CreationContent {
     pub federate: bool,
 
     /// A reference to the room this room replaces, if the previous room was upgraded.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub predecessor: Option<PreviousRoom>,
 
     /// The room type.
     ///
     /// This is currently only used for spaces.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "type")]
     pub room_type: Option<RoomType>,
 }
 
@@ -332,13 +332,13 @@ pub struct ReportContentReqArgs {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct ReportContentReqBody {
     /// Integer between -100 and 0 rating offensivness.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub score: Option<i64>,
 
     /// Reason to report content.
     ///
     /// May be blank.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -367,7 +367,7 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::FullyRead`]: crate::receipt::create_receipt::v3::ReceiptType::FullyRead
-    #[serde(rename = "m.fully_read", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.fully_read", skip_serializing_if = "Option::is_none")]
     pub fully_read: Option<OwnedEventId>,
 
     /// The event ID to set the public read receipt location at.
@@ -377,7 +377,7 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::Read`]: crate::receipt::create_receipt::v3::ReceiptType::Read
-    #[serde(rename = "m.read", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.read", skip_serializing_if = "Option::is_none")]
     pub read_receipt: Option<OwnedEventId>,
 
     /// The event ID to set the private read receipt location at.
@@ -387,7 +387,7 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::ReadPrivate`]: crate::receipt::create_receipt::v3::ReceiptType::ReadPrivate
-    #[serde(rename = "m.read.private", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.read.private", skip_serializing_if = "Option::is_none")]
     pub private_read_receipt: Option<OwnedEventId>,
 }
 
@@ -441,11 +441,11 @@ fn default_limit() -> usize {
 #[derive(ToSchema, Serialize, Default, Debug)]
 pub struct ContextResBody {
     /// A token that can be used to paginate backwards with.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start: Option<String>,
 
     /// A token that can be used to paginate forwards with.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end: Option<String>,
 
     /// A list of room events that happened just before the requested event,
@@ -455,7 +455,7 @@ pub struct ContextResBody {
     pub events_before: Vec<RawJson<AnyTimelineEvent>>,
 
     /// Details of the requested event.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub event: Option<RawJson<AnyTimelineEvent>>,
 
@@ -505,7 +505,7 @@ pub struct KnockReqArgs {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct KnockReqBody {
     /// The reason for joining a room.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 

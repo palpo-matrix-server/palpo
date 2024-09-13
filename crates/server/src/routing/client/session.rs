@@ -59,7 +59,7 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
 /// Note: You can use [`GET /_matrix/client/r0/login`](fn.get_supported_versions_route.html) to see
 /// supported login types.
 #[endpoint]
-async fn login(_aa: AuthArgs, body: JsonBody<LoginReqBody>) -> JsonResult<LoginResBody> {
+async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<LoginResBody> {
     // Validate login method
     // TODO: Other login methods
     let user_id = match &body.login_info {
@@ -72,7 +72,13 @@ async fn login(_aa: AuthArgs, body: JsonBody<LoginReqBody>) -> JsonResult<LoginR
             };
             let user_id = UserId::parse_with_server_name(username, &crate::config().server_name)
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
-            crate::user::vertify_password(&user_id, &password)?;
+            let Some(user) = crate::user::get_user(&user_id)? else {
+                return Err(MatrixError::forbidden("User not found.").into());
+            };
+            if let Err(e) = crate::user::vertify_password(&user, &password) {
+                res.status_code(StatusCode::FORBIDDEN);//for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
+                return Err(e);
+            }
             user_id
         }
         LoginInfo::Token(Token { token }) => {

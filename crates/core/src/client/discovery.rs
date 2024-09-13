@@ -403,11 +403,12 @@ pub struct ClientWellKnownResBody {
     pub homeserver: HomeServerInfo,
 
     /// Information about the identity server to connect to.
-    #[serde(rename = "m.identity_server", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.identity_server", skip_serializing_if = "Option::is_none")]
     pub identity_server: Option<IdentityServerInfo>,
 
     /// Information about the tile server to use to display location data.
     #[serde(
+        default,
         rename = "org.matrix.msc3488.tile_server",
         alias = "m.tile_server",
         skip_serializing_if = "Option::is_none"
@@ -416,6 +417,7 @@ pub struct ClientWellKnownResBody {
 
     /// Information about the authentication server to connect to when using OpenID Connect.
     #[serde(
+        default,
         rename = "org.matrix.msc2965.authentication",
         alias = "m.authentication",
         skip_serializing_if = "Option::is_none"
@@ -423,7 +425,11 @@ pub struct ClientWellKnownResBody {
     pub authentication: Option<AuthenticationServerInfo>,
 
     /// Information about the homeserver's trusted proxy to use for sliding sync development.
-    #[serde(rename = "org.matrix.msc3575.proxy", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "org.matrix.msc3575.proxy",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sliding_sync_proxy: Option<SlidingSyncProxyInfo>,
 }
 
@@ -492,7 +498,7 @@ pub struct AuthenticationServerInfo {
 
     /// The URL where the user is able to access the account management
     /// capabilities of the OIDC Provider.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub account: Option<String>,
 }
 

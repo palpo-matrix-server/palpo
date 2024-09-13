@@ -49,13 +49,13 @@ pub struct RoomEventFilter {
     pub not_rooms: Vec<OwnedRoomId>,
 
     /// The maximum number of events to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
 
     /// A list of room IDs to include.
     ///
     /// If this list is absent then all rooms are included.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 
     /// A list of sender IDs to exclude.
@@ -68,14 +68,14 @@ pub struct RoomEventFilter {
     /// A list of senders IDs to include.
     ///
     /// If this list is absent then all senders are included.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub senders: Option<Vec<OwnedUserId>>,
 
     /// A list of event types to include.
     ///
     /// If this list is absent then all event types are included. A '*' can be used as a wildcard
     /// to match any sequence of characters.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
 
     /// Controls whether to include events with a URL key in their content.
@@ -83,7 +83,7 @@ pub struct RoomEventFilter {
     /// * `None`: No filtering
     /// * `Some(EventsWithUrl)`: Only events with a URL
     /// * `Some(EventsWithoutUrl)`: Only events without a URL
-    #[serde(rename = "contains_url", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "contains_url", skip_serializing_if = "Option::is_none")]
     pub url_filter: Option<UrlFilter>,
 
     /// Options to control lazy-loading of membership events.
@@ -185,7 +185,7 @@ pub struct RoomDataFilter {
     ///
     /// If this list is absent then all rooms are included. This filter is applied before the
     /// filters in `ephemeral`, `state`, `timeline` or `account_data`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
@@ -241,20 +241,20 @@ pub struct NonRoomDataFilter {
     pub not_types: Vec<String>,
 
     /// The maximum number of events to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
 
     /// A list of senders IDs to include.
     ///
     /// If this list is absent then all senders are included.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub senders: Option<Vec<OwnedUserId>>,
 
     /// A list of event types to include.
     ///
     /// If this list is absent then all event types are included. A '*' can be used as a wildcard
     /// to match any sequence of characters.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
 
     /// A list of sender IDs to exclude.

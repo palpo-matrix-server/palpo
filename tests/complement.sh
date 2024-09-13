@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ./tests/complement.sh ../complement  ./__test_output_csapi.l.jsonl  ./__test_output_csapi.s.jsonl
+# ./tests/complement.sh ../complement  ./__test_output_csapi.detail.txt  ./__test_output_csapi.result.jsonl
 set -euo pipefail
 
 # Path to Complement's source code
@@ -30,15 +30,16 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$OCI_IMAGE" \
-    go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE"
+    go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format
-cat "$LOG_FILE" | jq -c '
+cat "$LOG_FILE.jsonl" | jq -c '
     select(
         (.Action == "pass" or .Action == "fail" or .Action == "skip")
         and .Test != null
     ) | {Action: .Action, Test: .Test}
     ' | sort > "$RESULTS_FILE"
- 
-cat "$LOG_FILE" | jq -c '.Output' > "$LOG_FILE.txt"
+
+cat "$LOG_FILE.jsonl" | jq -c '.Output' > "$LOG_FILE"
+rm -rf "$LOG_FILE.jsonl"

@@ -159,6 +159,6 @@ impl SendStateEventResBody {
 #[derive(Serialize, Deserialize, Debug)]
 struct RequestQuery {
     /// Timestamp to use for the `origin_server_ts` of the event.
-    #[serde(rename = "ts", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "ts", skip_serializing_if = "Option::is_none")]
     timestamp: Option<UnixMillis>,
 }

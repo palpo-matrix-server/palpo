@@ -40,7 +40,7 @@ impl ThreepidsResBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct AddThreepidReqBody {
     /// Additional information for the User-Interactive Authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 
     /// Client-generated secret string used to protect this session.
@@ -69,7 +69,7 @@ pub struct BindThreepidReqBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct UnbindThreepidReqBody {
     /// Identity server to unbind from.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id_server: Option<String>,
 
     /// Medium of the 3PID to be removed.
@@ -89,7 +89,7 @@ pub struct UnbindThreepidResBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct DeleteThreepidReqBody {
     /// Identity server to delete from.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id_server: Option<String>,
 
     /// Medium of the 3PID to be removed.
@@ -135,7 +135,7 @@ pub struct TokenViaEmailReqBody {
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_link: Option<String>,
 }
 
@@ -190,7 +190,7 @@ pub struct TokenViaMsisdnReqBody {
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_link: Option<String>,
 }
 

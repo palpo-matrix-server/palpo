@@ -24,25 +24,28 @@ pub struct SpaceHierarchyRoomsChunk {
     pub canonical_alias: Option<OwnedRoomAliasId>,
 
     /// The name of the room, if any.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
     /// The number of members joined to the room.
+    #[serde(default)]
     pub num_joined_members: u64,
 
     /// The ID of the room.
     pub room_id: OwnedRoomId,
 
     /// The topic of the room, if any.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
 
     /// Whether the room may be viewed by guest users without joining.
+    #[serde(default)]
     pub world_readable: bool,
 
     /// Whether guest users may join the room and participate in it.
     ///
     /// If they can, they will be subject to ordinary power level rules like any other user.
+    #[serde(default)]
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.

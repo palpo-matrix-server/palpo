@@ -82,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //     println!(".env.local file is not found");
     // }
     if let Err(e) = dotenv() {
-        println!("dotenv error: {:?}", e);
+        tracing::info!("dotenv error: {:?}", e);
     }
     let filter = env::var("RUST_LOG").unwrap_or_else(|_| "palpo=warn,palpo_core=warn,salvo=warn".to_owned());
     if env::var("LOG_FORMAT").unwrap_or_default() == "json" {
@@ -151,19 +151,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .into_router("/scalar"),
         )
         .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
-    let service = Service::new(router).hoop(Logger::new()).hoop(
-        Cors::new()
-            .allow_origin(cors::Any)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
-            .allow_headers(AllowHeaders::list([
-                salvo::http::header::ACCEPT,
-                salvo::http::header::CONTENT_TYPE,
-                salvo::http::header::AUTHORIZATION,
-                salvo::http::header::RANGE,
-            ]))
-            .max_age(Duration::from_secs(86400))
-            .into_handler(),
-    ).hoop(hoops::remove_json_utf8);
+    let service = Service::new(router)
+        .hoop(Logger::new())
+        .hoop(
+            Cors::new()
+                .allow_origin(cors::Any)
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+                .allow_headers(AllowHeaders::list([
+                    salvo::http::header::ACCEPT,
+                    salvo::http::header::CONTENT_TYPE,
+                    salvo::http::header::AUTHORIZATION,
+                    salvo::http::header::RANGE,
+                ]))
+                .max_age(Duration::from_secs(86400))
+                .into_handler(),
+        )
+        .hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
     Server::new(acceptor)
         .serve(service)

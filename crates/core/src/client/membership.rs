@@ -121,7 +121,7 @@ pub struct BanUserReqBody {
     pub user_id: OwnedUserId,
 
     /// The reason for banning the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -152,7 +152,7 @@ pub struct UnbanUserReqBody {
     pub user_id: OwnedUserId,
 
     /// Optional reason for unbanning the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -230,7 +230,7 @@ pub struct InviteUserReqBody {
     pub recipient: InvitationRecipient,
 
     /// Optional reason for inviting the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -254,7 +254,7 @@ pub struct InviteUserReqBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct LeaveRoomReqBody {
     /// Optional reason to be included as the `reason` on the subsequent membership event.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -283,7 +283,7 @@ pub struct MutualRoomsReqBody {
 
     /// The `next_batch_token` returned from a previous response, to get the next batch of
     /// rooms.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub batch_token: Option<String>,
 }
@@ -295,7 +295,7 @@ pub struct MutualRoomsResBody {
     pub joined: Vec<OwnedRoomId>,
 
     /// An opaque string, returned when the server paginates this response.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_batch_token: Option<String>,
 }
 
@@ -389,15 +389,15 @@ impl JoinedRoomsResBody {
 // };
 
 /// Request type for the `join_room_by_id` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Default, Debug)]
 pub struct JoinRoomReqBody {
     /// The signature of a `m.third_party_invite` token to prove that this user owns a third
     /// party identity which has been invited to the room.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub third_party_signed: Option<ThirdPartySigned>,
 
     /// Optional reason for joining the room.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -541,7 +541,7 @@ impl JoinedMembersResBody {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RoomMember {
     /// The display name of the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 
     /// The mxc avatar url of the user.

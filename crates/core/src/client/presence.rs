@@ -31,7 +31,7 @@ pub struct SetPresenceReqBody {
     pub presence: PresenceState,
 
     /// The status message to attach to this state.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_msg: Option<String>,
 }
 
@@ -64,11 +64,11 @@ pub struct SetPresenceReqBody {
 #[derive(ToSchema, Serialize, Debug)]
 pub struct PresenceResBody {
     /// The state message for this user if one was set.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_msg: Option<String>,
 
     /// Whether or not the user is currently active.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub currently_active: Option<bool>,
 
     /// The length of time in milliseconds since an action was performed by the user.

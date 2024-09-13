@@ -34,7 +34,7 @@ use crate::{OwnedUserId, UnixMillis};
 #[derive(ToSchema, Serialize, Debug)]
 pub struct UserInfoResBody {
     /// The Matrix user ID of the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_id: Option<OwnedUserId>,
 
     /// A map of the user's device identifiers to information about that device.

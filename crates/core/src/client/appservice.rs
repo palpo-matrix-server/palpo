@@ -34,7 +34,7 @@ pub struct PingReqBody {
     pub appservice_id: String,
 
     /// Transaction ID that is passed through to the `POST /_matrix/app/v1/ping` call.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_id: Option<OwnedTransactionId>,
 }
 

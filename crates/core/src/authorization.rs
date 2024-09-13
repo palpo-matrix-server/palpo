@@ -2,14 +2,14 @@
 
 use std::{fmt, str::FromStr};
 
-use salvo::http::headers::authorization::Credentials;
-use salvo::http::HeaderValue;
-use http_auth::ChallengeParser;
 use crate::{
     http_headers::quote_ascii_string_if_required,
     serde::{Base64, Base64DecodeError},
     IdParseError, OwnedServerName, OwnedServerSigningKeyId,
 };
+use http_auth::ChallengeParser;
+use salvo::http::headers::authorization::Credentials;
+use salvo::http::HeaderValue;
 use thiserror::Error;
 use tracing::debug;
 
@@ -44,7 +44,12 @@ impl XMatrix {
         key: OwnedServerSigningKeyId,
         sig: Base64,
     ) -> Self {
-        Self { origin, destination: Some(destination), key, sig }
+        Self {
+            origin,
+            destination: Some(destination),
+            key,
+            sig,
+        }
     }
 
     /// Parse an X-Matrix Authorization header from the given string.
@@ -101,8 +106,7 @@ impl XMatrix {
         }
 
         Ok(Self {
-            origin: origin
-                .ok_or_else(|| XMatrixParseError::MissingParameter("origin".to_owned()))?,
+            origin: origin.ok_or_else(|| XMatrixParseError::MissingParameter("origin".to_owned()))?,
             destination,
             key: key.ok_or_else(|| XMatrixParseError::MissingParameter("key".to_owned()))?,
             sig: sig.ok_or_else(|| XMatrixParseError::MissingParameter("sig".to_owned()))?,
@@ -122,7 +126,12 @@ impl fmt::Debug for XMatrix {
 
 impl fmt::Display for XMatrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { origin, destination, key, sig } = self;
+        let Self {
+            origin,
+            destination,
+            key,
+            sig,
+        } = self;
 
         let origin = quote_ascii_string_if_required(origin.as_str());
         let key = quote_ascii_string_if_required(key.as_str());
@@ -222,9 +231,8 @@ mod tests {
 
     #[test]
     fn xmatrix_auth_pre_1_3() {
-        let header = HeaderValue::from_static(
-            "X-Matrix origin=\"origin.hs.example.com\",key=\"ed25519:key1\",sig=\"dGVzdA==\"",
-        );
+        let header =
+            HeaderValue::from_static("X-Matrix origin=\"origin.hs.example.com\",key=\"ed25519:key1\",sig=\"dGVzdA==\"");
         let origin = "origin.hs.example.com".try_into().unwrap();
         let key = "ed25519:key1".try_into().unwrap();
         let sig = Base64::new(b"test".to_vec());
@@ -234,7 +242,12 @@ mod tests {
         assert_eq!(credentials.key, key);
         assert_eq!(credentials.sig, sig);
 
-        let credentials = XMatrix { origin, destination: None, key, sig };
+        let credentials = XMatrix {
+            origin,
+            destination: None,
+            key,
+            sig,
+        };
 
         assert_eq!(
             credentials.encode(),
@@ -262,9 +275,7 @@ mod tests {
 
     #[test]
     fn xmatrix_quoting() {
-        let header = HeaderValue::from_static(
-            r#"X-Matrix origin="example.com:1234",key="abc\"def\\:ghi",sig=dGVzdA,"#,
-        );
+        let header = HeaderValue::from_static(r#"X-Matrix origin="example.com:1234",key="abc\"def\\:ghi",sig=dGVzdA,"#);
 
         let origin: OwnedServerName = "example.com:1234".try_into().unwrap();
         let key = r#"abc"def\:ghi"#.try_into().unwrap();
@@ -275,7 +286,12 @@ mod tests {
         assert_eq!(credentials.key, key);
         assert_eq!(credentials.sig, sig);
 
-        let credentials = XMatrix { origin, destination: None, key, sig };
+        let credentials = XMatrix {
+            origin,
+            destination: None,
+            key,
+            sig,
+        };
 
         assert_eq!(
             credentials.encode(),

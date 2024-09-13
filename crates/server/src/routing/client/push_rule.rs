@@ -11,8 +11,9 @@ use salvo::prelude::*;
 
 use crate::core::client::push::{
     RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody, SetRuleActionsReqBody, SetRuleEnabledReqBody,
-    SetRuleReqBody,
+    SetRuleReqArgs, ConditionalReqBody,PatternedReqBody,SimpleReqBody
 };
+use crate::core::push::{NewConditionalPushRule,RuleKind,NewPatternedPushRule, NewSimplePushRule, NewPushRule};
 use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
@@ -67,11 +68,45 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
 // #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
 /// Creates a single specified push rule for this user.
 #[endpoint]
-async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyResult {
+async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let body = body.into_inner();
+    let payload = req.payload().await?;
+    let new_rule: NewPushRule = match &args.kind {
+        RuleKind::Override => {
+            let ConditionalReqBody { actions, conditions } =
+                serde_json::from_slice(payload)?;
+            NewPushRule::Override(NewConditionalPushRule::new(args.rule_id.clone(), conditions, actions))
+        }
+        RuleKind::Underride => {
+            let ConditionalReqBody { actions, conditions } =
+                serde_json::from_slice(payload)?;
+            NewPushRule::Underride(NewConditionalPushRule::new(
+                args.rule_id.clone(), conditions, actions,
+            ))
+        }
+        RuleKind::Sender => {
+            let SimpleReqBody { actions } =
+                serde_json::from_slice(payload)?;
+            let rule_id = args.rule_id.clone().try_into()?;
+            NewPushRule::Sender(NewSimplePushRule::new(rule_id, actions))
+        }
+        RuleKind::Room => {
+            let SimpleReqBody { actions } =
+                serde_json::from_slice(payload)?;
+            let rule_id = args.rule_id.clone().try_into()?;
+            NewPushRule::Room(NewSimplePushRule::new(rule_id, actions))
+        }
+        RuleKind::Content => {
+            let PatternedReqBody { actions, pattern } =
+                serde_json::from_slice(payload)?;
+            NewPushRule::Content(NewPatternedPushRule::new(args.rule_id.clone(), pattern, actions))
+        }
+        _ => {
+            return Err(MatrixError::invalid_param("Invalid rule kind.").into());
+        }
+    };
 
-    if body.scope != RuleScope::Global {
+    if args.scope != RuleScope::Global {
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
@@ -85,7 +120,7 @@ async fn set_rule(body: JsonBody<SetRuleReqBody>, depot: &mut Depot) -> EmptyRes
     if let Err(error) =
         user_data_content
             .global
-            .insert(body.rule.clone(), body.after.as_deref(), body.before.as_deref())
+            .insert(new_rule, args.after.as_deref(), args.before.as_deref())
     {
         let err = match error {
             InsertPushRuleError::ServerDefaultRuleId => {

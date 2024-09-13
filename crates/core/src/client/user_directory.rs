@@ -82,7 +82,7 @@ pub struct SearchedUser {
     pub user_id: OwnedUserId,
 
     /// The display name of the user, if one exists.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 
     /// The avatar url, as an MXC, if one exists.

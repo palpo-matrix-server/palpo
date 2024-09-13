@@ -27,9 +27,9 @@ pub mod error;
 pub use error::{MatrixError, UnknownVersionError};
 #[macro_use]
 pub mod sending;
+pub mod http_headers;
 pub mod state;
 pub mod user;
-pub mod http_headers;
 
 pub use crate::state::RoomVersion;
 

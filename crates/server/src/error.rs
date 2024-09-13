@@ -83,12 +83,6 @@ impl AppError {
 #[async_trait]
 impl Writer for AppError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
-        let code = match &self {
-            AppError::StatusError(e) => e.code,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        res.status_code(code);
-
         let matrix = match self {
             Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo."),
             Self::FrequentlyRequest => MatrixError::unknown("frequently request resource."),
@@ -97,20 +91,22 @@ impl Writer for AppError {
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
                 use crate::core::client::uiaa::ErrorKind;
-                let code = if let Some(error) = &uiaa.auth_error {
-                    match &error.kind {
-                        ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-                        ErrorKind::NotFound => StatusCode::NOT_FOUND,
-                        ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadStatus | ErrorKind::BadAlias => {
-                            StatusCode::BAD_REQUEST
+                if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
+                    let code = if let Some(error) = &uiaa.auth_error {
+                        match &error.kind {
+                            ErrorKind::Forbidden | ErrorKind::UserDeactivated => StatusCode::FORBIDDEN,
+                            ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadStatus | ErrorKind::BadAlias => {
+                                StatusCode::BAD_REQUEST
+                            }
+                            ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
+                            _ => StatusCode::INTERNAL_SERVER_ERROR,
                         }
-                        ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
-                        _ => StatusCode::INTERNAL_SERVER_ERROR,
-                    }
-                } else {
-                    StatusCode::UNAUTHORIZED
-                };
-                res.status_code(code);
+                    } else {
+                        StatusCode::UNAUTHORIZED
+                    };
+                    res.status_code(code);
+                }
                 res.add_header(salvo::http::header::CONTENT_TYPE, "application/json", true)
                     .ok();
                 let body: Vec<u8> = crate::core::serde::json_to_buf(&uiaa).unwrap();

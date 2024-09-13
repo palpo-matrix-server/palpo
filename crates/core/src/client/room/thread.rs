@@ -34,12 +34,12 @@ pub struct ThreadsReqArgs {
     /// The pagination token to start returning results from.
     ///
     /// If `None`, results start at the most recent topological event visible to the user.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
     /// Which thread roots are of interest to the caller.
-    #[serde(skip_serializing_if = "crate::serde::is_default")]
+    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     #[salvo(parameter(parameter_in = Query))]
     pub include: IncludeThreads,
 
@@ -47,7 +47,7 @@ pub struct ThreadsReqArgs {
     ///
     /// Servers should apply a default value, and impose a maximum value to avoid resource
     /// exhaustion.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub limit: Option<usize>,
 }
@@ -64,7 +64,7 @@ pub struct ThreadsResBody {
     ///
     /// If this is `None`, there are no more results to fetch and the client should stop
     /// paginating.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_batch: Option<String>,
 }
 impl ThreadsResBody {

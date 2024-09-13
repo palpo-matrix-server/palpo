@@ -45,7 +45,7 @@ pub struct CreateMxcUriResBody {
     pub content_uri: OwnedMxcUri,
 
     /// The time at which the URI will expire if an upload has not been started.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unused_expires_at: Option<UnixMillis>,
 }
 
@@ -174,7 +174,7 @@ pub struct ThumbnailReqArgs {
 
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method: Option<Method>,
 
     /// The *desired* width of the thumbnail.

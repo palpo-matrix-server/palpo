@@ -8,7 +8,7 @@ mod key;
 mod login;
 mod presence;
 mod profile;
-mod push_rule;
+ mod push_rule;
 mod pusher;
 mod register;
 mod room;
@@ -48,7 +48,7 @@ use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult,
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");
-    for v in ["v3", "r0", "v1"] {
+    for v in ["v3", "v1", "r0"] {
         client = client
             .push(
                 Router::with_path(v)
@@ -105,17 +105,12 @@ pub fn router() -> Router {
                 Router::with_path(v)
                     .hoop(hoops::limit_rate)
                     .hoop(hoops::auth_by_access_token)
+                    .push(Router::with_path("search").post(search))
                     .push(Router::with_path("capabilities").get(get_capabilities))
                     .push(Router::with_path("knock/<room_id_or_alias>").post(room::membership::knock_room)),
             )
     }
-    client
-        .push(
-            Router::with_hoop(hoops::limit_rate)
-                .hoop(hoops::auth_by_access_token)
-                .push(Router::with_path("search").post(search)),
-        )
-        .push(Router::with_path("versions").get(supported_versions))
+    client.push(Router::with_path("versions").get(supported_versions))
 }
 
 // #POST /_matrix/client/r0/search

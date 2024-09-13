@@ -32,14 +32,14 @@ use crate::device::DeviceLists;
 pub struct SyncEventsReqArgsV3 {
     /// A filter represented either as its full JSON definition or the ID of a saved filter.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter: Option<FilterV3>,
 
     /// A point in time to continue a sync from.
     ///
     /// Should be a token from the `next_batch` field of a previous `/sync` request.
     #[salvo(parameter(parameter_in = Query))]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
 
     /// Controls whether to include the full state for all rooms the user is a member of.
@@ -322,7 +322,7 @@ pub struct TimelineV3 {
 
     /// A token that can be supplied to to the `from` parameter of the
     /// `/rooms/{room_id}/messages` endpoint.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prev_batch: Option<String>,
 
     /// A list of events.
@@ -448,13 +448,13 @@ pub struct RoomSummaryV3 {
     /// Number of users whose membership status is `join`.
     /// Required if field has changed since last sync; otherwise, it may be
     /// omitted.
-    #[serde(rename = "m.joined_member_count", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.joined_member_count", skip_serializing_if = "Option::is_none")]
     pub joined_member_count: Option<u64>,
 
     /// Number of users whose membership status is `invite`.
     /// Required if field has changed since last sync; otherwise, it may be
     /// omitted.
-    #[serde(rename = "m.invited_member_count", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "m.invited_member_count", skip_serializing_if = "Option::is_none")]
     pub invited_member_count: Option<u64>,
 }
 

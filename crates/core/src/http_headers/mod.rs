@@ -6,8 +6,7 @@ mod content_disposition;
 mod rfc8187;
 
 pub use self::content_disposition::{
-    ContentDisposition, ContentDispositionParseError, ContentDispositionType, TokenString,
-    TokenStringParseError,
+    ContentDisposition, ContentDispositionParseError, ContentDispositionType, TokenString, TokenStringParseError,
 };
 
 /// Whether the given byte is a [`token` char].
@@ -17,20 +16,7 @@ pub const fn is_tchar(b: u8) -> bool {
     b.is_ascii_alphanumeric()
         || matches!(
             b,
-            b'!' | b'#'
-                | b'$'
-                | b'%'
-                | b'&'
-                | b'\''
-                | b'*'
-                | b'+'
-                | b'-'
-                | b'.'
-                | b'^'
-                | b'_'
-                | b'`'
-                | b'|'
-                | b'~'
+            b'!' | b'#' | b'$' | b'%' | b'&' | b'\'' | b'*' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`' | b'|' | b'~'
         )
 }
 

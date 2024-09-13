@@ -5,6 +5,8 @@ use crate::core::UnixMillis;
 use crate::schema::*;
 use crate::{db, utils, AppResult, MatrixError};
 
+use super::DbUser;
+
 #[derive(Identifiable, Debug, Clone)]
 #[diesel(table_name = user_passwords)]
 pub struct DbPassword {
@@ -30,8 +32,11 @@ fn get_password_hash(user_id: &UserId) -> AppResult<String> {
         .map_err(Into::into)
 }
 
-pub fn vertify_password(user_id: &UserId, password: &str) -> AppResult<()> {
-    let hash = get_password_hash(user_id).map_err(|_| MatrixError::forbidden("Wrong username or password."))?;
+pub fn vertify_password(user: &DbUser, password: &str) -> AppResult<()> {
+    if user.deactivated_at.is_some() {
+        return Err(MatrixError::user_deactivated("The user has been deactivated").into());
+    }
+    let hash = get_password_hash(&user.id).map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
     if hash.is_empty() {
         return Err(MatrixError::user_deactivated("The user has been deactivated").into());
     }
@@ -39,7 +44,7 @@ pub fn vertify_password(user_id: &UserId, password: &str) -> AppResult<()> {
     let hash_matches = argon2::verify_encoded(&hash, password.as_bytes()).unwrap_or(false);
 
     if !hash_matches {
-        return Err(MatrixError::forbidden("Wrong username or password.").into());
+        return Err(MatrixError::unauthorized("Wrong username or password.").into());
     } else {
         Ok(())
     }

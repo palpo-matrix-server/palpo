@@ -150,19 +150,22 @@ impl StdError for MatrixError {}
 impl Scribe for MatrixError {
     fn render(self, res: &mut Response) {
         res.add_header(header::CONTENT_TYPE, "application/json", true).ok();
-        let code = self.status_code.unwrap_or_else(|| {
-            use ErrorKind::*;
-            match self.kind.clone() {
-                Forbidden | GuestAccessForbidden | ThreepidAuthFailed | ThreepidDenied => StatusCode::FORBIDDEN,
-                Unauthorized | UnknownToken { .. } | MissingToken => StatusCode::UNAUTHORIZED,
-                NotFound | Unrecognized => StatusCode::NOT_FOUND,
-                LimitExceeded { .. } => StatusCode::TOO_MANY_REQUESTS,
-                UserDeactivated => StatusCode::FORBIDDEN,
-                TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
-                _ => StatusCode::BAD_REQUEST,
-            }
-        });
-        res.status_code(code);
+
+        if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
+            let code = self.status_code.unwrap_or_else(|| {
+                use ErrorKind::*;
+                match self.kind.clone() {
+                    Forbidden | GuestAccessForbidden | ThreepidAuthFailed | ThreepidDenied => StatusCode::FORBIDDEN,
+                    Unauthorized | UnknownToken { .. } | MissingToken => StatusCode::UNAUTHORIZED,
+                    NotFound | Unrecognized => StatusCode::NOT_FOUND,
+                    LimitExceeded { .. } => StatusCode::TOO_MANY_REQUESTS,
+                    UserDeactivated => StatusCode::FORBIDDEN,
+                    TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+                    _ => StatusCode::BAD_REQUEST,
+                }
+            });
+            res.status_code(code);
+        }
 
         if let Some(auth_error) = &self.authenticate {
             res.add_header(header::WWW_AUTHENTICATE, auth_error, true).ok();

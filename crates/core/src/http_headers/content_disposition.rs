@@ -2,13 +2,10 @@
 
 use std::{fmt, ops::Deref, str::FromStr};
 
-use crate::macros::{
-    AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr,
-};
+use crate::macros::{AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr};
 
 use super::{
-    is_tchar, is_token, quote_ascii_string_if_required, rfc8187, sanitize_for_ascii_quoted_string,
-    unescape_string,
+    is_tchar, is_token, quote_ascii_string_if_required, rfc8187, sanitize_for_ascii_quoted_string, unescape_string,
 };
 
 /// The value of a `Content-Disposition` HTTP header.
@@ -39,7 +36,10 @@ pub struct ContentDisposition {
 impl ContentDisposition {
     /// Creates a new `ContentDisposition` with the given disposition type.
     pub fn new(disposition_type: ContentDispositionType) -> Self {
-        Self { disposition_type, filename: None }
+        Self {
+            disposition_type,
+            filename: None,
+        }
     }
 
     /// Add the given filename to this `ContentDisposition`.
@@ -93,8 +93,7 @@ impl TryFrom<&[u8]> for ContentDisposition {
             pos += 1;
         }
 
-        let disposition_type =
-            ContentDispositionType::try_from(&value[disposition_type_start..pos])?;
+        let disposition_type = ContentDispositionType::try_from(&value[disposition_type_start..pos])?;
 
         // The `filename*` parameter (`filename_ext` here) using UTF-8 encoding should be used, but
         // it is likely to be after the `filename` parameter containing only ASCII
@@ -119,7 +118,10 @@ impl TryFrom<&[u8]> for ContentDisposition {
             }
         }
 
-        Ok(Self { disposition_type, filename: filename_ext.or(filename) })
+        Ok(Self {
+            disposition_type,
+            filename: filename_ext.or(filename),
+        })
     }
 }
 
@@ -169,7 +171,11 @@ impl<'a> RawParam<'a> {
 
         let (value, is_quoted_string) = parse_param_value(bytes, pos)?;
 
-        Some(Self { name, value, is_quoted_string })
+        Some(Self {
+            name,
+            value,
+            is_quoted_string,
+        })
     }
 
     /// Decode the value of this `RawParam`.
@@ -340,16 +346,7 @@ pub enum ContentDispositionParseError {
 /// Comparisons with other string types are done case-insensitively.
 ///
 /// [Section 4.2 of RFC 6266]: https://datatracker.ietf.org/doc/html/rfc6266#section-4.2
-#[derive(
-    Clone,
-    Default,
-    AsRefStr,
-    DebugAsRefStr,
-    AsStrAsRefStr,
-    DisplayAsRefStr,
-    PartialOrdAsRefStr,
-    OrdAsRefStr,
-)]
+#[derive(Clone, Default, AsRefStr, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, PartialOrdAsRefStr, OrdAsRefStr)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum ContentDispositionType {
@@ -432,16 +429,7 @@ impl<'a> PartialEq<&'a str> for ContentDispositionType {
 /// This is a string that can only contain a limited character set.
 ///
 /// [RFC 7230 Section 3.2.6]: https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    DebugAsRefStr,
-    AsStrAsRefStr,
-    DisplayAsRefStr,
-    PartialOrdAsRefStr,
-    OrdAsRefStr,
-)]
+#[derive(Clone, PartialEq, Eq, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, PartialOrdAsRefStr, OrdAsRefStr)]
 pub struct TokenString(Box<str>);
 
 impl TokenString {
@@ -526,8 +514,7 @@ mod tests {
         assert_eq!(content_disposition.filename, None);
 
         // Unknown disposition type and parameters.
-        let content_disposition =
-            ContentDisposition::from_str("custom; foo=bar; foo*=utf-8''b%C3%A0r'").unwrap();
+        let content_disposition = ContentDisposition::from_str("custom; foo=bar; foo*=utf-8''b%C3%A0r'").unwrap();
         assert_eq!(content_disposition.disposition_type.as_str(), "custom");
         assert_eq!(content_disposition.filename, None);
 
@@ -542,23 +529,20 @@ mod tests {
         assert_eq!(content_disposition.filename.unwrap(), "my_file");
 
         // Extra spaces.
-        let content_disposition =
-            ContentDisposition::from_str("  INLINE   ;FILENAME =   my_file   ").unwrap();
+        let content_disposition = ContentDisposition::from_str("  INLINE   ;FILENAME =   my_file   ").unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename.unwrap(), "my_file");
 
         // Unsupported filename* is skipped and falls back to ASCII filename.
-        let content_disposition = ContentDisposition::from_str(
-            r#"attachment; filename*=iso-8859-1''foo-%E4.html; filename="foo-a.html"#,
-        )
-        .unwrap();
+        let content_disposition =
+            ContentDisposition::from_str(r#"attachment; filename*=iso-8859-1''foo-%E4.html; filename="foo-a.html"#)
+                .unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Attachment);
         assert_eq!(content_disposition.filename.unwrap(), "foo-a.html");
 
         // filename could be UTF-8 for extra compatibility (with `form-data` for example).
         let content_disposition =
-            ContentDisposition::from_str(r#"form-data; name=upload; filename="文件.webp""#)
-                .unwrap();
+            ContentDisposition::from_str(r#"form-data; name=upload; filename="文件.webp""#).unwrap();
         assert_eq!(content_disposition.disposition_type.as_str(), "form-data");
         assert_eq!(content_disposition.filename.unwrap(), "文件.webp");
     }
@@ -575,20 +559,17 @@ mod tests {
     #[test]
     fn parse_content_disposition_invalid_parameters() {
         // Unexpected `:` after parameter name, filename parameter is not reached.
-        let content_disposition =
-            ContentDisposition::from_str("inline; foo:bar; filename=my_file").unwrap();
+        let content_disposition = ContentDisposition::from_str("inline; foo:bar; filename=my_file").unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename, None);
 
         // Same error, but after filename, so filename was parser.
-        let content_disposition =
-            ContentDisposition::from_str("inline; filename=my_file; foo:bar").unwrap();
+        let content_disposition = ContentDisposition::from_str("inline; filename=my_file; foo:bar").unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename.unwrap(), "my_file");
 
         // Missing `;` between parameters, filename parameter is not parsed successfully.
-        let content_disposition =
-            ContentDisposition::from_str("inline; filename=my_file foo=bar").unwrap();
+        let content_disposition = ContentDisposition::from_str("inline; filename=my_file foo=bar").unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename, None);
     }
@@ -601,32 +582,32 @@ mod tests {
         assert_eq!(serialized, "inline");
 
         // Disposition type and ASCII filename without space.
-        let content_disposition = ContentDisposition::new(ContentDispositionType::Attachment)
-            .with_filename(Some("my_file".to_owned()));
+        let content_disposition =
+            ContentDisposition::new(ContentDispositionType::Attachment).with_filename(Some("my_file".to_owned()));
         let serialized = content_disposition.to_string();
         assert_eq!(serialized, "attachment; filename=my_file");
 
         // Disposition type and ASCII filename with space.
-        let content_disposition = ContentDisposition::new(ContentDispositionType::Attachment)
-            .with_filename(Some("my file".to_owned()));
+        let content_disposition =
+            ContentDisposition::new(ContentDispositionType::Attachment).with_filename(Some("my file".to_owned()));
         let serialized = content_disposition.to_string();
         assert_eq!(serialized, r#"attachment; filename="my file""#);
 
         // Disposition type and ASCII filename with double quote and backslash.
-        let content_disposition = ContentDisposition::new(ContentDispositionType::Attachment)
-            .with_filename(Some(r#""my"\file"#.to_owned()));
+        let content_disposition =
+            ContentDisposition::new(ContentDispositionType::Attachment).with_filename(Some(r#""my"\file"#.to_owned()));
         let serialized = content_disposition.to_string();
         assert_eq!(serialized, r#"attachment; filename="\"my\"\\file""#);
 
         // Disposition type and UTF-8 filename.
-        let content_disposition = ContentDisposition::new(ContentDispositionType::Attachment)
-            .with_filename(Some("Mi Corazón".to_owned()));
+        let content_disposition =
+            ContentDisposition::new(ContentDispositionType::Attachment).with_filename(Some("Mi Corazón".to_owned()));
         let serialized = content_disposition.to_string();
         assert_eq!(serialized, "attachment; filename*=utf-8''Mi%20Coraz%C3%B3n");
 
         // Sanitized filename.
-        let content_disposition = ContentDisposition::new(ContentDispositionType::Attachment)
-            .with_filename(Some("my\r\nfile".to_owned()));
+        let content_disposition =
+            ContentDisposition::new(ContentDispositionType::Attachment).with_filename(Some("my\r\nfile".to_owned()));
         let serialized = content_disposition.to_string();
         assert_eq!(serialized, "attachment; filename=myfile");
     }
@@ -664,8 +645,7 @@ mod tests {
         assert_eq!(reserialized, r#"attachment; filename*=utf-8''%E2%82%AC%20rates"#);
 
         // With RFC 8187-encoded UTF-8 filename with fallback ASCII filename.
-        let rfc8187_with_fallback =
-            r#"attachment; filename="EURO rates"; filename*=utf-8''%e2%82%ac%20rates"#;
+        let rfc8187_with_fallback = r#"attachment; filename="EURO rates"; filename*=utf-8''%e2%82%ac%20rates"#;
         let content_disposition = ContentDisposition::from_str(rfc8187_with_fallback).unwrap();
 
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Attachment);
@@ -710,8 +690,7 @@ mod tests {
         assert_eq!(reserialized, r#"attachment; filename*=utf-8''%C2%A3%20rates"#);
 
         // With RFC 8187-encoded UTF-8 filename again.
-        let rfc8187_other =
-            r#"attachment; foo=bar; filename*=UTF-8''%c2%a3%20and%20%e2%82%ac%20rates"#;
+        let rfc8187_other = r#"attachment; foo=bar; filename*=UTF-8''%c2%a3%20and%20%e2%82%ac%20rates"#;
         let content_disposition = ContentDisposition::from_str(rfc8187_other).unwrap();
 
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Attachment);
@@ -724,13 +703,17 @@ mod tests {
         );
 
         // With RFC 8187-encoded UTF-8 filename with fallback ASCII filename.
-        let rfc8187_with_fallback = r#"attachment; foo=bar; filename="EURO exchange rates"; filename*=utf-8''%e2%82%ac%20exchange%20rates"#;
+        let rfc8187_with_fallback =
+            r#"attachment; foo=bar; filename="EURO exchange rates"; filename*=utf-8''%e2%82%ac%20exchange%20rates"#;
         let content_disposition = ContentDisposition::from_str(rfc8187_with_fallback).unwrap();
 
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Attachment);
         assert_eq!(content_disposition.filename.as_deref().unwrap(), "€ exchange rates");
 
         let reserialized = content_disposition.to_string();
-        assert_eq!(reserialized, r#"attachment; filename*=utf-8''%E2%82%AC%20exchange%20rates"#);
+        assert_eq!(
+            reserialized,
+            r#"attachment; filename*=utf-8''%E2%82%AC%20exchange%20rates"#
+        );
     }
 }

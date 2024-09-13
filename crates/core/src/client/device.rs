@@ -19,7 +19,7 @@ pub struct Device {
     pub last_seen_ip: Option<String>,
 
     /// Unix timestamp that the session was last active.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_seen_ts: Option<UnixMillis>,
 }
 
@@ -53,10 +53,10 @@ impl Device {
 // };
 
 /// Request type for the `delete_device` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Default, Debug)]
 pub struct DeleteDeviceReqBody {
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
 
@@ -84,7 +84,7 @@ pub struct DeleteDevicesReqBody {
     pub devices: Vec<OwnedDeviceId>,
 
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
 
@@ -182,6 +182,6 @@ pub struct UpdatedDeviceReqBody {
     /// The new display name for this device.
     ///
     /// If this is `None`, the display name won't be changed.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 }

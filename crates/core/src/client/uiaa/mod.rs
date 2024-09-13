@@ -604,11 +604,11 @@ pub struct UiaaInfo {
     pub params: Box<RawJsonValue>,
 
     /// Session key for client to use to complete authentication.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<String>,
 
     /// Authentication-related errors for previous request returned by homeserver.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub auth_error: Option<AuthError>,
 }
 
@@ -647,6 +647,9 @@ impl AuthError {
     }
     pub fn forbidden(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Forbidden, message)
+    }
+    pub fn unauthorized(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Unauthorized, message)
     }
 }
 

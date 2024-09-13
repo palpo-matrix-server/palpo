@@ -35,7 +35,7 @@ pub fn authed_router() -> Router {
         .push(
             Router::with_path("version")
                 .get(latest_version)
-                .put(update_version)
+                .post(update_version)
                 .push(
                     Router::with_path("<version>")
                         .get(get_version)
@@ -255,13 +255,11 @@ async fn create_version(
 #[endpoint]
 async fn update_version(
     _aa: AuthArgs,
-    version: PathParam<i64>,
-    body: JsonBody<UpdateVersionReqBody>,
+    body: JsonBody<CreateVersionReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let version = version.into_inner();
-    key_backup::update_backup(authed.user_id(), version, &body.algorithm)?;
+    key_backup::create_backup(authed.user_id(), &body.algorithm)?;
 
     empty_ok()
 }

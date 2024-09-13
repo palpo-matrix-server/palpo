@@ -14,6 +14,7 @@ mod data;
 pub use data::*;
 pub mod key;
 pub mod pusher;
+// pub mod push_rule;
 pub use key::*;
 pub mod key_backup;
 pub mod session;
@@ -131,6 +132,14 @@ pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, Stri
 pub fn user_exists(user_id: &UserId) -> AppResult<bool> {
     let query = users::table.find(user_id);
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+}
+
+pub fn get_user(user_id: &UserId) -> AppResult<Option<DbUser>> {
+    users::table
+        .find(user_id)
+        .first::<DbUser>(&mut *db::connect()?)
+        .optional()
+        .map_err(Into::into)
 }
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {

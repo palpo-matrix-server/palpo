@@ -54,7 +54,7 @@ pub struct RelatingEventsWithRelTypeAndEventTypeReqArgs {
     /// Note that when paginating the `from` token should be "after" the `to` token in
     /// terms of topological ordering, because it is only possible to paginate "backwards"
     /// through events, starting at `from`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
@@ -71,7 +71,7 @@ pub struct RelatingEventsWithRelTypeAndEventTypeReqArgs {
     ///
     /// Like `from`, this can be a previous token from a prior call to this endpoint
     /// or from `/messages` or `/sync`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub to: Option<String>,
 
@@ -81,7 +81,7 @@ pub struct RelatingEventsWithRelTypeAndEventTypeReqArgs {
     /// responses.
     ///
     /// Similarly, the server should apply a default value when not supplied.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub limit: Option<usize>,
 
@@ -142,7 +142,7 @@ pub struct RelatingEventsWithRelTypeReqArgs {
     /// Note that when paginating the `from` token should be "after" the `to` token in
     /// terms of topological ordering, because it is only possible to paginate "backwards"
     /// through events, starting at `from`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
@@ -159,7 +159,7 @@ pub struct RelatingEventsWithRelTypeReqArgs {
     ///
     /// Like `from`, this can be a previous token from a prior call to this endpoint
     /// or from `/messages` or `/sync`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub to: Option<String>,
 
@@ -169,7 +169,7 @@ pub struct RelatingEventsWithRelTypeReqArgs {
     /// responses.
     ///
     /// Similarly, the server should apply a default value when not supplied.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub limit: Option<usize>,
 
@@ -224,7 +224,7 @@ pub struct RelatingEventsReqArgs {
     /// Note that when paginating the `from` token should be "after" the `to` token in
     /// terms of topological ordering, because it is only possible to paginate "backwards"
     /// through events, starting at `from`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
@@ -241,7 +241,7 @@ pub struct RelatingEventsReqArgs {
     ///
     /// Like `from`, this can be a previous token from a prior call to this endpoint
     /// or from `/messages` or `/sync`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub to: Option<String>,
 
@@ -251,7 +251,7 @@ pub struct RelatingEventsReqArgs {
     /// responses.
     ///
     /// Similarly, the server should apply a default value when not supplied.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub limit: Option<usize>,
 
@@ -284,19 +284,19 @@ pub struct RelationEventsResBody {
     ///
     /// If this is `None`, there are no more results to fetch and the client should stop
     /// paginating.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_batch: Option<String>,
 
     /// An opaque string representing a pagination token.
     ///
     /// If this is `None`, this is the start of the result set, i.e. this is the first
     /// batch/page.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prev_batch: Option<String>,
 
     /// If `recurse` was set on the request, the depth to which the server recursed.
     ///
     /// If `recurse` was not set, this field must be absent.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recursion_depth: Option<u64>,
 }

@@ -7,7 +7,7 @@ use salvo::prelude::*;
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleid
 use serde::{Deserialize, Serialize};
 
-use crate::push::{Action, NewPushRule, PushCondition, PushRule, RuleKind, RuleScope, Ruleset};
+use crate::{push::{Action, NewPushRule, PushCondition, PushRule, RuleKind, RuleScope, Ruleset}, OwnedClientSecret};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -79,79 +79,88 @@ impl RulesResBody {
 //     }
 // };
 
-/// Request type for the `set_pushrule` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
-pub struct SetRuleReqBody {
-    /// The scope to set the rule in.
+// /// Request type for the `set_pushrule` endpoint.
+// #[derive(ToSchema, Deserialize, Debug)]
+// pub struct SetRuleReqBody {
+//     /// The scope to set the rule in.
+//     pub scope: RuleScope,
+
+//     /// The rule.
+//     pub rule: NewPushRule,
+
+//     /// Use 'before' with a rule_id as its value to make the new rule the
+//     /// next-most important rule with respect to the given user defined rule.
+//     #[serde(default)]
+//     pub before: Option<String>,
+
+//     /// This makes the new rule the next-less important rule relative to the
+//     /// given user defined rule.
+//     #[serde(default)]
+//     pub after: Option<String>,
+// }
+#[derive(ToParameters, Deserialize, Serialize, Debug)]
+pub struct SetRuleReqArgs {
+    #[salvo(parameter(parameter_in = Path))]
     pub scope: RuleScope,
+    #[salvo(parameter(parameter_in = Path))]
+    pub kind: RuleKind,
+    #[salvo(parameter(parameter_in = Path))]
+    pub rule_id: String,
 
-    /// The rule.
-    pub rule: NewPushRule,
-
-    /// Use 'before' with a rule_id as its value to make the new rule the next-most important
-    /// rule with respect to the given user defined rule.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[salvo(parameter(parameter_in = Query))]
     pub before: Option<String>,
 
-    /// This makes the new rule the next-less important rule relative to the given user defined
-    /// rule.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[salvo(parameter(parameter_in = Query))]
     pub after: Option<String>,
 }
-#[derive(Debug, Serialize)]
-struct ReqQuery {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    before: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    after: Option<String>,
+// #[derive(ToSchema, Deserialize, Debug)]
+// pub enum SetRuleReqBody {
+//     Simple(SimpleReqBody),
+//     Patterned(PatternedReqBody),
+//     Conditional(ConditionalReqBody),
+// }
+
+#[derive(ToSchema, Deserialize, Debug)]
+pub struct SimpleReqBody {
+    pub actions: Vec<Action>,
 }
 
 #[derive(ToSchema, Deserialize, Debug)]
-enum ReqBody {
-    Simple(SimpleReqBody),
-
-    Patterned(PatternedReqBody),
-
-    Conditional(ConditionalReqBody),
+pub struct PatternedReqBody {
+    pub actions: Vec<Action>,
+    pub pattern: String,
 }
 
 #[derive(ToSchema, Deserialize, Debug)]
-struct SimpleReqBody {
-    actions: Vec<Action>,
+pub struct ConditionalReqBody {
+    pub actions: Vec<Action>,
+    pub conditions: Vec<PushCondition>,
 }
 
-#[derive(ToSchema, Deserialize, Debug)]
-struct PatternedReqBody {
-    actions: Vec<Action>,
-    pattern: String,
-}
-
-#[derive(ToSchema, Deserialize, Debug)]
-struct ConditionalReqBody {
-    actions: Vec<Action>,
-    conditions: Vec<PushCondition>,
-}
-
-impl From<NewPushRule> for ReqBody {
-    fn from(rule: NewPushRule) -> Self {
-        match rule {
-            NewPushRule::Override(r) => ReqBody::Conditional(ConditionalReqBody {
-                actions: r.actions,
-                conditions: r.conditions,
-            }),
-            NewPushRule::Content(r) => ReqBody::Patterned(PatternedReqBody {
-                actions: r.actions,
-                pattern: r.pattern,
-            }),
-            NewPushRule::Room(r) => ReqBody::Simple(SimpleReqBody { actions: r.actions }),
-            NewPushRule::Sender(r) => ReqBody::Simple(SimpleReqBody { actions: r.actions }),
-            NewPushRule::Underride(r) => ReqBody::Conditional(ConditionalReqBody {
-                actions: r.actions,
-                conditions: r.conditions,
-            }),
-            _ => unreachable!("variant added to NewPushRule not covered by ReqBody"),
-        }
-    }
-}
+// impl From<NewPushRule> for SetRuleReqBody {
+//     fn from(rule: NewPushRule) -> Self {
+//         match rule {
+//             NewPushRule::Override(r) => SetRuleReqBody::Conditional(ConditionalReqBody {
+//                 actions: r.actions,
+//                 conditions: r.conditions,
+//             }),
+//             NewPushRule::Content(r) => SetRuleReqBody::Patterned(PatternedReqBody {
+//                 actions: r.actions,
+//                 pattern: r.pattern,
+//             }),
+//             NewPushRule::Room(r) => SetRuleReqBody::Simple(SimpleReqBody { actions: r.actions }),
+//             NewPushRule::Sender(r) => SetRuleReqBody::Simple(SimpleReqBody { actions: r.actions }),
+//             NewPushRule::Underride(r) => SetRuleReqBody::Conditional(ConditionalReqBody {
+//                 actions: r.actions,
+//                 conditions: r.conditions,
+//             }),
+//             _ => unreachable!("variant added to NewPushRule not covered by SetRuleReqBody"),
+//         }
+//     }
+// }
 
 /// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/enabled`
 ///

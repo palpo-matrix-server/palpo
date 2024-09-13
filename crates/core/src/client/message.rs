@@ -36,6 +36,7 @@ pub struct MessageEventsReqArgs {
     ///
     /// If this is `None`, the server will return messages from the start or end of the
     /// history visible to the user, depending on the value of [`dir`][Self::dir].
+    #[serde(default)]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
@@ -44,28 +45,29 @@ pub struct MessageEventsReqArgs {
     /// This token can be obtained from a `prev_batch` token returned for each room by the
     /// sync endpoint, or from a `start` or `end` token returned by a previous request to
     /// this endpoint.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub to: Option<String>,
 
     /// The direction to return events from.
+    #[serde(default)]
     #[salvo(parameter(parameter_in = Query))]
     pub dir: Direction,
 
     /// The maximum number of events to return.
     ///
     /// Default: `10`.
-    #[salvo(parameter(parameter_in = Query))]
     #[serde(default = "default_limit", skip_serializing_if = "is_default_limit")]
+    #[salvo(parameter(parameter_in = Query))]
     pub limit: usize,
 
     /// A [`RoomEventFilter`] to filter returned events with.
-    #[salvo(parameter(parameter_in = Query))]
     #[serde(
         with = "crate::serde::json_string",
         default,
         skip_serializing_if = "RoomEventFilter::is_empty"
     )]
+    #[salvo(parameter(parameter_in = Query))]
     pub filter: RoomEventFilter,
 }
 
@@ -76,7 +78,7 @@ pub struct MessageEventsResBody {
     pub start: String,
 
     /// The token the pagination ends at.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end: Option<String>,
 
     /// A list of room events.

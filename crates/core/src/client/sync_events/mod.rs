@@ -15,11 +15,11 @@ pub use v4::*;
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UnreadNotificationsCount {
     /// The number of unread notifications with the highlight flag set.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub highlight_count: Option<u64>,
 
     /// The total number of unread notifications.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notification_count: Option<u64>,
 }
 

@@ -97,11 +97,11 @@ fn update_device(
 async fn delete_device(
     _aa: AuthArgs,
     device_id: PathParam<OwnedDeviceId>,
-    body: JsonBody<DeleteDeviceReqBody>,
+    body: JsonBody<Option<DeleteDeviceReqBody>>,
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let DeleteDeviceReqBody { auth } = body.into_inner();
+    let auth = body.into_inner().map(|body|body.auth).flatten();
     let device_id = device_id.into_inner();
 
     // UIAA

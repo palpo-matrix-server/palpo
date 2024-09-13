@@ -64,7 +64,7 @@ pub struct RefreshTokenResBody {
     /// The new refresh token to use when the access token needs to be refreshed again.
     ///
     /// If this is `None`, the old refresh token can be re-used.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
 
     /// The lifetime of the access token, in milliseconds.
@@ -113,13 +113,13 @@ pub struct LoginReqBody {
     pub login_info: LoginInfo,
 
     /// ID of the client device
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_id: Option<OwnedDeviceId>,
 
     /// A display name to assign to the newly-created device.
     ///
     /// Ignored if `device_id` corresponds to a known device.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initial_device_display_name: Option<String>,
 
     /// If set to `true`, the client supports [refresh tokens].
@@ -148,7 +148,7 @@ pub struct LoginResBody {
     /// Client configuration provided by the server.
     ///
     /// If present, clients SHOULD use the provided object to reconfigure themselves.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub well_known: Option<DiscoveryInfo>,
 
     /// A [refresh token] for the account.
@@ -158,7 +158,7 @@ pub struct LoginResBody {
     ///
     /// [refresh token]: https://spec.matrix.org/latest/client-server-api/#refreshing-access-tokens
     /// [`refresh_token`]: crate::session::refresh_token
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
 
     /// The lifetime of the access token, in milliseconds.
@@ -361,7 +361,7 @@ pub struct DiscoveryInfo {
     pub homeserver: HomeServerInfo,
 
     /// Information about the identity server to connect to.
-    #[serde(rename = "m.identity_server")]
+    #[serde(default, rename = "m.identity_server")]
     pub identity_server: Option<IdentityServerInfo>,
 }
 
@@ -684,7 +684,7 @@ pub struct CustomLoginType {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct TokenReqBody {
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
 

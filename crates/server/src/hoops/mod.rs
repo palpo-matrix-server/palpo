@@ -74,9 +74,11 @@ pub async fn limit_rate() -> AppResult<()> {
 #[handler]
 pub async fn remove_json_utf8(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
     ctrl.call_next(req, depot, res).await;
-    if let Some(true) = res.headers().get("content-type").map(|h| {let h  = h.to_str().unwrap_or_default();
+    if let Some(true) = res.headers().get("content-type").map(|h| {
+        let h = h.to_str().unwrap_or_default();
         h.contains("application/json") && h.contains(";")
     }) {
-       res.add_header("content-type", "application/json", true).expect("should not fail");
+        res.add_header("content-type", "application/json", true)
+            .expect("should not fail");
     }
 }

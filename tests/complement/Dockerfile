@@ -8,9 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY crates crates
-RUN cargo build --release \
-    && mv target/release/palpo palpo \
-    && rm -rf target
+# RUN cargo build --release \
+#     && mv target/release/palpo palpo \
+#     && rm -rf target
+RUN cargo build \
+&& mv target/debug/palpo palpo \
+&& rm -rf target
 
 # Install caddy
 RUN apt-get update \
