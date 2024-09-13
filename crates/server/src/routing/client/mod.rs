@@ -8,7 +8,7 @@ mod key;
 mod login;
 mod presence;
 mod profile;
- mod push_rule;
+mod push_rule;
 mod pusher;
 mod register;
 mod room;

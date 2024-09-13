@@ -36,8 +36,7 @@ pub fn router() -> Router {
                     Router::with_hoop(hoops::limit_rate)
                         .push(Router::with_path("create").post(create_mxc_uri))
                         .push(
-                            Router::with_path("upload").post(upload)
-                            // .push(Router::with_path("<server_name>/<media_id>").put(upload_media)),
+                            Router::with_path("upload").post(upload), // .push(Router::with_path("<server_name>/<media_id>").put(upload_media)),
                         )
                         .push(Router::with_path("config").get(get_config))
                         .push(Router::with_path("preview_url").get(preview_url))

@@ -117,14 +117,11 @@ pub struct DeleteDevicesReqBody {
 
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct DeviceResBody {
-    /// Information about the device.
-    pub device: Device,
-}
+pub struct DeviceResBody (pub Device);
 impl DeviceResBody {
     /// Creates a new `Response` with the given device.
     pub fn new(device: Device) -> Self {
-        Self { device }
+        Self (device)
     }
 }
 

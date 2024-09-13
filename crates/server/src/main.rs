@@ -100,9 +100,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     println!("RUST_LOG: {}", env::var("RUST_LOG").unwrap_or_default());
-
-    salvo::http::request::set_secure_max_size(1024 * 1024 * 100);
-
     let raw_config = Figment::new()
         .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
         .merge(Env::prefixed("PALPO_").global());
@@ -139,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::sending::start_handler();
 
     let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
-    salvo::http::request::set_secure_max_size(8 * 1024 * 1024);
+    salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
 
     let router = routing::router();
     let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);

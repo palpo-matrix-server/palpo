@@ -113,7 +113,7 @@ pub fn try_auth(
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
 
             let Some(user) = crate::user::get_user(&user_id)? else {
-                return Err(MatrixError::unauthorized("User not found.").into())
+                return Err(MatrixError::unauthorized("User not found.").into());
             };
             crate::user::vertify_password(&user, &password)?;
         }

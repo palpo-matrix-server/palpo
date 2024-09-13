@@ -10,13 +10,13 @@ use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
 use crate::core::client::push::{
-    RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody, SetRuleActionsReqBody, SetRuleEnabledReqBody,
-    SetRuleReqArgs, ConditionalReqBody,PatternedReqBody,SimpleReqBody
+    ConditionalReqBody, PatternedReqBody, RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody,
+    SetRuleActionsReqBody, SetRuleEnabledReqBody, SetRuleReqArgs, SimpleReqBody,
 };
-use crate::core::push::{NewConditionalPushRule,RuleKind,NewPatternedPushRule, NewSimplePushRule, NewPushRule};
 use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
+use crate::core::push::{NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind};
 
 use crate::{empty_ok, hoops, json_ok, DepotExt, EmptyResult, JsonResult, MatrixError};
 
@@ -73,32 +73,25 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     let payload = req.payload().await?;
     let new_rule: NewPushRule = match &args.kind {
         RuleKind::Override => {
-            let ConditionalReqBody { actions, conditions } =
-                serde_json::from_slice(payload)?;
+            let ConditionalReqBody { actions, conditions } = serde_json::from_slice(payload)?;
             NewPushRule::Override(NewConditionalPushRule::new(args.rule_id.clone(), conditions, actions))
         }
         RuleKind::Underride => {
-            let ConditionalReqBody { actions, conditions } =
-                serde_json::from_slice(payload)?;
-            NewPushRule::Underride(NewConditionalPushRule::new(
-                args.rule_id.clone(), conditions, actions,
-            ))
+            let ConditionalReqBody { actions, conditions } = serde_json::from_slice(payload)?;
+            NewPushRule::Underride(NewConditionalPushRule::new(args.rule_id.clone(), conditions, actions))
         }
         RuleKind::Sender => {
-            let SimpleReqBody { actions } =
-                serde_json::from_slice(payload)?;
+            let SimpleReqBody { actions } = serde_json::from_slice(payload)?;
             let rule_id = args.rule_id.clone().try_into()?;
             NewPushRule::Sender(NewSimplePushRule::new(rule_id, actions))
         }
         RuleKind::Room => {
-            let SimpleReqBody { actions } =
-                serde_json::from_slice(payload)?;
+            let SimpleReqBody { actions } = serde_json::from_slice(payload)?;
             let rule_id = args.rule_id.clone().try_into()?;
             NewPushRule::Room(NewSimplePushRule::new(rule_id, actions))
         }
         RuleKind::Content => {
-            let PatternedReqBody { actions, pattern } =
-                serde_json::from_slice(payload)?;
+            let PatternedReqBody { actions, pattern } = serde_json::from_slice(payload)?;
             NewPushRule::Content(NewPatternedPushRule::new(args.rule_id.clone(), pattern, actions))
         }
         _ => {
@@ -117,10 +110,9 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if let Err(error) =
-        user_data_content
-            .global
-            .insert(new_rule, args.after.as_deref(), args.before.as_deref())
+    if let Err(error) = user_data_content
+        .global
+        .insert(new_rule, args.after.as_deref(), args.before.as_deref())
     {
         let err = match error {
             InsertPushRuleError::ServerDefaultRuleId => {

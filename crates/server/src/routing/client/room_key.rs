@@ -253,11 +253,7 @@ async fn create_version(
 // #PUT /_matrix/client/r0/room_keys/version/{version}
 /// Update information about an existing backup. Only `auth_data` can be modified.
 #[endpoint]
-async fn update_version(
-    _aa: AuthArgs,
-    body: JsonBody<CreateVersionReqBody>,
-    depot: &mut Depot,
-) -> EmptyResult {
+async fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
     key_backup::create_backup(authed.user_id(), &body.algorithm)?;
 

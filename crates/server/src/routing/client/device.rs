@@ -46,9 +46,7 @@ async fn get_device(
     let authed = depot.authed_info()?;
 
     let device_id = device_id.into_inner();
-    json_ok(DeviceResBody {
-        device: crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
-    })
+    json_ok(DeviceResBody (crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device()))
 }
 
 // #GET /_matrix/client/r0/devices
@@ -101,7 +99,7 @@ async fn delete_device(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let auth = body.into_inner().map(|body|body.auth).flatten();
+    let auth = body.into_inner().map(|body| body.auth).flatten();
     let device_id = device_id.into_inner();
 
     // UIAA
