@@ -12,7 +12,7 @@ use crate::directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server};
 use crate::federation::discovery::ServerSigningKeys;
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::RawJson;
-use crate::{EventId, OwnedServerName, OwnedServerSigningKeyId, RoomId, ServerName, UnixMillis};
+use crate::{OwnedServerName, OwnedServerSigningKeyId, ServerName, UnixMillis};
 
 /// `POST /_matrix/federation/*/publicRooms`
 ///

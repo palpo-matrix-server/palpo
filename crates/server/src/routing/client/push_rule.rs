@@ -13,7 +13,6 @@ use crate::core::client::push::{
     ConditionalReqBody, PatternedReqBody, RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody,
     SetRuleActionsReqBody, SetRuleEnabledReqBody, SetRuleReqArgs, SimpleReqBody,
 };
-use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
 use crate::core::push::{NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind};

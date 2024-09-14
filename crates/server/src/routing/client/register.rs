@@ -11,7 +11,7 @@ use salvo::prelude::*;
 use crate::core::client::account::{LoginType, RegistrationKind};
 use crate::core::client::register::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::core::events::push_rules::{PushRulesEvent, PushRulesEventContent};
+use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::identifiers::*;

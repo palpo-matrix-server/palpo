@@ -34,7 +34,6 @@ COPY tests/complement/caddy.json caddy.json
 COPY tests/complement/startup.sh startup.sh
 
 ENV PALPO_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/palpo"
-ENV PALPO_SERVER_NAME=localhost
 ENV PALPO_CONFIG=/work/palpo.toml
 ENV RUST_LOG="palpo=warn,palpo_core=error,salvo=error"
 ENV LOG_FORMAT=json

@@ -5,7 +5,7 @@
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1make_knockroomiduser_id
-use crate::{OwnedUserId, RoomAliasId, RoomVersionId};
+use crate::{OwnedUserId, RoomVersionId};
 use itertools::Itertools;
 
 use salvo::prelude::*;
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::events::AnyStrippedStateEvent;
 use crate::sending::{SendError, SendRequest, SendResult};
 use crate::serde::{RawJson, RawJsonValue};
-use crate::{OwnedRoomId, RoomId, UserId};
+use crate::OwnedRoomId;
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

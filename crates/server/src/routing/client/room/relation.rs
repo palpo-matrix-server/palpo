@@ -4,7 +4,7 @@ use crate::core::client::relation::{
     RelatingEventsReqArgs, RelatingEventsWithRelTypeAndEventTypeReqArgs, RelatingEventsWithRelTypeReqArgs,
     RelationEventsResBody,
 };
-use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}
 #[endpoint]

@@ -1,18 +1,14 @@
 use std::collections::BTreeMap;
-use std::fmt;
 use std::time::Duration;
 
-use bytes::BytesMut;
 use diesel::prelude::*;
 use regex::RegexSet;
 use serde::{Deserialize, Serialize};
 
 use crate::core::appservice::{Namespace, Registration};
 use crate::core::identifiers::*;
-use crate::core::MatrixVersion;
-use crate::core::SendAccessToken;
 use crate::schema::*;
-use crate::{db, utils, AppError, AppResult, JsonValue};
+use crate::{db, AppError, AppResult, JsonValue};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]
@@ -336,7 +332,7 @@ pub(crate) async fn send_request(
     *request.timeout_mut() = Some(Duration::from_secs(30));
 
     let url = request.url().clone();
-    let mut response = match crate::default_client().execute(request).await {
+    let response = match crate::default_client().execute(request).await {
         Ok(r) => r,
         Err(e) => {
             warn!(

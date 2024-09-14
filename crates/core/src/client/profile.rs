@@ -7,7 +7,7 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{OwnedMxcUri, OwnedUserId};
+use crate::OwnedMxcUri;
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

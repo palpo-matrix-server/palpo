@@ -12,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::schema::*;
 use crate::user::DbProfile;
-use crate::{db, diesel_exists, AppError, AppResult, JsonValue};
+use crate::{db, diesel_exists, AppError, AppResult};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]

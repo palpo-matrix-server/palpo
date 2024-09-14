@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
-use crate::core::events::push_rules::{PushRulesEvent, PushRulesEventContent};
+use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encrypted::Relation;

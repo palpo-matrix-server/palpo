@@ -1,9 +1,6 @@
 use crate::core::third_party::*;
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
-use palpo_core::directory::RoomTypeFilter::Default;
+use crate::{json_ok, AuthArgs, JsonResult};
 use salvo::prelude::*;
-
-use crate::core::third_party::*;
 
 pub fn router() -> Router {
     Router::with_path("thirdparty")

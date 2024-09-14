@@ -8,9 +8,7 @@ use tokio::sync::RwLock;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::knock::MakeKnockReqArgs;
 use crate::core::federation::membership::{
     make_leave_request, InviteUserResBodyV2, MakeLeaveEventResBody, SendLeaveEventReqBodyV2,
 };

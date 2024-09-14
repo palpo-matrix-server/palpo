@@ -4,7 +4,6 @@ use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::backup::UpdateVersionReqBody;
 use crate::core::client::backup::*;
 use crate::core::serde::RawJson;
 use crate::schema::*;

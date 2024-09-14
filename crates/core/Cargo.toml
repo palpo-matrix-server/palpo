@@ -100,6 +100,7 @@ http-auth = { version = "0.1.9", default-features = false }
 indexmap = { workspace = true }
 itertools ={ workspace = true }
 jsonwebtoken = { workspace = true }
+js_option = { workspace = true }
 konst = { workspace = true }
 maplit ={ workspace = true }
 mime = { workspace = true }

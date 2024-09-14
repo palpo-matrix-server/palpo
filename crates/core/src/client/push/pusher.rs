@@ -2,10 +2,13 @@
 //!
 //! Gets all currently active pushers for the authenticated user.
 
+use js_option::JsOption;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{de, ser::SerializeStruct, Deserialize, Serialize};
 
 use crate::push::{Pusher, PusherIds};
+use crate::serde::from_raw_json_value;
+use crate::RawJsonValue;
 
 // `/v3/` ([spec])
 //
@@ -72,8 +75,7 @@ pub struct SetPusherReqBody(pub PusherAction);
 // }
 
 /// The action to take for the pusher.
-#[derive(ToSchema, Deserialize, Clone, Debug)]
-#[serde(untagged)]
+#[derive(ToSchema, Clone, Debug)]
 pub enum PusherAction {
     /// Create or update the given pusher.
     Post(PusherPostData),
@@ -81,9 +83,47 @@ pub enum PusherAction {
     /// Delete the pusher identified by the given IDs.
     Delete(PusherIds),
 }
+impl Serialize for PusherAction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            PusherAction::Post(pusher) => pusher.serialize(serializer),
+            PusherAction::Delete(ids) => {
+                let mut st = serializer.serialize_struct("PusherAction", 3)?;
+                st.serialize_field("pushkey", &ids.pushkey)?;
+                st.serialize_field("app_id", &ids.app_id)?;
+                st.serialize_field("kind", &None::<&str>)?;
+                st.end()
+            }
+        }
+    }
+}
+#[derive(Debug, Deserialize)]
+struct PusherActionDeHelper {
+    kind: JsOption<String>,
+}
+
+impl<'de> Deserialize<'de> for PusherAction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let json = Box::<RawJsonValue>::deserialize(deserializer)?;
+        let PusherActionDeHelper { kind } = from_raw_json_value(&json)?;
+
+        match kind {
+            JsOption::Some(_) => Ok(Self::Post(from_raw_json_value(&json)?)),
+            JsOption::Null => Ok(Self::Delete(from_raw_json_value(&json)?)),
+            // This is unreachable because we don't use `#[serde(default)]` on the field.
+            JsOption::Undefined => Err(de::Error::missing_field("kind")),
+        }
+    }
+}
 
 /// Data necessary to create or update a pusher.
-#[derive(ToSchema, Deserialize, Clone, Debug, Serialize)]
+#[derive(ToSchema, Serialize, Clone, Debug)]
 pub struct PusherPostData {
     /// The pusher to configure.
     #[serde(flatten)]
@@ -93,6 +133,25 @@ pub struct PusherPostData {
     /// are already others for other users.
     ///
     /// Defaults to `false`. See the spec for more details.
-    #[serde(skip_serializing_if = "crate::serde::is_default")]
+    #[serde(skip_serializing_if = "crate::serde::is_default", default = "default_false")]
     pub append: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct PusherPostDataDeHelper {
+    #[serde(default)]
+    append: bool,
+}
+impl<'de> Deserialize<'de> for PusherPostData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let json = Box::<RawJsonValue>::deserialize(deserializer)?;
+       
+        let PusherPostDataDeHelper { append } = from_raw_json_value(&json)?;
+        let pusher = from_raw_json_value(&json)?;
+
+        Ok(Self { pusher, append })
+    }
 }

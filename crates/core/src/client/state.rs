@@ -40,18 +40,17 @@ pub struct StateEventsForKeyReqArgs {
 /// Response type for the `get_state_events_for_key` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct StateEventsForKeyResBody {
+pub struct StateEventsForKeyResBody(
     /// The content of the state event.
     ///
     /// Since the inner type of the `Raw` does not implement `Deserialize`, you need to use
     /// [`RawJson::deserialize_as`] to deserialize it.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub content: RawJson<AnyStateEventContent>,
-}
+    pub RawJson<AnyStateEventContent>,
+);
 impl StateEventsForKeyResBody {
     /// Creates a new `Response` with the given content.
     pub fn new(content: RawJson<AnyStateEventContent>) -> Self {
-        Self { content }
+        Self(content)
     }
 }
 

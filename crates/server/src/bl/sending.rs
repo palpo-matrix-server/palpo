@@ -11,9 +11,7 @@ use serde::Deserialize;
 use tokio::sync::{mpsc, Mutex, Semaphore};
 
 use crate::core::appservice::event::PushEventsReqBody;
-use crate::core::appservice::Registration;
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::push_rules::PushRulesEvent;
 use crate::core::events::receipt::ReceiptType;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap};
 use crate::core::events::{AnySyncEphemeralRoomEvent, GlobalAccountDataEventType};
@@ -21,10 +19,8 @@ use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageR
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
 use crate::core::{device_id, push, UnixMillis};
-use crate::schema::*;
 use crate::{db, utils, AppError, AppResult, PduEvent};
 
-use super::room::user;
 use super::{curr_sn, outgoing_requests};
 
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]

@@ -162,7 +162,7 @@ CREATE TABLE user_access_tokens
 
 drop table if exists room_aliases CASCADE;
 CREATE TABLE room_aliases (
-    alias text NOT NULL PRIMARY KEY,
+    alias_id text NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     created_by text NOT NULL,
     created_at bigint NOT NULL

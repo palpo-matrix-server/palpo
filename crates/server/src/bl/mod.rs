@@ -50,9 +50,9 @@ use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJsonValue};
 use crate::core::signatures::Ed25519KeyPair;
 use crate::core::UnixMillis;
-use crate::federation::{DestinationResponse, FedDest};
+use crate::federation::DestinationResponse;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue, MatrixError, ServerConfig};
+use crate::{db, AppResult, JsonValue, MatrixError, ServerConfig};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
@@ -194,6 +194,10 @@ pub fn false_value() -> bool {
 
 pub fn true_value() -> bool {
     true
+}
+
+pub fn server_user() -> String {
+    format!("@palpo:{}", crate::server_name())
 }
 
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]
@@ -709,7 +713,7 @@ pub fn shutdown() {
 }
 
 fn reqwest_client_builder(config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
-    let mut reqwest_client_builder = reqwest::Client::builder()
+    let reqwest_client_builder = reqwest::Client::builder()
         .pool_max_idle_per_host(0)
         .connect_timeout(Duration::from_secs(30))
         .timeout(Duration::from_secs(60 * 3));

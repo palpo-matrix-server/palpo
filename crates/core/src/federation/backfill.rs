@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::RawJsonValue;
-use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, RoomId, ServerName, UnixMillis};
+use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, ServerName, UnixMillis};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

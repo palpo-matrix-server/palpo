@@ -3,7 +3,6 @@ use std::io;
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
-use palpo_core::error::ErrorKind;
 use palpo_core::MatrixError;
 use salvo::http::{StatusCode, StatusError};
 use salvo::oapi::{self, EndpointOutRegister, ToSchema};

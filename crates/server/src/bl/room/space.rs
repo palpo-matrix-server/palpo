@@ -21,7 +21,7 @@ use crate::core::{
     space::SpaceRoomJoinRule,
     OwnedRoomId, RoomId, UserId,
     {
-        client::space::{HierarchyReqArgs, HierarchyResBody, SpaceHierarchyRoomsChunk},
+        client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk},
         federation,
     },
 };

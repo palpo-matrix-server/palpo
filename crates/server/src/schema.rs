@@ -320,8 +320,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    room_aliases (alias) {
-        alias -> Text,
+    room_aliases (alias_id) {
+        alias_id -> Text,
         room_id -> Text,
         created_by -> Text,
         created_at -> Int8,

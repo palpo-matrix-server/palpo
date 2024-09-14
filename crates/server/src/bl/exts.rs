@@ -23,11 +23,21 @@ pub trait IsRemote {
 }
 impl IsRemote for UserId {
     fn is_remote(&self) -> bool {
+        println!(
+            "UserId.is_romte() {:?} == {:?}",
+            self.server_name(),
+            crate::server_name()
+        );
         self.server_name() != crate::server_name()
     }
 }
 impl IsRemote for OwnedUserId {
     fn is_remote(&self) -> bool {
+        println!(
+            "OwnedUserId.is_romte() {:?} == {:?}",
+            self.server_name(),
+            crate::server_name()
+        );
         self.server_name() != crate::server_name()
     }
 }
@@ -35,6 +45,11 @@ impl IsRemote for OwnedUserId {
 impl IsRemote for RoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
+            println!(
+                "RoomId.is_romte() {:?} == {:?}",
+                self.server_name(),
+                crate::server_name()
+            );
             server_name != crate::server_name()
         } else {
             false
@@ -44,6 +59,11 @@ impl IsRemote for RoomId {
 impl IsRemote for OwnedRoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
+            println!(
+                "OwnedRoomId.is_romte() {:?} == {:?}",
+                self.server_name(),
+                crate::server_name()
+            );
             server_name != crate::server_name()
         } else {
             false
@@ -53,12 +73,22 @@ impl IsRemote for OwnedRoomId {
 
 impl IsRemote for RoomAliasId {
     fn is_remote(&self) -> bool {
+        println!(
+            "RoomAliasId.is_romte() {:?} == {:?}",
+            self.server_name(),
+            crate::server_name()
+        );
         self.server_name() != crate::server_name()
     }
 }
 
 impl IsRemote for OwnedRoomAliasId {
     fn is_remote(&self) -> bool {
+        println!(
+            "OwnedRoomAliasId.is_romte() {:?} == {:?}",
+            self.server_name(),
+            crate::server_name()
+        );
         self.server_name() != crate::server_name()
     }
 }

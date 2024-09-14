@@ -8,7 +8,6 @@ use palpo_core::client::discovery::{ClientWellKnownResBody, HomeServerInfo, Slid
 use palpo_core::federation::discovery::ServerWellKnownResBody;
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
-use salvo::size_limiter;
 use url::Url;
 
 use crate::{hoops, json_ok, AppResult, JsonResult};

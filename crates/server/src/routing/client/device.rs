@@ -46,7 +46,9 @@ async fn get_device(
     let authed = depot.authed_info()?;
 
     let device_id = device_id.into_inner();
-    json_ok(DeviceResBody (crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device()))
+    json_ok(DeviceResBody(
+        crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
+    ))
 }
 
 // #GET /_matrix/client/r0/devices

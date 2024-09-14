@@ -1,15 +1,10 @@
 use std::collections::BTreeMap;
 
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::key::{UploadSignaturesReqBody, UploadSignaturesResBody};
-use crate::core::encryption::CrossSigningKey;
-use crate::core::identifiers::*;
-use crate::schema::*;
-use crate::user::DbCrossSigningKey;
-use crate::{db, json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 // #POST /_matrix/client/r0/keys/signatures/upload
 /// Uploads end-to-end key signatures from the sender user.

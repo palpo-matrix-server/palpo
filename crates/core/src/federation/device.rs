@@ -9,7 +9,6 @@
 
 use crate::{
     encryption::{CrossSigningKey, DeviceKeys},
-    serde::RawJson,
     OwnedDeviceId, OwnedUserId,
 };
 use salvo::prelude::*;

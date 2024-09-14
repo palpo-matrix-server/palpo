@@ -131,11 +131,12 @@ pub(super) async fn leave_room(
 pub(super) async fn join_room_by_id(
     _aa: AuthArgs,
     room_id: PathParam<OwnedRoomId>,
-    body: JsonBody<JoinRoomReqBody>,
+    body: JsonBody<Option<JoinRoomReqBody>>,
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
+    let body = body.into_inner();
 
     let mut servers = Vec::new(); // There is no body.server_name for /roomId/join
     servers.extend(
@@ -154,9 +155,9 @@ pub(super) async fn join_room_by_id(
     crate::membership::join_room(
         &authed.user_id(),
         &room_id,
-        body.reason.clone(),
+        body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
-        body.third_party_signed.as_ref(),
+        body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
     )
     .await?;
     empty_ok()
@@ -197,11 +198,12 @@ pub(crate) async fn join_room_by_id_or_alias(
     _aa: AuthArgs,
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
-    body: JsonBody<JoinRoomReqBody>,
+    body: JsonBody<Option<JoinRoomReqBody>>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     let authed = depot.authed_info()?;
     let room_id_or_alias = room_id_or_alias.into_inner();
+    let body = body.into_inner();
     let mut servers = server_name.into_inner().unwrap_or_default();
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
@@ -229,9 +231,9 @@ pub(crate) async fn join_room_by_id_or_alias(
     let join_room_response = crate::membership::join_room(
         authed.user_id(),
         &room_id,
-        body.reason.clone(),
+        body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
-        body.third_party_signed.as_ref(),
+        body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
     )
     .await?;
 

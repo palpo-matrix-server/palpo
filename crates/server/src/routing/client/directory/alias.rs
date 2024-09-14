@@ -9,7 +9,7 @@ use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::exts::*;
-use crate::room::RoomAlias;
+use crate::room::DbRoomAlias;
 use crate::schema::*;
 use crate::{db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
@@ -69,13 +69,13 @@ pub(super) async fn upsert_alias(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let alias = room_alias.into_inner();
-    if alias.is_remote() {
+    let alias_id = room_alias.into_inner();
+    if alias_id.is_remote() {
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
     }
 
     let query = room_aliases::table
-        .filter(room_aliases::alias.eq(&alias))
+        .filter(room_aliases::alias_id.eq(&alias_id))
         .filter(room_aliases::room_id.ne(&body.room_id));
     if diesel_exists!(query, &mut *db::connect()?)? {
         return Err(StatusError::conflict()
@@ -83,8 +83,8 @@ pub(super) async fn upsert_alias(
             .into());
     }
     diesel::insert_into(room_aliases::table)
-        .values(RoomAlias {
-            alias,
+        .values(DbRoomAlias {
+            alias_id,
             room_id: body.room_id.clone(),
             created_by: authed.user_id().to_owned(),
             created_at: UnixMillis::now(),
@@ -101,12 +101,19 @@ pub(super) async fn upsert_alias(
 /// - TODO: additional access control checks
 /// - TODO: Update canonical alias event
 #[endpoint]
-pub(super) async fn delete_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> EmptyResult {
+pub(super) async fn delete_alias(
+    _aa: AuthArgs,
+    room_alias: PathParam<OwnedRoomAliasId>,
+    depot: &mut Depot,
+) -> EmptyResult {
+    let authed = depot.authed_info()?;
+
     let alias = room_alias.into_inner();
     if alias.is_remote() {
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
     }
-    diesel::delete(room_aliases::table.find(&alias)).execute(&mut *db::connect()?)?;
+
+    crate::room::remove_alias(&alias, authed.user())?;
 
     // TODO: update alt_aliases?
 

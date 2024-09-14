@@ -12,10 +12,9 @@ use std::time::Duration;
 use crate::{
     encryption::OneTimeKey,
     encryption::{CrossSigningKey, DeviceKeys},
-    serde::{Base64, RawJson},
+    serde::Base64,
     DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId,
 };
-use palpo_core::sending::SendRequest;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 // const METADATA: Metadata = metadata! {

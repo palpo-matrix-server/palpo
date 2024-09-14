@@ -169,7 +169,6 @@ pub struct Pusher {
     pub profile_tag: Option<String>,
 }
 
-
 #[derive(Debug, Deserialize)]
 struct PusherDeHelper {
     #[serde(flatten)]

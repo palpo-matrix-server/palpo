@@ -14,6 +14,9 @@ pub struct AuthedInfo {
     pub appservice: Option<RegistrationInfo>,
 }
 impl AuthedInfo {
+    pub fn user(&self) -> &DbUser {
+        &self.user
+    }
     pub fn user_id(&self) -> &OwnedUserId {
         &self.user.id
     }

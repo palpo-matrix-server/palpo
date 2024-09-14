@@ -1,15 +1,13 @@
 use std::fmt::Debug;
-use std::mem;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 use salvo::http::headers::{CacheControl, Header};
-use salvo::http::StatusError;
 
 use crate::core::authorization::XMatrix;
-use crate::core::{signatures, MatrixError, MatrixVersion, SendAccessToken, ServerName};
+use crate::core::{signatures, MatrixError, ServerName};
 use crate::{AppError, AppResult};
 
 /// Wraps either an literal IP address plus port, or a hostname plus complement

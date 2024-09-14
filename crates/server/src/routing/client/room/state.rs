@@ -124,10 +124,10 @@ pub(super) fn state_for_key(
         MatrixError::not_found("State event not found.")
     })?;
 
-    json_ok(StateEventsForKeyResBody {
-        content: serde_json::from_str(event.content.get())
+    json_ok(StateEventsForKeyResBody(
+        serde_json::from_str(event.content.get())
             .map_err(|_| AppError::internal("Invalid event content in database"))?,
-    })
+    ))
 }
 
 // #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}
@@ -154,10 +154,10 @@ pub(super) async fn state_for_empty_key(
         MatrixError::not_found("State event not found.")
     })?;
 
-    json_ok(StateEventsForKeyResBody {
-        content: serde_json::from_str(event.content.get())
+    json_ok(StateEventsForKeyResBody(
+        serde_json::from_str(event.content.get())
             .map_err(|_| AppError::internal("Invalid event content in database"))?,
-    })
+    ))
 }
 
 // #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}

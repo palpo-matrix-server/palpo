@@ -25,8 +25,6 @@ use diesel::prelude::*;
 
 use crate::appservice::RegistrationInfo;
 use crate::config::default_room_version;
-use crate::core::events::direct::DirectEvent;
-use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{

@@ -134,7 +134,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::db::migrate();
 
     crate::sending::start_handler();
-
     let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
 

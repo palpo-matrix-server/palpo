@@ -7,7 +7,7 @@ use salvo::prelude::*;
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleid
 use serde::{Deserialize, Serialize};
 
-use crate::{push::{Action, NewPushRule, PushCondition, PushRule, RuleKind, RuleScope, Ruleset}, OwnedClientSecret};
+use crate::push::{Action, PushCondition, PushRule, RuleKind, RuleScope, Ruleset};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -108,11 +108,11 @@ pub struct SetRuleReqArgs {
     pub rule_id: String,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[salvo(parameter(parameter_in = Query))]
+    #[salvo(parameter(parameter_in = Query))]
     pub before: Option<String>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[salvo(parameter(parameter_in = Query))]
+    #[salvo(parameter(parameter_in = Query))]
     pub after: Option<String>,
 }
 

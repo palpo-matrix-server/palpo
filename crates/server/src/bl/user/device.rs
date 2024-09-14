@@ -141,6 +141,7 @@ pub fn is_device_exists(user_id: &UserId, device_id: &DeviceId) -> AppResult<boo
 }
 
 pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> AppResult<()> {
+    println!("remove device    user {}  device: {}", user_id, device_id);
     diesel::delete(
         user_devices::table
             .filter(user_devices::user_id.eq(user_id))
