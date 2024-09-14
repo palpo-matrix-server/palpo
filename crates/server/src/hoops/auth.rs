@@ -43,7 +43,7 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
         });
         Ok(())
     } else {
-        Err(MatrixError::missing_token("Missing access token").into())
+        Err(MatrixError::unknown_token(true, "Unknown access token").into())
     }
 }
 

@@ -117,13 +117,11 @@ async fn delete_device(
         return Err(uiaa_info.into());
     };
 
-    crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
-    diesel::delete(
-        user_devices::table
-            .filter(user_devices::device_id.eq(device_id))
-            .filter(user_devices::user_id.eq(authed.user_id())),
-    )
-    .execute(&mut *db::connect()?)?;
+    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
+        uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        return Err(uiaa_info.into());
+    }
+    crate::user::remove_device(authed.user_id(), &device_id)?;
     empty_ok()
 }
 

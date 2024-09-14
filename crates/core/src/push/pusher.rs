@@ -94,27 +94,6 @@ impl PusherKind {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct PusherKindDeHelper {
-    kind: String,
-    data: Box<RawJsonValue>,
-}
-
-impl<'de> Deserialize<'de> for PusherKind {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        let json = Box::<RawJsonValue>::deserialize(deserializer)?;
-        let PusherKindDeHelper { kind, data } = from_raw_json_value(&json)?;
-
-        match kind.as_ref() {
-            "http" => from_raw_json_value(&data).map(Self::Http),
-            "email" => Ok(Self::Email(EmailPusherData)),
-            _ => from_raw_json_value(&json).map(Self::_Custom),
-        }
-    }
-}
 impl Serialize for PusherKind {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -138,6 +117,27 @@ impl Serialize for PusherKind {
         }
 
         st.end()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PusherKindDeHelper {
+    kind: String,
+    data: Box<RawJsonValue>,
+}
+impl<'de> Deserialize<'de> for PusherKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let json = Box::<RawJsonValue>::deserialize(deserializer)?;
+        let PusherKindDeHelper { kind, data } = from_raw_json_value(&json)?;
+
+        match kind.as_ref() {
+            "http" => from_raw_json_value(&data).map(Self::Http),
+            "email" => Ok(Self::Email(EmailPusherData)),
+            _ => from_raw_json_value(&json).map(Self::_Custom),
+        }
     }
 }
 
@@ -168,6 +168,8 @@ pub struct Pusher {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_tag: Option<String>,
 }
+
+
 #[derive(Debug, Deserialize)]
 struct PusherDeHelper {
     #[serde(flatten)]
@@ -254,8 +256,8 @@ impl From<PusherInit> for Pusher {
 
 /// Strings to uniquely identify a `Pusher`.
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// A unique identifier for the pusher.
 pub struct PusherIds {
-    /// A unique identifier for the pusher.
     ///
     /// The maximum allowed length is 512 bytes.
     pub pushkey: String,

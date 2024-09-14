@@ -74,7 +74,7 @@ impl AvatarUrlResBody {
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct DisplayNameResBody {
     /// The user's display name, if set.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "displayname", skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 }
 

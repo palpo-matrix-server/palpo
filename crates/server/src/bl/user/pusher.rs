@@ -115,6 +115,7 @@ pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
                 )
                 .execute(&mut db::connect()?)?;
             }
+            println!("==================================will add pusher");
             diesel::insert_into(user_pushers::table)
                 .values(&NewDbPusher {
                     user_id: user_id.to_owned(),
@@ -130,8 +131,11 @@ pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
                     enabled: true, // TODO
                 })
                 .execute(&mut db::connect()?)?;
+            println!("==================================add pusher");
+            println!("================ddddddddddd{:?}", get_pushers(user_id));
         }
         PusherAction::Delete(ids) => {
+            println!("==================================delete pusher  {ids:?}");
             diesel::delete(
                 user_pushers::table
                     .filter(user_pushers::user_id.eq(user_id))
@@ -139,6 +143,7 @@ pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
                     .filter(user_pushers::app_id.eq(ids.app_id)),
             )
             .execute(&mut db::connect()?)?;
+        println!("==================================delete pusher");
         }
     }
     Ok(())

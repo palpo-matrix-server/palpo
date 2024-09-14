@@ -44,7 +44,10 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     };
-    crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
+    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
+        uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        return Err(uiaa_info.into());
+    }
 
     crate::user::set_password(authed.user_id(), &body.new_password)?;
     if body.logout_devices {

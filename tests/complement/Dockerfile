@@ -31,6 +31,7 @@ RUN apt-get update \
 
 COPY crates/server/palpo-example.toml palpo.toml
 COPY tests/complement/caddy.json caddy.json
+COPY tests/complement/startup.sh startup.sh
 
 ENV PALPO_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/palpo"
 ENV PALPO_SERVER_NAME=localhost
@@ -38,11 +39,12 @@ ENV PALPO_CONFIG=/work/palpo.toml
 ENV RUST_LOG="palpo=warn,palpo_core=error,salvo=error"
 ENV LOG_FORMAT=json
 
-RUN echo "log = \"warn,_=off,sled=off\"" >> palpo.toml
+# RUN echo "log = \"warn,_=off,sled=off\"" >> palpo.toml
 RUN sed -i "s/listen_addr = \"127.0.0.1:8008\"/listen_addr = \"0.0.0.0:8008\"/g" palpo.toml
 RUN sed -i "s%127.0.0.1/32            md5%127.0.0.1/32            trust%g" /etc/postgresql/15/main/pg_hba.conf && \
     # Bump up max conns for moar concurrency
-    sed -i 's/max_connections = 100/max_connections = 2000/g' /etc/postgresql/15/main/postgresql.conf
+    sed -i 's/max_connections = 100/max_connections = 2000/g' /etc/postgresql/15/main/postgresql.conf && \
+    chmod +x /work/startup.sh
 
 
 # This entry script starts postgres, waits for it to be up then starts palpo
@@ -64,6 +66,4 @@ RUN /etc/init.d/postgresql start && \
 
 EXPOSE 8008 8448
 
-CMD /etc/init.d/postgresql start && uname -a && \
-    sed -i "s/server_name = \"your.server.name\"/server_name = \"${PALPO_SERVER_NAME}\"/g" palpo.toml && \
-    sed -i "s/your.server.name/${PALPO_SERVER_NAME}/g" caddy.json && /work/palpo
+CMD /work/startup.sh
