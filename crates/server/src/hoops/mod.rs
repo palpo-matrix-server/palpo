@@ -1,7 +1,9 @@
+use salvo::http::{ParseError, ResBody};
 use salvo::prelude::*;
 use salvo::size_limiter;
 use url::Url;
 
+use crate::core::MatrixError;
 use crate::AppResult;
 
 mod auth;
@@ -80,5 +82,27 @@ pub async fn remove_json_utf8(req: &mut Request, depot: &mut Depot, res: &mut Re
     }) {
         res.add_header("content-type", "application/json", true)
             .expect("should not fail");
+    }
+}
+
+#[handler]
+pub async fn default_accept_json(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
+    if !req.headers().contains_key("accept") {
+        req.add_header("accept", "application/json", true)
+            .expect("should not fail");
+    }
+    ctrl.call_next(req, depot, res).await;
+}
+
+#[handler]
+pub async fn catch_parse_error(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
+    if let ResBody::Error(e) = &res.body {
+        if let Some(e) = &e.cause {
+            if let Some(e) = e.downcast_ref::<ParseError>() {
+                let matrix = MatrixError::bad_json("bad json");
+                matrix.write(req, depot, res).await;
+                ctrl.skip_rest();
+            }
+        }
     }
 }

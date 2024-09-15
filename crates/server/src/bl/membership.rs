@@ -24,12 +24,12 @@ use crate::membership::federation::membership::{
     InviteUserReqBodyV2, MakeJoinEventResBody, RoomStateV1, RoomStateV2, SendJoinEventReqBodyV2, SendJoinEventResBodyV2,
 };
 use crate::room::state::{self, CompressedStateEvent};
-use crate::schema::*;
 use crate::{
     db,
     event::{gen_event_id_canonical_json, PduBuilder, PduEvent},
     sending, AppError, AppResult, MatrixError, SigningKeys,
 };
+use crate::{diesel_exists, schema::*};
 
 pub async fn send_join_event_v1(
     server_name: &ServerName,
@@ -980,6 +980,15 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
 /// Makes a user forget a room.
 #[tracing::instrument]
 pub fn forget_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+    if diesel_exists!(
+        room_users::table
+            .filter(room_users::user_id.eq(user_id))
+            .filter(room_users::room_id.eq(room_id))
+            .filter(room_users::membership.eq("join")),
+        &mut db::connect()?
+    )? {
+        return Err(MatrixError::unknown("The user has not left the room.").into());
+    }
     diesel::update(
         room_users::table
             .filter(room_users::user_id.eq(user_id))

@@ -1,13 +1,16 @@
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 
+use diesel::prelude::*;
 use salvo::prelude::*;
 
 use crate::core::client::message::{
     CreateMessageEventReqArgs, MessageEventsReqArgs, MessageEventsResBody, SendMessageEventResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::{exts::*, json_ok, AuthArgs, JsonResult, MatrixError, PduBuilder};
+use crate::diesel_exists;
+use crate::schema::*;
+use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, MatrixError, PduBuilder};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -22,23 +25,29 @@ pub(super) async fn get_messages(
 ) -> JsonResult<MessageEventsResBody> {
     let authed = depot.authed_info()?;
 
+    if !diesel_exists!(
+        room_users::table
+            .filter(room_users::room_id.eq(&args.room_id))
+            .filter(room_users::user_id.eq(authed.user_id()))
+            .filter(room_users::membership.eq("join")),
+        &mut *db::connect()?
+    )? {
+        return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
+    }
+
     let from: i64 = args
         .from
         .as_ref()
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or_default();
-
     let to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(authed.user_id(), authed.device_id(), &args.room_id, from)?;
 
     let limit = usize::from(args.limit).min(100);
-
     let next_token;
-
     let mut resp = MessageEventsResBody::default();
-
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {

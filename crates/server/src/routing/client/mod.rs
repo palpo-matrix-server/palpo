@@ -25,25 +25,24 @@ pub(crate) mod media;
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashSet};
 use std::time::Duration;
 
-use palpo_core::client::sync_events::{
-    AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
-    SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4, SyncListV4, SyncOpV4, ToDeviceV4, TypingV4,
-    UnreadNotificationsCount,
-};
-use palpo_core::device::DeviceLists;
-use palpo_core::events::room::member::{MembershipState, RoomMemberEventContent};
-use palpo_core::events::{StateEventType, TimelineEventType};
-use palpo_core::UserId;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
-
 use crate::core::client::search::{
     EventContextResult, ResultCategories, ResultRoomEvents, SearchReqArgs, SearchReqBody, SearchResBody, SearchResult,
 };
+use crate::core::client::sync_events::{
+    AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
+    SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4, SyncListV4, SyncOpV4, ToDeviceV4, TypingV4,
+    UnreadNotificationsCount,
+};
+use crate::core::device::DeviceLists;
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::{OwnedEventId, UserId};
 use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {

@@ -291,7 +291,6 @@ pub struct EventByTimestampResBody {
 #[derive(ToSchema, Serialize, Debug)]
 pub struct RoomEventResBody(
     /// Arbitrary JSON of the event body.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
     pub RawJson<AnyTimelineEvent>,
 );
 impl RoomEventResBody {

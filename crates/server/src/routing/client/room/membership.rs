@@ -16,7 +16,9 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::room::state;
 use crate::user::DbProfile;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder};
+use crate::{
+    empty_ok, json_ok, AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
+};
 
 // #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room (TODO: at a specific point in time, with a specific membership).
@@ -133,7 +135,7 @@ pub(super) async fn join_room_by_id(
     room_id: PathParam<OwnedRoomId>,
     body: JsonBody<Option<JoinRoomReqBody>>,
     depot: &mut Depot,
-) -> EmptyResult {
+) -> JsonResult<JoinRoomResBody> {
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
     let body = body.into_inner();
@@ -160,7 +162,7 @@ pub(super) async fn join_room_by_id(
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
     )
     .await?;
-    empty_ok()
+    json_ok(JoinRoomResBody { room_id })
 }
 
 // #POST /_matrix/client/r0/rooms/{room_id}/invite

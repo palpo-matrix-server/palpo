@@ -194,7 +194,7 @@ pub struct UploadContentReqArgs {
     pub filename: Option<String>,
 
     /// The content type of the file being uploaded.
-    #[salvo(parameter(parameter_in = Header))]
+    #[salvo(rename="content-type", parameter(parameter_in = Header))]
     pub content_type: Option<String>,
 
     /// Should the server return a blurhash or not.

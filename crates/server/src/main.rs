@@ -53,6 +53,7 @@ use salvo::http::Method;
 use salvo::logging::Logger;
 
 pub use diesel::result::Error as DieselError;
+use salvo::catcher::Catcher;
 use salvo::prelude::*;
 use scheduled_thread_pool::ScheduledThreadPool;
 use tracing_futures::Instrument;
@@ -147,7 +148,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .into_router("/scalar"),
         )
         .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
+    let catcher = Catcher::default().hoop(hoops::catch_parse_error);
     let service = Service::new(router)
+        .catcher(catcher)
+        .hoop(hoops::default_accept_json)
         .hoop(Logger::new())
         .hoop(
             Cors::new()

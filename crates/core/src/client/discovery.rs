@@ -22,7 +22,6 @@ pub struct Capabilities {
     #[serde(
         rename = "m.change_password",
         default,
-        skip_serializing_if = "ChangePasswordCapability::is_default"
     )]
     pub change_password: ChangePasswordCapability,
 
