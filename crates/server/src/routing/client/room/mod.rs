@@ -596,7 +596,6 @@ pub(super) async fn create_room(
     )?;
 
     // 3. Power levels
-
     // Figure out preset. We need it for preset specific events
     let preset = body.preset.clone().unwrap_or(match &body.visibility {
         Visibility::Private => RoomPreset::PrivateChat,
@@ -657,7 +656,6 @@ pub(super) async fn create_room(
     }
 
     // 5. Events set by preset
-
     // 5.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {

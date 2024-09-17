@@ -20,10 +20,10 @@ use crate::core::serde::RawJson;
 use crate::core::UnixMillis;
 use crate::event::PduEvent;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue};
+use crate::{db, AppError, AppResult, AuthedInfo, JsonValue};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = user_pushers)]
+#[diesel(table_name = pushers)]
 pub struct DbPusher {
     pub id: i64,
 
@@ -31,6 +31,7 @@ pub struct DbPusher {
     pub kind: String,
     pub app_id: String,
     pub app_display_name: String,
+    pub device_id: OwnedDeviceId,
     pub device_display_name: String,
     pub access_token_id: Option<i64>,
     pub profile_tag: Option<String>,
@@ -44,12 +45,13 @@ pub struct DbPusher {
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = user_pushers)]
+#[diesel(table_name = pushers)]
 pub struct NewDbPusher {
     pub user_id: OwnedUserId,
     pub kind: String,
     pub app_id: String,
     pub app_display_name: String,
+    pub device_id: OwnedDeviceId,
     pub device_display_name: String,
     pub access_token_id: Option<i64>,
     pub profile_tag: Option<String>,
@@ -57,6 +59,7 @@ pub struct NewDbPusher {
     pub lang: String,
     pub data: JsonValue,
     pub enabled: bool,
+    pub created_at: UnixMillis,
 }
 impl TryInto<Pusher> for DbPusher {
     type Error = AppError;
@@ -90,7 +93,7 @@ impl TryInto<Pusher> for DbPusher {
     }
 }
 
-pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
+pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
     match pusher {
         PusherAction::Post(data) => {
             let PusherPostData {
@@ -108,35 +111,37 @@ pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
             } = data;
             if !append {
                 diesel::delete(
-                    user_pushers::table
-                        .filter(user_pushers::user_id.eq(&user_id))
-                        .filter(user_pushers::pushkey.eq(&pushkey))
-                        .filter(user_pushers::app_id.eq(&app_id)),
+                    pushers::table
+                        .filter(pushers::user_id.eq(authed.user_id()))
+                        .filter(pushers::pushkey.eq(&pushkey))
+                        .filter(pushers::app_id.eq(&app_id)),
                 )
                 .execute(&mut db::connect()?)?;
             }
-            diesel::insert_into(user_pushers::table)
+            diesel::insert_into(pushers::table)
                 .values(&NewDbPusher {
-                    user_id: user_id.to_owned(),
-                    access_token_id: None, //TODO
+                    user_id: authed.user_id().to_owned(),
                     profile_tag,
                     kind: kind.name().to_owned(),
                     app_id,
                     app_display_name,
+                    device_id: authed.device_id().to_owned(),
                     device_display_name,
+                    access_token_id: authed.access_token_id().to_owned(),
                     pushkey,
                     lang,
                     data: kind.json_data()?,
                     enabled: true, // TODO
+                    created_at: UnixMillis::now(),
                 })
                 .execute(&mut db::connect()?)?;
         }
         PusherAction::Delete(ids) => {
             diesel::delete(
-                user_pushers::table
-                    .filter(user_pushers::user_id.eq(user_id))
-                    .filter(user_pushers::pushkey.eq(ids.pushkey))
-                    .filter(user_pushers::app_id.eq(ids.app_id)),
+                pushers::table
+                    .filter(pushers::user_id.eq(authed.user_id()))
+                    .filter(pushers::pushkey.eq(ids.pushkey))
+                    .filter(pushers::app_id.eq(ids.app_id)),
             )
             .execute(&mut db::connect()?)?;
         }
@@ -145,10 +150,10 @@ pub fn set_pusher(user_id: &UserId, pusher: PusherAction) -> AppResult<()> {
 }
 
 pub fn get_pusher(user_id: &UserId, pushkey: &str) -> AppResult<Option<Pusher>> {
-    let pusher = user_pushers::table
-        .filter(user_pushers::user_id.eq(user_id))
-        .filter(user_pushers::pushkey.eq(pushkey))
-        .order_by(user_pushers::id.desc())
+    let pusher = pushers::table
+        .filter(pushers::user_id.eq(user_id))
+        .filter(pushers::pushkey.eq(pushkey))
+        .order_by(pushers::id.desc())
         .first::<DbPusher>(&mut *db::connect()?)
         .optional()?;
     if let Some(pusher) = pusher {
@@ -159,9 +164,9 @@ pub fn get_pusher(user_id: &UserId, pushkey: &str) -> AppResult<Option<Pusher>> 
 }
 
 pub fn get_pushers(user_id: &UserId) -> AppResult<Vec<DbPusher>> {
-    user_pushers::table
-        .filter(user_pushers::user_id.eq(user_id))
-        .order_by(user_pushers::id.desc())
+    pushers::table
+        .filter(pushers::user_id.eq(user_id))
+        .order_by(pushers::id.desc())
         .load::<DbPusher>(&mut *db::connect()?)
         .map_err(Into::into)
 }
@@ -299,9 +304,9 @@ pub fn get_actions<'a>(
 }
 
 pub fn get_push_keys(user_id: &UserId) -> AppResult<Vec<String>> {
-    user_pushers::table
-        .filter(user_pushers::user_id.eq(user_id))
-        .select(user_pushers::pushkey)
+    pushers::table
+        .filter(pushers::user_id.eq(user_id))
+        .select(pushers::pushkey)
         .load::<String>(&mut *db::connect()?)
         .map_err(Into::into)
 }

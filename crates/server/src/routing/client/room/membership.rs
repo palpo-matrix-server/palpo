@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use diesel::prelude::*;
 use palpo_core::client::membership::{InvitationRecipient, UnbanUserReqBody};
 use palpo_core::client::membership::{JoinRoomReqBody, JoinRoomResBody};
 use salvo::oapi::extract::*;
@@ -15,9 +16,11 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::room::state;
+use crate::schema::*;
 use crate::user::DbProfile;
 use crate::{
-    empty_ok, json_ok, AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
+    db, diesel_exists, empty_ok, json_ok, AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult,
+    MatrixError, PduBuilder,
 };
 
 // #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -346,6 +349,15 @@ pub(super) async fn kick_user(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
+
+    if !diesel_exists!(
+        room_users::table
+            .filter(room_users::user_id.eq(&body.user_id))
+            .filter(room_users::membership.eq_any(["join", "invite"])),
+        &mut db::connect()?
+    )? {
+        return Err(MatrixError::forbidden("User are not in the room.").into());
+    }
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
         crate::room::state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?

@@ -61,7 +61,7 @@ konst = "0.3"
 lru-cache = "0.1"
 maplit = "1"
 mime = "0.3.16"
-mime_guess = "2.0.4"
+mime-infer = "3"
 oauth2 = { version = "4.2.3" }
 path-slash = "0.2.1"
 percent-encoding = "2"

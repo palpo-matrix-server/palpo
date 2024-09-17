@@ -50,6 +50,14 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
     }
 
     crate::user::set_password(authed.user_id(), &body.new_password)?;
+    if let Some(access_token_id) = authed.access_token_id() {
+        diesel::delete(
+            pushers::table
+                .filter(pushers::user_id.eq(authed.user_id()))
+                .filter(pushers::access_token_id.ne(access_token_id)),
+        )
+        .execute(&mut *db::connect()?)?;
+    }
     if body.logout_devices {
         // Logout all devices except the current one
         diesel::delete(
@@ -58,6 +66,18 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
                 .filter(user_devices::device_id.ne(authed.device_id())),
         )
         .execute(&mut *db::connect()?)?;
+        diesel::delete(
+            user_access_tokens::table
+                .filter(user_access_tokens::user_id.eq(authed.user_id()))
+                .filter(user_access_tokens::device_id.ne(authed.device_id())),
+        )
+        .execute(&mut db::connect()?)?;
+        diesel::delete(
+            user_refresh_tokens::table
+                .filter(user_refresh_tokens::user_id.eq(authed.user_id()))
+                .filter(user_refresh_tokens::device_id.ne(authed.device_id())),
+        )
+        .execute(&mut db::connect()?)?;
     }
 
     info!("User {} changed their password.", authed.user_id());

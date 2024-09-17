@@ -99,6 +99,9 @@ pub async fn catch_parse_error(req: &mut Request, depot: &mut Depot, res: &mut R
     if let ResBody::Error(e) = &res.body {
         if let Some(e) = &e.cause {
             if let Some(e) = e.downcast_ref::<ParseError>() {
+                #[cfg(debug_assertions)]
+                let matrix = MatrixError::bad_json(e.to_string());
+                #[cfg(not(debug_assertions))]
                 let matrix = MatrixError::bad_json("bad json");
                 matrix.write(req, depot, res).await;
                 ctrl.skip_rest();

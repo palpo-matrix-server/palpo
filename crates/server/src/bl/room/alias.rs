@@ -122,7 +122,7 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     if alias.created_by == user.id
         // Server admins can remove any local alias
         || user.is_admin
-        // Always allow the Conduit user to remove the alias, since there may not be an admin room
+        // Always allow the Palpo user to remove the alias, since there may not be an admin room
         || crate::server_user()== user.id
     {
         Ok(true)

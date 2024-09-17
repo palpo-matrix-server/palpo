@@ -109,10 +109,13 @@ pub fn try_auth(
                 _ => return Err(MatrixError::unauthorized("Identifier type not recognized.").into()),
             };
 
-            let user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
+            let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
+            if (user_id != &auth_user_id) {
+                return Err(MatrixError::forbidden("User ID does not match.").into());
+            }
 
-            let Some(user) = crate::user::get_user(&user_id)? else {
+            let Some(user) = crate::user::get_user(&auth_user_id)? else {
                 return Err(MatrixError::unauthorized("User not found.").into());
             };
             crate::user::vertify_password(&user, &password)?;

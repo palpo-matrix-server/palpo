@@ -34,7 +34,7 @@ pub fn router() -> Router {
                     Router::with_hoop(hoops::limit_rate)
                         .push(Router::with_path("create").post(create_mxc_uri))
                         .push(
-                            Router::with_path("upload").post(upload), // .push(Router::with_path("<server_name>/<media_id>").put(upload_media)),
+                            Router::with_path("upload").post(upload_content), // .push(Router::with_path("<server_name>/<media_id>").put(upload_media)),
                         )
                         .push(Router::with_path("config").get(get_config))
                         .push(Router::with_path("preview_url").get(preview_url))
@@ -52,17 +52,22 @@ pub fn router() -> Router {
 #[endpoint]
 async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
+    let content_type = metadata
+        .content_type
+        .as_deref()
+        .map(|c| Mime::from_str(c).ok())
+        .flatten()
+        .unwrap_or_else(|| {
+            metadata
+                .upload_name
+                .as_ref()
+                .map(|name| mime_infer::infer_mime_type(name))
+                .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+        });
     let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
         NamedFile::builder(path)
-            .content_type(
-                metadata
-                    .content_type
-                    .as_deref()
-                    .map(|c| Mime::from_str(c).ok())
-                    .flatten()
-                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-            )
+            .content_type(content_type)
             .send(req.headers(), res)
             .await;
 
@@ -71,7 +76,7 @@ async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
-        Err(MatrixError::not_found("Media not found.").into())
+        Err(MatrixError::not_yet_uploaded("Media not yet available.").into())
     }
 }
 
@@ -138,7 +143,7 @@ fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
 /// - Some metadata will be saved in the database
 /// - Media will be saved in the media/ directory
 #[endpoint]
-async fn upload(
+async fn upload_content(
     _aa: AuthArgs,
     args: UploadContentReqArgs,
     req: &mut Request,
@@ -183,14 +188,14 @@ async fn upload(
         .execute(&mut *db::connect()?)?;
 
     let dest_path = Path::new(&dest_path);
-    if dest_path.exists() {
-        let metadata = fs::metadata(dest_path)?;
-        if metadata.len() != payload.len() as u64 {
-            if let Err(e) = fs::remove_file(dest_path) {
-                tracing::error!(error = ?e, "remove media file failed");
-            }
-        }
-    }
+    // if dest_path.exists() {
+    //     let metadata = fs::metadata(dest_path)?;
+    //     if metadata.len() != payload.len() as u64 {
+    //         if let Err(e) = fs::remove_file(dest_path) {
+    //             tracing::error!(error = ?e, "remove media file failed");
+    //         }
+    //     }
+    // }
     if !dest_path.exists() {
         let parent_dir = utils::fs::get_parent_dir(&dest_path);
         fs::create_dir_all(&parent_dir)?;
@@ -199,6 +204,8 @@ async fn upload(
         file.write_all(&payload).await?;
 
         //TODO: thumbnail support
+    } else {
+        return Err(MatrixError::cannot_overwrite_media("Media already exists.").into());
     }
 
     json_ok(UploadContentResBody {

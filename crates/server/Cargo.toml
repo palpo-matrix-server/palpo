@@ -47,7 +47,7 @@ jsonwebtoken = { workspace = true }
 lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }
-mime_guess = { workspace = true }
+mime-infer = { workspace = true }
 oauth2 = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }

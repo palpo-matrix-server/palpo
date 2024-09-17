@@ -38,7 +38,7 @@ pub enum AppError {
     #[error("regex: `{0}`")]
     Regex(#[from] regex::Error),
     #[error("http: `{0}`")]
-    StatusError(#[from] salvo::http::StatusError),
+    HttpStatus(#[from] salvo::http::StatusError),
     #[error("http parse: `{0}`")]
     HttpParse(#[from] salvo::http::ParseError),
     #[error("reqwest: `{0}`")]
@@ -99,6 +99,7 @@ impl Writer for AppError {
                                 StatusCode::BAD_REQUEST
                             }
                             ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
+                            ErrorKind::CannotOverwriteMedia => StatusCode::CONFLICT,
                             _ => StatusCode::INTERNAL_SERVER_ERROR,
                         }
                     } else {
@@ -120,7 +121,7 @@ impl Writer for AppError {
                     MatrixError::unknown("unknown db error.")
                 }
             }
-            Self::StatusError(e) => MatrixError::unknown(e.brief),
+            Self::HttpStatus(e) => MatrixError::unknown(e.brief),
             _ => MatrixError::unknown("unknown error happened."),
         };
         matrix.write(req, depot, res).await;

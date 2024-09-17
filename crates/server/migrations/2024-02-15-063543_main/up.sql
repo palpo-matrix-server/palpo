@@ -176,7 +176,7 @@ CREATE TABLE room_tags (
     tag text NOT NULL,
     content json NOT NULL,
     created_by text NOT NULL,
-    created_at bigint NOT NULL
+    created_at bigint NOT NULL 
 );
 ALTER TABLE ONLY room_tags
     ADD CONSTRAINT room_tag_ukey UNIQUE (user_id, room_id, tag);
@@ -272,13 +272,14 @@ CREATE TABLE user_registration_tokens (
 ALTER TABLE ONLY user_registration_tokens
     ADD CONSTRAINT registration_tokens_token_key UNIQUE (token);
 
-drop table if exists user_pushers CASCADE;
-CREATE TABLE user_pushers (
+drop table if exists pushers CASCADE;
+CREATE TABLE pushers (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     kind text NOT NULL,
     app_id text NOT NULL,
     app_display_name text NOT NULL,
+    device_id text NOT NULL,
     device_display_name text NOT NULL,
     access_token_id bigint,
     profile_tag text,
@@ -289,9 +290,9 @@ CREATE TABLE user_pushers (
     last_stream_ordering bigint,
     last_success bigint,
     failing_since bigint,
-    crated_at bigint NOT NULL
+    created_at bigint NOT NULL
 );
-CREATE INDEX user_pushers_app_id_pushkey_idx ON user_pushers USING btree (app_id, pushkey);
+CREATE INDEX pushers_app_id_pushkey_idx ON pushers USING btree (app_id, pushkey);
 
 DROP TABLE if exists rooms CASCADE;
 CREATE TABLE rooms (

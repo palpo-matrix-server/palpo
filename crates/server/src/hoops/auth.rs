@@ -39,6 +39,7 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
         depot.inject(AuthedInfo {
             user,
             user_device,
+            access_token_id: Some(access_token.id),
             appservice: None,
         });
         Ok(())
@@ -136,6 +137,7 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
         depot.inject(AuthedInfo {
             user,
             user_device,
+            access_token_id: None,
             appservice,
         });
         Ok(())

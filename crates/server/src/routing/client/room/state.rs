@@ -5,7 +5,8 @@ use salvo::prelude::*;
 
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
-    SendStateEventResBody, StateEventsForKeyReqArgs, StateEventsForKeyResBody, StateEventsResBody,
+    SendStateEventReqBody, SendStateEventResBody, StateEventsForKeyReqArgs, StateEventsForKeyResBody,
+    StateEventsResBody,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::receipt::{
@@ -170,7 +171,7 @@ pub(super) async fn state_for_empty_key(
 pub(super) async fn send_state_for_key(
     _aa: AuthArgs,
     args: StateEventsForKeyReqArgs,
-    body: JsonBody<AnyStateEventContent>,
+    body: JsonBody<SendStateEventReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendStateEventResBody> {
     let authed = depot.authed_info()?;
@@ -180,7 +181,7 @@ pub(super) async fn send_state_for_key(
         authed.user_id(),
         &args.room_id,
         &args.event_type,
-        body,
+        body.0,
         args.state_key.to_owned(),
     )
     .await?;
@@ -199,7 +200,7 @@ pub(super) async fn send_state_for_key(
 pub(super) async fn send_state_for_empty_key(
     _aa: AuthArgs,
     args: RoomEventTypeReqArgs,
-    body: JsonBody<AnyStateEventContent>,
+    body: JsonBody<SendStateEventReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendStateEventResBody> {
     let authed = depot.authed_info()?;
@@ -214,8 +215,8 @@ pub(super) async fn send_state_for_empty_key(
         authed.user_id(),
         &args.room_id,
         &args.event_type.to_string().into(),
-        body,
-        "".to_owned(),
+        body.0,
+        "".into(),
     )
     .await?;
 

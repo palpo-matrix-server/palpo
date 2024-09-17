@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use palpo_core::MatrixError;
 
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
@@ -141,13 +142,22 @@ pub fn is_device_exists(user_id: &UserId, device_id: &DeviceId) -> AppResult<boo
 }
 
 pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> AppResult<()> {
-    println!("remove device    user {}  device: {}", user_id, device_id);
-    diesel::delete(
+    let count = diesel::delete(
         user_devices::table
             .filter(user_devices::user_id.eq(user_id))
             .filter(user_devices::device_id.eq(device_id)),
     )
     .execute(&mut db::connect()?)?;
+    if count == 0 {
+        if diesel_exists!(
+            user_devices::table.filter(user_devices::device_id.eq(device_id)),
+            &mut *db::connect()?
+        )? {
+            return Err(MatrixError::forbidden("Device not owned by user.").into());
+        } else {
+            return Err(MatrixError::not_found("Device not found.").into());
+        }
+    }
     diesel::delete(
         user_access_tokens::table
             .filter(user_access_tokens::user_id.eq(user_id))
@@ -158,6 +168,12 @@ pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> AppResult<(
         user_refresh_tokens::table
             .filter(user_refresh_tokens::user_id.eq(user_id))
             .filter(user_refresh_tokens::device_id.eq(device_id)),
+    )
+    .execute(&mut db::connect()?)?;
+    diesel::delete(
+        pushers::table
+            .filter(pushers::user_id.eq(user_id))
+            .filter(pushers::device_id.eq(device_id)),
     )
     .execute(&mut db::connect()?)?;
     Ok(())

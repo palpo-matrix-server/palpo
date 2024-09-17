@@ -12,11 +12,12 @@ use salvo::prelude::*;
 use crate::core::client::device::{
     DeleteDeviceReqBody, DeleteDevicesReqBody, DeviceResBody, DevicesResBody, UpdatedDeviceReqBody,
 };
+use crate::core::error::ErrorKind;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::OwnedDeviceId;
 use crate::schema::*;
 use crate::user::DbUserDevice;
-use crate::{db, empty_ok, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
+use crate::{db, AppError, empty_ok, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -119,7 +120,12 @@ async fn delete_device(
         return Err(uiaa_info.into());
     };
 
-    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
+    if let  Err(e) = crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info) {
+        if let AppError::Matrix(e) = e {
+            if e.kind == ErrorKind::Forbidden {
+                return Err(e.into());
+            }
+        }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     }
@@ -157,8 +163,12 @@ async fn delete_devices(_aa: AuthArgs, body: JsonBody<DeleteDevicesReqBody>, dep
     };
 
     crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
-    diesel::delete(user_devices::table.filter(user_devices::device_id.eq_any(&devices)))
-        .execute(&mut *db::connect()?)?;
+    diesel::delete(
+        user_devices::table
+            .filter(user_devices::user_id.eq(authed.device_id()))
+            .filter(user_devices::device_id.eq_any(&devices)),
+    )
+    .execute(&mut *db::connect()?)?;
 
     empty_ok()
 }

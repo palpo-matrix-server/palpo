@@ -34,7 +34,7 @@ pub fn authed_router() -> Router {
         .push(
             Router::with_path("version")
                 .get(latest_version)
-                .post(update_version)
+                .post(create_version)
                 .push(
                     Router::with_path("<version>")
                         .get(get_version)

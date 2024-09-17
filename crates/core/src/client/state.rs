@@ -114,17 +114,17 @@ impl StateEventsResBody {
 //     }
 // };
 
-// /// Request type for the `send_state_event` endpoint.
+/// Request type for the `send_state_event` endpoint.
 // #[derive(ToSchema, Deserialize, Debug)]
 // pub struct SendStateEventReqBody {
-//     /// The room to set the state in.
-//     pub room_id: OwnedRoomId,
+//     // /// The room to set the state in.
+//     // pub room_id: OwnedRoomId,
 
-//     /// The type of event to send.
-//     pub event_type: StateEventType,
+//     // /// The type of event to send.
+//     // pub event_type: StateEventType,
 
 //     /// The state_key for the state to send.
-//     pub state_key: String,
+//     pub state_key: Option<String>,
 
 //     /// The event content to send.
 //     #[salvo(schema(value_type = Object, additional_properties = true))]
@@ -139,6 +139,12 @@ impl StateEventsResBody {
 //     /// [timestamp massaging]: https://spec.matrix.org/latest/application-service-api/#timestamp-massaging
 //     pub timestamp: Option<UnixMillis>,
 // }
+#[derive(ToSchema, Deserialize, Debug)]
+pub struct SendStateEventReqBody (
+    /// The event content to send.
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    pub RawJson<AnyStateEventContent>
+);
 
 /// Response type for the `send_state_event` endpoint.
 #[derive(ToSchema, Serialize, Debug)]

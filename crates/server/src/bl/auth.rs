@@ -11,6 +11,7 @@ use crate::user::{DbUser, DbUserDevice};
 pub struct AuthedInfo {
     pub user: DbUser,
     pub user_device: DbUserDevice,
+    pub access_token_id: Option<i64>,
     pub appservice: Option<RegistrationInfo>,
 }
 impl AuthedInfo {
@@ -22,6 +23,9 @@ impl AuthedInfo {
     }
     pub fn device_id(&self) -> &OwnedDeviceId {
         &self.user_device.device_id
+    }
+    pub fn access_token_id(&self) -> Option<i64> {
+        self.access_token_id
     }
     pub fn server_name(&self) -> &ServerName {
         self.user.id.server_name()
