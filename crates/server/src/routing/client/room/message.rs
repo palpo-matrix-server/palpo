@@ -40,7 +40,10 @@ pub(super) async fn get_messages(
         .as_ref()
         .map(|from| from.parse())
         .transpose()?
-        .unwrap_or_default();
+        .unwrap_or_else(|| match args.dir {
+            crate::core::Direction::Forward => 0,
+            crate::core::Direction::Backward => i64::MAX,
+        });
     let to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(authed.user_id(), authed.device_id(), &args.room_id, from)?;
@@ -51,8 +54,13 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events_after: Vec<_> =
-                crate::room::timeline::get_pdus_forward(authed.user_id(), &args.room_id, from, limit)?;
+            let events_after: Vec<_> = crate::room::timeline::get_pdus_forward(
+                authed.user_id(),
+                &args.room_id,
+                from,
+                limit,
+                Some(&args.filter),
+            )?;
 
             for (_, event) in &events_after {
                 /* TODO: Remove this when these are resolved:
@@ -80,8 +88,13 @@ pub(super) async fn get_messages(
         }
         crate::core::Direction::Backward => {
             crate::room::timeline::backfill_if_required(&args.room_id, from).await?;
-            let events_before: Vec<_> =
-                crate::room::timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, limit)?;
+            let events_before: Vec<_> = crate::room::timeline::get_pdus_backward(
+                authed.user_id(),
+                &args.room_id,
+                from,
+                limit,
+                Some(&args.filter),
+            )?;
 
             for (_, event) in &events_before {
                 /* TODO: Remove this when these are resolved:

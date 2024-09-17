@@ -10,7 +10,7 @@ mod auth;
 pub use auth::{auth_by_access_token, auth_by_signatures};
 
 #[handler]
-pub async fn ensure_accpet(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
+pub async fn ensure_accept(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
     if req.accept().is_empty() {
         req.headers_mut()
             .insert("Accept", "application/json".parse().expect("should not fail"));

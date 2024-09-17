@@ -12,12 +12,12 @@ use salvo::prelude::*;
 use crate::core::client::device::{
     DeleteDeviceReqBody, DeleteDevicesReqBody, DeviceResBody, DevicesResBody, UpdatedDeviceReqBody,
 };
-use crate::core::error::ErrorKind;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::core::error::ErrorKind;
 use crate::core::OwnedDeviceId;
 use crate::schema::*;
 use crate::user::DbUserDevice;
-use crate::{db, AppError, empty_ok, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
+use crate::{db, empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -120,7 +120,7 @@ async fn delete_device(
         return Err(uiaa_info.into());
     };
 
-    if let  Err(e) = crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info) {
+    if let Err(e) = crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info) {
         if let AppError::Matrix(e) = e {
             if e.kind == ErrorKind::Forbidden {
                 return Err(e.into());

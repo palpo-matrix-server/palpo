@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
+use crate::core::client::filter::UrlFilter;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -25,6 +26,7 @@ use crate::{
     JsonValue,
 };
 use diesel::prelude::*;
+use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
@@ -462,7 +464,7 @@ fn increment_notification_counts(
 
 pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
-    sender: &UserId,
+    sender_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
@@ -498,7 +500,7 @@ pub fn create_hash_and_sign_event(
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
     let auth_events =
-        crate::room::state::get_auth_events(room_id, &event_type, sender, state_key.as_deref(), &content)?;
+        crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
@@ -533,7 +535,7 @@ pub fn create_hash_and_sign_event(
             depth: depth as i64,
             origin_server_ts: Some(UnixMillis::now()),
             received_at: None,
-            sender: Some(sender.to_owned()),
+            sender_id: Some(sender_id.to_owned()),
             contains_url: false,
             worker_id: None,
             state_key: state_key.clone(),
@@ -549,7 +551,7 @@ pub fn create_hash_and_sign_event(
         event_id: event_id.into(),
         event_sn,
         room_id: room_id.to_owned(),
-        sender: sender.to_owned(),
+        sender: sender_id.to_owned(),
         origin_server_ts: UnixMillis::now(),
         kind: event_type,
         content,
@@ -768,23 +770,25 @@ pub fn append_incoming_pdu(
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_pdus(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, usize::MAX)
+    get_pdus_forward(user_id, room_id, 0, usize::MAX, None)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
+    filter: Option<&RoomEventFilter>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, Direction::Forward)
+    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Forward)
 }
 pub fn get_pdus_backward(
     user_id: &UserId,
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
+    filter: Option<&RoomEventFilter>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, Direction::Backward)
+    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward)
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
@@ -795,23 +799,63 @@ pub fn get_pdus(
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
+    filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    let mut query = event_datas::table.filter(event_datas::room_id.eq(room_id)).into_boxed();
-    if dir == Direction::Forward {
-        query = query
-            .filter(event_datas::event_sn.ge(occur_sn))
-            .order(event_datas::event_sn.desc());
-    } else {
-        query = query
-            .filter(event_datas::event_sn.le(occur_sn))
-            .order(event_datas::event_sn.desc());
+    let mut query = events::table
+        .filter(events::room_id.eq(room_id))
+        .filter(events::sn.le(occur_sn))
+        .into_boxed();
+
+    if let Some(filter) = filter {
+        if let Some(url_filter) = &filter.url_filter {
+            match url_filter {
+                UrlFilter::EventsWithUrl => query = query.filter(events::contains_url.eq(true)),
+                UrlFilter::EventsWithoutUrl => query = query.filter(events::contains_url.eq(false)),
+            }
+        }
+        if !filter.not_types.is_empty() {
+            query = query.filter(events::event_type.ne_all(&filter.not_types));
+        }
+        if !filter.not_rooms.is_empty() {
+            query = query.filter(events::room_id.ne_all(&filter.not_rooms));
+        }
+        if let Some(rooms) = &filter.rooms {
+            if !rooms.is_empty() {
+                query = query.filter(events::room_id.eq_any(rooms));
+            }
+        }
+        if let Some(senders) = &filter.senders {
+            if !senders.is_empty() {
+                query = query.filter(events::sender_id.eq_any(senders));
+            }
+        }
+        if let Some(types) = &filter.types {
+            if !types.is_empty() {
+                query = query.filter(events::event_type.eq_any(types));
+            }
+        }
     }
 
-    let datas = query
-        .limit(utils::usize_to_i64(limit))
-        .select((event_datas::event_sn, event_datas::json_data))
-        .load::<(i64, JsonValue)>(&mut *db::connect()?)?;
+    let datas = if dir == Direction::Forward {
+        event_datas::table
+            .filter(
+                event_datas::event_id
+                    .eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)),
+            )
+            .order(event_datas::event_sn.asc())
+            .select((event_datas::event_sn, event_datas::json_data))
+            .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+    } else {
+        event_datas::table
+            .filter(
+                event_datas::event_id
+                    .eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)),
+            )
+            .order(event_datas::event_sn.desc())
+            .select((event_datas::event_sn, event_datas::json_data))
+            .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+    };
     let list = datas.into_iter().filter_map(|(sn, v)| {
         let mut pdu = serde_json::from_value::<PduEvent>(v).ok()?;
 
@@ -825,11 +869,11 @@ pub fn get_pdus(
             None
         }
     });
-    if dir == Direction::Forward {
-        Ok(list.rev().collect::<Vec<(_, _)>>())
-    } else {
-        Ok(list.collect::<Vec<(_, _)>>())
-    }
+    // if dir == Direction::Forward {
+    //     Ok(list.rev().collect::<Vec<(_, _)>>())
+    // } else {
+    Ok(list.collect::<Vec<(_, _)>>())
+    // }
 }
 
 /// Replace a PDU with the redacted form.

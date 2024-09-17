@@ -100,6 +100,7 @@ impl Writer for AppError {
                             }
                             ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
                             ErrorKind::CannotOverwriteMedia => StatusCode::CONFLICT,
+                            ErrorKind::NotYetUploaded => StatusCode::GATEWAY_TIMEOUT,
                             _ => StatusCode::INTERNAL_SERVER_ERROR,
                         }
                     } else {

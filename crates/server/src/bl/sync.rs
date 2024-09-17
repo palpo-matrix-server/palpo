@@ -701,7 +701,7 @@ pub(crate) fn load_timeline(
     occur_sn: i64,
     limit: usize,
 ) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
-    let mut timeline_pdus = crate::room::timeline::get_pdus_forward(user_id, &room_id, occur_sn, limit + 1)?;
+    let mut timeline_pdus = crate::room::timeline::get_pdus_forward(user_id, &room_id, occur_sn, limit + 1, None)?;
 
     if timeline_pdus.len() > limit {
         timeline_pdus.pop();

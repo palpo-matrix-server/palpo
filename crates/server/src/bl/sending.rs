@@ -87,10 +87,6 @@ pub fn max_request() -> Arc<Semaphore> {
         .get_or_init(|| Arc::new(Semaphore::new(crate::config().max_concurrent_requests as usize)))
         .clone()
 }
-pub async fn acquire_request() {
-    let semaphore = max_request();
-    semaphore.acquire().await;
-}
 
 enum TransactionStatus {
     Running,
@@ -419,7 +415,8 @@ async fn handle_events(
                 }
             }
 
-            let permit = crate::sending::acquire_request().await;
+            let max_request = crate::sending::max_request();
+            let permit = max_request.acquire().await;
 
             let registration = crate::appservice::get_registration(id)
                 .map_err(|e| (kind.clone(), e))?
@@ -509,7 +506,8 @@ async fn handle_events(
                     .try_into()
                     .expect("notification count can't go that high");
 
-                let permit = crate::sending::acquire_request().await;
+                let max_request = crate::sending::max_request();
+                let permit = max_request.acquire().await;
 
                 let _response = crate::user::pusher::send_push_notice(user_id, unread, &pusher, rules_for_user, &pdu)
                     .await
@@ -551,7 +549,8 @@ async fn handle_events(
                 }
             }
 
-            let permit = crate::sending::acquire_request().await;
+            let max_requst = crate::sending::max_request();
+            let permit = max_requst.acquire().await;
 
             let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
                 &events
@@ -599,7 +598,8 @@ where
     T: for<'de> Deserialize<'de> + Debug,
 {
     debug!("Waiting for permit");
-    let permit = acquire_request().await;
+    let max_request = max_request();
+    let permit = max_request.acquire().await;
     debug!("Got permit");
     let url = request.url().clone();
     let response = tokio::time::timeout(

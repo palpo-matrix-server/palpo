@@ -20,29 +20,20 @@ use crate::media::*;
 use crate::schema::*;
 use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
-pub fn router() -> Router {
-    let mut media = Router::with_path("media").oapi_tag("client");
-    for v in ["v3", "v1", "r0"] {
-        media = media.push(
-            Router::with_path(v)
-                .push(
-                    Router::with_path("download/<server_name>/<media_id>")
-                        .get(get_content)
-                        .push(Router::with_path("<filename>").get(get_content_with_filename)),
-                )
-                .push(
-                    Router::with_hoop(hoops::limit_rate)
-                        .push(Router::with_path("create").post(create_mxc_uri))
-                        .push(
-                            Router::with_path("upload").post(upload_content), // .push(Router::with_path("<server_name>/<media_id>").put(upload_media)),
-                        )
-                        .push(Router::with_path("config").get(get_config))
-                        .push(Router::with_path("preview_url").get(preview_url))
-                        .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(get_thumbnail)),
-                ),
+pub fn authed_router() -> Router {
+    Router::with_path("media")
+        .oapi_tag("client")
+        .push(
+            Router::with_path("download/<server_name>/<media_id>")
+                .get(get_content)
+                .push(Router::with_path("<filename>").get(get_content_with_filename)),
         )
-    }
-    media
+        .push(
+            Router::with_hoop(hoops::limit_rate)
+                .push(Router::with_path("config").get(get_config))
+                .push(Router::with_path("preview_url").get(preview_url))
+                .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(get_thumbnail)),
+        )
 }
 
 // #GET /_matrix/media/r0/download/{server_name}/{media_id}
@@ -50,8 +41,10 @@ pub fn router() -> Router {
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
+pub async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
+    let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? else {
+        return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
+    };
     let content_type = metadata
         .content_type
         .as_deref()
@@ -76,7 +69,7 @@ async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
-        Err(MatrixError::not_yet_uploaded("Media not yet available.").into())
+        Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
 }
 
@@ -85,13 +78,15 @@ async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-async fn get_content_with_filename(
+pub async fn get_content_with_filename(
     _aa: AuthArgs,
     args: ContentWithFileNameReqArgs,
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    let metadata = crate::media::get_metadata(&args.server_name, &args.media_id)?;
+    let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? else {
+        return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
+    };
 
     let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
@@ -117,11 +112,11 @@ async fn get_content_with_filename(
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
-        Err(MatrixError::not_found("Media not found.").into())
+        Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
 }
 #[endpoint]
-fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
+pub fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     let media_id = utils::random_string(crate::MXC_LENGTH);
     let mxc = format!("mxc://{}/{}", crate::server_name(), media_id);
     // TODO: ?
@@ -143,14 +138,13 @@ fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
 /// - Some metadata will be saved in the database
 /// - Media will be saved in the media/ directory
 #[endpoint]
-async fn upload_content(
+pub async fn create_content(
     _aa: AuthArgs,
-    args: UploadContentReqArgs,
+    args: CreateContentReqArgs,
     req: &mut Request,
     _depot: &mut Depot,
-) -> JsonResult<UploadContentResBody> {
+) -> JsonResult<CreateContentResBody> {
     // let authed = depot.take_authed_info()?;
-
     let upload_name = args.filename.clone();
     let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
 
@@ -167,25 +161,6 @@ async fn upload_content(
     let conf = crate::config();
 
     let dest_path = crate::media_path(&conf.server_name, &media_id);
-    let metadata = NewDbMetadata {
-        media_id,
-        origin_server: conf.server_name.clone(),
-        content_disposition: args
-            .filename
-            .clone()
-            .map(|filename| format!("inline; filename={filename}")),
-        content_type: args.content_type.clone(),
-        upload_name,
-        file_extension,
-        file_size: payload.len() as i64,
-        file_hash: None,
-        created_by: None,
-        created_at: UnixMillis::now(),
-    };
-
-    diesel::insert_into(media_metadatas::table)
-        .values(&metadata)
-        .execute(&mut *db::connect()?)?;
 
     let dest_path = Path::new(&dest_path);
     // if dest_path.exists() {
@@ -203,53 +178,114 @@ async fn upload_content(
         let mut file = File::create(dest_path).await?;
         file.write_all(&payload).await?;
 
+        let metadata = NewDbMetadata {
+            media_id,
+            origin_server: conf.server_name.clone(),
+            content_disposition: args
+                .filename
+                .clone()
+                .map(|filename| format!("inline; filename={filename}")),
+            content_type: args.content_type.clone(),
+            upload_name,
+            file_extension,
+            file_size: payload.len() as i64,
+            file_hash: None,
+            created_by: None,
+            created_at: UnixMillis::now(),
+        };
+
+        diesel::insert_into(media_metadatas::table)
+            .values(&metadata)
+            .execute(&mut *db::connect()?)?;
         //TODO: thumbnail support
     } else {
-        return Err(MatrixError::cannot_overwrite_media("Media already exists.").into());
+        return Err(MatrixError::cannot_overwrite_media("Media ID already has content").into());
     }
 
-    json_ok(UploadContentResBody {
+    json_ok(CreateContentResBody {
         content_uri: mxc.try_into().unwrap(),
         blurhash: None,
     })
 }
 
-// #[endpoint]
-// async fn upload_media(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<UploadContentResBody> {
-//     let mxc = format!(
-//         "mxc://{}/{}",
-//         &crate::config().server_name,
-//         utils::random_string(MXC_LENGTH)
-//     );
+// #PUT /_matrix/media/*/upload/{serverName}/{mediaId}
+/// Upload media to an MXC URI that was created with create_mxc_uri.
+#[endpoint]
+pub async fn upload_content(
+    _aa: AuthArgs,
+    args: UploadContentReqArgs,
+    req: &mut Request,
+    _depot: &mut Depot,
+) -> EmptyResult {
+    // let authed = depot.take_authed_info()?;
 
-//     // crate::room::create(
-//     //     mxc.clone(),
-//     //     body.filename
-//     //         .as_ref()
-//     //         .map(|filename| "inline; filename=".to_owned() + filename)
-//     //         .as_deref(),
-//     //     body.content_type.as_deref(),
-//     //     &body.file,
-//     // )
-//     // .await?;
+    let upload_name = args.filename.clone();
+    let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
 
-//     // json_ok(UploadContentResBody {
-//     //     content_uri: mxc.try_into().expect("Invalid mxc:// URI"),
-//     //     blurhash: None,
-//     // })
-// }
+    let payload = req
+        .payload_with_max_size(crate::max_request_size() as usize)
+        .await
+        .unwrap();
+
+    let mxc = format!("mxc://{}/{}", crate::config().server_name, args.media_id);
+
+    let conf = crate::config();
+
+    let dest_path = crate::media_path(&conf.server_name, &args.media_id);
+    let dest_path = Path::new(&dest_path);
+    // if dest_path.exists() {
+    //     let metadata = fs::metadata(dest_path)?;
+    //     if metadata.len() != payload.len() as u64 {
+    //         if let Err(e) = fs::remove_file(dest_path) {
+    //             tracing::error!(error = ?e, "remove media file failed");
+    //         }
+    //     }
+    // }
+    if !dest_path.exists() {
+        let parent_dir = utils::fs::get_parent_dir(&dest_path);
+        fs::create_dir_all(&parent_dir)?;
+
+        let mut file = File::create(dest_path).await?;
+        file.write_all(&payload).await?;
+
+        let metadata = NewDbMetadata {
+            media_id: args.media_id.clone(),
+            origin_server: conf.server_name.clone(),
+            content_disposition: args
+                .filename
+                .clone()
+                .map(|filename| format!("inline; filename={filename}")),
+            content_type: args.content_type.clone(),
+            upload_name,
+            file_extension,
+            file_size: payload.len() as i64,
+            file_hash: None,
+            created_by: None,
+            created_at: UnixMillis::now(),
+        };
+
+        diesel::insert_into(media_metadatas::table)
+            .values(&metadata)
+            .execute(&mut *db::connect()?)?;
+
+        //TODO: thumbnail support
+        empty_ok()
+    } else {
+        Err(MatrixError::cannot_overwrite_media("Media ID already has content").into())
+    }
+}
 
 // #GET /_matrix/media/r0/config
 /// Returns max upload size.
 #[endpoint]
-async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
+pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
     json_ok(ConfigResBody {
         upload_size: crate::max_request_size().into(),
     })
 }
 
 #[endpoint]
-async fn preview_url(_aa: AuthArgs) -> EmptyResult {
+pub async fn preview_url(_aa: AuthArgs) -> EmptyResult {
     // TODDO: todo
     empty_ok()
 }
@@ -272,7 +308,7 @@ async fn preview_url(_aa: AuthArgs) -> EmptyResult {
 ///
 /// For width,height <= 96 the server uses another thumbnailing algorithm which crops the image afterwards.
 #[endpoint]
-async fn get_thumbnail(
+pub async fn get_thumbnail(
     _aa: AuthArgs,
     args: ThumbnailReqArgs,
     req: &mut Request,
@@ -364,12 +400,12 @@ async fn get_thumbnail(
         file.send(req.headers(), res).await;
 
         Ok(())
-    } else if let Ok(DbMetadata {
+    } else if let Ok(Some(DbMetadata {
         content_disposition,
         content_type,
         media_id,
         ..
-    }) = crate::media::get_metadata(&args.server_name, &args.media_id)
+    })) = crate::media::get_metadata(&args.server_name, &args.media_id)
     {
         // Generate a thumbnail
         let image_path = crate::media_path(&args.server_name, &args.media_id);

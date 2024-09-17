@@ -161,6 +161,8 @@ impl Scribe for MatrixError {
                     LimitExceeded { .. } => StatusCode::TOO_MANY_REQUESTS,
                     UserDeactivated => StatusCode::FORBIDDEN,
                     TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+                    CannotOverwriteMedia => StatusCode::CONFLICT,
+                    NotYetUploaded => StatusCode::GATEWAY_TIMEOUT,
                     _ => StatusCode::BAD_REQUEST,
                 }
             });

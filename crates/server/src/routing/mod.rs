@@ -2,6 +2,7 @@ mod appservice;
 mod client;
 mod federation;
 mod identity;
+mod media;
 mod push;
 
 use palpo_core::client::discovery::{ClientWellKnownResBody, HomeServerInfo, SlidingSyncProxyInfo};
@@ -14,12 +15,12 @@ use crate::{hoops, json_ok, AppResult, JsonResult};
 
 pub fn router() -> Router {
     Router::new()
-        .hoop(hoops::ensure_accpet)
+        .hoop(hoops::ensure_accept)
         .hoop(hoops::limit_size)
         .push(
             Router::with_path("_matrix")
                 .push(client::router())
-                .push(client::media::router())
+                .push(media::router())
                 .push(federation::router())
                 .push(federation::key::router())
                 .push(identity::router())

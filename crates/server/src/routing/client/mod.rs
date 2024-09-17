@@ -69,6 +69,7 @@ pub fn router() -> Router {
                     .hoop(hoops::auth_by_access_token)
                     .push(account::authed_router())
                     .push(register::authed_router())
+                    .push(media::authed_router())
                     .push(session::authed_router())
                     .push(device::authed_router())
                     .push(room_key::authed_router())

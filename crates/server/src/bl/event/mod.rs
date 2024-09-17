@@ -55,7 +55,7 @@ pub struct NewDbEvent {
     pub depth: i64,
     pub origin_server_ts: Option<UnixMillis>,
     pub received_at: Option<i64>,
-    pub sender: Option<OwnedUserId>,
+    pub sender_id: Option<OwnedUserId>,
     #[serde(default = "default_false")]
     pub contains_url: bool,
     pub worker_id: Option<String>,

@@ -187,14 +187,15 @@ pub struct ContentWithFileNameReqArgs {
 // };
 
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct UploadContentReqArgs {
+pub struct CreateContentReqArgs {
     /// The name of the file being uploaded.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
 
     /// The content type of the file being uploaded.
-    #[salvo(rename="content-type", parameter(parameter_in = Header))]
+    #[serde(rename="content-type")]
+    #[salvo(parameter(parameter_in = Header))]
     pub content_type: Option<String>,
 
     /// Should the server return a blurhash or not.
@@ -212,7 +213,7 @@ pub struct UploadContentReqArgs {
 
 /// Response type for the `create_media_content` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct UploadContentResBody {
+pub struct CreateContentResBody {
     /// The MXC URI for the uploaded content.
     pub content_uri: OwnedMxcUri,
 
@@ -222,7 +223,7 @@ pub struct UploadContentResBody {
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
     pub blurhash: Option<String>,
 }
-impl UploadContentResBody {
+impl CreateContentResBody {
     /// Creates a new `Response` with the given MXC URI.
     pub fn new(content_uri: OwnedMxcUri) -> Self {
         Self {
@@ -231,7 +232,7 @@ impl UploadContentResBody {
         }
     }
 }
-/// `POST /_matrix/media/*/upload/{serverName}/{mediaId}`
+/// `PUT /_matrix/media/*/upload/{serverName}/{mediaId}`
 ///
 /// Upload media to an MXC URI that was created with create_mxc_uri.
 /// `/v3/` ([spec])
@@ -249,30 +250,30 @@ impl UploadContentResBody {
 // };
 
 /// Request type for the `create_content_async` endpoint.
-// #[derive(ToParameters, Deserialize, Debug)]
-// pub struct UploadContentReqArgs {
-//     /// The server name from the mxc:// URI (the authoritory component).
-//     #[salvo(parameter(parameter_in = Path))]
-//     pub server_name: OwnedServerName,
-//
-//     /// The media ID from the mxc:// URI (the path component).
-//     #[salvo(parameter(parameter_in = Path))]
-//     pub media_id: String,
-//
-//     /// The file contents to upload.
-//     // #[palpo_api(raw_body)]
-//     // pub file: Vec<u8>,
-//
-//     // /// The content type of the file being uploaded.
-//     // #[palpo_api(header = CONTENT_TYPE)]
-//     // pub content_type: Option<String>,
-//
-//     /// The name of the file being uploaded.
-//     #[salvo(parameter(parameter_in = Query))]
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub filename: Option<String>,
-//     // TODO: How does this and msc2448 (blurhash) interact?
-// }
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct UploadContentReqArgs {
+    /// The server name from the mxc:// URI (the authoritory component).
+    #[salvo(parameter(parameter_in = Path))]
+    pub server_name: OwnedServerName,
+
+    /// The media ID from the mxc:// URI (the path component).
+    #[salvo(parameter(parameter_in = Path))]
+    pub media_id: String,
+
+    /// The file contents to upload.
+    // #[palpo_api(raw_body)]
+    // pub file: Vec<u8>,
+
+    /// The content type of the file being uploaded.
+    #[salvo(rename="content-type", parameter(parameter_in = Header))]
+    pub content_type: Option<String>,
+
+    /// The name of the file being uploaded.
+    #[salvo(parameter(parameter_in = Query))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
+    // TODO: How does this and msc2448 (blurhash) interact?
+}
 /// `GET /_matrix/media/*/download/{serverName}/{mediaId}/{fileName}`
 ///
 /// Retrieve content from the media store, specifying a filename to return.

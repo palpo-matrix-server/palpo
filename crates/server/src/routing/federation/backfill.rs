@@ -33,8 +33,13 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
 
     let limit = args.limit.min(100);
 
-    let all_events =
-        crate::room::timeline::get_pdus_backward(&user_id!("@doesntmatter:palpo.im"), &args.room_id, until, limit)?;
+    let all_events = crate::room::timeline::get_pdus_backward(
+        &user_id!("@doesntmatter:palpo.im"),
+        &args.room_id,
+        until,
+        limit,
+        None,
+    )?;
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {

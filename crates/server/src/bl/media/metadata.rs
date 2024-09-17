@@ -35,10 +35,11 @@ pub struct NewDbMetadata {
     pub created_at: UnixMillis,
 }
 
-pub fn get_metadata(server_name: &ServerName, media_id: &str) -> AppResult<DbMetadata> {
+pub fn get_metadata(server_name: &ServerName, media_id: &str) -> AppResult<Option<DbMetadata>> {
     media_metadatas::table
         .filter(media_metadatas::media_id.eq(media_id))
         .filter(media_metadatas::origin_server.eq(server_name))
         .first::<DbMetadata>(&mut *db::connect()?)
+        .optional()
         .map_err(Into::into)
 }
