@@ -5,12 +5,12 @@ use diesel::prelude::*;
 use salvo::prelude::*;
 
 use crate::core::client::message::{
-    CreateMessageEventReqArgs, MessageEventsReqArgs, MessageEventsResBody, SendMessageEventResBody,
+    CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody, SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::diesel_exists;
 use crate::schema::*;
-use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, MatrixError, PduBuilder};
+use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, JsonValue, MatrixError, PduBuilder};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -20,9 +20,9 @@ use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, MatrixError, PduBuilder}
 #[endpoint]
 pub(super) async fn get_messages(
     _aa: AuthArgs,
-    args: MessageEventsReqArgs,
+    args: MessagesReqArgs,
     depot: &mut Depot,
-) -> JsonResult<MessageEventsResBody> {
+) -> JsonResult<MessagesResBody> {
     let authed = depot.authed_info()?;
 
     if !diesel_exists!(
@@ -50,7 +50,7 @@ pub(super) async fn get_messages(
 
     let limit = usize::from(args.limit).min(100);
     let next_token;
-    let mut resp = MessageEventsResBody::default();
+    let mut resp = MessagesResBody::default();
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
@@ -156,24 +156,33 @@ pub(super) async fn get_messages(
 #[endpoint]
 pub(super) async fn send_message(
     _aa: AuthArgs,
-    args: CreateMessageEventReqArgs,
+    args: CreateMessageWithTxnReqArgs,
     req: &mut Request,
     depot: &mut Depot,
-) -> JsonResult<SendMessageEventResBody> {
+) -> JsonResult<SendMessageResBody> {
+    println!("XXXXXXXXXXXXsend message 0");
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
         return Err(MatrixError::forbidden("Encryption has been disabled").into());
     }
+    println!("XXXXXXXXXXXXsend message 1");
 
     let payload = req.payload().await?;
+    // Ensure it's valid JSON.
+    let _content: JsonValue =
+        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
+
+    println!("XXXXXXXXXXXXsend message 2");
     // Check if this is a new transaction id
     if let Some(event_id) =
         crate::transaction_id::existing_txn_id(authed.user_id(), Some(authed.device_id()), &args.txn_id)?
     {
-        return json_ok(SendMessageEventResBody::new(event_id));
+        println!("XXXXXXXXXXXXsend message 3");
+        return json_ok(SendMessageResBody::new(event_id));
     }
+    println!("XXXXXXXXXXXXsend message 4");
 
     let mut unsigned = BTreeMap::new();
     unsigned.insert("transaction_id".to_owned(), args.txn_id.to_string().into());
@@ -199,5 +208,47 @@ pub(super) async fn send_message(
         &args.txn_id,
     )?;
 
-    json_ok(SendMessageEventResBody::new((*event_id).to_owned()))
+    json_ok(SendMessageResBody::new((*event_id).to_owned()))
+}
+
+// #POST /_matrix/client/r0/rooms/{room_id}/send/{event_type}
+/// Send a message event into the room.
+///
+/// - Is a NOOP if the txn id was already used before and returns the same event id again
+/// - The only requirement for the content is that it has to be valid json
+/// - Tries to send the event into the room, auth rules will determine if it is allowed
+#[endpoint]
+pub(super) async fn post_message(
+    _aa: AuthArgs,
+    args: CreateMessageReqArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+) -> JsonResult<SendMessageResBody> {
+    let authed = depot.authed_info()?;
+
+    // Forbid m.room.encrypted if encryption is disabled
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
+        return Err(MatrixError::forbidden("Encryption has been disabled").into());
+    }
+
+    let payload = req.payload().await?;
+    // Ensure it's valid JSON.
+    let _content: JsonValue =
+        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
+
+    let mut unsigned = BTreeMap::new();
+    let event_id = crate::room::timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: args.event_type.to_string().into(),
+            content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
+            unsigned: Some(unsigned),
+            state_key: None,
+            redacts: None,
+        },
+        authed.user_id(),
+        &args.room_id,
+    )?
+    .event_id;
+
+    json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }

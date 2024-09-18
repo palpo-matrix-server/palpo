@@ -26,6 +26,9 @@ env \
 
 # It's okay (likely, even) that `go test` exits nonzero
 set +o pipefail
+
+# go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run '^(TestOutboundFederationSend)$' -json ./tests/csapi | tee "$LOG_FILE.jsonl"
+
 env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \

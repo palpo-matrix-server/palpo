@@ -26,6 +26,7 @@ use crate::{
     JsonValue,
 };
 use diesel::prelude::*;
+use diesel::sql_types::Json;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
 use serde::Deserialize;
@@ -526,6 +527,9 @@ pub fn create_hash_and_sign_event(
     }
 
     let event_id = OwnedEventId::try_from(format!("$will_fill_{}", Ulid::new().to_string())).unwrap();
+    let content_value: JsonValue = serde_json::from_str(&content.get())?;
+    println!("================ contains url :{}", content_value.get("url").is_some());
+    println!("================ content :{}", content.get());
     let event_sn = diesel::insert_into(events::table)
         .values(NewDbEvent {
             id: event_id.to_owned(),
@@ -536,7 +540,7 @@ pub fn create_hash_and_sign_event(
             origin_server_ts: Some(UnixMillis::now()),
             received_at: None,
             sender_id: Some(sender_id.to_owned()),
-            contains_url: false,
+            contains_url: content_value.get("url").is_some(),
             worker_id: None,
             state_key: state_key.clone(),
             processed: false,
@@ -802,10 +806,13 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    let mut query = events::table
-        .filter(events::room_id.eq(room_id))
-        .filter(events::sn.le(occur_sn))
-        .into_boxed();
+    println!("xxxxxxxxxxxxxxx occur_sn: {occur_sn}  limit: {limit}  filter:{filter:#?} dir: {dir:?}");
+    let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
+    if dir == Direction::Forward {
+        query = query.filter(events::sn.ge(occur_sn));
+    } else {
+        query = query.filter(events::sn.le(occur_sn));
+    };
 
     if let Some(filter) = filter {
         if let Some(url_filter) = &filter.url_filter {
@@ -839,23 +846,19 @@ pub fn get_pdus(
 
     let datas = if dir == Direction::Forward {
         event_datas::table
-            .filter(
-                event_datas::event_id
-                    .eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)),
-            )
+            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
             .order(event_datas::event_sn.asc())
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     } else {
         event_datas::table
-            .filter(
-                event_datas::event_id
-                    .eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)),
-            )
+            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
             .order(event_datas::event_sn.desc())
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     };
+
+    println!("=============data: {datas:?}");
     let list = datas.into_iter().filter_map(|(sn, v)| {
         let mut pdu = serde_json::from_value::<PduEvent>(v).ok()?;
 

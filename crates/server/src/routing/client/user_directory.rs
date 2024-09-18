@@ -29,9 +29,17 @@ fn search(
     depot: &mut Depot,
 ) -> JsonResult<SearchUsersResBody> {
     let authed = depot.authed_info()?;
-    let user_ids = users::table
-        .select(users::id)
+    let body = body.into_inner();
+    let user_ids = user_profiles::table
+        .filter(
+            user_profiles::user_id
+                .ilike(format!("%{}%", body.search_term))
+                .or(user_profiles::display_name.ilike(format!("%{}%", body.search_term))),
+        )
+        .select(user_profiles::user_id)
         .load::<OwnedUserId>(&mut *db::connect()?)?;
+
+    println!("XXXXXXXXXXXXXXXXX  SearchUsersReqBody {:#?}", body);
 
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
@@ -39,22 +47,6 @@ fn search(
             display_name: crate::user::display_name(&user_id).ok()?,
             avatar_url: crate::user::avatar_url(&user_id).ok()?,
         };
-
-        let user_id_matches = user
-            .user_id
-            .to_string()
-            .to_lowercase()
-            .contains(&body.search_term.to_lowercase());
-
-        let user_display_name_matches = user
-            .display_name
-            .as_ref()
-            .filter(|name| name.to_lowercase().contains(&body.search_term.to_lowercase()))
-            .is_some();
-
-        if !user_id_matches && !user_display_name_matches {
-            return None;
-        }
 
         let user_is_in_public_rooms = crate::user::joined_rooms(&user_id, 0).ok()?.into_iter().any(|room| {
             crate::room::state::get_state(&room, &StateEventType::RoomJoinRules, "").map_or(false, |event| {

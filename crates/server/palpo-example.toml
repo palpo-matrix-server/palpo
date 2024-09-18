@@ -37,6 +37,8 @@ allow_check_for_updates = true
 # Enable the display name lightning bolt on registration.
 enable_lightning_bolt = true
 
+allow_local_presence = true
+
 # Servers listed here will be used to gather public keys of other servers.
 # Generally, copying this exactly should be enough. (Currently, Palpo doesn't
 # support batched key requests, so this list should only contain Synapse

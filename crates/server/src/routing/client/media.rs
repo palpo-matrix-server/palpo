@@ -218,7 +218,6 @@ pub async fn upload_content(
     _depot: &mut Depot,
 ) -> EmptyResult {
     // let authed = depot.take_authed_info()?;
-
     let upload_name = args.filename.clone();
     let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
 

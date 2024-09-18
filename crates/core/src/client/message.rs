@@ -23,7 +23,7 @@ use crate::{serde::RawJson, Direction, OwnedEventId, OwnedRoomId, OwnedTransacti
 
 /// Request type for the `get_message_events` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct MessageEventsReqArgs {
+pub struct MessagesReqArgs {
     /// The room to get events from.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -73,7 +73,7 @@ pub struct MessageEventsReqArgs {
 
 /// Response type for the `get_message_events` endpoint.
 #[derive(ToSchema, Default, Serialize, Debug)]
-pub struct MessageEventsResBody {
+pub struct MessagesResBody {
     /// The token the pagination starts from.
     pub start: String,
 
@@ -120,7 +120,7 @@ fn is_default_limit(val: &usize) -> bool {
 
 /// Request type for the `create_message_event` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct CreateMessageEventReqArgs {
+pub struct CreateMessageWithTxnReqArgs {
     /// The room to send the event to.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -156,13 +156,39 @@ pub struct CreateMessageEventReqArgs {
     pub timestamp: Option<UnixMillis>,
 }
 
+/// Request type for the `create_message_event` endpoint.
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct CreateMessageReqArgs {
+    /// The room to send the event to.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The type of event to send.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_type: MessageLikeEventType,
+
+    // /// The event content to send.
+    // #[salvo(schema(value_type = Object, additional_properties = true))]
+    // pub body: RawJson<AnyMessageLikeEventContent>,
+    /// Timestamp to use for the `origin_server_ts` of the event.
+    ///
+    /// This is called [timestamp massaging] and can only be used by Appservices.
+    ///
+    /// Note that this does not change the position of the event in the timeline.
+    ///
+    /// [timestamp massaging]: https://spec.matrix.org/latest/application-service-api/#timestamp-massaging
+    #[salvo(parameter(parameter_in = Query))]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "ts")]
+    pub timestamp: Option<UnixMillis>,
+}
+
 /// Response type for the `create_message_event` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct SendMessageEventResBody {
+pub struct SendMessageResBody {
     /// A unique identifier for the event.
     pub event_id: OwnedEventId,
 }
-impl SendMessageEventResBody {
+impl SendMessageResBody {
     /// Creates a new `Response` with the given event id.
     pub fn new(event_id: OwnedEventId) -> Self {
         Self { event_id }

@@ -103,6 +103,7 @@ pub fn authed_router() -> Router {
                     )
                     .push(Router::with_path("upgrade").post(upgrade))
                     .push(Router::with_path("messages").get(message::get_messages))
+                    .push(Router::with_path("send/<event_type>").post(message::post_message))
                     .push(Router::with_path("send/<event_type>/<txn_id>").put(message::send_message))
                     .push(Router::with_path("redact/<event_id>/<txn_id>").put(event::send_redact))
                     .push(
