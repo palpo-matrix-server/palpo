@@ -6,6 +6,7 @@
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 use std::time::Duration;
 
+use palpo_core::client::presence;
 use salvo::oapi::extract::JsonBody;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -30,13 +31,16 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
     let authed = depot.authed_info()?;
     let user_id = user_id.into_inner();
 
-    let mut presence = None;
-    for room_id in crate::room::user::get_shared_rooms(vec![authed.user.id.clone(), user_id.clone()])? {
-        if let Some(last_presence) = crate::user::get_last_presence(authed.user_id(), &room_id)? {
-            presence = Some(last_presence);
-            break;
-        }
-    }
+    let mut presence = crate::user::get_last_presence(&user_id)?;
+    // for room_id in crate::room::user::get_shared_rooms(vec![authed.user.id.clone(), user_id.clone()])? {
+    //     if let Some(last_presence) = crate::user::get_last_presence_in_room(&user_id, &room_id)? {
+    //         presence = Some(last_presence);
+    //         break;
+    //     }
+    // }
+    // if presence.is_none() {
+    //     presence = crate::user::get_last_presence(&user_id)?;
+    // }
 
     if let Some(presence) = presence {
         json_ok(PresenceResBody {
@@ -65,19 +69,33 @@ async fn set_status(
     }
 
     let authed = depot.authed_info()?;
-    for room_id in crate::user::joined_rooms(authed.user_id(), 0)? {
-        crate::user::set_presence(NewDbPresence {
-            user_id: authed.user_id().to_owned(),
-            room_id: Some(room_id),
-            stream_id: None,
-            state: Some(body.presence.to_string()),
-            status_msg: body.status_msg.clone(),
-            last_active_at: None,
-            last_federation_update_at: None,
-            last_user_sync_at: None,
-            currently_active: None, //TODO
-        })?;
+    let user_id = user_id.into_inner();
+    if authed.user_id() != &user_id {
+        return Err(MatrixError::forbidden("You cannot set the presence state of another user").into());
     }
+    // for room_id in crate::user::joined_rooms(authed.user_id(), 0)? {
+    //     crate::user::set_presence(NewDbPresence {
+    //         user_id: authed.user_id().to_owned(),
+    //         room_id: Some(room_id),
+    //         stream_id: None,
+    //         state: Some(body.presence.to_string()),
+    //         status_msg: body.status_msg.clone(),
+    //         last_active_at: None,
+    //         last_federation_update_at: None,
+    //         last_user_sync_at: None,
+    //         currently_active: None, //TODO
+    //     })?;
+    // }
+    crate::user::set_presence(NewDbPresence {
+        user_id: authed.user_id().to_owned(),
+        stream_id: None,
+        state: Some(body.presence.to_string()),
+        status_msg: body.status_msg.clone(),
+        last_active_at: None,
+        last_federation_update_at: None,
+        last_user_sync_at: None,
+        currently_active: None, //TODO,
+    }, true)?;
 
     empty_ok()
 }

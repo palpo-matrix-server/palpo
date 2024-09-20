@@ -25,7 +25,8 @@ pub async fn sync_events(
     args: SyncEventsReqArgsV3,
     tx: Sender<Option<AppResult<SyncEventsResBodyV3>>>,
 ) -> AppResult<()> {
-    crate::user::ping_presence(&sender_user_id)?;
+    println!("PPPPPPPPPPPPPIng {}  {:?}", sender_user_id, args.set_presence);
+    crate::user::ping_presence(&sender_user_id, &args.set_presence)?;
 
     // Setup watchers, so if there's no response, we can wait for them
     let watcher = crate::watch(&sender_user_id, &sender_device_id);
@@ -91,7 +92,7 @@ pub async fn sync_events(
 
         if crate::allow_local_presence() {
             // Take presence updates from this room
-            for (user_id, presence_event) in crate::user::presence_since(&room_id, since_sn)? {
+            for (user_id, presence_event) in crate::user::presences_since(&room_id, since_sn)? {
                 match presence_updates.entry(user_id) {
                     Entry::Vacant(slot) => {
                         slot.insert(presence_event);

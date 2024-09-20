@@ -5,6 +5,7 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 use diesel::prelude::*;
+use palpo_core::presence::PresenceState;
 use salvo::oapi::extract::{JsonBody, QueryParam};
 use salvo::prelude::*;
 
@@ -16,8 +17,9 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
+use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::user::NewDbProfile;
+use crate::user::{NewDbPresence, NewDbProfile};
 use crate::{
     db, diesel_exists, empty_ok, exts::*, hoops, utils, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError,
     DEVICE_ID_LENGTH, RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH,
@@ -136,8 +138,6 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
         display_name.push_str(" ⚡️");
     }
 
-    crate::user::set_display_name(&user_id, Some(&display_name))?;
-
     diesel::insert_into(user_profiles::table)
         .values(NewDbProfile {
             user_id: user_id.clone(),
@@ -147,6 +147,18 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             blurhash: None,
         })
         .execute(&mut db::connect()?)?;
+
+    // Presence update
+    crate::user::set_presence(NewDbPresence {
+        user_id: user_id.clone(),
+        stream_id: None,
+        state: Some(PresenceState::Online.to_string()),
+        status_msg: None,
+        last_active_at: Some(UnixMillis::now()),
+        last_federation_update_at: None,
+        last_user_sync_at: None,
+        currently_active: None
+    }, true)?;
 
     // Initial account data
     crate::user::set_data(

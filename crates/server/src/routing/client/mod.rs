@@ -42,7 +42,8 @@ use crate::core::client::sync_events::{
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::{OwnedEventId, UserId};
+use crate::core::{OwnedEventId, UnixMillis, UserId};
+use crate::user::NewDbPresence;
 use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {

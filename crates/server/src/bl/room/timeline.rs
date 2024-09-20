@@ -528,8 +528,6 @@ pub fn create_hash_and_sign_event(
 
     let event_id = OwnedEventId::try_from(format!("$will_fill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
-    println!("================ contains url :{}", content_value.get("url").is_some());
-    println!("================ content :{}", content.get());
     let event_sn = diesel::insert_into(events::table)
         .values(NewDbEvent {
             id: event_id.to_owned(),
@@ -806,7 +804,6 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    println!("xxxxxxxxxxxxxxx occur_sn: {occur_sn}  limit: {limit}  filter:{filter:#?} dir: {dir:?}");
     let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
     if dir == Direction::Forward {
         query = query.filter(events::sn.ge(occur_sn));
@@ -858,7 +855,6 @@ pub fn get_pdus(
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     };
 
-    println!("=============data: {datas:?}");
     let list = datas.into_iter().filter_map(|(sn, v)| {
         let mut pdu = serde_json::from_value::<PduEvent>(v).ok()?;
 

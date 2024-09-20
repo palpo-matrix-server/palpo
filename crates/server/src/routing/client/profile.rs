@@ -166,6 +166,18 @@ async fn set_avatar_url(
         .filter_map(|r| r.ok())
         .collect();
 
+    // Presence update
+    crate::user::set_presence(NewDbPresence {
+        user_id: user_id.clone(),
+        // room_id: Some(room_id),
+        stream_id: None,
+        state: None,
+        status_msg: None,
+        last_active_at: Some(UnixMillis::now()),
+        last_federation_update_at: None,
+        last_user_sync_at: None,
+        currently_active: None
+    }, true)?;
     for (pdu_builder, room_id) in all_joined_rooms {
         // let mutex_state = Arc::clone(
         //     services()
@@ -179,19 +191,6 @@ async fn set_avatar_url(
         // let state_lock = mutex_state.lock().await;
 
         let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
-
-        // Presence update
-        crate::user::set_presence(NewDbPresence {
-            user_id: user_id.clone(),
-            room_id: Some(room_id),
-            stream_id: None,
-            state: None,
-            status_msg: None,
-            last_active_at: Some(UnixMillis::now()),
-            last_federation_update_at: None,
-            last_user_sync_at: None,
-            currently_active: None,
-        })?;
     }
 
     empty_ok()
@@ -286,7 +285,6 @@ async fn set_display_name(
         // Presence update
         crate::user::set_presence(NewDbPresence {
             user_id: user_id.clone(),
-            room_id: Some(room_id),
             stream_id: None,
             state: None,
             status_msg: None,
@@ -294,7 +292,7 @@ async fn set_display_name(
             last_federation_update_at: None,
             last_user_sync_at: None,
             currently_active: None,
-        })?;
+        },  true)?;
     }
 
     empty_ok()

@@ -197,7 +197,6 @@ drop table if exists user_presences CASCADE;
 CREATE TABLE user_presences (
     id bigserial not null PRIMARY KEY,
     user_id text NOT NULL,
-    room_id text,
     stream_id bigint,
     state text,
     status_msg text,
@@ -205,7 +204,8 @@ CREATE TABLE user_presences (
     last_federation_update_at bigint,
     last_user_sync_at bigint,
     currently_active boolean,
-    CONSTRAINT user_presences_ukey UNIQUE (user_id, room_id)
+    occur_sn bigint NOT NULL default nextval('occur_sn_seq'),
+    CONSTRAINT user_presences_ukey UNIQUE (user_id)
 );
 
 drop table if exists threepid_guests CASCADE;

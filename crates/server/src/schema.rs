@@ -640,7 +640,6 @@ diesel::table! {
     user_presences (id) {
         id -> Int8,
         user_id -> Text,
-        room_id -> Nullable<Text>,
         stream_id -> Nullable<Int8>,
         state -> Nullable<Text>,
         status_msg -> Nullable<Text>,
@@ -648,6 +647,7 @@ diesel::table! {
         last_federation_update_at -> Nullable<Int8>,
         last_user_sync_at -> Nullable<Int8>,
         currently_active -> Nullable<Bool>,
+        occur_sn -> Int8,
     }
 }
 
