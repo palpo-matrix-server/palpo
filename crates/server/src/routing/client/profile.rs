@@ -192,22 +192,6 @@ async fn set_avatar_url(
             last_user_sync_at: None,
             currently_active: None,
         })?;
-
-        // crate::user::presence::set_presence(
-        //     sender_id,
-        //     &room_id,
-        //     PresenceEvent {
-        //         content: PresenceEventContent {
-        //             avatar_url: services().users.avatar_url(sender_user)?,
-        //             currently_active: None,
-        //             displayname: services().users.displayname(sender_user)?,
-        //             last_active_ago: Some(utils::millis_since_unix_epoch().try_into().expect("time is valid")),
-        //             presence: PresenceState::Online,
-        //             status_msg: None,
-        //         },
-        //         sender: sender_user.clone(),
-        //     },
-        // )?;
     }
 
     empty_ok()
@@ -300,33 +284,17 @@ async fn set_display_name(
         let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
 
         // Presence update
-        // crate::user::set_presence(NewDbPresence {
-        //     user_id: update.user_id.clone(),
-        //     room_id: Some(room_id),
-        //     stream_id: None,
-        //     state: Some(update.presence.to_string()),
-        //     status_msg: update.status_msg.clone(),
-        //     last_active_at: Some(update.last_active_ago as i64),
-        //     last_federation_update_at: None,
-        //     last_user_sync_at: None,
-        //     currently_active: Some(update.currently_active),
-        // })?;
-
-        // crate::user::presence::set_presence(
-        //     sender_id,
-        //     &room_id,
-        //     PresenceEvent {
-        //         content: PresenceEventContent {
-        //             avatar_url: services().users.avatar_url(sender_user)?,
-        //             currently_active: None,
-        //             displayname: services().users.displayname(sender_user)?,
-        //             last_active_ago: Some(utils::millis_since_unix_epoch().try_into().expect("time is valid")),
-        //             presence: PresenceState::Online,
-        //             status_msg: None,
-        //         },
-        //         sender: sender_user.clone(),
-        //     },
-        // )?;
+        crate::user::set_presence(NewDbPresence {
+            user_id: user_id.clone(),
+            room_id: Some(room_id),
+            stream_id: None,
+            state: None,
+            status_msg: None,
+            last_active_at: Some(UnixMillis::now()),
+            last_federation_update_at: None,
+            last_user_sync_at: None,
+            currently_active: None,
+        })?;
     }
 
     empty_ok()

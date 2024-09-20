@@ -64,7 +64,7 @@ pub struct RoomMemberEventContent {
     /// The display name for this user, if any.
     ///
     /// This is added by the homeserver.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 
     /// Flag indicating whether the room containing this event was created with the intention of
