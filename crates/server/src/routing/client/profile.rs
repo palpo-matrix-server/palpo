@@ -1,15 +1,22 @@
 use diesel::prelude::*;
+use palpo_core::UnixMillis;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
+use serde_json::value::to_raw_value;
 
 use crate::core::client::profile::*;
+use crate::core::events::presence::PresenceEventContent;
+use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{profile_request, ProfileReqArgs};
 use crate::core::identifiers::*;
-use crate::core::user::ProfileField;
-use crate::core::user::ProfileResBody;
+use crate::core::user::{ProfileField, ProfileResBody};
 use crate::exts::*;
-use crate::user::DbProfile;
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
+use crate::schema::*;
+use crate::user::{DbProfile, NewDbPresence};
+use crate::{
+    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder,
+};
 use crate::{diesel_exists, schema::*};
 
 pub fn public_router() -> Router {
@@ -100,9 +107,14 @@ async fn set_avatar_url(
     _aa: AuthArgs,
     user_id: PathParam<OwnedUserId>,
     body: JsonBody<SetAvatarUrlReqBody>,
+    depot: &mut Depot,
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
-    // let authed = depot.authed_info()?;
+    let authed = depot.authed_info()?;
+    if authed.user_id() != &user_id {
+        return Err(MatrixError::forbidden("forbidden").into());
+    }
+
     let SetAvatarUrlReqBody { avatar_url, blurhash } = body.into_inner();
 
     let query = user_profiles::table
@@ -115,55 +127,88 @@ async fn set_avatar_url(
             avatar_url: Option<OwnedMxcUri>,
             blurhash: Option<String>,
         }
-        let updata_params = UpdateParams { avatar_url, blurhash };
+        let updata_params = UpdateParams {
+            avatar_url: avatar_url.clone(),
+            blurhash,
+        };
         diesel::update(query).set(updata_params).execute(&mut *db::connect()?)?;
     } else {
         return Err(StatusError::not_found().brief("Profile not found.").into());
     }
 
-    // // Send a new membership event and presence update into all joined rooms
-    // let all_joined_rooms: Vec<_> = crate::user::joined_rooms(authed.user_id())
-    //    .into_iter()
-    //     .map(|room_id| {
-    //         Ok::<_, AppError>((
-    //             PduBuilder {
-    //                 event_type: TimelineEventType::RoomMember,
-    //                 content: to_raw_value(&RoomMemberEventContent {
-    //                     avatar_url: body.avatar_url.clone(),
-    //                     ..serde_json::from_str(
-    //                         crate::room::state::get_state(&room_id, &StateEventType::RoomMember, authed.user_id().as_str())?
-    //                             .ok_or_else(|| {
-    //                                 AppError::internal(
-    //                                     "Tried to send display_name update for user not in the \
-    //                                  room.",
-    //                                 )
-    //                             })?
-    //                             .content
-    //                             .get(),
-    //                     )
-    //                     .map_err(|_| AppError::internal("Database contains invalid PDU."))?
-    //                 })
-    //                 .expect("event is valid, we just created it"),
-    //                 unsigned: None,
-    //                 state_key: Some(authed.user_id().to_string()),
-    //                 redacts: None,
-    //             },
-    //             room_id,
-    //         ))
-    //     })
-    //     .collect();
+    // Send a new membership event and presence update into all joined rooms
+    let all_joined_rooms: Vec<_> = crate::user::joined_rooms(&user_id, 0)?
+        .into_iter()
+        .map(|room_id| {
+            Ok::<_, AppError>((
+                PduBuilder {
+                    event_type: TimelineEventType::RoomMember,
+                    content: to_raw_value(&RoomMemberEventContent {
+                        avatar_url: avatar_url.clone(),
+                        ..serde_json::from_str(
+                            crate::room::state::get_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?
+                                .ok_or_else(|| {
+                                    AppError::internal("Tried to send avatar_url update for user not in the room.")
+                                })?
+                                .content
+                                .get(),
+                        )
+                        .map_err(|_| AppError::internal("Database contains invalid PDU."))?
+                    })
+                    .expect("event is valid, we just created it"),
+                    unsigned: None,
+                    state_key: Some(user_id.to_string()),
+                    redacts: None,
+                },
+                room_id,
+            ))
+        })
+        .filter_map(|r| r.ok())
+        .collect();
 
-    // for (pdu_builder, room_id) in all_joined_rooms {
-    //     let mutex_state = Arc::clone(crate::ROOM_ID_MUTEX_STATE.write().unwrap().entry(room_id.clone()).or_default());
-    //     let state_lock = mutex_state.lock().await;
+    for (pdu_builder, room_id) in all_joined_rooms {
+        // let mutex_state = Arc::clone(
+        //     services()
+        //         .globals
+        //         .roomid_mutex_state
+        //         .write()
+        //         .await
+        //         .entry(room_id.clone())
+        //         .or_default(),
+        // );
+        // let state_lock = mutex_state.lock().await;
 
-    //     let _ = crate::room::timeline.build_and_append_pdu(pdu_builder, authed.user_id(), &room_id, &state_lock);
-    // }
+        let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
 
-    // if crate::allow_local_presence() {
-    //     // Presence update
-    //     crate::room::edus.presence.ping_presence(authed.user_id(), PresenceState::Online)?;
-    // }
+        // Presence update
+        crate::user::set_presence(NewDbPresence {
+            user_id: user_id.clone(),
+            room_id: Some(room_id),
+            stream_id: None,
+            state: None,
+            status_msg: None,
+            last_active_at: Some(UnixMillis::now()),
+            last_federation_update_at: None,
+            last_user_sync_at: None,
+            currently_active: None,
+        })?;
+
+        // crate::user::presence::set_presence(
+        //     sender_id,
+        //     &room_id,
+        //     PresenceEvent {
+        //         content: PresenceEventContent {
+        //             avatar_url: services().users.avatar_url(sender_user)?,
+        //             currently_active: None,
+        //             displayname: services().users.displayname(sender_user)?,
+        //             last_active_ago: Some(utils::millis_since_unix_epoch().try_into().expect("time is valid")),
+        //             presence: PresenceState::Online,
+        //             status_msg: None,
+        //         },
+        //         sender: sender_user.clone(),
+        //     },
+        // )?;
+    }
 
     empty_ok()
 }
@@ -190,60 +235,99 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
     }
 }
 
-// #PUT /_matrix/client/r0/profile/{user_id}/display_name
+// #PUT /_matrix/client/r0/profile/{user_id}/displayname
 /// Updates the display_name.
 ///
 /// - Also makes sure other users receive the update using presence EDUs
 #[endpoint]
-async fn set_display_name(_aa: AuthArgs, body: JsonBody<SetDisplayNameReqBody>, depot: &mut Depot) -> EmptyResult {
+async fn set_display_name(
+    _aa: AuthArgs,
+    user_id: PathParam<OwnedUserId>,
+    body: JsonBody<SetDisplayNameReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
+    let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
+    if authed.user_id() != &user_id {
+        return Err(MatrixError::forbidden("forbidden").into());
+    }
+    let SetDisplayNameReqBody { display_name } = body.into_inner();
 
-    crate::user::set_display_name(authed.user_id(), body.display_name.as_deref())?;
+    crate::user::set_display_name(&user_id, display_name.as_deref())?;
 
-    // TODO
-    // // Send a new membership event and presence update into all joined rooms
-    // let all_rooms_joined: Vec<_> = crate::user::joined_rooms(authed.user_id())
-    //     .into_iter()
-    //     .map(|room_id| {
-    //         Ok::<_, AppError>((
-    //             PduBuilder {
-    //                 event_type: TimelineEventType::RoomMember,
-    //                 content: to_raw_value(&RoomMemberEventContent {
-    //                     display_name: body.display_name.clone(),
-    //                     ..serde_json::from_str(
-    //                         crate::room::state::get_state(&room_id, &StateEventType::RoomMember, authed.user_id().as_str())?
-    //                             .ok_or_else(|| {
-    //                                 AppError::internal(
-    //                                     "Tried to send display_name update for user not in the \
-    //                                  room.",
-    //                                 )
-    //                             })?
-    //                             .content
-    //                             .get(),
-    //                     )
-    //                     .map_err(|_| AppError::internal("Database contains invalid PDU."))?
-    //                 })
-    //                 .expect("event is valid, we just created it"),
-    //                 unsigned: None,
-    //                 state_key: Some(authed.user_id().to_string()),
-    //                 redacts: None,
-    //             },
-    //             room_id,
-    //         ))
-    //     })
-    //     .collect();
+    // Send a new membership event and presence update into all joined rooms
+    let all_joined_rooms: Vec<_> = crate::user::joined_rooms(&user_id, 0)?
+        .into_iter()
+        .map(|room_id| {
+            Ok::<_, AppError>((
+                PduBuilder {
+                    event_type: TimelineEventType::RoomMember,
+                    content: to_raw_value(&RoomMemberEventContent {
+                        display_name: display_name.clone(),
+                        ..serde_json::from_str(
+                            crate::room::state::get_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?
+                                .ok_or_else(|| {
+                                    AppError::internal("Tried to send display_name update for user not in the room.")
+                                })?
+                                .content
+                                .get(),
+                        )
+                        .map_err(|_| AppError::internal("Database contains invalid PDU."))?
+                    })
+                    .expect("event is valid, we just created it"),
+                    unsigned: None,
+                    state_key: Some(user_id.to_string()),
+                    redacts: None,
+                },
+                room_id,
+            ))
+        })
+        .filter_map(|r| r.ok())
+        .collect();
 
-    // for (pdu_builder, room_id) in all_rooms_joined {
-    //     let mutex_state = Arc::clone(crate::ROOM_ID_MUTEX_STATE.write().unwrap().entry(room_id.clone()).or_default());
-    //     let state_lock = mutex_state.lock().await;
+    for (pdu_builder, room_id) in all_joined_rooms {
+        // let mutex_state = Arc::clone(
+        //     services()
+        //         .globals
+        //         .roomid_mutex_state
+        //         .write()
+        //         .await
+        //         .entry(room_id.clone())
+        //         .or_default(),
+        // );
+        // let state_lock = mutex_state.lock().await;
 
-    //     let _ = crate::room::timeline.build_and_append_pdu(pdu_builder, authed.user_id(), &room_id, &state_lock);
-    // }
+        let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
 
-    // if crate::allow_local_presence() {
-    //     // Presence update
-    //     crate::room::edus.presence.ping_presence(authed.user_id(), PresenceState::Online)?;
-    // }
+        // Presence update
+        // crate::user::set_presence(NewDbPresence {
+        //     user_id: update.user_id.clone(),
+        //     room_id: Some(room_id),
+        //     stream_id: None,
+        //     state: Some(update.presence.to_string()),
+        //     status_msg: update.status_msg.clone(),
+        //     last_active_at: Some(update.last_active_ago as i64),
+        //     last_federation_update_at: None,
+        //     last_user_sync_at: None,
+        //     currently_active: Some(update.currently_active),
+        // })?;
+
+        // crate::user::presence::set_presence(
+        //     sender_id,
+        //     &room_id,
+        //     PresenceEvent {
+        //         content: PresenceEventContent {
+        //             avatar_url: services().users.avatar_url(sender_user)?,
+        //             currently_active: None,
+        //             displayname: services().users.displayname(sender_user)?,
+        //             last_active_ago: Some(utils::millis_since_unix_epoch().try_into().expect("time is valid")),
+        //             presence: PresenceState::Online,
+        //             status_msg: None,
+        //         },
+        //         sender: sender_user.clone(),
+        //     },
+        // )?;
+    }
 
     empty_ok()
 }

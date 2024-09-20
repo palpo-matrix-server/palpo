@@ -360,7 +360,10 @@ async fn sync_events_v3(
         .as_ref()
         .expect("When sync channel changes it's always set to some")
     {
-        Ok(response) => json_ok(response.clone()),
+        Ok(response) => {
+            println!("SSSSSSSSSSSSSSSync {:#?}", response);
+            json_ok(response.clone())
+        }
         Err(error) => Err(AppError::public(error.to_string())),
     };
     result

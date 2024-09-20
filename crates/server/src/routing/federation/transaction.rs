@@ -114,7 +114,7 @@ async fn send_message(
                             stream_id: None,
                             state: Some(update.presence.to_string()),
                             status_msg: update.status_msg.clone(),
-                            last_active_at: Some(update.last_active_ago as i64),
+                            last_active_at: Some(UnixMillis(update.last_active_ago)),
                             last_federation_update_at: None,
                             last_user_sync_at: None,
                             currently_active: Some(update.currently_active),

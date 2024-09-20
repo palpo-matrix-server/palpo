@@ -43,9 +43,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
             // TODO: Should just use the presenceeventcontent type here?
             status_msg: presence.status_msg,
             currently_active: presence.currently_active,
-            last_active_ago: presence
-                .last_active_at
-                .map(|millis| Duration::from_millis(millis as u64)),
+            last_active_ago: presence.last_active_at.map(|millis| Duration::from_millis(millis.0)),
             presence: presence.state.map(Into::into).unwrap_or_default(),
         })
     } else {

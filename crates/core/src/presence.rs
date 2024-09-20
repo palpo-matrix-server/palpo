@@ -4,7 +4,7 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{serde::StringEnum, OwnedUserId, PrivOwnedStr};
+use crate::{serde::StringEnum, UnixMillis, OwnedUserId, PrivOwnedStr};
 
 /// A description of a user's connectivity and availability for chat.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

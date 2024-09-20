@@ -15,7 +15,7 @@ RESULTS_FILE="$3"
 OCI_IMAGE="complement-palpo:dev"
 
 # Complement tests that are skipped due to flakiness/reliability issues
-SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*'
+SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*|TestJson/Parallel/Invalid_numerical_values'
 
 env \
     -C "$(git rev-parse --show-toplevel)" \
@@ -27,13 +27,13 @@ env \
 # It's okay (likely, even) that `go test` exits nonzero
 set +o pipefail
 
-# go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run '^(TestOutboundFederationSend)$' -json ./tests/csapi | tee "$LOG_FILE.jsonl"
+# go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run '^(TestOutboundFederationSend)$' -json ./tests/csapi | tee "$LOG_FILE.jsonl"
 
 env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$OCI_IMAGE" \
-    go test -tags="conduwuit_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

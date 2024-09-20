@@ -24,9 +24,9 @@ pub struct DbPresence {
     pub stream_id: Option<i64>,
     pub state: Option<String>,
     pub status_msg: Option<String>,
-    pub last_active_at: Option<i64>,
-    pub last_federation_update_at: Option<i64>,
-    pub last_user_sync_at: Option<i64>,
+    pub last_active_at: Option<UnixMillis>,
+    pub last_federation_update_at: Option<UnixMillis>,
+    pub last_user_sync_at: Option<UnixMillis>,
     pub currently_active: Option<bool>,
 }
 
@@ -38,9 +38,9 @@ pub struct NewDbPresence {
     pub stream_id: Option<i64>,
     pub state: Option<String>,
     pub status_msg: Option<String>,
-    pub last_active_at: Option<i64>,
-    pub last_federation_update_at: Option<i64>,
-    pub last_user_sync_at: Option<i64>,
+    pub last_active_at: Option<UnixMillis>,
+    pub last_federation_update_at: Option<UnixMillis>,
+    pub last_user_sync_at: Option<UnixMillis>,
     pub currently_active: Option<bool>,
 }
 
@@ -53,7 +53,7 @@ impl DbPresence {
             None
         } else {
             self.last_active_at
-                .map(|last_active_at| now.0.saturating_sub(last_active_at as u64))
+                .map(|last_active_at| now.0.saturating_sub(last_active_at.0))
         };
 
         let DbProfile {
@@ -101,13 +101,12 @@ pub fn set_presence(presence: NewDbPresence) -> AppResult<()> {
     let query = user_presences::table
         .filter(user_presences::user_id.eq(&presence.user_id))
         .filter(user_presences::room_id.eq(&presence.room_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
-        diesel::update(query).set(&presence).execute(&mut db::connect()?)?;
-    } else {
-        diesel::insert_into(user_presences::table)
-            .values(&presence)
-            .execute(&mut db::connect()?)?;
-    }
+    diesel::insert_into(user_presences::table)
+        .values(&presence)
+        .on_conflict((user_presences::user_id, crate::schema::user_presences::room_id))
+        .do_update()
+        .set(&presence)
+        .execute(&mut db::connect()?)?;
     Ok(())
 }
 
