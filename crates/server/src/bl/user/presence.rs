@@ -75,21 +75,23 @@ impl DbPresence {
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, state: &PresenceState) -> AppResult<()> {
-    set_presence(NewDbPresence {
-        user_id: user_id.to_owned(),
-        stream_id: None,
-        state: Some(state.to_string()),
-        status_msg: None,
-        last_active_at: Some(UnixMillis::now()),
-        last_federation_update_at: None,
-        last_user_sync_at: None,
-        currently_active: None, //TODO,
-    }, false)
+    set_presence(
+        NewDbPresence {
+            user_id: user_id.to_owned(),
+            stream_id: None,
+            state: Some(state.to_string()),
+            status_msg: None,
+            last_active_at: Some(UnixMillis::now()),
+            last_federation_update_at: None,
+            last_user_sync_at: None,
+            currently_active: None, //TODO,
+        },
+        false,
+    )
 }
 pub fn get_last_presence(user_id: &UserId) -> AppResult<Option<DbPresence>> {
     user_presences::table
         .filter(user_presences::user_id.eq(user_id))
-        // .filter(user_presences::room_id.is_null())
         .first::<DbPresence>(&mut *db::connect()?)
         .optional()
         .map_err(Into::into)
@@ -99,19 +101,20 @@ pub fn get_last_presence(user_id: &UserId) -> AppResult<Option<DbPresence>> {
 pub fn set_presence(presence: NewDbPresence, force: bool) -> AppResult<()> {
     if force {
         diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-        .execute(&mut db::connect()?)?;
-    diesel::insert_into(user_presences::table)
-        .values(&presence)
-        .on_conflict(user_presences::user_id)
-        .do_update()
-        .set(&presence)
-        .execute(&mut db::connect()?)?;
+            .execute(&mut db::connect()?)?;
+        diesel::insert_into(user_presences::table)
+            .values(&presence)
+            .on_conflict(user_presences::user_id)
+            .do_update()
+            .set(&presence)
+            .execute(&mut db::connect()?)?;
     } else {
         let old_state = user_presences::table
             .filter(user_presences::user_id.eq(&presence.user_id))
             .select(user_presences::state)
             .first::<Option<String>>(&mut db::connect()?)
-            .optional()?.flatten();
+            .optional()?
+            .flatten();
         if old_state != presence.state && presence.state.is_some() {
             diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
                 .execute(&mut db::connect()?)?;
@@ -141,7 +144,8 @@ pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<Own
     let presences = user_presences::table
         .filter(user_presences::occur_sn.ge(since_sn))
         .load::<DbPresence>(&mut *db::connect()?)?;
-    presences.into_iter()
+    presences
+        .into_iter()
         .map(|presence| {
             presence
                 .to_presence_event(&presence.user_id, Some(room_id))

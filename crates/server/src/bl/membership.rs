@@ -996,5 +996,6 @@ pub fn forget_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     )
     .set(room_users::forgotten.eq(true))
     .execute(&mut db::connect()?)?;
+
     Ok(())
 }

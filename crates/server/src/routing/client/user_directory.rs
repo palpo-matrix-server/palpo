@@ -39,8 +39,6 @@ fn search(
         .select(user_profiles::user_id)
         .load::<OwnedUserId>(&mut *db::connect()?)?;
 
-    println!("XXXXXXXXXXXXXXXXX  SearchUsersReqBody {:#?}", body);
-
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
             user_id: user_id.clone(),

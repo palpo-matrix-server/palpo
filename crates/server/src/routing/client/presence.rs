@@ -86,16 +86,19 @@ async fn set_status(
     //         currently_active: None, //TODO
     //     })?;
     // }
-    crate::user::set_presence(NewDbPresence {
-        user_id: authed.user_id().to_owned(),
-        stream_id: None,
-        state: Some(body.presence.to_string()),
-        status_msg: body.status_msg.clone(),
-        last_active_at: None,
-        last_federation_update_at: None,
-        last_user_sync_at: None,
-        currently_active: None, //TODO,
-    }, true)?;
+    crate::user::set_presence(
+        NewDbPresence {
+            user_id: authed.user_id().to_owned(),
+            stream_id: None,
+            state: Some(body.presence.to_string()),
+            status_msg: body.status_msg.clone(),
+            last_active_at: None,
+            last_federation_update_at: None,
+            last_user_sync_at: None,
+            currently_active: None, //TODO,
+        },
+        true,
+    )?;
 
     empty_ok()
 }

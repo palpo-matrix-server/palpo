@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::bl::outgoing_requests::state;
 use crate::core::RawJson;
 
 use crate::core::{
@@ -34,12 +35,6 @@ pub async fn send_state_event_for_key(
                         .filter(|room| room == room_id) // Make sure it's the right room
                         .is_none()
                 {
-                    println!(
-                        "xxxxxxxxxxxxxalias: {:?}   {}   {}",
-                        alias,
-                        alias.server_name(),
-                        crate::server_name()
-                    );
                     return Err(MatrixError::bad_alias(
                         "You are only allowed to send canonical_alias events when it's aliases already exists",
                     )

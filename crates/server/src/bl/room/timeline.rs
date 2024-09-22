@@ -528,24 +528,28 @@ pub fn create_hash_and_sign_event(
 
     let event_id = OwnedEventId::try_from(format!("$will_fill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
+    let new_db_event = NewDbEvent {
+        id: event_id.to_owned(),
+        event_type: event_type.to_string(),
+        room_id: room_id.to_owned(),
+        unrecognized_keys: None,
+        depth: depth as i64,
+        origin_server_ts: Some(UnixMillis::now()),
+        received_at: None,
+        sender_id: Some(sender_id.to_owned()),
+        contains_url: content_value.get("url").is_some(),
+        worker_id: None,
+        state_key: state_key.clone(),
+        processed: false,
+        outlier: false,
+        soft_failed: false,
+        rejection_reason: None,
+    };
     let event_sn = diesel::insert_into(events::table)
-        .values(NewDbEvent {
-            id: event_id.to_owned(),
-            event_type: event_type.to_string(),
-            room_id: room_id.to_owned(),
-            unrecognized_keys: None,
-            depth: depth as i64,
-            origin_server_ts: Some(UnixMillis::now()),
-            received_at: None,
-            sender_id: Some(sender_id.to_owned()),
-            contains_url: content_value.get("url").is_some(),
-            worker_id: None,
-            state_key: state_key.clone(),
-            processed: false,
-            outlier: false,
-            soft_failed: false,
-            rejection_reason: None,
-        })
+        .values(&new_db_event)
+        .on_conflict(events::id)
+        .do_update()
+        .set(&new_db_event)
         .returning(events::sn)
         .get_result::<i64>(&mut *db::connect()?)?;
 
@@ -573,7 +577,7 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
-    let auth_check = crate::core::state::event_auth::auth_check(
+    let auth_checked = crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
         None::<PduEvent>, // TODO: third_party_invite
@@ -584,7 +588,7 @@ pub fn create_hash_and_sign_event(
         AppError::internal("Auth check failed.")
     })?;
 
-    if !auth_check {
+    if !auth_checked {
         return Err(MatrixError::forbidden("Event is not authorized.").into());
     }
 

@@ -20,16 +20,15 @@ use crate::{AppError, AppResult};
 
 #[tracing::instrument(skip_all)]
 pub async fn sync_events(
-    sender_user_id: OwnedUserId,
+    sender_id: OwnedUserId,
     sender_device_id: OwnedDeviceId,
     args: SyncEventsReqArgsV3,
     tx: Sender<Option<AppResult<SyncEventsResBodyV3>>>,
 ) -> AppResult<()> {
-    println!("PPPPPPPPPPPPPIng {}  {:?}", sender_user_id, args.set_presence);
-    crate::user::ping_presence(&sender_user_id, &args.set_presence)?;
+    crate::user::ping_presence(&sender_id, &args.set_presence)?;
 
     // Setup watchers, so if there's no response, we can wait for them
-    let watcher = crate::watch(&sender_user_id, &sender_device_id);
+    let watcher = crate::watch(&sender_id, &sender_device_id);
 
     let curr_sn = crate::curr_sn()?;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
@@ -40,7 +39,7 @@ pub async fn sync_events(
         None => FilterDefinition::default(),
         Some(FilterV3::FilterDefinition(filter)) => filter,
         Some(FilterV3::FilterId(filter_id)) => {
-            crate::user::get_filter(&sender_user_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
+            crate::user::get_filter(&sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
         }
     };
 
@@ -60,14 +59,14 @@ pub async fn sync_events(
     let mut device_list_left = HashSet::new();
 
     // Look for device list updates of this account
-    if crate::user::get_keys_changed_users(&sender_user_id, since_sn, None)? {
-        device_list_updates.insert(sender_user_id.clone());
+    if crate::user::get_keys_changed_users(&sender_id, since_sn, None)? {
+        device_list_updates.insert(sender_id.clone());
     }
 
-    let all_joined_rooms = crate::user::joined_rooms(&sender_user_id, 0)?;
+    let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
     for room_id in all_joined_rooms {
         let joined_room = match load_joined_room(
-            &sender_user_id,
+            &sender_id,
             &sender_device_id,
             &room_id,
             since_sn,
@@ -116,12 +115,12 @@ pub async fn sync_events(
     }
 
     let mut left_rooms = BTreeMap::new();
-    let all_left_rooms = crate::room::rooms_left(&sender_user_id)?;
+    let all_left_rooms = crate::room::rooms_left(&sender_id)?;
 
     for room_id in all_left_rooms.keys() {
         let mut left_state_events = Vec::new();
 
-        let left_count = crate::room::get_left_count(&room_id, &sender_user_id)?;
+        let left_count = crate::room::get_left_count(&room_id, &sender_id)?;
 
         // // Left before last sync
         // if Some(since_sn) >= left_count {
@@ -141,7 +140,7 @@ pub async fn sync_events(
         let Some(left_event_id) = crate::room::state::get_state_event_id(
             curr_frame_id,
             &StateEventType::RoomMember,
-            sender_user_id.as_str(),
+            sender_id.as_str(),
         )?
         else {
             error!("Left room but no left state event");
@@ -155,11 +154,14 @@ pub async fn sync_events(
                 continue;
             }
         };
+        if left_frame_id < since_frame_id.unwrap_or_default() || since_frame_id.is_none() {
+            continue;
+        }
 
         let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
 
         let leave_state_key_id =
-            crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_user_id.as_str())?;
+            crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
 
         left_state_ids.insert(leave_state_key_id, left_event_id);
 
@@ -173,7 +175,7 @@ pub async fn sync_events(
                 || event_type != StateEventType::RoomMember
                 || full_state
                 // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
-                || sender_user_id == state_key
+                || sender_id == state_key
                 {
                     let pdu = match crate::room::timeline::get_pdu(&event_id)? {
                         Some(pdu) => pdu,
@@ -204,7 +206,7 @@ pub async fn sync_events(
         );
     }
 
-    let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_user_id, since_sn)?
+    let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
         .into_iter()
         .map(|(room_id, invite_state_events)| {
             (
@@ -220,7 +222,7 @@ pub async fn sync_events(
 
     for user_id in left_encrypted_users {
         let dont_share_encrypted_room =
-            crate::room::user::get_shared_rooms(vec![sender_user_id.clone(), user_id.clone()])?
+            crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
                 .into_iter()
                 .filter_map(|other_room_id| {
                     Some(
@@ -238,7 +240,7 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    crate::user::remove_to_device_events(&sender_user_id, &sender_device_id, since_sn - 1)?;
+    crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
     let response = SyncEventsResBodyV3 {
         next_batch: next_batch.to_string(),
@@ -255,7 +257,7 @@ pub async fn sync_events(
                 .collect(),
         },
         account_data: GlobalAccountDataV3 {
-            events: crate::user::get_data_changes(None, &sender_user_id, since_sn)?
+            events: crate::user::get_data_changes(None, &sender_id, since_sn)?
                 .into_iter()
                 .filter_map(|(_, v)| {
                     serde_json::from_str(v.inner().get())
@@ -268,9 +270,9 @@ pub async fn sync_events(
             changed: device_list_updates.into_iter().collect(),
             left: device_list_left.into_iter().collect(),
         },
-        device_one_time_keys_count: { crate::user::count_one_time_keys(&sender_user_id, &sender_device_id)? },
+        device_one_time_keys_count: { crate::user::count_one_time_keys(&sender_id, &sender_device_id)? },
         to_device: ToDeviceV3 {
-            events: crate::user::get_to_device_events(&sender_user_id, &sender_device_id)?,
+            events: crate::user::get_to_device_events(&sender_id, &sender_device_id)?,
         },
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
@@ -301,7 +303,7 @@ pub async fn sync_events(
             match crate::SYNC_RECEIVERS
                 .write()
                 .unwrap()
-                .entry((sender_user_id.clone(), sender_device_id.clone()))
+                .entry((sender_id.clone(), sender_device_id.clone()))
             {
                 Entry::Occupied(o) => {
                     // Only remove if the device didn't start a different /sync already
@@ -320,7 +322,7 @@ pub async fn sync_events(
 
 #[tracing::instrument(skip_all)]
 async fn load_joined_room(
-    sender_user_id: &UserId,
+    sender_id: &UserId,
     sender_device_id: &DeviceId,
     room_id: &RoomId,
     since_sn: i64,
@@ -335,17 +337,17 @@ async fn load_joined_room(
         return Ok(JoinedRoomV3::default());
     }
 
-    let (timeline_pdus, limited) = load_timeline(sender_user_id, room_id, since_sn, 10)?;
+    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 10)?;
 
     let send_notification_counts =
-        !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_user_id, &room_id)? > since_sn;
+        !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? > since_sn;
 
     let mut timeline_users = HashSet::new();
     for (_, event) in &timeline_pdus {
         timeline_users.insert(event.sender.as_str().to_owned());
     }
 
-    crate::room::lazy_loading::lazy_load_confirm_delivery(sender_user_id, &sender_device_id, &room_id, since_sn)?;
+    crate::room::lazy_loading::lazy_load_confirm_delivery(sender_id, &sender_device_id, &room_id, since_sn)?;
 
     // Database queries:
     let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id)? {
@@ -375,7 +377,7 @@ async fn load_joined_room(
                 // Go through all PDUs and for each member event, check if the user is still joined or
                 // invited until we have 5 or we reach the end
 
-                for hero in crate::room::timeline::all_pdus(sender_user_id, &room_id)?
+                for hero in crate::room::timeline::all_pdus(sender_id, &room_id)?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.kind == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {
@@ -404,7 +406,7 @@ async fn load_joined_room(
                     // Filter for possible heroes
                     .flatten()
                 {
-                    if heroes.contains(&hero) || hero == sender_user_id.as_str() {
+                    if heroes.contains(&hero) || hero == sender_id.as_str() {
                         continue;
                     }
 
@@ -415,7 +417,7 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        let joined_since_last_sync = crate::room::user::joined_sn(sender_user_id, room_id)? >= since_sn;
+        let joined_since_last_sync = crate::room::user::joined_sn(sender_id, room_id)? >= since_sn;
 
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
@@ -444,7 +446,7 @@ async fn load_joined_room(
                     || full_state
                     || timeline_users.contains(&state_key)
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
-                    || *sender_user_id == state_key
+                    || *sender_id == state_key
                 {
                     let pdu = match crate::room::timeline::get_pdu(&id)? {
                         Some(pdu) => pdu,
@@ -463,12 +465,12 @@ async fn load_joined_room(
             }
 
             // Reset lazy loading because this is an initial sync
-            crate::room::lazy_loading::lazy_load_reset(sender_user_id, sender_device_id, &room_id)?;
+            crate::room::lazy_loading::lazy_load_reset(sender_id, sender_device_id, &room_id)?;
 
             // The state_events above should contain all timeline_users, let's mark them as lazy
             // loaded.
             crate::room::lazy_loading::lazy_load_mark_sent(
-                sender_user_id,
+                sender_id,
                 sender_device_id,
                 &room_id,
                 lazy_loaded,
@@ -515,7 +517,7 @@ async fn load_joined_room(
                 }
 
                 if !crate::room::lazy_loading::lazy_load_was_sent_before(
-                    sender_user_id,
+                    sender_id,
                     sender_device_id,
                     &room_id,
                     &event.sender,
@@ -531,7 +533,7 @@ async fn load_joined_room(
             }
 
             crate::room::lazy_loading::lazy_load_mark_sent(
-                sender_user_id,
+                sender_id,
                 sender_device_id,
                 &room_id,
                 lazy_loaded,
@@ -560,7 +562,7 @@ async fn load_joined_room(
                         let user_id = UserId::parse(state_key.clone())
                             .map_err(|_| AppError::public("Invalid UserId in member PDU."))?;
 
-                        if user_id == sender_user_id {
+                        if user_id == sender_id {
                             continue;
                         }
 
@@ -571,7 +573,7 @@ async fn load_joined_room(
                         match new_membership {
                             MembershipState::Join => {
                                 // A new user joined an encrypted room
-                                if !share_encrypted_room(sender_user_id, &user_id, &room_id)? {
+                                if !share_encrypted_room(sender_id, &user_id, &room_id)? {
                                     device_list_updates.insert(user_id);
                                 }
                             }
@@ -592,11 +594,11 @@ async fn load_joined_room(
                         .into_iter()
                         .filter(|user_id| {
                             // Don't send key updates from the sender to the sender
-                            sender_user_id != user_id
+                            sender_id != user_id
                         })
                         .filter(|user_id| {
                             // Only send keys if the sender doesn't share an encrypted room with the target already
-                            !share_encrypted_room(sender_user_id, user_id, &room_id).unwrap_or(false)
+                            !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
                         }),
                 );
             }
@@ -624,7 +626,7 @@ async fn load_joined_room(
 
     let notification_count = if send_notification_counts {
         Some(
-            crate::room::user::notification_count(sender_user_id, &room_id)?
+            crate::room::user::notification_count(sender_id, &room_id)?
                 .try_into()
                 .expect("notification count can't go that high"),
         )
@@ -634,7 +636,7 @@ async fn load_joined_room(
 
     let highlight_count = if send_notification_counts {
         Some(
-            crate::room::user::highlight_count(sender_user_id, &room_id)?
+            crate::room::user::highlight_count(sender_id, &room_id)?
                 .try_into()
                 .expect("highlight count can't go that high"),
         )
@@ -660,7 +662,7 @@ async fn load_joined_room(
         );
     }
 
-    let account_events = crate::user::get_data_changes(Some(&room_id), sender_user_id, since_sn)?
+    let account_events = crate::user::get_data_changes(Some(&room_id), sender_id, since_sn)?
         .into_iter()
         .filter_map(|(_, v)| match serde_json::from_str(v.inner().get()) {
             Ok(event) => Some(event),

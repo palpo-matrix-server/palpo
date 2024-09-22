@@ -107,16 +107,19 @@ async fn send_message(
                 }
 
                 for update in &presence.push {
-                    crate::user::set_presence(NewDbPresence {
-                        user_id: update.user_id.clone(),
-                        stream_id: None,
-                        state: Some(update.presence.to_string()),
-                        status_msg: update.status_msg.clone(),
-                        last_active_at: Some(UnixMillis(update.last_active_ago)),
-                        last_federation_update_at: None,
-                        last_user_sync_at: None,
-                        currently_active: Some(update.currently_active),
-                    }, true)?;
+                    crate::user::set_presence(
+                        NewDbPresence {
+                            user_id: update.user_id.clone(),
+                            stream_id: None,
+                            state: Some(update.presence.to_string()),
+                            status_msg: update.status_msg.clone(),
+                            last_active_at: Some(UnixMillis(update.last_active_ago)),
+                            last_federation_update_at: None,
+                            last_user_sync_at: None,
+                            currently_active: Some(update.currently_active),
+                        },
+                        true,
+                    )?;
                     // for room_id in crate::user::joined_rooms(&update.user_id, 0)? {
                     //     crate::user::set_presence(NewDbPresence {
                     //         user_id: update.user_id.clone(),

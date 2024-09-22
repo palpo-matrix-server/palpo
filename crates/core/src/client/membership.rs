@@ -432,44 +432,45 @@ impl JoinRoomResBody {
 
 /// Request type for the `get_member_events` endpoint.
 
-// pub struct Rxequest {
-//     /// The room to get the member events for.
-//     #[salvo(parameter(parameter_in = Path))]
-//     pub room_id: OwnedRoomId,
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct MembersReqArgs {
+    /// The room to get the member events for.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
 
-//     /// The point in time (pagination token) to return members for in the room.
-//     ///
-//     /// This token can be obtained from a prev_batch token returned for each room by the sync
-//     /// API.
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub at: Option<String>,
+    /// The point in time (pagination token) to return members for in the room.
+    ///
+    /// This token can be obtained from a prev_batch token returned for each room by the sync
+    /// API.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[salvo(parameter(parameter_in = Query))]
+    pub at: Option<String>,
 
-//     /// The kind of memberships to filter for.
-//     ///
-//     /// Defaults to no filtering if unspecified. When specified alongside not_membership, the
-//     /// two parameters create an 'or' condition: either the membership is the same as
-//     /// membership or is not the same as not_membership.
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub membership: Option<MembershipEventFilter>,
+    /// The kind of memberships to filter for.
+    ///
+    /// Defaults to no filtering if unspecified. When specified alongside not_membership, the
+    /// two parameters create an 'or' condition: either the membership is the same as
+    /// membership or is not the same as not_membership.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[salvo(parameter(parameter_in = Query))]
+    pub membership: Option<MembershipEventFilter>,
 
-//     /// The kind of memberships to *exclude* from the results.
-//     ///
-//     /// Defaults to no filtering if unspecified.
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub not_membership: Option<MembershipEventFilter>,
-// }
+    /// The kind of memberships to *exclude* from the results.
+    ///
+    /// Defaults to no filtering if unspecified.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[salvo(parameter(parameter_in = Query))]
+    pub not_membership: Option<MembershipEventFilter>,
+}
 
 /// Response type for the `get_member_events` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct MemberEventsResBody {
+pub struct MembersResBody {
     /// A list of member events.
     #[salvo(schema(value_type = Vec<Object>))]
     pub chunk: Vec<RawJson<RoomMemberEvent>>,
 }
-impl MemberEventsResBody {
+impl MembersResBody {
     /// Creates a new `Response` with the given member event chunk.
     pub fn new(chunk: Vec<RawJson<RoomMemberEvent>>) -> Self {
         Self { chunk }
@@ -478,7 +479,7 @@ impl MemberEventsResBody {
 
 /// The kind of membership events to filter for.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum MembershipEventFilter {

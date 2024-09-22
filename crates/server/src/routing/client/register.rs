@@ -149,16 +149,19 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
         .execute(&mut db::connect()?)?;
 
     // Presence update
-    crate::user::set_presence(NewDbPresence {
-        user_id: user_id.clone(),
-        stream_id: None,
-        state: Some(PresenceState::Online.to_string()),
-        status_msg: None,
-        last_active_at: Some(UnixMillis::now()),
-        last_federation_update_at: None,
-        last_user_sync_at: None,
-        currently_active: None
-    }, true)?;
+    crate::user::set_presence(
+        NewDbPresence {
+            user_id: user_id.clone(),
+            stream_id: None,
+            state: Some(PresenceState::Online.to_string()),
+            status_msg: None,
+            last_active_at: Some(UnixMillis::now()),
+            last_federation_update_at: None,
+            last_user_sync_at: None,
+            currently_active: None,
+        },
+        true,
+    )?;
 
     // Initial account data
     crate::user::set_data(

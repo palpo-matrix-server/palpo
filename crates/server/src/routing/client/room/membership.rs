@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use palpo_core::client::membership::{InvitationRecipient, UnbanUserReqBody};
+use palpo_core::client::membership::{InvitationRecipient, MembersReqArgs, UnbanUserReqBody};
 use palpo_core::client::membership::{JoinRoomReqBody, JoinRoomResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -9,7 +9,7 @@ use serde_json::value::to_raw_value;
 
 use crate::core::client::membership::{
     BanUserReqBody, InviteUserReqBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody,
-    MemberEventsResBody, RoomMember,
+    MembersResBody, RoomMember,
 };
 use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -28,26 +28,48 @@ use crate::{
 ///
 /// - Only works if the user is currently joined
 #[endpoint]
-pub(super) fn members(
-    _aa: AuthArgs,
-    room_id: PathParam<OwnedRoomId>,
-    depot: &mut Depot,
-) -> JsonResult<MemberEventsResBody> {
+pub(super) fn members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
 
-    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
+    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let frame_id = state::get_room_frame_id(&room_id)?.ok_or_else(|| AppError::public("state delta not found"))?;
+    let frame_id = if let Some(at_sn) = &args.at {
+        if let Ok(at_sn) = at_sn.parse::<i64>() {
+            room_state_points::table
+                .filter(room_state_points::room_id.eq(&args.room_id))
+                .filter(room_state_points::event_sn.le(at_sn))
+                .filter(room_state_points::frame_id.is_not_null())
+                .order(room_state_points::frame_id.desc())
+                .select(room_state_points::frame_id)
+                .first::<Option<i64>>(&mut db::connect()?)?
+                .unwrap_or_default()
+        } else {
+            return Err(MatrixError::bad_state("Invalid at parameter.").into());
+        }
+    } else {
+        state::get_room_frame_id(&args.room_id)?.ok_or_else(|| AppError::public("state delta not found"))?
+    };
+    let mut states: Vec<_> = state::get_full_state(frame_id)?
+        .into_iter()
+        .filter(|(key, _)| key.0 == StateEventType::RoomMember)
+        .map(|(_, pdu)| pdu.to_member_event())
+        .collect();
+    if let Some(membership) = &args.membership {
+        states = states
+            .into_iter()
+            .filter(|event| membership.to_string() == event.deserialize().unwrap().membership().to_string())
+            .collect();
+    }
+    if let Some(not_membership) = &args.not_membership {
+        states = states
+            .into_iter()
+            .filter(|event| not_membership.to_string() != event.deserialize().unwrap().membership().to_string())
+            .collect();
+    }
 
-    json_ok(MemberEventsResBody {
-        chunk: state::get_full_state(frame_id)?
-            .iter()
-            .filter(|(key, _)| key.0 == StateEventType::RoomMember)
-            .map(|(_, pdu)| pdu.to_member_event())
-            .collect(),
-    })
+    json_ok(MembersResBody { chunk: states })
 }
 
 // #POST /_matrix/client/r0/rooms/{room_id}/joined_members

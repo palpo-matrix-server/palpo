@@ -160,29 +160,24 @@ pub(super) async fn send_message(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
-    println!("XXXXXXXXXXXXsend message 0");
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
         return Err(MatrixError::forbidden("Encryption has been disabled").into());
     }
-    println!("XXXXXXXXXXXXsend message 1");
 
     let payload = req.payload().await?;
     // Ensure it's valid JSON.
     let _content: JsonValue =
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
 
-    println!("XXXXXXXXXXXXsend message 2");
     // Check if this is a new transaction id
     if let Some(event_id) =
         crate::transaction_id::existing_txn_id(authed.user_id(), Some(authed.device_id()), &args.txn_id)?
     {
-        println!("XXXXXXXXXXXXsend message 3");
         return json_ok(SendMessageResBody::new(event_id));
     }
-    println!("XXXXXXXXXXXXsend message 4");
 
     let mut unsigned = BTreeMap::new();
     unsigned.insert("transaction_id".to_owned(), args.txn_id.to_string().into());

@@ -330,9 +330,11 @@ async fn sync_events_v3(
             rx
         }
         hash_map::Entry::Occupied(mut o) => {
-            if o.get().0 != args.since {
+            if o.get().0 != args.since || args.since.is_none() {
                 let (tx, rx) = tokio::sync::watch::channel(None);
-                o.insert((args.since.clone(), rx.clone()));
+                if args.since.is_some() {
+                    o.insert((args.since.clone(), rx.clone()));
+                }
                 tokio::spawn({
                     let user_id = authed.user_id().to_owned();
                     let device_id = authed.device_id().to_owned();
@@ -356,15 +358,13 @@ async fn sync_events_v3(
         }
     }
 
+
     let result = match rx
         .borrow()
         .as_ref()
         .expect("When sync channel changes it's always set to some")
     {
-        Ok(response) => {
-            println!("SSSSSSSSSSSSSSSync {:#?}", response);
-            json_ok(response.clone())
-        }
+        Ok(response) => json_ok(response.clone()),
         Err(error) => Err(AppError::public(error.to_string())),
     };
     result

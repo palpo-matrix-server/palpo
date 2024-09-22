@@ -1,15 +1,18 @@
 use diesel::prelude::*;
 use rand::seq::SliceRandom;
+use serde_json::value::to_raw_value;
 
 use crate::core::client::room::AliasResBody;
+use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
+use crate::core::events::TimelineEventType;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::room::StateEventType;
 use crate::schema::*;
 use crate::user::DbUser;
-use crate::{db, diesel_exists, AppError, AppResult, MatrixError};
+use crate::{db, diesel_exists, AppError, AppResult, MatrixError, PduBuilder};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_aliases, primary_key(alias_id))]
@@ -97,12 +100,32 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
 }
 
 #[tracing::instrument]
-pub fn remove_alias(alias: &RoomAliasId, user: &DbUser) -> AppResult<()> {
-    if !diesel_exists!(room_aliases::table.find(&alias), &mut *db::connect()?)? {
+pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
+    let Some(room_id) = crate::room::resolve_local_alias(alias_id)? else {
         return Err(MatrixError::not_found("Alias not found.").into());
-    }
-    if user_can_remove_alias(alias, user)? {
-        diesel::delete(room_aliases::table.find(&alias)).execute(&mut *db::connect()?)?;
+    };
+    if user_can_remove_alias(alias_id, user)? {
+        let state_alias = crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?;
+        diesel::delete(room_aliases::table.find(&alias_id)).execute(&mut *db::connect()?)?;
+
+        if state_alias.is_some() {
+            crate::room::timeline::build_and_append_pdu(
+                PduBuilder {
+                    event_type: TimelineEventType::RoomCanonicalAlias,
+                    content: to_raw_value(&RoomCanonicalAliasEventContent {
+                        alias: None,
+                        alt_aliases: vec![], // TODO
+                    })
+                    .expect("We checked that alias earlier, it must be fine"),
+                    unsigned: None,
+                    state_key: Some("".to_owned()),
+                    redacts: None,
+                },
+                &user.id,
+                &room_id,
+            ).ok();
+        }
+
         Ok(())
     } else {
         Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())

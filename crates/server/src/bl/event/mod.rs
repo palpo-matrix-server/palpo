@@ -44,7 +44,7 @@ pub struct DbEvent {
     pub rejection_reason: Option<String>,
     // pub topological_ordering: i64,
 }
-#[derive(Insertable, Deserialize, Debug, Clone)]
+#[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {
     pub id: OwnedEventId,
