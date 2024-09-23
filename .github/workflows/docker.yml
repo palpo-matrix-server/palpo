@@ -44,7 +44,7 @@ jobs:
       - name: Build main palpo image
         if: github.ref_name == 'main'
         id: docker_build_palpo
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./build/docker/Dockerfile.palpo
