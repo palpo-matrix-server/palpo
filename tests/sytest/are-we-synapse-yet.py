@@ -6,7 +6,7 @@ import re
 import sys
 
 # Usage: $ ./are-we-synapse-yet.py [-v] results.tap
-# This script scans a results.tap file from Dendrite's CI process and spits out
+# This script scans a results.tap file from Palpo's CI process and spits out
 # a rating of how close we are to Synapse parity, based purely on SyTests.
 # The main complexity is grouping tests sensibly into features like 'Registration'
 # and 'Federation'. Then it just checks the ones which are passing and calculates

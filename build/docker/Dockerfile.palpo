@@ -1,0 +1,30 @@
+FROM rust:bookworm as builder
+
+WORKDIR /work
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libclang-dev postgresql postgresql-contrib
+
+COPY Cargo.toml Cargo.toml
+COPY Cargo.lock Cargo.lock
+COPY crates crates
+RUN cargo build --release
+
+FROM debian:bookworm
+COPY --from=builder /app/target/release/palpo /var/palpo
+COPY crates/server/palpo-example.toml palpo.toml
+
+RUN apt-get update \
+    && apt-get install -y \
+    debian-keyring \
+    debian-archive-keyring \
+    apt-transport-https \
+    ca-certificates
+
+ENV PALPO_CONFIG=/var/palpo/palpo.toml
+ENV RUST_LOG="palpo=warn,palpo_core=error,salvo=error"
+ENV LOG_FORMAT=json
+
+EXPOSE 8008 8448
+
+CMD /var/palpo/palpo
