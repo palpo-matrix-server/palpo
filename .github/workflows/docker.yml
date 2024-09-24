@@ -51,4 +51,4 @@ jobs:
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: |
-            ${{ env.DOCKER_NAMESPACE }}/palpo:${{ github.ref_name }}
+            ${{ env.DOCKER_NAMESPACE }}/vocechat-matrix-palpo:${{ github.ref_name }}
