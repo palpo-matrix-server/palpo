@@ -3,7 +3,7 @@ FROM rust:bookworm as builder
 WORKDIR /work
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libclang-dev postgresql postgresql-contrib
+    libclang-dev libpq-dev cmake postgresql postgresql-contrib
 
 COPY Cargo.toml Cargo.toml
 COPY crates crates
@@ -18,7 +18,7 @@ COPY crates/server/palpo-example.toml /var/palpo/palpo.toml
 
 RUN apt-get update && apt-get install -y debian-keyring \
     debian-archive-keyring apt-transport-https ca-certificates \
-    postgresql postgresql-contrib &&\
+    libpq-dev &&\
     mkdir -p /var/palpo/media /var/palpo/certs /var/palpo/acme
 
 ENV PALPO_CONFIG=/var/palpo/palpo.toml
