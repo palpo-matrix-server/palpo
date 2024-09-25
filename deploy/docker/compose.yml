@@ -20,11 +20,16 @@ services:
       - internal
 
   palpo:
-    hostname: monolith
     image: privoce/vocechat-matrix-palpo:main
     ports:
       - 8008:8008
       - 8448:8448
+    environment:
+      PALPO_CONFIG: '/var/palpo/palpo.toml'
+    # PALPO_SERVER_NAME: 'matrix.palpo.im'
+    # PALPO_DB_URL: 'postgres://palpo:changeme@postgres:5432/palpo'
+    # PALPO_WELL_KNOWN_SERVER: matrix.palpo.im
+    # PALPO_WELL_KNOWN_CLIENT: https://matrix.palpo.im
     volumes:
       - ./config:/etc/palpo
       # The following volumes use docker volumes, change this
