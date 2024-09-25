@@ -17,7 +17,8 @@ COPY --from=builder /work/target/release/palpo /var/palpo/palpo
 COPY crates/server/palpo-example.toml /var/palpo/palpo.toml
 
 RUN apt-get update && apt-get install -y debian-keyring \
-    debian-archive-keyring apt-transport-https ca-certificates && \
+    debian-archive-keyring apt-transport-https ca-certificates \
+    postgresql postgresql-contrib &&\
     mkdir -p /var/palpo/media /var/palpo/certs /var/palpo/acme
 
 ENV PALPO_CONFIG=/var/palpo/palpo.toml
