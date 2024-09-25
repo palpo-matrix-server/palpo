@@ -1,5 +1,3 @@
-version: "3.4"
-
 services:
   postgres:
     hostname: postgres
@@ -8,7 +6,7 @@ services:
     volumes:
       # This will create a docker volume to persist the database files in.
       # If you prefer those files to be outside of docker, you'll need to change this.
-      - data/pgsql:/var/lib/postgresql/data
+      - ./data/pgsql:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: changeme
       POSTGRES_USER: palpo
@@ -23,7 +21,7 @@ services:
 
   palpo:
     hostname: monolith
-    image: privoce/vocechat-matrix-palpo:latest
+    image: privoce/vocechat-matrix-palpo:main
     ports:
       - 8008:8008
       - 8448:8448
@@ -31,7 +29,7 @@ services:
       - ./config:/etc/palpo
       # The following volumes use docker volumes, change this
       # if you prefer to have those files outside of docker.
-      - data/media:/var/palpo/media
+      - ./data/media:/var/palpo/media
     depends_on:
       postgres:
         condition: service_healthy

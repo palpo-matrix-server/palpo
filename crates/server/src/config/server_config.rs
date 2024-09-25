@@ -90,6 +90,10 @@ pub struct ServerConfig {
     pub keypair: String,
 
     pub well_known: WellKnownConfig,
+
+    pub auto_acme: Option<String>,
+    #[serde(default = "false_value")]
+    pub enable_tls: bool,
 }
 
 fn default_space_path() -> String {

@@ -8,3 +8,4 @@ Cargo.lock
 /tests/_output*.*
 sytestout
 __test_output_*
+/deploy/docker/data

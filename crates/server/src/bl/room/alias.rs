@@ -123,7 +123,8 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
                 },
                 &user.id,
                 &room_id,
-            ).ok();
+            )
+            .ok();
         }
 
         Ok(())

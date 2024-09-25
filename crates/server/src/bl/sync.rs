@@ -137,11 +137,8 @@ pub async fn sync_events(
         let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id)? else {
             continue;
         };
-        let Some(left_event_id) = crate::room::state::get_state_event_id(
-            curr_frame_id,
-            &StateEventType::RoomMember,
-            sender_id.as_str(),
-        )?
+        let Some(left_event_id) =
+            crate::room::state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
         else {
             error!("Left room but no left state event");
             continue;
@@ -160,8 +157,7 @@ pub async fn sync_events(
 
         let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
 
-        let leave_state_key_id =
-            crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
+        let leave_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
 
         left_state_ids.insert(leave_state_key_id, left_event_id);
 
@@ -221,17 +217,16 @@ pub async fn sync_events(
         .collect();
 
     for user_id in left_encrypted_users {
-        let dont_share_encrypted_room =
-            crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
-                .into_iter()
-                .filter_map(|other_room_id| {
-                    Some(
-                        crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "")
-                            .ok()?
-                            .is_some(),
-                    )
-                })
-                .all(|encrypted| !encrypted);
+        let dont_share_encrypted_room = crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
+            .into_iter()
+            .filter_map(|other_room_id| {
+                Some(
+                    crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                        .ok()?
+                        .is_some(),
+                )
+            })
+            .all(|encrypted| !encrypted);
         // If the user doesn't share an encrypted room with the target anymore, we need to tell
         // them
         if dont_share_encrypted_room {

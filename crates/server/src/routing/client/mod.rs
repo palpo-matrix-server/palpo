@@ -358,7 +358,6 @@ async fn sync_events_v3(
         }
     }
 
-
     let result = match rx
         .borrow()
         .as_ref()

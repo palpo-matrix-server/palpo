@@ -13,12 +13,9 @@ FROM debian:bookworm
 COPY --from=builder /work/target/release/palpo /var/palpo
 COPY crates/server/palpo-example.toml palpo.toml
 
-RUN apt-get update \
-    && apt-get install -y \
-    debian-keyring \
-    debian-archive-keyring \
-    apt-transport-https \
-    ca-certificates
+RUN apt-get update && apt-get install -y debian-keyring \
+    debian-archive-keyring apt-transport-https ca-certificates && \
+    mkdir -p /var/palpo/media /var/palpo/certs /var/palpo/acme
 
 ENV PALPO_CONFIG=/var/palpo/palpo.toml
 ENV RUST_LOG="palpo=warn,palpo_core=error,salvo=error"

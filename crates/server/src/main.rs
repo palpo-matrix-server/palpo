@@ -54,6 +54,7 @@ use salvo::logging::Logger;
 
 pub use diesel::result::Error as DieselError;
 use salvo::catcher::Catcher;
+use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::prelude::*;
 use scheduled_thread_pool::ScheduledThreadPool;
 use tracing_futures::Instrument;
@@ -131,12 +132,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::db::DIESEL_POOL
         .set(db_primary)
         .expect("diesel pool should be set");
+    let enable_tls = conf.enable_tls;
     crate::config::CONFIG.set(conf).expect("config should be set");
     crate::db::migrate();
 
     crate::sending::start_handler();
-    let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
-    salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
 
     let router = routing::router();
     let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
@@ -168,9 +168,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         )
         .hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
-    Server::new(acceptor)
-        .serve(service)
-        .instrument(tracing::info_span!("server.serve"))
-        .await;
+
+    salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
+    if enable_tls {
+        let config = RustlsConfig::new(
+            Keycert::new()
+                .cert_from_path("./certs/cert.pem")?
+                .key_from_path("./certs/key.pem")?,
+        );
+        let acceptor = TcpListener::new(crate::listen_addr()).rustls(config).bind().await;
+        Server::new(acceptor)
+            .serve(service)
+            .instrument(tracing::info_span!("server.serve"))
+            .await
+    } else {
+        let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
+        Server::new(acceptor)
+            .serve(service)
+            .instrument(tracing::info_span!("server.serve"))
+            .await
+    };
     Ok(())
 }
