@@ -527,13 +527,11 @@ fn valid_membership_change(
             if prev_event_is_create_event && no_more_prev_events {
                 let is_creator = if room_version.use_room_create_sender {
                     let creator = create_room.sender();
-
                     creator == sender && creator == target_user
                 } else {
                     let creator = from_json_str::<RoomCreateEventContent>(create_room.content().get())?
                         .creator
                         .ok_or_else(|| serde_json::Error::missing_field("creator"))?;
-
                     creator == sender && creator == target_user
                 };
 
