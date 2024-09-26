@@ -413,6 +413,14 @@ pub fn add_one_time_key(
             key_data: serde_json::to_value(one_time_key).unwrap(),
             created_at: UnixMillis::now(),
         })
+        .on_conflict((
+            e2e_one_time_keys::user_id,
+            e2e_one_time_keys::device_id,
+            e2e_one_time_keys::algorithm,
+            e2e_one_time_keys::key_id,
+        ))
+        .do_update()
+        .set(e2e_one_time_keys::key_data.eq(serde_json::to_value(one_time_key).unwrap()))
         .execute(&mut db::connect()?)?;
     Ok(())
 }

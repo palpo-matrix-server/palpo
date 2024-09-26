@@ -31,10 +31,10 @@ services:
     # PALPO_WELL_KNOWN_SERVER: matrix.palpo.im
     # PALPO_WELL_KNOWN_CLIENT: https://matrix.palpo.im
     volumes:
-      - ./config:/etc/palpo
+      - $PWD/palpo.toml:/var/palpo/palpo.toml
       # The following volumes use docker volumes, change this
       # if you prefer to have those files outside of docker.
-      - ./data/media:/var/palpo/media
+      - $PWD/data/media:/var/palpo/media
     depends_on:
       postgres:
         condition: service_healthy

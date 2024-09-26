@@ -14,7 +14,7 @@ FROM debian:bookworm
 WORKDIR /var/palpo
 
 COPY --from=builder /work/target/release/palpo /var/palpo/palpo
-COPY crates/server/palpo-example.toml /var/palpo/palpo.toml
+# COPY crates/server/palpo-example.toml /var/palpo/palpo.toml
 
 RUN apt-get update && apt-get install -y debian-keyring \
     debian-archive-keyring apt-transport-https ca-certificates \

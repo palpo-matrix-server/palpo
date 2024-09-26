@@ -51,7 +51,7 @@ keypair = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAE
 #log = "warn,state=warn,rocket=off,_=off,sled=off"
 
 [db]
-url = "postgres://postgres:changeme@postgres:5432/palpo"
+url = "postgres://palpo:changeme@postgres:5432/palpo"
 pool_size = 1
 
 [well_known]
