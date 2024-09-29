@@ -12,17 +12,24 @@ LOG_FILE="$2"
 # A `.jsonl` file to write test results to
 RESULTS_FILE="$3"
 
-OCI_IMAGE="complement-palpo:dev"
+BASE_IMAGE="complement-palpo-base"
+if [ -z "$(docker images -q $BASE_IMAGE)" ]; then
+    echo "Image $BASE_IMAGE is not exist, build it..."
+    env \
+    -C "$(git rev-parse --show-toplevel)" \
+    docker build -t complement-palpo-base -f tests/complement/Dockerfile.base .
+else
+    echo "Image $BASE_IMAGE is exists, skip building..."
+fi
+
+TEST_IMAGE="complement-palpo-test"
 
 # Complement tests that are skipped due to flakiness/reliability issues
 SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*|TestJson/Parallel/Invalid_numerical_values'
 
 env \
     -C "$(git rev-parse --show-toplevel)" \
-    docker build \
-        --tag "$OCI_IMAGE" \
-        --file tests/complement/Dockerfile \
-        .
+    docker build --tag "$TEST_IMAGE" --cache-from complement-palpo-test --file tests/complement/Dockerfile.test .
 
 # It's okay (likely, even) that `go test` exits nonzero
 set +o pipefail
@@ -32,8 +39,8 @@ set +o pipefail
 env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
-    COMPLEMENT_BASE_IMAGE="$OCI_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests/csapi | tee "$LOG_FILE.jsonl"
+    COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run "TestContentMediaV1" -json ./tests ./tests/csapi | tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

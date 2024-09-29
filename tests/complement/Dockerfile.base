@@ -1,0 +1,12 @@
+FROM rust:latest
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libclang-dev postgresql postgresql-contrib debian-keyring \
+    debian-archive-keyring apt-transport-https \
+    curl \
+    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/testing/gpg.key' \
+    | gpg --dearmor -o /usr/share/keyrings/caddy-testing-archive-keyring.gpg \
+    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/testing/debian.deb.txt' \
+    | tee /etc/apt/sources.list.d/caddy-testing.list \
+    && apt-get update \
+    && apt-get install -y caddy systemctl inetutils-ping

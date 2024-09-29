@@ -1,10 +1,9 @@
 use rand::prelude::*;
 use std::{cmp::Ordering, fmt, str::FromStr};
 
-use crate::core::{
-    canonical_json::{try_from_json_map, CanonicalJsonError, CanonicalJsonObject},
-    OwnedUserId,
-};
+use crate::core::canonical_json::{try_from_json_map, CanonicalJsonError, CanonicalJsonObject};
+use crate::core::signatures::Ed25519KeyPair;
+use crate::core::OwnedUserId;
 use crate::{AppError, AppResult};
 
 pub mod fs;
@@ -23,13 +22,9 @@ pub fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
     Some(number.to_be_bytes().to_vec())
 }
 
-pub fn generate_keypair() -> Vec<u8> {
-    let mut value = random_string(8).as_bytes().to_vec();
-    value.push(0xff);
-    value.extend_from_slice(
-        &palpo_core::signatures::Ed25519KeyPair::generate().expect("Ed25519KeyPair generation always works (?)"),
-    );
-    value
+pub fn generate_keypair() -> Ed25519KeyPair {
+    let key_content = Ed25519KeyPair::generate().unwrap();
+    Ed25519KeyPair::from_der(&key_content, random_string(8)).unwrap_or_else(|_| panic!("{:?}", &key_content))
 }
 
 /// Parses the bytes into an u64.

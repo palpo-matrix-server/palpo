@@ -8,7 +8,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // use crate::http_headers::CROSS_ORIGIN_RESOURCE_POLICY;
-use crate::{OwnedMxcUri, OwnedServerName};
+use crate::sending::{SendRequest, SendResult};
+use crate::{OwnedMxcUri, OwnedServerName, ServerName};
 
 /// `/v3/` ([spec])
 ///
@@ -23,6 +24,13 @@ use crate::{OwnedMxcUri, OwnedServerName};
 //         1.1 => "/_matrix/media/v3/download/:server_name/:media_id",
 //     }
 // };
+
+pub fn content_request(args: ContentReqArgs) -> SendResult<SendRequest> {
+    Ok(crate::sending::get(args.server_name.build_url(&format!(
+        "media/v3/download/{}/{}?allow_remote={}&allow_redirect={}",
+        args.server_name, args.media_id, args.allow_remote, args.allow_redirect
+    ))?))
+}
 
 /// Request type for the `get_media_content` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
@@ -194,7 +202,7 @@ pub struct CreateContentReqArgs {
     pub filename: Option<String>,
 
     /// The content type of the file being uploaded.
-    #[serde(rename="content-type")]
+    #[serde(rename = "content-type")]
     #[salvo(parameter(parameter_in = Header))]
     pub content_type: Option<String>,
 

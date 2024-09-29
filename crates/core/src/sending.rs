@@ -70,6 +70,9 @@ impl SendRequest {
     method!(post, POST);
     method!(delete, DELETE);
 
+    pub fn into_inner(self) -> reqwest::Request {
+        self.inner
+    }
     pub fn stuff(mut self, modifier: impl SendModifier) -> Result<Self, SendError> {
         modifier.modify(&mut self)?;
         Ok(self)

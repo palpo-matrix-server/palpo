@@ -5,7 +5,7 @@
 debug.log
 Cargo.lock
 .idea
-/tests/_output*.*
+/tests/_.*
 sytestout
-__test_output_*
+__test_*
 /deploy/docker/data

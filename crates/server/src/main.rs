@@ -149,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .into_router("/scalar"),
         )
         .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
-    let catcher = Catcher::default().hoop(hoops::catch_parse_error);
+    let catcher = Catcher::default().hoop(hoops::catch_status_error);
     let service = Service::new(router)
         .catcher(catcher)
         .hoop(hoops::default_accept_json)

@@ -45,7 +45,9 @@ allow_local_presence = true
 # servers.)
 trusted_servers = ["matrix.org"]
 
-keypair = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAELqWFgDu6Ap47RzE1ehee2XCvGamRzu6u0N66lsgOJ0="
+# [keypair]
+# document = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAELqWFgDu6Ap47RzE1ehee2XCvGamRzu6u0N66lsgOJ0="
+# version = "1"
 
 #max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 #log = "warn,state=warn,rocket=off,_=off,sled=off"

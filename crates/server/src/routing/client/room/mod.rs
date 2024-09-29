@@ -74,7 +74,7 @@ pub fn authed_router() -> Router {
                     .push(Router::with_path("ban").post(membership::ban_user))
                     .push(Router::with_path("unban").post(membership::unban_user))
                     .push(Router::with_path("kick").post(membership::kick_user))
-                    .push(Router::with_path("members").get(membership::members))
+                    .push(Router::with_path("members").get(membership::get_members))
                     .push(Router::with_path("joined_members").get(membership::joined_members))
                     .push(
                         Router::with_path("state").get(state::get_state).push(

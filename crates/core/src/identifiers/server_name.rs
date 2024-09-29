@@ -54,7 +54,7 @@ impl ServerName {
     }
 
     pub fn build_url(&self, path: &str) -> Result<Url, url::ParseError> {
-        let port = self.port().map(|p| format!("{:?}", p)).unwrap_or_default();
+        let port = self.port().map(|p| format!(":{}", p)).unwrap_or_default();
         let url = if path.starts_with('/') {
             format!("https://{}{port}/_matrix{path}", self.host())
         } else {

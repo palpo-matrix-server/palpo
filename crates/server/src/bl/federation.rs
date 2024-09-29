@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
+use chrono::format;
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 use salvo::http::headers::{CacheControl, Header};
@@ -153,6 +154,8 @@ pub(crate) async fn send_request(
     //         warn!("Failed to find destination {}: {}", actual_destination_str, e);
     //         StatusError::bad_request().brief("invalid destination").into()
     //     })?;
+    request.url_mut().set_host(Some(&*actual_destination.hostname())).unwrap();
+    request.url_mut().set_port(actual_destination.port()).unwrap();
 
     let mut request_map = serde_json::Map::new();
 
@@ -164,16 +167,16 @@ pub(crate) async fn send_request(
         );
     };
 
-    // request_map.insert("method".to_owned(), T::METADATA.method.to_string().into());
-    // request_map.insert(
-    //     "uri".to_owned(),
-    //     request
-    //         .url()
-    //         .path_and_query()
-    //         .expect("all requests have a path")
-    //         .to_string()
-    //         .into(),
-    // );
+    request_map.insert("method".to_owned(), request.method().to_string().into());
+    request_map.insert(
+        "uri".to_owned(),
+        format!(
+            "{}{}",
+            request.url().path(),
+            request.url().query().map(|q| format!("?{q}")).unwrap_or_default()
+        )
+        .into(),
+    );
     request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
@@ -202,7 +205,7 @@ pub(crate) async fn send_request(
                     s.0,
                     s.1
                 ))
-                .expect("When Ruma signs JSON, it produces a valid base64 signature. All other types are valid ServerNames or OwnedKeyId")
+                .expect("When signs JSON, it produces a valid base64 signature. All other types are valid ServerNames or OwnedKeyId")
                 .encode(),
             );
         }
@@ -212,7 +215,6 @@ pub(crate) async fn send_request(
 
     debug!("Sending request to {destination} at {url}");
     let response = crate::federation_client().execute(request).await;
-    debug!("Received response from {destination} at {url}");
 
     match response {
         Ok(response) => {

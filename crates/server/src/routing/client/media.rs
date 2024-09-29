@@ -20,14 +20,18 @@ use crate::media::*;
 use crate::schema::*;
 use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
-pub fn authed_router() -> Router {
+pub fn public_router() -> Router {
     Router::with_path("media")
         .oapi_tag("client")
         .push(
             Router::with_path("download/<server_name>/<media_id>")
                 .get(get_content)
-                .push(Router::with_path("<filename>").get(get_content_with_filename)),
-        )
+                .push(Router::with_path("<filename>").get(get_content_with_filename)))
+        
+}
+pub fn authed_router() -> Router {
+    Router::with_path("media")
+        .oapi_tag("client")
         .push(
             Router::with_hoop(hoops::limit_rate)
                 .push(Router::with_path("config").get(get_config))
@@ -36,38 +40,40 @@ pub fn authed_router() -> Router {
         )
 }
 
+
 // #GET /_matrix/media/r0/download/{server_name}/{media_id}
 /// Load media from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? else {
-        return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
-    };
-    let content_type = metadata
-        .content_type
-        .as_deref()
-        .map(|c| Mime::from_str(c).ok())
-        .flatten()
-        .unwrap_or_else(|| {
-            metadata
-                .upload_name
-                .as_ref()
-                .map(|name| mime_infer::infer_mime_type(name))
-                .unwrap_or(mime::APPLICATION_OCTET_STREAM)
-        });
-    let path = crate::media_path(&args.server_name, &args.media_id);
-    if Path::new(&path).exists() {
-        NamedFile::builder(path)
-            .content_type(content_type)
-            .send(req.headers(), res)
-            .await;
+    if let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? {
+        let content_type = metadata
+            .content_type
+            .as_deref()
+            .map(|c| Mime::from_str(c).ok())
+            .flatten()
+            .unwrap_or_else(|| {
+                metadata
+                    .upload_name
+                    .as_ref()
+                    .map(|name| mime_infer::infer_mime_type(name))
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+            });
 
-        Ok(())
+        let path = crate::media_path(&args.server_name, &args.media_id);
+        if Path::new(&path).exists() {
+            NamedFile::builder(path)
+                .content_type(content_type)
+                .send(req.headers(), res)
+                .await;
+            Ok(())
+        } else {
+            Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
+        }
     } else if &*args.server_name != crate::server_name() && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
+        get_remote_content(&mxc, &args.server_name, &args.media_id,  res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
@@ -384,7 +390,6 @@ pub async fn get_thumbnail(
     }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)
     {
         // Using saved thumbnail
-
         let mut file = NamedFile::builder(&thumb_path)
             .content_type(
                 Mime::from_str(&content_type)

@@ -140,10 +140,10 @@ impl StateEventsResBody {
 //     pub timestamp: Option<UnixMillis>,
 // }
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct SendStateEventReqBody (
+pub struct SendStateEventReqBody(
     /// The event content to send.
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub RawJson<AnyStateEventContent>
+    pub RawJson<AnyStateEventContent>,
 );
 
 /// Response type for the `send_state_event` endpoint.

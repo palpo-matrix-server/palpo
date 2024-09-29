@@ -12,6 +12,11 @@ pub struct WellKnownConfig {
     pub client: Option<String>,
     pub server: Option<OwnedServerName>,
 }
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct KeypairConfig {
+    pub document: String,
+    pub version: String,
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
@@ -87,8 +92,9 @@ pub struct ServerConfig {
     #[serde(default = "default_space_path")]
     pub space_path: String,
 
-    pub keypair: String,
+    pub keypair: Option<KeypairConfig>,
 
+    #[serde(default)]
     pub well_known: WellKnownConfig,
 
     pub auto_acme: Option<String>,

@@ -59,6 +59,7 @@ pub fn router() -> Router {
                     .push(room::public_router())
                     .push(directory::public_router())
                     .push(login::public_router())
+                    .push(media::public_router())
                     .push(
                         Router::with_path("publicRooms")
                             .get(room::get_public_rooms)

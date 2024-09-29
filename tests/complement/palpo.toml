@@ -19,7 +19,7 @@
 
 # YOU NEED TO EDIT THIS
 server_name = "your.server.name"
-listen_addr = "127.0.0.1:8008"
+listen_addr = "0.0.0.0:8008"
 
 # The local address that the server listens on.
 #listen_addr = "127.0.0.1:8008"
@@ -55,10 +55,3 @@ trusted_servers = ["matrix.org"]
 [db]
 url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
 pool_size = 1
-
-[well_known]
-# Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access palpo with the host
-# server_name and port 443 by default.
-# If you want to override these defaults, uncomment and edit the following lines accordingly:
-server = "your.server.name:8008"
-client = "http://your.server.name:8008"

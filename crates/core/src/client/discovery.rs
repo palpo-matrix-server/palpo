@@ -19,10 +19,7 @@ use crate::{serde::StringEnum, MatrixVersion, PrivOwnedStr, RoomVersionId};
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Capabilities {
     /// Capability to indicate if the user can change their password.
-    #[serde(
-        rename = "m.change_password",
-        default,
-    )]
+    #[serde(rename = "m.change_password", default)]
     pub change_password: ChangePasswordCapability,
 
     /// The room versions the server supports.

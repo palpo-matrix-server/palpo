@@ -1,9 +1,7 @@
 //! Public and private key pairs.
 
-use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Formatter, Result as FmtResult},
-};
+use std::collections::BTreeMap;
+use std::fmt::{Debug, Formatter, Result as FmtResult};
 
 use ed25519_dalek::{pkcs8::ALGORITHM_OID, SecretKey, Signer, SigningKey, PUBLIC_KEY_LENGTH};
 use pkcs8::{der::zeroize::Zeroizing, DecodePrivateKey, EncodePrivateKey, ObjectIdentifier, PrivateKeyInfo};

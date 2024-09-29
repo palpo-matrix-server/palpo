@@ -95,7 +95,7 @@ pub async fn default_accept_json(req: &mut Request, depot: &mut Depot, res: &mut
 }
 
 #[handler]
-pub async fn catch_parse_error(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
+pub async fn catch_status_error(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
     if let ResBody::Error(e) = &res.body {
         if let Some(e) = &e.cause {
             if let Some(e) = e.downcast_ref::<ParseError>() {
@@ -106,6 +106,10 @@ pub async fn catch_parse_error(req: &mut Request, depot: &mut Depot, res: &mut R
                 matrix.write(req, depot, res).await;
                 ctrl.skip_rest();
             }
+        } else {
+            let matrix = MatrixError::unknown(e.brief.clone());
+            matrix.write(req, depot, res).await;
+            ctrl.skip_rest();
         }
     }
 }

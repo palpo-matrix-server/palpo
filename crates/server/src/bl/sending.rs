@@ -593,10 +593,10 @@ async fn handle_events(
 }
 
 #[tracing::instrument(skip(request))]
-pub async fn send_federation_request<T>(destination: &ServerName, request: reqwest::Request) -> AppResult<T>
-where
-    T: for<'de> Deserialize<'de> + Debug,
-{
+pub async fn send_federation_request(
+    destination: &ServerName,
+    request: reqwest::Request,
+) -> AppResult<reqwest::Response> {
     debug!("Waiting for permit");
     let max_request = max_request();
     let permit = max_request.acquire().await;
@@ -613,7 +613,7 @@ where
     })?;
     drop(permit);
 
-    response?.json().await.map_err(Into::into)
+    response.map_err(Into::into)
 }
 
 // #[tracing::instrument(skip(registration, request))]

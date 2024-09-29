@@ -148,7 +148,7 @@ impl<'de> Deserialize<'de> for PusherPostData {
         D: de::Deserializer<'de>,
     {
         let json = Box::<RawJsonValue>::deserialize(deserializer)?;
-       
+
         let PusherPostDataDeHelper { append } = from_raw_json_value(&json)?;
         let pusher = from_raw_json_value(&json)?;
 

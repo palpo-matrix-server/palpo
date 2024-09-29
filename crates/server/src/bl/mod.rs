@@ -224,8 +224,12 @@ pub fn curr_sn() -> AppResult<i64> {
 pub fn keypair() -> &'static Ed25519KeyPair {
     static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
     KEYPAIR.get_or_init(|| {
-        let bytes = base64::decode(&crate::config().keypair).expect("server keypair is invalid base64 string");
-        Ed25519KeyPair::from_der(&bytes, "".into()).expect("invalid server Ed25519KeyPair")
+        if let Some(keypair) = &crate::config().keypair {
+            let bytes = base64::decode(&keypair.document).expect("server keypair is invalid base64 string");
+            Ed25519KeyPair::from_der(&bytes, keypair.version.clone()).expect("invalid server Ed25519KeyPair")
+        } else {
+            crate::utils::generate_keypair()
+        }
     })
 }
 
