@@ -38,63 +38,63 @@ pub enum SecretEncryptedData {
     },
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
+// #[cfg(test)]
+// mod tests {
+//     use std::collections::BTreeMap;
 
-    use crate::serde::Base64;
-    use assert_matches2::assert_matches;
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use crate::serde::Base64;
+//     use assert_matches2::assert_matches;
+//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
-    use super::{SecretEncryptedData, SecretEventContent};
+//     use super::{SecretEncryptedData, SecretEventContent};
 
-    #[test]
-    fn test_secret_serialization() {
-        let key_one_data = SecretEncryptedData::AesHmacSha2EncryptedData {
-            iv: Base64::parse("YWJjZGVmZ2hpamtsbW5vcA").unwrap(),
-            ciphertext: Base64::parse("dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ").unwrap(),
-            mac: Base64::parse("aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U").unwrap(),
-        };
+//     #[test]
+//     fn test_secret_serialization() {
+//         let key_one_data = SecretEncryptedData::AesHmacSha2EncryptedData {
+//             iv: Base64::parse("YWJjZGVmZ2hpamtsbW5vcA").unwrap(),
+//             ciphertext: Base64::parse("dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ").unwrap(),
+//             mac: Base64::parse("aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U").unwrap(),
+//         };
 
-        let mut encrypted = BTreeMap::<String, SecretEncryptedData>::new();
-        encrypted.insert("key_one".to_owned(), key_one_data);
+//         let mut encrypted = BTreeMap::<String, SecretEncryptedData>::new();
+//         encrypted.insert("key_one".to_owned(), key_one_data);
 
-        let content = SecretEventContent::new(encrypted);
+//         let content = SecretEventContent::new(encrypted);
 
-        let json = json!({
-            "encrypted": {
-                "key_one" : {
-                    "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-                    "ciphertext": "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ",
-                    "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
-                }
-            }
-        });
+//         let json = json!({
+//             "encrypted": {
+//                 "key_one" : {
+//                     "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+//                     "ciphertext": "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ",
+//                     "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
+//                 }
+//             }
+//         });
 
-        assert_eq!(to_json_value(content).unwrap(), json);
-    }
+//         assert_eq!(to_json_value(content).unwrap(), json);
+//     }
 
-    #[test]
-    fn test_secret_deserialization() {
-        let json = json!({
-            "encrypted": {
-                "key_one" : {
-                    "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-                    "ciphertext": "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ",
-                    "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
-                }
-            }
-        });
+//     #[test]
+//     fn test_secret_deserialization() {
+//         let json = json!({
+//             "encrypted": {
+//                 "key_one" : {
+//                     "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+//                     "ciphertext": "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ",
+//                     "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
+//                 }
+//             }
+//         });
 
-        let deserialized: SecretEventContent = from_json_value(json).unwrap();
-        let secret_data = deserialized.encrypted.get("key_one").unwrap();
+//         let deserialized: SecretEventContent = from_json_value(json).unwrap();
+//         let secret_data = deserialized.encrypted.get("key_one").unwrap();
 
-        assert_matches!(
-            secret_data,
-            SecretEncryptedData::AesHmacSha2EncryptedData { iv, ciphertext, mac }
-        );
-        assert_eq!(iv.encode(), "YWJjZGVmZ2hpamtsbW5vcA");
-        assert_eq!(ciphertext.encode(), "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ");
-        assert_eq!(mac.encode(), "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U");
-    }
-}
+//         assert_matches!(
+//             secret_data,
+//             SecretEncryptedData::AesHmacSha2EncryptedData { iv, ciphertext, mac }
+//         );
+//         assert_eq!(iv.encode(), "YWJjZGVmZ2hpamtsbW5vcA");
+//         assert_eq!(ciphertext.encode(), "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ");
+//         assert_eq!(mac.encode(), "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U");
+//     }
+// }

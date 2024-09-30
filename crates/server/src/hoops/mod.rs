@@ -7,7 +7,7 @@ use crate::core::MatrixError;
 use crate::AppResult;
 
 mod auth;
-pub use auth::{auth_by_access_token, auth_by_signatures};
+pub use auth::*;
 
 #[handler]
 pub async fn ensure_accept(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {

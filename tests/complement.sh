@@ -29,7 +29,7 @@ SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomF
 
 env \
     -C "$(git rev-parse --show-toplevel)" \
-    docker build --tag "$TEST_IMAGE" --cache-from complement-palpo-test --file tests/complement/Dockerfile.test .
+    docker build --tag "$TEST_IMAGE" --file tests/complement/Dockerfile.test .
 
 # It's okay (likely, even) that `go test` exits nonzero
 set +o pipefail

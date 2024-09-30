@@ -58,8 +58,8 @@ pub fn router() -> Router {
                     .push(session::public_router())
                     .push(room::public_router())
                     .push(directory::public_router())
+                    .push(media::self_auth_router())
                     .push(login::public_router())
-                    .push(media::public_router())
                     .push(
                         Router::with_path("publicRooms")
                             .get(room::get_public_rooms)
@@ -71,7 +71,6 @@ pub fn router() -> Router {
                     .hoop(hoops::auth_by_access_token)
                     .push(account::authed_router())
                     .push(register::authed_router())
-                    .push(media::authed_router())
                     .push(session::authed_router())
                     .push(device::authed_router())
                     .push(room_key::authed_router())

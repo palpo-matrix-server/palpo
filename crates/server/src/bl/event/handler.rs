@@ -13,10 +13,12 @@ use crate::core::directory::QueryCriteria;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::events::StateEventType;
+use crate::core::federation::directory::{remote_server_keys_request, RemoteServerKeysReqArgs};
 use crate::core::federation::directory::{
     RemoteServerKeysBatchReqBody, RemoteServerKeysBatchResBody, ServerKeysResBody,
 };
 use crate::core::federation::event::RoomStateIdsResBody;
+use crate::core::federation::key::get_server_key_request;
 use crate::core::federation::membership::SendJoinEventResBodyV2;
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
@@ -1233,10 +1235,8 @@ pub(crate) async fn fetch_join_signing_keys(
         info!("Received new result");
         if let Ok((Ok(get_keys_response), origin)) = result {
             info!("Result is from {origin}");
-            if let Ok(key) = get_keys_response.server_key.deserialize() {
-                let result = crate::add_signing_key_from_origin(&origin, key)?;
-                pub_key_map.write().await.insert(origin.to_string(), result);
-            }
+            let result = crate::add_signing_key_from_origin(&origin, get_keys_response.0.clone())?;
+            pub_key_map.write().await.insert(origin.to_string(), result);
         }
         info!("Done handling result");
     }
@@ -1276,6 +1276,7 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
 /// fetch them from the server and save to our DB.
 #[tracing::instrument(skip_all)]
 pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>) -> AppResult<SigningKeys> {
+    println!("FFFFFFFFFFFEtch sigiu keys");
     let contains_all_ids = |keys: &SigningKeys| {
         signature_ids.iter().all(|id| {
             keys.verify_keys
@@ -1371,13 +1372,17 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         .expect("Should be valid until year 500,000,000");
 
     debug!("Fetching signing keys for {} over federation", origin);
+    println!("Fetching signing keys for {} over federation", origin);
 
-    if let Some(mut server_key) = crate::sending::get(origin.build_url(&format!("/key/v2/server"))?)
-        .send::<ServerKeysResBody>()
+    let key_request = get_server_key_request(origin)?.into_inner();
+    if let Some(mut server_key) = crate::sending::send_federation_request(origin, key_request)
+        .await?
+        .json::<ServerKeysResBody>()
         .await
         .ok()
-        .and_then(|resp| resp.server_key.deserialize().ok())
+        .map(|resp| resp.0)
     {
+        println!("GGGGGGGGSERVER KYS  {:#?}", server_key);
         // Keys should only be valid for a maximum of seven days
         server_key.valid_until_ts = server_key.valid_until_ts.min(
             UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
@@ -1408,20 +1413,22 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         }
     }
 
+    println!("VLLLLLLLLLLLLLLLLLLL");
     for server in &conf.trusted_servers {
         debug!("Asking {} for {}'s signing key", server, origin);
-        let url = format!(
-            "/key/v2/query/{origin}?minimum_valid_until_ts={}",
-            UnixMillis::from_system_time(
+        let keys_request = remote_server_keys_request(server, RemoteServerKeysReqArgs {
+            server_name: origin.to_owned(),
+            minimum_valid_until_ts: UnixMillis::from_system_time(
                 SystemTime::now()
                     .checked_add(Duration::from_secs(3600))
                     .expect("SystemTime to large"),
             )
-            .map(|u| u.get())
-            .unwrap_or(0)
-        );
-        if let Some(server_keys) = crate::sending::get(server.build_url(&url)?)
-            .send::<RemoteServerKeysBatchResBody>()
+            .unwrap_or(UnixMillis::now()),
+        })?
+        .into_inner();
+        if let Some(server_keys) = crate::sending::send_federation_request(server, keys_request)
+            .await?
+            .json::<RemoteServerKeysBatchResBody>()
             .await
             .ok()
             .map(|resp| {
@@ -1431,6 +1438,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
                     .collect::<Vec<_>>()
             })
         {
+            println!("GGGGGGGGGGGGot signing keys: {:?}", server_keys);
             trace!("Got signing keys: {:?}", server_keys);
             for mut k in server_keys {
                 if k.valid_until_ts

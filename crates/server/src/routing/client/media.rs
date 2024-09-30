@@ -20,34 +20,33 @@ use crate::media::*;
 use crate::schema::*;
 use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
-pub fn public_router() -> Router {
+pub fn self_auth_router() -> Router {
     Router::with_path("media")
         .oapi_tag("client")
         .push(
             Router::with_path("download/<server_name>/<media_id>")
+                .hoop(hoops::auth_by_access_token_or_signatures)
                 .get(get_content)
-                .push(Router::with_path("<filename>").get(get_content_with_filename)))
-        
-}
-pub fn authed_router() -> Router {
-    Router::with_path("media")
-        .oapi_tag("client")
+                .push(Router::with_path("<filename>").get(get_content_with_filename)),
+        )
         .push(
             Router::with_hoop(hoops::limit_rate)
+                .hoop(hoops::auth_by_access_token)
                 .push(Router::with_path("config").get(get_config))
                 .push(Router::with_path("preview_url").get(preview_url))
                 .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(get_thumbnail)),
         )
 }
 
-
 // #GET /_matrix/media/r0/download/{server_name}/{media_id}
 /// Load media from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-pub async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
+pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
+    println!("VVVVVVVVVVVVVVVVVVVVV=1");
     if let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? {
+        println!("VVVVVVVVVVVVVVVVVVVVV=2");
         let content_type = metadata
             .content_type
             .as_deref()
@@ -72,8 +71,9 @@ pub async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request,
             Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
         }
     } else if &*args.server_name != crate::server_name() && args.allow_remote {
+        println!("VVVVVVVVVVVVVVVVVVVVV=3");
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id,  res).await
+        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
@@ -85,11 +85,11 @@ pub async fn get_content(_aa: AuthArgs, args: ContentReqArgs, req: &mut Request,
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content_with_filename(
-    _aa: AuthArgs,
     args: ContentWithFileNameReqArgs,
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
+    println!("VVVVVVVVVVVnnn=1");
     let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? else {
         return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
     };

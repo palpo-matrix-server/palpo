@@ -26,10 +26,11 @@ use crate::{OwnedMxcUri, OwnedServerName, ServerName};
 // };
 
 pub fn content_request(args: ContentReqArgs) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(args.server_name.build_url(&format!(
-        "media/v3/download/{}/{}?allow_remote={}&allow_redirect={}",
+    let url = args.server_name.build_url(&format!(
+        "client/v1/media/download/{}/{}?allow_remote={}&allow_redirect={}",
         args.server_name, args.media_id, args.allow_remote, args.allow_redirect
-    ))?))
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Request type for the `get_media_content` endpoint.

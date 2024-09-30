@@ -7,7 +7,8 @@ pub use thumbnail::*;
 
 use std::time::Duration;
 
-use salvo::Response; use salvo::http::{HeaderValue, header};
+use salvo::http::{header, HeaderValue};
+use salvo::Response;
 
 use crate::core::client::media::ContentReqArgs;
 use crate::core::ServerName;
@@ -41,13 +42,14 @@ pub async fn get_remote_content(
         allow_remote: false,
         timeout_ms: Duration::from_secs(20),
         allow_redirect: false,
-    })?.into_inner();
+    })?
+    .into_inner();
     // content_req.headers_mut().insert(
     //     header::AUTHORIZATION,
     //     HeaderValue::from_str(&format!("Bearer {}", "")).unwrap(),
     // );
-    let content_response: reqwest::Response =
-        crate::sending::send_federation_request(server_name, content_req).await?;
+    println!("VVVVVVVVVVVVVVVVVVVVV=9");
+    let content_response: reqwest::Response = crate::sending::send_federation_request(server_name, content_req).await?;
 
     res.status_code(content_response.status());
     res.stream(content_response.bytes_stream());

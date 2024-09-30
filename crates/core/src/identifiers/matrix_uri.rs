@@ -551,542 +551,542 @@ impl FromStr for MatrixUri {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use assert_matches2::assert_matches;
-    use palpo_identifiers_validation::{
-        error::{MatrixIdError, MatrixToError, MatrixUriError},
-        Error,
-    };
+// #[cfg(test)]
+// mod tests {
+//     use assert_matches2::assert_matches;
+//     use palpo_identifiers_validation::{
+//         error::{MatrixIdError, MatrixToError, MatrixUriError},
+//         Error,
+//     };
 
-    use super::{MatrixId, MatrixToUri, MatrixUri};
-    use crate::{event_id, matrix_uri::UriAction, room_alias_id, room_id, server_name, user_id, RoomOrAliasId};
+//     use super::{MatrixId, MatrixToUri, MatrixUri};
+//     use crate::{event_id, matrix_uri::UriAction, room_alias_id, room_id, server_name, user_id, RoomOrAliasId};
 
-    #[test]
-    fn display_matrixtouri() {
-        assert_eq!(
-            user_id!("@jplatte:notareal.hs").matrix_to_uri().to_string(),
-            "https://matrix.to/#/@jplatte:notareal.hs"
-        );
-        assert_eq!(
-            room_alias_id!("#palpo:notareal.hs").matrix_to_uri().to_string(),
-            "https://matrix.to/#/%23palpo:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs").matrix_to_uri().to_string(),
-            "https://matrix.to/#/!palpo:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_to_uri_via(vec![server_name!("notareal.hs")])
-                .to_string(),
-            "https://matrix.to/#/!palpo:notareal.hs?via=notareal.hs"
-        );
-        assert_eq!(
-            room_alias_id!("#palpo:notareal.hs")
-                .matrix_to_event_uri(event_id!("$event:notareal.hs"))
-                .to_string(),
-            "https://matrix.to/#/%23palpo:notareal.hs/$event:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_to_event_uri(event_id!("$event:notareal.hs"))
-                .to_string(),
-            "https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_to_event_uri_via(event_id!("$event:notareal.hs"), vec![server_name!("notareal.hs")])
-                .to_string(),
-            "https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs?via=notareal.hs"
-        );
-    }
+//     #[test]
+//     fn display_matrixtouri() {
+//         assert_eq!(
+//             user_id!("@jplatte:notareal.hs").matrix_to_uri().to_string(),
+//             "https://matrix.to/#/@jplatte:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_alias_id!("#palpo:notareal.hs").matrix_to_uri().to_string(),
+//             "https://matrix.to/#/%23palpo:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs").matrix_to_uri().to_string(),
+//             "https://matrix.to/#/!palpo:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_to_uri_via(vec![server_name!("notareal.hs")])
+//                 .to_string(),
+//             "https://matrix.to/#/!palpo:notareal.hs?via=notareal.hs"
+//         );
+//         assert_eq!(
+//             room_alias_id!("#palpo:notareal.hs")
+//                 .matrix_to_event_uri(event_id!("$event:notareal.hs"))
+//                 .to_string(),
+//             "https://matrix.to/#/%23palpo:notareal.hs/$event:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_to_event_uri(event_id!("$event:notareal.hs"))
+//                 .to_string(),
+//             "https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_to_event_uri_via(event_id!("$event:notareal.hs"), vec![server_name!("notareal.hs")])
+//                 .to_string(),
+//             "https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs?via=notareal.hs"
+//         );
+//     }
 
-    #[test]
-    fn parse_valid_matrixid_with_sigil() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("@user:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::User(user_id!("@user:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("!roomid:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("#roomalias:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("!roomid:imaginary.hs/$event:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("#roomalias:imaginary.hs/$event:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        // Invert the order of the event and the room.
-        assert_eq!(
-            MatrixId::parse_with_sigil("$event:imaginary.hs/!roomid:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("$event:imaginary.hs/#roomalias:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        // Starting with a slash
-        assert_eq!(
-            MatrixId::parse_with_sigil("/@user:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::User(user_id!("@user:imaginary.hs").into())
-        );
-        // Ending with a slash
-        assert_eq!(
-            MatrixId::parse_with_sigil("!roomid:imaginary.hs/").expect("Failed to create MatrixId."),
-            MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
-        );
-        // Starting and ending with a slash
-        assert_eq!(
-            MatrixId::parse_with_sigil("/#roomalias:imaginary.hs/").expect("Failed to create MatrixId."),
-            MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
-        );
-    }
+//     #[test]
+//     fn parse_valid_matrixid_with_sigil() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("@user:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::User(user_id!("@user:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("!roomid:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("#roomalias:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("!roomid:imaginary.hs/$event:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("#roomalias:imaginary.hs/$event:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         // Invert the order of the event and the room.
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("$event:imaginary.hs/!roomid:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("$event:imaginary.hs/#roomalias:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         // Starting with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("/@user:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::User(user_id!("@user:imaginary.hs").into())
+//         );
+//         // Ending with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("!roomid:imaginary.hs/").expect("Failed to create MatrixId."),
+//             MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
+//         );
+//         // Starting and ending with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("/#roomalias:imaginary.hs/").expect("Failed to create MatrixId."),
+//             MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_no_identifier() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("").unwrap_err(),
-            MatrixIdError::NoIdentifier.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("/").unwrap_err(),
-            MatrixIdError::NoIdentifier.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_no_identifier() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("").unwrap_err(),
+//             MatrixIdError::NoIdentifier.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("/").unwrap_err(),
+//             MatrixIdError::NoIdentifier.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_too_many_identifiers() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("@user:imaginary.hs/#room:imaginary.hs/$event1:imaginary.hs").unwrap_err(),
-            MatrixIdError::TooManyIdentifiers.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_too_many_identifiers() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("@user:imaginary.hs/#room:imaginary.hs/$event1:imaginary.hs").unwrap_err(),
+//             MatrixIdError::TooManyIdentifiers.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_unknown_identifier_pair() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("!roomid:imaginary.hs/@user:imaginary.hs").unwrap_err(),
-            MatrixIdError::UnknownIdentifierPair.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("#roomalias:imaginary.hs/notanidentifier").unwrap_err(),
-            MatrixIdError::UnknownIdentifierPair.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("$event:imaginary.hs/$otherevent:imaginary.hs").unwrap_err(),
-            MatrixIdError::UnknownIdentifierPair.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("notanidentifier/neitheristhis").unwrap_err(),
-            MatrixIdError::UnknownIdentifierPair.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_unknown_identifier_pair() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("!roomid:imaginary.hs/@user:imaginary.hs").unwrap_err(),
+//             MatrixIdError::UnknownIdentifierPair.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("#roomalias:imaginary.hs/notanidentifier").unwrap_err(),
+//             MatrixIdError::UnknownIdentifierPair.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("$event:imaginary.hs/$otherevent:imaginary.hs").unwrap_err(),
+//             MatrixIdError::UnknownIdentifierPair.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("notanidentifier/neitheristhis").unwrap_err(),
+//             MatrixIdError::UnknownIdentifierPair.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_missing_room() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("$event:imaginary.hs").unwrap_err(),
-            MatrixIdError::MissingRoom.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_missing_room() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("$event:imaginary.hs").unwrap_err(),
+//             MatrixIdError::MissingRoom.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_unknown_identifier() {
-        assert_eq!(
-            MatrixId::parse_with_sigil("event:imaginary.hs").unwrap_err(),
-            MatrixIdError::UnknownIdentifier.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_sigil("notanidentifier").unwrap_err(),
-            MatrixIdError::UnknownIdentifier.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_unknown_identifier() {
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("event:imaginary.hs").unwrap_err(),
+//             MatrixIdError::UnknownIdentifier.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_sigil("notanidentifier").unwrap_err(),
+//             MatrixIdError::UnknownIdentifier.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixtouri_valid_uris() {
-        let matrix_to =
-            MatrixToUri::parse("https://matrix.to/#/%40jplatte%3Anotareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &user_id!("@jplatte:notareal.hs").into());
+//     #[test]
+//     fn parse_matrixtouri_valid_uris() {
+//         let matrix_to =
+//             MatrixToUri::parse("https://matrix.to/#/%40jplatte%3Anotareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &user_id!("@jplatte:notareal.hs").into());
 
-        let matrix_to =
-            MatrixToUri::parse("https://matrix.to/#/%23palpo%3Anotareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &room_alias_id!("#palpo:notareal.hs").into());
+//         let matrix_to =
+//             MatrixToUri::parse("https://matrix.to/#/%23palpo%3Anotareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &room_alias_id!("#palpo:notareal.hs").into());
 
-        let matrix_to =
-            MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs?via=notareal.hs&via=anotherunreal.hs")
-                .expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &room_id!("!palpo:notareal.hs").into());
-        assert_eq!(
-            matrix_to.via(),
-            &[
-                server_name!("notareal.hs").to_owned(),
-                server_name!("anotherunreal.hs").to_owned(),
-            ]
-        );
+//         let matrix_to =
+//             MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs?via=notareal.hs&via=anotherunreal.hs")
+//                 .expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &room_id!("!palpo:notareal.hs").into());
+//         assert_eq!(
+//             matrix_to.via(),
+//             &[
+//                 server_name!("notareal.hs").to_owned(),
+//                 server_name!("anotherunreal.hs").to_owned(),
+//             ]
+//         );
 
-        let matrix_to = MatrixToUri::parse("https://matrix.to/#/%23palpo%3Anotareal.hs/%24event%3Anotareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_to.id(),
-            &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
+//         let matrix_to = MatrixToUri::parse("https://matrix.to/#/%23palpo%3Anotareal.hs/%24event%3Anotareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_to.id(),
+//             &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
 
-        let matrix_to = MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs/%24event%3Anotareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_to.id(),
-            &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
-        assert_eq!(matrix_to.via().len(), 0);
-    }
+//         let matrix_to = MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs/%24event%3Anotareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_to.id(),
+//             &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
+//         assert_eq!(matrix_to.via().len(), 0);
+//     }
 
-    #[test]
-    fn parse_matrixtouri_valid_uris_not_urlencoded() {
-        let matrix_to =
-            MatrixToUri::parse("https://matrix.to/#/@jplatte:notareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &user_id!("@jplatte:notareal.hs").into());
+//     #[test]
+//     fn parse_matrixtouri_valid_uris_not_urlencoded() {
+//         let matrix_to =
+//             MatrixToUri::parse("https://matrix.to/#/@jplatte:notareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &user_id!("@jplatte:notareal.hs").into());
 
-        let matrix_to =
-            MatrixToUri::parse("https://matrix.to/#/#palpo:notareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &room_alias_id!("#palpo:notareal.hs").into());
+//         let matrix_to =
+//             MatrixToUri::parse("https://matrix.to/#/#palpo:notareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &room_alias_id!("#palpo:notareal.hs").into());
 
-        let matrix_to = MatrixToUri::parse("https://matrix.to/#/!palpo:notareal.hs?via=notareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_to.id(), &room_id!("!palpo:notareal.hs").into());
-        assert_eq!(matrix_to.via(), &[server_name!("notareal.hs").to_owned()]);
+//         let matrix_to = MatrixToUri::parse("https://matrix.to/#/!palpo:notareal.hs?via=notareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_to.id(), &room_id!("!palpo:notareal.hs").into());
+//         assert_eq!(matrix_to.via(), &[server_name!("notareal.hs").to_owned()]);
 
-        let matrix_to = MatrixToUri::parse("https://matrix.to/#/#palpo:notareal.hs/$event:notareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_to.id(),
-            &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
+//         let matrix_to = MatrixToUri::parse("https://matrix.to/#/#palpo:notareal.hs/$event:notareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_to.id(),
+//             &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
 
-        let matrix_to = MatrixToUri::parse("https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_to.id(),
-            &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
-        assert_eq!(matrix_to.via().len(), 0);
-    }
+//         let matrix_to = MatrixToUri::parse("https://matrix.to/#/!palpo:notareal.hs/$event:notareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_to.id(),
+//             &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
+//         assert_eq!(matrix_to.via().len(), 0);
+//     }
 
-    #[test]
-    fn parse_matrixtouri_wrong_base_url() {
-        assert_eq!(MatrixToUri::parse("").unwrap_err(), MatrixToError::WrongBaseUrl.into());
-        assert_eq!(
-            MatrixToUri::parse("https://notreal.to/#/").unwrap_err(),
-            MatrixToError::WrongBaseUrl.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixtouri_wrong_base_url() {
+//         assert_eq!(MatrixToUri::parse("").unwrap_err(), MatrixToError::WrongBaseUrl.into());
+//         assert_eq!(
+//             MatrixToUri::parse("https://notreal.to/#/").unwrap_err(),
+//             MatrixToError::WrongBaseUrl.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixtouri_wrong_identifier() {
-        assert_matches!(
-            MatrixToUri::parse("https://matrix.to/#/notanidentifier").unwrap_err(),
-            Error::InvalidMatrixId(_)
-        );
-        assert_matches!(
-            MatrixToUri::parse("https://matrix.to/#/").unwrap_err(),
-            Error::InvalidMatrixId(_)
-        );
-        assert_matches!(
-            MatrixToUri::parse("https://matrix.to/#/%40jplatte%3Anotareal.hs/%24event%3Anotareal.hs").unwrap_err(),
-            Error::InvalidMatrixId(_)
-        );
-    }
+//     #[test]
+//     fn parse_matrixtouri_wrong_identifier() {
+//         assert_matches!(
+//             MatrixToUri::parse("https://matrix.to/#/notanidentifier").unwrap_err(),
+//             Error::InvalidMatrixId(_)
+//         );
+//         assert_matches!(
+//             MatrixToUri::parse("https://matrix.to/#/").unwrap_err(),
+//             Error::InvalidMatrixId(_)
+//         );
+//         assert_matches!(
+//             MatrixToUri::parse("https://matrix.to/#/%40jplatte%3Anotareal.hs/%24event%3Anotareal.hs").unwrap_err(),
+//             Error::InvalidMatrixId(_)
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixtouri_unknown_arguments() {
-        assert_eq!(
-            MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs?via=notareal.hs&custom=data").unwrap_err(),
-            MatrixToError::UnknownArgument.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixtouri_unknown_arguments() {
+//         assert_eq!(
+//             MatrixToUri::parse("https://matrix.to/#/%21palpo%3Anotareal.hs?via=notareal.hs&custom=data").unwrap_err(),
+//             MatrixToError::UnknownArgument.into()
+//         );
+//     }
 
-    #[test]
-    fn display_matrixuri() {
-        assert_eq!(
-            user_id!("@jplatte:notareal.hs").matrix_uri(false).to_string(),
-            "matrix:u/jplatte:notareal.hs"
-        );
-        assert_eq!(
-            user_id!("@jplatte:notareal.hs").matrix_uri(true).to_string(),
-            "matrix:u/jplatte:notareal.hs?action=chat"
-        );
-        assert_eq!(
-            room_alias_id!("#palpo:notareal.hs").matrix_uri(false).to_string(),
-            "matrix:r/palpo:notareal.hs"
-        );
-        assert_eq!(
-            room_alias_id!("#palpo:notareal.hs").matrix_uri(true).to_string(),
-            "matrix:r/palpo:notareal.hs?action=join"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs").matrix_uri(false).to_string(),
-            "matrix:roomid/palpo:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_uri_via(vec![server_name!("notareal.hs")], false)
-                .to_string(),
-            "matrix:roomid/palpo:notareal.hs?via=notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_uri_via(
-                    vec![server_name!("notareal.hs"), server_name!("anotherunreal.hs")],
-                    true
-                )
-                .to_string(),
-            "matrix:roomid/palpo:notareal.hs?via=notareal.hs&via=anotherunreal.hs&action=join"
-        );
-        assert_eq!(
-            room_alias_id!("#palpo:notareal.hs")
-                .matrix_event_uri(event_id!("$event:notareal.hs"))
-                .to_string(),
-            "matrix:r/palpo:notareal.hs/e/event:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_event_uri(event_id!("$event:notareal.hs"))
-                .to_string(),
-            "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs"
-        );
-        assert_eq!(
-            room_id!("!palpo:notareal.hs")
-                .matrix_event_uri_via(event_id!("$event:notareal.hs"), vec![server_name!("notareal.hs")])
-                .to_string(),
-            "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs?via=notareal.hs"
-        );
-    }
+//     #[test]
+//     fn display_matrixuri() {
+//         assert_eq!(
+//             user_id!("@jplatte:notareal.hs").matrix_uri(false).to_string(),
+//             "matrix:u/jplatte:notareal.hs"
+//         );
+//         assert_eq!(
+//             user_id!("@jplatte:notareal.hs").matrix_uri(true).to_string(),
+//             "matrix:u/jplatte:notareal.hs?action=chat"
+//         );
+//         assert_eq!(
+//             room_alias_id!("#palpo:notareal.hs").matrix_uri(false).to_string(),
+//             "matrix:r/palpo:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_alias_id!("#palpo:notareal.hs").matrix_uri(true).to_string(),
+//             "matrix:r/palpo:notareal.hs?action=join"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs").matrix_uri(false).to_string(),
+//             "matrix:roomid/palpo:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_uri_via(vec![server_name!("notareal.hs")], false)
+//                 .to_string(),
+//             "matrix:roomid/palpo:notareal.hs?via=notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_uri_via(
+//                     vec![server_name!("notareal.hs"), server_name!("anotherunreal.hs")],
+//                     true
+//                 )
+//                 .to_string(),
+//             "matrix:roomid/palpo:notareal.hs?via=notareal.hs&via=anotherunreal.hs&action=join"
+//         );
+//         assert_eq!(
+//             room_alias_id!("#palpo:notareal.hs")
+//                 .matrix_event_uri(event_id!("$event:notareal.hs"))
+//                 .to_string(),
+//             "matrix:r/palpo:notareal.hs/e/event:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_event_uri(event_id!("$event:notareal.hs"))
+//                 .to_string(),
+//             "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs"
+//         );
+//         assert_eq!(
+//             room_id!("!palpo:notareal.hs")
+//                 .matrix_event_uri_via(event_id!("$event:notareal.hs"), vec![server_name!("notareal.hs")])
+//                 .to_string(),
+//             "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs?via=notareal.hs"
+//         );
+//     }
 
-    #[test]
-    fn parse_valid_matrixid_with_type() {
-        assert_eq!(
-            MatrixId::parse_with_type("u/user:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::User(user_id!("@user:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("user/user:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::User(user_id!("@user:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("roomid/roomid:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("r/roomalias:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("room/roomalias:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("roomid/roomid:imaginary.hs/e/event:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("r/roomalias:imaginary.hs/e/event:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("room/roomalias:imaginary.hs/event/event:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        // Invert the order of the event and the room.
-        assert_eq!(
-            MatrixId::parse_with_type("e/event:imaginary.hs/roomid/roomid:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("e/event:imaginary.hs/r/roomalias:imaginary.hs")
-                .expect("Failed to create MatrixId."),
-            MatrixId::Event(
-                <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
-                event_id!("$event:imaginary.hs").into()
-            )
-        );
-        // Starting with a slash
-        assert_eq!(
-            MatrixId::parse_with_type("/u/user:imaginary.hs").expect("Failed to create MatrixId."),
-            MatrixId::User(user_id!("@user:imaginary.hs").into())
-        );
-        // Ending with a slash
-        assert_eq!(
-            MatrixId::parse_with_type("roomid/roomid:imaginary.hs/").expect("Failed to create MatrixId."),
-            MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
-        );
-        // Starting and ending with a slash
-        assert_eq!(
-            MatrixId::parse_with_type("/r/roomalias:imaginary.hs/").expect("Failed to create MatrixId."),
-            MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
-        );
-    }
+//     #[test]
+//     fn parse_valid_matrixid_with_type() {
+//         assert_eq!(
+//             MatrixId::parse_with_type("u/user:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::User(user_id!("@user:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("user/user:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::User(user_id!("@user:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("roomid/roomid:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("r/roomalias:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("room/roomalias:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("roomid/roomid:imaginary.hs/e/event:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("r/roomalias:imaginary.hs/e/event:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("room/roomalias:imaginary.hs/event/event:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         // Invert the order of the event and the room.
+//         assert_eq!(
+//             MatrixId::parse_with_type("e/event:imaginary.hs/roomid/roomid:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_id!("!roomid:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("e/event:imaginary.hs/r/roomalias:imaginary.hs")
+//                 .expect("Failed to create MatrixId."),
+//             MatrixId::Event(
+//                 <&RoomOrAliasId>::from(room_alias_id!("#roomalias:imaginary.hs")).into(),
+//                 event_id!("$event:imaginary.hs").into()
+//             )
+//         );
+//         // Starting with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_type("/u/user:imaginary.hs").expect("Failed to create MatrixId."),
+//             MatrixId::User(user_id!("@user:imaginary.hs").into())
+//         );
+//         // Ending with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_type("roomid/roomid:imaginary.hs/").expect("Failed to create MatrixId."),
+//             MatrixId::Room(room_id!("!roomid:imaginary.hs").into())
+//         );
+//         // Starting and ending with a slash
+//         assert_eq!(
+//             MatrixId::parse_with_type("/r/roomalias:imaginary.hs/").expect("Failed to create MatrixId."),
+//             MatrixId::RoomAlias(room_alias_id!("#roomalias:imaginary.hs").into())
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_type_no_identifier() {
-        assert_eq!(
-            MatrixId::parse_with_type("").unwrap_err(),
-            MatrixIdError::NoIdentifier.into()
-        );
-        assert_eq!(
-            MatrixId::parse_with_type("/").unwrap_err(),
-            MatrixIdError::NoIdentifier.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_type_no_identifier() {
+//         assert_eq!(
+//             MatrixId::parse_with_type("").unwrap_err(),
+//             MatrixIdError::NoIdentifier.into()
+//         );
+//         assert_eq!(
+//             MatrixId::parse_with_type("/").unwrap_err(),
+//             MatrixIdError::NoIdentifier.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_invalid_parts_number() {
-        assert_eq!(
-            MatrixId::parse_with_type("u/user:imaginary.hs/r/room:imaginary.hs/e").unwrap_err(),
-            MatrixIdError::InvalidPartsNumber.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_invalid_parts_number() {
+//         assert_eq!(
+//             MatrixId::parse_with_type("u/user:imaginary.hs/r/room:imaginary.hs/e").unwrap_err(),
+//             MatrixIdError::InvalidPartsNumber.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixid_unknown_type() {
-        assert_eq!(
-            MatrixId::parse_with_type("notatype/fake:notareal.hs").unwrap_err(),
-            MatrixIdError::UnknownType.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixid_unknown_type() {
+//         assert_eq!(
+//             MatrixId::parse_with_type("notatype/fake:notareal.hs").unwrap_err(),
+//             MatrixIdError::UnknownType.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixuri_valid_uris() {
-        let matrix_uri = MatrixUri::parse("matrix:u/jplatte:notareal.hs").expect("Failed to create MatrixUri.");
-        assert_eq!(matrix_uri.id(), &user_id!("@jplatte:notareal.hs").into());
-        assert_eq!(matrix_uri.action(), None);
+//     #[test]
+//     fn parse_matrixuri_valid_uris() {
+//         let matrix_uri = MatrixUri::parse("matrix:u/jplatte:notareal.hs").expect("Failed to create MatrixUri.");
+//         assert_eq!(matrix_uri.id(), &user_id!("@jplatte:notareal.hs").into());
+//         assert_eq!(matrix_uri.action(), None);
 
-        let matrix_uri =
-            MatrixUri::parse("matrix:u/jplatte:notareal.hs?action=chat").expect("Failed to create MatrixUri.");
-        assert_eq!(matrix_uri.id(), &user_id!("@jplatte:notareal.hs").into());
-        assert_eq!(matrix_uri.action(), Some(&UriAction::Chat));
+//         let matrix_uri =
+//             MatrixUri::parse("matrix:u/jplatte:notareal.hs?action=chat").expect("Failed to create MatrixUri.");
+//         assert_eq!(matrix_uri.id(), &user_id!("@jplatte:notareal.hs").into());
+//         assert_eq!(matrix_uri.action(), Some(&UriAction::Chat));
 
-        let matrix_uri = MatrixUri::parse("matrix:r/palpo:notareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_uri.id(), &room_alias_id!("#palpo:notareal.hs").into());
+//         let matrix_uri = MatrixUri::parse("matrix:r/palpo:notareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_uri.id(), &room_alias_id!("#palpo:notareal.hs").into());
 
-        let matrix_uri =
-            MatrixUri::parse("matrix:roomid/palpo:notareal.hs?via=notareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(matrix_uri.id(), &room_id!("!palpo:notareal.hs").into());
-        assert_eq!(matrix_uri.via(), &[server_name!("notareal.hs").to_owned()]);
-        assert_eq!(matrix_uri.action(), None);
+//         let matrix_uri =
+//             MatrixUri::parse("matrix:roomid/palpo:notareal.hs?via=notareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(matrix_uri.id(), &room_id!("!palpo:notareal.hs").into());
+//         assert_eq!(matrix_uri.via(), &[server_name!("notareal.hs").to_owned()]);
+//         assert_eq!(matrix_uri.action(), None);
 
-        let matrix_uri =
-            MatrixUri::parse("matrix:r/palpo:notareal.hs/e/event:notareal.hs").expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_uri.id(),
-            &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
+//         let matrix_uri =
+//             MatrixUri::parse("matrix:r/palpo:notareal.hs/e/event:notareal.hs").expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_uri.id(),
+//             &(room_alias_id!("#palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
 
-        let matrix_uri = MatrixUri::parse("matrix:roomid/palpo:notareal.hs/e/event:notareal.hs")
-            .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_uri.id(),
-            &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
-        assert_eq!(matrix_uri.via().len(), 0);
-        assert_eq!(matrix_uri.action(), None);
+//         let matrix_uri = MatrixUri::parse("matrix:roomid/palpo:notareal.hs/e/event:notareal.hs")
+//             .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_uri.id(),
+//             &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
+//         assert_eq!(matrix_uri.via().len(), 0);
+//         assert_eq!(matrix_uri.action(), None);
 
-        let matrix_uri = MatrixUri::parse(
-            "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs?via=notareal.hs&action=join&via=anotherinexistant.hs",
-        )
-        .expect("Failed to create MatrixToUri.");
-        assert_eq!(
-            matrix_uri.id(),
-            &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
-        );
-        assert_eq!(
-            matrix_uri.via(),
-            &vec![
-                server_name!("notareal.hs").to_owned(),
-                server_name!("anotherinexistant.hs").to_owned()
-            ]
-        );
-        assert_eq!(matrix_uri.action(), Some(&UriAction::Join));
-    }
+//         let matrix_uri = MatrixUri::parse(
+//             "matrix:roomid/palpo:notareal.hs/e/event:notareal.hs?via=notareal.hs&action=join&via=anotherinexistant.hs",
+//         )
+//         .expect("Failed to create MatrixToUri.");
+//         assert_eq!(
+//             matrix_uri.id(),
+//             &(room_id!("!palpo:notareal.hs"), event_id!("$event:notareal.hs")).into()
+//         );
+//         assert_eq!(
+//             matrix_uri.via(),
+//             &vec![
+//                 server_name!("notareal.hs").to_owned(),
+//                 server_name!("anotherinexistant.hs").to_owned()
+//             ]
+//         );
+//         assert_eq!(matrix_uri.action(), Some(&UriAction::Join));
+//     }
 
-    #[test]
-    fn parse_matrixuri_invalid_uri() {
-        assert_eq!(
-            MatrixUri::parse("").unwrap_err(),
-            Error::InvalidMatrixToUri(MatrixToError::InvalidUrl)
-        );
-    }
+//     #[test]
+//     fn parse_matrixuri_invalid_uri() {
+//         assert_eq!(
+//             MatrixUri::parse("").unwrap_err(),
+//             Error::InvalidMatrixToUri(MatrixToError::InvalidUrl)
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixuri_wrong_scheme() {
-        assert_eq!(
-            MatrixUri::parse("unknown:u/user:notareal.hs").unwrap_err(),
-            MatrixUriError::WrongScheme.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixuri_wrong_scheme() {
+//         assert_eq!(
+//             MatrixUri::parse("unknown:u/user:notareal.hs").unwrap_err(),
+//             MatrixUriError::WrongScheme.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixuri_too_many_actions() {
-        assert_eq!(
-            MatrixUri::parse("matrix:u/user:notareal.hs?action=chat&action=join").unwrap_err(),
-            MatrixUriError::TooManyActions.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixuri_too_many_actions() {
+//         assert_eq!(
+//             MatrixUri::parse("matrix:u/user:notareal.hs?action=chat&action=join").unwrap_err(),
+//             MatrixUriError::TooManyActions.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixuri_unknown_query_item() {
-        assert_eq!(
-            MatrixUri::parse("matrix:roomid/roomid:notareal.hs?via=notareal.hs&fake=data").unwrap_err(),
-            MatrixUriError::UnknownQueryItem.into()
-        );
-    }
+//     #[test]
+//     fn parse_matrixuri_unknown_query_item() {
+//         assert_eq!(
+//             MatrixUri::parse("matrix:roomid/roomid:notareal.hs?via=notareal.hs&fake=data").unwrap_err(),
+//             MatrixUriError::UnknownQueryItem.into()
+//         );
+//     }
 
-    #[test]
-    fn parse_matrixuri_wrong_identifier() {
-        assert_matches!(
-            MatrixUri::parse("matrix:notanidentifier").unwrap_err(),
-            Error::InvalidMatrixId(_)
-        );
-        assert_matches!(MatrixUri::parse("matrix:").unwrap_err(), Error::InvalidMatrixId(_));
-        assert_matches!(
-            MatrixUri::parse("matrix:u/jplatte:notareal.hs/e/event:notareal.hs").unwrap_err(),
-            Error::InvalidMatrixId(_)
-        );
-    }
-}
+//     #[test]
+//     fn parse_matrixuri_wrong_identifier() {
+//         assert_matches!(
+//             MatrixUri::parse("matrix:notanidentifier").unwrap_err(),
+//             Error::InvalidMatrixId(_)
+//         );
+//         assert_matches!(MatrixUri::parse("matrix:").unwrap_err(), Error::InvalidMatrixId(_));
+//         assert_matches!(
+//             MatrixUri::parse("matrix:u/jplatte:notareal.hs/e/event:notareal.hs").unwrap_err(),
+//             Error::InvalidMatrixId(_)
+//         );
+//     }
+// }

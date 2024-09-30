@@ -149,6 +149,14 @@ impl RemoteServerKeysBatchResBody {
 //     }
 // };
 
+pub fn remote_server_keys_request(server_name: &ServerName, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
+    let url = server_name.build_url(&format!(
+        "/key/v2/query/{}?minimum_valid_until_ts={}",
+        args.server_name, args.minimum_valid_until_ts
+    ))?;
+    Ok(crate::sending::get(url))
+}
+
 /// Request type for the `get_remote_server_keys` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RemoteServerKeysReqArgs {
@@ -256,20 +264,20 @@ impl RemoteServerKeysResBody {
 /// Response type for the `get_server_keys` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
-pub struct ServerKeysResBody {
+pub struct ServerKeysResBody(
     /// Queried server key, signed by the notary server.
-    pub server_key: RawJson<ServerSigningKeys>,
-}
+    pub ServerSigningKeys,
+);
 
 impl ServerKeysResBody {
     /// Creates a new `Response` with the given server key.
-    pub fn new(server_key: RawJson<ServerSigningKeys>) -> Self {
-        Self { server_key }
+    pub fn new(server_key: ServerSigningKeys) -> Self {
+        Self(server_key)
     }
 }
 
-impl From<RawJson<ServerSigningKeys>> for ServerKeysResBody {
-    fn from(server_key: RawJson<ServerSigningKeys>) -> Self {
+impl From<ServerSigningKeys> for ServerKeysResBody {
+    fn from(server_key: ServerSigningKeys) -> Self {
         Self::new(server_key)
     }
 }

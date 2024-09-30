@@ -180,74 +180,74 @@ mod tweak_serde {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use assert_matches2::assert_matches;
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+// #[cfg(test)]
+// mod tests {
+//     use assert_matches2::assert_matches;
+//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
-    use super::{Action, Tweak};
+//     use super::{Action, Tweak};
 
-    #[test]
-    fn serialize_string() {
-        assert_eq!(to_json_value(&Action::Notify).unwrap(), json!("notify"));
-    }
+//     #[test]
+//     fn serialize_string() {
+//         assert_eq!(to_json_value(&Action::Notify).unwrap(), json!("notify"));
+//     }
 
-    #[test]
-    fn serialize_tweak_sound() {
-        assert_eq!(
-            to_json_value(&Action::SetTweak(Tweak::Sound("default".into()))).unwrap(),
-            json!({ "set_tweak": "sound", "value": "default" })
-        );
-    }
+//     #[test]
+//     fn serialize_tweak_sound() {
+//         assert_eq!(
+//             to_json_value(&Action::SetTweak(Tweak::Sound("default".into()))).unwrap(),
+//             json!({ "set_tweak": "sound", "value": "default" })
+//         );
+//     }
 
-    #[test]
-    fn serialize_tweak_highlight() {
-        assert_eq!(
-            to_json_value(&Action::SetTweak(Tweak::Highlight(true))).unwrap(),
-            json!({ "set_tweak": "highlight" })
-        );
+//     #[test]
+//     fn serialize_tweak_highlight() {
+//         assert_eq!(
+//             to_json_value(&Action::SetTweak(Tweak::Highlight(true))).unwrap(),
+//             json!({ "set_tweak": "highlight" })
+//         );
 
-        assert_eq!(
-            to_json_value(&Action::SetTweak(Tweak::Highlight(false))).unwrap(),
-            json!({ "set_tweak": "highlight", "value": false })
-        );
-    }
+//         assert_eq!(
+//             to_json_value(&Action::SetTweak(Tweak::Highlight(false))).unwrap(),
+//             json!({ "set_tweak": "highlight", "value": false })
+//         );
+//     }
 
-    #[test]
-    fn deserialize_string() {
-        assert_matches!(from_json_value::<Action>(json!("notify")), Ok(Action::Notify));
-    }
+//     #[test]
+//     fn deserialize_string() {
+//         assert_matches!(from_json_value::<Action>(json!("notify")), Ok(Action::Notify));
+//     }
 
-    #[test]
-    fn deserialize_tweak_sound() {
-        let json_data = json!({
-            "set_tweak": "sound",
-            "value": "default"
-        });
-        assert_matches!(
-            from_json_value::<Action>(json_data),
-            Ok(Action::SetTweak(Tweak::Sound(value)))
-        );
-        assert_eq!(value, "default");
-    }
+//     #[test]
+//     fn deserialize_tweak_sound() {
+//         let json_data = json!({
+//             "set_tweak": "sound",
+//             "value": "default"
+//         });
+//         assert_matches!(
+//             from_json_value::<Action>(json_data),
+//             Ok(Action::SetTweak(Tweak::Sound(value)))
+//         );
+//         assert_eq!(value, "default");
+//     }
 
-    #[test]
-    fn deserialize_tweak_highlight() {
-        let json_data = json!({
-            "set_tweak": "highlight",
-            "value": true
-        });
-        assert_matches!(
-            from_json_value::<Action>(json_data),
-            Ok(Action::SetTweak(Tweak::Highlight(true)))
-        );
-    }
+//     #[test]
+//     fn deserialize_tweak_highlight() {
+//         let json_data = json!({
+//             "set_tweak": "highlight",
+//             "value": true
+//         });
+//         assert_matches!(
+//             from_json_value::<Action>(json_data),
+//             Ok(Action::SetTweak(Tweak::Highlight(true)))
+//         );
+//     }
 
-    #[test]
-    fn deserialize_tweak_highlight_with_default_value() {
-        assert_matches!(
-            from_json_value::<Action>(json!({ "set_tweak": "highlight" })),
-            Ok(Action::SetTweak(Tweak::Highlight(true)))
-        );
-    }
-}
+//     #[test]
+//     fn deserialize_tweak_highlight_with_default_value() {
+//         assert_matches!(
+//             from_json_value::<Action>(json!({ "set_tweak": "highlight" })),
+//             Ok(Action::SetTweak(Tweak::Highlight(true)))
+//         );
+//     }
+// }

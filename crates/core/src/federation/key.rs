@@ -9,14 +9,19 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use crate::{
-    encryption::OneTimeKey,
-    encryption::{CrossSigningKey, DeviceKeys},
-    serde::Base64,
-    DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId,
-};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::encryption::OneTimeKey;
+use crate::encryption::{CrossSigningKey, DeviceKeys};
+use crate::sending::{SendRequest, SendResult};
+use crate::serde::Base64;
+use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, ServerName};
+
+pub fn get_server_key_request(origin: &ServerName) -> SendResult<SendRequest> {
+    Ok(crate::sending::get(origin.build_url("/key/v2/server")?))
+}
+
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,

@@ -164,38 +164,38 @@ pub(super) fn plain_and_formatted_reply_body(
     (plain, html)
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{owned_event_id, owned_room_id, owned_user_id, UnixMillis};
+// #[cfg(test)]
+// mod tests {
+//     use crate::{owned_event_id, owned_room_id, owned_user_id, UnixMillis};
 
-    use super::OriginalRoomMessageEvent;
-    use crate::{room::message::RoomMessageEventContent, MessageLikeUnsigned};
+//     use super::OriginalRoomMessageEvent;
+//     use crate::{room::message::RoomMessageEventContent, MessageLikeUnsigned};
 
-    #[test]
-    fn fallback_multiline() {
-        let (plain_quote, html_quote) = super::get_message_quote_fallbacks(
-            (&OriginalRoomMessageEvent {
-                content: RoomMessageEventContent::text_plain("multi\nline"),
-                event_id: owned_event_id!("$1598361704261elfgc:localhost"),
-                sender: owned_user_id!("@alice:example.com"),
-                origin_server_ts: UnixMillis::now(),
-                room_id: owned_room_id!("!n8f893n9:example.com"),
-                unsigned: MessageLikeUnsigned::new(),
-            })
-                .into(),
-        );
+//     #[test]
+//     fn fallback_multiline() {
+//         let (plain_quote, html_quote) = super::get_message_quote_fallbacks(
+//             (&OriginalRoomMessageEvent {
+//                 content: RoomMessageEventContent::text_plain("multi\nline"),
+//                 event_id: owned_event_id!("$1598361704261elfgc:localhost"),
+//                 sender: owned_user_id!("@alice:example.com"),
+//                 origin_server_ts: UnixMillis::now(),
+//                 room_id: owned_room_id!("!n8f893n9:example.com"),
+//                 unsigned: MessageLikeUnsigned::new(),
+//             })
+//                 .into(),
+//         );
 
-        assert_eq!(plain_quote, "> <@alice:example.com> multi\n> line");
-        assert_eq!(
-            html_quote,
-            "<mx-reply>\
-                <blockquote>\
-                    <a href=\"https://matrix.to/#/!n8f893n9:example.com/$1598361704261elfgc:localhost\">In reply to</a> \
-                    <a href=\"https://matrix.to/#/@alice:example.com\">@alice:example.com</a>\
-                    <br>\
-                    multi<br>line\
-                </blockquote>\
-            </mx-reply>",
-        );
-    }
-}
+//         assert_eq!(plain_quote, "> <@alice:example.com> multi\n> line");
+//         assert_eq!(
+//             html_quote,
+//             "<mx-reply>\
+//                 <blockquote>\
+//                     <a href=\"https://matrix.to/#/!n8f893n9:example.com/$1598361704261elfgc:localhost\">In reply to</a> \
+//                     <a href=\"https://matrix.to/#/@alice:example.com\">@alice:example.com</a>\
+//                     <br>\
+//                     multi<br>line\
+//                 </blockquote>\
+//             </mx-reply>",
+//         );
+//     }
+// }

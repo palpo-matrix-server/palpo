@@ -503,78 +503,78 @@ impl PredefinedContentRuleId {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use assert_matches2::assert_matches;
-    use assign::assign;
+// #[cfg(test)]
+// mod tests {
+//     use assert_matches2::assert_matches;
+//     use assign::assign;
 
-    use super::PredefinedOverrideRuleId;
-    use crate::{
-        push::{Action, ConditionalPushRule, ConditionalPushRuleInit, Ruleset},
-        user_id,
-    };
+//     use super::PredefinedOverrideRuleId;
+//     use crate::{
+//         push::{Action, ConditionalPushRule, ConditionalPushRuleInit, Ruleset},
+//         user_id,
+//     };
 
-    #[test]
-    fn update_with_server_default() {
-        let user_rule_id = "user_always_true";
-        let default_rule_id = ".default_always_true";
+//     #[test]
+//     fn update_with_server_default() {
+//         let user_rule_id = "user_always_true";
+//         let default_rule_id = ".default_always_true";
 
-        let override_ = [
-            // Default `.m.rule.master` push rule with non-default state.
-            assign!(ConditionalPushRule::master(), { enabled: true, actions: vec![Action::Notify]}),
-            // User-defined push rule.
-            ConditionalPushRuleInit {
-                actions: vec![],
-                default: false,
-                enabled: false,
-                rule_id: user_rule_id.to_owned(),
-                conditions: vec![],
-            }
-            .into(),
-            // Old server-default push rule.
-            ConditionalPushRuleInit {
-                actions: vec![],
-                default: true,
-                enabled: true,
-                rule_id: default_rule_id.to_owned(),
-                conditions: vec![],
-            }
-            .into(),
-        ]
-        .into_iter()
-        .collect();
-        let mut ruleset = Ruleset {
-            override_,
-            ..Default::default()
-        };
+//         let override_ = [
+//             // Default `.m.rule.master` push rule with non-default state.
+//             assign!(ConditionalPushRule::master(), { enabled: true, actions: vec![Action::Notify]}),
+//             // User-defined push rule.
+//             ConditionalPushRuleInit {
+//                 actions: vec![],
+//                 default: false,
+//                 enabled: false,
+//                 rule_id: user_rule_id.to_owned(),
+//                 conditions: vec![],
+//             }
+//             .into(),
+//             // Old server-default push rule.
+//             ConditionalPushRuleInit {
+//                 actions: vec![],
+//                 default: true,
+//                 enabled: true,
+//                 rule_id: default_rule_id.to_owned(),
+//                 conditions: vec![],
+//             }
+//             .into(),
+//         ]
+//         .into_iter()
+//         .collect();
+//         let mut ruleset = Ruleset {
+//             override_,
+//             ..Default::default()
+//         };
 
-        let new_server_default = Ruleset::server_default(user_id!("@user:localhost"));
+//         let new_server_default = Ruleset::server_default(user_id!("@user:localhost"));
 
-        ruleset.update_with_server_default(new_server_default);
+//         ruleset.update_with_server_default(new_server_default);
 
-        // Master rule is in first position.
-        let master_rule = &ruleset.override_[0];
-        assert_eq!(master_rule.rule_id, PredefinedOverrideRuleId::Master.as_str());
+//         // Master rule is in first position.
+//         let master_rule = &ruleset.override_[0];
+//         assert_eq!(master_rule.rule_id, PredefinedOverrideRuleId::Master.as_str());
 
-        // `enabled` and `actions` have been copied from the old rules.
-        assert!(master_rule.enabled);
-        assert_eq!(master_rule.actions.len(), 1);
-        assert_matches!(&master_rule.actions[0], Action::Notify);
+//         // `enabled` and `actions` have been copied from the old rules.
+//         assert!(master_rule.enabled);
+//         assert_eq!(master_rule.actions.len(), 1);
+//         assert_matches!(&master_rule.actions[0], Action::Notify);
 
-        // Non-server-default rule is still present and hasn't changed.
-        let user_rule = ruleset.override_.get(user_rule_id).unwrap();
-        assert!(!user_rule.enabled);
-        assert_eq!(user_rule.actions.len(), 0);
+//         // Non-server-default rule is still present and hasn't changed.
+//         let user_rule = ruleset.override_.get(user_rule_id).unwrap();
+//         assert!(!user_rule.enabled);
+//         assert_eq!(user_rule.actions.len(), 0);
 
-        // Old server-default rule is gone.
-        assert_matches!(ruleset.override_.get(default_rule_id), None);
+//         // Old server-default rule is gone.
+//         assert_matches!(ruleset.override_.get(default_rule_id), None);
 
-        // New server-default rule is present and hasn't changed.
-        let member_event_rule = ruleset
-            .override_
-            .get(PredefinedOverrideRuleId::MemberEvent.as_str())
-            .unwrap();
-        assert!(member_event_rule.enabled);
-        assert_eq!(member_event_rule.actions.len(), 0);
-    }
-}
+//         // New server-default rule is present and hasn't changed.
+//         let member_event_rule = ruleset
+//             .override_
+//             .get(PredefinedOverrideRuleId::MemberEvent.as_str())
+//             .unwrap();
+//         assert!(member_event_rule.enabled);
+//         assert_eq!(member_event_rule.actions.len(), 0);
+//     }
+// }

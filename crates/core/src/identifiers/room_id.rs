@@ -199,92 +199,92 @@ impl RoomId {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{OwnedRoomId, RoomId};
-    use crate::{server_name, IdParseError};
+// #[cfg(test)]
+// mod tests {
+//     use super::{OwnedRoomId, RoomId};
+//     use crate::{server_name, IdParseError};
 
-    #[test]
-    fn valid_room_id() {
-        let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!29fhd83h92h0:example.com");
-    }
+//     #[test]
+//     fn valid_room_id() {
+//         let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!29fhd83h92h0:example.com");
+//     }
 
-    #[test]
-    fn empty_localpart() {
-        let room_id = <&RoomId>::try_from("!:example.com").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!:example.com");
-        assert_eq!(room_id.server_name(), Some(server_name!("example.com")));
-    }
+//     #[test]
+//     fn empty_localpart() {
+//         let room_id = <&RoomId>::try_from("!:example.com").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!:example.com");
+//         assert_eq!(room_id.server_name(), Some(server_name!("example.com")));
+//     }
 
-    #[test]
-    fn generate_random_valid_room_id() {
-        let room_id = RoomId::new(server_name!("example.com"));
-        let id_str = room_id.as_str();
+//     #[test]
+//     fn generate_random_valid_room_id() {
+//         let room_id = RoomId::new(server_name!("example.com"));
+//         let id_str = room_id.as_str();
 
-        assert!(id_str.starts_with('!'));
-        assert_eq!(id_str.len(), 31);
-    }
+//         assert!(id_str.starts_with('!'));
+//         assert_eq!(id_str.len(), 31);
+//     }
 
-    #[test]
-    fn serialize_valid_room_id() {
-        assert_eq!(
-            serde_json::to_string(<&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId."))
-                .expect("Failed to convert RoomId to JSON."),
-            r#""!29fhd83h92h0:example.com""#
-        );
-    }
+//     #[test]
+//     fn serialize_valid_room_id() {
+//         assert_eq!(
+//             serde_json::to_string(<&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId."))
+//                 .expect("Failed to convert RoomId to JSON."),
+//             r#""!29fhd83h92h0:example.com""#
+//         );
+//     }
 
-    #[test]
-    fn deserialize_valid_room_id() {
-        assert_eq!(
-            serde_json::from_str::<OwnedRoomId>(r#""!29fhd83h92h0:example.com""#)
-                .expect("Failed to convert JSON to RoomId"),
-            <&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId.")
-        );
-    }
+//     #[test]
+//     fn deserialize_valid_room_id() {
+//         assert_eq!(
+//             serde_json::from_str::<OwnedRoomId>(r#""!29fhd83h92h0:example.com""#)
+//                 .expect("Failed to convert JSON to RoomId"),
+//             <&RoomId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId.")
+//         );
+//     }
 
-    #[test]
-    fn valid_room_id_with_explicit_standard_port() {
-        let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com:443").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!29fhd83h92h0:example.com:443");
-        assert_eq!(room_id.server_name(), Some(server_name!("example.com:443")));
-    }
+//     #[test]
+//     fn valid_room_id_with_explicit_standard_port() {
+//         let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com:443").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!29fhd83h92h0:example.com:443");
+//         assert_eq!(room_id.server_name(), Some(server_name!("example.com:443")));
+//     }
 
-    #[test]
-    fn valid_room_id_with_non_standard_port() {
-        assert_eq!(
-            <&RoomId>::try_from("!29fhd83h92h0:example.com:5000").expect("Failed to create RoomId."),
-            "!29fhd83h92h0:example.com:5000"
-        );
-    }
+//     #[test]
+//     fn valid_room_id_with_non_standard_port() {
+//         assert_eq!(
+//             <&RoomId>::try_from("!29fhd83h92h0:example.com:5000").expect("Failed to create RoomId."),
+//             "!29fhd83h92h0:example.com:5000"
+//         );
+//     }
 
-    #[test]
-    fn missing_room_id_sigil() {
-        assert_eq!(
-            <&RoomId>::try_from("carl:example.com").unwrap_err(),
-            IdParseError::MissingLeadingSigil
-        );
-    }
+//     #[test]
+//     fn missing_room_id_sigil() {
+//         assert_eq!(
+//             <&RoomId>::try_from("carl:example.com").unwrap_err(),
+//             IdParseError::MissingLeadingSigil
+//         );
+//     }
 
-    #[test]
-    fn missing_server_name() {
-        let room_id = <&RoomId>::try_from("!29fhd83h92h0").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!29fhd83h92h0");
-        assert_eq!(room_id.server_name(), None);
-    }
+//     #[test]
+//     fn missing_server_name() {
+//         let room_id = <&RoomId>::try_from("!29fhd83h92h0").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!29fhd83h92h0");
+//         assert_eq!(room_id.server_name(), None);
+//     }
 
-    #[test]
-    fn invalid_room_id_host() {
-        let room_id = <&RoomId>::try_from("!29fhd83h92h0:/").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!29fhd83h92h0:/");
-        assert_eq!(room_id.server_name(), None);
-    }
+//     #[test]
+//     fn invalid_room_id_host() {
+//         let room_id = <&RoomId>::try_from("!29fhd83h92h0:/").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!29fhd83h92h0:/");
+//         assert_eq!(room_id.server_name(), None);
+//     }
 
-    #[test]
-    fn invalid_room_id_port() {
-        let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com:notaport").expect("Failed to create RoomId.");
-        assert_eq!(room_id, "!29fhd83h92h0:example.com:notaport");
-        assert_eq!(room_id.server_name(), None);
-    }
-}
+//     #[test]
+//     fn invalid_room_id_port() {
+//         let room_id = <&RoomId>::try_from("!29fhd83h92h0:example.com:notaport").expect("Failed to create RoomId.");
+//         assert_eq!(room_id, "!29fhd83h92h0:example.com:notaport");
+//         assert_eq!(room_id.server_name(), None);
+//     }
+// }

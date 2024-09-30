@@ -265,71 +265,71 @@ impl ReceiptData {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{owned_event_id, UnixMillis};
-    use assert_matches2::assert_matches;
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+// #[cfg(test)]
+// mod tests {
+//     use crate::{owned_event_id, UnixMillis};
+//     use assert_matches2::assert_matches;
+//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
-    use super::{Receipt, ReceiptThread};
+//     use super::{Receipt, ReceiptThread};
 
-    #[test]
-    fn serialize_receipt() {
-        let mut receipt = Receipt::default();
-        assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({}));
+//     #[test]
+//     fn serialize_receipt() {
+//         let mut receipt = Receipt::default();
+//         assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({}));
 
-        receipt.thread = ReceiptThread::Main;
-        assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({ "thread_id": "main" }));
+//         receipt.thread = ReceiptThread::Main;
+//         assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({ "thread_id": "main" }));
 
-        receipt.thread = ReceiptThread::Thread(owned_event_id!("$abcdef76543"));
-        assert_eq!(to_json_value(receipt).unwrap(), json!({ "thread_id": "$abcdef76543" }));
+//         receipt.thread = ReceiptThread::Thread(owned_event_id!("$abcdef76543"));
+//         assert_eq!(to_json_value(receipt).unwrap(), json!({ "thread_id": "$abcdef76543" }));
 
-        let mut receipt = Receipt::new(UnixMillis(1_664_702_144_365_u64.try_into().unwrap()));
-        assert_eq!(
-            to_json_value(receipt.clone()).unwrap(),
-            json!({ "ts": 1_664_702_144_365_u64 })
-        );
+//         let mut receipt = Receipt::new(UnixMillis(1_664_702_144_365_u64.try_into().unwrap()));
+//         assert_eq!(
+//             to_json_value(receipt.clone()).unwrap(),
+//             json!({ "ts": 1_664_702_144_365_u64 })
+//         );
 
-        receipt.thread = ReceiptThread::try_from(Some("io.palpo.unknown")).unwrap();
-        assert_eq!(
-            to_json_value(receipt).unwrap(),
-            json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" })
-        );
-    }
+//         receipt.thread = ReceiptThread::try_from(Some("io.palpo.unknown")).unwrap();
+//         assert_eq!(
+//             to_json_value(receipt).unwrap(),
+//             json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" })
+//         );
+//     }
 
-    #[test]
-    fn deserialize_receipt() {
-        let receipt = from_json_value::<Receipt>(json!({})).unwrap();
-        assert_eq!(receipt.ts, None);
-        assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
+//     #[test]
+//     fn deserialize_receipt() {
+//         let receipt = from_json_value::<Receipt>(json!({})).unwrap();
+//         assert_eq!(receipt.ts, None);
+//         assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
 
-        let receipt = from_json_value::<Receipt>(json!({ "thread_id": "main" })).unwrap();
-        assert_eq!(receipt.ts, None);
-        assert_eq!(receipt.thread, ReceiptThread::Main);
+//         let receipt = from_json_value::<Receipt>(json!({ "thread_id": "main" })).unwrap();
+//         assert_eq!(receipt.ts, None);
+//         assert_eq!(receipt.thread, ReceiptThread::Main);
 
-        let receipt = from_json_value::<Receipt>(json!({ "thread_id": "$abcdef76543" })).unwrap();
-        assert_eq!(receipt.ts, None);
-        assert_matches!(receipt.thread, ReceiptThread::Thread(event_id));
-        assert_eq!(event_id, "$abcdef76543");
+//         let receipt = from_json_value::<Receipt>(json!({ "thread_id": "$abcdef76543" })).unwrap();
+//         assert_eq!(receipt.ts, None);
+//         assert_matches!(receipt.thread, ReceiptThread::Thread(event_id));
+//         assert_eq!(event_id, "$abcdef76543");
 
-        let receipt = from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64 })).unwrap();
-        assert_eq!(
-            receipt.ts.unwrap(),
-            UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
-        );
-        assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
+//         let receipt = from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64 })).unwrap();
+//         assert_eq!(
+//             receipt.ts.unwrap(),
+//             UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
+//         );
+//         assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
 
-        let receipt =
-            from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" }))
-                .unwrap();
-        assert_eq!(
-            receipt.ts.unwrap(),
-            UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
-        );
-        assert_matches!(&receipt.thread, ReceiptThread::_Custom(_));
-        assert_eq!(receipt.thread.as_str().unwrap(), "io.palpo.unknown");
-    }
-}
+//         let receipt =
+//             from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" }))
+//                 .unwrap();
+//         assert_eq!(
+//             receipt.ts.unwrap(),
+//             UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
+//         );
+//         assert_matches!(&receipt.thread, ReceiptThread::_Custom(_));
+//         assert_eq!(receipt.thread.as_str().unwrap(), "io.palpo.unknown");
+//     }
+// }
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

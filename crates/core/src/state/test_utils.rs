@@ -20,7 +20,8 @@ use serde_json::{json, value::to_raw_value as to_raw_json_value};
 use tracing::info;
 
 pub(crate) use self::event::PduEvent;
-use crate::{auth_types_for_event, Error, Event, EventTypeExt, RawJsonValue, Result, StateMap};
+use crate::{MatrixError, RawJsonValue};
+use crate::state::{auth_types_for_event, Event, EventTypeExt, StateMap};
 
 static SERVER_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
 
@@ -70,7 +71,7 @@ pub(crate) fn do_check(events: &[Arc<PduEvent>], edges: Vec<Vec<OwnedEventId>>, 
 
     // Resolve the current state and add it to the state_at_event map then continue
     // on in "time"
-    for node in crate::lexicographical_topological_sort(&graph, |_id| Ok((0, UnixMillis(u0)))).unwrap() {
+    for node in crate::state::lexicographical_topological_sort(&graph, |_id| Ok((0, UnixMillis(0)))).unwrap() {
         let fake_event = fake_event_map.get(&node).unwrap();
         let event_id = fake_event.event_id().to_owned();
 
@@ -106,7 +107,7 @@ pub(crate) fn do_check(events: &[Arc<PduEvent>], edges: Vec<Vec<OwnedEventId>>, 
                 })
                 .collect();
 
-            let resolved = crate::resolve(&RoomVersionId::V6, state_sets, auth_chain_sets, |id| {
+            let resolved = crate::state::resolve(&RoomVersionId::V6, state_sets, auth_chain_sets, |id| {
                 event_map.get(id).map(Arc::clone)
             });
             match resolved {
@@ -196,15 +197,15 @@ pub(crate) fn do_check(events: &[Arc<PduEvent>], edges: Vec<Vec<OwnedEventId>>, 
 pub(crate) struct TestStore<E: Event>(pub(crate) HashMap<OwnedEventId, Arc<E>>);
 
 impl<E: Event> TestStore<E> {
-    pub(crate) fn get_event(&self, _: &RoomId, event_id: &EventId) -> Result<Arc<E>> {
+    pub(crate) fn get_event(&self, _: &RoomId, event_id: &EventId) -> Result<Arc<E>, MatrixError> {
         self.0
             .get(event_id)
             .map(Arc::clone)
-            .ok_or_else(|| Error::NotFound(format!("{event_id} not found")))
+            .ok_or_else(|| MatrixError::not_found(format!("{event_id} not found")))
     }
 
     /// Returns a Vec of the related auth events to the given `event`.
-    pub(crate) fn auth_event_ids(&self, room_id: &RoomId, event_ids: Vec<E::Id>) -> Result<HashSet<E::Id>> {
+    pub(crate) fn auth_event_ids(&self, room_id: &RoomId, event_ids: Vec<E::Id>) -> Result<HashSet<E::Id>, MatrixError> {
         let mut result = HashSet::new();
         let mut stack = event_ids;
 
@@ -389,7 +390,7 @@ pub(crate) fn to_init_pdu_event(
             unsigned: BTreeMap::new(),
             auth_events: vec![],
             prev_events: vec![],
-            depth: u0,
+            depth: 0,
             hashes: EventHash::new("".to_owned()),
             signatures: BTreeMap::new(),
         }),
@@ -431,7 +432,7 @@ where
             unsigned: BTreeMap::new(),
             auth_events,
             prev_events,
-            depth: u0,
+            depth: 0,
             hashes: EventHash::new("".to_owned()),
             signatures: BTreeMap::new(),
         }),
@@ -546,11 +547,12 @@ pub(crate) fn INITIAL_EDGES() -> Vec<OwnedEventId> {
 }
 
 pub(crate) mod event {
-    use crate::events::{pdu::Pdu, TimelineEventType};
-    use crate::{OwnedEventId, RoomId, UnixMillis, UserId};
     use serde::{Deserialize, Serialize};
 
-    use crate::{Event, RawJsonValue};
+    use crate::events::{pdu::Pdu, TimelineEventType};
+    use crate::state::Event;
+    use crate::RawJsonValue;
+    use crate::{OwnedEventId, RoomId, UnixMillis, UserId};
 
     impl Event for PduEvent {
         type Id = OwnedEventId;

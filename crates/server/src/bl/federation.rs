@@ -70,6 +70,7 @@ pub(crate) async fn send_request(
     destination: &ServerName,
     mut request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
+    println!("VVVVVVVVVVVVVVVVVVVVV=send_request");
     if !crate::config().allow_federation {
         return Err(AppError::public("Federation is disabled."));
     }
@@ -154,7 +155,10 @@ pub(crate) async fn send_request(
     //         warn!("Failed to find destination {}: {}", actual_destination_str, e);
     //         StatusError::bad_request().brief("invalid destination").into()
     //     })?;
-    request.url_mut().set_host(Some(&*actual_destination.hostname())).unwrap();
+    request
+        .url_mut()
+        .set_host(Some(&*actual_destination.hostname()))
+        .unwrap();
     request.url_mut().set_port(actual_destination.port()).unwrap();
 
     let mut request_map = serde_json::Map::new();
@@ -188,6 +192,7 @@ pub(crate) async fn send_request(
     let request_json: serde_json::Map<String, serde_json::Value> =
         serde_json::from_slice(&serde_json::to_vec(&request_json).unwrap()).unwrap();
 
+    println!("==========request json :{:#?}", request_json);
     let signatures = request_json["signatures"]
         .as_object()
         .unwrap()
@@ -221,16 +226,19 @@ pub(crate) async fn send_request(
             let status = response.status();
 
             if status == 200 {
+                println!("RRRRREspone xxxxfd   ok 200");
                 Ok(response)
             } else {
                 let body = response.text().await.unwrap_or_default();
                 warn!("{} {}: {}", url, status, body);
                 let err_msg = format!("Answer from {destination}: {body}");
                 debug!("Returning error from {destination}");
+                println!("RRRRREspone xxxxfd   turning error from");
                 Err(MatrixError::unknown(err_msg).into())
             }
         }
         Err(e) => {
+            println!("RRRRREspone xxxxfd   error");
             warn!(
                 "Could not send request to {} at {}: {}",
                 destination, actual_destination_str, e

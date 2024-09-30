@@ -18,7 +18,28 @@ use crate::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::{db, AppResult, AuthArgs, AuthedInfo, MatrixError};
 
 #[handler]
+pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+    if let Some(authorization) = &aa.authorization {
+        if authorization.starts_with("Bearer ") {
+            auth_by_access_token_inner(aa, depot).await
+        } else {
+            auth_by_signatures_inner(req, depot).await
+        }
+    } else {
+        Err(MatrixError::missing_token("Missing token.").into())
+    }
+}
+
+#[handler]
 pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
+    auth_by_access_token_inner(aa, depot).await
+}
+#[handler]
+pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+    auth_by_signatures_inner(req, depot).await
+}
+
+async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
     let token = aa.require_access_token()?;
 
     let access_token = user_access_tokens::table
@@ -48,14 +69,15 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
     }
 }
 
-#[handler]
-pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
     let (user, device, _server_name, appservice) = {
+        println!("auth_by_signatures xxxxxxxxx xxxxxxxxxxxx {:#?}", req.headers());
         let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
             warn!("Missing or invalid Authorization header");
             return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
         };
 
+        println!("VVVVkeys: {:?}-{}-{}", x_matrix.origin.as_str(),x_matrix.key,x_matrix.sig);
         let origin_signatures = BTreeMap::from_iter([(x_matrix.key.clone(), CanonicalJsonValue::String(x_matrix.sig))]);
 
         let signatures = BTreeMap::from_iter([(
@@ -101,6 +123,7 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
             }
         };
 
+
         // Only verify_keys that are currently valid should be used for validating requests
         // as per MSC4029
         let pub_key_map = BTreeMap::from_iter([(
@@ -111,6 +134,7 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
                 BTreeMap::new()
             },
         )]);
+        println!("VVVVVVVVVVVVVVkeys: {:#?} \n {:#?}", pub_key_map,request_map);
 
         match signatures::verify_json(&pub_key_map, &request_map) {
             Ok(()) => (None, None, Some(x_matrix.origin), None),
@@ -127,6 +151,7 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
                                          nocanon)"
                     );
                 }
+                println!("=======================ailed to  {:?}  {e}", e);
 
                 return Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into());
             }

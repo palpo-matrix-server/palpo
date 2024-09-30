@@ -3,13 +3,14 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 use std::time::SystemTime;
 
+use palpo_core::serde::CanonicalJsonObject;
 use salvo::prelude::*;
 
 use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, RawJson};
 use crate::core::{OwnedServerSigningKeyId, UnixMillis};
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
+use crate::{empty_ok, json_ok, AppResult, AuthArgs, EmptyResult, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("key").oapi_tag("federation").push(
@@ -42,7 +43,7 @@ async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
 /// forever.
 // Response type for this endpoint is Json because we need to calculate a signature for the response
 #[endpoint]
-async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
+async fn server_signing_keys(_aa: AuthArgs, res: &mut Response) -> JsonResult<ServerKeysResBody> {
     // BTreeMap<std::string::String, CanonicalJsonValue>
     let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
     verify_keys.insert(
@@ -53,7 +54,7 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
             key: Base64::new(crate::keypair().public_key().to_vec()),
         },
     );
-    let server_key = ServerSigningKeys {
+    let server_keys = ServerSigningKeys {
         server_name: crate::config().server_name.clone(),
         verify_keys,
         old_verify_keys: BTreeMap::new(),
@@ -61,14 +62,17 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
         valid_until_ts: UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(86400 * 7))
             .expect("time is valid"),
     };
-    let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_key)?;
-    let mut server_key = serde_json::from_slice(&buf)?;
+    let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_keys)?;
+    let mut server_keys: CanonicalJsonObject = serde_json::from_slice(&buf)?;
 
-    crate::core::signatures::sign_json(&crate::config().server_name.as_str(), crate::keypair(), &mut server_key)
-        .unwrap();
-    let server_key = serde_json::to_string(&server_key)?;
+    crate::core::signatures::sign_json(
+        &crate::config().server_name.as_str(),
+        crate::keypair(),
+        &mut server_keys,
+    )
+    .unwrap();
 
-    json_ok(ServerKeysResBody {
-        server_key: RawJson::from_string(server_key).expect("static conversion, no errors"),
-    })
+    println!("MMMMMMMMMserver_signing_keys {:#?}", server_keys);
+    let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
+    json_ok(ServerKeysResBody::new(server_keys))
 }
