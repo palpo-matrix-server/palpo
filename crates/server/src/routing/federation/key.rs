@@ -72,7 +72,6 @@ async fn server_signing_keys(_aa: AuthArgs, res: &mut Response) -> JsonResult<Se
     )
     .unwrap();
 
-    println!("MMMMMMMMMserver_signing_keys {:#?}", server_keys);
     let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
     json_ok(ServerKeysResBody::new(server_keys))
 }

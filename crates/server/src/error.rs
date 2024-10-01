@@ -82,7 +82,6 @@ impl AppError {
 #[async_trait]
 impl Writer for AppError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
-        println!("==========error {}  {:#?}", self, self);
         let matrix = match self {
             Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo."),
             Self::FrequentlyRequest => MatrixError::unknown("frequently request resource."),

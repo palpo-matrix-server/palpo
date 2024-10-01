@@ -8,7 +8,7 @@ COPY crates crates
 # RUN cargo build --release \
 #     && mv target/release/palpo palpo \
 #     && rm -rf target
-RUN cargo build \
+RUN --mount=type=cache,target=/root/.cargo cargo build \
 && mv target/debug/palpo palpo \
 && rm -rf target
 

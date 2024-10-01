@@ -1276,7 +1276,6 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
 /// fetch them from the server and save to our DB.
 #[tracing::instrument(skip_all)]
 pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>) -> AppResult<SigningKeys> {
-    println!("FFFFFFFFFFFEtch sigiu keys");
     let contains_all_ids = |keys: &SigningKeys| {
         signature_ids.iter().all(|id| {
             keys.verify_keys
@@ -1382,7 +1381,6 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         .ok()
         .map(|resp| resp.0)
     {
-        println!("GGGGGGGGSERVER KYS  {:#?}", server_key);
         // Keys should only be valid for a maximum of seven days
         server_key.valid_until_ts = server_key.valid_until_ts.min(
             UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
@@ -1413,18 +1411,20 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         }
     }
 
-    println!("VLLLLLLLLLLLLLLLLLLL");
     for server in &conf.trusted_servers {
         debug!("Asking {} for {}'s signing key", server, origin);
-        let keys_request = remote_server_keys_request(server, RemoteServerKeysReqArgs {
-            server_name: origin.to_owned(),
-            minimum_valid_until_ts: UnixMillis::from_system_time(
-                SystemTime::now()
-                    .checked_add(Duration::from_secs(3600))
-                    .expect("SystemTime to large"),
-            )
-            .unwrap_or(UnixMillis::now()),
-        })?
+        let keys_request = remote_server_keys_request(
+            server,
+            RemoteServerKeysReqArgs {
+                server_name: origin.to_owned(),
+                minimum_valid_until_ts: UnixMillis::from_system_time(
+                    SystemTime::now()
+                        .checked_add(Duration::from_secs(3600))
+                        .expect("SystemTime to large"),
+                )
+                .unwrap_or(UnixMillis::now()),
+            },
+        )?
         .into_inner();
         if let Some(server_keys) = crate::sending::send_federation_request(server, keys_request)
             .await?
@@ -1438,7 +1438,6 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
                     .collect::<Vec<_>>()
             })
         {
-            println!("GGGGGGGGGGGGot signing keys: {:?}", server_keys);
             trace!("Got signing keys: {:?}", server_keys);
             for mut k in server_keys {
                 if k.valid_until_ts

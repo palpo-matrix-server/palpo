@@ -606,20 +606,17 @@ pub(super) async fn create_room(
 
     let mut users = BTreeMap::new();
     users.insert(authed.user_id().clone(), 100);
-    println!("=========users: {:?}", users);
 
     if preset == RoomPreset::TrustedPrivateChat {
         for invite_ in &body.invite {
             users.insert(invite_.clone(), 100);
         }
     }
-    println!("=========users2: {:?}", users);
 
     let mut power_levels_content = serde_json::to_value(RoomPowerLevelsEventContent {
         users,
         ..Default::default()
     })?;
-    println!("=========power_levels_content: {:?}", power_levels_content);
 
     if let Some(power_level_content_override) = &body.power_level_content_override {
         let json: JsonObject = serde_json::from_value(serde_json::to_value(power_level_content_override)?)?;
@@ -628,7 +625,6 @@ pub(super) async fn create_room(
         }
     }
 
-    println!("VXXXXXXXXXXXXX  {:?}", power_levels_content);
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -640,7 +636,6 @@ pub(super) async fn create_room(
         authed.user_id(),
         &room_id,
     )?;
-    println!("VVVVVVVVVXXXXXXXXX");
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {

@@ -29,7 +29,7 @@ SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomF
 
 env \
     -C "$(git rev-parse --show-toplevel)" \
-    docker build --tag "$TEST_IMAGE" --file tests/complement/Dockerfile.test .
+    DOCKER_BUILDKIT=1 docker build --tag "$TEST_IMAGE" --file tests/complement/Dockerfile.test .
 
 # It's okay (likely, even) that `go test` exits nonzero
 set +o pipefail
@@ -40,7 +40,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run "TestContentMediaV1" -json ./tests ./tests/csapi | tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests | tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

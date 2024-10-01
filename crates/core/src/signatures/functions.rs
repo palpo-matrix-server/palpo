@@ -93,7 +93,6 @@ pub fn sign_json<K>(entity_id: &str, keypair: &K, object: &mut CanonicalJsonObje
 where
     K: KeyPair,
 {
-    println!("=============sign_json  entiy id: {entity_id}");
     let (signatures_key, mut signature_map) = match object.remove_entry("signatures") {
         Some((key, CanonicalJsonValue::Object(signatures))) => (Cow::Owned(key), signatures),
         Some(_) => return Err(JsonError::not_of_type("signatures", JsonType::Object)),
@@ -104,7 +103,7 @@ where
 
     // Get the canonical JSON string.
     let json = to_json_string(object).map_err(JsonError::Serde)?;
-
+    
     // Sign the canonical JSON string.
     let signature = keypair.sign(json.as_bytes());
 
@@ -209,40 +208,31 @@ pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) 
         None => return Err(JsonError::field_missing_from_object("signatures")),
     };
 
-    println!("============public_key_map: {public_key_map:?}  =object  {:#?}", object);
     for (entity_id, signature_set) in signature_map {
-        println!("===========entity_id {entity_id}  {signature_set:?}");
         let signature_set = match signature_set {
             CanonicalJsonValue::Object(set) => set,
             _ => return Err(JsonError::not_multiples_of_type("signature sets", JsonType::Object)),
         };
 
-        println!("=xxxxxxxxxxdd       0");
         let public_keys = match public_key_map.get(&entity_id) {
             Some(keys) => keys,
             None => return Err(JsonError::key_missing("public_key_map", "public_keys", &entity_id)),
         };
-        println!("=xxxxxxxxxxdd       1");
 
         for (key_id, signature) in &signature_set {
-            println!("=xxxxxxxxxxdd       2  {key_id}  {:#?}", signature);
             let signature = match signature {
                 CanonicalJsonValue::String(s) => s,
                 _ => return Err(JsonError::not_of_type("signature", JsonType::String)),
             };
 
-            println!("=xxxxxxxxxxdd      3");
             let public_key = public_keys
                 .get(key_id)
                 .ok_or_else(|| JsonError::key_missing(format!("public_keys of {}", &entity_id), "signature", key_id))?;
 
-            println!("=xxxxxxxxxxdd       4");
             let signature =
                 Base64::<Standard>::parse(signature).map_err(|e| ParseError::base64("signature", signature, e))?;
 
-            println!("=xxxxxxxxxxdd       5 public_key: {public_key:?}  \nsignature: {signature:#?}");
             verify_json_with(&Ed25519Verifier, public_key.as_bytes(), signature.as_bytes(), object)?;
-            println!("=xxxxxxxxxxdd       6");
         }
     }
 

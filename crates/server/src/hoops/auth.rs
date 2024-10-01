@@ -70,104 +70,91 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
 }
 
 async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
-    let (user, device, _server_name, appservice) = {
-        println!("auth_by_signatures xxxxxxxxx xxxxxxxxxxxx {:#?}", req.headers());
-        let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
-            warn!("Missing or invalid Authorization header");
-            return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
-        };
+    let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
+        warn!("Missing or invalid Authorization header");
+        return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
+    };
 
-        println!("VVVVkeys: {:?}-{}-{}", x_matrix.origin.as_str(),x_matrix.key,x_matrix.sig);
-        let origin_signatures = BTreeMap::from_iter([(x_matrix.key.clone(), CanonicalJsonValue::String(x_matrix.sig))]);
+    let origin_signatures = BTreeMap::from_iter([(x_matrix.key.clone(), CanonicalJsonValue::String(x_matrix.sig))]);
 
-        let signatures = BTreeMap::from_iter([(
-            x_matrix.origin.as_str().to_owned(),
-            CanonicalJsonValue::Object(origin_signatures),
-        )]);
+    let signatures = BTreeMap::from_iter([(
+        x_matrix.origin.as_str().to_owned(),
+        CanonicalJsonValue::Object(origin_signatures),
+    )]);
 
-        let mut request_map = BTreeMap::from_iter([
-            (
-                "method".to_owned(),
-                CanonicalJsonValue::String(req.method().to_string()),
-            ),
-            ("uri".to_owned(), CanonicalJsonValue::String(req.uri().to_string())),
-            (
-                "origin".to_owned(),
-                CanonicalJsonValue::String(x_matrix.origin.as_str().to_owned()),
-            ),
-            (
-                "destination".to_owned(),
-                CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
-            ),
-            ("signatures".to_owned(), CanonicalJsonValue::Object(signatures)),
-        ]);
+    let mut request_map = BTreeMap::from_iter([
+        (
+            "destination".to_owned(),
+            CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        ),
+        (
+            "method".to_owned(),
+            CanonicalJsonValue::String(req.method().to_string()),
+        ),
+        (
+            "origin".to_owned(),
+            CanonicalJsonValue::String(x_matrix.origin.as_str().to_owned()),
+        ),
+        (
+            "uri".to_owned(),
+            format!(
+                "{}{}",
+                req.uri().path(),
+                req.uri().query().map(|q| format!("?{q}")).unwrap_or_default()
+            )
+            .into(),
+        ),
+        ("signatures".to_owned(), CanonicalJsonValue::Object(signatures)),
+    ]);
 
-        let json_body = req
-            .payload()
-            .await
-            .ok()
-            .and_then(|payload| serde_json::from_slice::<CanonicalJsonValue>(payload).ok());
+    let json_body = req
+        .payload()
+        .await
+        .ok()
+        .and_then(|payload| serde_json::from_slice::<CanonicalJsonValue>(payload).ok());
 
-        if let Some(json_body) = &json_body {
-            request_map.insert("content".to_owned(), json_body.clone());
-        };
+    if let Some(json_body) = &json_body {
+        request_map.insert("content".to_owned(), json_body.clone());
+    };
 
-        let keys_result =
-            crate::event::handler::fetch_signing_keys(&x_matrix.origin, vec![x_matrix.key.to_owned()]).await;
+    let keys_result = crate::event::handler::fetch_signing_keys(&x_matrix.origin, vec![x_matrix.key.to_owned()]).await;
 
-        let keys = match keys_result {
-            Ok(b) => b,
-            Err(e) => {
-                warn!("Failed to fetch signing keys: {}", e);
-                return Err(MatrixError::forbidden("Failed to fetch signing keys.").into());
-            }
-        };
-
-
-        // Only verify_keys that are currently valid should be used for validating requests
-        // as per MSC4029
-        let pub_key_map = BTreeMap::from_iter([(
-            x_matrix.origin.as_str().to_owned(),
-            if keys.valid_until_ts > UnixMillis::now() {
-                keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect()
-            } else {
-                BTreeMap::new()
-            },
-        )]);
-        println!("VVVVVVVVVVVVVVkeys: {:#?} \n {:#?}", pub_key_map,request_map);
-
-        match signatures::verify_json(&pub_key_map, &request_map) {
-            Ok(()) => (None, None, Some(x_matrix.origin), None),
-            Err(e) => {
-                warn!(
-                    "Failed to verify json request from {}: {}\n{:?}",
-                    x_matrix.origin, e, request_map
-                );
-
-                if req.uri().to_string().contains('@') {
-                    warn!(
-                        "Request uri contained '@' character. Make sure your \
-                                         reverse proxy gives Palpo the raw uri (apache: use \
-                                         nocanon)"
-                    );
-                }
-                println!("=======================ailed to  {:?}  {e}", e);
-
-                return Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into());
-            }
+    let keys = match keys_result {
+        Ok(b) => b,
+        Err(e) => {
+            warn!("Failed to fetch signing keys: {}", e);
+            return Err(MatrixError::forbidden("Failed to fetch signing keys.").into());
         }
     };
 
-    if let (Some(user), Some(user_device)) = (user, device) {
-        depot.inject(AuthedInfo {
-            user,
-            user_device,
-            access_token_id: None,
-            appservice,
-        });
-        Ok(())
+    // Only verify_keys that are currently valid should be used for validating requests
+    // as per MSC4029
+    let pub_key_map = BTreeMap::from_iter([(
+        x_matrix.origin.as_str().to_owned(),
+        if keys.valid_until_ts > UnixMillis::now() {
+            keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect()
+        } else {
+            BTreeMap::new()
+        },
+    )]);
+
+    if let Err(e) = signatures::verify_json(&pub_key_map, &request_map) {
+        warn!(
+            "Failed to verify json request from {}: {}\n{:?}",
+            x_matrix.origin, e, request_map
+        );
+
+        if req.uri().to_string().contains('@') {
+            warn!(
+                "Request uri contained '@' character. Make sure your \
+                                         reverse proxy gives Palpo the raw uri (apache: use \
+                                         nocanon)"
+            );
+        }
+
+        Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into())
     } else {
-        Err(MatrixError::forbidden("Forbidden login type.").into())
+        Ok(())
     }
 }
 
