@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::default_false;
 use crate::core::{JsonValue, RawJsonValue, UnixMillis};
 use crate::schema::*;
-use crate::{db, AppError, AppResult};
+use crate::{db, MatrixError, AppError, AppResult};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]
@@ -70,10 +70,12 @@ pub struct NewDbEvent {
 }
 
 impl NewDbEvent {
-    pub fn from_canonical_json(value: &CanonicalJsonObject) -> AppResult<Self> {
-        Ok(serde_json::from_value(serde_json::to_value(value)?)?)
+    pub fn from_canonical_json(id: &EventId, value: &CanonicalJsonObject) -> AppResult<Self> {
+        Ok(Self::from_json_value(id, serde_json::to_value(value)?)?)
     }
-    pub fn from_json_value(value: JsonValue) -> AppResult<Self> {
+    pub fn from_json_value(id: &EventId, mut value: JsonValue) -> AppResult<Self> {
+        let mut obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
+        obj.insert("id".into(), id.as_str().into());
         Ok(serde_json::from_value(value)?)
     }
 }

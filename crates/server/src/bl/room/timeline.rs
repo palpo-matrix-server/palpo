@@ -585,7 +585,7 @@ pub fn create_hash_and_sign_event(
     )
     .map_err(|e| {
         error!("{:?}", e);
-        AppError::internal("Auth check failed.")
+        AppError::internal("Auth check failed when hash and sign event")
     })?;
 
     if !auth_checked {

@@ -61,11 +61,8 @@ async fn upload_keys(
     }
 
     if let Some(device_keys) = &body.device_keys {
-        // TODO: merge this and the existing event?
-        // This check is needed to assure that signatures are kept
-        if crate::user::get_device_keys(authed.user_id(), authed.device_id())?.is_none() {
-            crate::user::add_device_keys(authed.user_id(), authed.device_id(), device_keys)?;
-        }
+        println!("UUUUUUUUUUUUUUupload_keys");
+        crate::user::add_device_keys(authed.user_id(), authed.device_id(), device_keys)?;
     }
 
     json_ok(UploadKeysResBody {
@@ -84,9 +81,12 @@ async fn get_key_changes(_aa: AuthArgs, args: KeyChangesReqArgs, depot: &mut Dep
     let from_sn = args.from.parse()?;
     let to_sn = args.to.parse()?;
     let mut device_list_updates = HashSet::new();
-    if crate::user::get_keys_changed_users(authed.user_id(), from_sn, Some(to_sn))? {
-        device_list_updates.insert(authed.user_id().to_owned());
-    }
+    println!("XDDDDDDDDDDDDDDDDDDDDDDDDget keys changes  {from_sn}->{to_sn:?}");
+    device_list_updates.extend(crate::user::get_keys_changed_users(
+        authed.user_id(),
+        from_sn,
+        Some(to_sn),
+    )?);
 
     for room_id in crate::user::joined_rooms(authed.user_id(), 0)? {
         device_list_updates.extend(crate::room::keys_changed_users(&room_id, from_sn, Some(to_sn))?);

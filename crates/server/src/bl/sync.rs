@@ -1,6 +1,7 @@
 use std::collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet};
 use std::time::Duration;
 
+use diesel::prelude::*;
 use tokio::sync::watch::Sender;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
@@ -16,7 +17,8 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
+use crate::schema::*;
+use crate::{db, AppError, AppResult};
 
 #[tracing::instrument(skip_all)]
 pub async fn sync_events(
@@ -33,6 +35,8 @@ pub async fn sync_events(
     let curr_sn = crate::curr_sn()?;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
     let next_batch = curr_sn + 1;
+
+    println!("CCCCsync event: since_sn:{since_sn}");
 
     // Load filter
     let filter = match args.filter {
@@ -58,10 +62,17 @@ pub async fn sync_events(
     let mut device_list_updates = HashSet::new();
     let mut device_list_left = HashSet::new();
 
+    device_list_updates.extend(
+        room_users::table
+            .filter(room_users::membership.eq("join"))
+            .filter(room_users::event_sn.ge(since_sn))
+            .select(room_users::user_id)
+            .load::<OwnedUserId>(&mut db::connect()?)?,
+    );
+
     // Look for device list updates of this account
-    if crate::user::get_keys_changed_users(&sender_id, since_sn, None)? {
-        device_list_updates.insert(sender_id.clone());
-    }
+    println!("XDDDDDDDDDDDDDDDDDDDDDDDDVV6 since_sn  {since_sn}");
+    device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
 
     let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
     for room_id in all_joined_rooms {

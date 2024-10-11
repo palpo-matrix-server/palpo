@@ -104,20 +104,24 @@ pub fn try_auth(
         AuthData::Password(Password {
             identifier, password, ..
         }) => {
+            println!("DDDDDDDDDDDDactiveate   Password");
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
                 _ => return Err(MatrixError::unauthorized("Identifier type not recognized.").into()),
             };
 
+            println!("DDDDDDDDDDDDactiveate   2");
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
             if (user_id != &auth_user_id) {
                 return Err(MatrixError::forbidden("User ID does not match.").into());
             }
 
+            println!("DDDDDDDDDDDDactiveate   3");
             let Some(user) = crate::user::get_user(&auth_user_id)? else {
                 return Err(MatrixError::unauthorized("User not found.").into());
             };
+            println!("DDDDDDDDDDDDactiveate   4");
             crate::user::vertify_password(&user, &password)?;
         }
         AuthData::RegistrationToken(t) => {

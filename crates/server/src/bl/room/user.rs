@@ -11,10 +11,10 @@ use crate::{db, AppResult, JsonValue};
 #[diesel(table_name = room_users)]
 pub struct DbRoomUser {
     pub id: i64,
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub room_id: OwnedRoomId,
+    pub user_id: OwnedUserId,
     pub sender_id: OwnedUserId,
     pub membership: String,
     pub forgotten: bool,
@@ -26,10 +26,10 @@ pub struct DbRoomUser {
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = room_users)]
 pub struct NewDbRoomUser {
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub room_id: OwnedRoomId,
+    pub user_id: OwnedUserId,
     pub sender_id: OwnedUserId,
     pub membership: String,
     pub forgotten: bool,

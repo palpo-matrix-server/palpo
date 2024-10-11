@@ -103,7 +103,7 @@ where
 
     // Get the canonical JSON string.
     let json = to_json_string(object).map_err(JsonError::Serde)?;
-    
+
     // Sign the canonical JSON string.
     let signature = keypair.sign(json.as_bytes());
 
@@ -549,6 +549,7 @@ pub fn verify_event(
             None => return Err(VerificationError::signature_not_found(entity_id)),
         };
 
+        println!("===server name: {entity_id}   public_key_map: {public_key_map:#?}");
         let public_keys = public_key_map
             .get(entity_id.as_str())
             .ok_or_else(|| VerificationError::public_key_not_found(entity_id))?;

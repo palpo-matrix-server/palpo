@@ -91,6 +91,7 @@ async fn deactivate(
     depot: &mut Depot,
     res: &mut Response,
 ) -> JsonResult<DeactivateResBody> {
+    println!("DDDDDDDDDDDDactiveate");
     let authed = depot.authed_info()?;
 
     let mut uiaa_info = UiaaInfo {
@@ -107,7 +108,9 @@ async fn deactivate(
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     };
+    println!("DDDDDDDDDDDDactiveate   2");
     if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
+        println!("DDDDDDDDDDDDactiveate   3");
         res.status_code(StatusCode::UNAUTHORIZED);
         return Err(MatrixError::forbidden("Authentication failed.").into());
     }

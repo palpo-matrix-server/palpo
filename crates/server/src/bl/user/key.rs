@@ -1,6 +1,7 @@
 use std::collections::{hash_map, BTreeMap, HashMap};
 use std::time::{Duration, Instant};
 
+use device_inboxes::occur_sn;
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use palpo_core::UnixMillis;
@@ -115,7 +116,7 @@ pub struct DbDeviceKey {
     pub key_data: JsonValue,
     pub created_at: UnixMillis,
 }
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = e2e_device_keys)]
 pub struct NewDbDeviceKey {
     pub user_id: OwnedUserId,
@@ -133,13 +134,15 @@ pub struct DbKeyChange {
 
     pub user_id: OwnedUserId,
     pub room_id: Option<OwnedRoomId>,
+    pub occur_sn: i64,
     pub changed_at: UnixMillis,
 }
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = e2e_key_changes)]
 pub struct NewDbKeyChange {
     pub user_id: OwnedUserId,
     pub room_id: Option<OwnedRoomId>,
+    pub occur_sn: i64,
     pub changed_at: UnixMillis,
 }
 
@@ -464,17 +467,23 @@ pub fn count_one_time_keys(
 }
 
 pub fn add_device_keys(user_id: &OwnedUserId, device_id: &OwnedDeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
+    let new_device_key = NewDbDeviceKey {
+        user_id: user_id.to_owned(),
+        device_id: device_id.to_owned(),
+        stream_id: 0,
+        display_name: device_keys.unsigned.device_display_name.clone(),
+        key_data: serde_json::to_value(device_keys).unwrap(),
+        created_at: UnixMillis::now(),
+    };
     diesel::insert_into(e2e_device_keys::table)
-        .values(&NewDbDeviceKey {
-            user_id: user_id.to_owned(),
-            device_id: device_id.to_owned(),
-            stream_id: 0,
-            display_name: device_keys.unsigned.device_display_name.clone(),
-            key_data: serde_json::to_value(device_keys).unwrap(),
-            created_at: UnixMillis::now(),
-        })
+        .values(&new_device_key)
+        .on_conflict(((e2e_device_keys::user_id, e2e_device_keys::device_id)))
+        .do_update()
+        .set(&new_device_key)
         .execute(&mut db::connect()?)?;
+    println!("UUUUUUUUUUUUUUadd_device_keys");
     mark_device_key_update(user_id)?;
+    println!("UUUUUUUUUUUUUUadd_device_keys2");
     Ok(())
 }
 
@@ -576,29 +585,40 @@ pub fn sign_key(
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
+    println!("MMMMMMMMMMMMmark_device_key_update");
+    let changed_at = UnixMillis::now();
     for room_id in crate::user::joined_rooms(user_id, 0)? {
-        // Don't send key updates to unencrypted rooms
-        if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
-            continue;
-        }
+        // comment for testing
+        // // Don't send key updates to unencrypted rooms
+        // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
+        //     continue;
+        // }
 
+        let change = NewDbKeyChange {
+            user_id: user_id.to_owned(),
+            room_id: Some(room_id.to_owned()),
+            changed_at,
+            occur_sn: crate::next_sn()?,
+        };
         diesel::insert_into(e2e_key_changes::table)
-            .values(&NewDbKeyChange {
-                user_id: user_id.to_owned(),
-                room_id: Some(room_id.to_owned()),
-                changed_at: UnixMillis::now(),
-            })
-            .on_conflict_do_nothing()
+            .values(&change)
+            .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
+            .do_update()
+            .set(&change)
             .execute(&mut db::connect()?)?;
     }
 
+    let change = NewDbKeyChange {
+        user_id: user_id.to_owned(),
+        room_id: None,
+        changed_at,
+        occur_sn: crate::next_sn()?,
+    };
     diesel::insert_into(e2e_key_changes::table)
-        .values(&NewDbKeyChange {
-            user_id: user_id.to_owned(),
-            room_id: None,
-            changed_at: UnixMillis::now(),
-        })
-        .on_conflict_do_nothing()
+        .values(&change)
+        .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
+        .do_update()
+        .set(&change)
         .execute(&mut db::connect()?)?;
     Ok(())
 }
@@ -638,25 +658,27 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
     Ok(Some(device_keys))
 }
 
-pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<bool> {
+pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    let room_ids = crate::user::joined_rooms(user_id, 0)?;
+    println!("===============user: {user_id} from_sn: {from_sn} to_sn: {to_sn:?}  joined rooms: {room_ids:?}");
+    println!(
+        "======changes: {:#?}",
+        e2e_key_changes::table.load::<DbKeyChange>(&mut db::connect()?)
+    );
     if let Some(to_sn) = to_sn {
-        diesel_exists!(
-            e2e_key_changes::table
-                .filter(e2e_key_changes::user_id.eq(user_id))
-                .filter(e2e_key_changes::occur_sn.ge(from_sn))
-                .filter(e2e_key_changes::occur_sn.le(to_sn))
-                .select(e2e_key_changes::user_id),
-            &mut db::connect()?
-        )
-        .map_err(Into::into)
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
+            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .filter(e2e_key_changes::occur_sn.le(to_sn))
+            .select(e2e_key_changes::user_id)
+            .load::<OwnedUserId>(&mut db::connect()?)
+            .map_err(Into::into)
     } else {
-        diesel_exists!(
-            e2e_key_changes::table
-                .filter(e2e_key_changes::user_id.eq(user_id))
-                .filter(e2e_key_changes::occur_sn.ge(from_sn))
-                .select(e2e_key_changes::user_id),
-            &mut db::connect()?
-        )
-        .map_err(Into::into)
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
+            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .select(e2e_key_changes::user_id)
+            .load::<OwnedUserId>(&mut db::connect()?)
+            .map_err(Into::into)
     }
 }

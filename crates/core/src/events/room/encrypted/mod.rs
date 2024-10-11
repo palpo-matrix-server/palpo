@@ -303,32 +303,32 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 //         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
 //     }
 
-    // #[test]
-    // fn deserialization() {
-    //     let json_data = json!({
-    //         "algorithm": "m.megolm.v1.aes-sha2",
-    //         "ciphertext": "ciphertext",
-    //         "sender_key": "sender_key",
-    //         "device_id": "device_id",
-    //         "session_id": "session_id",
-    //         "m.relates_to": {
-    //             "m.in_reply_to": {
-    //                 "event_id": "$h29iv0s8:example.com"
-    //             }
-    //         },
-    //     });
+// #[test]
+// fn deserialization() {
+//     let json_data = json!({
+//         "algorithm": "m.megolm.v1.aes-sha2",
+//         "ciphertext": "ciphertext",
+//         "sender_key": "sender_key",
+//         "device_id": "device_id",
+//         "session_id": "session_id",
+//         "m.relates_to": {
+//             "m.in_reply_to": {
+//                 "event_id": "$h29iv0s8:example.com"
+//             }
+//         },
+//     });
 
-    //     let content: RoomEncryptedEventContent = from_json_value(json_data).unwrap();
+//     let content: RoomEncryptedEventContent = from_json_value(json_data).unwrap();
 
-    //     assert_matches!(content.scheme, EncryptedEventScheme::MegolmV1AesSha2(scheme));
-    //     assert_eq!(scheme.ciphertext, "ciphertext");
-    //     assert_eq!(scheme.sender_key, "sender_key");
-    //     assert_eq!(scheme.device_id, "device_id");
-    //     assert_eq!(scheme.session_id, "session_id");
+//     assert_matches!(content.scheme, EncryptedEventScheme::MegolmV1AesSha2(scheme));
+//     assert_eq!(scheme.ciphertext, "ciphertext");
+//     assert_eq!(scheme.sender_key, "sender_key");
+//     assert_eq!(scheme.device_id, "device_id");
+//     assert_eq!(scheme.session_id, "session_id");
 
-    //     assert_matches!(content.relates_to, Some(Relation::Reply { in_reply_to }));
-    //     assert_eq!(in_reply_to.event_id, "$h29iv0s8:example.com");
-    // }
+//     assert_matches!(content.relates_to, Some(Relation::Reply { in_reply_to }));
+//     assert_eq!(in_reply_to.event_id, "$h29iv0s8:example.com");
+// }
 
 //     #[test]
 //     fn deserialization_olm() {

@@ -35,7 +35,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    println!("==============at  {:?}", args.at);
     let frame_id = if let Some(at_sn) = &args.at {
         if let Ok(at_sn) = at_sn.parse::<i64>() {
             println!(
@@ -69,20 +68,17 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         .collect();
     println!("==satets: {:#?}", states);
     if let Some(membership) = &args.membership {
-        println!("==========membership: {:#?}", membership);
         states = states
             .into_iter()
             .filter(|event| membership.to_string() == event.deserialize().unwrap().membership().to_string())
             .collect();
     }
     if let Some(not_membership) = &args.not_membership {
-        println!("========not==membership: {:#?}", not_membership);
         states = states
             .into_iter()
             .filter(|event| not_membership.to_string() != event.deserialize().unwrap().membership().to_string())
             .collect();
     }
-    println!("==========membestates: {:#?}", states);
 
     json_ok(MembersResBody { chunk: states })
 }
@@ -250,6 +246,7 @@ pub(crate) async fn join_room_by_id_or_alias(
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
+            println!("MMMMMMMMMMMMM=====2");
             servers.extend(
                 crate::room::state::get_invite_state(authed.user_id(), &room_id)?
                     .unwrap_or_default()
@@ -260,16 +257,21 @@ pub(crate) async fn join_room_by_id_or_alias(
                     .filter_map(|sender| UserId::parse(sender).ok())
                     .map(|user| user.server_name().to_owned()),
             );
+            println!("MMMMMMMMMMMMM=====3");
             servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
+            println!("MMMMMMMMMMMMM=====4");
 
             (servers, room_id)
         }
         Err(room_alias) => {
+            println!("MMMMMMMMMMMMM=====5");
             let response = crate::room::get_alias_response(room_alias).await?;
+            println!("MMMMMMMMMMMMM=====6");
             (response.servers, response.room_id)
         }
     };
 
+    println!("MMMMMMMMMMMMM=====7");
     let join_room_response = crate::membership::join_room(
         authed.user_id(),
         &room_id,
@@ -279,6 +281,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     )
     .await?;
 
+    println!("MMMMMMMMMMMMM=====8");
     json_ok(JoinRoomResBody {
         room_id: join_room_response.room_id,
     })

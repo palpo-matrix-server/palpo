@@ -19,7 +19,7 @@ use crate::core::federation::directory::{
 };
 use crate::core::federation::event::RoomStateIdsResBody;
 use crate::core::federation::key::get_server_key_request;
-use crate::core::federation::membership::SendJoinEventResBodyV2;
+use crate::core::federation::membership::{SendJoinResBodyV1, SendJoinResBodyV2};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::{self, RoomVersion, StateMap};
@@ -62,7 +62,7 @@ pub(crate) async fn handle_incoming_pdu(
     pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     // 0. Check the server is in the room
-    if !crate::room::exists(room_id)? {
+    if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
 
@@ -257,6 +257,7 @@ fn handle_outlier_pdu<'a>(
         // Removing all the expired keys, unless the room version allows stale keys
         let filtered_keys = crate::filter_keys_server_map(pkey_map, origin_server_ts, room_version_id);
 
+        println!("LLLLLLLLLLLLLLLLLLLLL0   {filtered_keys:?}");
         let mut val = match crate::core::signatures::verify_event(&filtered_keys, &value, room_version_id) {
             Err(e) => {
                 // Drop
@@ -360,16 +361,17 @@ fn handle_outlier_pdu<'a>(
             None::<PduEvent>, // TODO: third party invite
             |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
         )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed"))?
+        .map_err(|_e| MatrixError::invalid_param("Auth check failed outllier pdu"))?
         {
-            return Err(MatrixError::invalid_param("Auth check failed").into());
+            return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
         }
 
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
         diesel::insert_into(events::table)
-            .values(NewDbEvent::from_canonical_json(&val)?)
+            .values(NewDbEvent::from_canonical_json(&incoming_pdu.event_id,&val)?)
+            .on_conflict_do_nothing()
             .execute(&mut *db::connect()?)?;
 
         debug!("Added pdu as outlier.");
@@ -607,7 +609,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok().flatten())
         },
     )
-    .map_err(|_e| MatrixError::invalid_param("Auth check failed."))?;
+    .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
 
     if !check_result {
         return Err(AppError::internal(
@@ -628,7 +630,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     let soft_fail = !state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
-    .map_err(|_e| MatrixError::invalid_param("Auth check failed."))?;
+    .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
 
     // 13. Use state resolution to find new room state
 
@@ -1153,7 +1155,7 @@ fn get_server_keys_from_cache(
 }
 
 pub(crate) async fn fetch_join_signing_keys(
-    event: &SendJoinEventResBodyV2,
+    event: &SendJoinResBodyV2,
     room_version: &RoomVersionId,
     pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {

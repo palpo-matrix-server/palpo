@@ -143,26 +143,35 @@ pub fn auth_check<E: Event>(
 
         info!("start m.room.create check");
 
+        println!("VVVVVVVVVVVVVVVVVVVV0");
         // If it has any previous events, reject
         if incoming_event.prev_events().next().is_some() {
             warn!("the room creation event had previous events");
+            println!("VVVVVVVVVVVVVVVVVVVV1");
             return Ok(false);
         }
 
+        println!("VVVVVVVVVVVVVVVVVVVV2");
         // If the domain of the room_id does not match the domain of the sender, reject
         let Ok(room_id_server_name) = incoming_event.room_id().server_name() else {
+            println!("VVVVVVVVVVVVVVVVVVVV3");
             warn!("room ID has no servername");
             return Ok(false);
         };
 
+        println!("VVVVVVVVVVVVVVVVVVVV4");
         if room_id_server_name != sender.server_name() {
+            println!("VVVVVVVVVVVVVVVVVVVV5");
             warn!("servername of room ID does not match servername of sender");
             return Ok(false);
         }
 
+        println!("VVVVVVVVVVVVVVVVVVVV6");
         // If content.room_version is present and is not a recognized version, reject
         let content: RoomCreateContentFields = from_json_str(incoming_event.content().get())?;
+        println!("VVVVVVVVVVVVVVVVVVVV7");
         if content.room_version.map(|v| v.deserialize().is_err()).unwrap_or(false) {
+            println!("VVVVVVVVVVVVVVVVVVVV8");
             warn!("invalid room version found in m.room.create event");
             return Ok(false);
         }
@@ -170,11 +179,13 @@ pub fn auth_check<E: Event>(
         if !room_version.use_room_create_sender {
             // If content has no creator field, reject
             if content.creator.is_none() {
+                println!("VVVVVVVVVVVVVVVVVVVV9");
                 warn!("no creator field found in m.room.create content");
                 return Ok(false);
             }
         }
 
+        println!("VVVVVVVVVVVVVVVVVVVV10");
         info!("m.room.create event was allowed");
         return Ok(true);
     }
@@ -204,6 +215,7 @@ pub fn auth_check<E: Event>(
     }
     */
 
+    println!("VVVVVVVVVVVVVVVVVVVV===0");
     let room_create_event = match fetch_state(&StateEventType::RoomCreate, "") {
         None => {
             warn!("no m.room.create event in auth chain");
@@ -212,6 +224,7 @@ pub fn auth_check<E: Event>(
         Some(e) => e,
     };
 
+    println!("VVVVVVVVVVVVVVVVVVVV===1");
     // 3. If event does not have m.room.create in auth_events reject
     if !incoming_event
         .auth_events()
@@ -221,6 +234,7 @@ pub fn auth_check<E: Event>(
         return Ok(false);
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===2");
     // If the create event content has the field m.federate set to false and the sender domain of
     // the event does not match the sender domain of the create event, reject.
     #[derive(Deserialize)]
@@ -235,6 +249,7 @@ pub fn auth_check<E: Event>(
         warn!("room is not federated and event's sender domain does not match create event's sender domain");
         return Ok(false);
     }
+    println!("VVVVVVVVVVVVVVVVVVVV===3");
 
     // Only in some room versions 6 and below
     if room_version.special_case_aliases_auth {
@@ -253,10 +268,12 @@ pub fn auth_check<E: Event>(
         }
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===4");
     // If type is m.room.member
     let power_levels_event = fetch_state(&StateEventType::RoomPowerLevels, "");
     let sender_member_event = fetch_state(&StateEventType::RoomMember, sender.as_str());
 
+    println!("VVVVVVVVVVVVVVVVVVVV===5");
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         info!("starting m.room.member check");
         let state_key = match incoming_event.state_key() {
@@ -267,6 +284,7 @@ pub fn auth_check<E: Event>(
             Some(s) => s,
         };
 
+        println!("VVVVVVVVVVVVVVVVVVVV===6");
         let content: RoomMemberContentFields = from_json_str(incoming_event.content().get())?;
         if content.membership.as_ref().and_then(|m| m.deserialize().ok()).is_none() {
             warn!("no valid membership field found for m.room.member event content");
@@ -275,6 +293,7 @@ pub fn auth_check<E: Event>(
 
         let target_user = <&UserId>::try_from(state_key).map_err(|e| StateError::InvalidPdu(format!("{e}")))?;
 
+        println!("VVVVVVVVVVVVVVVVVVVV===7");
         let user_for_join_auth = content
             .join_authorised_via_users_server
             .as_ref()
@@ -304,6 +323,7 @@ pub fn auth_check<E: Event>(
             return Ok(false);
         }
 
+        println!("VVVVVVVVVVVVVVVVVVVV===8");
         info!("m.room.member event was allowed");
         return Ok(true);
     }
@@ -317,6 +337,7 @@ pub fn auth_check<E: Event>(
         }
     };
 
+    println!("VVVVVVVVVVVVVVVVVVVV===9");
     let sender_membership_event_content: RoomMemberContentFields = from_json_str(sender_member_event.content().get())?;
     let membership_state = sender_membership_event_content
         .membership
@@ -328,6 +349,7 @@ pub fn auth_check<E: Event>(
         return Ok(false);
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===10");
     // If type is m.room.third_party_invite
     let sender_power_level = if let Some(pl) = &power_levels_event {
         let content = deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
@@ -352,6 +374,7 @@ pub fn auth_check<E: Event>(
         }
     };
 
+    println!("VVVVVVVVVVVVVVVVVVVV===11");
     // Allow if and only if sender's current power level is greater than
     // or equal to the invite level
     if *incoming_event.event_type() == TimelineEventType::RoomThirdPartyInvite {
@@ -371,6 +394,7 @@ pub fn auth_check<E: Event>(
         return Ok(true);
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===12");
     // If the event type's required power level is greater than the sender's power level, reject
     // If the event has a state_key that starts with an @ and does not match the sender, reject.
     if !can_send_event(&incoming_event, power_levels_event.as_ref(), sender_power_level) {
@@ -399,6 +423,7 @@ pub fn auth_check<E: Event>(
         info!("power levels event allowed");
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===13");
     // Room version 3: Redaction events are always accepted (provided the event is allowed by
     // `events` and `events_default` in the power levels). However, servers should not apply or
     // send redaction's to clients until both the redaction event and original event have been
@@ -417,6 +442,7 @@ pub fn auth_check<E: Event>(
         }
     }
 
+    println!("VVVVVVVVVVVVVVVVVVVV===14");
     info!("allowing event passed all checks");
     Ok(true)
 }
