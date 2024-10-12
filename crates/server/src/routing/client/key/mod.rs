@@ -81,7 +81,6 @@ async fn get_key_changes(_aa: AuthArgs, args: KeyChangesReqArgs, depot: &mut Dep
     let from_sn = args.from.parse()?;
     let to_sn = args.to.parse()?;
     let mut device_list_updates = HashSet::new();
-    println!("XDDDDDDDDDDDDDDDDDDDDDDDDget keys changes  {from_sn}->{to_sn:?}");
     device_list_updates.extend(crate::user::get_keys_changed_users(
         authed.user_id(),
         from_sn,

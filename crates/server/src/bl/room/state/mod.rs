@@ -146,33 +146,22 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id)?;
 
     if let Some(state_key) = &new_pdu.state_key {
-        println!("aaaaaaaaaaaappend_to_state 1");
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
-        println!("aaaaaaaaaaaappend_to_state 2");
         let field_id = ensure_field(&new_pdu.kind.to_string().into(), state_key)?.id;
-        println!("aaaaaaaaaaaappend_to_state 3");
-        let point_id = ensure_point(
-            &new_pdu.room_id,
-            &new_pdu.event_id,
-            crate::event::get_event_sn(&new_pdu.event_id)?,
-        )?;
+        let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
 
-        println!("aaaaaaaaaaaappend_to_state 4");
         let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
 
-        println!("aaaaaaaaaaaappend_to_state 5");
         let replaces = states_parents
             .last()
             .map(|info| info.1.iter().find(|bytes| bytes.starts_with(&field_id.to_be_bytes())))
             .unwrap_or_default();
 
-        println!("aaaaaaaaaaaappend_to_state 6");
         if Some(&new_compressed_event) == replaces {
             return prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into());
         }
 
-        println!("aaaaaaaaaaaappend_to_state 7");
         // TODO: state_hash with deterministic inputs
         let mut append_data = HashSet::new();
         append_data.insert(new_compressed_event);
@@ -182,13 +171,9 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             remove_data.insert(*replaces);
         }
 
-        println!("aaaaaaaaaaaappend_to_state 8");
         let hash_data = utils::hash_keys(&vec![new_compressed_event.as_bytes()]);
-        println!("aaaaaaaaaaaappend_to_state 9");
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
-        println!("aaaaaaaaaaaappend_to_state 10");
         update_point_frame_id(new_compressed_event.point_id(), frame_id)?;
-        println!("aaaaaaaaaaaappend_to_state 11");
         calc_and_save_state_delta(
             &new_pdu.room_id,
             frame_id,
@@ -198,7 +183,6 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             states_parents,
         )?;
 
-        println!("aaaaaaaaaaaappend_to_state 12");
         Ok(frame_id)
     } else {
         prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into())

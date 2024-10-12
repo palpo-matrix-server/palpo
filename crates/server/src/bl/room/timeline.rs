@@ -166,12 +166,16 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             error!("Invalid unsigned type in pdu.");
         }
     }
+    println!("MMMxxxxxxxppp    1");
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
+    println!("MMMxxxxxxxppp    1---0");
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
-    crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id)?;
+    crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
+    println!("MMMxxxxxxxppp    1---1");
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
+    println!("MMMxxxxxxxppp    2");
     // Insert pdu
     diesel::insert_into(event_datas::table)
         .values(DbEventData {
@@ -184,6 +188,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         })
         .execute(&mut db::connect()?)?;
 
+    println!("MMMxxxxxxxppp    3");
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
         crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
@@ -199,6 +204,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
+    println!("MMMxxxxxxxppp    4");
     for user in crate::room::get_our_real_users(&pdu.room_id)?.iter() {
         // Don't notify the user of their own events
         if user == &pdu.sender {
@@ -238,9 +244,11 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
         }
     }
+    println!("MMMxxxxxxxppp    5");
 
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
+    println!("MMMxxxxxxxppp    6");
     match pdu.kind {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
@@ -321,6 +329,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         }
         _ => {}
     }
+    println!("MMMxxxxxxxppp    7");
 
     // Update Relationships
     #[derive(Deserialize)]
@@ -372,6 +381,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         }
     }
 
+    println!("MMMxxxxxxxppp    8");
     for appservice in crate::appservice::all()?.values() {
         if crate::room::appservice_in_room(&pdu.room_id, &appservice)? {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
@@ -428,10 +438,12 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                 }
         };
 
+        println!("MMMxxxxxxxppp    9");
         if matching_aliases(&mut *db::connect()?) || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users()
         {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
         }
+        println!("MMMxxxxxxxppp    10");
     }
     Ok(())
 }

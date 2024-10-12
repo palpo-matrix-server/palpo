@@ -406,18 +406,18 @@ pub async fn join_room(
         crate::room::update_room_servers(room_id)?;
         crate::room::update_room_currents(room_id)?;
 
-        println!("PPPPPPp  =====  14");
-        // We append to state before appending the pdu, so we don't have a moment in time with the
-        // pdu without it's state. This is okay because append_pdu can't fail.
-        let state_hash_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
-        println!("PPPPPPp  =====  14-end");
-
         info!("Appending new room join event");
         crate::room::timeline::append_pdu(
             &parsed_join_pdu,
             join_event,
             vec![(*parsed_join_pdu.event_id).to_owned()],
         )?;
+
+        println!("PPPPPPp  =====  14");
+        // We append to state before appending the pdu, so we don't have a moment in time with the
+        // pdu without it's state. This is okay because append_pdu can't fail.
+        let state_hash_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
+        println!("PPPPPPp  =====  14-end");
 
         println!("PPPPPPp  =====  15");
         info!("Setting final room state for new room");
@@ -905,18 +905,15 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str())?;
 
         // Fix for broken rooms
-        let member_event = match member_event {
-            None => {
-                error!("Trying to leave a room you are not a member of.");
-                diesel::delete(
-                    room_users::table
-                        .filter(room_users::room_id.eq(room_id))
-                        .filter(room_users::user_id.eq(user_id)),
-                )
-                .execute(&mut *db::connect()?)?;
-                return Ok(());
-            }
-            Some(e) => e,
+        let Some(member_event) = member_event else {
+            error!("Trying to leave a room you are not a member of.");
+            diesel::delete(
+                room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .filter(room_users::user_id.eq(user_id)),
+            )
+            .execute(&mut *db::connect()?)?;
+            return Ok(());
         };
 
         let mut event: RoomMemberEventContent = serde_json::from_str(member_event.content.get())

@@ -276,7 +276,8 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
         ReceiptType::ReadPrivate => {
             // let count = crate::room::timeline::get_event_sn(&args.event_id)?
             //     .ok_or(MatrixError::invalid_param("Event does not exist."))?;
-            crate::room::receipt::set_private_read(&args.room_id, authed.user_id(), &args.event_id)?;
+            let event_sn = crate::event::get_event_sn(&args.event_id)?;
+            crate::room::receipt::set_private_read(&args.room_id, authed.user_id(), &args.event_id, event_sn)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }

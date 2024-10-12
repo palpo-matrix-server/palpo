@@ -98,6 +98,18 @@ pub fn get_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i
         .map_err(Into::into)
 }
 
+pub fn get_last_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
+    room_state_points::table
+        .filter(room_state_points::room_id.eq(room_id))
+        .filter(room_state_points::event_sn.le(event_sn))
+        .select(room_state_points::frame_id)
+        .order_by(room_state_points::event_sn.desc())
+        .first::<Option<i64>>(&mut *db::connect()?)
+        .optional()
+        .map(|v| v.flatten())
+        .map_err(Into::into)
+}
+
 pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     let mut user_rooms: Vec<(OwnedUserId, Vec<OwnedRoomId>)> = Vec::new();
     for user_id in user_ids {

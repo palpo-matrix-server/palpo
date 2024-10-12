@@ -430,7 +430,7 @@ pub async fn sync_events_v4(
                 continue;
             };
 
-            let since_frame_id = crate::room::user::get_event_frame_id(&room_id, global_since_sn)?;
+            let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, global_since_sn)?;
 
             let since_sender_member: Option<RoomMemberEventContent> = since_frame_id
                 .and_then(|state_hash| {
