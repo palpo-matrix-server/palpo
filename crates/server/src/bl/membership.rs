@@ -337,7 +337,7 @@ pub async fn join_room(
                 .on_conflict_do_nothing()
                 .execute(&mut *db::connect()?)?;
 
-                println!("PPPPPPp  =====  10-=-3");
+            println!("PPPPPPp  =====  10-=-3");
             if let Some(state_key) = &pdu.state_key {
                 let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), state_key)?;
                 state.insert(state_key_id, pdu.event_id.clone());

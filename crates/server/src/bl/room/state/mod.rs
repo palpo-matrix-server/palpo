@@ -167,7 +167,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             .map(|info| info.1.iter().find(|bytes| bytes.starts_with(&field_id.to_be_bytes())))
             .unwrap_or_default();
 
-            println!("aaaaaaaaaaaappend_to_state 6");
+        println!("aaaaaaaaaaaappend_to_state 6");
         if Some(&new_compressed_event) == replaces {
             return prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into());
         }
