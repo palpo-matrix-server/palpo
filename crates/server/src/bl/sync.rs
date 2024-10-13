@@ -27,6 +27,7 @@ pub async fn sync_events(
     args: SyncEventsReqArgsV3,
     tx: Sender<Option<AppResult<SyncEventsResBodyV3>>>,
 ) -> AppResult<()> {
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>sync_events>>>>>>>>>>>>>> {sender_id}");
     crate::user::ping_presence(&sender_id, &args.set_presence)?;
 
     // Setup watchers, so if there's no response, we can wait for them
@@ -135,40 +136,31 @@ pub async fn sync_events(
             None => HashMap::new(),
         };
 
-        println!("Xxxxxxxxxx=0");
         let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id)? else {
-            println!("Xxxxxxxxxx=1");
             continue;
         };
-        println!("Xxxxxxxxxx=2");
         let Some(left_event_id) =
             crate::room::state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
         else {
             error!("Left room but no left state event");
-            println!("Xxxxxxxxxx=3");
             continue;
         };
 
         let left_frame_id = match crate::room::state::get_pdu_frame_id(&left_event_id)? {
             Some(s) => s,
             None => {
-                println!("Xxxxxxxxxx=4");
                 error!("Leave event has no state");
                 continue;
             }
         };
         if left_frame_id < since_frame_id.unwrap_or_default() || since_frame_id.is_none() {
-            println!("Xxxxxxxxxx=5   {} {:?}", left_frame_id, since_frame_id);
             continue;
         }
 
         let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
-
         let leave_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
-
         left_state_ids.insert(leave_state_key_id, left_event_id);
 
-        println!("Xxxxxxxxxx=6");
         for (key, event_id) in left_state_ids {
             if full_state || since_state_ids.get(&key) != Some(&event_id) {
                 let DbRoomStateField {
@@ -194,7 +186,6 @@ pub async fn sync_events(
             }
         }
 
-        println!("Xxxxxxxxxx=7");
         left_rooms.insert(
             room_id.to_owned(),
             LeftRoomV3 {
@@ -226,6 +217,26 @@ pub async fn sync_events(
         })
         .collect();
 
+    for left_room in left_rooms.keys() {
+        let left_users = crate::room::get_joined_users(left_room)?;
+        for user_id in left_users {
+            let dont_share_encrypted_room = crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
+                .into_iter()
+                .filter_map(|other_room_id| {
+                    Some(
+                        crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                            .ok()?
+                            .is_some(),
+                    )
+                })
+                .all(|encrypted| !encrypted);
+            // If the user doesn't share an encrypted room with the target anymore, we need to tell
+            // them
+            if dont_share_encrypted_room {
+                device_list_left.insert(user_id);
+            }
+        }
+    }
     println!("=============left_users: {:?}", left_users);
     for user_id in left_users {
         let dont_share_encrypted_room = crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
@@ -248,6 +259,7 @@ pub async fn sync_events(
     // Remove all to-device events the device received *last time*
     crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
+    println!("xdevice_list_left: {:?}", device_list_left);
     let response = SyncEventsResBodyV3 {
         next_batch: next_batch.to_string(),
         rooms: RoomsV3 {
@@ -484,6 +496,21 @@ async fn load_joined_room(
                 next_batch,
             );
 
+            if joined_since_last_sync {// && encrypted_room || new_encrypted_room {
+                // If the user is in a new encrypted room, give them all joined users
+                device_list_updates.extend(
+                    crate::room::get_joined_users(&room_id)?
+                        .into_iter()
+                        .filter(|user_id| {
+                            // Don't send key updates from the sender to the sender
+                            sender_id != user_id
+                        })
+                        // .filter(|user_id| {
+                            // Only send keys if the sender doesn't share an encrypted room with the target already
+                            // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                        // }),
+                );
+            }
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
             println!("!!!!!!!!!!!!!!!!!!!!!!!  1");
@@ -560,7 +587,6 @@ async fn load_joined_room(
                 .iter()
                 .any(|event| event.kind == TimelineEventType::RoomMember);
 
-            println!("ssssssssssssencrypted_room: {:?}", encrypted_room);
             // if encrypted_room {
             for state_event in &state_events {
                 if state_event.kind != TimelineEventType::RoomMember {
@@ -597,7 +623,7 @@ async fn load_joined_room(
             }
             // }
 
-            if joined_since_last_sync && encrypted_room || new_encrypted_room {
+            if joined_since_last_sync {// && encrypted_room || new_encrypted_room {
                 // If the user is in a new encrypted room, give them all joined users
                 device_list_updates.extend(
                     crate::room::get_joined_users(&room_id)?
@@ -606,10 +632,10 @@ async fn load_joined_room(
                             // Don't send key updates from the sender to the sender
                             sender_id != user_id
                         })
-                        .filter(|user_id| {
+                        // .filter(|user_id| {
                             // Only send keys if the sender doesn't share an encrypted room with the target already
-                            !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
-                        }),
+                            // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                        // }),
                 );
             }
 
@@ -728,24 +754,6 @@ pub(crate) fn load_timeline(
 
 #[tracing::instrument]
 pub(crate) fn share_encrypted_room(sender_id: &UserId, user_id: &UserId, ignore_room: &RoomId) -> AppResult<bool> {
-    let shared_rooms = crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
-        .into_iter()
-        .filter(|room_id| room_id != ignore_room)
-        .filter_map(|other_room_id| {
-            Some(
-                crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "")
-                    .ok()?
-                    .is_some(),
-            )
-        })
-        .any(|encrypted| encrypted);
-
-    Ok(shared_rooms)
-}
-
-
-#[tracing::instrument]
-pub(crate) fn share_room(sender_id: &UserId, user_id: &UserId, ignore_room: &RoomId) -> AppResult<bool> {
     let shared_rooms = crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()
         .filter(|room_id| room_id != ignore_room)
