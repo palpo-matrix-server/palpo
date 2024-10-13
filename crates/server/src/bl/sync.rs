@@ -65,7 +65,9 @@ pub async fn sync_events(
     device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
 
     let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
+    println!("======={sender_id}======all_joined_rooms: {:?}", all_joined_rooms);
     for room_id in all_joined_rooms {
+        println!("lllllloop");
         let joined_room = match load_joined_room(
             &sender_id,
             &sender_device_id,
@@ -82,11 +84,14 @@ pub async fn sync_events(
         {
             Ok(joined_room) => joined_room,
             Err(e) => {
+                println!("00000000load joined room failed");
                 tracing::error!(error = ?e, "load joined room failed");
                 continue;
             }
         };
+        println!("=====joined room is empty  {}", joined_room.is_empty());
         if !joined_room.is_empty() {
+            println!("Xxxxreinsert into");
             joined_rooms.insert(room_id.to_owned(), joined_room);
         }
 
@@ -114,6 +119,7 @@ pub async fn sync_events(
             }
         }
     }
+    println!("======={sender_id}======joined_rooms 2: {:?}", joined_rooms);
 
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = crate::room::rooms_left(&sender_id)?;
@@ -260,6 +266,7 @@ pub async fn sync_events(
     crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
     println!("xdevice_list_left: {:?}", device_list_left);
+    println!("000000000000000000joined_rooms: {:?}", joined_rooms);
     let response = SyncEventsResBodyV3 {
         next_batch: next_batch.to_string(),
         rooms: RoomsV3 {

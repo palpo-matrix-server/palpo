@@ -232,7 +232,6 @@ pub async fn join_room(
         let body = SendJoinReqBodyV2 {
             pdu: PduEvent::convert_to_outgoing_federation_event(join_event.clone()),
         };
-        println!("PPPPPPp  =====  6-----1  {body:#?}");
         info!("Asking {remote_server} for send_join");
         let send_join_request = crate::core::federation::membership::send_join_request(
             SendJoinArgs {
@@ -256,7 +255,6 @@ pub async fn join_room(
         // })?
         // .send::<SendJoinResBody>()
         // .await?;
-        println!("PPPPPPp  =====  6-----2");
 
         info!("send_join finished");
 
@@ -297,10 +295,8 @@ pub async fn join_room(
             }
         }
 
-        println!("PPPPPPp  =====  8");
         crate::room::ensure_room(room_id, user_id)?;
 
-        println!("PPPPPPp  =====  9");
         info!("Parsing join event");
         let parsed_join_pdu = PduEvent::from_id_val(event_id, join_event.clone())
             .map_err(|_| AppError::public("Invalid join event PDU."))?;
@@ -311,7 +307,6 @@ pub async fn join_room(
         info!("Fetching join signing keys");
         crate::event::handler::fetch_join_signing_keys(&send_join_response, &room_version_id, &pub_key_map).await?;
 
-        println!("PPPPPPp  =====  10");
         info!("Going through send_join response room_state");
         for result in send_join_response
             .room_state
@@ -319,32 +314,27 @@ pub async fn join_room(
             .iter()
             .map(|pdu| validate_and_add_event_id(pdu, &room_version_id, &pub_key_map))
         {
-            println!("PPPPPPp  =====  10-=-0");
             let (event_id, value) = match result.await {
                 Ok(t) => t,
                 Err(_) => continue,
             };
 
-            println!("PPPPPPp  =====  10-=-1");
             let pdu = PduEvent::from_id_val(&event_id, value.clone()).map_err(|e| {
                 warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
-            println!("PPPPPPp  =====  10-=-2");
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
                 .on_conflict_do_nothing()
                 .execute(&mut *db::connect()?)?;
 
-            println!("PPPPPPp  =====  10-=-3");
             if let Some(state_key) = &pdu.state_key {
                 let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), state_key)?;
                 state.insert(state_key_id, pdu.event_id.clone());
             }
         }
 
-        println!("PPPPPPp  =====  11");
         info!("Going through send_join response auth_chain");
         for result in send_join_response
             .room_state
@@ -382,7 +372,6 @@ pub async fn join_room(
         // })? {
         //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
         // }
-        println!("PPPPPPp  =====  12");
 
         info!("Saving state from send_join");
         let (state_hash_before_join, new, removed) = crate::room::state::save_state(
@@ -399,7 +388,6 @@ pub async fn join_room(
             ),
         )?;
 
-        println!("PPPPPPp  =====  13");
         crate::room::state::force_state(room_id, state_hash_before_join, new, removed)?;
 
         info!("Updating joined counts for new room");
@@ -413,13 +401,10 @@ pub async fn join_room(
             vec![(*parsed_join_pdu.event_id).to_owned()],
         )?;
 
-        println!("PPPPPPp  =====  14");
         // We append to state before appending the pdu, so we don't have a moment in time with the
         // pdu without it's state. This is okay because append_pdu can't fail.
         let state_hash_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
-        println!("PPPPPPp  =====  14-end");
 
-        println!("PPPPPPp  =====  15");
         info!("Setting final room state for new room");
         // We set the room state after inserting the pdu, so that we never have a moment in time
         // where events in the current room state do not exist
