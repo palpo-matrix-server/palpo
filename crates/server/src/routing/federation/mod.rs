@@ -19,7 +19,7 @@ use salvo::prelude::*;
 
 use crate::core::directory::Server;
 use crate::core::federation::directory::ServerVersionResBody;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult};
+use crate::{empty_ok, json_ok, AppError, AppResult, AuthArgs, EmptyResult, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("federation")
@@ -56,12 +56,13 @@ pub fn router() -> Router {
         .push(Router::with_path("versions").get(get_versions))
 }
 
-#[endpoint]
-async fn check_federation_enabled() -> EmptyResult {
+#[handler]
+async fn check_federation_enabled() -> AppResult<()> {
     if !crate::allow_federation() {
-        return Err(AppError::public("Federation is disabled."));
+        Err(AppError::public("Federation is disabled."))
+    } else {
+        Ok(())
     }
-    empty_ok()
 }
 
 #[endpoint]

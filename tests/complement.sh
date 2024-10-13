@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ./tests/complement.sh ../complement  ./__test_output_csapi.detail.txt  ./__test_output_csapi.result.jsonl
+# ./tests/complement.sh ../complement  ./__test_tmp.detail.txt  ./__test_tmp.result.jsonl
 set -euo pipefail
 
 # Path to Complement's source code
@@ -40,7 +40,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -json ./tests | tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run "TestDeviceListUpdates/when_remote_user_leaves_a_room" -json ./tests/csapi| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

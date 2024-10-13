@@ -2,6 +2,7 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 
 use reqwest::{Client as ReqwestClient, ClientBuilder, Request as ReqwestRequest};
+use salvo::http::header::CONTENT_TYPE;
 use salvo::http::{HeaderName, HeaderValue, Method};
 use serde::Deserialize;
 use thiserror::Error;
@@ -75,6 +76,10 @@ impl SendRequest {
     }
     pub fn stuff(mut self, modifier: impl SendModifier) -> Result<Self, SendError> {
         modifier.modify(&mut self)?;
+        if !self.headers().contains_key(CONTENT_TYPE) {
+            self.headers_mut()
+                .insert(CONTENT_TYPE, "application/json".parse().unwrap());
+        }
         Ok(self)
     }
 

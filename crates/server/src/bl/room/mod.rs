@@ -91,7 +91,7 @@ pub fn create_room(new_room: NewDbRoom) -> AppResult<OwnedRoomId> {
 }
 
 pub fn ensure_room(id: &RoomId, created_by: &UserId) -> AppResult<OwnedRoomId> {
-    if exists(id)? {
+    if room_exists(id)? {
         Ok(id.to_owned())
     } else {
         create_room(NewDbRoom {
@@ -107,7 +107,7 @@ pub fn ensure_room(id: &RoomId, created_by: &UserId) -> AppResult<OwnedRoomId> {
 }
 
 /// Checks if a room exists.
-pub fn exists(room_id: &RoomId) -> AppResult<bool> {
+pub fn room_exists(room_id: &RoomId) -> AppResult<bool> {
     diesel_exists!(rooms::table.filter(rooms::id.eq(room_id)), &mut *db::connect()?).map_err(Into::into)
 }
 

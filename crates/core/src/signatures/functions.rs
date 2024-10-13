@@ -103,7 +103,7 @@ where
 
     // Get the canonical JSON string.
     let json = to_json_string(object).map_err(JsonError::Serde)?;
-    
+
     // Sign the canonical JSON string.
     let signature = keypair.sign(json.as_bytes());
 

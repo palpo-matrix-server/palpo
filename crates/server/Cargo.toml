@@ -15,7 +15,7 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-palpo-core = { workspace = true }
+palpo-core = { workspace = true, features = ["unstable-msc2654"] }
 palpo-macros = { workspace = true }
 
 anyhow = { workspace = true }

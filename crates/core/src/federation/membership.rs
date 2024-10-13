@@ -1,5 +1,6 @@
 //! Room membership endpoints.
 
+use itertools::Itertools;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +8,7 @@ use crate::events::{room::member::RoomMemberEventContent, AnyStrippedStateEvent,
 use crate::identifiers::*;
 use crate::sending::{SendError, SendRequest, SendResult};
 use crate::{serde::RawJson, RawJsonValue, UnixMillis};
+use salvo::http::header::CONTENT_TYPE;
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct InviteUserReqBodyV2 {
@@ -71,26 +73,26 @@ pub struct InviteUserResBodyV1 {
 }
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendJoinEventReqBodyV2 {
+pub struct SendJoinReqBodyV2 {
     /// The invite event which needs to be signed.
     #[salvo(schema(value_type = Object))]
     pub pdu: Box<RawJsonValue>,
 }
-crate::json_body_modifier!(SendJoinEventReqBodyV2);
+crate::json_body_modifier!(SendJoinReqBodyV2);
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendJoinEventResBodyV2 {
+pub struct SendJoinResBodyV2 {
     /// The signed invite event.
     pub room_state: RoomStateV2,
 }
 
 #[derive(ToSchema, Serialize, Debug)]
-pub struct SendJoinEventResBodyV1 {
+pub struct SendJoinResBodyV1 {
     /// Full state of the room.
     pub room_state: RoomStateV1,
 }
 
-impl SendJoinEventResBodyV1 {
+impl SendJoinResBodyV1 {
     /// Creates a new `Response` with the given room state.
     pub fn new(room_state: RoomStateV1) -> Self {
         Self { room_state }
@@ -189,7 +191,7 @@ impl RoomStateV1 {
 }
 
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct SendJoinEventReqBodyV1 {
+pub struct SendJoinReqBodyV1 {
     /// The invite event which needs to be signed.
     #[salvo(schema(value_type = Object, additional_properties = true))]
     #[salvo(schema(value_type = Object))]
@@ -269,7 +271,7 @@ pub fn make_leave_request(room_id: &RoomId, user_id: &UserId) -> SendResult<Send
 /// Response type for the `get_leave_event` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
-pub struct MakeLeaveEventResBody {
+pub struct MakeLeaveResBody {
     /// The version of the room where the server is trying to leave.
     ///
     /// If not provided, the room version is assumed to be either "1" or "2".
@@ -282,7 +284,7 @@ pub struct MakeLeaveEventResBody {
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub event: Box<RawJsonValue>,
 }
-impl MakeLeaveEventResBody {
+impl MakeLeaveResBody {
     /// Creates a new `Response` with:
     /// * the version of the room where the server is trying to leave.
     /// * an unsigned template event.
@@ -302,7 +304,7 @@ impl MakeLeaveEventResBody {
 
 /// Request type for the `create_leave_event` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendLeaveEventReqBodyV2 {
+pub struct SendLeaveReqBodyV2 {
     // /// The room ID that is about to be left.
     // ///
     // /// Do not use this. Instead, use the `room_id` field inside the PDU.
@@ -316,7 +318,7 @@ pub struct SendLeaveEventReqBodyV2 {
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub pdu: Box<RawJsonValue>,
 }
-crate::json_body_modifier!(SendLeaveEventReqBodyV2);
+crate::json_body_modifier!(SendLeaveReqBodyV2);
 
 /// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
 ///
@@ -331,9 +333,20 @@ crate::json_body_modifier!(SendLeaveEventReqBodyV2);
 //     }
 // };
 
+pub fn send_join_request(args: SendJoinArgs, body: SendJoinReqBodyV2) -> SendResult<SendRequest> {
+    let url = args
+        .room_id
+        .server_name()
+        .map_err(|e| SendError::Other(e.to_string()))?
+        .build_url(&format!(
+            "federation/v2/send_join/{}/{}?omit_members={}",
+            &args.room_id, &args.event_id, args.omit_members
+        ))?;
+    crate::sending::put(url).stuff(body)
+}
 /// Request type for the `create_join_event` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct CreateJoinEventArgs {
+pub struct SendJoinArgs {
     /// The room ID that is about to be joined.
     ///
     /// Do not use this. Instead, use the `room_id` field inside the PDU.
@@ -371,9 +384,23 @@ pub struct CreateJoinEventArgs {
 //     }
 // };
 
+pub fn make_join_request(remote_server: &ServerName, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
+    let url = remote_server.build_url(&format!(
+        "/federation/v1/make_join/{}/{}?ver=[{}]",
+        args.room_id,
+        args.user_id,
+        args.ver
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>()
+            .join(",")
+    ))?;
+    Ok(crate::sending::get(url))
+}
+
 /// Request type for the `create_join_event_template` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct MakeJoinEventReqArgs {
+pub struct MakeJoinReqArgs {
     /// The room ID that is about to be joined.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -393,7 +420,7 @@ pub struct MakeJoinEventReqArgs {
 /// Response type for the `create_join_event_template` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
-pub struct MakeJoinEventResBody {
+pub struct MakeJoinResBody {
     /// The version of the room where the server is trying to join.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub room_version: Option<RoomVersionId>,
@@ -403,7 +430,7 @@ pub struct MakeJoinEventResBody {
     pub event: Box<RawJsonValue>,
 }
 
-impl MakeJoinEventResBody {
+impl MakeJoinResBody {
     /// Creates a new `Response` with the given template event.
     pub fn new(event: Box<RawJsonValue>) -> Self {
         Self {

@@ -23,8 +23,6 @@ use crate::media::*;
 use crate::schema::*;
 use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
-const APPLICATION_OCTET_STREAM: HeaderValue = HeaderValue::from_static("application/octet-stream");
-
 pub fn self_auth_router() -> Router {
     Router::with_path("media")
         .oapi_tag("client")
@@ -50,20 +48,25 @@ pub fn self_auth_router() -> Router {
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     if let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? {
-        let content_type = if let Some(content_type) = metadata.content_type.as_deref() {
-            content_type.to_owned()
-        } else {
-            metadata
-                .upload_name
-                .as_ref()
-                .map(|name| mime_infer::infer_mime_type(name))
-                .unwrap_or(mime::APPLICATION_OCTET_STREAM)
-                .to_string()
-        }.parse::<HeaderValue>().unwrap_or(APPLICATION_OCTET_STREAM);
+        let content_type = metadata
+            .content_type
+            .as_deref()
+            .map(|c| Mime::from_str(c).ok())
+            .flatten()
+            .unwrap_or_else(|| {
+                metadata
+                    .upload_name
+                    .as_ref()
+                    .map(|name| mime_infer::infer_mime_type(name))
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+            });
 
         let path = crate::media_path(&args.server_name, &args.media_id);
         if Path::new(&path).exists() {
-            NamedFile::builder(path).content_type(content_type).send(req.headers(), res).await;
+            NamedFile::builder(path)
+                .content_type(content_type)
+                .send(req.headers(), res)
+                .await;
             Ok(())
         } else {
             Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
@@ -105,7 +108,18 @@ pub async fn get_content_with_filename(
 
     let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
-        let mut file = NamedFile::builder(path).attached_name(args.filename).build().await?;
+        let mut file = NamedFile::builder(path)
+            .content_type(
+                metadata
+                    .content_type
+                    .as_deref()
+                    .map(|c| Mime::from_str(c).ok())
+                    .flatten()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+            )
+            .attached_name(args.filename)
+            .build()
+            .await?;
         if let Some(Ok(content_disposition)) = metadata.content_disposition.as_deref().map(HeaderValue::from_str) {
             file.set_content_disposition(content_disposition);
         }
@@ -331,8 +345,9 @@ pub async fn get_thumbnail(
         res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
         let mut file = NamedFile::builder(&thumb_path)
             .content_type(
-                HeaderValue::from_str(&content_type)
-                    .unwrap_or(APPLICATION_OCTET_STREAM),
+                Mime::from_str(&content_type)
+                    .ok()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
             )
             .build()
             .await?;
@@ -388,8 +403,9 @@ pub async fn get_thumbnail(
         // Using saved thumbnail
         let mut file = NamedFile::builder(&thumb_path)
             .content_type(
-                HeaderValue::from_str(&content_type)
-                    .unwrap_or(APPLICATION_OCTET_STREAM),
+                Mime::from_str(&content_type)
+                    .ok()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
             )
             .build()
             .await?;
@@ -416,9 +432,9 @@ pub async fn get_thumbnail(
                     .content_type(
                         content_type
                             .as_deref()
-                            .map(|c| HeaderValue::from_str(c).ok())
+                            .map(|c| Mime::from_str(c).ok())
                             .flatten()
-                            .unwrap_or(APPLICATION_OCTET_STREAM),
+                            .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                     )
                     .build()
                     .await?;
@@ -489,9 +505,9 @@ pub async fn get_thumbnail(
                 .content_type(
                     content_type
                         .as_deref()
-                        .map(|c| HeaderValue::from_str(c).ok())
+                        .map(|c| Mime::from_str(c).ok())
                         .flatten()
-                        .unwrap_or(APPLICATION_OCTET_STREAM),
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                 )
                 .build()
                 .await?;
@@ -506,9 +522,9 @@ pub async fn get_thumbnail(
                 .content_type(
                     content_type
                         .as_deref()
-                        .map(|c| HeaderValue::from_str(c).ok())
+                        .map(|c| Mime::from_str(c).ok())
                         .flatten()
-                        .unwrap_or(APPLICATION_OCTET_STREAM),
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                 )
                 .build()
                 .await?;

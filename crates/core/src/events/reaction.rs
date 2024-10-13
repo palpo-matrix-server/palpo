@@ -43,23 +43,23 @@ impl From<Annotation> for ReactionEventContent {
 //     use super::ReactionEventContent;
 //     use crate::events::relation::Annotation;
 
-    // #[test]
-    // fn deserialize() {
-    //     let json = json!({
-    //         "m.relates_to": {
-    //             "rel_type": "m.annotation",
-    //             "event_id": "$1598361704261elfgc:localhost",
-    //             "key": "🦛",
-    //         }
-    //     });
+// #[test]
+// fn deserialize() {
+//     let json = json!({
+//         "m.relates_to": {
+//             "rel_type": "m.annotation",
+//             "event_id": "$1598361704261elfgc:localhost",
+//             "key": "🦛",
+//         }
+//     });
 
-    //     assert_matches!(
-    //         from_json_value::<ReactionEventContent>(json),
-    //         Ok(ReactionEventContent { relates_to })
-    //     );
-    //     assert_eq!(relates_to.event_id, "$1598361704261elfgc:localhost");
-    //     assert_eq!(relates_to.key, "🦛");
-    // }
+//     assert_matches!(
+//         from_json_value::<ReactionEventContent>(json),
+//         Ok(ReactionEventContent { relates_to })
+//     );
+//     assert_eq!(relates_to.event_id, "$1598361704261elfgc:localhost");
+//     assert_eq!(relates_to.key, "🦛");
+// }
 
 //     #[test]
 //     fn serialize() {

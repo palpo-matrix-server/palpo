@@ -12,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{db, AppResult, MatrixError};
 
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
+#[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_auth_chains, primary_key(event_id))]
 pub struct DbEventAuthChain {
     pub event_id: OwnedEventId,
@@ -51,13 +51,18 @@ pub fn get_cached_event_auth_chain(event_id: &EventId) -> AppResult<Option<Arc<H
 
 pub fn cache_auth_chain(event_id: &EventId, auth_chain: Arc<HashSet<i64>>) -> AppResult<()> {
     for chain_id in auth_chain.iter() {
+        let chain = DbEventAuthChain {
+            event_id: event_id.to_owned(),
+            chain_id: *chain_id,
+            sequence_number: 1,
+        };
         diesel::insert_into(event_auth_chains::table)
-            .values(DbEventAuthChain {
-                event_id: event_id.to_owned(),
-                chain_id: *chain_id,
-                sequence_number: 1,
-            })
-            .execute(&mut db::connect()?)?;
+            .values(&chain)
+            .on_conflict((event_auth_chains::event_id))
+            .do_update()
+            .set(&chain)
+            .execute(&mut db::connect()?)
+            .ok();
     }
 
     // Cache in RAM

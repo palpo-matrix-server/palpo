@@ -38,7 +38,7 @@ pub fn get_invite_count(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<
 }
 
 #[tracing::instrument]
-pub fn get_left_count(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<u64>> {
+pub fn get_left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<u64>> {
     let count = stats_room_currents::table
         .filter(stats_room_currents::room_id.eq(room_id))
         .select(stats_room_currents::left_members)

@@ -148,11 +148,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
         let field_id = ensure_field(&new_pdu.kind.to_string().into(), state_key)?.id;
-        let point_id = ensure_point(
-            &new_pdu.room_id,
-            &new_pdu.event_id,
-            crate::event::get_event_sn(&new_pdu.event_id)?,
-        )?;
+        let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
 
         let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
 

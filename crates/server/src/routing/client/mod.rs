@@ -414,9 +414,11 @@ pub async fn sync_events_v4(
 
     if body.extensions.e2ee.enabled.unwrap_or(false) {
         // Look for device list updates of this account
-        if crate::user::get_keys_changed_users(authed.user_id(), global_since_sn, None)? {
-            device_list_changes.insert(authed.user_id().to_owned());
-        }
+        device_list_changes.extend(crate::user::get_keys_changed_users(
+            authed.user_id(),
+            global_since_sn,
+            None,
+        )?);
 
         for room_id in &all_joined_rooms {
             let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id)? {
@@ -426,7 +428,7 @@ pub async fn sync_events_v4(
                 continue;
             };
 
-            let since_frame_id = crate::room::user::get_event_frame_id(&room_id, global_since_sn)?;
+            let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, global_since_sn)?;
 
             let since_sender_member: Option<RoomMemberEventContent> = since_frame_id
                 .and_then(|state_hash| {

@@ -11,10 +11,10 @@ use crate::{db, AppResult, JsonValue};
 #[diesel(table_name = room_users)]
 pub struct DbRoomUser {
     pub id: i64,
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub room_id: OwnedRoomId,
+    pub user_id: OwnedUserId,
     pub sender_id: OwnedUserId,
     pub membership: String,
     pub forgotten: bool,
@@ -26,10 +26,10 @@ pub struct DbRoomUser {
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = room_users)]
 pub struct NewDbRoomUser {
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub room_id: OwnedRoomId,
+    pub user_id: OwnedUserId,
     pub sender_id: OwnedUserId,
     pub membership: String,
     pub forgotten: bool,
@@ -92,6 +92,18 @@ pub fn get_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i
         .filter(room_state_points::room_id.eq(room_id))
         .filter(room_state_points::event_sn.eq(event_sn))
         .select(room_state_points::frame_id)
+        .first::<Option<i64>>(&mut *db::connect()?)
+        .optional()
+        .map(|v| v.flatten())
+        .map_err(Into::into)
+}
+
+pub fn get_last_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
+    room_state_points::table
+        .filter(room_state_points::room_id.eq(room_id))
+        .filter(room_state_points::event_sn.le(event_sn))
+        .select(room_state_points::frame_id)
+        .order_by(room_state_points::event_sn.desc())
         .first::<Option<i64>>(&mut *db::connect()?)
         .optional()
         .map(|v| v.flatten())

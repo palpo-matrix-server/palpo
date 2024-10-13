@@ -169,7 +169,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
-    crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id)?;
+    crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // Insert pdu
@@ -238,7 +238,6 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
         }
     }
-
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
     match pdu.kind {
@@ -585,7 +584,7 @@ pub fn create_hash_and_sign_event(
     )
     .map_err(|e| {
         error!("{:?}", e);
-        AppError::internal("Auth check failed.")
+        AppError::internal("Auth check failed when hash and sign event")
     })?;
 
     if !auth_checked {

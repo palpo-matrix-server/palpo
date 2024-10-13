@@ -15,39 +15,31 @@ use crate::{
 
 pub fn router_v1() -> Router {
     Router::new()
-        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join_event))
+        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
         .push(Router::with_path("invite/<room_id>/<user_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave_event))
-        .push(Router::with_path("send_join/<room_id>/<user_id>").get(send_join_event_v1))
-        .push(Router::with_path("send_leave/<room_id>/<user_id>").get(send_leave_event))
+        .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
+        .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v1))
+        .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave_event))
 }
 pub fn router_v2() -> Router {
     Router::new()
-        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join_event))
+        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
         .push(Router::with_path("invite/<room_id>/<user_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave_event))
-        .push(Router::with_path("send_join/<room_id>/<user_id>").get(send_join_event_v2))
-        .push(Router::with_path("send_leave/<room_id>/<user_id>").get(send_leave_event))
+        .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
+        .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v2))
+        .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave_event))
 }
 
 // #GET /_matrix/federation/v1/make_join/{room_id}/{user_id}
 /// Creates a join template.
 #[endpoint]
-async fn make_join_event(
-    _aa: AuthArgs,
-    args: MakeJoinEventReqArgs,
-    depot: &mut Depot,
-) -> JsonResult<MakeJoinEventResBody> {
-    let authed = depot.authed_info()?;
-
-    if !crate::room::exists(&args.room_id)? {
+async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response) -> JsonResult<MakeJoinResBody> {
+    if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
-
+    crate::event::handler::acl_check(args.user_id.server_name(), &args.room_id)?;
     // TODO: Palpo does not implement restricted join rules yet, we always reject
     let join_rules_event = crate::room::state::get_state(&args.room_id, &StateEventType::RoomJoinRules, "")?;
-
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
         .as_ref()
         .map(|join_rules_event| {
@@ -57,7 +49,6 @@ async fn make_join_event(
             })
         })
         .transpose()?;
-
     if let Some(join_rules_event_content) = join_rules_event_content {
         if matches!(
             join_rules_event_content.join_rule,
@@ -66,12 +57,10 @@ async fn make_join_event(
             return Err(MatrixError::unable_to_authorize_join("Palpo does not support restricted rooms yet.").into());
         }
     }
-
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     if !args.ver.contains(&room_version_id) {
         return Err(MatrixError::incompatible_room_version(room_version_id, "Room version not supported.").into());
     }
-
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
         blurhash: None,
@@ -83,7 +72,6 @@ async fn make_join_event(
         join_authorized_via_users_server: None,
     })
     .expect("member event is valid value");
-
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -95,10 +83,8 @@ async fn make_join_event(
         &args.user_id,
         &args.room_id,
     )?;
-
     pdu_json.remove("event_id");
-
-    json_ok(MakeJoinEventResBody {
+    json_ok(MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     })
@@ -197,42 +183,38 @@ fn invite_user(
 }
 
 #[endpoint]
-async fn make_leave_event(_aa: AuthArgs) -> EmptyResult {
+async fn make_leave(_aa: AuthArgs) -> EmptyResult {
     // TODO: fixme
-    panic!("make_leave_eventNot implemented")
+    panic!("make_leaveNot implemented")
 }
 
 // #PUT /_matrix/federation/v2/send_join/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]
-async fn send_join_event_v2(
-    _aa: AuthArgs,
+async fn send_join_v2(
     args: RoomEventReqArgs,
-    body: JsonBody<SendJoinEventReqBodyV2>,
+    body: JsonBody<SendJoinReqBodyV2>,
     depot: &mut Depot,
-) -> JsonResult<SendJoinEventResBodyV2> {
-    let authed = depot.authed_info()?;
+) -> JsonResult<SendJoinResBodyV2> {
+    let server_name = args.room_id.server_name().map_err(AppError::public)?;
+    crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    let room_state = crate::membership::send_join_v2(&server_name, &args.room_id, &body.pdu).await?;
 
-    let room_state = crate::membership::send_join_event_v2(authed.server_name(), &args.room_id, &body.pdu).await?;
-
-    json_ok(SendJoinEventResBodyV2 { room_state })
+    json_ok(SendJoinResBodyV2 { room_state })
 }
 
 // #PUT /_matrix/federation/v1/send_join/{room_id}/{event_id}
 /// Submits a signed join event.
 #[endpoint]
-async fn send_join_event_v1(
-    _aa: AuthArgs,
+async fn send_join_v1(
     args: RoomEventReqArgs,
-    body: JsonBody<SendJoinEventReqBodyV1>,
+    body: JsonBody<SendJoinReqBodyV1>,
     depot: &mut Depot,
-) -> JsonResult<SendJoinEventResBodyV2> {
-    let authed = depot.authed_info()?;
-
-    let room_state = crate::membership::send_join_event_v2(authed.server_name(), &args.room_id, &body.pdu).await?;
-    json_ok(SendJoinEventResBodyV2 { room_state })
+) -> JsonResult<SendJoinResBodyV1> {
+    let server_name = args.room_id.server_name().map_err(AppError::public)?;
+    let room_state = crate::membership::send_join_v1(&server_name, &args.room_id, &body.pdu).await?;
+    json_ok(SendJoinResBodyV1 { room_state })
 }
 #[endpoint]
 async fn send_leave_event(_aa: AuthArgs) -> EmptyResult {

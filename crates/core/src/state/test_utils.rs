@@ -20,8 +20,8 @@ use serde_json::{json, value::to_raw_value as to_raw_json_value};
 use tracing::info;
 
 pub(crate) use self::event::PduEvent;
-use crate::{MatrixError, RawJsonValue};
 use crate::state::{auth_types_for_event, Event, EventTypeExt, StateMap};
+use crate::{MatrixError, RawJsonValue};
 
 static SERVER_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
 
@@ -205,7 +205,11 @@ impl<E: Event> TestStore<E> {
     }
 
     /// Returns a Vec of the related auth events to the given `event`.
-    pub(crate) fn auth_event_ids(&self, room_id: &RoomId, event_ids: Vec<E::Id>) -> Result<HashSet<E::Id>, MatrixError> {
+    pub(crate) fn auth_event_ids(
+        &self,
+        room_id: &RoomId,
+        event_ids: Vec<E::Id>,
+    ) -> Result<HashSet<E::Id>, MatrixError> {
         let mut result = HashSet::new();
         let mut stack = event_ids;
 

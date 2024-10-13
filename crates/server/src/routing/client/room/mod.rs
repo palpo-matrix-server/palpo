@@ -159,7 +159,8 @@ fn set_read_markers(
     }
 
     if let Some(event_id) = &body.private_read_receipt {
-        crate::room::receipt::set_private_read(&room_id, authed.user_id(), event_id)?;
+        let event_sn = crate::event::get_event_sn(&event_id)?;
+        crate::room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
     }
 
     if let Some(event) = &body.read_receipt {

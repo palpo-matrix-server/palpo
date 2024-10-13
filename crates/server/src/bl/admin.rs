@@ -15,6 +15,7 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
 
 use super::event::PduBuilder;
+use super::room;
 use crate::core::appservice::Registration;
 use crate::core::events::room::{
     canonical_alias::RoomCanonicalAliasEventContent,
@@ -754,7 +755,11 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     let conf = crate::config();
     let room_id = RoomId::new(&conf.server_name);
 
-    crate::room::ensure_room(&room_id, created_by)?;
+    if crate::room::room_exists(&room_id)? {
+        return Ok(room_id);
+    } else {
+        crate::room::ensure_room(&room_id, created_by)?;
+    }
 
     // Create a user for the server
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");

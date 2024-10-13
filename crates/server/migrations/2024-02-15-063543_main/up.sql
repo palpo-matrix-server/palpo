@@ -573,10 +573,6 @@ CREATE TABLE event_auth_chains
     chain_id bigint NOT NULL,
     sequence_number bigint NOT NULL
 );
-CREATE UNIQUE INDEX event_auth_chains_c_seq_index
-    ON event_auth_chains USING btree
-    (chain_id ASC NULLS LAST, sequence_number ASC NULLS LAST);
-
 
 DROP TABLE IF EXISTS event_backward_extremities CASCADE;
 CREATE TABLE event_backward_extremities
@@ -742,17 +738,7 @@ CREATE TABLE IF NOT EXISTS e2e_key_changes
     room_id text,
     occur_sn bigint not null default nextval('occur_sn_seq'),
     changed_at bigint NOT NULL,
-    CONSTRAINT e2e_key_changes_ukey UNIQUE (user_id, room_id)
-);
-
-DROP TABLE IF EXISTS user_openid_tokens;
-CREATE TABLE IF NOT EXISTS user_openid_tokens
-(
-    id bigserial NOT NULL PRIMARY KEY,
-    user_id text NOT NULL,
-    token text NOT NULL,
-    expires_at bigint NOT NULL,
-    CONSTRAINT user_openid_tokens_ukey UNIQUE (token)
+    CONSTRAINT e2e_key_changes_ukey UNIQUE NULLS NOT DISTINCT (user_id, room_id)
 );
 
 DROP TABLE IF EXISTS user_openid_tokens;

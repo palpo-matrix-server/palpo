@@ -95,8 +95,7 @@ pub fn read_receipts(
 }
 /// Sets a private read marker at `count`.
 #[tracing::instrument]
-pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId) -> AppResult<()> {
-    let event_sn = crate::event::get_event_sn(event_id)?;
+pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, event_sn: i64) -> AppResult<()> {
     diesel::insert_into(event_receipts::table)
         .values(&NewDbReceipt {
             room_id: room_id.to_owned(),
