@@ -481,9 +481,7 @@ pub fn add_device_keys(user_id: &OwnedUserId, device_id: &OwnedDeviceId, device_
         .do_update()
         .set(&new_device_key)
         .execute(&mut db::connect()?)?;
-    println!("UUUUUUUUUUUUUUadd_device_keys");
     mark_device_key_update(user_id)?;
-    println!("UUUUUUUUUUUUUUadd_device_keys2");
     Ok(())
 }
 
@@ -585,7 +583,6 @@ pub fn sign_key(
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
-    println!("MMMMMMMMMMMMmark_device_key_update");
     let changed_at = UnixMillis::now();
     for room_id in crate::user::joined_rooms(user_id, 0)? {
         // comment for testing
@@ -660,11 +657,6 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
 
 pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
-    println!("===============user: {user_id} from_sn: {from_sn} to_sn: {to_sn:?}  joined rooms: {room_ids:?}");
-    println!(
-        "======changes: {:#?}",
-        e2e_key_changes::table.load::<DbKeyChange>(&mut db::connect()?)
-    );
     if let Some(to_sn) = to_sn {
         e2e_key_changes::table
             .filter(e2e_key_changes::room_id.eq_any(&room_ids))

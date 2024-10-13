@@ -61,7 +61,6 @@ async fn upload_keys(
     }
 
     if let Some(device_keys) = &body.device_keys {
-        println!("UUUUUUUUUUUUUUupload_keys");
         crate::user::add_device_keys(authed.user_id(), authed.device_id(), device_keys)?;
     }
 

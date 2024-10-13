@@ -413,14 +413,12 @@ pub async fn sync_events_v4(
     let mut device_list_left = HashSet::new();
 
     if body.extensions.e2ee.enabled.unwrap_or(false) {
-        println!("XDDDDDDDDDDDDDDDDDDDDDDDDVVV4  {global_since_sn}");
         // Look for device list updates of this account
         device_list_changes.extend(crate::user::get_keys_changed_users(
             authed.user_id(),
             global_since_sn,
             None,
         )?);
-        println!("XDDDDDDDDDDDDDdevice_list_changes  {device_list_changes:?}");
 
         for room_id in &all_joined_rooms {
             let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id)? {

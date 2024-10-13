@@ -549,7 +549,6 @@ pub fn verify_event(
             None => return Err(VerificationError::signature_not_found(entity_id)),
         };
 
-        println!("===server name: {entity_id}   public_key_map: {public_key_map:#?}");
         let public_keys = public_key_map
             .get(entity_id.as_str())
             .ok_or_else(|| VerificationError::public_key_not_found(entity_id))?;

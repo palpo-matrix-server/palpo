@@ -707,10 +707,8 @@ async fn validate_and_add_event_id(
 
     let unfiltered_keys = (*pub_key_map.read().await).clone();
 
-    println!("LLLLLLLLLLLLLLLLLLLLL1 unfiltered_keys  {unfiltered_keys:?}");
     let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
-    println!("LLLLLLLLLLLLLLLLLLLLL1  {keys:?}");
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {
     //     warn!("Event {} failed verification {:?} {}", event_id, pdu, e);
     //     back_off(event_id);

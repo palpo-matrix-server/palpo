@@ -196,7 +196,6 @@ async fn send_join_v2(
     body: JsonBody<SendJoinReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<SendJoinResBodyV2> {
-    println!("ZZZZZZZZZZZZZZZZZZZZZZZZZZZsend_join_v2");
     let server_name = args.room_id.server_name().map_err(AppError::public)?;
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
@@ -213,7 +212,6 @@ async fn send_join_v1(
     body: JsonBody<SendJoinReqBodyV1>,
     depot: &mut Depot,
 ) -> JsonResult<SendJoinResBodyV1> {
-    println!("ZZZZZZZZZZZZZZZZZZZZZZZZZZZsend_join_v1");
     let server_name = args.room_id.server_name().map_err(AppError::public)?;
     let room_state = crate::membership::send_join_v1(&server_name, &args.room_id, &body.pdu).await?;
     json_ok(SendJoinResBodyV1 { room_state })

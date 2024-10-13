@@ -37,16 +37,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
 
     let frame_id = if let Some(at_sn) = &args.at {
         if let Ok(at_sn) = at_sn.parse::<i64>() {
-            println!(
-                "frame_ids :{:?}",
-                room_state_points::table
-                    .filter(room_state_points::room_id.eq(&args.room_id))
-                    .filter(room_state_points::event_sn.le(at_sn))
-                    .filter(room_state_points::frame_id.is_not_null())
-                    .order(room_state_points::frame_id.desc())
-                    .select(room_state_points::frame_id)
-                    .load::<Option<i64>>(&mut db::connect()?)?
-            );
             room_state_points::table
                 .filter(room_state_points::room_id.eq(&args.room_id))
                 .filter(room_state_points::event_sn.le(at_sn))
@@ -66,7 +56,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
         .map(|(_, pdu)| pdu.to_member_event())
         .collect();
-    println!("==satets: {:#?}", states);
     if let Some(membership) = &args.membership {
         states = states
             .into_iter()

@@ -27,7 +27,6 @@ pub async fn sync_events(
     args: SyncEventsReqArgsV3,
     tx: Sender<Option<AppResult<SyncEventsResBodyV3>>>,
 ) -> AppResult<()> {
-    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>sync_events>>>>>>>>>>>>>> {sender_id}");
     crate::user::ping_presence(&sender_id, &args.set_presence)?;
 
     // Setup watchers, so if there's no response, we can wait for them
@@ -65,9 +64,7 @@ pub async fn sync_events(
     device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
 
     let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
-    println!("======={sender_id}======all_joined_rooms: {:?}", all_joined_rooms);
     for room_id in all_joined_rooms {
-        println!("lllllloop");
         let joined_room = match load_joined_room(
             &sender_id,
             &sender_device_id,
@@ -84,14 +81,11 @@ pub async fn sync_events(
         {
             Ok(joined_room) => joined_room,
             Err(e) => {
-                println!("00000000load joined room failed");
                 tracing::error!(error = ?e, "load joined room failed");
                 continue;
             }
         };
-        println!("=====joined room is empty  {}", joined_room.is_empty());
         if !joined_room.is_empty() {
-            println!("Xxxxreinsert into");
             joined_rooms.insert(room_id.to_owned(), joined_room);
         }
 
@@ -119,11 +113,9 @@ pub async fn sync_events(
             }
         }
     }
-    println!("======={sender_id}======joined_rooms 2: {:?}", joined_rooms);
 
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = crate::room::rooms_left(&sender_id)?;
-    println!("=============all_left_rooms: {:?}", all_left_rooms);
 
     for room_id in all_left_rooms.keys() {
         let mut left_state_events = Vec::new();
@@ -207,8 +199,7 @@ pub async fn sync_events(
             },
         );
     }
-    println!("=============left_rooms: {:?}", left_rooms);
-
+   
     let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
         .into_iter()
         .map(|(room_id, invite_state_events)| {
@@ -243,7 +234,6 @@ pub async fn sync_events(
             }
         }
     }
-    println!("=============left_users: {:?}", left_users);
     for user_id in left_users {
         let dont_share_encrypted_room = crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
             .into_iter()
@@ -265,8 +255,6 @@ pub async fn sync_events(
     // Remove all to-device events the device received *last time*
     crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
-    println!("xdevice_list_left: {:?}", device_list_left);
-    println!("000000000000000000joined_rooms: {:?}", joined_rooms);
     let response = SyncEventsResBodyV3 {
         next_batch: next_batch.to_string(),
         rooms: RoomsV3 {
@@ -445,7 +433,6 @@ async fn load_joined_room(
         let joined_since_last_sync = crate::room::user::joined_sn(sender_id, room_id)? >= since_sn;
 
         if since_sn == 0 || joined_since_last_sync {
-            println!("!!!!!!!!!!!!!!!!!!!!!!!");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -520,7 +507,6 @@ async fn load_joined_room(
             }
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
-            println!("!!!!!!!!!!!!!!!!!!!!!!!  1");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
@@ -660,11 +646,9 @@ async fn load_joined_room(
                 state_events,
             )
         } else {
-            println!("!!!!!!!!!!!!!!!!!!!!!!!  2");
             (Vec::new(), None, None, false, Vec::new())
         }
     };
-    println!("!!!!!!!!!!!!!!!!!!!!!!!  3");
 
     // Look for device list updates in this room
     device_list_updates.extend(crate::room::keys_changed_users(room_id, since_sn, None)?);

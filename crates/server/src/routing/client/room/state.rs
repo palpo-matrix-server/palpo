@@ -155,8 +155,6 @@ pub(super) async fn state_for_empty_key(
         MatrixError::not_found("State event not found.")
     })?;
 
-    println!("PPPPPPPPPPPPevent: {event:#?}");
-
     json_ok(StateEventsForKeyResBody(
         serde_json::from_str(event.content.get())
             .map_err(|_| AppError::internal("Invalid event content in database"))?,
