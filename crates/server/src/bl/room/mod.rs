@@ -230,6 +230,14 @@ pub fn update_membership(
                 }
             }
             db::connect()?.transaction::<_, AppError, _>(|conn| {
+                let forgotten = room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .filter(room_users::user_id.eq(user_id))
+                    .select(room_users::forgotten)
+                    .first::<bool>(conn)
+                    .optional()?
+                    .unwrap_or_default();
+                println!("get   ffffforgotten1: {:?}", forgotten);
                 diesel::delete(
                     room_users::table
                         .filter(room_users::room_id.eq(room_id))
@@ -244,7 +252,7 @@ pub fn update_membership(
                         event_sn,
                         sender_id: sender.to_owned(),
                         membership: membership.to_string(),
-                        forgotten: false,
+                        forgotten,
                         display_name: None,
                         avatar_url: None,
                         state_data,
@@ -270,6 +278,14 @@ pub fn update_membership(
             }
 
             db::connect()?.transaction::<_, AppError, _>(|conn| {
+                let forgotten = room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .filter(room_users::user_id.eq(user_id))
+                    .select(room_users::forgotten)
+                    .first::<bool>(conn)
+                    .optional()?
+                    .unwrap_or_default();
+                println!("get   ffffforgotten2: {:?}", forgotten);
                 diesel::delete(
                     room_users::table
                         .filter(room_users::room_id.eq(room_id))
@@ -284,7 +300,7 @@ pub fn update_membership(
                         event_sn,
                         sender_id: sender.to_owned(),
                         membership: membership.to_string(),
-                        forgotten: false,
+                        forgotten,
                         display_name: None,
                         avatar_url: None,
                         state_data,
@@ -296,6 +312,14 @@ pub fn update_membership(
         }
         MembershipState::Leave | MembershipState::Ban => {
             db::connect()?.transaction::<_, AppError, _>(|conn| {
+                let forgotten = room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .filter(room_users::user_id.eq(user_id))
+                    .select(room_users::forgotten)
+                    .first::<bool>(conn)
+                    .optional()?
+                    .unwrap_or_default();
+                println!("get   ffffforgotten3: {:?}", forgotten);
                 diesel::delete(
                     room_users::table
                         .filter(room_users::room_id.eq(room_id))
@@ -310,7 +334,7 @@ pub fn update_membership(
                         event_sn,
                         sender_id: sender.to_owned(),
                         membership: membership.to_string(),
-                        forgotten: false,
+                        forgotten,
                         display_name: None,
                         avatar_url: None,
                         state_data,

@@ -155,6 +155,10 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
+    println!(
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJOIne room  {user_id}  currt_sn: {:?}",
+        crate::curr_sn()
+    );
     // Ask a remote server if we are not participating in this room
     if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
         info!("Joining {room_id} over federation.");
@@ -1026,5 +1030,6 @@ pub fn forget_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     .set(room_users::forgotten.eq(true))
     .execute(&mut db::connect()?)?;
 
+    println!("set   ffffforgotten true");
     Ok(())
 }

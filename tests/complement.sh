@@ -40,7 +40,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run "TestDeviceListUpdates/when_remote_user_leaves_a_room" -json ./tests/csapi| tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 1h -run "TestRoomForget/Parallel/Can_re-join_room_if_re-invited" -json ./tests/csapi| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format
@@ -51,5 +51,5 @@ cat "$LOG_FILE.jsonl" | jq -c '
     ) | {Action: .Action, Test: .Test}
     ' | sort > "$RESULTS_FILE"
 
-cat "$LOG_FILE.jsonl" | jq -c '.Output' > "$LOG_FILE"
+cat "$LOG_FILE.jsonl" | jq -c '.Output' | sed 's/^"//;s/"$//;s/\\\"/\"/g' > "$LOG_FILE"
 rm -rf "$LOG_FILE.jsonl"

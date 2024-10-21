@@ -117,6 +117,7 @@ async fn send_message(
                             last_federation_update_at: None,
                             last_user_sync_at: None,
                             currently_active: Some(update.currently_active),
+                            occur_sn: None,
                         },
                         true,
                     )?;

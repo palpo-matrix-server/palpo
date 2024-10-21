@@ -159,6 +159,7 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             last_federation_update_at: None,
             last_user_sync_at: None,
             currently_active: None,
+            occur_sn: None,
         },
         true,
     )?;
@@ -195,13 +196,6 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
     //Create device for this account
     crate::user::create_device(&user_id, &device_id, &token, body.initial_device_display_name.clone())?;
 
-    info!("New user {} registered on this server.", user_id);
-    if body.login_type != Some(LoginType::Appservice) && !is_guest {
-        crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
-            "New user {user_id} registered on this server."
-        )));
-    }
-
     // If this is the first real user, grant them admin privileges
     // Note: the server user, @palpo:servername, is generated first
     if !is_guest {
@@ -209,6 +203,11 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             if crate::room::joined_count(&admin_room)? == 1 {
                 crate::admin::make_user_admin(&user_id, display_name)?;
                 warn!("Granting {} admin privileges as the first user", user_id);
+            } else if body.login_type != Some(LoginType::Appservice) {
+                info!("New user {} registered on this server.", user_id);
+                crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
+                    "New user {user_id} registered on this server."
+                )));
             }
         }
     }

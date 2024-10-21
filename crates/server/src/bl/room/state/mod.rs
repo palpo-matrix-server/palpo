@@ -142,7 +142,10 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
-    println!("aaaaaaaaaaaappend_to_state: room_id {}", new_pdu.room_id);
+    println!(
+        "aaaaaaaaaaaappend_to_state: room_id {}   {:?}",
+        new_pdu.room_id, new_pdu.state_key
+    );
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id)?;
 
     if let Some(state_key) = &new_pdu.state_key {
@@ -182,9 +185,10 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             2,
             states_parents,
         )?;
-
+        println!("aaaaaaaaaaaa: frame_id {}", frame_id);
         Ok(frame_id)
     } else {
+        println!("aaaaaaaaaaaaxxxx",);
         prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into())
     }
 }

@@ -9,9 +9,9 @@ use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::backfill_request;
-use crate::core::federation::backfill::BackfillResBody;
+use crate::core::federation::backfill::{backfill_request, BackfillResBody};
 use crate::core::identifiers::*;
+use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::Event;
@@ -275,6 +275,9 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                     _ => None,
                 };
 
+                if content.membership == MembershipState::Join {
+                    let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online)?;
+                }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 crate::room::update_membership(
@@ -844,19 +847,25 @@ pub fn get_pdus(
         }
     }
 
+    let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
+    println!("fffffffffffffforget_before_sn: {}   {}", forget_before_sn, user_id);
+
     let datas = if dir == Direction::Forward {
         event_datas::table
             .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
+            .filter(event_datas::event_sn.ge(forget_before_sn))
             .order(event_datas::event_sn.asc())
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     } else {
         event_datas::table
             .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
+            .filter(event_datas::event_sn.ge(forget_before_sn))
             .order(event_datas::event_sn.desc())
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     };
+    println!("ddddddddddddddddddddatas: {:#?}", datas);
 
     let list = datas.into_iter().filter_map(|(sn, v)| {
         let mut pdu = serde_json::from_value::<PduEvent>(v).ok()?;
