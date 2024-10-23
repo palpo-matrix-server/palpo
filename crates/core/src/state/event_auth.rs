@@ -97,6 +97,7 @@ pub fn auth_types_for_event(
         }
     }
 
+    println!("DDDDDDDDauth_types: {auth_types:#?}");
     Ok(auth_types)
 }
 

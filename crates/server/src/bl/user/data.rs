@@ -50,7 +50,6 @@ pub fn set_data(
         occur_sn: crate::next_sn()? as i64,
         created_at: UnixMillis::now(),
     };
-    println!("SSSSSSSSSSSSSSSSSSSSSSSSSSdata  {:#?}", new_data);
     diesel::insert_into(user_datas::table)
         .values(&new_data)
         .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
@@ -91,7 +90,6 @@ pub fn get_data_changes(
         .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
         .filter(user_datas::occur_sn.ge(since_sn))
         .load::<DbUserData>(&mut *db::connect()?)?;
-    println!("ddddddddddddddddddddb since-sn{since_sn}");
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);

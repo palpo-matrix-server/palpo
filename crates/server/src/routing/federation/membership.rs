@@ -166,6 +166,7 @@ fn invite_user(
 
     // If we are active in the room, the remote server will notify us about the join via /send
     if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
+        println!("ppppppppppppp0 event_sn {:?}", pdu.event_sn);
         crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,

@@ -272,8 +272,6 @@ pub fn sync_events(
         // Remove all to-device events the device received *last time*
         crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
-        println!("xdevice_list_left: {:?}", device_list_left);
-        println!("000000000000000000joined_rooms: {:?}", joined_rooms);
         let response = SyncEventsResBodyV3 {
             next_batch: next_batch.to_string(),
             rooms: RoomsV3 {
@@ -346,7 +344,6 @@ pub fn sync_events(
             println!("RRRRRRRRRRRRespnse3 {:#?}", response);
             Ok((response, since_sn != next_batch)) // Only cache if we made progress
         };
-        println!("RRRRRRRRRRRRespnse4");
 
         if let Ok((_, caching_allowed)) = r {
             if !caching_allowed {
@@ -480,7 +477,6 @@ async fn load_joined_room(
             let mut lazy_loaded = HashSet::new();
 
             for (state_key_id, id) in current_state_ids {
-                println!("SSSSSSSSSSSSSate key id: {state_key_id} id: {id}");
                 let DbRoomStateField {
                     event_type, state_key, ..
                 } = crate::room::state::get_field(state_key_id)?;

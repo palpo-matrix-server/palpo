@@ -27,6 +27,7 @@ use crate::{
 };
 use diesel::prelude::*;
 use diesel::sql_types::Json;
+use outgoing_requests::data;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
 use serde::Deserialize;
@@ -280,6 +281,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
+                println!("ppppppppppppp4 event_sn {:?}", pdu.event_sn);
                 crate::room::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
@@ -810,81 +812,104 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
-    if dir == Direction::Forward {
-        query = query.filter(events::sn.ge(occur_sn));
+    // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
+    let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
+
+    let mut start_sn = if dir == Direction::Forward {
+        0
     } else {
-        query = query.filter(events::sn.le(occur_sn));
+        crate::curr_sn()? + 10
     };
 
-    if let Some(filter) = filter {
-        if let Some(url_filter) = &filter.url_filter {
-            match url_filter {
-                UrlFilter::EventsWithUrl => query = query.filter(events::contains_url.eq(true)),
-                UrlFilter::EventsWithoutUrl => query = query.filter(events::contains_url.eq(false)),
+    while list.len() < limit {
+        let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
+        if dir == Direction::Forward {
+            query = query.filter(events::sn.ge(occur_sn));
+        } else {
+            query = query.filter(events::sn.le(occur_sn));
+        };
+
+        if let Some(filter) = filter {
+            if let Some(url_filter) = &filter.url_filter {
+                match url_filter {
+                    UrlFilter::EventsWithUrl => query = query.filter(events::contains_url.eq(true)),
+                    UrlFilter::EventsWithoutUrl => query = query.filter(events::contains_url.eq(false)),
+                }
+            }
+            if !filter.not_types.is_empty() {
+                query = query.filter(events::event_type.ne_all(&filter.not_types));
+            }
+            if !filter.not_rooms.is_empty() {
+                query = query.filter(events::room_id.ne_all(&filter.not_rooms));
+            }
+            if let Some(rooms) = &filter.rooms {
+                if !rooms.is_empty() {
+                    query = query.filter(events::room_id.eq_any(rooms));
+                }
+            }
+            if let Some(senders) = &filter.senders {
+                if !senders.is_empty() {
+                    query = query.filter(events::sender_id.eq_any(senders));
+                }
+            }
+            if let Some(types) = &filter.types {
+                if !types.is_empty() {
+                    query = query.filter(events::event_type.eq_any(types));
+                }
             }
         }
-        if !filter.not_types.is_empty() {
-            query = query.filter(events::event_type.ne_all(&filter.not_types));
+        let datas: Vec<(i64, JsonValue)> = if dir == Direction::Forward {
+            event_datas::table
+                .filter(
+                    event_datas::event_id.eq_any(
+                        query
+                            .filter(events::sn.gt(start_sn))
+                            .limit(utils::usize_to_i64(limit))
+                            .select(events::id),
+                    ),
+                )
+                .order(event_datas::event_sn.asc())
+                .select((event_datas::event_sn, event_datas::json_data))
+                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+        } else {
+            event_datas::table
+                .filter(
+                    event_datas::event_id.eq_any(
+                        query
+                            .filter(events::sn.lt(start_sn))
+                            .limit(utils::usize_to_i64(limit))
+                            .select(events::id),
+                    ),
+                )
+                .order(event_datas::event_sn.desc())
+                .select((event_datas::event_sn, event_datas::json_data))
+                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+        };
+        if datas.is_empty() {
+            break;
         }
-        if !filter.not_rooms.is_empty() {
-            query = query.filter(events::room_id.ne_all(&filter.not_rooms));
-        }
-        if let Some(rooms) = &filter.rooms {
-            if !rooms.is_empty() {
-                query = query.filter(events::room_id.eq_any(rooms));
-            }
-        }
-        if let Some(senders) = &filter.senders {
-            if !senders.is_empty() {
-                query = query.filter(events::sender_id.eq_any(senders));
-            }
-        }
-        if let Some(types) = &filter.types {
-            if !types.is_empty() {
-                query = query.filter(events::event_type.eq_any(types));
+        start_sn = if let Some(&(sn, _)) = datas.last() {
+            sn
+        } else {
+            break;
+        };
+        for (sn, v) in datas {
+            let mut pdu = serde_json::from_value::<PduEvent>(v)?;
+
+            if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
+                if pdu.sender != user_id {
+                    pdu.remove_transaction_id()?;
+                }
+                pdu.add_age()?;
+                list.push((sn, pdu));
+                if list.len() >= limit {
+                    break;
+                }
             }
         }
     }
 
-    let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
-    println!("fffffffffffffforget_before_sn: {}   {}", forget_before_sn, user_id);
-
-    let datas = if dir == Direction::Forward {
-        event_datas::table
-            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
-            .filter(event_datas::event_sn.ge(forget_before_sn))
-            .order(event_datas::event_sn.asc())
-            .select((event_datas::event_sn, event_datas::json_data))
-            .load::<(i64, JsonValue)>(&mut *db::connect()?)?
-    } else {
-        event_datas::table
-            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
-            .filter(event_datas::event_sn.ge(forget_before_sn))
-            .order(event_datas::event_sn.desc())
-            .select((event_datas::event_sn, event_datas::json_data))
-            .load::<(i64, JsonValue)>(&mut *db::connect()?)?
-    };
-    println!("ddddddddddddddddddddatas: {:#?}", datas);
-
-    let list = datas.into_iter().filter_map(|(sn, v)| {
-        let mut pdu = serde_json::from_value::<PduEvent>(v).ok()?;
-
-        if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id).ok()? {
-            if pdu.sender != user_id {
-                pdu.remove_transaction_id().ok()?;
-            }
-            pdu.add_age().ok()?;
-            Some((sn, pdu))
-        } else {
-            None
-        }
-    });
-    // if dir == Direction::Forward {
-    //     Ok(list.rev().collect::<Vec<(_, _)>>())
-    // } else {
-    Ok(list.collect::<Vec<(_, _)>>())
-    // }
+    Ok(list)
 }
 
 /// Replace a PDU with the redacted form.

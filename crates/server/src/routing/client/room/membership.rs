@@ -448,6 +448,7 @@ pub(crate) async fn knock_room(
         authed.user_id(),
         &room_id,
     )?;
+    println!("ppppppppppppp1 event_sn {:?}", pdu.event_sn);
     crate::room::update_membership(
         &pdu.event_id,
         pdu.event_sn,
