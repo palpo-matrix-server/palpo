@@ -607,8 +607,6 @@ CREATE INDEX ev_forward_extrem_room_id
     ON event_forward_extremities USING btree
     (room_id ASC NULLS LAST);
 
-
-
 DROP TABLE IF EXISTS room_users CASCADE;
 CREATE TABLE room_users
 (
@@ -626,6 +624,22 @@ CREATE TABLE room_users
     created_at bigint NOT NULL,
     CONSTRAINT room_users_ukey UNIQUE (event_id)
 );
+CREATE INDEX IF NOT EXISTS room_users_user_room_idx
+    ON room_users USING btree
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS room_users_room_id_idx
+    ON room_users USING btree
+    (room_id ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS room_users_user_id_idx
+    ON room_users USING btree
+    (user_id ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS room_users_user_room_forgotten_idx
+    ON room_users USING btree
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST)
+    WHERE forgotten = true;
 
 DROP TABLE IF EXISTS e2e_cross_signing_keys;
 CREATE TABLE IF NOT EXISTS e2e_cross_signing_keys

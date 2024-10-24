@@ -39,6 +39,8 @@ enable_lightning_bolt = true
 
 allow_local_presence = true
 
+enable_admin_room = false
+
 # Servers listed here will be used to gather public keys of other servers.
 # Generally, copying this exactly should be enough. (Currently, Palpo doesn't
 # support batched key requests, so this list should only contain Synapse

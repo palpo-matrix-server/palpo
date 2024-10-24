@@ -317,10 +317,24 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .first::<i64>(&mut *db::connect()?)
         .unwrap_or_default();
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
-    let event_sn = events::table
-        .filter(events::room_id.eq_any(&room_ids))
-        .order_by(events::sn.desc())
-        .select(events::sn)
+    // let frame_id = room_state_frames::table
+    //     .filter(room_state_frames::room_id.eq_any(&room_ids))
+    //     .order_by(room_state_frames::id.desc())
+    //     .select(room_state_frames::id)
+    //     .first::<i64>(&mut *db::connect()?)
+    //     .unwrap_or_default();
+    let frame_id = room_state_deltas::table
+        .filter(room_state_deltas::room_id.eq_any(&room_ids))
+        .order_by(room_state_deltas::frame_id.desc())
+        .select(room_state_deltas::frame_id)
+        .first::<i64>(&mut *db::connect()?)
+        .unwrap_or_default();
+
+    let push_rule_sn = user_datas::table
+        .filter(user_datas::user_id.eq(user_id))
+        .filter(user_datas::data_type.eq("m.push_rules"))
+        .order_by(user_datas::occur_sn.desc())
+        .select(user_datas::occur_sn)
         .first::<i64>(&mut *db::connect()?)
         .unwrap_or_default();
 
@@ -364,11 +378,32 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
             {
                 return Ok(());
             }
-            if event_sn
-                < events::table
-                    .filter(events::room_id.eq_any(&room_ids))
-                    .order_by(events::sn.desc())
-                    .select(events::sn)
+            // if frame_id
+            //     < room_state_frames::table
+            //         .filter(room_state_frames::room_id.eq_any(&room_ids))
+            //         .order_by(room_state_frames::id.desc())
+            //         .select(room_state_frames::id)
+            //         .first::<i64>(&mut *db::connect()?)
+            //         .unwrap_or_default()
+            // {
+            //     return Ok(());
+            // }
+            if frame_id
+                < room_state_deltas::table
+                    .filter(room_state_deltas::room_id.eq_any(&room_ids))
+                    .order_by(room_state_deltas::frame_id.desc())
+                    .select(room_state_deltas::frame_id)
+                    .first::<i64>(&mut *db::connect()?)
+                    .unwrap_or_default()
+            {
+                return Ok(());
+            }
+            if push_rule_sn
+                < user_datas::table
+                    .filter(user_datas::user_id.eq(user_id))
+                    .filter(user_datas::data_type.eq("m.push_rules"))
+                    .order_by(user_datas::occur_sn.desc())
+                    .select(user_datas::occur_sn)
                     .first::<i64>(&mut *db::connect()?)
                     .unwrap_or_default()
             {

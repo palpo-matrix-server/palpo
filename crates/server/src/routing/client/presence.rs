@@ -96,6 +96,7 @@ async fn set_status(
             last_federation_update_at: None,
             last_user_sync_at: None,
             currently_active: None, //TODO,
+            occur_sn: None,
         },
         true,
     )?;

@@ -178,6 +178,7 @@ async fn set_avatar_url(
             last_federation_update_at: None,
             last_user_sync_at: None,
             currently_active: None,
+            occur_sn: None,
         },
         true,
     )?;
@@ -296,6 +297,7 @@ async fn set_display_name(
                 last_federation_update_at: None,
                 last_user_sync_at: None,
                 currently_active: None,
+                occur_sn: None,
             },
             true,
         )?;

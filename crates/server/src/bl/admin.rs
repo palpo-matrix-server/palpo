@@ -190,6 +190,9 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
     // TODO: Use futures when we have long admin commands
     //let mut futures = FuturesUnordered::new();
     let conf = crate::config();
+    if !conf.enable_admin_room {
+        return;
+    }
 
     let palpo_user = UserId::parse(format!("@palpo:{}", &conf.server_name)).expect("@palpo:server_name is valid");
 
