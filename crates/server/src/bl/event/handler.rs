@@ -1372,7 +1372,6 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         .expect("Should be valid until year 500,000,000");
 
     debug!("Fetching signing keys for {} over federation", origin);
-    println!("Fetching signing keys for {} over federation", origin);
 
     let key_request = get_server_key_request(origin)?.into_inner();
     if let Some(mut server_key) = crate::sending::send_federation_request(origin, key_request)

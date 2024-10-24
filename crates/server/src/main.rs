@@ -101,7 +101,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .init();
     }
 
-    println!("RUST_LOG: {}", env::var("RUST_LOG").unwrap_or_default());
     let raw_config = Figment::new()
         .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
         .merge(Env::prefixed("PALPO_").global());
@@ -115,7 +114,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
     let thread_pool = Arc::new(ScheduledThreadPool::new(conf.db.helper_threads));
 
-    println!("CONFIG: {:#?}", conf);
     let db_primary = {
         let db_connection_config = ConnectionConfig {
             statement_timeout: conf.db.statement_timeout,
