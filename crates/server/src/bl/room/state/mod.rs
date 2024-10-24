@@ -143,17 +143,12 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
-    println!(
-        "aaaaaaaaaaaappend_to_state: room_id {}   {:?}",
-        new_pdu.room_id, new_pdu.state_key
-    );
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id)?;
 
     if let Some(state_key) = &new_pdu.state_key {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
         let field_id = ensure_field(&new_pdu.kind.to_string().into(), state_key)?.id;
-        println!("nnnnnnnnnew pdu event_sn {:?}", new_pdu.event_sn);
         let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
 
         let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
@@ -284,13 +279,15 @@ pub fn get_auth_events(
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
 ) -> AppResult<StateMap<PduEvent>> {
+    println!("ssssssssssate 0");
     let frame_id = if let Some(current_frame_id) = get_room_frame_id(room_id)? {
-        println!("fffffff: frame_id {}", current_frame_id);
+        
+    println!("ssssssssssate 1");
         current_frame_id
     } else {
-        println!("xxxxxxxxxx0");
         return Ok(HashMap::new());
     };
+    println!("ssssssssssate 2");
 
     let auth_events = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
 
@@ -303,25 +300,21 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
-    println!("FFFFFFFFFsauth_events: {:#?}", sauth_events);
 
     let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
-    println!("FFFFFFFFFsafull_state: {:#?}", full_state);
 
     let mut state_map = StateMap::new();
+    println!("ssssssssssate map: {state_map:?}");
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!("ssssssssssate state_key_id: {state_key_id}  event_id: {event_id:?}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            println!("Will find event_id: {:#?}", event_id);
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
-                println!("vvvvvvvvvvs0");
-            } else {
-                println!("vvvvvvvvvvs1  {event_id}");
             }
         }
     }
-    println!("FFFFFFFFFstate_map: {:#?}", state_map);
+    println!("ssssssssssate map2: {state_map:?}");
     Ok(state_map)
 }
 

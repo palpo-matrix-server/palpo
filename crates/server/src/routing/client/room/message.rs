@@ -21,9 +21,11 @@ use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, JsonValue, MatrixError, 
 pub(super) async fn get_messages(
     _aa: AuthArgs,
     args: MessagesReqArgs,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
     let authed = depot.authed_info()?;
+    println!("get_messages request url: {:?}   dir: {:?}", req.uri(), args.dir );
 
     if !diesel_exists!(
         room_users::table

@@ -114,11 +114,14 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    if let Ok(Some(pdu)) = get_non_outlier_pdu(event_id) {
-        // PDU_CACHE::lock().unwrap().insert(event_id.to_owned(), Arc::clone(&pdu));
-        Ok(Some(pdu))
-    } else {
-        Ok(None)
+    match get_non_outlier_pdu(event_id) {
+        Ok(Some(pdu)) => Ok(Some(pdu)),
+        Ok(None) => Ok(None),
+        Err(e) => {
+            println!("get pdu error: {:?}", e);
+            tracing::error!("get pdu error: {:?}", e);
+            Ok(None)
+        }
     }
 }
 
@@ -480,6 +483,7 @@ pub fn create_hash_and_sign_event(
         redacts,
     } = pdu_builder;
 
+    println!("ccccccccccmmmmmmm  0");
     let conf = crate::config();
     let prev_events: Vec<_> = crate::room::state::get_forward_extremities(room_id)?
         .into_iter()
@@ -488,6 +492,7 @@ pub fn create_hash_and_sign_event(
 
     let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "")?;
 
+    println!("ccccccccccmmmmmmm  1");
     let create_event_content: Option<RoomCreateEventContent> = create_event
         .as_ref()
         .map(|create_event| {
@@ -504,6 +509,7 @@ pub fn create_hash_and_sign_event(
         create_event_content.map_or(conf.room_version.clone(), |create_event| create_event.room_version);
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
+    println!("ccccccccccmmmmmmm  2");
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
 
@@ -530,6 +536,7 @@ pub fn create_hash_and_sign_event(
         }
     }
 
+    println!("ccccccccccmmmmmmm  4");
     let event_id = OwnedEventId::try_from(format!("$will_fill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
     let new_db_event = NewDbEvent {
@@ -557,6 +564,7 @@ pub fn create_hash_and_sign_event(
         .returning(events::sn)
         .get_result::<i64>(&mut *db::connect()?)?;
 
+    println!("ccccccccccmmmmmmm  5");
     let mut pdu = PduEvent {
         event_id: event_id.into(),
         event_sn,
@@ -581,24 +589,32 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
+    println!("ccccccccccmmmmmmm  6 pdu: {pdu:?}\n\n\n\n {auth_events:?}");
     let auth_checked = crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
         None::<PduEvent>, // TODO: third_party_invite
-        |k, s| auth_events.get(&(k.clone(), s.to_owned())),
+        |k, s| {
+            let e = auth_events.get(&(k.clone(), s.to_owned()));
+            println!("ccccccccccmmmmmmm  eee {e:?}");
+            e
+        },
     )
     .map_err(|e| {
         error!("{:?}", e);
         AppError::internal("Auth check failed when hash and sign event")
     })?;
 
+    println!("ccccccccccmmmmmmm  7  {auth_checked}");
     if !auth_checked {
         return Err(MatrixError::forbidden("Event is not authorized.").into());
     }
 
+    println!("ccccccccccmmmmmmm  7.1");
     // Hash and sign
     let mut pdu_json = utils::to_canonical_object(&pdu).expect("event is valid, we just created it");
 
+    println!("ccccccccccmmmmmmm  7.2");
     pdu_json.remove("event_id");
 
     // Add origin because synapse likes that (and it's required in the spec)
@@ -607,6 +623,7 @@ pub fn create_hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
+    println!("ccccccccccmmmmmmm  8");
     match crate::core::signatures::hash_and_sign_event(
         conf.server_name.as_str(),
         crate::keypair(),
@@ -622,6 +639,7 @@ pub fn create_hash_and_sign_event(
         }
     }
 
+    println!("ccccccccccmmmmmmm  9");
     // Generate event id
     let event_id = EventId::parse_arc(format!(
         "${}",
@@ -640,6 +658,7 @@ pub fn create_hash_and_sign_event(
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
 
+    println!("ccccccccccmmmmmmm  10");
     // Generate short event id
     let _point_id =
         crate::room::state::ensure_point(room_id, &pdu.event_id, crate::event::get_event_sn(&pdu.event_id)?)?;
@@ -650,12 +669,14 @@ pub fn create_hash_and_sign_event(
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+    println!("cccccccccc  1");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
         <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
             .expect("#admins:server_name is a valid room alias"),
     )?;
+    println!("cccccccccc  2");
     if admin_room.filter(|v| v == room_id).is_some() {
         match pdu.event_type() {
             TimelineEventType::RoomEncryption => {
@@ -716,10 +737,12 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         }
     }
 
+    println!("cccccccccc  3");
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
+    println!("cccccccccc  4");
     append_pdu(
         &pdu,
         pdu_json,
@@ -728,12 +751,15 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         vec![(*pdu.event_id).to_owned()],
     )?;
 
+    println!("cccccccccc  5");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     crate::room::state::set_room_state(room_id, frame_id)?;
 
+    println!("cccccccccc  6");
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
 
+    println!("cccccccccc  7");
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.kind == TimelineEventType::RoomMember {
         if let Some(state_key_uid) = &pdu
@@ -745,10 +771,12 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         }
     }
 
+    println!("cccccccccc  8");
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
 
     crate::sending::send_pdu(servers.into_iter(), &pdu.event_id)?;
+    println!("cccccccccc  9");
 
     Ok(pdu)
 }
@@ -812,16 +840,18 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
+    println!("MMMMMMMMMMMMMMMMMMMMMMMMMMM");
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
 
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
-        crate::curr_sn()? + 10
+        crate::curr_sn()? + 1
     };
 
     while list.len() < limit {
+        println!("===============start_sn: {start_sn}");
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
         if dir == Direction::Forward {
             query = query.filter(events::sn.ge(occur_sn));
@@ -858,30 +888,33 @@ pub fn get_pdus(
                 }
             }
         }
+        println!("=======================dir: {dir:?}");
         let datas: Vec<(i64, JsonValue)> = if dir == Direction::Forward {
+            println!("=======================forward");
             event_datas::table
                 .filter(
                     event_datas::event_id.eq_any(
                         query
                             .filter(events::sn.gt(start_sn))
-                            .limit(utils::usize_to_i64(limit))
                             .select(events::id),
                     ),
                 )
                 .order(event_datas::event_sn.asc())
+                .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
                 .load::<(i64, JsonValue)>(&mut *db::connect()?)?
         } else {
+            println!("=======================backward  {}", start_sn);
             event_datas::table
                 .filter(
                     event_datas::event_id.eq_any(
                         query
                             .filter(events::sn.lt(start_sn))
-                            .limit(utils::usize_to_i64(limit))
                             .select(events::id),
                     ),
                 )
                 .order(event_datas::event_sn.desc())
+                .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
                 .load::<(i64, JsonValue)>(&mut *db::connect()?)?
         };
@@ -907,6 +940,7 @@ pub fn get_pdus(
                 }
             }
         }
+        println!("============list: {list:#?}");
     }
 
     Ok(list)
