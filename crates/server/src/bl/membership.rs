@@ -155,10 +155,6 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
-    println!(
-        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJOIne room  {user_id}  currt_sn: {:?}",
-        crate::curr_sn()
-    );
     // Ask a remote server if we are not participating in this room
     if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
         info!("Joining {room_id} over federation.");
@@ -415,11 +411,9 @@ pub async fn join_room(
         crate::room::state::set_room_state(room_id, state_hash_after_join)?;
     } else {
         info!("We can join locally");
-        println!("JJJJJJJJJJJJJJJJJ====1");
         let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "")?;
         let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "")?;
 
-        println!("JJJJJJJJJJJJJJJJJ====2");
         let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
             .as_ref()
             .map(|join_rules_event| {
@@ -430,7 +424,6 @@ pub async fn join_room(
             })
             .transpose()?;
 
-        println!("JJJJJJJJJJJJJJJJJ====3");
         let restriction_rooms = match join_rules_event_content {
             Some(RoomJoinRulesEventContent {
                 join_rule: JoinRule::Restricted(restricted),
@@ -448,7 +441,6 @@ pub async fn join_room(
             _ => Vec::new(),
         };
 
-        println!("JJJJJJJJJJJJJJJJJ====4");
         let authorized_user = if restriction_rooms
             .iter()
             .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id).unwrap_or(false))
@@ -467,7 +459,6 @@ pub async fn join_room(
             None
         };
 
-        println!("JJJJJJJJJJJJJJJJJ====5");
         let event = RoomMemberEventContent {
             membership: MembershipState::Join,
             display_name: crate::user::display_name(user_id)?,
@@ -495,13 +486,10 @@ pub async fn join_room(
             Err(e) => e,
         };
 
-        println!("JJJJJJJJJJJJJJJJJ====6");
-        println!("ddddddd {restriction_rooms:?}  {servers:?}");
         if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != crate::server_name()).count() > 0 {
             info!("We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements");
             let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
 
-            println!("JJJJJJJJJJJJJJJJJ====7");
             let room_version_id = match make_join_response.room_version {
                 Some(room_version_id) if crate::supported_room_versions().contains(&room_version_id) => room_version_id,
                 _ => return Err(AppError::public("Room version is not supported")),
@@ -536,7 +524,6 @@ pub async fn join_room(
                 .expect("event is valid, we just created it"),
             );
 
-            println!("JJJJJJJJJJJJJJJJJ====8");
             // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
             join_event_stub.remove("event_id");
 
@@ -567,7 +554,6 @@ pub async fn join_room(
             // It has enough fields to be called a proper event now
             let join_event = join_event_stub;
 
-            println!("JJJJJJJJJJJJJJJJJ====8");
             let send_join_request = crate::core::federation::membership::send_join_request(
                 SendJoinArgs {
                     room_id: room_id.to_owned(),
@@ -594,7 +580,6 @@ pub async fn join_room(
             // .send::<SendJoinResBody>()
             // .await?;
 
-            println!("JJJJJJJJJJJJJJJJJ====8");
             if let Some(signed_raw) = send_join_response.room_state.event {
                 let (signed_event_id, signed_value) = match gen_event_id_canonical_json(&signed_raw, &room_version_id) {
                     Ok(t) => t,
@@ -626,7 +611,6 @@ pub async fn join_room(
         }
     }
 
-    println!("JJJJJJJJJJJJJJJJJ====9");
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 
@@ -722,10 +706,8 @@ async fn validate_and_add_event_id(
 
     let unfiltered_keys = (*pub_key_map.read().await).clone();
 
-    println!("LLLLLLLLLLLLLLLLLLLLL1 unfiltered_keys  {unfiltered_keys:?}");
     let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
-    println!("LLLLLLLLLLLLLLLLLLLLL1  {keys:?}");
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {
     //     warn!("Event {} failed verification {:?} {}", event_id, pdu, e);
     //     back_off(event_id);

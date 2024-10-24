@@ -68,7 +68,6 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
 /// Creates a single specified push rule for this user.
 #[endpoint]
 async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) -> EmptyResult {
-    println!("CCCCCCCCCCCCCCCCCCal set rule");
     let authed = depot.authed_info()?;
     let payload = req.payload().await?;
     let new_rule: NewPushRule = match &args.kind {
@@ -86,7 +85,6 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
             NewPushRule::Sender(NewSimplePushRule::new(rule_id, actions))
         }
         RuleKind::Room => {
-            println!("CCCCCCCCC   1");
             let SimpleReqBody { actions } = serde_json::from_slice(payload)?;
             let rule_id = args.rule_id.clone().try_into()?;
             NewPushRule::Room(NewSimplePushRule::new(rule_id, actions))
@@ -100,12 +98,10 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
         }
     };
 
-    println!("CCCCCCCCC   2");
     if args.scope != RuleScope::Global {
         return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
     }
 
-    println!("CCCCCCCCC   3");
     let mut user_data_content = crate::user::get_data::<PushRulesEventContent>(
         authed.user_id(),
         None,
@@ -136,7 +132,6 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
 
         return Err(err.into());
     }
-    println!("CCCCCCCCC   4");
 
     crate::user::set_data(
         authed.user_id(),

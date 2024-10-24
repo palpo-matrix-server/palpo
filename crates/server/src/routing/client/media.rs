@@ -48,7 +48,6 @@ pub fn self_auth_router() -> Router {
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     if let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? {
-        println!("VVVVVVVVVVVVVVVVVVVVV=2");
         let content_type = metadata
             .content_type
             .as_deref()

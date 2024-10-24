@@ -329,7 +329,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .select(room_state_deltas::frame_id)
         .first::<i64>(&mut *db::connect()?)
         .unwrap_or_default();
-    println!("==========crrent frame id is {:#?}", frame_id);
 
     let push_rule_sn = user_datas::table
         .filter(user_datas::user_id.eq(user_id))

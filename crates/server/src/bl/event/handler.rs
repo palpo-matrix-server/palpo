@@ -257,7 +257,6 @@ fn handle_outlier_pdu<'a>(
         // Removing all the expired keys, unless the room version allows stale keys
         let filtered_keys = crate::filter_keys_server_map(pkey_map, origin_server_ts, room_version_id);
 
-        println!("LLLLLLLLLLLLLLLLLLLLL0   {filtered_keys:?}");
         let mut val = match crate::core::signatures::verify_event(&filtered_keys, &value, room_version_id) {
             Err(e) => {
                 // Drop

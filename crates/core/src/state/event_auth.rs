@@ -97,7 +97,6 @@ pub fn auth_types_for_event(
         }
     }
 
-    println!("DDDDDDDDauth_types: {auth_types:#?}");
     Ok(auth_types)
 }
 
@@ -144,35 +143,26 @@ pub fn auth_check<E: Event>(
 
         info!("start m.room.create check");
 
-        println!("VVVVVVVVVVVVVVVVVVVV0");
         // If it has any previous events, reject
         if incoming_event.prev_events().next().is_some() {
             warn!("the room creation event had previous events");
-            println!("VVVVVVVVVVVVVVVVVVVV1");
             return Ok(false);
         }
 
-        println!("VVVVVVVVVVVVVVVVVVVV2");
         // If the domain of the room_id does not match the domain of the sender, reject
         let Ok(room_id_server_name) = incoming_event.room_id().server_name() else {
-            println!("VVVVVVVVVVVVVVVVVVVV3");
             warn!("room ID has no servername");
             return Ok(false);
         };
 
-        println!("VVVVVVVVVVVVVVVVVVVV4");
         if room_id_server_name != sender.server_name() {
-            println!("VVVVVVVVVVVVVVVVVVVV5");
             warn!("servername of room ID does not match servername of sender");
             return Ok(false);
         }
 
-        println!("VVVVVVVVVVVVVVVVVVVV6");
         // If content.room_version is present and is not a recognized version, reject
         let content: RoomCreateContentFields = from_json_str(incoming_event.content().get())?;
-        println!("VVVVVVVVVVVVVVVVVVVV7");
         if content.room_version.map(|v| v.deserialize().is_err()).unwrap_or(false) {
-            println!("VVVVVVVVVVVVVVVVVVVV8");
             warn!("invalid room version found in m.room.create event");
             return Ok(false);
         }
@@ -180,13 +170,11 @@ pub fn auth_check<E: Event>(
         if !room_version.use_room_create_sender {
             // If content has no creator field, reject
             if content.creator.is_none() {
-                println!("VVVVVVVVVVVVVVVVVVVV9");
                 warn!("no creator field found in m.room.create content");
                 return Ok(false);
             }
         }
 
-        println!("VVVVVVVVVVVVVVVVVVVV10");
         info!("m.room.create event was allowed");
         return Ok(true);
     }

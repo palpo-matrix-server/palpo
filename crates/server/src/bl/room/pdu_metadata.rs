@@ -219,7 +219,6 @@ pub fn get_relations(
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }
-            println!("ppppppppppppp6 event_sn {:?}", pdu.event_sn);
             pdus.push((relation.event_sn, pdu));
         }
     }

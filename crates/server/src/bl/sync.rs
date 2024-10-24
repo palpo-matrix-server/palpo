@@ -28,7 +28,6 @@ pub fn sync_events(
     mut args: SyncEventsReqArgsV3,
     tx: Sender<Option<AppResult<SyncEventsResBodyV3>>>,
 ) -> impl Future<Output = AppResult<()>> {
-    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>sync_events>>>>>>>>>>>>>> {sender_id}");
     Box::pin(async move {
         // Setup watchers, so if there's no response, we can wait for them
         let watcher = crate::watch(&sender_id, &sender_device_id);
@@ -65,7 +64,6 @@ pub fn sync_events(
         device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
-        println!("======={sender_id}======all_joined_rooms: {:?}", all_joined_rooms);
         for room_id in all_joined_rooms {
             let joined_room = match load_joined_room(
                 &sender_id,
@@ -119,15 +117,9 @@ pub fn sync_events(
                 }
             }
         }
-        println!(
-            "xxxxxxxxsender_id: {sender_id} since_sn: {since_sn}  xxxpresence_updates: {:?}",
-            presence_updates
-        );
-        // println!("======={sender_id}======joined_rooms 2: {:?}", joined_rooms);
 
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
-        // println!("=============all_left_rooms: {:?}", all_left_rooms);
 
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
@@ -212,7 +204,6 @@ pub fn sync_events(
                 },
             );
         }
-        // println!("=============left_rooms: {:?}", left_rooms);
 
         let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
             .into_iter()
@@ -249,7 +240,6 @@ pub fn sync_events(
                 }
             }
         }
-        println!("=============left_users: {:?}", left_users);
         for user_id in left_users {
             let dont_share_encrypted_room =
                 crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
@@ -326,22 +316,17 @@ pub fn sync_events(
                     duration = Duration::from_secs(30);
                 }
                 let now = Instant::now();
-                println!("=TTTTTTTTTTTTTtieout  {}", duration.as_secs());
                 match tokio::time::timeout(duration, watcher).await {
                     Ok(_) => {
-                        println!("NNNNNNNNNNNNNtieout");
                         args.timeout = Some(duration - now.elapsed().max(Duration::from_secs(5)));
                         return sync_events(sender_id, sender_device_id, args, tx).await;
                     }
                     Err(_) => {
-                        println!("TTTTTTTTTTTTTtieout");
-                        println!("RRRRRRRRRRRRespnse2 {:#?}", response);
                         Ok((response, false))
                     }
                 }
             }
         } else {
-            println!("RRRRRRRRRRRRespnse3 {:#?}", response);
             Ok((response, since_sn != next_batch)) // Only cache if we made progress
         };
 

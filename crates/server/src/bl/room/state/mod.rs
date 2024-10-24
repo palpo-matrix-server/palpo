@@ -100,7 +100,6 @@ pub fn force_state(
                     Err(_) => continue,
                 };
 
-                println!("ppppppppppppp3 event_sn {:?}", pdu.event_sn);
                 crate::room::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
@@ -279,15 +278,11 @@ pub fn get_auth_events(
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
 ) -> AppResult<StateMap<PduEvent>> {
-    println!("ssssssssssate 0");
     let frame_id = if let Some(current_frame_id) = get_room_frame_id(room_id)? {
-        
-    println!("ssssssssssate 1");
         current_frame_id
     } else {
         return Ok(HashMap::new());
     };
-    println!("ssssssssssate 2");
 
     let auth_events = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
 
@@ -304,17 +299,14 @@ pub fn get_auth_events(
     let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
 
     let mut state_map = StateMap::new();
-    println!("ssssssssssate map: {state_map:?}");
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
-        println!("ssssssssssate state_key_id: {state_key_id}  event_id: {event_id:?}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
             }
         }
     }
-    println!("ssssssssssate map2: {state_map:?}");
     Ok(state_map)
 }
 
