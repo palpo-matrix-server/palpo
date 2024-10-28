@@ -24,7 +24,6 @@ pub struct EventHash {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct PduEvent {
     pub event_id: Arc<EventId>,
-    #[serde(skip)]
     pub event_sn: i64,
     pub room_id: OwnedRoomId,
     pub sender: OwnedUserId,

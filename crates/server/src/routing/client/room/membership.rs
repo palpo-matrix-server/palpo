@@ -246,7 +246,7 @@ pub(crate) async fn join_room_by_id_or_alias(
                     .map(|user| user.server_name().to_owned()),
             );
             servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
-           
+
             (servers, room_id)
         }
         Err(room_alias) => {

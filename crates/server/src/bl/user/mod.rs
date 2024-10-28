@@ -94,11 +94,20 @@ pub fn joined_rooms(user_id: &UserId, since_sn: i64) -> AppResult<Vec<OwnedRoomI
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("join"))
         .filter(room_users::event_sn.ge(since_sn))
-        .filter(room_users::forgotten.eq(false))
         .select(room_users::room_id)
         .load(&mut db::connect()?)
         .map_err(Into::into)
 }
+
+// pub fn forget_before_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<i64>> {
+//     room_users::table
+//         .filter(room_users::user_id.eq(user_id))
+//         .filter(room_users::forgotten.eq(true))
+//         .select(room_users::event_sn)
+//         .first::<i64>(&mut db::connect()?)
+//         .optional()
+//         .map_err(Into::into)
+// }
 
 /// Returns an iterator over all rooms a user was invited to.
 pub fn invited_rooms(
@@ -109,7 +118,6 @@ pub fn invited_rooms(
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("invite"))
         .filter(room_users::event_sn.ge(since_sn))
-        .filter(room_users::forgotten.eq(false))
         .select((room_users::room_id, room_users::state_data))
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut *db::connect()?)?
         .into_iter()

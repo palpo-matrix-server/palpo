@@ -58,6 +58,10 @@ pub struct ServerConfig {
     pub allow_jaeger: bool,
     #[serde(default = "false_value")]
     pub tracing_flame: bool,
+
+    #[serde(default = "true_value")]
+    pub enable_admin_room: bool,
+
     // #[serde(default)]
     // pub proxy: ProxyConfig,
     pub jwt_secret: Option<String>,

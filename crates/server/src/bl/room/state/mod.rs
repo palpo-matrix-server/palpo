@@ -181,7 +181,6 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             2,
             states_parents,
         )?;
-
         Ok(frame_id)
     } else {
         prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into())

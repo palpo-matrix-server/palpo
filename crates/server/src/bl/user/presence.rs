@@ -41,6 +41,7 @@ pub struct NewDbPresence {
     pub last_federation_update_at: Option<UnixMillis>,
     pub last_user_sync_at: Option<UnixMillis>,
     pub currently_active: Option<bool>,
+    pub occur_sn: Option<i64>,
 }
 
 impl DbPresence {
@@ -85,6 +86,7 @@ pub fn ping_presence(user_id: &UserId, state: &PresenceState) -> AppResult<()> {
             last_federation_update_at: None,
             last_user_sync_at: None,
             currently_active: None, //TODO,
+            occur_sn: None,
         },
         false,
     )
@@ -98,7 +100,7 @@ pub fn get_last_presence(user_id: &UserId) -> AppResult<Option<DbPresence>> {
 }
 
 /// Adds a presence event which will be saved until a new event replaces it.
-pub fn set_presence(presence: NewDbPresence, force: bool) -> AppResult<()> {
+pub fn set_presence(mut presence: NewDbPresence, force: bool) -> AppResult<()> {
     if force {
         diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
             .execute(&mut db::connect()?)?;
@@ -125,6 +127,9 @@ pub fn set_presence(presence: NewDbPresence, force: bool) -> AppResult<()> {
                 .set(&presence)
                 .execute(&mut db::connect()?)?;
         } else {
+            if presence.occur_sn.is_none() {
+                presence.occur_sn = Some(crate::next_sn()?);
+            }
             diesel::update(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
                 .set(&presence)
                 .execute(&mut db::connect()?)?;

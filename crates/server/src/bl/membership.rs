@@ -411,7 +411,6 @@ pub async fn join_room(
         crate::room::state::set_room_state(room_id, state_hash_after_join)?;
     } else {
         info!("We can join locally");
-
         let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "")?;
         let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "")?;
 
@@ -1023,6 +1022,5 @@ pub fn forget_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     )
     .set(room_users::forgotten.eq(true))
     .execute(&mut db::connect()?)?;
-
     Ok(())
 }
