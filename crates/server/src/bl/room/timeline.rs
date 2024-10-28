@@ -846,14 +846,15 @@ pub fn get_pdus(
 
     let datas = if dir == Direction::Forward {
         event_datas::table
-            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
+            .filter(event_datas::event_id.eq_any(query.select(events::id)))
             .order(event_datas::event_sn.asc())
+            .limit(utils::usize_to_i64(limit))
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     } else {
         event_datas::table
-            .filter(event_datas::event_id.eq_any(query.limit(utils::usize_to_i64(limit)).select(events::id)))
-            .order(event_datas::event_sn.desc())
+            .filter(event_datas::event_id.eq_any(query.select(events::id)))
+            .order(event_datas::event_sn.desc()).limit(utils::usize_to_i64(limit))
             .select((event_datas::event_sn, event_datas::json_data))
             .load::<(i64, JsonValue)>(&mut *db::connect()?)?
     };

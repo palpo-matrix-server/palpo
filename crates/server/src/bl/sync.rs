@@ -350,7 +350,7 @@ async fn load_joined_room(
         return Ok(JoinedRoomV3::default());
     }
 
-    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 10)?;
+    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 50)?;
 
     let send_notification_counts =
         !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? > since_sn;

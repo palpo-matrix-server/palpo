@@ -307,8 +307,10 @@ async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 async fn sync_events_v3(
     _aa: AuthArgs,
     args: SyncEventsReqArgsV3,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBodyV3> {
+    println!("Sync Request: {:?}", req.uri());
     let authed = depot.authed_info()?.clone();
     let mut rx = match crate::SYNC_RECEIVERS
         .write()

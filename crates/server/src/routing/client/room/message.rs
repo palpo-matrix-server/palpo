@@ -21,8 +21,10 @@ use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, JsonValue, MatrixError, 
 pub(super) async fn get_messages(
     _aa: AuthArgs,
     args: MessagesReqArgs,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
+    println!("MESSAGE REQUEST: {}", req.uri().to_string());
     let authed = depot.authed_info()?;
 
     if !diesel_exists!(
