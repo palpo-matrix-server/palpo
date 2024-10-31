@@ -146,12 +146,17 @@ async fn set_avatar_url(
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
                         ..serde_json::from_str(
-                            crate::room::state::get_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?
-                                .ok_or_else(|| {
-                                    AppError::internal("Tried to send avatar_url update for user not in the room.")
-                                })?
-                                .content
-                                .get(),
+                            crate::room::state::get_state(
+                                &room_id,
+                                &StateEventType::RoomMember,
+                                user_id.as_str(),
+                                None,
+                            )?
+                            .ok_or_else(|| {
+                                AppError::internal("Tried to send avatar_url update for user not in the room.")
+                            })?
+                            .content
+                            .get(),
                         )
                         .map_err(|_| AppError::internal("Database contains invalid PDU."))?
                     })
@@ -252,12 +257,17 @@ async fn set_display_name(
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
                         ..serde_json::from_str(
-                            crate::room::state::get_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?
-                                .ok_or_else(|| {
-                                    AppError::internal("Tried to send display_name update for user not in the room.")
-                                })?
-                                .content
-                                .get(),
+                            crate::room::state::get_state(
+                                &room_id,
+                                &StateEventType::RoomMember,
+                                user_id.as_str(),
+                                None,
+                            )?
+                            .ok_or_else(|| {
+                                AppError::internal("Tried to send display_name update for user not in the room.")
+                            })?
+                            .content
+                            .get(),
                         )
                         .map_err(|_| AppError::internal("Database contains invalid PDU."))?
                     })

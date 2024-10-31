@@ -64,14 +64,26 @@ pub fn load_frame_info(
     }
 }
 
-pub fn get_room_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
-    rooms::table
-        .find(room_id)
-        .select(rooms::state_frame_id)
-        .first::<Option<i64>>(&mut *db::connect()?)
-        .optional()
-        .map(|v| v.flatten())
-        .map_err(Into::into)
+pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<i64>> {
+    if let Some(until_sn) = until_sn {
+        room_state_points::table
+            .filter(room_state_points::room_id.eq(room_id))
+            .filter(room_state_points::event_sn.le(until_sn))
+            .select(room_state_points::frame_id)
+            .order(room_state_points::event_sn.desc())
+            .first::<Option<i64>>(&mut *db::connect()?)
+            .optional()
+            .map(|v| v.flatten())
+            .map_err(Into::into)
+    } else {
+        rooms::table
+            .find(room_id)
+            .select(rooms::state_frame_id)
+            .first::<Option<i64>>(&mut *db::connect()?)
+            .optional()
+            .map(|v| v.flatten())
+            .map_err(Into::into)
+    }
 }
 
 pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<Option<i64>> {

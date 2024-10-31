@@ -99,7 +99,7 @@ pub async fn get_hierarchy(
             continue;
         }
 
-        if let Some(current_state_hash) = crate::room::state::get_room_frame_id(&current_room)? {
+        if let Some(current_state_hash) = crate::room::state::get_room_frame_id(&current_room, None)? {
             let state = crate::room::state::get_full_state_ids(current_state_hash)?;
 
             let mut children_ids = Vec::new();
@@ -139,7 +139,7 @@ pub async fn get_hierarchy(
                 } else {
                     results.push(chunk.clone());
                 }
-                let join_rule = crate::room::state::get_state(&current_room, &StateEventType::RoomJoinRules, "")?
+                let join_rule = crate::room::state::get_state(&current_room, &StateEventType::RoomJoinRules, "", None)?
                     .map(|s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomJoinRulesEventContent| c.join_rule)
@@ -272,38 +272,37 @@ pub async fn get_hierarchy(
 
 fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -> AppResult<SpaceHierarchyRoomsChunk> {
     Ok(SpaceHierarchyRoomsChunk {
-        canonical_alias: crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?.map_or(
-            Ok(None),
-            |s| {
+        canonical_alias: crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None)?
+            .map_or(Ok(None), |s| {
                 serde_json::from_str(s.content.get())
                     .map(|c: RoomCanonicalAliasEventContent| c.alias)
                     .map_err(|_| AppError::internal("Invalid canonical alias event in database."))
-            },
-        )?,
-        name: crate::room::state::get_name(&room_id)?,
+            })?,
+        name: crate::room::state::get_name(&room_id, None)?,
         num_joined_members: crate::room::joined_member_count(&room_id)?
             .try_into()
             .expect("user count should not be that big"),
         room_id: room_id.to_owned(),
-        topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "")?.map_or(Ok(None), |s| {
-            serde_json::from_str(s.content.get())
-                .map(|c: RoomTopicEventContent| Some(c.topic))
-                .map_err(|_| {
-                    error!("Invalid room topic event in database for room {}", room_id);
-                    AppError::internal("Invalid room topic event in database.")
-                })
-        })?,
-        world_readable: crate::room::state::get_state(&room_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(
-            Ok(false),
+        topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "", None)?.map_or(
+            Ok(None),
             |s| {
+                serde_json::from_str(s.content.get())
+                    .map(|c: RoomTopicEventContent| Some(c.topic))
+                    .map_err(|_| {
+                        error!("Invalid room topic event in database for room {}", room_id);
+                        AppError::internal("Invalid room topic event in database.")
+                    })
+            },
+        )?,
+        world_readable: crate::room::state::get_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?
+            .map_or(Ok(false), |s| {
                 serde_json::from_str(s.content.get())
                     .map(|c: RoomHistoryVisibilityEventContent| {
                         c.history_visibility == HistoryVisibility::WorldReadable
                     })
                     .map_err(|_| AppError::internal("Invalid room history visibility event in database."))
-            },
-        )?,
-        guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(
+            })?,
+        guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(
             Ok(false),
             |s| {
                 serde_json::from_str(s.content.get())
@@ -311,7 +310,7 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
                     .map_err(|_| AppError::internal("Invalid room guest access event in database."))
             },
         )?,
-        avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "")?
+        avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "", None)?
             .map(|s| {
                 serde_json::from_str(s.content.get())
                     .map(|c: RoomAvatarEventContent| c.url)
@@ -321,7 +320,7 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
             // url is now an Option<String> so we must flatten
             .flatten(),
         join_rule: {
-            let join_rule = crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "")?
+            let join_rule = crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None)?
                 .map(|s| {
                     serde_json::from_str(s.content.get())
                         .map(|c: RoomJoinRulesEventContent| c.join_rule)
@@ -341,7 +340,7 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
 
             translate_joinrule(&join_rule)?
         },
-        room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "")?
+        room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)?
             .map(|s| {
                 serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
                     error!("Invalid room create event in database: {}", e);

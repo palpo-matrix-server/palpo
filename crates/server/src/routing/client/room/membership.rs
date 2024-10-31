@@ -16,6 +16,7 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::room::state;
+use crate::room::state::UserCanSeeEvent;
 use crate::schema::*;
 use crate::user::DbProfile;
 use crate::{
@@ -31,7 +32,8 @@ use crate::{
 pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
 
-    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
+    let can_see = state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
+    if can_see == UserCanSeeEvent::Never {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
@@ -40,6 +42,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             room_state_points::table
                 .filter(room_state_points::room_id.eq(&args.room_id))
                 .filter(room_state_points::event_sn.le(at_sn))
+                .filter(room_state_points::event_sn.le(can_see.as_until_sn()))
                 .filter(room_state_points::frame_id.is_not_null())
                 .order(room_state_points::frame_id.desc())
                 .select(room_state_points::frame_id)
@@ -49,7 +52,8 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        state::get_room_frame_id(&args.room_id)?.ok_or_else(|| AppError::public("state delta not found"))?
+        state::get_room_frame_id(&args.room_id, Some(can_see.as_until_sn()))?
+            .ok_or_else(|| AppError::public("state delta not found"))?
     };
     let mut states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
@@ -85,12 +89,13 @@ pub(super) fn joined_members(
 ) -> JsonResult<JoinedMembersResBody> {
     let authed = depot.authed_info()?;
 
-    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
+    let can_see = state::user_can_see_state_events(&authed.user_id(), &room_id)?;
+    if can_see == UserCanSeeEvent::Never {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id)? {
+    for user_id in crate::room::get_joined_users(&room_id, Some(can_see.as_until_sn()))? {
         if let Some(DbProfile {
             display_name,
             avatar_url,
@@ -281,7 +286,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?;
+    let room_state = state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?;
     let event = if let Some(room_state) = room_state {
         serde_json::from_str(room_state.content.get())
             .map(|event: RoomMemberEventContent| RoomMemberEventContent {
@@ -336,7 +341,7 @@ pub(super) async fn unban_user(
     let room_id = room_id.into_inner();
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
+        crate::room::state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
             .ok_or(MatrixError::bad_state("Cannot unban a user who is not banned."))?
             .content
             .get(),
@@ -382,7 +387,7 @@ pub(super) async fn kick_user(
     }
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
+        crate::room::state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
             .ok_or(MatrixError::bad_state("Cannot kick member that's not in the room."))?
             .content
             .get(),

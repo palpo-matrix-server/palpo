@@ -27,15 +27,28 @@ pub(super) async fn get_messages(
     println!("MESSAGE REQUEST: {}", req.uri().to_string());
     let authed = depot.authed_info()?;
 
-    if !diesel_exists!(
+    let until_sn = if !diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("join")),
         &mut *db::connect()?
     )? {
-        return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
-    }
+        let until_sn = room_users::table
+            .filter(room_users::room_id.eq(&args.room_id))
+            .filter(room_users::user_id.eq(authed.user_id()))
+            .filter(room_users::membership.eq("leave"))
+            .select(room_users::event_sn)
+            .first::<i64>(&mut *db::connect()?)
+            .optional()?;
+        if until_sn.is_none() {
+            return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
+        } else {
+            until_sn
+        }
+    } else {
+        None
+    };
 
     let from: i64 = args
         .from
@@ -62,6 +75,7 @@ pub(super) async fn get_messages(
                 from,
                 limit,
                 Some(&args.filter),
+                until_sn,
             )?;
 
             for (_, event) in &events_after {
@@ -90,6 +104,11 @@ pub(super) async fn get_messages(
         }
         crate::core::Direction::Backward => {
             crate::room::timeline::backfill_if_required(&args.room_id, from).await?;
+            let from = if let Some(until_sn) = until_sn {
+                until_sn.min(from)
+            } else {
+                from
+            };
             let events_before: Vec<_> = crate::room::timeline::get_pdus_backward(
                 authed.user_id(),
                 &args.room_id,
@@ -127,7 +146,7 @@ pub(super) async fn get_messages(
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
         if let Some(member_event) =
-            crate::room::state::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str())?
+            crate::room::state::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)?
         {
             resp.state.push(member_event.to_state_event());
         }

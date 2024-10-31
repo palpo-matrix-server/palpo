@@ -190,7 +190,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
 
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
+        crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
@@ -418,7 +418,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(Some(pdu)) =
-                    crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "")
+                    crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
@@ -488,7 +488,7 @@ pub fn create_hash_and_sign_event(
         .take(20)
         .collect();
 
-    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "")?;
+    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?;
 
     let create_event_content: Option<RoomCreateEventContent> = create_event
         .as_ref()
@@ -520,7 +520,8 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_type.to_string().into(), state_key)? {
+        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_type.to_string().into(), state_key, None)?
+        {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -587,9 +588,7 @@ pub fn create_hash_and_sign_event(
         &room_version,
         &pdu,
         None::<PduEvent>, // TODO: third_party_invite
-        |k, s| {
-            auth_events.get(&(k.clone(), s.to_owned()))
-        },
+        |k, s| auth_events.get(&(k.clone(), s.to_owned())),
     )
     .map_err(|e| {
         error!("{:?}", e);
@@ -688,7 +687,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                         return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
                     }
 
-                    let count = crate::room::get_joined_users(room_id)?
+                    let count = crate::room::get_joined_users(room_id, None)?
                         .iter()
                         .filter(|m| m.server_name() == server_name)
                         .filter(|m| m.as_str() != target)
@@ -705,7 +704,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                         return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
 
-                    let count = crate::room::get_joined_users(room_id)?
+                    let count = crate::room::get_joined_users(room_id, None)?
                         .iter()
                         .filter(|m| m.server_name() == server_name)
                         .filter(|m| m.as_str() != target)
@@ -782,8 +781,8 @@ pub fn append_incoming_pdu(
 }
 
 /// Returns an iterator over all PDUs in a room.
-pub fn all_pdus(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, usize::MAX, None)
+pub fn all_pdus(user_id: &UserId, room_id: &RoomId,until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
+    get_pdus_forward(user_id, room_id, 0, usize::MAX, None, until_sn)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
@@ -791,17 +790,18 @@ pub fn get_pdus_forward(
     occur_sn: i64,
     limit: usize,
     filter: Option<&RoomEventFilter>,
+    until_sn: Option<i64>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Forward)
+    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Forward, until_sn)
 }
 pub fn get_pdus_backward(
     user_id: &UserId,
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
-    filter: Option<&RoomEventFilter>,
+    filter: Option<&RoomEventFilter>
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward)
+    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward, None)
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
@@ -814,6 +814,7 @@ pub fn get_pdus(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
+    until_sn: Option<i64>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
@@ -831,6 +832,9 @@ pub fn get_pdus(
         } else {
             query = query.filter(events::sn.le(occur_sn));
         };
+        if let Some(until_sn) = until_sn {
+            query = query.filter(events::sn.le(until_sn));
+        }
 
         if let Some(filter) = filter {
             if let Some(url_filter) = &filter.url_filter {
@@ -863,26 +867,14 @@ pub fn get_pdus(
         }
         let datas: Vec<(i64, JsonValue)> = if dir == Direction::Forward {
             event_datas::table
-                .filter(
-                    event_datas::event_id.eq_any(
-                        query
-                            .filter(events::sn.gt(start_sn))
-                            .select(events::id),
-                    ),
-                )
+                .filter(event_datas::event_id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.asc())
                 .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
                 .load::<(i64, JsonValue)>(&mut *db::connect()?)?
         } else {
             event_datas::table
-                .filter(
-                    event_datas::event_id.eq_any(
-                        query
-                            .filter(events::sn.lt(start_sn))
-                            .select(events::id),
-                    ),
-                )
+                .filter(event_datas::event_id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.desc())
                 .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
@@ -929,7 +921,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> {
-    let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id)?;
+    let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
     let first_pdu = pdus.first();
 
     let Some(first_pdu) = first_pdu else { return Ok(()) };
@@ -939,7 +931,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     }
 
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "")?
+        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))

@@ -425,7 +425,7 @@ pub async fn sync_events_v4(
         )?);
 
         for room_id in &all_joined_rooms {
-            let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id)? {
+            let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id, None)? {
                 s
             } else {
                 error!("Room {} has no state", room_id);
@@ -512,7 +512,7 @@ pub async fn sync_events_v4(
                     if joined_since_last_sync || new_encrypted_room {
                         // If the user is in a new encrypted room, give them all joined users
                         device_list_changes.extend(
-                            crate::room::get_joined_users(&room_id)?
+                            crate::room::get_joined_users(&room_id, None)?
                                 .into_iter()
                                 .filter(|user_id| {
                                     // Don't send key updates from the sender to the sender
@@ -536,7 +536,7 @@ pub async fn sync_events_v4(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                            crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
                                 .ok()?
                                 .is_some(),
                         )
@@ -660,7 +660,7 @@ pub async fn sync_events_v4(
     let mut rooms = BTreeMap::new();
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in &todo_rooms {
         let (timeline_pdus, limited) =
-            crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit)?;
+            crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit, None)?;
 
         if room_since_sn != &0 && timeline_pdus.is_empty() {
             continue;
@@ -675,7 +675,7 @@ pub async fn sync_events_v4(
 
         let required_state = required_state_request
             .iter()
-            .map(|state| crate::room::state::get_state(&room_id, &state.0, &state.1))
+            .map(|state| crate::room::state::get_state(&room_id, &state.0, &state.1, None))
             .into_iter()
             .flatten()
             .filter_map(|o| o)
@@ -683,7 +683,7 @@ pub async fn sync_events_v4(
             .collect();
 
         // Heroes
-        let heroes = crate::room::get_joined_users(&room_id)?
+        let heroes = crate::room::get_joined_users(&room_id, None)?
             .into_iter()
             .filter(|member| &member != &authed.user_id())
             .flat_map(|member| {
@@ -711,7 +711,7 @@ pub async fn sync_events_v4(
         rooms.insert(
             room_id.clone(),
             palpo_core::client::sync_events::SlidingSyncRoomV4 {
-                name: crate::room::state::get_name(&room_id)?.or_else(|| name),
+                name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
                 avatar: crate::room::state::get_avatar(&room_id)?.map_or(avatar, |a| a.url),
                 initial: Some(room_since_sn == &0),
                 is_dm: None,

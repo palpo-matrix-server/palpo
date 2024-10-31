@@ -105,7 +105,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
         return Err(MatrixError::not_found("Alias not found.").into());
     };
     if user_can_remove_alias(alias_id, user)? {
-        let state_alias = crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?;
+        let state_alias = crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None)?;
         diesel::delete(room_aliases::table.find(&alias_id)).execute(&mut *db::connect()?)?;
 
         if state_alias.is_some() {
@@ -151,14 +151,14 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
-    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "")? {
+    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)? {
         serde_json::from_str(event.content.get())
             .map_err(|_| AppError::public("Invalid event content for m.room.power_levels"))
             .map(|content: RoomPowerLevelsEventContent| {
                 RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias)
             })
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "")? {
+    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)? {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);

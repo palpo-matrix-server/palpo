@@ -40,7 +40,7 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
     crate::event::handler::acl_check(server_name, room_id)?;
 
     // TODO: Palpo does not implement restricted join rules yet, we always reject
-    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "")?;
+    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
 
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
         .as_ref()
@@ -63,7 +63,7 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
 
     // We need to return the state prior to joining, let's keep a reference to that here
     let shortstate_hash =
-        crate::room::state::get_room_frame_id(room_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
+        crate::room::state::get_room_frame_id(room_id, None)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
 
     // let pub_key_map = RwLock::new(BTreeMap::new());
     // let mut auth_cache = EventMap::new();
@@ -411,8 +411,8 @@ pub async fn join_room(
         crate::room::state::set_room_state(room_id, state_hash_after_join)?;
     } else {
         info!("We can join locally");
-        let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "")?;
-        let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "")?;
+        let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+        let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
         let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
             .as_ref()
@@ -446,7 +446,7 @@ pub async fn join_room(
             .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id).unwrap_or(false))
         {
             let mut auth_user = None;
-            for joined_user in crate::room::get_joined_users(room_id)? {
+            for joined_user in crate::room::get_joined_users(room_id, None)? {
                 if joined_user.server_name() == crate::server_name()
                     && state::user_can_invite(room_id, &joined_user, user_id).unwrap_or(false)
                 {
@@ -884,7 +884,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
         )
         .execute(&mut *db::connect()?)?;
     } else {
-        let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str())?;
+        let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {

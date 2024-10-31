@@ -159,9 +159,10 @@ pub fn update_membership(
                 // db::mark_as_once_joined(user_id, room_id)?;
 
                 // Check if the room has a predecessor
-                if let Some(predecessor) = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "")?
-                    .and_then(|create| serde_json::from_str(create.content.get()).ok())
-                    .and_then(|content: RoomCreateEventContent| content.predecessor)
+                if let Some(predecessor) =
+                    crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?
+                        .and_then(|create| serde_json::from_str(create.content.get()).ok())
+                        .and_then(|content: RoomCreateEventContent| content.predecessor)
                 {
                     // Copy user settings from predecessor to the current room:
                     // - Push rules
@@ -579,13 +580,23 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     Ok(left)
 }
 
-pub fn get_joined_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
-    room_users::table
-        .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::membership.eq(MembershipState::Join.to_string()))
-        .select(room_users::user_id)
-        .load(&mut db::connect()?)
-        .map_err(Into::into)
+pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    if let Some(until_sn) = until_sn {
+        room_users::table
+            .filter(room_users::event_sn.le(until_sn))
+            .filter(room_users::room_id.eq(room_id))
+            .filter(room_users::membership.eq(MembershipState::Join.to_string()))
+            .select(room_users::user_id)
+            .load(&mut db::connect()?)
+            .map_err(Into::into)
+    } else {
+        room_users::table
+            .filter(room_users::room_id.eq(room_id))
+            .filter(room_users::membership.eq(MembershipState::Join.to_string()))
+            .select(room_users::user_id)
+            .load(&mut db::connect()?)
+            .map_err(Into::into)
+    }
 }
 
 /// Returns an iterator of all servers participating in this room.
