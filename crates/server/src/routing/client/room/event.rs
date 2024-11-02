@@ -169,7 +169,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
     let events_after: Vec<_> =
-        crate::room::timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, limit / 2, None)?;
+        crate::room::timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, limit / 2, None, None)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -187,7 +187,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         match crate::room::state::get_pdu_frame_id(events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id))?
         {
             Some(s) => s,
-            None => crate::room::state::get_room_frame_id(&room_id)?.expect("All rooms have state"),
+            None => crate::room::state::get_room_frame_id(&room_id, None)?.expect("All rooms have state"),
         };
 
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;

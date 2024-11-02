@@ -24,17 +24,34 @@ pub(super) async fn get_messages(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
+    println!("MESSAGE REQUEST: {}", req.uri().to_string());
     let authed = depot.authed_info()?;
 
-    if !diesel_exists!(
+    let until_sn = if !diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("join")),
         &mut *db::connect()?
     )? {
-        return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
-    }
+        let Some((until_sn, forgotten)) = room_users::table
+            .filter(room_users::room_id.eq(&args.room_id))
+            .filter(room_users::user_id.eq(authed.user_id()))
+            .filter(room_users::membership.eq("leave"))
+            .select((room_users::event_sn, room_users::forgotten))
+            .first::<(i64, bool)>(&mut *db::connect()?)
+            .optional()?
+        else {
+            return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
+        };
+        if forgotten {
+            return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
+        }
+        Some(until_sn)
+    } else {
+        None
+    };
+    println!("UNTIL SN: {:?}", until_sn);
 
     let from: i64 = args
         .from
@@ -61,6 +78,7 @@ pub(super) async fn get_messages(
                 from,
                 limit,
                 Some(&args.filter),
+                until_sn,
             )?;
 
             for (_, event) in &events_after {
@@ -89,6 +107,11 @@ pub(super) async fn get_messages(
         }
         crate::core::Direction::Backward => {
             crate::room::timeline::backfill_if_required(&args.room_id, from).await?;
+            let from = if let Some(until_sn) = until_sn {
+                until_sn.min(from)
+            } else {
+                from
+            };
             let events_before: Vec<_> = crate::room::timeline::get_pdus_backward(
                 authed.user_id(),
                 &args.room_id,
@@ -96,6 +119,7 @@ pub(super) async fn get_messages(
                 limit,
                 Some(&args.filter),
             )?;
+            println!("FROM {from}   {:#?}", events_before);
 
             for (_, event) in &events_before {
                 /* TODO: Remove this when these are resolved:
@@ -126,7 +150,7 @@ pub(super) async fn get_messages(
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
         if let Some(member_event) =
-            crate::room::state::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str())?
+            crate::room::state::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)?
         {
             resp.state.push(member_event.to_state_event());
         }

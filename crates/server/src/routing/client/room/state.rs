@@ -17,6 +17,7 @@ use crate::core::events::{AnyStateEventContent, RoomAccountDataEventType, StateE
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::core::UnixMillis;
+use crate::room::state::UserCanSeeEvent;
 use crate::utils::HtmlEscape;
 use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
@@ -33,11 +34,13 @@ pub(super) fn get_state(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    if !crate::room::state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view the room state.").into());
+    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &room_id)?;
+    if can_see == UserCanSeeEvent::Never {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let frame_id = crate::room::state::get_room_frame_id(&room_id)?.ok_or(AppError::public("state delta not found"))?;
+    let frame_id = crate::room::state::get_room_frame_id(&room_id, Some(can_see.as_until_sn()))?
+        .ok_or(AppError::public("state delta not found"))?;
 
     json_ok(StateEventsResBody {
         room_state: crate::room::state::get_full_state(frame_id)?
@@ -113,11 +116,18 @@ pub(super) fn state_for_key(
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
-    if !crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view the room state.").into());
+    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
+    if can_see == UserCanSeeEvent::Never {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_state(&args.room_id, &args.event_type, &args.state_key)?.ok_or_else(|| {
+    let event = crate::room::state::get_state(
+        &args.room_id,
+        &args.event_type,
+        &args.state_key,
+        Some(can_see.as_until_sn()),
+    )?
+    .ok_or_else(|| {
         warn!(
             "State event {:?} not found in room {:?}",
             &args.event_type, &args.room_id
@@ -143,17 +153,21 @@ pub(super) async fn state_for_empty_key(
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view the room state.").into());
+    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
+    if can_see == UserCanSeeEvent::Never {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_state(&args.room_id, &args.event_type, "")?.ok_or_else(|| {
-        warn!(
-            "State event {:?} not found in room {:?}",
-            &args.event_type, &args.room_id
-        );
-        MatrixError::not_found("State event not found.")
-    })?;
+    let event = crate::room::state::get_state(&args.room_id, &args.event_type, "", Some(can_see.as_until_sn()))?
+        .ok_or_else(|| {
+            warn!(
+                "State event {:?} not found in room {:?}",
+                &args.event_type, &args.room_id
+            );
+            MatrixError::not_found("State event not found.")
+        })?;
+
+    println!("PDU Event {:#?}", event);
 
     json_ok(StateEventsForKeyResBody(
         serde_json::from_str(event.content.get())

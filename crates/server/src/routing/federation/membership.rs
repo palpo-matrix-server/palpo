@@ -39,7 +39,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response)
     }
     crate::event::handler::acl_check(args.user_id.server_name(), &args.room_id)?;
     // TODO: Palpo does not implement restricted join rules yet, we always reject
-    let join_rules_event = crate::room::state::get_state(&args.room_id, &StateEventType::RoomJoinRules, "")?;
+    let join_rules_event = crate::room::state::get_state(&args.room_id, &StateEventType::RoomJoinRules, "", None)?;
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
         .as_ref()
         .map(|join_rules_event| {

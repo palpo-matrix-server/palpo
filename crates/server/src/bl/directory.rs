@@ -71,13 +71,18 @@ fn get_local_public_rooms(
         .into_iter()
         .map(|room_id| {
             let chunk = PublicRoomsChunk {
-                canonical_alias: crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?
-                    .map_or(Ok(None), |s| {
-                        serde_json::from_str(s.content.get())
-                            .map(|c: RoomCanonicalAliasEventContent| c.alias)
-                            .map_err(|_| AppError::public("Invalid canonical alias event in database."))
-                    })?,
-                name: crate::room::state::get_name(&room_id)?,
+                canonical_alias: crate::room::state::get_state(
+                    &room_id,
+                    &StateEventType::RoomCanonicalAlias,
+                    "",
+                    None,
+                )?
+                .map_or(Ok(None), |s| {
+                    serde_json::from_str(s.content.get())
+                        .map(|c: RoomCanonicalAliasEventContent| c.alias)
+                        .map_err(|_| AppError::public("Invalid canonical alias event in database."))
+                })?,
+                name: crate::room::state::get_name(&room_id, None)?,
                 num_joined_members: crate::room::joined_member_count(&room_id)
                     .unwrap_or_else(|_| {
                         warn!("Room {} has no member count", room_id);
@@ -85,7 +90,7 @@ fn get_local_public_rooms(
                     })
                     .try_into()
                     .expect("user count should not be that big"),
-                topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "")?.map_or(
+                topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "", None)?.map_or(
                     Ok(None),
                     |s| {
                         serde_json::from_str(s.content.get())
@@ -96,23 +101,26 @@ fn get_local_public_rooms(
                             })
                     },
                 )?,
-                world_readable: crate::room::state::get_state(&room_id, &StateEventType::RoomHistoryVisibility, "")?
+                world_readable: crate::room::state::get_state(
+                    &room_id,
+                    &StateEventType::RoomHistoryVisibility,
+                    "",
+                    None,
+                )?
+                .map_or(Ok(false), |s| {
+                    serde_json::from_str(s.content.get())
+                        .map(|c: RoomHistoryVisibilityEventContent| {
+                            c.history_visibility == HistoryVisibility::WorldReadable
+                        })
+                        .map_err(|_| AppError::public("Invalid room history visibility event in database."))
+                })?,
+                guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?
                     .map_or(Ok(false), |s| {
-                        serde_json::from_str(s.content.get())
-                            .map(|c: RoomHistoryVisibilityEventContent| {
-                                c.history_visibility == HistoryVisibility::WorldReadable
-                            })
-                            .map_err(|_| AppError::public("Invalid room history visibility event in database."))
-                    })?,
-                guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(
-                    Ok(false),
-                    |s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
                             .map_err(|_| AppError::public("Invalid room guest access event in database."))
-                    },
-                )?,
-                avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "")?
+                    })?,
+                avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "", None)?
                     .map(|s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomAvatarEventContent| c.url)
@@ -121,7 +129,7 @@ fn get_local_public_rooms(
                     .transpose()?
                     // url is now an Option<String> so we must flatten
                     .flatten(),
-                join_rule: crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "")?
+                join_rule: crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None)?
                     .map(|s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomJoinRulesEventContent| match c.join_rule {
@@ -137,7 +145,7 @@ fn get_local_public_rooms(
                     .transpose()?
                     .flatten()
                     .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
-                room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "")?
+                room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)?
                     .map(|s| {
                         serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
                             error!("Invalid room create event in database: {}", e);

@@ -76,7 +76,7 @@ pub(crate) async fn handle_incoming_pdu(
     if let Some(pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
         return Ok(());
     }
-    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "")?
+    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?
         .ok_or_else(|| AppError::internal("Failed to find create event in database"))?;
 
     let create_event_content: RoomCreateEventContent =
@@ -731,8 +731,8 @@ fn resolve_state(
     incoming_state: HashMap<i64, Arc<EventId>>,
 ) -> AppResult<Arc<HashSet<CompressedStateEvent>>> {
     debug!("Loading current room state ids");
-    let current_frame_id =
-        crate::room::state::get_room_frame_id(room_id)?.ok_or_else(|| AppError::public("every room has state"))?;
+    let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?
+        .ok_or_else(|| AppError::public("every room has state"))?;
 
     let current_state_ids = crate::room::state::get_full_state_ids(current_frame_id)?;
 
@@ -1247,7 +1247,7 @@ pub(crate) async fn fetch_join_signing_keys(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_state(room_id, &StateEventType::RoomServerAcl, "")? {
+    let acl_event = match crate::room::state::get_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
         Some(acl) => acl,
         None => return Ok(()),
     };

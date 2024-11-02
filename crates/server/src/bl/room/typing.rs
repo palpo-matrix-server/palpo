@@ -26,7 +26,7 @@ pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> App
     let event_sn = crate::next_sn()?;
     LAST_TYPING_UPDATE.write().await.insert(room_id.to_owned(), event_sn);
 
-    let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(room_id)? {
+    let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(room_id, None)? {
         s
     } else {
         error!("Room {} has no state", room_id);
