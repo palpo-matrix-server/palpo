@@ -369,7 +369,7 @@ async fn load_joined_room(
     full_state: bool,
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-    until_sn: Option<i64>
+    until_sn: Option<i64>,
 ) -> AppResult<JoinedRoomV3> {
     if since_sn > crate::curr_sn()? {
         return Ok(JoinedRoomV3::default());
@@ -762,9 +762,10 @@ pub(crate) fn load_timeline(
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
-    until_sn: Option<i64>
+    until_sn: Option<i64>,
 ) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
-    let mut timeline_pdus = crate::room::timeline::get_pdus_forward(user_id, &room_id, occur_sn, limit + 1, None,until_sn)?;
+    let mut timeline_pdus =
+        crate::room::timeline::get_pdus_forward(user_id, &room_id, occur_sn, limit + 1, None, until_sn)?;
 
     if timeline_pdus.len() > limit {
         timeline_pdus.pop();

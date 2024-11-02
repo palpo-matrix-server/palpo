@@ -781,7 +781,7 @@ pub fn append_incoming_pdu(
 }
 
 /// Returns an iterator over all PDUs in a room.
-pub fn all_pdus(user_id: &UserId, room_id: &RoomId,until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
+pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
     get_pdus_forward(user_id, room_id, 0, usize::MAX, None, until_sn)
 }
 pub fn get_pdus_forward(
@@ -799,7 +799,7 @@ pub fn get_pdus_backward(
     room_id: &RoomId,
     occur_sn: i64,
     limit: usize,
-    filter: Option<&RoomEventFilter>
+    filter: Option<&RoomEventFilter>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward, None)
 }

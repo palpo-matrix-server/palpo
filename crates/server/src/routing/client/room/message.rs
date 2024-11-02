@@ -34,21 +34,24 @@ pub(super) async fn get_messages(
             .filter(room_users::membership.eq("join")),
         &mut *db::connect()?
     )? {
-        let until_sn = room_users::table
+        let Some((until_sn, forgotten)) = room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("leave"))
-            .select(room_users::event_sn)
-            .first::<i64>(&mut *db::connect()?)
-            .optional()?;
-        if until_sn.is_none() {
+            .select((room_users::event_sn, room_users::forgotten))
+            .first::<(i64, bool)>(&mut *db::connect()?)
+            .optional()?
+        else {
             return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
-        } else {
-            until_sn
+        };
+        if forgotten {
+            return Err(MatrixError::forbidden("You aren’t a member of the room.").into());
         }
+        Some(until_sn)
     } else {
         None
     };
+    println!("UNTIL SN: {:?}", until_sn);
 
     let from: i64 = args
         .from
@@ -116,6 +119,7 @@ pub(super) async fn get_messages(
                 limit,
                 Some(&args.filter),
             )?;
+            println!("FROM {from}   {:#?}", events_before);
 
             for (_, event) in &events_before {
                 /* TODO: Remove this when these are resolved:
