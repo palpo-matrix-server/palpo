@@ -331,12 +331,14 @@ pub async fn get_thumbnail(
     depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
+    println!("==============get_thumbnail   0  {:?}", req.uri());
     if let Ok(DbThumbnail {
         content_disposition,
         content_type,
         ..
     }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height)
     {
+        println!("==============get_thumbnail   1");
         let thumb_path = crate::media_path(
             &args.server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
@@ -357,6 +359,7 @@ pub async fn get_thumbnail(
 
         return Ok(());
     } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
+        println!("==============get_thumbnail   2");
         let response = thumbnail_request(
             &args.server_name,
             ThumbnailReqArgs {
@@ -372,6 +375,7 @@ pub async fn get_thumbnail(
         )?
         .exec()
         .await?;
+    println!("==============get_thumbnail   2 ------ 1");
         *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
@@ -385,9 +389,11 @@ pub async fn get_thumbnail(
         res.body = ResBody::Once(bytes);
         return Ok(());
     } else {
+        println!("==============get_thumbnail   3");
         return Err(MatrixError::not_found("Media not found.").into());
     }
 
+    println!("==============get_thumbnail   4");
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));

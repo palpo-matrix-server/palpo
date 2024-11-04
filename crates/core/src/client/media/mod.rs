@@ -149,7 +149,7 @@ impl ConfigResBody {
 //     }
 // }
 pub fn thumbnail_request(server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
-    let mut url = server.build_url(&format!("/media/v3/thumbnaill/{server}/{}", args.media_id))?;
+    let mut url = server.build_url(&format!("/media/v3/thumbnail/{server}/{}", args.media_id))?;
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("width", &args.width.to_string());
