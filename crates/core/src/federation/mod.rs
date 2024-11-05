@@ -21,3 +21,4 @@ pub mod room;
 pub mod space;
 pub mod third_party;
 pub mod transaction;
+pub mod media;

@@ -360,23 +360,21 @@ pub async fn get_thumbnail(
         return Ok(());
     } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
         println!("==============get_thumbnail   2");
-        let response = thumbnail_request(
+        let request = crate::core::federation::media::thumbnail_request(
             &args.server_name,
-            ThumbnailReqArgs {
-                allow_remote: false,
+            crate::core::federation::media::ThumbnailReqArgs {
                 height: args.height,
                 width: args.width,
                 method: args.method.clone(),
-                server_name: args.server_name.clone(),
                 media_id: args.media_id.clone(),
                 timeout_ms: Duration::from_secs(20),
-                allow_redirect: false,
+                animated: None,
             },
         )?
-        .exec()
-        .await?;
-    println!("==============get_thumbnail   2 ------ 1");
-        *res.headers_mut() = response.headers().clone();
+        .into_inner();
+        let mut response = crate::sending::send_federation_request(&args.server_name, request).await?;
+        println!("==============get_thumbnail   2 ------ 1");
+        *response.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
         let thumb_path = crate::media_path(
@@ -495,7 +493,7 @@ pub async fn get_thumbnail(
                 .values(&NewDbThumbnail {
                     media_id: args.media_id.clone(),
                     origin_server: args.server_name.clone(),
-                    content_type: "mage/png".into(),
+                    content_type: "image/png".into(),
                     content_disposition: None,
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,

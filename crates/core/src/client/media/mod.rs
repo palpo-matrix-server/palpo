@@ -8,7 +8,7 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::StringEnum;
+use crate::serde::StringEnum;use crate::media::Method;
 use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
 
 /// The default duration that the client should be willing to wait to start receiving data.
@@ -222,7 +222,7 @@ pub struct ThumbnailReqArgs {
 
 // /// Response type for the `get_content_thumbnail` endpoint.
 // #[derive(ToSchema, Serialize, Debug)]
-// pub struct ContentThumbnailResBody {
+// pub struct ThumbnailResBody {
 //     /// A thumbnail of the requested content.
 //     #[palpo_api(raw_body)]
 //     pub file: Vec<u8>,
@@ -239,7 +239,7 @@ pub struct ThumbnailReqArgs {
 //     #[palpo_api(header = CROSS_ORIGIN_RESOURCE_POLICY)]
 //     pub cross_origin_resource_policy: Option<String>,
 // }
-// impl ContentThumbnailResBody {
+// impl ThumbnailResBody {
 //     /// Creates a new `Response` with the given thumbnail.
 //     ///
 //     /// The Cross-Origin Resource Policy defaults to `cross-origin`.
@@ -251,23 +251,6 @@ pub struct ThumbnailReqArgs {
 //         Self {
 //     }
 // }
-
-/// The desired resizing method.
-#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, StringEnum, Clone)]
-#[palpo_enum(rename_all = "snake_case")]
-#[non_exhaustive]
-pub enum Method {
-    /// Crop the original to produce the requested image dimensions.
-    Crop,
-
-    /// Maintain the original aspect ratio of the source image.
-    Scale,
-
-    #[doc(hidden)]
-    #[salvo(schema(value_type = String))]
-    _Custom(PrivOwnedStr),
-}
 
 // #[cfg(test)]
 // mod tests {
