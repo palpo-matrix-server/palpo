@@ -6,6 +6,7 @@
 mod backfill;
 mod event;
 pub(super) mod key;
+mod media;
 mod membership;
 mod openid;
 mod query;
@@ -37,6 +38,7 @@ pub fn router() -> Router {
                 .push(threepid::router())
                 .push(transaction::router())
                 .push(user::router())
+                .push(media::router())
                 .push(Router::with_path("version").post(version)),
         )
         .push(

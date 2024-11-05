@@ -30,6 +30,7 @@ pub mod sending;
 pub mod http_headers;
 pub mod state;
 pub mod user;
+pub mod media;
 
 pub use crate::state::RoomVersion;
 

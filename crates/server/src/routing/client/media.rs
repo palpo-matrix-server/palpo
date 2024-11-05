@@ -331,12 +331,14 @@ pub async fn get_thumbnail(
     depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
+    println!("==============get_thumbnail   0  {:?}", req.uri());
     if let Ok(DbThumbnail {
         content_disposition,
         content_type,
         ..
     }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height)
     {
+        println!("==============get_thumbnail   1");
         let thumb_path = crate::media_path(
             &args.server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
@@ -357,22 +359,22 @@ pub async fn get_thumbnail(
 
         return Ok(());
     } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
-        let response = thumbnail_request(
+        println!("==============get_thumbnail   2");
+        let request = crate::core::federation::media::thumbnail_request(
             &args.server_name,
-            ThumbnailReqArgs {
-                allow_remote: false,
+            crate::core::federation::media::ThumbnailReqArgs {
                 height: args.height,
                 width: args.width,
                 method: args.method.clone(),
-                server_name: args.server_name.clone(),
                 media_id: args.media_id.clone(),
                 timeout_ms: Duration::from_secs(20),
-                allow_redirect: false,
+                animated: None,
             },
         )?
-        .exec()
-        .await?;
-        *res.headers_mut() = response.headers().clone();
+        .into_inner();
+        let mut response = crate::sending::send_federation_request(&args.server_name, request).await?;
+        println!("==============get_thumbnail   2 ------ 1");
+        *response.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
         let thumb_path = crate::media_path(
@@ -385,9 +387,11 @@ pub async fn get_thumbnail(
         res.body = ResBody::Once(bytes);
         return Ok(());
     } else {
+        println!("==============get_thumbnail   3");
         return Err(MatrixError::not_found("Media not found.").into());
     }
 
+    println!("==============get_thumbnail   4");
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
@@ -489,7 +493,7 @@ pub async fn get_thumbnail(
                 .values(&NewDbThumbnail {
                     media_id: args.media_id.clone(),
                     origin_server: args.server_name.clone(),
-                    content_type: "mage/png".into(),
+                    content_type: "image/png".into(),
                     content_disposition: None,
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,
