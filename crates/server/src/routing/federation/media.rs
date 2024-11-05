@@ -78,9 +78,8 @@ pub async fn get_thumbnail(
 ) -> AppResult<()> {
     println!("==========s====get_thumbnail   0  {:?}   {:?}", req.uri(), args);
     let server_name = &crate::config().server_name;
-    let tbs = media_thumbnails::table
-    .load::<DbThumbnail>(&mut *db::connect()?)?;
-println!("==========s====get_thumbnailss  {:#?}", tbs);
+    let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
+    println!("==========s====get_thumbnailss  {:#?}", tbs);
 
     if let Ok(DbThumbnail {
         content_disposition,

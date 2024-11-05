@@ -2,7 +2,8 @@
 
 use std::{fmt, ops::Deref, str::FromStr};
 
-use salvo::oapi::ToSchema;use serde::Serialize;
+use salvo::oapi::ToSchema;
+use serde::Serialize;
 
 use crate::macros::{AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr};
 
@@ -348,7 +349,18 @@ pub enum ContentDispositionParseError {
 /// Comparisons with other string types are done case-insensitively.
 ///
 /// [Section 4.2 of RFC 6266]: https://datatracker.ietf.org/doc/html/rfc6266#section-4.2
-#[derive(ToSchema, Serialize, Clone, Default, AsRefStr, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, PartialOrdAsRefStr, OrdAsRefStr)]
+#[derive(
+    ToSchema,
+    Serialize,
+    Clone,
+    Default,
+    AsRefStr,
+    DebugAsRefStr,
+    AsStrAsRefStr,
+    DisplayAsRefStr,
+    PartialOrdAsRefStr,
+    OrdAsRefStr,
+)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum ContentDispositionType {
@@ -432,7 +444,9 @@ impl<'a> PartialEq<&'a str> for ContentDispositionType {
 /// This is a string that can only contain a limited character set.
 ///
 /// [RFC 7230 Section 3.2.6]: https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
-#[derive(Clone, Serialize, PartialEq, Eq, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, PartialOrdAsRefStr, OrdAsRefStr)]
+#[derive(
+    Clone, Serialize, PartialEq, Eq, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, PartialOrdAsRefStr, OrdAsRefStr,
+)]
 pub struct TokenString(Box<str>);
 
 impl TokenString {
