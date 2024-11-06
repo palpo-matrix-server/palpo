@@ -7,8 +7,9 @@ use std::time::Duration;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
+use crate::media::Method;
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::StringEnum;use crate::media::Method;
+use crate::serde::StringEnum;
 use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
 
 /// The default duration that the client should be willing to wait to start receiving data.

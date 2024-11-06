@@ -53,50 +53,12 @@ pub struct KeyBackupData {
     pub is_verified: bool,
 
     /// Encrypted data about the session.
-    pub session_data: EncryptedSessionData,
-}
-
-/// Information about the backup key.
-///
-/// This struct will not be updated even if additional fields are added to [`KeyBackupData`] in a
-/// new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct KeyBackupDataInit {
-    /// The index of the first message in the session that the key can decrypt.
-    pub first_message_index: u64,
-
-    /// The number of times this key has been forwarded via key-sharing between devices.
-    pub forwarded_count: u64,
-
-    /// Whether the device backing up the key verified the device that the key is from.
-    pub is_verified: bool,
-
-    /// Encrypted data about the session.
-    pub session_data: EncryptedSessionData,
-}
-
-impl From<KeyBackupDataInit> for KeyBackupData {
-    fn from(init: KeyBackupDataInit) -> Self {
-        let KeyBackupDataInit {
-            first_message_index,
-            forwarded_count,
-            is_verified,
-            session_data,
-        } = init;
-        Self {
-            first_message_index,
-            forwarded_count,
-            is_verified,
-            session_data,
-        }
-    }
+    pub session_data: RawJson<EncryptedSessionData>,
 }
 
 /// The encrypted algorithm-dependent data for backups.
 ///
-/// To create an instance of this type, first create an [`EncryptedSessionDataInit`] and convert it
-/// via `EncryptedSessionData::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct EncryptedSessionData {
     /// Unpadded base64-encoded public half of the ephemeral key.
@@ -110,38 +72,6 @@ pub struct EncryptedSessionData {
     /// First 8 bytes of MAC key, encoded in base64.
     #[salvo(schema(value_type = String))]
     pub mac: Base64,
-}
-
-/// The encrypted algorithm-dependent data for backups.
-///
-/// This struct will not be updated even if additional fields are added to [`EncryptedSessionData`]
-/// in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct EncryptedSessionDataInit {
-    /// Unpadded base64-encoded public half of the ephemeral key.
-    pub ephemeral: Base64,
-
-    /// Ciphertext, encrypted using AES-CBC-256 with PKCS#7 padding, encoded in base64.
-    pub ciphertext: Base64,
-
-    /// First 8 bytes of MAC key, encoded in base64.
-    pub mac: Base64,
-}
-
-impl From<EncryptedSessionDataInit> for EncryptedSessionData {
-    fn from(init: EncryptedSessionDataInit) -> Self {
-        let EncryptedSessionDataInit {
-            ephemeral,
-            ciphertext,
-            mac,
-        } = init;
-        Self {
-            ephemeral,
-            ciphertext,
-            mac,
-        }
-    }
 }
 
 /// `PUT /_matrix/client/*/room_keys/keys/{room_id}`
@@ -203,11 +133,11 @@ impl ModifyKeysResBody {
 
 /// Request type for the `add_backup_keys_for_session` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct AddKeysForSessionReqBody {
+pub struct AddKeysForSessionReqBody(
     /// The key information to store.
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub session_data: KeyBackupData,
-}
+    pub KeyBackupData,
+);
 
 /// `POST /_matrix/client/*/room_keys/version`
 ///
@@ -228,10 +158,10 @@ pub struct AddKeysForSessionReqBody {
 
 /// Request type for the `create_backup_version` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct CreateVersionReqBody {
+pub struct CreateVersionReqBody(
     /// The algorithm used for storing backups.
-    pub algorithm: RawJson<BackupAlgorithm>,
-}
+    pub RawJson<BackupAlgorithm>,
+);
 
 /// Response type for the `create_backup_version` endpoint.
 
@@ -536,18 +466,18 @@ pub struct KeysForSessionReqArgs {
     pub session_id: OwnedSessionId,
 }
 
-/// Response type for the `get_backup_keys_for_session` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-pub struct KeysForSessionResBody {
-    /// Information about the requested backup key.
-    pub key_data: RawJson<KeyBackupData>,
-}
-impl KeysForSessionResBody {
-    /// Creates a new `Response` with the given key_data.
-    pub fn new(key_data: RawJson<KeyBackupData>) -> Self {
-        Self { key_data }
-    }
-}
+// /// Response type for the `get_backup_keys_for_session` endpoint.
+// #[derive(ToSchema, Serialize, Debug)]
+// pub struct KeysForSessionResBody (
+//     /// Information about the requested backup key.
+//     pub RawJson<KeyBackupData>,
+// );
+// impl KeysForSessionResBody {
+//     /// Creates a new `Response` with the given key_data.
+//     pub fn new(key_data: RawJson<KeyBackupData>) -> Self {
+//         Self (key_data)
+//     }
+// }
 
 /// `GET /_matrix/client/*/room_keys/keys`
 ///

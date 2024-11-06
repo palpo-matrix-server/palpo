@@ -1,5 +1,4 @@
 /// Endpoints for the media repository.
-
 use std::time::Duration;
 
 use salvo::oapi::{ToParameters, ToSchema};
@@ -8,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::StringEnum;
 use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
-
-
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

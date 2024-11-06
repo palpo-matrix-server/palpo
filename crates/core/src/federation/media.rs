@@ -4,8 +4,10 @@ use std::time::Duration;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::sending::{SendRequest, SendResult};use crate::media::Method;
-use crate::serde::StringEnum;use crate::http_headers::ContentDisposition;
+use crate::http_headers::ContentDisposition;
+use crate::media::Method;
+use crate::sending::{SendRequest, SendResult};
+use crate::serde::StringEnum;
 use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
 
 /// The `multipart/mixed` mime "essence".
@@ -101,7 +103,8 @@ pub struct ThumbnailResBody {
 pub fn content_request(server: &ServerName, args: ContentReqArgs) -> SendResult<SendRequest> {
     let url = server.build_url(&format!(
         "federation/v1/media/download/{}?timeout_ms={}",
-        args.media_id, args.timeout_ms.as_millis()
+        args.media_id,
+        args.timeout_ms.as_millis()
     ))?;
     Ok(crate::sending::get(url))
 }
@@ -135,8 +138,6 @@ pub struct ContentResBody {
     /// The content of the media.
     pub content: FileOrLocation,
 }
-
-
 
 /// A file from the content repository or the location where it can be found.
 #[derive(ToSchema, Serialize, Debug, Clone)]

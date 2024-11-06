@@ -63,10 +63,14 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
 
         let path = crate::media_path(&args.server_name, &args.media_id);
         if Path::new(&path).exists() {
-            NamedFile::builder(path)
-                .content_type(content_type)
-                .send(req.headers(), res)
-                .await;
+            if let Some(upload_name) = &metadata.upload_name {
+                NamedFile::builder(path).attached_name(upload_name)
+            } else {
+                NamedFile::builder(path)
+            }
+            .content_type(content_type)
+            .send(req.headers(), res)
+            .await;
             Ok(())
         } else {
             Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
@@ -120,9 +124,9 @@ pub async fn get_content_with_filename(
             .attached_name(args.filename)
             .build()
             .await?;
-        if let Some(Ok(content_disposition)) = metadata.content_disposition.as_deref().map(HeaderValue::from_str) {
-            file.set_content_disposition(content_disposition);
-        }
+        // if let Some(Ok(content_disposition)) = metadata.content_disposition.as_deref().map(HeaderValue::from_str) {
+        //     file.set_content_disposition(content_disposition);
+        // }
         file.send(req.headers(), res).await;
 
         Ok(())
@@ -201,7 +205,7 @@ pub async fn create_content(
             content_disposition: args
                 .filename
                 .clone()
-                .map(|filename| format!("inline; filename={filename}")),
+                .map(|filename| format!(r#"inline; filename="{filename}""#)),
             content_type: args.content_type.clone(),
             upload_name,
             file_extension,
@@ -270,7 +274,7 @@ pub async fn upload_content(
             content_disposition: args
                 .filename
                 .clone()
-                .map(|filename| format!("inline; filename={filename}")),
+                .map(|filename| format!(r#"inline; filename="{filename}""#)),
             content_type: args.content_type.clone(),
             upload_name,
             file_extension,
