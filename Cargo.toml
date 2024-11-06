@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 version = "0.0.1"
-authors = ["Chrislearn Young <chris@sonc.ai>"]
+authors = ["Chrislearn Young <chris@acroidea.com>"]
 edition = "2021"
 rust-version = "1.80"
 description = """
@@ -71,7 +71,7 @@ redis = "0.25.0"
 regex = "1.6.0"
 reqwest = { version = "0.12", features = ["json"] }
 ring = "0.17.7"
-salvo = { version = "0.74", git = "https://github.com/chrislearn/salvo.git", branch="named_file_attach_filename", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
+salvo = { version = "0.74.1", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
 sanitize-filename = "0.5.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.8.0"

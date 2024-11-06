@@ -685,7 +685,7 @@ CREATE TABLE e2e_room_keys (
 
 CREATE UNIQUE INDEX IF NOT EXISTS e2e_room_keys_idx
     ON e2e_room_keys USING btree
-    (user_id  ASC NULLS LAST, room_id ASC NULLS LAST, session_id ASC NULLS LAST, version, version ASC NULLS LAST);
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST, session_id ASC NULLS LAST, version ASC NULLS LAST);
 
 
 drop table if exists e2e_room_keys_versions CASCADE;
