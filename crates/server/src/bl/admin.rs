@@ -201,11 +201,13 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
             .as_str()
             .try_into()
             .expect("#admins:server_name is a valid room alias"),
+        &mut *db::connect().expect("db connect error"),
     );
     let palpo_room = if let Ok(Some(palpo_room)) = palpo_room {
         palpo_room
     } else {
-        create_admin_room(&palpo_user).expect("admin room creation error")
+        create_admin_room(&palpo_user, &mut *db::connect().expect("db connect error"))
+            .expect("admin room creation error")
     };
 
     loop {
@@ -225,7 +227,7 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
                         redacts: None,
                     },
                     &palpo_user,
-                    &palpo_room,
+                    &palpo_room, &mut *db::connect().expect("db connect error")
                 )
                 .unwrap();
             }
@@ -377,7 +379,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 let room_id = <&RoomId>::try_from(room_id_str)
                     .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
                 let start = Instant::now();
-                let count = crate::room::auth_chain::get_auth_chain(room_id, &event_id)?.len();
+                let count = crate::room::auth_chain::get_auth_chain(room_id, &event_id, &mut *db::connect()?)?.len();
                 let elapsed = start.elapsed();
                 RoomMessageEventContent::text_plain(format!("Loaded auth chain with length {count} in {elapsed:?}"))
             } else {
@@ -416,7 +418,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             let mut pdu_json = crate::room::timeline::get_pdu_json(&event_id, &mut *db::connect()?)?;
             if pdu_json.is_none() {
                 outlier = true;
-                pdu_json = crate::room::timeline::get_pdu_json(&event_id)?;
+                pdu_json = crate::room::timeline::get_pdu_json(&event_id, &mut *db::connect()?)?;
             }
             match pdu_json {
                 Some(json) => {
@@ -742,19 +744,19 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
 /// Gets the room ID of the admin room
 ///
 /// Errors are propagated from the database, and will have None if there is no admin room
-pub(crate) fn get_admin_room() -> AppResult<Option<OwnedRoomId>> {
+pub(crate) fn get_admin_room(conn: &mut PgConnection) -> AppResult<Option<OwnedRoomId>> {
     let conf = crate::config();
     let admin_room_alias: Box<RoomAliasId> = format!("#admins:{}", &conf.server_name)
         .try_into()
         .expect("#admins:server_name is a valid alias name");
-    crate::room::resolve_local_alias(&admin_room_alias)
+    crate::room::resolve_local_alias(&admin_room_alias, conn)
 }
 
 /// Create the admin room.
 ///
 /// Users in this room are considered admins by palpo, and the room can be
 /// used to issue admin commands by talking to the server user inside it.
-pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
+pub(crate) fn create_admin_room(created_by: &UserId, conn: &mut PgConnection) -> AppResult<OwnedRoomId> {
     let conf = crate::config();
     let room_id = RoomId::new(&conf.server_name);
 
@@ -767,7 +769,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // Create a user for the server
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
-    if let Err(e) = crate::user::create_user(&palpo_user, None, &mut *db::connect()?) {
+    if let Err(e) = crate::user::create_user(&palpo_user, None, conn) {
         tracing::error!(error = ?e, "create palpo admin user failed.");
     }
 
@@ -801,6 +803,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 2. Make palpo bot join
@@ -824,6 +827,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 3. Power levels
@@ -844,6 +848,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 4.1 Join Rules
@@ -858,6 +863,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 4.2 History Visibility
@@ -872,6 +878,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 4.3 Guest Access
@@ -886,6 +893,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 5. Events implied by name and topic
@@ -900,6 +908,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     crate::room::timeline::build_and_append_pdu(
@@ -915,6 +924,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // 6. Room alias
@@ -936,9 +946,10 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
-    crate::room::set_alias(&room_id, alias, created_by)?;
+    crate::room::set_alias(&room_id, alias, created_by, conn)?;
 
     Ok(room_id.to_owned())
 }
@@ -946,10 +957,10 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
 /// Invite the user to the palpo admin room.
 ///
 /// In palpo, this is equivalent to granting admin privileges.
-pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResult<()> {
+pub(crate) fn make_user_admin(user_id: &UserId, display_name: String, conn: &mut PgConnection) -> AppResult<()> {
     let conf = crate::config();
 
-    let room_id = get_admin_room()?.expect("Admin room must exist");
+    let room_id = get_admin_room(conn)?.expect("Admin room must exist");
 
     // Use the server user to grant the new admin's power level
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
@@ -975,6 +986,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -996,6 +1008,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
         },
         user_id,
         &room_id,
+        conn,
     )?;
 
     // Set power level
@@ -1017,6 +1030,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
         },
         &palpo_user,
         &room_id,
+        conn,
     )?;
 
     // Send welcome message
@@ -1033,7 +1047,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
                 redacts: None,
             },
             &palpo_user,
-            &room_id,
+            &room_id,conn
         )?;
     Ok(())
 }

@@ -48,7 +48,11 @@ pub fn ensure_field_id(event_type: &StateEventType, state_key: &str, conn: &mut 
             .map_err(Into::into)
     }
 }
-pub fn ensure_field(event_type: &StateEventType, state_key: &str, conn: &mut PgConnection) -> AppResult<DbRoomStateField> {
+pub fn ensure_field(
+    event_type: &StateEventType,
+    state_key: &str,
+    conn: &mut PgConnection,
+) -> AppResult<DbRoomStateField> {
     let id = diesel::insert_into(room_state_fields::table)
         .values((
             room_state_fields::event_type.eq(event_type),

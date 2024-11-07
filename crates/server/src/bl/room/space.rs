@@ -100,15 +100,15 @@ pub async fn get_hierarchy(
             continue;
         }
 
-        if let Some(current_state_hash) = crate::room::state::get_room_frame_id(&current_room, None)? {
-            let state = crate::room::state::get_full_state_ids(current_state_hash)?;
+        if let Some(current_state_hash) = crate::room::state::get_room_frame_id(&current_room, None, &mut *db::connect()?)? {
+            let state = crate::room::state::get_full_state_ids(current_state_hash, &mut *db::connect()?)?;
 
             let mut children_ids = Vec::new();
             let mut children_pdus = Vec::new();
             for (key, event_id) in state {
                 let DbRoomStateField {
                     event_type, state_key, ..
-                } = crate::room::state::get_field(key)?;
+                } = crate::room::state::get_field(key, &mut *db::connect()?)?;
                 if event_type != StateEventType::SpaceChild {
                     continue;
                 }
@@ -133,14 +133,14 @@ pub async fn get_hierarchy(
             // TODO: Sort children
             children_ids.reverse();
 
-            let chunk = get_room_chunk(user_id, &current_room, children_pdus);
+            let chunk = get_room_chunk(user_id, &current_room, children_pdus, &mut *db::connect()?);
             if let Ok(chunk) = chunk {
                 if left_to_skip > 0 {
                     left_to_skip -= 1;
                 } else {
                     results.push(chunk.clone());
                 }
-                let join_rule = crate::room::state::get_state(&current_room, &StateEventType::RoomJoinRules, "", None)?
+                let join_rule = crate::room::state::get_state(&current_room, &StateEventType::RoomJoinRules, "", None, &mut *db::connect()?)?
                     .map(|s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomJoinRulesEventContent| c.join_rule)
@@ -271,7 +271,12 @@ pub async fn get_hierarchy(
     })
 }
 
-fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>, conn: &mut PgConnection) -> AppResult<SpaceHierarchyRoomsChunk> {
+fn get_room_chunk(
+    user_id: &UserId,
+    room_id: &RoomId,
+    children: Vec<PduEvent>,
+    conn: &mut PgConnection,
+) -> AppResult<SpaceHierarchyRoomsChunk> {
     Ok(SpaceHierarchyRoomsChunk {
         canonical_alias: crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None)?
             .map_or(Ok(None), |s| {

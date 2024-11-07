@@ -22,7 +22,7 @@ pub fn add_txn_id(
     room_id: &RoomId,
     user_id: &UserId,
     device_id: Option<&DeviceId>,
-    txn_id: &TransactionId,
+    txn_id: &TransactionId, conn: &mut PgConnection,
 ) -> AppResult<()> {
     diesel::insert_into(event_txn_ids::table)
         .values(&DbEventTxnId {
@@ -33,21 +33,21 @@ pub fn add_txn_id(
             txn_id: txn_id.to_owned(),
             created_at: UnixMillis::now(),
         })
-        .execute(&mut db::connect()?)?;
+        .execute(conn)?;
     Ok(())
 }
 
 pub fn existing_txn_id(
     user_id: &UserId,
     device_id: Option<&DeviceId>,
-    txn_id: &TransactionId,
+    txn_id: &TransactionId, conn: &mut PgConnection,
 ) -> AppResult<Option<OwnedEventId>> {
     event_txn_ids::table
         .filter(event_txn_ids::user_id.eq(user_id))
         .filter(event_txn_ids::device_id.eq(device_id))
         .filter(event_txn_ids::txn_id.eq(txn_id))
         .select(event_txn_ids::event_id)
-        .first::<OwnedEventId>(&mut *db::connect()?)
+        .first::<OwnedEventId>(conn)
         .optional()
         .map_err(Into::into)
 }

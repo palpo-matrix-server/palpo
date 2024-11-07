@@ -23,19 +23,19 @@ pub struct DbRoomAlias {
     pub created_at: UnixMillis,
 }
 
-pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasId>> {
+pub fn local_aliases_for_room(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Vec<OwnedRoomAliasId>> {
     room_aliases::table
         .filter(room_aliases::room_id.eq(room_id))
         .select(room_aliases::alias_id)
-        .load::<OwnedRoomAliasId>(&mut *db::connect()?)
+        .load::<OwnedRoomAliasId>(conn)
         .map_err(Into::into)
 }
 
-pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<Option<OwnedRoomId>> {
+pub fn resolve_local_alias(alias_id: &RoomAliasId, conn: &mut PgConnection) -> AppResult<Option<OwnedRoomId>> {
     room_aliases::table
         .filter(room_aliases::alias_id.eq(alias_id))
         .select(room_aliases::room_id)
-        .first::<String>(&mut *db::connect()?)
+        .first::<String>(conn)
         .optional()?
         .map(|room_id| RoomId::parse(room_id).map_err(|_| AppError::public("Room ID is invalid.")))
         .transpose()
@@ -45,6 +45,7 @@ pub fn set_alias(
     room_id: impl Into<OwnedRoomId>,
     alias_id: impl Into<OwnedRoomAliasId>,
     created_by: impl Into<OwnedUserId>,
+    conn: &mut PgConnection,
 ) -> AppResult<()> {
     diesel::insert_into(room_aliases::table)
         .values(DbRoomAlias {
@@ -53,7 +54,7 @@ pub fn set_alias(
             created_by: created_by.into(),
             created_at: UnixMillis::now(),
         })
-        .execute(&mut db::connect()?)
+        .execute(conn)
         .map(|_| ())
         .map_err(Into::into)
 }
@@ -82,7 +83,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
                     )
                 {
                     room_id = Some(
-                        crate::room::resolve_local_alias(&room_alias)?
+                        crate::room::resolve_local_alias(&room_alias, &mut *db::connect()?)?
                             .ok_or_else(|| AppError::public("Appservice lied to us. Room does not exist."))?,
                     );
                     break;
@@ -99,14 +100,14 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
     Ok(AliasResBody::new(room_id, vec![crate::server_name().to_owned()]))
 }
 
-#[tracing::instrument]
-pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
-    let Some(room_id) = crate::room::resolve_local_alias(alias_id)? else {
+#[tracing::instrument(skip(conn))]
+pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser, conn: &mut PgConnection) -> AppResult<()> {
+    let Some(room_id) = crate::room::resolve_local_alias(alias_id, conn)? else {
         return Err(MatrixError::not_found("Alias not found.").into());
     };
     if user_can_remove_alias(alias_id, user)? {
-        let state_alias = crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None)?;
-        diesel::delete(room_aliases::table.find(&alias_id)).execute(&mut *db::connect()?)?;
+        let state_alias = crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None, conn)?;
+        diesel::delete(room_aliases::table.find(&alias_id)).execute(conn)?;
 
         if state_alias.is_some() {
             crate::room::timeline::build_and_append_pdu(
@@ -122,7 +123,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
                     redacts: None,
                 },
                 &user.id,
-                &room_id,
+                &room_id, conn
             )
             .ok();
         }
@@ -132,15 +133,13 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
         Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())
     }
 }
-#[tracing::instrument]
-fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<bool> {
-    let Some(room_id) = crate::room::resolve_local_alias(alias_id)? else {
+#[tracing::instrument(skip(user, conn))]
+fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser, conn: &mut PgConnection) -> AppResult<bool> {
+    let Some(room_id) = crate::room::resolve_local_alias(alias_id, conn)? else {
         return Err(MatrixError::not_found("Alias not found.").into());
     };
 
-    let alias = room_aliases::table
-        .find(alias_id)
-        .first::<DbRoomAlias>(&mut *db::connect()?)?;
+    let alias = room_aliases::table.find(alias_id).first::<DbRoomAlias>(conn)?;
 
     // The creator of an alias can remove it
     if alias.created_by == user.id
@@ -151,14 +150,16 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
-    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)? {
+    } else if let Some(event) =
+        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None, conn)?
+    {
         serde_json::from_str(event.content.get())
             .map_err(|_| AppError::public("Invalid event content for m.room.power_levels"))
             .map(|content: RoomPowerLevelsEventContent| {
                 RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias)
             })
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)? {
+    } else if let Some(event) = crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None, conn)? {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);

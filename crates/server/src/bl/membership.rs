@@ -40,7 +40,8 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
     crate::event::handler::acl_check(server_name, room_id)?;
 
     // TODO: Palpo does not implement restricted join rules yet, we always reject
-    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+    let join_rules_event =
+        crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None, &mut *db::connect()?)?;
 
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
         .as_ref()
@@ -62,14 +63,14 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
     }
 
     // We need to return the state prior to joining, let's keep a reference to that here
-    let shortstate_hash =
-        crate::room::state::get_room_frame_id(room_id, None)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
+    let shortstate_hash = crate::room::state::get_room_frame_id(room_id, None, &mut db::connect()?)?
+        .ok_or(MatrixError::not_found("Pdu state not found."))?;
 
     // let pub_key_map = RwLock::new(BTreeMap::new());
     // let mut auth_cache = EventMap::new();
 
     // We do not add the event_id field to the pdu here because of signature and hashes checks
-    let room_version_id = crate::room::state::get_room_version(room_id)?;
+    let room_version_id = crate::room::state::get_room_version(room_id, &mut db::connect()?)?;
     let (event_id, value) = match gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
@@ -103,10 +104,14 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
     //     ))?;
     // drop(mutex_lock);
 
-    let state_ids = crate::room::state::get_full_state_ids(shortstate_hash)?;
+    let state_ids = crate::room::state::get_full_state_ids(shortstate_hash, &mut db::connect()?)?;
     let mut auth_chain_ids = HashSet::new();
     for state_id in state_ids.values() {
-        auth_chain_ids.extend(crate::room::auth_chain::get_auth_chain(room_id, state_id)?);
+        auth_chain_ids.extend(crate::room::auth_chain::get_auth_chain(
+            room_id,
+            state_id,
+            &mut db::connect()?,
+        )?);
     }
 
     let servers = room_servers::table
@@ -124,7 +129,11 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
             .collect(),
         state: state_ids
             .iter()
-            .filter_map(|(_, id)| crate::room::timeline::get_pdu_json(id).ok().flatten())
+            .filter_map(|(_, id)| {
+                crate::room::timeline::get_pdu_json(id, &mut db::connect().unwrap())
+                    .ok()
+                    .flatten()
+            })
             .map(PduEvent::convert_to_outgoing_federation_event)
             .collect(),
         event: None, // TODO: handle restricted joins
@@ -330,7 +339,8 @@ pub async fn join_room(
                 .execute(&mut *db::connect()?)?;
 
             if let Some(state_key) = &pdu.state_key {
-                let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), state_key)?;
+                let state_key_id =
+                    crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), state_key, &mut *db::connect()?)?;
                 state.insert(state_key_id, pdu.event_id.clone());
             }
         }
@@ -381,7 +391,8 @@ pub async fn join_room(
                     .into_iter()
                     .map(|(k, event_id)| {
                         let event_sn = crate::event::get_event_sn(&event_id)?;
-                        let point_id = crate::room::state::ensure_point(room_id, &event_id, event_sn)?;
+                        let point_id =
+                            crate::room::state::ensure_point(room_id, &event_id, event_sn, &mut *db::connect()?)?;
                         Ok(CompressedStateEvent::new(k, point_id))
                     })
                     .collect::<AppResult<_>>()?,
@@ -399,20 +410,28 @@ pub async fn join_room(
             &parsed_join_pdu,
             join_event,
             vec![(*parsed_join_pdu.event_id).to_owned()],
+            &mut *db::connect()?,
         )?;
 
         // We append to state before appending the pdu, so we don't have a moment in time with the
         // pdu without it's state. This is okay because append_pdu can't fail.
-        let state_hash_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
+        let state_hash_after_join = crate::room::state::append_to_state(&parsed_join_pdu, &mut *db::connect()?)?;
 
         info!("Setting final room state for new room");
         // We set the room state after inserting the pdu, so that we never have a moment in time
         // where events in the current room state do not exist
-        crate::room::state::set_room_state(room_id, state_hash_after_join)?;
+        crate::room::state::set_room_state(room_id, state_hash_after_join, &mut *db::connect()?)?;
     } else {
         info!("We can join locally");
-        let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
-        let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
+        let join_rules_event =
+            crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None, &mut *db::connect()?)?;
+        let power_levels_event = crate::room::state::get_state(
+            room_id,
+            &StateEventType::RoomPowerLevels,
+            "",
+            None,
+            &mut *db::connect()?,
+        )?;
 
         let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
             .as_ref()
@@ -442,13 +461,14 @@ pub async fn join_room(
         };
 
         let mut conn = db::connect()?;
-        let authorized_user = if restriction_rooms.iter().any(|restriction_room_id| {
-            crate::room::is_joined(user_id, restriction_room_id, &mut conn).unwrap_or(false)
-        }) {
+        let authorized_user = if restriction_rooms
+            .iter()
+            .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id, &mut conn).unwrap_or(false))
+        {
             let mut auth_user = None;
-            for joined_user in crate::room::get_joined_users(room_id, None, &mut *db::connect()?)? {
+            for joined_user in crate::room::get_joined_users(room_id, None, &mut conn)? {
                 if joined_user.server_name() == crate::server_name()
-                    && state::user_can_invite(room_id, &joined_user, user_id, &mut *db::connect()?).unwrap_or(false)
+                    && state::user_can_invite(room_id, &joined_user, user_id, &mut conn).unwrap_or(false)
                 {
                     auth_user = Some(joined_user);
                     break;
@@ -480,7 +500,8 @@ pub async fn join_room(
                 redacts: None,
             },
             user_id,
-            room_id,&mut conn
+            room_id,
+            &mut conn,
         ) {
             Ok(_event_id) => return Ok(JoinRoomResBody::new(room_id.to_owned())),
             Err(e) => e,
@@ -858,9 +879,16 @@ pub fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
     Ok(())
 }
 
-pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
+pub fn leave_room(
+    user_id: &UserId,
+    room_id: &RoomId,
+    reason: Option<String>,
+    conn: &mut PgConnection,
+) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !crate::room::room_exists(room_id)? && room_id.server_name().map_err(AppError::public)? != crate::server_name() {
+    if !crate::room::room_exists(room_id, conn)?
+        && room_id.server_name().map_err(AppError::public)? != crate::server_name()
+    {
         tokio::spawn({
             let user_id = user_id.to_owned();
             let room_id = room_id.to_owned();
@@ -883,9 +911,10 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
                 .filter(room_users::room_id.eq(room_id))
                 .filter(room_users::user_id.eq(user_id)),
         )
-        .execute(&mut *db::connect()?)?;
+        .execute(conn)?;
     } else {
-        let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
+        let member_event =
+            crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None, conn)?;
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {
@@ -895,7 +924,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
                     .filter(room_users::room_id.eq(room_id))
                     .filter(room_users::user_id.eq(user_id)),
             )
-            .execute(&mut *db::connect()?)?;
+            .execute(conn)?;
             return Ok(());
         };
 
@@ -915,6 +944,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
             },
             user_id,
             room_id,
+            conn,
         )?;
     }
 
@@ -924,7 +954,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
 async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
 
-    let invite_state = crate::room::state::get_invite_state(user_id, room_id)?
+    let invite_state = crate::room::state::get_invite_state(user_id, room_id, &mut db::connect()?)?
         .ok_or(MatrixError::bad_state("User is not invited."))?;
 
     let servers: HashSet<_> = invite_state

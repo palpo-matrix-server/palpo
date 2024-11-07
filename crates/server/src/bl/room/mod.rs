@@ -161,7 +161,7 @@ pub fn update_membership(
 
                 // Check if the room has a predecessor
                 if let Some(predecessor) =
-                    crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?
+                    crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None, conn)?
                         .and_then(|create| serde_json::from_str(create.content.get()).ok())
                         .and_then(|content: RoomCreateEventContent| content.predecessor)
                 {

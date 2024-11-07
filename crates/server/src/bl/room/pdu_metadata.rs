@@ -192,6 +192,7 @@ pub fn get_relations(
     from: Option<i64>,
     to: Option<i64>,
     limit: usize,
+    conn: &mut PgConnection,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
@@ -212,10 +213,10 @@ pub fn get_relations(
     let relations = query
         .order_by(event_relations::child_sn.desc())
         .limit(limit as i64)
-        .load::<DbEventRelation>(&mut *db::connect()?)?;
+        .load::<DbEventRelation>(conn)?;
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.event_id)? {
+        if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.event_id, conn)? {
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }
@@ -242,18 +243,18 @@ pub fn get_relations(
 // Ok(self.referencedevents.get(&key)?.is_some())
 // }
 
-#[tracing::instrument(skip(event_id))]
-pub fn mark_event_soft_failed(event_id: &EventId) -> AppResult<()> {
+#[tracing::instrument(skip(event_id, conn))]
+pub fn mark_event_soft_failed(event_id: &EventId, conn: &mut PgConnection) -> AppResult<()> {
     diesel::update(events::table.filter(events::id.eq(event_id)))
         .set(events::soft_failed.eq(true))
-        .execute(&mut db::connect()?)?;
+        .execute(conn)?;
     Ok(())
 }
 
-pub fn is_event_soft_failed(event_id: &EventId) -> AppResult<bool> {
+pub fn is_event_soft_failed(event_id: &EventId, conn: &mut PgConnection) -> AppResult<bool> {
     events::table
         .filter(events::id.eq(event_id))
         .select(events::soft_failed)
-        .first(&mut *db::connect()?)
+        .first(conn)
         .map_err(Into::into)
 }

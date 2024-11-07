@@ -48,7 +48,7 @@ fn get_local_public_rooms(
     since: Option<&str>,
     filter: &PublicRoomFilter,
     _network: &RoomNetwork,
-    conn: &mut PgConnection
+    conn: &mut PgConnection,
 ) -> AppResult<PublicRoomsResBody> {
     let limit = limit.unwrap_or(10);
     let mut num_since = 0_u64;
@@ -71,95 +71,102 @@ fn get_local_public_rooms(
         }
     }
 
-    let mut all_rooms: Vec<_> = crate::room::public_room_ids(&mut *db::connect()?)?
+    let mut all_rooms: Vec<_> = crate::room::public_room_ids(conn)?
         .into_iter()
         .map(|room_id| {
-            let chunk = PublicRoomsChunk {
-                canonical_alias: crate::room::state::get_state(
-                    &room_id,
-                    &StateEventType::RoomCanonicalAlias,
-                    "",
-                    None,conn
-                )?
-                .map_or(Ok(None), |s| {
-                    serde_json::from_str(s.content.get())
-                        .map(|c: RoomCanonicalAliasEventContent| c.alias)
-                        .map_err(|_| AppError::public("Invalid canonical alias event in database."))
-                })?,
-                name: crate::room::state::get_name(&room_id, None)?,
-                num_joined_members: crate::room::joined_member_count(&room_id, &mut *db::connect()?)
-                    .unwrap_or_else(|_| {
-                        warn!("Room {} has no member count", room_id);
-                        0
-                    })
-                    .try_into()
-                    .expect("user count should not be that big"),
-                topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "", None, conn)?.map_or(
-                    Ok(None),
-                    |s| {
+            let chunk =
+                PublicRoomsChunk {
+                    canonical_alias: crate::room::state::get_state(
+                        &room_id,
+                        &StateEventType::RoomCanonicalAlias,
+                        "",
+                        None,
+                        conn,
+                    )?
+                    .map_or(Ok(None), |s| {
                         serde_json::from_str(s.content.get())
-                            .map(|c: RoomTopicEventContent| Some(c.topic))
-                            .map_err(|_| {
-                                error!("Invalid room topic event in database for room {}", room_id);
-                                AppError::public("Invalid room topic event in database.")
-                            })
-                    },
-                )?,
-                world_readable: crate::room::state::get_state(
-                    &room_id,
-                    &StateEventType::RoomHistoryVisibility,
-                    "",
-                    None, conn,
-                )?
-                .map_or(Ok(false), |s| {
-                    serde_json::from_str(s.content.get())
-                        .map(|c: RoomHistoryVisibilityEventContent| {
-                            c.history_visibility == HistoryVisibility::WorldReadable
+                            .map(|c: RoomCanonicalAliasEventContent| c.alias)
+                            .map_err(|_| AppError::public("Invalid canonical alias event in database."))
+                    })?,
+                    name: crate::room::state::get_name(&room_id, None, conn)?,
+                    num_joined_members: crate::room::joined_member_count(&room_id, conn)
+                        .unwrap_or_else(|_| {
+                            warn!("Room {} has no member count", room_id);
+                            0
                         })
-                        .map_err(|_| AppError::public("Invalid room history visibility event in database."))
-                })?,
-                guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None, conn)?
+                        .try_into()
+                        .expect("user count should not be that big"),
+                    topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "", None, conn)?
+                        .map_or(Ok(None), |s| {
+                            serde_json::from_str(s.content.get())
+                                .map(|c: RoomTopicEventContent| Some(c.topic))
+                                .map_err(|_| {
+                                    error!("Invalid room topic event in database for room {}", room_id);
+                                    AppError::public("Invalid room topic event in database.")
+                                })
+                        })?,
+                    world_readable: crate::room::state::get_state(
+                        &room_id,
+                        &StateEventType::RoomHistoryVisibility,
+                        "",
+                        None,
+                        conn,
+                    )?
+                    .map_or(Ok(false), |s| {
+                        serde_json::from_str(s.content.get())
+                            .map(|c: RoomHistoryVisibilityEventContent| {
+                                c.history_visibility == HistoryVisibility::WorldReadable
+                            })
+                            .map_err(|_| AppError::public("Invalid room history visibility event in database."))
+                    })?,
+                    guest_can_join: crate::room::state::get_state(
+                        &room_id,
+                        &StateEventType::RoomGuestAccess,
+                        "",
+                        None,
+                        conn,
+                    )?
                     .map_or(Ok(false), |s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
                             .map_err(|_| AppError::public("Invalid room guest access event in database."))
                     })?,
-                avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "", None, conn)?
-                    .map(|s| {
-                        serde_json::from_str(s.content.get())
-                            .map(|c: RoomAvatarEventContent| c.url)
-                            .map_err(|_| AppError::public("Invalid room avatar event in database."))
-                    })
-                    .transpose()?
-                    // url is now an Option<String> so we must flatten
-                    .flatten(),
-                join_rule: crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None, conn)?
-                    .map(|s| {
-                        serde_json::from_str(s.content.get())
-                            .map(|c: RoomJoinRulesEventContent| match c.join_rule {
-                                JoinRule::Public => Some(PublicRoomJoinRule::Public),
-                                JoinRule::Knock => Some(PublicRoomJoinRule::Knock),
-                                _ => None,
-                            })
-                            .map_err(|e| {
-                                error!("Invalid room join rule event in database: {}", e);
-                                AppError::public("Invalid room join rule event in database.")
-                            })
-                    })
-                    .transpose()?
-                    .flatten()
-                    .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
-                room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None, conn)?
-                    .map(|s| {
-                        serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
-                            error!("Invalid room create event in database: {}", e);
-                            AppError::public("Invalid room create event in database.")
+                    avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "", None, conn)?
+                        .map(|s| {
+                            serde_json::from_str(s.content.get())
+                                .map(|c: RoomAvatarEventContent| c.url)
+                                .map_err(|_| AppError::public("Invalid room avatar event in database."))
                         })
-                    })
-                    .transpose()?
-                    .and_then(|e| e.room_type),
-                room_id,
-            };
+                        .transpose()?
+                        // url is now an Option<String> so we must flatten
+                        .flatten(),
+                    join_rule: crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None, conn)?
+                        .map(|s| {
+                            serde_json::from_str(s.content.get())
+                                .map(|c: RoomJoinRulesEventContent| match c.join_rule {
+                                    JoinRule::Public => Some(PublicRoomJoinRule::Public),
+                                    JoinRule::Knock => Some(PublicRoomJoinRule::Knock),
+                                    _ => None,
+                                })
+                                .map_err(|e| {
+                                    error!("Invalid room join rule event in database: {}", e);
+                                    AppError::public("Invalid room join rule event in database.")
+                                })
+                        })
+                        .transpose()?
+                        .flatten()
+                        .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
+                    room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None, conn)?
+                        .map(|s| {
+                            serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
+                                error!("Invalid room create event in database: {}", e);
+                                AppError::public("Invalid room create event in database.")
+                            })
+                        })
+                        .transpose()?
+                        .and_then(|e| e.room_type),
+                    room_id,
+                };
             Ok(chunk)
         })
         .filter_map(|r: AppResult<_>| r.ok()) // Filter out buggy rooms

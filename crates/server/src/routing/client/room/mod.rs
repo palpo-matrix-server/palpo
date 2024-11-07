@@ -197,15 +197,16 @@ fn set_read_markers(
 /// - Only users joined to the room are allowed to call this
 /// TODO: Allow any user to call it if history_visibility is world readable
 #[endpoint]
-async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
+fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_joined(authed.user_id(), &room_id)? {
+    let conn = &mut db::connect()?;
+    if !crate::room::is_joined(authed.user_id(), &room_id, conn)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
     json_ok(AliasesResBody {
-        aliases: crate::room::local_aliases_for_room(&room_id)?,
+        aliases: crate::room::local_aliases_for_room(&room_id, conn)?,
     })
 }
 

@@ -79,6 +79,7 @@ pub(super) async fn get_messages(
                 limit,
                 Some(&args.filter),
                 until_sn,
+                &mut *db::connect()?,
             )?;
 
             for (_, event) in &events_after {
@@ -118,6 +119,7 @@ pub(super) async fn get_messages(
                 from,
                 limit,
                 Some(&args.filter),
+                &mut db::connect()?,
             )?;
             println!("FROM {from}   {:#?}", events_before);
 
@@ -149,9 +151,13 @@ pub(super) async fn get_messages(
 
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
-        if let Some(member_event) =
-            crate::room::state::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)?
-        {
+        if let Some(member_event) = crate::room::state::get_state(
+            &args.room_id,
+            &StateEventType::RoomMember,
+            ll_id.as_str(),
+            None,
+            &mut db::connect()?,
+        )? {
             resp.state.push(member_event.to_state_event());
         }
     }
@@ -238,7 +244,7 @@ pub(super) async fn send_message(
 /// - The only requirement for the content is that it has to be valid json
 /// - Tries to send the event into the room, auth rules will determine if it is allowed
 #[endpoint]
-pub(super) async fn post_message(
+pub(super) fn post_message(
     _aa: AuthArgs,
     args: CreateMessageReqArgs,
     req: &mut Request,
@@ -257,6 +263,7 @@ pub(super) async fn post_message(
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
 
     let mut unsigned = BTreeMap::new();
+    let conn = &mut db::connect()?;
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
@@ -267,6 +274,7 @@ pub(super) async fn post_message(
         },
         authed.user_id(),
         &args.room_id,
+        conn,
     )?
     .event_id;
 

@@ -143,7 +143,12 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject, conn: &mu
 ///
 /// Returns pdu id
 #[tracing::instrument(skip(pdu, pdu_json, leaves, conn))]
-pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec<OwnedEventId>, conn: &mut PgConnection) -> AppResult<()> {
+pub fn append_pdu(
+    pdu: &PduEvent,
+    mut pdu_json: CanonicalJsonObject,
+    leaves: Vec<OwnedEventId>,
+    conn: &mut PgConnection,
+) -> AppResult<()> {
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -292,7 +297,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                     content.membership,
                     &pdu.sender,
                     invite_state,
-                    conn
+                    conn,
                 )?;
             }
         }
@@ -473,7 +478,8 @@ fn increment_notification_counts(
 pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
-    room_id: &RoomId, conn: &mut PgConnection
+    room_id: &RoomId,
+    conn: &mut PgConnection,
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
         event_type,
@@ -652,9 +658,14 @@ pub fn create_hash_and_sign_event(
 }
 
 /// Creates a new persisted data unit and adds it to a room.
-#[tracing::instrument]
-pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<PduEvent> {
-    let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
+#[tracing::instrument(skip(conn))]
+pub fn build_and_append_pdu(
+    pdu_builder: PduBuilder,
+    sender: &UserId,
+    room_id: &RoomId,
+    conn: &mut PgConnection,
+) -> AppResult<PduEvent> {
+    let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id, conn)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
         <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
@@ -688,7 +699,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                         return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
                     }
 
-                    let count = crate::room::get_joined_users(room_id, None)?
+                    let count = crate::room::get_joined_users(room_id, None, conn)?
                         .iter()
                         .filter(|m| m.server_name() == server_name)
                         .filter(|m| m.as_str() != target)
@@ -705,7 +716,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                         return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
 
-                    let count = crate::room::get_joined_users(room_id, None, &mut *db::connect()?)?
+                    let count = crate::room::get_joined_users(room_id, None, conn)?
                         .iter()
                         .filter(|m| m.server_name() == server_name)
                         .filter(|m| m.as_str() != target)
@@ -722,7 +733,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    let frame_id = crate::room::state::append_to_state(&pdu)?;
+    let frame_id = crate::room::state::append_to_state(&pdu, conn)?;
 
     append_pdu(
         &pdu,
@@ -730,13 +741,15 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         // Since this PDU references all pdu_leaves we can update the leaves
         // of the room
         vec![(*pdu.event_id).to_owned()],
+        conn,
     )?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
-    crate::room::state::set_room_state(room_id, frame_id)?;
+    crate::room::state::set_room_state(room_id, frame_id, conn)?;
 
-    let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
+    let mut servers: HashSet<OwnedServerName> =
+        crate::room::participating_servers(room_id, conn)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.kind == TimelineEventType::RoomMember {
@@ -751,7 +764,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    crate::sending::send_pdu(servers.into_iter(), &pdu.event_id)?;
+    crate::sending::send_pdu(servers.into_iter(), &pdu.event_id, conn)?;
 
     Ok(pdu)
 }
@@ -765,25 +778,31 @@ pub fn append_incoming_pdu(
     new_room_leaves: Vec<OwnedEventId>,
     state_ids_compressed: Arc<HashSet<CompressedStateEvent>>,
     soft_fail: bool,
+    conn: &mut PgConnection,
 ) -> AppResult<()> {
-    let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
-    crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
+    let event_sn = crate::event::get_event_sn(&pdu.event_id, conn)?;
+    crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn, conn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    crate::room::state::save_state(&pdu.room_id, state_ids_compressed)?;
+    crate::room::state::save_state(&pdu.room_id, state_ids_compressed, conn)?;
 
     if soft_fail {
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
-        crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
+        crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves, conn)?;
         return Ok(());
     }
 
-    crate::room::timeline::append_pdu(pdu, pdu_json, new_room_leaves)
+    crate::room::timeline::append_pdu(pdu, pdu_json, new_room_leaves, conn)
 }
 
 /// Returns an iterator over all PDUs in a room.
-pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, usize::MAX, None, until_sn)
+pub fn all_pdus(
+    user_id: &UserId,
+    room_id: &RoomId,
+    until_sn: Option<i64>,
+    conn: &mut PgConnection,
+) -> AppResult<Vec<(i64, PduEvent)>> {
+    get_pdus_forward(user_id, room_id, 0, usize::MAX, None, until_sn, conn)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
@@ -792,8 +811,18 @@ pub fn get_pdus_forward(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     until_sn: Option<i64>,
+    conn: &mut PgConnection,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Forward, until_sn)
+    get_pdus(
+        user_id,
+        room_id,
+        occur_sn,
+        limit,
+        filter,
+        Direction::Forward,
+        until_sn,
+        conn,
+    )
 }
 pub fn get_pdus_backward(
     user_id: &UserId,
@@ -801,13 +830,23 @@ pub fn get_pdus_backward(
     occur_sn: i64,
     limit: usize,
     filter: Option<&RoomEventFilter>,
+    conn: &mut PgConnection,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward, None)
+    get_pdus(
+        user_id,
+        room_id,
+        occur_sn,
+        limit,
+        filter,
+        Direction::Backward,
+        None,
+        conn,
+    )
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
 /// event with id `until` in reverse-chronological order.
-#[tracing::instrument]
+#[tracing::instrument(skip(conn))]
 pub fn get_pdus(
     user_id: &UserId,
     room_id: &RoomId,
@@ -816,6 +855,7 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
     until_sn: Option<i64>,
+    conn: &mut PgConnection,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
@@ -872,14 +912,14 @@ pub fn get_pdus(
                 .order(event_datas::event_sn.asc())
                 .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .load::<(i64, JsonValue)>(conn)?
         } else {
             event_datas::table
                 .filter(event_datas::event_id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.desc())
                 .limit(utils::usize_to_i64(limit))
                 .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .load::<(i64, JsonValue)>(conn)?
         };
         if datas.is_empty() {
             break;
@@ -909,12 +949,12 @@ pub fn get_pdus(
 }
 
 /// Replace a PDU with the redacted form.
-#[tracing::instrument(skip(reason))]
-pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
+#[tracing::instrument(skip(reason, conn))]
+pub fn redact_pdu(event_id: &EventId, reason: &PduEvent, conn: &mut PgConnection) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
-    if let Some(mut pdu) = get_pdu(event_id)? {
+    if let Some(mut pdu) = get_pdu(event_id, conn)? {
         pdu.redact(reason)?;
-        replace_pdu(&event_id, &utils::to_canonical_object(&pdu)?)?;
+        replace_pdu(&event_id, &utils::to_canonical_object(&pdu)?, conn)?;
     }
     // If event does not exist, just noop
     Ok(())
@@ -931,14 +971,18 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
         return Ok(());
     }
 
-    let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
-            .map(|ev| {
-                serde_json::from_str(ev.content.get())
-                    .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let power_levels: RoomPowerLevelsEventContent = crate::room::state::get_state(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+        None,
+        &mut *db::connect()?,
+    )?
+    .map(|ev| {
+        serde_json::from_str(ev.content.get()).map_err(|_| AppError::internal("invalid m.room.power_levels event"))
+    })
+    .transpose()?
+    .unwrap_or_default();
     let mut admin_servers = power_levels
         .users
         .iter()
@@ -996,7 +1040,7 @@ pub async fn backfill_pdu(
 
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false, pub_key_map).await?;
 
-    let value = get_pdu_json(&event_id)?.expect("We just created it");
+    let value = get_pdu_json(&event_id, &mut *db::connect()?)?.expect("We just created it");
     let pdu = get_pdu(&event_id)?.expect("We just created it");
 
     // // Insert pdu

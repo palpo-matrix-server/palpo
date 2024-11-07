@@ -74,7 +74,11 @@ pub fn cache_auth_chain(event_id: &EventId, auth_chain: Arc<HashSet<i64>>) -> Ap
     Ok(())
 }
 
-pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId, conn: &mut PgConnection) -> AppResult<HashSet<Arc<EventId>>> {
+pub fn get_auth_chain(
+    room_id: &RoomId,
+    event_id: &EventId,
+    conn: &mut PgConnection,
+) -> AppResult<HashSet<Arc<EventId>>> {
     let mut full_auth_chain = HashSet::new();
 
     if let Some(cached) = crate::room::auth_chain::get_cached_event_auth_chain(event_id)? {
@@ -93,7 +97,8 @@ pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId, conn: &mut PgConnect
                         let point_id = crate::room::state::ensure_point(
                             room_id,
                             auth_event,
-                            crate::event::get_event_sn(&auth_event)?,conn
+                            crate::event::get_event_sn(&auth_event)?,
+                            conn,
                         )?;
 
                         if !found.contains(&point_id) {

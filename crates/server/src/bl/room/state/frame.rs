@@ -26,6 +26,7 @@ pub static STATE_INFO_CACHE: LazyLock<
 /// Returns a stack with info on state_hash, full state, added diff and removed diff for the selected state_hash and each parent layer.
 pub fn load_frame_info(
     frame_id: i64,
+    conn: &mut PgConnection,
 ) -> AppResult<
     Vec<(
         i64,                                // state frame id
@@ -42,10 +43,10 @@ pub fn load_frame_info(
         parent_id,
         append_data,
         remove_data,
-    } = super::load_state_diff(frame_id)?;
+    } = super::load_state_diff(frame_id, conn)?;
 
     if let Some(parent_id) = parent_id {
-        let mut response = load_frame_info(parent_id)?;
+        let mut response = load_frame_info(parent_id, conn)?;
         let mut state = (*response.last().unwrap().1).clone();
         state.extend(append_data.iter().copied());
         let remove_data = (*remove_data).clone();

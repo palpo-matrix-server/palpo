@@ -44,7 +44,7 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::{OwnedEventId, UnixMillis, UserId};
 use crate::user::NewDbPresence;
-use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{empty_ok, hoops,db, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");

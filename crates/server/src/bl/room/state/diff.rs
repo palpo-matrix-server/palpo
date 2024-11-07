@@ -54,19 +54,19 @@ pub fn compress_event(
     room_id: &RoomId,
     field_id: i64,
     event_id: &EventId,
-    event_sn: i64,
+    event_sn: i64, conn: &mut PgConnection,
 ) -> AppResult<CompressedStateEvent> {
-    let point_id = ensure_point(room_id, event_id, event_sn)?;
+    let point_id = ensure_point(room_id, event_id, event_sn, conn)?;
     Ok(CompressedStateEvent::new(field_id, point_id))
 }
 
-pub fn get_detla(frame_id: i64) -> AppResult<DbRoomStateDelta> {
+pub fn get_detla(frame_id: i64, conn: &mut PgConnection) -> AppResult<DbRoomStateDelta> {
     room_state_deltas::table
         .find(frame_id)
-        .first::<DbRoomStateDelta>(&mut *db::connect()?)
+        .first::<DbRoomStateDelta>(conn)
         .map_err(Into::into)
 }
-pub fn load_state_diff(frame_id: i64) -> AppResult<StateDiff> {
+pub fn load_state_diff(frame_id: i64, conn: &mut PgConnection) -> AppResult<StateDiff> {
     let DbRoomStateDelta {
         parent_id,
         append_data,
@@ -74,7 +74,7 @@ pub fn load_state_diff(frame_id: i64) -> AppResult<StateDiff> {
         ..
     } = room_state_deltas::table
         .find(frame_id)
-        .first::<DbRoomStateDelta>(&mut *db::connect()?)?;
+        .first::<DbRoomStateDelta>(conn)?;
     Ok(StateDiff {
         parent_id,
         append_data: Arc::new(
@@ -92,7 +92,7 @@ pub fn load_state_diff(frame_id: i64) -> AppResult<StateDiff> {
     })
 }
 
-pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> AppResult<()> {
+pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff, conn: &mut PgConnection) -> AppResult<()> {
     let StateDiff {
         parent_id,
         append_data,
@@ -114,7 +114,7 @@ pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> App
                 .cloned()
                 .collect::<Vec<_>>(),
         })
-        .execute(&mut db::connect()?)?;
+        .execute(conn)?;
     Ok(())
 }
 /// Creates a new state_hash that often is just a diff to an already existing
@@ -130,7 +130,7 @@ pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> App
 /// * `remove_data` - Removed from base. Each vec is state_key_id+shorteventid
 /// * `diff_to_sibling` - Approximately how much the diff grows each time for this layer
 /// * `parent_states` - A stack with info on state_hash, full state, added diff and removed diff for each parent layer
-#[tracing::instrument(skip(append_data, remove_data, diff_to_sibling, parent_states))]
+#[tracing::instrument(skip(append_data, remove_data, diff_to_sibling, parent_states, conn))]
 pub fn calc_and_save_state_delta(
     room_id: &RoomId,
     frame_id: i64,
@@ -143,6 +143,7 @@ pub fn calc_and_save_state_delta(
         Arc<HashSet<CompressedStateEvent>>, // added
         Arc<HashSet<CompressedStateEvent>>, // removed
     )>,
+    conn: &mut PgConnection,
 ) -> AppResult<()> {
     let diff_sum = append_data.len() + remove_data.len();
 
@@ -177,6 +178,7 @@ pub fn calc_and_save_state_delta(
             Arc::new(parent_removed),
             diff_sum,
             parent_states,
+            conn,
         );
     }
 
@@ -190,6 +192,7 @@ pub fn calc_and_save_state_delta(
                 append_data,
                 remove_data,
             },
+            conn,
         );
     }
 
@@ -228,6 +231,7 @@ pub fn calc_and_save_state_delta(
             Arc::new(parent_removed),
             diff_sum,
             parent_states,
+            conn,
         )
     } else {
         // Diff small enough, we add diff as layer on top of parent
@@ -239,6 +243,7 @@ pub fn calc_and_save_state_delta(
                 append_data,
                 remove_data,
             },
+            conn,
         )
     }
 }
