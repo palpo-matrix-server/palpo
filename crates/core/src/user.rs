@@ -16,7 +16,7 @@ use crate::{OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr};
 #[non_exhaustive]
 pub enum ProfileField {
     /// Display name of the user.
-    #[palpo_enum(rename = "display_name")]
+    #[palpo_enum(rename = "displayname")]
     DisplayName,
 
     /// Avatar URL for the user's avatar.

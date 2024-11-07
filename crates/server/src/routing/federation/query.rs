@@ -1,14 +1,16 @@
 //! Endpoints to retrieve information from a homeserver about a resource.
 
+use diesel::prelude::*;
 use palpo_core::federation::query::ProfileReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
-use crate::core::user::ProfileField;
-use crate::core::user::ProfileResBody;
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::core::user::{ProfileField, ProfileResBody};
+use crate::schema::*;
+use crate::user::DbProfile;
+use crate::{db, empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -21,12 +23,22 @@ pub fn router() -> Router {
 /// Gets information on a profile.
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
+    println!("================profile 0  {:?}", args);
+    println!(
+        "================profile x {:#?}",
+        user_profiles::table.load::<DbProfile>(&mut *db::connect()?)
+    );
+    if args.user_id.server_name() != crate::config().server_name {
+        return Err(MatrixError::invalid_param("Tried to access user from other server.").into());
+    }
+
     let mut display_name = None;
     let mut avatar_url = None;
     let mut blurhash = None;
 
     let profile = crate::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
 
+    println!("================profile 2  {:#?}", profile);
     match &args.field {
         Some(ProfileField::DisplayName) => display_name = profile.display_name.clone(),
         Some(ProfileField::AvatarUrl) => {
