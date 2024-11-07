@@ -39,45 +39,45 @@ use ulid::Ulid;
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
 
-#[tracing::instrument]
-pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
+#[tracing::instrument(skip(conn))]
+pub fn first_pdu_in_room(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Option<PduEvent>> {
     event_datas::table
         .filter(event_datas::room_id.eq(room_id))
         .order(event_datas::event_sn.asc())
         .select(event_datas::json_data)
-        .first::<JsonValue>(&mut *db::connect()?)
+        .first::<JsonValue>(conn)
         .optional()
         .map(|json| json.map(|json| serde_json::from_value(json).expect("PduEvent is valid")))
         .map_err(Into::into)
 }
 
-#[tracing::instrument]
-pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+#[tracing::instrument(skip(conn))]
+pub fn last_event_sn(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<i64> {
     events::table
         .filter(events::room_id.eq(room_id))
         .select(events::sn)
         .order(events::sn.desc())
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .map_err(Into::into)
 }
 
 /// Returns the `count` of this pdu's id.
-pub fn get_event_sn(event_id: &EventId) -> AppResult<Option<i64>> {
+pub fn get_event_sn(event_id: &EventId, conn: &mut PgConnection) -> AppResult<Option<i64>> {
     Ok(events::table
         .find(event_id)
         .select(events::sn)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .optional()?)
 }
 
 /// Returns the json of a pdu.
-pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>> {
+pub fn get_pdu_json(event_id: &EventId, conn: &mut PgConnection) -> AppResult<Option<CanonicalJsonObject>> {
     let query = events::table.filter(events::id.eq(event_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
+    if diesel_exists!(query, conn)? {
         event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select(event_datas::json_data)
-            .first::<JsonValue>(&mut *db::connect()?)
+            .first::<JsonValue>(conn)
             .optional()?
             .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
             .transpose()
@@ -89,15 +89,15 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 /// Returns the pdu.
 ///
 /// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
-pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
+pub fn get_non_outlier_pdu(event_id: &EventId, conn: &mut PgConnection) -> AppResult<Option<PduEvent>> {
     let query = events::table
         .filter(events::outlier.eq(false))
         .filter(events::id.eq(event_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
+    if diesel_exists!(query, conn)? {
         event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select(event_datas::json_data)
-            .first::<JsonValue>(&mut *db::connect()?)
+            .first::<JsonValue>(conn)
             .optional()?
             .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
             .transpose()
@@ -110,11 +110,11 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
 ///
 /// Checks database if not found in the timeline.
 // TODO: use cache
-pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
+pub fn get_pdu(event_id: &EventId, conn: &mut PgConnection) -> AppResult<Option<PduEvent>> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    match get_non_outlier_pdu(event_id) {
+    match get_non_outlier_pdu(event_id, conn) {
         Ok(Some(pdu)) => Ok(Some(pdu)),
         Ok(None) => Ok(None),
         Err(e) => {
@@ -126,11 +126,11 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
 }
 
 /// Removes a pdu and creates a new one with the same id.
-#[tracing::instrument]
-pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
+#[tracing::instrument(skip(conn))]
+pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject, conn: &mut PgConnection) -> AppResult<()> {
     diesel::update(event_datas::table.filter(event_datas::event_id.eq(event_id)))
         .set(event_datas::json_data.eq(serde_json::to_value(pdu_json)?))
-        .execute(&mut *db::connect()?)?;
+        .execute(conn)?;
     // PDU_CACHE.lock().unwrap().remove(&(*pdu.event_id).to_owned());
 
     Ok(())
@@ -142,8 +142,8 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 /// in `append_pdu`.
 ///
 /// Returns pdu id
-#[tracing::instrument(skip(pdu, pdu_json, leaves))]
-pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec<OwnedEventId>) -> AppResult<()> {
+#[tracing::instrument(skip(pdu, pdu_json, leaves, conn))]
+pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec<OwnedEventId>, conn: &mut PgConnection) -> AppResult<()> {
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -203,7 +203,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
-    for user in crate::room::get_our_real_users(&pdu.room_id)?.iter() {
+    for user in crate::room::get_our_real_users(&pdu.room_id, &mut *db::connect()?)?.iter() {
         // Don't notify the user of their own events
         if user == &pdu.sender {
             continue;
@@ -292,6 +292,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                     content.membership,
                     &pdu.sender,
                     invite_state,
+                    conn
                 )?;
             }
         }
@@ -472,7 +473,7 @@ fn increment_notification_counts(
 pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
-    room_id: &RoomId,
+    room_id: &RoomId, conn: &mut PgConnection
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
         event_type,
@@ -488,7 +489,7 @@ pub fn create_hash_and_sign_event(
         .take(20)
         .collect();
 
-    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?;
+    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None, conn)?;
 
     let create_event_content: Option<RoomCreateEventContent> = create_event
         .as_ref()
@@ -645,14 +646,14 @@ pub fn create_hash_and_sign_event(
 
     // Generate short event id
     let _point_id =
-        crate::room::state::ensure_point(room_id, &pdu.event_id, crate::event::get_event_sn(&pdu.event_id)?)?;
+        crate::room::state::ensure_point(room_id, &pdu.event_id, crate::event::get_event_sn(&pdu.event_id)?, conn)?;
 
     Ok((pdu, pdu_json))
 }
 
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
-pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<PduEvent> {
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -704,7 +705,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                         return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
 
-                    let count = crate::room::get_joined_users(room_id, None)?
+                    let count = crate::room::get_joined_users(room_id, None, &mut *db::connect()?)?
                         .iter()
                         .filter(|m| m.server_name() == server_name)
                         .filter(|m| m.as_str() != target)

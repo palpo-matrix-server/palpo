@@ -156,7 +156,7 @@ pub async fn join_room(
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
     // Ask a remote server if we are not participating in this room
-    if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
+    if !crate::room::is_server_in_room(crate::server_name(), room_id, &mut *db::connect()?)? {
         info!("Joining {room_id} over federation.");
 
         let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
@@ -391,8 +391,8 @@ pub async fn join_room(
         crate::room::state::force_state(room_id, state_hash_before_join, new, removed)?;
 
         info!("Updating joined counts for new room");
-        crate::room::update_room_servers(room_id)?;
-        crate::room::update_room_currents(room_id)?;
+        crate::room::update_room_servers(room_id, &mut *db::connect()?)?;
+        crate::room::update_room_currents(room_id, &mut *db::connect()?)?;
 
         info!("Appending new room join event");
         crate::room::timeline::append_pdu(
@@ -441,14 +441,14 @@ pub async fn join_room(
             _ => Vec::new(),
         };
 
-        let authorized_user = if restriction_rooms
-            .iter()
-            .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id).unwrap_or(false))
-        {
+        let mut conn = db::connect()?;
+        let authorized_user = if restriction_rooms.iter().any(|restriction_room_id| {
+            crate::room::is_joined(user_id, restriction_room_id, &mut conn).unwrap_or(false)
+        }) {
             let mut auth_user = None;
-            for joined_user in crate::room::get_joined_users(room_id, None)? {
+            for joined_user in crate::room::get_joined_users(room_id, None, &mut *db::connect()?)? {
                 if joined_user.server_name() == crate::server_name()
-                    && state::user_can_invite(room_id, &joined_user, user_id).unwrap_or(false)
+                    && state::user_can_invite(room_id, &joined_user, user_id, &mut *db::connect()?).unwrap_or(false)
                 {
                     auth_user = Some(joined_user);
                     break;
@@ -480,11 +480,12 @@ pub async fn join_room(
                 redacts: None,
             },
             user_id,
-            room_id,
+            room_id,&mut conn
         ) {
             Ok(_event_id) => return Ok(JoinRoomResBody::new(room_id.to_owned())),
             Err(e) => e,
         };
+        drop(conn);
 
         if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != crate::server_name()).count() > 0 {
             info!("We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements");
@@ -808,7 +809,7 @@ pub(crate) async fn invite_user(
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true, &pub_key_map).await?;
 
         // Bind to variable because of lifetimes
-        let servers = crate::room::participating_servers(room_id)?
+        let servers = crate::room::participating_servers(room_id, &mut *db::connect()?)?
             .into_iter()
             .filter(|server| server != crate::server_name());
 
@@ -816,7 +817,7 @@ pub(crate) async fn invite_user(
         return Ok(());
     }
 
-    if !crate::room::is_joined(inviter_id, room_id)? {
+    if !crate::room::is_joined(inviter_id, room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 

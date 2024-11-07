@@ -405,8 +405,8 @@ async fn load_joined_room(
     } else {
         // Calculates joined_member_count, invited_member_count and heroes
         let calculate_counts = || {
-            let joined_member_count = crate::room::joined_member_count(&room_id).unwrap_or(0);
-            let invited_member_count = crate::room::invited_member_count(&room_id).unwrap_or(0);
+            let joined_member_count = crate::room::joined_member_count(&room_id, &mut *db::connect()?).unwrap_or(0);
+            let invited_member_count = crate::room::invited_member_count(&room_id, &mut *db::connect()?).unwrap_or(0);
 
             // Recalculate heroes (first 5 members)
             let mut heroes = Vec::new();
@@ -428,8 +428,8 @@ async fn load_joined_room(
 
                             // The membership was and still is invite or join
                             if matches!(content.membership, MembershipState::Join | MembershipState::Invite)
-                                && (crate::room::is_joined(&user_id, &room_id)?
-                                    || crate::room::is_invited(&user_id, &room_id)?)
+                                && (crate::room::is_joined(&user_id, &room_id, &mut *db::connect()?)?
+                                    || crate::room::is_invited(&user_id, &room_id, &mut *db::connect()?)?)
                             {
                                 Ok::<_, AppError>(Some(state_key.clone()))
                             } else {
@@ -650,7 +650,7 @@ async fn load_joined_room(
                 // && encrypted_room || new_encrypted_room {
                 // If the user is in a new encrypted room, give them all joined users
                 device_list_updates.extend(
-                    crate::room::get_joined_users(&room_id, None)?
+                    crate::room::get_joined_users(&room_id, None, &mut *db::connect()?)?
                         .into_iter()
                         .filter(|user_id| {
                             // Don't send key updates from the sender to the sender

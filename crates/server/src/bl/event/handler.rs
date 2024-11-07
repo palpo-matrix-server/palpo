@@ -73,10 +73,10 @@ pub(crate) async fn handle_incoming_pdu(
     crate::event::handler::acl_check(origin, &room_id)?;
 
     // 1. Skip the PDU if we already have it as a timeline event
-    if let Some(pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
+    if let Some(pdu_id) = crate::room::state::get_pdu_frame_id(event_id, &mut *db::connect()?)? {
         return Ok(());
     }
-    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?
+    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None, &mut *db::connect()?)?
         .ok_or_else(|| AppError::internal("Failed to find create event in database"))?;
 
     let create_event_content: RoomCreateEventContent =
@@ -86,7 +86,7 @@ pub(crate) async fn handle_incoming_pdu(
         })?;
     let room_version_id = &create_event_content.room_version;
 
-    let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
+    let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id, &mut *db::connect()?)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
     let (incoming_pdu, val) =
@@ -272,7 +272,7 @@ fn handle_outlier_pdu<'a>(
                 };
 
                 // Skip the PDU if it is redacted and we already have it as an outlier event
-                if crate::room::timeline::get_pdu_json(event_id)?.is_some() {
+                if crate::room::timeline::get_pdu_json(event_id, &mut *db::connect()?)?.is_some() {
                     return Err(MatrixError::invalid_param("Event was redacted and we already knew about it").into());
                 }
 
@@ -320,7 +320,7 @@ fn handle_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
-            let auth_event = match crate::room::timeline::get_pdu(id)? {
+            let auth_event = match crate::room::timeline::get_pdu(id, &mut *db::connect()?)? {
                 Some(e) => e,
                 None => {
                     warn!("Could not find auth event {}", id);
@@ -415,7 +415,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
     if incoming_pdu.prev_events.len() == 1 {
         let prev_event = &*incoming_pdu.prev_events[0];
-        let prev_frame_id = crate::room::state::get_pdu_frame_id(prev_event)?;
+        let prev_frame_id = crate::room::state::get_pdu_frame_id(prev_event, &mut *db::connect()?)?;
 
         let state = if let Some(frame_id) = prev_frame_id {
             Some(crate::room::state::get_full_state_ids(frame_id))
@@ -425,13 +425,13 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
         if let Some(Ok(mut state)) = state {
             debug!("Using cached state");
-            let prev_pdu = crate::room::timeline::get_pdu(prev_event)
+            let prev_pdu = crate::room::timeline::get_pdu(prev_event, &mut *db::connect()?)
                 .ok()
                 .flatten()
                 .ok_or_else(|| AppError::internal("Could not find prev event, but we know the state."))?;
 
             if let Some(state_key) = &prev_pdu.state_key {
-                let state_key_id = crate::room::state::ensure_field_id(&prev_pdu.kind.to_string().into(), state_key)?;
+                let state_key_id = crate::room::state::ensure_field_id(&prev_pdu.kind.to_string().into(), state_key, &mut *db::connect()?)?;
 
                 state.insert(state_key_id, Arc::from(prev_event));
                 // Now it's the state after the pdu
@@ -445,14 +445,14 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
         let mut okay = true;
         for prev_eventid in &incoming_pdu.prev_events {
-            let prev_event = if let Ok(Some(pdu)) = crate::room::timeline::get_pdu(prev_eventid) {
+            let prev_event = if let Ok(Some(pdu)) = crate::room::timeline::get_pdu(prev_eventid, &mut *db::connect()?) {
                 pdu
             } else {
                 okay = false;
                 break;
             };
 
-            let sstate_hash = if let Ok(Some(s)) = crate::room::state::get_pdu_frame_id(prev_eventid) {
+            let sstate_hash = if let Ok(Some(s)) = crate::room::state::get_pdu_frame_id(prev_eventid, &mut *db::connect()?) {
                 s
             } else {
                 okay = false;
@@ -471,7 +471,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
                 if let Some(state_key) = &prev_event.state_key {
                     let state_key_id =
-                        crate::room::state::ensure_field_id(&prev_event.kind.to_string().into(), state_key)?;
+                        crate::room::state::ensure_field_id(&prev_event.kind.to_string().into(), state_key, &mut *db::connect()?)?;
                     leaf_state.insert(state_key_id, Arc::from(&*prev_event.event_id));
                     // Now it's the state after the pdu
                 }
@@ -494,7 +494,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 }
 
                 for starting_event in starting_events {
-                    auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, &starting_event)?);
+                    auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, &starting_event, &mut *db::connect()?)?);
                 }
 
                 fork_states.push(state);
@@ -517,7 +517,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                         .into_iter()
                         .map(|((event_type, state_key), event_id)| {
                             let state_key_id =
-                                crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                                crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key, &mut *db::connect()?)?;
                             Ok((state_key_id, event_id))
                         })
                         .collect::<AppResult<_>>()?,
@@ -563,7 +563,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                         .clone()
                         .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
 
-                    let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), &state_key)?;
+                    let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), &state_key, &mut *db::connect()?)?;
 
                     match state.entry(state_key_id) {
                         hash_map::Entry::Vacant(v) => {
@@ -578,7 +578,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 }
 
                 // The original create event must still be in the state
-                let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "")?;
+                let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "", &mut *db::connect()?)?;
 
                 if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
                     return Err(AppError::internal("Incoming event refers to wrong create event."));
@@ -605,7 +605,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             crate::room::state::ensure_field_id(&k.to_string().into(), s)
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
-                .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok().flatten())
+                .and_then(|event_id| crate::room::timeline::get_pdu(event_id, &mut *db::connect()?).ok().flatten())
         },
     )
     .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
@@ -729,6 +729,7 @@ fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, Arc<EventId>>,
+    conn: &mut PgConnection
 ) -> AppResult<Arc<HashSet<CompressedStateEvent>>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?
@@ -751,7 +752,7 @@ fn resolve_state(
         .map(|map| {
             map.into_iter()
                 .filter_map(|(k, event_id)| {
-                    crate::room::state::get_field(k)
+                    crate::room::state::get_field(k, conn)
                         .map(
                             |DbRoomStateField {
                                  event_type, state_key, ..

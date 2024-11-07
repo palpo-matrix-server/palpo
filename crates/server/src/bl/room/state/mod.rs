@@ -107,7 +107,7 @@ pub fn force_state(
                     &user_id,
                     membership,
                     &pdu.sender,
-                    None,
+                    None, &mut *db::connect()?
                 )?;
             }
             TimelineEventType::SpaceChild => {
@@ -120,8 +120,8 @@ pub fn force_state(
         }
     }
 
-    crate::room::update_room_servers(room_id)?;
-    crate::room::update_room_currents(room_id)?;
+    crate::room::update_room_servers(room_id, &mut *db::connect()?)?;
+    crate::room::update_room_currents(room_id, &mut *db::connect()?)?;
 
     set_room_state(room_id, frame_id)?;
 
@@ -415,7 +415,7 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
                 .map_err(|_| AppError::internal("Invalid history visibility event in database."))
         })?;
 
-    let mut current_server_members = crate::room::get_joined_users(room_id, None)?
+    let mut current_server_members = crate::room::get_joined_users(room_id, None, conn)?
         .into_iter()
         .filter(|member| member.server_name() == origin);
 
@@ -445,8 +445,8 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
-#[tracing::instrument(skip(user_id, room_id, event_id))]
-pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
+#[tracing::instrument(skip(user_id, room_id, event_id, conn))]
+pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId, conn: &mut PgConnection) -> AppResult<bool> {
     let frame_id = match get_pdu_frame_id(event_id).unwrap() {
         Some(frame_id) => frame_id,
         None => return Ok(true),
@@ -460,7 +460,7 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
         return Ok(*visibility);
     }
 
-    let currently_member = crate::room::is_joined(&user_id, &room_id)?;
+    let currently_member = crate::room::is_joined(&user_id, &room_id, conn)?;
 
     let history_visibility =
         get_pdu(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(Ok(HistoryVisibility::Shared), |s| {
@@ -511,9 +511,13 @@ impl UserCanSeeEvent {
 }
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
-#[tracing::instrument(skip(user_id, room_id))]
-pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<UserCanSeeEvent> {
-    let currently_member = crate::room::is_joined(&user_id, &room_id)?;
+#[tracing::instrument(skip(user_id, room_id, conn))]
+pub fn user_can_see_state_events(
+    user_id: &UserId,
+    room_id: &RoomId,
+    conn: &mut PgConnection,
+) -> AppResult<UserCanSeeEvent> {
+    let currently_member = crate::room::is_joined(&user_id, &room_id, conn)?;
 
     let history_visibility = get_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
         Ok(HistoryVisibility::Shared),
@@ -531,7 +535,7 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .select(room_users::event_sn)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .optional()?;
     if let Some(leave_sn) = leave_sn {
         Ok(UserCanSeeEvent::Until(leave_sn))
@@ -594,46 +598,46 @@ pub fn get_state(
     room_id: &RoomId,
     event_type: &StateEventType,
     state_key: &str,
-    until_sn: Option<i64>,
+    until_sn: Option<i64>, conn: &mut PgConnection
 ) -> AppResult<Option<PduEvent>> {
-    let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+    let Some(frame_id) = get_room_frame_id(room_id, until_sn, conn)? else {
         return Ok(None);
     };
-    let event_id = get_state_event_id(frame_id, event_type, state_key)?;
+    let event_id = get_state_event_id(frame_id, event_type, state_key, conn)?;
     if let Some(event_id) = event_id {
-        crate::room::timeline::get_pdu(&event_id)
+        crate::room::timeline::get_pdu(&event_id, conn)
     } else {
         Ok(None)
     }
 }
 
-pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<String>> {
-    get_state(&room_id, &StateEventType::RoomName, "", None)?.map_or(Ok(None), |s| {
+pub fn get_name(room_id: &RoomId, until_sn: Option<i64>, conn: &mut PgConnection) -> AppResult<Option<String>> {
+    get_state(&room_id, &StateEventType::RoomName, "", None, conn)?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomNameEventContent| Some(c.name))
             .map_err(|_| AppError::internal("Invalid room name event in database."))
     })
 }
 
-pub fn get_avatar(room_id: &RoomId) -> AppResult<Option<RoomAvatarEventContent>> {
-    get_state(&room_id, &StateEventType::RoomAvatar, "", None)?.map_or(Ok(None), |s| {
+pub fn get_avatar(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Option<RoomAvatarEventContent>> {
+    get_state(&room_id, &StateEventType::RoomAvatar, "", None, conn)?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room avatar event in database."))
     })
 }
 
-pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMemberEventContent>> {
-    get_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)?.map_or(Ok(None), |s| {
+pub fn get_member(room_id: &RoomId, user_id: &UserId, conn: &mut PgConnection) -> AppResult<Option<RoomMemberEventContent>> {
+    get_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None, conn)?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room member event in database."))
     })
 }
 
-#[tracing::instrument]
-pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
+#[tracing::instrument(skip(conn))]
+pub fn get_invite_state(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .select(room_users::state_data)
-        .first::<Option<JsonValue>>(&mut *db::connect()?)
+        .first::<Option<JsonValue>>(conn)
         .optional()?
         .flatten()
     {
@@ -643,7 +647,7 @@ pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<
     }
 }
 
-pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) -> AppResult<bool> {
+pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId, conn: &mut PgConnection) -> AppResult<bool> {
     let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
     let new_event = PduBuilder {
@@ -654,7 +658,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         redacts: None,
     };
 
-    Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
+    Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id, conn).is_ok())
 }
 
 // #[tracing::instrument]

@@ -10,7 +10,8 @@ use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{EventId, OwnedUserId};
 use crate::{
-    empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent,
+    db, empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
+    PduEvent,
 };
 
 pub fn router_v1() -> Router {
@@ -164,8 +165,9 @@ fn invite_user(
 
     invite_state.push(pdu.to_stripped_state_event());
 
+    let conn = &mut *db::connect()?;
     // If we are active in the room, the remote server will notify us about the join via /send
-    if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
+    if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id, conn)? {
         crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -174,6 +176,7 @@ fn invite_user(
             MembershipState::Invite,
             &sender,
             Some(invite_state),
+            conn,
         )?;
     }
 

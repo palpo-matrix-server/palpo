@@ -12,22 +12,22 @@ pub struct DbRoomStateField {
     pub state_key: String,
 }
 
-pub fn get_field(field_id: i64) -> AppResult<DbRoomStateField> {
+pub fn get_field(field_id: i64, conn: &mut PgConnection) -> AppResult<DbRoomStateField> {
     room_state_fields::table
         .find(field_id)
-        .first::<DbRoomStateField>(&mut *db::connect()?)
+        .first::<DbRoomStateField>(conn)
         .map_err(Into::into)
 }
-pub fn get_field_id(event_type: &StateEventType, state_key: &str) -> AppResult<Option<i64>> {
+pub fn get_field_id(event_type: &StateEventType, state_key: &str, conn: &mut PgConnection) -> AppResult<Option<i64>> {
     room_state_fields::table
         .filter(room_state_fields::event_type.eq(event_type))
         .filter(room_state_fields::state_key.eq(state_key))
         .select(room_state_fields::id)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .optional()
         .map_err(Into::into)
 }
-pub fn ensure_field_id(event_type: &StateEventType, state_key: &str) -> AppResult<i64> {
+pub fn ensure_field_id(event_type: &StateEventType, state_key: &str, conn: &mut PgConnection) -> AppResult<i64> {
     let id = diesel::insert_into(room_state_fields::table)
         .values((
             room_state_fields::event_type.eq(event_type),
@@ -35,7 +35,7 @@ pub fn ensure_field_id(event_type: &StateEventType, state_key: &str) -> AppResul
         ))
         .on_conflict_do_nothing()
         .returning(room_state_fields::id)
-        .get_result::<i64>(&mut *db::connect()?)
+        .get_result::<i64>(conn)
         .optional()?;
     if let Some(id) = id {
         Ok(id)
@@ -44,11 +44,11 @@ pub fn ensure_field_id(event_type: &StateEventType, state_key: &str) -> AppResul
             .filter(room_state_fields::event_type.eq(event_type))
             .filter(room_state_fields::state_key.eq(state_key))
             .select(room_state_fields::id)
-            .first::<i64>(&mut *db::connect()?)
+            .first::<i64>(conn)
             .map_err(Into::into)
     }
 }
-pub fn ensure_field(event_type: &StateEventType, state_key: &str) -> AppResult<DbRoomStateField> {
+pub fn ensure_field(event_type: &StateEventType, state_key: &str, conn: &mut PgConnection) -> AppResult<DbRoomStateField> {
     let id = diesel::insert_into(room_state_fields::table)
         .values((
             room_state_fields::event_type.eq(event_type),
@@ -56,18 +56,18 @@ pub fn ensure_field(event_type: &StateEventType, state_key: &str) -> AppResult<D
         ))
         .on_conflict_do_nothing()
         .returning(room_state_fields::id)
-        .get_result::<i64>(&mut *db::connect()?)
+        .get_result::<i64>(conn)
         .optional()?;
     if let Some(id) = id {
         room_state_fields::table
             .find(id)
-            .first::<DbRoomStateField>(&mut *db::connect()?)
+            .first::<DbRoomStateField>(conn)
             .map_err(Into::into)
     } else {
         room_state_fields::table
             .filter(room_state_fields::event_type.eq(event_type))
             .filter(room_state_fields::state_key.eq(state_key))
-            .first::<DbRoomStateField>(&mut *db::connect()?)
+            .first::<DbRoomStateField>(conn)
             .map_err(Into::into)
     }
 }

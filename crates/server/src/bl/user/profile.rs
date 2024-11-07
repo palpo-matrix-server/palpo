@@ -28,11 +28,15 @@ pub struct NewDbProfile {
     pub blurhash: Option<String>,
 }
 
-pub fn get_profile(user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<Option<DbProfile>> {
+pub fn get_profile(
+    user_id: &UserId,
+    room_id: Option<&RoomId>,
+    conn: &mut PgConnection,
+) -> AppResult<Option<DbProfile>> {
     user_profiles::table
         .filter(user_profiles::user_id.eq(user_id.as_str()))
         .filter(user_profiles::room_id.eq(room_id))
-        .first::<DbProfile>(&mut *db::connect()?)
+        .first::<DbProfile>(conn)
         .optional()
         .map_err(Into::into)
 }

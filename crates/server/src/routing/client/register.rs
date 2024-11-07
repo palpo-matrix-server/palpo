@@ -162,6 +162,7 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             occur_sn: None,
         },
         true,
+        &mut *db::connect()?,
     )?;
 
     // Initial account data

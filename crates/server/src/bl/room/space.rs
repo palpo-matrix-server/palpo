@@ -1,6 +1,7 @@
 use std::sync::{LazyLock, Mutex};
 
-use crate::room::state::DbRoomStateField;
+use crate::{db, room::state::DbRoomStateField};
+use diesel::PgConnection;
 use lru_cache::LruCache;
 use tracing::{debug, error, warn};
 
@@ -83,7 +84,7 @@ pub async fn get_hierarchy(
                     //CachedJoinRule::Simplified(s) => {
                     //self.handle_simplified_join_rule(s, authed.user_id(), &current_room)?
                     //}
-                    CachedJoinRule::Full(f) => handle_join_rule(f, user_id, &current_room)?,
+                    CachedJoinRule::Full(f) => handle_join_rule(f, user_id, &current_room, &mut *db::connect()?)?,
                 };
                 if allowed {
                     if left_to_skip > 0 {
@@ -220,7 +221,7 @@ pub async fn get_hierarchy(
                     SpaceRoomJoinRule::Public => JoinRule::Public,
                     _ => return Err(AppError::public("Unknown join rule")),
                 };
-                if handle_join_rule(&join_rule, user_id, &current_room)? {
+                if handle_join_rule(&join_rule, user_id, &current_room, &mut *db::connect()?)? {
                     if left_to_skip > 0 {
                         left_to_skip -= 1;
                     } else {
@@ -270,7 +271,7 @@ pub async fn get_hierarchy(
     })
 }
 
-fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -> AppResult<SpaceHierarchyRoomsChunk> {
+fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>, conn: &mut PgConnection) -> AppResult<SpaceHierarchyRoomsChunk> {
     Ok(SpaceHierarchyRoomsChunk {
         canonical_alias: crate::room::state::get_state(&room_id, &StateEventType::RoomCanonicalAlias, "", None)?
             .map_or(Ok(None), |s| {
@@ -279,7 +280,7 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
                     .map_err(|_| AppError::internal("Invalid canonical alias event in database."))
             })?,
         name: crate::room::state::get_name(&room_id, None)?,
-        num_joined_members: crate::room::joined_member_count(&room_id)?
+        num_joined_members: crate::room::joined_member_count(&room_id, conn)?
             .try_into()
             .expect("user count should not be that big"),
         room_id: room_id.to_owned(),
@@ -332,7 +333,7 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
                 .transpose()?
                 .unwrap_or(JoinRule::Invite);
 
-            if !handle_join_rule(&join_rule, user_id, room_id)? {
+            if !handle_join_rule(&join_rule, user_id, room_id, &mut *db::connect()?)? {
                 debug!("User is not allowed to see room {room_id}");
                 // This error will be caught later
                 return Err(MatrixError::forbidden("User is not allowed to see the room").into());
@@ -368,19 +369,29 @@ fn translate_joinrule(join_rule: &JoinRule) -> AppResult<SpaceRoomJoinRule> {
     }
 }
 
-fn handle_simplified_join_rule(join_rule: &SpaceRoomJoinRule, user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+fn handle_simplified_join_rule(
+    join_rule: &SpaceRoomJoinRule,
+    user_id: &UserId,
+    room_id: &RoomId,
+    conn: &mut PgConnection,
+) -> AppResult<bool> {
     let allowed = match join_rule {
         SpaceRoomJoinRule::Public => true,
         SpaceRoomJoinRule::Knock => true,
-        SpaceRoomJoinRule::Invite => crate::room::is_joined(user_id, &room_id)?,
+        SpaceRoomJoinRule::Invite => crate::room::is_joined(user_id, &room_id, conn)?,
         _ => false,
     };
 
     Ok(allowed)
 }
 
-fn handle_join_rule(join_rule: &JoinRule, user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    if handle_simplified_join_rule(&translate_joinrule(join_rule)?, user_id, room_id)? {
+fn handle_join_rule(
+    join_rule: &JoinRule,
+    user_id: &UserId,
+    room_id: &RoomId,
+    conn: &mut PgConnection,
+) -> AppResult<bool> {
+    if handle_simplified_join_rule(&translate_joinrule(join_rule)?, user_id, room_id, conn)? {
         return Ok(true);
     }
 
@@ -389,7 +400,7 @@ fn handle_join_rule(join_rule: &JoinRule, user_id: &UserId, room_id: &RoomId) ->
             for rule in &r.allow {
                 match rule {
                     join_rules::AllowRule::RoomMembership(rm) => {
-                        if let Ok(true) = crate::room::is_joined(user_id, &rm.room_id) {
+                        if let Ok(true) = crate::room::is_joined(user_id, &rm.room_id, conn) {
                             return Ok(true);
                         }
                     }

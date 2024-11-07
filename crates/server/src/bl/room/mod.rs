@@ -128,7 +128,7 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 }
 
 /// Update current membership data.
-#[tracing::instrument(skip(last_state))]
+#[tracing::instrument(skip(last_state, conn))]
 pub fn update_membership(
     event_id: &EventId,
     event_sn: i64,
@@ -137,11 +137,12 @@ pub fn update_membership(
     membership: MembershipState,
     sender: &UserId,
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
+    conn: &mut PgConnection,
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
     if user_id.server_name() != &conf.server_name {
-        crate::user::create_user(user_id, None)?;
+        crate::user::create_user(user_id, None, conn)?;
         // TODO: display_name, avatar url
     }
 
@@ -154,7 +155,7 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !once_joined(user_id, room_id)? {
+            if !once_joined(user_id, room_id, conn)? {
                 // Add the user ID to the join list then
                 // db::mark_as_once_joined(user_id, room_id)?;
 
@@ -230,7 +231,7 @@ pub fn update_membership(
                     };
                 }
             }
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
+            conn.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
                 //     .filter(room_users::user_id.eq(user_id))
@@ -277,7 +278,7 @@ pub fn update_membership(
                 return Ok(());
             }
 
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
+            conn.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
                 //     .filter(room_users::user_id.eq(user_id))
@@ -310,7 +311,7 @@ pub fn update_membership(
             })?;
         }
         MembershipState::Leave | MembershipState::Ban => {
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
+            conn.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
                 //     .filter(room_users::user_id.eq(user_id))
@@ -344,37 +345,37 @@ pub fn update_membership(
         }
         _ => {}
     }
-    update_room_servers(room_id)?;
-    update_room_currents(room_id)?;
+    update_room_servers(room_id, conn)?;
+    update_room_currents(room_id, conn)?;
     Ok(())
 }
 
-pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
+pub fn update_room_currents(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<()> {
     let joined_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
         .count()
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<i64>(conn)?;
     let invited_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("invite"))
         .count()
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<i64>(conn)?;
     let left_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("leave"))
         .count()
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<i64>(conn)?;
     let banned_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("banned"))
         .count()
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<i64>(conn)?;
     let knocked_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("knocked"))
         .count()
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<i64>(conn)?;
 
     let current = DbRoomCurrent {
         room_id: room_id.to_owned(),
@@ -392,17 +393,17 @@ pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
         .on_conflict(stats_room_currents::room_id)
         .do_update()
         .set(&current)
-        .execute(&mut db::connect()?)?;
+        .execute(conn)?;
 
     Ok(())
 }
 
-pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
+pub fn update_room_servers(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<()> {
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .select(room_users::user_id)
         .distinct()
-        .load::<OwnedUserId>(&mut *db::connect()?)?
+        .load::<OwnedUserId>(conn)?
         .into_iter()
         .map(|user_id| user_id.server_name().to_owned())
         .collect::<Vec<OwnedServerName>>();
@@ -412,7 +413,7 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
             .filter(room_servers::room_id.eq(room_id))
             .filter(room_servers::server_id.ne_all(&joined_servers)),
     )
-    .execute(&mut db::connect()?)?;
+    .execute(conn)?;
 
     for joined_server in joined_servers {
         diesel::insert_into(room_servers::table)
@@ -421,20 +422,20 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
                 room_servers::server_id.eq(joined_server),
             ))
             .on_conflict_do_nothing()
-            .execute(&mut db::connect()?)?;
+            .execute(conn)?;
     }
 
     Ok(())
 }
-pub fn get_our_real_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
+pub fn get_our_real_users(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Vec<OwnedUserId>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .select(room_users::user_id)
-        .load::<OwnedUserId>(&mut *db::connect()?)
+        .load::<OwnedUserId>(conn)
         .map_err(Into::into)
 }
 
-pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> AppResult<bool> {
+pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo, conn: &mut PgConnection) -> AppResult<bool> {
     let maybe = APPSERVICE_IN_ROOM_CACHE
         .read()
         .unwrap()
@@ -449,11 +450,11 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
             UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), crate::server_name())
                 .ok();
 
-        let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id).unwrap_or(false)) || {
+        let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id, conn).unwrap_or(false)) || {
             let user_ids = room_users::table
                 .filter(room_users::room_id.eq(room_id))
                 .select(room_users::user_id)
-                .load::<String>(&mut *db::connect()?)?;
+                .load::<String>(conn)?;
             user_ids
                 .iter()
                 .any(|user_id| appservice.users.is_match(user_id.as_str()))
@@ -469,49 +470,52 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
         Ok(in_room)
     }
 }
-pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
+pub fn is_server_in_room(server: &ServerName, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<bool> {
     let query = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.eq(server));
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+    diesel_exists!(query, conn).map_err(Into::into)
 }
-pub fn get_room_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+pub fn get_room_servers(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Vec<OwnedServerName>> {
     room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .select(room_servers::server_id)
-        .load::<OwnedServerName>(&mut *db::connect()?)
+        .load::<OwnedServerName>(conn)
         .map_err(Into::into)
 }
 
-pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {
+pub fn joined_member_count(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<u64> {
     stats_room_currents::table
         .find(room_id)
         .select(stats_room_currents::joined_members)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .optional()
         .map(|c| c.unwrap_or_default() as u64)
         .map_err(Into::into)
 }
 
-#[tracing::instrument]
-pub fn invited_member_count(room_id: &RoomId) -> AppResult<u64> {
+#[tracing::instrument(skip(conn))]
+pub fn invited_member_count(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<u64> {
     stats_room_currents::table
         .find(room_id)
         .select(stats_room_currents::invited_members)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .optional()
         .map(|c| c.unwrap_or_default() as u64)
         .map_err(Into::into)
 }
 
 /// Returns an iterator over all rooms a user left.
-#[tracing::instrument]
-pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
+#[tracing::instrument(skip(conn))]
+pub fn rooms_left(
+    user_id: &UserId,
+    conn: &mut PgConnection,
+) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
     let room_event_ids = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq(MembershipState::Leave.to_string()))
         .select((room_users::room_id, room_users::event_id))
-        .load::<(OwnedRoomId, OwnedEventId)>(&mut *db::connect()?)
+        .load::<(OwnedRoomId, OwnedEventId)>(conn)
         .map(|rows| {
             let mut map: HashMap<OwnedRoomId, Vec<OwnedEventId>> = HashMap::new();
             for (room_id, event_id) in rows {
@@ -524,7 +528,7 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
         let events = event_datas::table
             .filter(event_datas::event_id.eq_any(&event_ids))
             .select(event_datas::json_data)
-            .load::<JsonValue>(&mut *db::connect()?)?
+            .load::<JsonValue>(conn)?
             .into_iter()
             .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())
             .collect::<Vec<_>>();
@@ -533,93 +537,97 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
     Ok(room_events)
 }
 
-#[tracing::instrument]
-pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+#[tracing::instrument(skip(conn))]
+pub fn once_joined(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<bool> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq(MembershipState::Join.to_string()));
 
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+    diesel_exists!(query, conn).map_err(Into::into)
 }
 
-#[tracing::instrument]
-pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+#[tracing::instrument(skip(conn))]
+pub fn is_joined(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<bool> {
     let joined = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .order_by(room_users::id.desc())
         .select(room_users::membership)
-        .first::<String>(&mut *db::connect()?)
+        .first::<String>(conn)
         .map(|m| m == MembershipState::Join.to_string())
         .optional()?
         .unwrap_or(false);
     Ok(joined)
 }
 
-#[tracing::instrument]
-pub fn is_invited(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+#[tracing::instrument(skip(conn))]
+pub fn is_invited(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<bool> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq(MembershipState::Invite.to_string()));
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+    diesel_exists!(query, conn).map_err(Into::into)
 }
 
-#[tracing::instrument]
-pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+#[tracing::instrument(skip(conn))]
+pub fn is_left(user_id: &UserId, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<bool> {
     let left = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .order_by(room_users::id.desc())
         .select(room_users::membership)
-        .first::<String>(&mut *db::connect()?)
+        .first::<String>(conn)
         .map(|m| m == MembershipState::Leave.to_string())
         .optional()?
         .unwrap_or(true);
     Ok(left)
 }
 
-pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn get_joined_users(
+    room_id: &RoomId,
+    until_sn: Option<i64>,
+    conn: &mut PgConnection,
+) -> AppResult<Vec<OwnedUserId>> {
     if let Some(until_sn) = until_sn {
         room_users::table
             .filter(room_users::event_sn.le(until_sn))
             .filter(room_users::room_id.eq(room_id))
             .filter(room_users::membership.eq(MembershipState::Join.to_string()))
             .select(room_users::user_id)
-            .load(&mut db::connect()?)
+            .load(conn)
             .map_err(Into::into)
     } else {
         room_users::table
             .filter(room_users::room_id.eq(room_id))
             .filter(room_users::membership.eq(MembershipState::Join.to_string()))
             .select(room_users::user_id)
-            .load(&mut db::connect()?)
+            .load(conn)
             .map_err(Into::into)
     }
 }
 
 /// Returns an iterator of all servers participating in this room.
-pub fn participating_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+pub fn participating_servers(room_id: &RoomId, conn: &mut PgConnection) -> AppResult<Vec<OwnedServerName>> {
     room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .select(room_servers::server_id)
-        .load(&mut db::connect()?)
+        .load(conn)
         .map_err(Into::into)
 }
 
-pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
+pub fn public_room_ids(conn: &mut PgConnection) -> AppResult<Vec<OwnedRoomId>> {
     rooms::table
         .filter(rooms::is_public.eq(true))
         .select(rooms::id)
-        .load(&mut db::connect()?)
+        .load(conn)
         .map_err(Into::into)
 }
 
-pub fn server_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
+pub fn server_rooms(server_name: &ServerName, conn: &mut PgConnection) -> AppResult<Vec<OwnedRoomId>> {
     room_servers::table
         .filter(room_servers::server_id.eq(server_name))
         .select(room_servers::room_id)
-        .load::<OwnedRoomId>(&mut *db::connect()?)
+        .load::<OwnedRoomId>(conn)
         .map_err(Into::into)
 }

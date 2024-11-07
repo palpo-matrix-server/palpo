@@ -8,7 +8,7 @@ use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::ProfileField;
 use crate::core::user::ProfileResBody;
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{db, empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -20,13 +20,21 @@ pub fn router() -> Router {
 // #GET /_matrix/federation/v1/query/profile
 /// Gets information on a profile.
 #[endpoint]
-async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
+fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
+    println!("================profile 0  {:?}", args);
+
+    if args.user_id.server_name() != crate::config().server_name {
+        return Err(MatrixError::invalid_param("Tried to access user from other server.").into());
+    }
+
     let mut display_name = None;
     let mut avatar_url = None;
     let mut blurhash = None;
 
-    let profile = crate::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
+    let profile = crate::user::get_profile(&args.user_id, None, &mut *db::connect()?)?
+        .ok_or(MatrixError::not_found("Profile not found."))?;
 
+    println!("================profile 2  {:#?}", profile);
     match &args.field {
         Some(ProfileField::DisplayName) => display_name = profile.display_name.clone(),
         Some(ProfileField::AvatarUrl) => {
@@ -42,6 +50,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
         }
     }
 
+    println!("================profile 3");
     json_ok(ProfileResBody {
         blurhash,
         display_name,

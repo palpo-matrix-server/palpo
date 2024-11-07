@@ -103,10 +103,10 @@ pub fn gen_event_id_canonical_json(
     Ok((event_id, value))
 }
 
-pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
+pub fn get_event_sn(event_id: &EventId, conn: &mut PgConnection) -> AppResult<i64> {
     events::table
         .find(event_id)
         .select(events::sn)
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(conn)
         .map_err(Into::into)
 }

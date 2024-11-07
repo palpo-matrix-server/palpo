@@ -6,7 +6,7 @@ use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingE
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::UnixMillis;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{db, empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -38,7 +38,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
 
-    if !crate::room::is_server_in_room(authed.server_name(), room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room").into());
     }
 
@@ -61,7 +61,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<EventAuthorizationResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
@@ -108,7 +108,7 @@ fn missing_events(
 ) -> JsonResult<MissingEventResBody> {
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
-    if !crate::room::is_server_in_room(authed.server_name(), &room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), &room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room").into());
     }
 

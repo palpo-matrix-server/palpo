@@ -74,7 +74,7 @@ pub fn cache_auth_chain(event_id: &EventId, auth_chain: Arc<HashSet<i64>>) -> Ap
     Ok(())
 }
 
-pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<HashSet<Arc<EventId>>> {
+pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId, conn: &mut PgConnection) -> AppResult<HashSet<Arc<EventId>>> {
     let mut full_auth_chain = HashSet::new();
 
     if let Some(cached) = crate::room::auth_chain::get_cached_event_auth_chain(event_id)? {
@@ -84,7 +84,7 @@ pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<HashSet
         let mut found = HashSet::new();
 
         while let Some(event_id) = todo.pop() {
-            match crate::room::timeline::get_pdu(&event_id) {
+            match crate::room::timeline::get_pdu(&event_id, conn) {
                 Ok(Some(pdu)) => {
                     if pdu.room_id != room_id {
                         return Err(MatrixError::forbidden("Evil event in db").into());
@@ -93,7 +93,7 @@ pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<HashSet
                         let point_id = crate::room::state::ensure_point(
                             room_id,
                             auth_event,
-                            crate::event::get_event_sn(&auth_event)?,
+                            crate::event::get_event_sn(&auth_event)?,conn
                         )?;
 
                         if !found.contains(&point_id) {
@@ -117,6 +117,6 @@ pub fn get_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<HashSet
 
     Ok(full_auth_chain
         .into_iter()
-        .filter_map(move |sid| crate::room::state::get_point_event_id(sid).ok())
+        .filter_map(move |sid| crate::room::state::get_point_event_id(sid, conn).ok())
         .collect())
 }

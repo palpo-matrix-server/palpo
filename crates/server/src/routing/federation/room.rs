@@ -6,7 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{db, empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -27,7 +27,7 @@ pub fn router() -> Router {
 async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
@@ -113,7 +113,7 @@ fn get_state_at_event(
 ) -> JsonResult<RoomStateIdsResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 

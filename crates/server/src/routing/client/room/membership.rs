@@ -89,18 +89,19 @@ pub(super) fn joined_members(
 ) -> JsonResult<JoinedMembersResBody> {
     let authed = depot.authed_info()?;
 
-    let can_see = state::user_can_see_state_events(&authed.user_id(), &room_id)?;
+    let conn = &mut db::connect()?;
+    let can_see = state::user_can_see_state_events(&authed.user_id(), &room_id, conn)?;
     if can_see == UserCanSeeEvent::Never {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id, Some(can_see.as_until_sn()))? {
+    for user_id in crate::room::get_joined_users(&room_id, Some(can_see.as_until_sn()), conn)? {
         if let Some(DbProfile {
             display_name,
             avatar_url,
             ..
-        }) = crate::user::get_profile(&user_id, None)?
+        }) = crate::user::get_profile(&user_id, None, conn)?
         {
             joined.insert(user_id, RoomMember::new(display_name, avatar_url));
         }

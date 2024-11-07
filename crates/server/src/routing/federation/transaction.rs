@@ -14,7 +14,7 @@ use crate::core::identifiers::*;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::UnixMillis;
 use crate::user::NewDbPresence;
-use crate::{json_ok, AppError, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{db, json_ok, AppError, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("send/<txn_id>").put(send_message)
@@ -120,6 +120,7 @@ async fn send_message(
                             occur_sn: None,
                         },
                         true,
+                        &mut *db::connect()?,
                     )?;
                     // for room_id in crate::user::joined_rooms(&update.user_id, 0)? {
                     //     crate::user::set_presence(NewDbPresence {
@@ -167,7 +168,7 @@ async fn send_message(
                 }
             }
             Edu::Typing(typing) => {
-                if crate::room::is_joined(&typing.user_id, &typing.room_id)? {
+                if crate::room::is_joined(&typing.user_id, &typing.room_id, &mut *db::connect()?)? {
                     if typing.typing {
                         crate::room::typing::add_typing(
                             &typing.user_id,

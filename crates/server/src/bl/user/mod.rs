@@ -139,20 +139,24 @@ pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, Stri
     LazyLock::new(|| Default::default());
 
 /// Check if a user has an account on this homeserver.
-pub fn user_exists(user_id: &UserId) -> AppResult<bool> {
+pub fn user_exists(user_id: &UserId, conn: &mut PgConnection) -> AppResult<bool> {
     let query = users::table.find(user_id);
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+    diesel_exists!(query, conn).map_err(Into::into)
 }
 
-pub fn get_user(user_id: &UserId) -> AppResult<Option<DbUser>> {
+pub fn get_user(user_id: &UserId, conn: &mut PgConnection) -> AppResult<Option<DbUser>> {
     users::table
         .find(user_id)
-        .first::<DbUser>(&mut *db::connect()?)
+        .first::<DbUser>(conn)
         .optional()
         .map_err(Into::into)
 }
 
-pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
+pub fn create_user(
+    user_id: impl Into<OwnedUserId>,
+    password: Option<&str>,
+    conn: &mut PgConnection,
+) -> AppResult<DbUser> {
     let user_id = user_id.into();
     let user = diesel::insert_into(users::table)
         .values(NewDbUser {
@@ -163,7 +167,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
             appservice_id: None,
             created_at: UnixMillis::now(),
         })
-        .get_result::<DbUser>(&mut *db::connect()?)?;
+        .get_result::<DbUser>(conn)?;
     if let Some(password) = password {
         let hash = crate::utils::hash_password(password)?;
         diesel::insert_into(user_passwords::table)
@@ -172,7 +176,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
                 hash,
                 created_at: UnixMillis::now(),
             })
-            .execute(&mut db::connect()?)?;
+            .execute(conn)?;
     }
     Ok(user)
 }

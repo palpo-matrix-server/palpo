@@ -46,7 +46,12 @@ pub struct NewDbPresence {
 
 impl DbPresence {
     /// Creates a PresenceEvent from available data.
-    pub fn to_presence_event(&self, user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<PresenceEvent> {
+    pub fn to_presence_event(
+        &self,
+        user_id: &UserId,
+        room_id: Option<&RoomId>,
+        conn: &mut PgConnection,
+    ) -> AppResult<PresenceEvent> {
         let now = UnixMillis::now();
         let state = self.state.as_deref().map(PresenceState::from).unwrap_or_default();
         let last_active_ago = if state == PresenceState::Online {
@@ -56,9 +61,9 @@ impl DbPresence {
                 .map(|last_active_at| now.0.saturating_sub(last_active_at.0))
         };
 
-        let mut profile = crate::user::get_profile(user_id, room_id)?;
-        if profile.is_none() && room_id.is_some() {
-            profile = crate::user::get_profile(user_id, None)?;
+        let mut profile = crate::user::get_profile(user_id, room_id, conn)?;
+        if profile.is_none() {
+            profile = crate::user::get_profile(user_id, None, conn)?;
         }
         Ok(PresenceEvent {
             sender: user_id.to_owned(),
@@ -75,7 +80,7 @@ impl DbPresence {
 }
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
-pub fn ping_presence(user_id: &UserId, state: &PresenceState) -> AppResult<()> {
+pub fn ping_presence(user_id: &UserId, state: &PresenceState, conn: &mut PgConnection) -> AppResult<()> {
     set_presence(
         NewDbPresence {
             user_id: user_id.to_owned(),
@@ -89,66 +94,70 @@ pub fn ping_presence(user_id: &UserId, state: &PresenceState) -> AppResult<()> {
             occur_sn: None,
         },
         false,
+        conn,
     )
 }
-pub fn get_last_presence(user_id: &UserId) -> AppResult<Option<DbPresence>> {
+pub fn get_last_presence(user_id: &UserId, conn: &mut PgConnection) -> AppResult<Option<DbPresence>> {
     user_presences::table
         .filter(user_presences::user_id.eq(user_id))
-        .first::<DbPresence>(&mut *db::connect()?)
+        .first::<DbPresence>(conn)
         .optional()
         .map_err(Into::into)
 }
 
 /// Adds a presence event which will be saved until a new event replaces it.
-pub fn set_presence(mut presence: NewDbPresence, force: bool) -> AppResult<()> {
+pub fn set_presence(mut presence: NewDbPresence, force: bool, conn: &mut PgConnection) -> AppResult<()> {
     if force {
-        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-            .execute(&mut db::connect()?)?;
+        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id))).execute(conn)?;
         diesel::insert_into(user_presences::table)
             .values(&presence)
             .on_conflict(user_presences::user_id)
             .do_update()
             .set(&presence)
-            .execute(&mut db::connect()?)?;
+            .execute(conn)?;
     } else {
         let old_state = user_presences::table
             .filter(user_presences::user_id.eq(&presence.user_id))
             .select(user_presences::state)
-            .first::<Option<String>>(&mut db::connect()?)
+            .first::<Option<String>>(conn)
             .optional()?
             .flatten();
         if old_state != presence.state && presence.state.is_some() {
             diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-                .execute(&mut db::connect()?)?;
+                .execute(conn)?;
             diesel::insert_into(user_presences::table)
                 .values(&presence)
                 .on_conflict(user_presences::user_id)
                 .do_update()
                 .set(&presence)
-                .execute(&mut db::connect()?)?;
+                .execute(conn)?;
         } else {
             if presence.occur_sn.is_none() {
                 presence.occur_sn = Some(crate::next_sn()?);
             }
             diesel::update(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
                 .set(&presence)
-                .execute(&mut db::connect()?)?;
+                .execute(conn)?;
         }
     }
     Ok(())
 }
 
 /// Removes the presence record for the given user from the database.
-pub fn remove_presence(user_id: &UserId) -> AppResult<()> {
-    diesel::delete(user_presences::table.filter(user_presences::user_id.eq(user_id))).execute(&mut db::connect()?)?;
+pub fn remove_presence(user_id: &UserId, conn: &mut PgConnection) -> AppResult<()> {
+    diesel::delete(user_presences::table.filter(user_presences::user_id.eq(user_id))).execute(conn)?;
     Ok(())
 }
 
 /// Returns the most recent presence updates that happened after the event with id `since`.
-pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
+pub fn presences_since(
+    room_id: &RoomId,
+    since_sn: i64,
+    conn: &mut PgConnection,
+) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
     let presences = user_presences::table
         .filter(user_presences::occur_sn.ge(since_sn))
-        .load::<DbPresence>(&mut *db::connect()?)?;
+        .load::<DbPresence>(conn)?;
     presences
         .into_iter()
         .map(|presence| {

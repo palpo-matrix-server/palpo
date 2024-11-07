@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{user_id, UnixMillis};
 use crate::PduEvent;
-use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{db, json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("backfill/<room_id>").get(history)
@@ -17,7 +17,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     let authed = depot.authed_info()?;
     debug!("Got backfill request from: {}", authed.server_name());
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 

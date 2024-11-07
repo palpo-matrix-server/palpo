@@ -19,7 +19,7 @@ use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArg
 use crate::core::UnixMillis;
 use crate::room::state::UserCanSeeEvent;
 use crate::utils::HtmlEscape;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{db, empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 // #GET /_matrix/client/r0/rooms/{room_id}/state
 /// Get all state events for a room.
@@ -34,7 +34,7 @@ pub(super) fn get_state(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &room_id)?;
+    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &room_id, &mut *db::connect()?)?;
     if can_see == UserCanSeeEvent::Never {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
@@ -116,7 +116,8 @@ pub(super) fn state_for_key(
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
-    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
+    let can_see =
+        crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id, &mut *db::connect()?)?;
     if can_see == UserCanSeeEvent::Never {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
@@ -306,7 +307,7 @@ pub async fn send_typing(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_joined(authed.user_id(), &args.room_id)? {
+    if !crate::room::is_joined(authed.user_id(), &args.room_id, &mut *db::connect()?)? {
         return Err(MatrixError::forbidden("You are not in this room.").into());
     }
 

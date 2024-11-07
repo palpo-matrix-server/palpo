@@ -64,14 +64,14 @@ pub fn load_frame_info(
     }
 }
 
-pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<i64>> {
+pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>, conn: &mut PgConnection) -> AppResult<Option<i64>> {
     if let Some(until_sn) = until_sn {
         room_state_points::table
             .filter(room_state_points::room_id.eq(room_id))
             .filter(room_state_points::event_sn.le(until_sn))
             .select(room_state_points::frame_id)
             .order(room_state_points::event_sn.desc())
-            .first::<Option<i64>>(&mut *db::connect()?)
+            .first::<Option<i64>>(conn)
             .optional()
             .map(|v| v.flatten())
             .map_err(Into::into)
@@ -79,24 +79,24 @@ pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<O
         rooms::table
             .find(room_id)
             .select(rooms::state_frame_id)
-            .first::<Option<i64>>(&mut *db::connect()?)
+            .first::<Option<i64>>(conn)
             .optional()
             .map(|v| v.flatten())
             .map_err(Into::into)
     }
 }
 
-pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<Option<i64>> {
+pub fn get_pdu_frame_id(event_id: &EventId, conn: &mut PgConnection) -> AppResult<Option<i64>> {
     room_state_points::table
         .filter(room_state_points::event_id.eq(event_id))
         .select(room_state_points::frame_id)
-        .first::<Option<i64>>(&mut *db::connect()?)
+        .first::<Option<i64>>(conn)
         .optional()
         .map(|v| v.flatten())
         .map_err(Into::into)
 }
 /// Returns (state_hash, already_existed)
-pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
+pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>, conn: &mut PgConnection) -> AppResult<i64> {
     diesel::insert_into(room_state_frames::table)
         .values((
             room_state_frames::room_id.eq(room_id),
@@ -104,6 +104,6 @@ pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
         ))
         .on_conflict_do_nothing()
         .returning(room_state_frames::id)
-        .get_result(&mut *db::connect()?)
+        .get_result(conn)
         .map_err(Into::into)
 }

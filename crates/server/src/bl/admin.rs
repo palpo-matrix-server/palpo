@@ -342,7 +342,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 .load::<OwnedRoomId>(&mut *db::connect()?)?;
             let mut items = Vec::with_capacity(room_ids.len());
             for room_id in room_ids {
-                let members = crate::room::joined_member_count(&room_id)?;
+                let members = crate::room::joined_member_count(&room_id, &mut *db::connect()?)?;
                 items.push(format!("members: {} \t\tin room: {}", members, room_id));
             }
             let output = format!("Rooms:\n{}", items.join("\n"));
@@ -368,7 +368,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::GetAuthChain { event_id } => {
             let event_id = Arc::<EventId>::from(event_id);
-            if let Some(event) = crate::room::timeline::get_pdu_json(&event_id)? {
+            if let Some(event) = crate::room::timeline::get_pdu_json(&event_id, &mut *db::connect()?)? {
                 let room_id_str = event
                     .get("room_id")
                     .and_then(|val| val.as_str())
@@ -413,7 +413,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::GetPdu { event_id } => {
             let mut outlier = false;
-            let mut pdu_json = crate::room::timeline::get_pdu_json(&event_id)?;
+            let mut pdu_json = crate::room::timeline::get_pdu_json(&event_id, &mut *db::connect()?)?;
             if pdu_json.is_none() {
                 outlier = true;
                 pdu_json = crate::room::timeline::get_pdu_json(&event_id)?;
@@ -452,7 +452,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             };
 
             // Check if the specified user is valid
-            if !crate::user::user_exists(&user_id)?
+            if !crate::user::user_exists(&user_id, &mut *db::connect()?)?
                 || user_id == UserId::parse_with_server_name("palpo", &conf.server_name).expect("palpo user exists")
             {
                 return Ok(RoomMessageEventContent::text_plain(
@@ -487,13 +487,13 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                     "Userid {user_id} is not allowed due to historical"
                 )));
             }
-            if crate::user::user_exists(&user_id)? {
+            if crate::user::user_exists(&user_id, &mut *db::connect()?)? {
                 return Ok(RoomMessageEventContent::text_plain(format!(
                     "Userid {user_id} already exists"
                 )));
             }
             // Create user
-            crate::user::create_user(&user_id, Some(password.as_str()))?;
+            crate::user::create_user(&user_id, Some(password.as_str()), &mut *db::connect()?)?;
 
             // Default to pretty display_name
             let mut display_name = user_id.localpart().to_owned();
@@ -533,7 +533,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::DeactivateUser { leave_rooms, user_id } => {
             let user_id = Arc::<UserId>::from(user_id);
-            if crate::user::user_exists(&user_id)? {
+            if crate::user::user_exists(&user_id, &mut *db::connect()?)? {
                 RoomMessageEventContent::text_plain(format!("Making {user_id} leave all rooms before deactivation..."));
 
                 crate::user::deactivate(&user_id, &user_id)?;
@@ -767,7 +767,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // Create a user for the server
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
-    if let Err(e) = crate::user::create_user(&palpo_user, None) {
+    if let Err(e) = crate::user::create_user(&palpo_user, None, &mut *db::connect()?) {
         tracing::error!(error = ?e, "create palpo admin user failed.");
     }
 

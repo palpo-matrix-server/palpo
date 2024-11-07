@@ -732,8 +732,12 @@ pub async fn sync_events_v4(
                 required_state,
                 prev_batch,
                 limited,
-                joined_count: Some((crate::room::joined_member_count(&room_id).unwrap_or(0) as u32).into()),
-                invited_count: Some((crate::room::invited_member_count(&room_id).unwrap_or(0) as u32).into()),
+                joined_count: Some(
+                    (crate::room::joined_member_count(&room_id, &mut *db::connect()?).unwrap_or(0) as u32).into(),
+                ),
+                invited_count: Some(
+                    (crate::room::invited_member_count(&room_id, &mut *db::connect()?).unwrap_or(0) as u32).into(),
+                ),
                 num_live: None, // Count events in timeline greater than global sync counter
                 timestamp: None,
             },
