@@ -2,12 +2,10 @@ mod metadata;
 mod thumbnail;
 
 pub use metadata::*;
-use palpo_core::UserId;
 pub use thumbnail::*;
 
 use std::time::Duration;
 
-use salvo::http::{header, HeaderValue};
 use salvo::Response;
 
 use crate::core::client::media::ContentReqArgs;

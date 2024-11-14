@@ -13,13 +13,13 @@ use crate::core::client::sync_events::{
 };
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::{AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
 use crate::schema::*;
-use crate::{db, AppError, AppResult};
+use crate::{AppError, AppResult};
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(
@@ -703,14 +703,15 @@ async fn load_joined_room(
         None
     };
 
+    println!("FFFFFFFFFFFirst pdu: {:#?}", timeline_pdus.first());
     let prev_batch = timeline_pdus.first().map(|(sn, _)| sn.to_string());
 
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
 
-    let mut edus: Vec<_> = crate::room::receipt::read_receipts(&room_id, since_sn)?
-        .into_iter() // Filter out buggy events
-        .map(|(_, _, v)| v)
-        .collect();
+    let read_receipts = crate::room::receipt::read_receipts(&room_id, since_sn)?;
+    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
+        vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?];
+    println!("====eeeeeeeeeeeeeeeeeeeedus: {edus:#?}");
 
     if crate::room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(

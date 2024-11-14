@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::media::Method;
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
+use crate::{OwnedMxcUri, OwnedServerName, ServerName, UnixMillis};
 
 /// The default duration that the client should be willing to wait to start receiving data.
 pub(crate) fn default_download_timeout() -> Duration {

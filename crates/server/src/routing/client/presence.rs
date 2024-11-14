@@ -6,7 +6,6 @@
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 use std::time::Duration;
 
-use palpo_core::client::presence;
 use salvo::oapi::extract::JsonBody;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;

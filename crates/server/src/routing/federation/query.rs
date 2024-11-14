@@ -23,11 +23,6 @@ pub fn router() -> Router {
 /// Gets information on a profile.
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
-    println!("================profile 0  {:?}", args);
-    println!(
-        "================profile x {:#?}",
-        user_profiles::table.load::<DbProfile>(&mut *db::connect()?)
-    );
     if args.user_id.server_name() != crate::config().server_name {
         return Err(MatrixError::invalid_param("Tried to access user from other server.").into());
     }
@@ -38,7 +33,6 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
 
     let profile = crate::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
 
-    println!("================profile 2  {:#?}", profile);
     match &args.field {
         Some(ProfileField::DisplayName) => display_name = profile.display_name.clone(),
         Some(ProfileField::AvatarUrl) => {

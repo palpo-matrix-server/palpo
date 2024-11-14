@@ -2,26 +2,21 @@ use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
-use std::time::Duration;
 
 use diesel::prelude::*;
-use hickory_resolver::proto::op::Header;
 use image::imageops::FilterType;
 use mime::Mime;
-use room_tags::content;
 use salvo::fs::NamedFile;
-use salvo::http::header::CONTENT_TYPE;
 use salvo::http::{HeaderValue, ResBody};
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use uuid::Uuid;
 
 use crate::core::federation::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::media::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{db, hoops, AppResult, AuthArgs, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("media")

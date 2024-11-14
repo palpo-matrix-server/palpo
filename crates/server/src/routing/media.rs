@@ -1,24 +1,12 @@
 use std::fs;
 use std::io::Cursor;
-use std::path::Path;
-use std::str::FromStr;
-use std::time::Duration;
 
-use diesel::prelude::*;
-use image::imageops::FilterType;
 use mime::Mime;
-use salvo::fs::NamedFile;
-use salvo::http::{HeaderValue, ResBody};
 use salvo::prelude::*;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use uuid::Uuid;
 
 use super::client::media::*;
 use crate::core::client::media::*;
-use crate::core::{OwnedMxcUri, UnixMillis};
-use crate::schema::*;
-use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::hoops;
 
 pub fn router() -> Router {
     let mut media = Router::with_path("media").oapi_tag("media");

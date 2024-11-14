@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 // use crate::http_headers::CROSS_ORIGIN_RESOURCE_POLICY;
 use crate::sending::{SendRequest, SendResult};
-use crate::{OwnedMxcUri, OwnedServerName, ServerName};
+use crate::{OwnedMxcUri, OwnedServerName};
 
 /// `/v3/` ([spec])
 ///

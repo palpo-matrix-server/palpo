@@ -328,8 +328,7 @@ pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, Strin
 
     let mut result = HashMap::new();
     for compressed in full_state.iter() {
-        let point_id = compressed.point_id();
-        let event_id = get_point_event_id(point_id)?;
+        let (_, event_id) = compressed.split()?;
         if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             result.insert(
                 (

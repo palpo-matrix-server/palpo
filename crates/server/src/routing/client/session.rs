@@ -21,7 +21,12 @@ pub fn public_router() -> Router {
         Router::with_path("login")
             .hoop(hoops::limit_rate)
             .get(login_types)
-            .post(login),
+            .post(login)
+            .push(
+                Router::with_path("sso/redirect")
+                    .get(redirect)
+                    .push(Router::with_path("idpId").get(provider_url)),
+            ),
     )
 }
 pub fn authed_router() -> Router {
@@ -192,4 +197,16 @@ async fn refresh_token(_aa: AuthArgs) -> EmptyResult {
     panic!("refresh_tokenNot implemented")
     // let authed = depot.authed_info()?;
     // Ok(())
+}
+
+#[endpoint]
+async fn redirect(_aa: AuthArgs) -> EmptyResult {
+    // TODDO: todo
+    empty_ok()
+}
+
+#[endpoint]
+async fn provider_url(_aa: AuthArgs) -> EmptyResult {
+    // TODDO: todo
+    empty_ok()
 }
