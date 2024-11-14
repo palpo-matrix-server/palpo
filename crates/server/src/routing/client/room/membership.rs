@@ -1,27 +1,30 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use palpo_core::client::membership::{InvitationRecipient, MembersReqArgs, UnbanUserReqBody};
-use palpo_core::client::membership::{JoinRoomReqBody, JoinRoomResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
+use crate::bl::exts::*;
 use crate::core::client::membership::{
-    BanUserReqBody, InviteUserReqBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody,
-    MembersResBody, RoomMember,
+    BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomReqBody, JoinRoomResBody, JoinedMembersResBody,
+    JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs, MembersResBody, RoomMember,
+    UnbanUserReqBody,
 };
 use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::federation::query::{profile_request, ProfileReqArgs};
 use crate::core::identifiers::*;
+use crate::core::user::ProfileResBody;
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::schema::*;
+use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
-    db, diesel_exists, empty_ok, json_ok, AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult,
-    MatrixError, PduBuilder,
+    db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
+    PduBuilder,
 };
 
 // #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -206,9 +209,11 @@ pub(super) async fn invite_user(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
+    println!("====vvvvvvvvvvvvvv  0");
     let InvitationRecipient::UserId { user_id } = &body.recipient else {
         return Err(MatrixError::not_found("User not found.").into());
     };
+    println!("====vvvvvvvvvvvvvv  1");
     crate::membership::invite_user(
         authed.user_id(),
         user_id,
@@ -217,6 +222,7 @@ pub(super) async fn invite_user(
         false,
     )
     .await?;
+    println!("====vvvvvvvvvvvvvv  2");
     empty_ok()
 }
 
@@ -287,13 +293,44 @@ pub(super) async fn ban_user(
     let room_id = room_id.into_inner();
 
     let room_state = state::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?;
+
     let event = if let Some(room_state) = room_state {
-        serde_json::from_str(room_state.content.get())
-            .map(|event: RoomMemberEventContent| RoomMemberEventContent {
-                membership: MembershipState::Ban,
-                ..event
-            })
-            .map_err(|_| AppError::internal("Invalid member event in database."))?
+        let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
+            .map_err(|_| AppError::internal("Invalid member event in database."))?;
+
+        // If they are already banned and the reason is unchanged, there isn't any point in sending a new event.
+        if event.membership == MembershipState::Ban && event.reason == body.reason {
+            return empty_ok();
+        }
+        RoomMemberEventContent {
+            membership: MembershipState::Ban,
+            ..event
+        }
+    } else if body.user_id.is_remote() {
+        let profile_request = profile_request(ProfileReqArgs {
+            user_id: body.user_id.to_owned(),
+            field: None,
+        })?
+        .into_inner();
+        let ProfileResBody {
+            avatar_url,
+            display_name,
+            blurhash,
+        } = send_federation_request(body.user_id.server_name(), profile_request)
+            .await?
+            .json()
+            .await?;
+
+        RoomMemberEventContent {
+            membership: MembershipState::Ban,
+            display_name,
+            avatar_url,
+            is_direct: None,
+            third_party_invite: None,
+            blurhash,
+            reason: body.reason.clone(),
+            join_authorized_via_users_server: None,
+        }
     } else {
         let DbProfile {
             display_name,

@@ -13,7 +13,7 @@ use crate::core::events::receipt::{
     Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::{AnyStateEventContent, RoomAccountDataEventType, StateEventType};
+use crate::core::events::{RoomAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::core::UnixMillis;

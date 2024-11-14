@@ -15,7 +15,6 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
 
 use super::event::PduBuilder;
-use super::room;
 use crate::core::appservice::Registration;
 use crate::core::events::room::{
     canonical_alias::RoomCanonicalAliasEventContent,

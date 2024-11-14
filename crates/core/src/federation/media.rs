@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::http_headers::ContentDisposition;
 use crate::media::Method;
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
+use crate::ServerName;
 
 /// The `multipart/mixed` mime "essence".
 const MULTIPART_MIXED: &str = "multipart/mixed";

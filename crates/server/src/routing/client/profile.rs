@@ -11,13 +11,11 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{profile_request, ProfileReqArgs};
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
+use crate::diesel_exists;
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::{DbProfile, NewDbPresence};
-use crate::{
-    db, empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder,
-};
-use crate::{diesel_exists, schema::*};
+use crate::{db, empty_ok, hoops, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/<user_id>")

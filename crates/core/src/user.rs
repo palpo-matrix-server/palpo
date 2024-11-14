@@ -1,5 +1,4 @@
 use salvo::oapi::{ToParameters, ToSchema};
-use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::events::{GlobalAccountDataEventType, StateEventType};

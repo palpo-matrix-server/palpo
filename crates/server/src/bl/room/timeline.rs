@@ -244,6 +244,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     }
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
+    println!("wwwwwwwwwwwwwwwwwwwwwwwwwpdu  0");
     match pdu.kind {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
@@ -259,7 +260,9 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
             }
         }
         TimelineEventType::RoomMember => {
+            println!("wwwwwwwwwwwwwwwwwwwwwwwwwpdu  1");
             if let Some(state_key) = &pdu.state_key {
+                println!("wwwwwwwwwwwwwwwwwwwwwwwwwpdu  2");
                 #[derive(Deserialize)]
                 struct ExtractMembership {
                     membership: MembershipState,
@@ -282,6 +285,10 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online)?;
                 }
+                println!(
+                    "wwwwwwwwwwwwwwwwwwwwwwwwwpdu  3 {:#?}  state_key: {state_key:?}",
+                    content.membership
+                );
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 crate::room::update_membership(
@@ -698,11 +705,18 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                     }
                 }
 
+                println!(
+                    "vvvvvddddddddd sender: {sender:?}  content.membership: {:?}  key: {:?}",
+                    content.membership,
+                    pdu.state_key()
+                );
                 if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
+                    println!("vvvvvvvvvvvvvcdd       ==0");
                     if target == server_user {
                         warn!("Palpo user cannot be banned in admins room");
                         return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
+                    println!("vvvvvvvvvvvvvcdd       ==1");
 
                     let count = crate::room::get_joined_users(room_id, None)?
                         .iter()

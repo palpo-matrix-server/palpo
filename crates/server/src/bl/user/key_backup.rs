@@ -7,7 +7,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue};
+use crate::{AppError, AppResult, JsonValue};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_room_keys)]

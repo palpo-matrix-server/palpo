@@ -19,16 +19,16 @@ use crate::core::serde::{
 };
 use crate::core::state::event_auth;
 use crate::core::{federation, UnixMillis};
-use crate::core::{OwnedServerName, RoomVersion, ServerName};
+use crate::core::{OwnedServerName, ServerName};
 use crate::event::NewDbEvent;
 use crate::membership::federation::membership::{
-    InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBodyV2, SendJoinResBodyV1,
+    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBodyV2,
 };
 use crate::room::state::{self, CompressedStateEvent};
 use crate::{
     db,
     event::{gen_event_id_canonical_json, PduBuilder, PduEvent},
-    sending, AppError, AppResult, MatrixError, SigningKeys,
+    AppError, AppResult, MatrixError, SigningKeys,
 };
 use crate::{diesel_exists, schema::*};
 
@@ -730,7 +730,13 @@ pub(crate) async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     let conf = crate::config();
+    println!(
+        "==========invitee_id: {:?}    server name: {:?}",
+        invitee_id,
+        crate::server_name()
+    );
     if invitee_id.server_name() != crate::server_name() {
+        println!("====vvvvvvvvvvvvvvinvite_user  0");
         let (pdu, pdu_json, invite_room_state) = {
             let content = to_raw_json_value(&RoomMemberEventContent {
                 avatar_url: None,
@@ -766,19 +772,30 @@ pub(crate) async fn invite_user(
         let url = invitee_id
             .server_name()
             .build_url(&format!("/federation/v2/invite/{}/{}", room_id, pdu.event_id))?;
-        let response = crate::sending::put(url)
-            .stuff(InviteUserReqBodyV2 {
+        println!("====vvvvvvvvvvvvvvinvite_user  1");
+        let invite_request = crate::core::federation::membership::invite_user_request_v2(
+            invitee_id.server_name(),
+            InviteUserReqArgs {
+                room_id: room_id.to_owned(),
+                event_id: (&*pdu.event_id).to_owned(),
+            },
+            InviteUserReqBodyV2 {
                 room_version: room_version_id.clone(),
                 event: PduEvent::convert_to_outgoing_federation_event(pdu_json.clone()),
                 invite_room_state,
-            })?
-            .send::<InviteUserResBodyV2>()
+            },
+        )?
+        .into_inner();
+        let send_join_response = crate::sending::send_federation_request(invitee_id.server_name(), invite_request)
+            .await?
+            .json::<InviteUserResBodyV2>()
             .await?;
 
         let pub_key_map = RwLock::new(BTreeMap::new());
 
+        println!("====vvvvvvvvvvvvvvinvite_user  2");
         // We do not add the event_id field to the pdu here because of signature and hashes checks
-        let (event_id, value) = match gen_event_id_canonical_json(&response.event, &room_version_id) {
+        let (event_id, value) = match gen_event_id_canonical_json(&send_join_response.event, &room_version_id) {
             Ok(t) => t,
             Err(_) => {
                 // Event could not be converted to canonical json
@@ -795,6 +812,7 @@ pub(crate) async fn invite_user(
             );
         }
 
+        println!("====vvvvvvvvvvvvvvinvite_user  3");
         let origin: OwnedServerName = serde_json::from_value(
             serde_json::to_value(
                 value
@@ -805,6 +823,7 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
+        println!("====vvvvvvvvvvvvvvinvite_user  4");
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true, &pub_key_map).await?;
 
         // Bind to variable because of lifetimes
@@ -812,14 +831,17 @@ pub(crate) async fn invite_user(
             .into_iter()
             .filter(|server| server != crate::server_name());
 
+        println!("====vvvvvvvvvvvvvvinvite_user  5");
         crate::sending::send_pdu(servers, &event_id)?;
         return Ok(());
     }
 
+    println!("====vvvvvvvvvvvvvvinvite_user bbb  0");
     if !crate::room::is_joined(inviter_id, room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
+    println!("====vvvvvvvvvvvvvvinvite_user bnbnn  1");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,

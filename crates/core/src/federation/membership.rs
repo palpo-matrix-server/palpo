@@ -1,6 +1,5 @@
 //! Room membership endpoints.
 
-use itertools::Itertools;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +7,27 @@ use crate::events::{room::member::RoomMemberEventContent, AnyStrippedStateEvent,
 use crate::identifiers::*;
 use crate::sending::{SendError, SendRequest, SendResult};
 use crate::{serde::RawJson, RawJsonValue, UnixMillis};
-use salvo::http::header::CONTENT_TYPE;
+
+pub fn invite_user_request_v2(
+    remote_server: &ServerName,
+    args: InviteUserReqArgs,
+    body: InviteUserReqBodyV2,
+) -> SendResult<SendRequest> {
+    let url = remote_server.build_url(&format!("/federation/v2/invite/{}/{}", args.room_id, args.event_id))?;
+    crate::sending::put(url).stuff(body)
+}
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct InviteUserReqArgs {
+    /// The room ID that is about to be joined.
+    ///
+    /// Do not use this. Instead, use the `room_id` field inside the PDU.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The event ID for the join event.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+}
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct InviteUserReqBodyV2 {

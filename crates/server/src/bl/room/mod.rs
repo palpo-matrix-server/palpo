@@ -151,6 +151,10 @@ pub fn update_membership(
         None
     };
 
+    println!(
+        "======================membership update, user_id: {:?}, room_id: {:?}, membership: {:?}",
+        user_id, room_id, membership
+    );
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
@@ -310,6 +314,7 @@ pub fn update_membership(
             })?;
         }
         MembershipState::Leave | MembershipState::Ban => {
+            println!("======================membership leave or ban");
             db::connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
@@ -324,6 +329,7 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
+                println!("======================membership leave or ban  1");
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
@@ -339,6 +345,7 @@ pub fn update_membership(
                         created_at: UnixMillis::now(),
                     })
                     .execute(conn)?;
+                println!("======================membership leave or ban  2");
                 Ok(())
             })?;
         }
@@ -507,9 +514,20 @@ pub fn invited_member_count(room_id: &RoomId) -> AppResult<u64> {
 /// Returns an iterator over all rooms a user left.
 #[tracing::instrument]
 pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
+    println!(
+        "===========room left user: {:?}  {:#?}",
+        user_id,
+        room_users::table
+            .filter(room_users::user_id.eq(user_id))
+            .select((room_users::room_id, room_users::membership))
+            .load::<(OwnedRoomId, String)>(&mut *db::connect()?)
+    );
     let room_event_ids = room_users::table
         .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::membership.eq(MembershipState::Leave.to_string()))
+        .filter(room_users::membership.eq_any(vec![
+            MembershipState::Leave.to_string(),
+            MembershipState::Ban.to_string(),
+        ]))
         .select((room_users::room_id, room_users::event_id))
         .load::<(OwnedRoomId, OwnedEventId)>(&mut *db::connect()?)
         .map(|rows| {

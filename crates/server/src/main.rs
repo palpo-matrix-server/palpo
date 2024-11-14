@@ -36,7 +36,6 @@ mod macros;
 // #[macro_use]
 // use serde_json;
 pub(crate) use serde_json::Value as JsonValue;
-use tokio::sync::Semaphore;
 
 use std::env;
 use std::sync::Arc;

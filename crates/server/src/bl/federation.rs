@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
-use chrono::format;
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 use salvo::http::headers::{CacheControl, Header};

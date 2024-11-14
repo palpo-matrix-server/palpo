@@ -7,7 +7,6 @@ use base64::{engine::general_purpose, Engine as _};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use palpo_core::events::push_rules::PushRulesEventContent;
-use serde::Deserialize;
 use tokio::sync::{mpsc, Mutex, Semaphore};
 
 use crate::core::appservice::event::PushEventsReqBody;
@@ -21,6 +20,7 @@ pub use crate::core::sending::*;
 use crate::core::{device_id, push, UnixMillis};
 use crate::{db, utils, AppError, AppResult, PduEvent};
 
+use super::room::receipt;
 use super::{curr_sn, outgoing_requests};
 
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]
@@ -258,34 +258,22 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
         );
 
         // Look for read receipts in this room
-        for (user_id, event_id, read_receipt) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
+        for (event_id, event_receipts) in crate::room::receipt::read_receipts(&room_id, since_sn)?.content {
             let sn = crate::event::get_event_sn(&event_id)?;
             if sn > max_edu_sn {
                 max_edu_sn = sn;
             }
 
-            if user_id.server_name() != &conf.server_name {
-                continue;
-            }
-
-            let event: AnySyncEphemeralRoomEvent = serde_json::from_str(read_receipt.inner().get())
-                .map_err(|_| AppError::internal("Invalid edu event in read_receipts."))?;
-            let federation_event = match event {
-                AnySyncEphemeralRoomEvent::Receipt(r) => {
+            for (receipt_type, type_receipts) in event_receipts {
+                if receipt_type != ReceiptType::Read {
+                    continue;
+                }
+                for (user_id, receipt) in type_receipts {
+                    if user_id.server_name() != &conf.server_name {
+                        continue;
+                    }
+                    let mut receipts: BTreeMap<OwnedRoomId, ReceiptMap> = BTreeMap::new();
                     let mut read = BTreeMap::new();
-
-                    let (event_id, mut receipt) = r
-                        .content
-                        .0
-                        .into_iter()
-                        .next()
-                        .expect("we only use one event per read receipt");
-                    let receipt = receipt
-                        .remove(&ReceiptType::Read)
-                        .expect("our read receipts always set this")
-                        .remove(&user_id)
-                        .expect("our read receipts always have the user here");
-
                     read.insert(
                         user_id,
                         ReceiptData {
@@ -295,19 +283,51 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
                     );
 
                     let receipt_map = ReceiptMap { read };
-
-                    let mut receipts = BTreeMap::new();
                     receipts.insert(room_id.to_owned(), receipt_map);
-
-                    Edu::Receipt(ReceiptContent(receipts))
+                    let federation_event = Edu::Receipt(ReceiptContent(receipts));
+                    events.push(serde_json::to_vec(&federation_event).expect("json can be serialized"));
                 }
-                _ => {
-                    AppError::internal("Invalid event type in read_receipts");
-                    continue;
-                }
-            };
+            }
 
-            events.push(serde_json::to_vec(&federation_event).expect("json can be serialized"));
+            // let event: AnySyncEphemeralRoomEvent = serde_json::from_str(read_receipt.inner().get())
+            //     .map_err(|_| AppError::internal("Invalid edu event in read_receipts."))?;
+            // let federation_event = match event {
+            //     AnySyncEphemeralRoomEvent::Receipt(r) => {
+            //         let mut read = BTreeMap::new();
+
+            //         let (event_id, mut receipt) = r
+            //             .content
+            //             .0
+            //             .into_iter()
+            //             .next()
+            //             .expect("we only use one event per read receipt");
+            //         let receipt = receipt
+            //             .remove(&ReceiptType::Read)
+            //             .expect("our read receipts always set this")
+            //             .remove(&user_id)
+            //             .expect("our read receipts always have the user here");
+
+            //         read.insert(
+            //             user_id,
+            //             ReceiptData {
+            //                 data: receipt.clone(),
+            //                 event_ids: vec![event_id.to_owned()],
+            //             },
+            //         );
+
+            //         let receipt_map = ReceiptMap { read };
+
+            //         receipts.insert(room_id.to_owned(), receipt_map);
+
+            //         Edu::Receipt(ReceiptContent(receipts))
+            //     }
+            //     _ => {
+            //         AppError::internal("Invalid event type in read_receipts");
+            //         continue;
+            //     }
+            // };
+
+            // events.push(serde_json::to_vec(&federation_event).expect("json can be serialized"));
 
             if events.len() >= 20 {
                 break 'outer;

@@ -198,6 +198,7 @@ diesel::table! {
         user_id -> Text,
         event_id -> Text,
         event_sn -> Int8,
+        json_data -> Json,
         receipt_at -> Int8,
     }
 }

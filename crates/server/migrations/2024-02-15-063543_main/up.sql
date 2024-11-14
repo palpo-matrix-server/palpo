@@ -797,6 +797,7 @@ CREATE TABLE event_receipts (
     user_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
+    json_data json NOT NULL,
     receipt_at bigint NOT NULL
 );
 ALTER TABLE ONLY event_receipts
