@@ -10,9 +10,9 @@ use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::room::StateEventType;
-use crate::schema::*;
 use crate::user::DbUser;
 use crate::{db, diesel_exists, AppError, AppResult, MatrixError, PduBuilder};
+use crate::{schema::*, GetUrlOrigin};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_aliases, primary_key(alias_id))]
@@ -60,7 +60,11 @@ pub fn set_alias(
 
 pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<AliasResBody> {
     if room_alias.server_name() != crate::server_name() {
-        let mut body: AliasResBody = directory_request(&room_alias)?.send().await?;
+        let request = directory_request(&room_alias.server_name().origin().await, &room_alias)?.into_inner();
+        let mut body = crate::sending::send_federation_request(room_alias.server_name(), request)
+            .await?
+            .json::<AliasResBody>()
+            .await?;
 
         body.servers.shuffle(&mut rand::thread_rng());
 

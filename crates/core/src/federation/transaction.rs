@@ -8,6 +8,7 @@
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1sendtxnid
 use std::collections::BTreeMap;
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{de, Deserialize, Serialize};
 
@@ -17,6 +18,7 @@ use crate::events::receipt::{Receipt, ReceiptContent};
 use crate::events::typing::TypingContent;
 use crate::identifiers::*;
 use crate::presence::PresenceContent;
+use crate::sending::{SendRequest, SendResult};
 use crate::serde::{from_raw_json_value, JsonValue, RawJsonValue};
 use crate::{OwnedServerName, UnixMillis};
 
@@ -28,6 +30,11 @@ use crate::{OwnedServerName, UnixMillis};
 //         1.0 => "/_matrix/federation/v1/send/:transaction_id",
 //     }
 // };
+
+pub fn send_messages_request(origin: &str, txn_id: &str, body: SendMessageReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/publicRooms"))?;
+    crate::sending::post(url).stuff(body)
+}
 
 /// Request type for the `send_transaction_message` endpoint.
 

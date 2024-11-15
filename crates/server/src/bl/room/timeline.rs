@@ -18,13 +18,13 @@ use crate::core::state::Event;
 use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
 use crate::event::{DbEventData, NewDbEvent};
 use crate::room::state::CompressedStateEvent;
-use crate::schema::*;
 use crate::{db, utils, AppError, AppResult, MatrixError, SigningKeys};
 use crate::{
     diesel_exists,
     event::{EventHash, PduBuilder, PduEvent},
     JsonValue,
 };
+use crate::{schema::*, GetUrlOrigin};
 use diesel::prelude::*;
 use diesel::sql_types::Json;
 use outgoing_requests::data;
@@ -963,17 +963,20 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     // Request backfill
     for backfill_server in admin_servers {
         info!("Asking {backfill_server} for backfill");
-        let response = backfill_request(
-            backfill_server,
+        let request = backfill_request(
+            &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
                 v: vec![(&*first_pdu.1.event_id).to_owned()],
                 limit: 100,
             },
         )?
-        .send::<BackfillResBody>()
-        .await;
-        match response {
+        .into_inner();
+        match crate::sending::send_federation_request(backfill_server, request)
+            .await?
+            .json::<BackfillResBody>()
+            .await
+        {
             Ok(response) => {
                 let mut pub_key_map = RwLock::new(BTreeMap::new());
                 for pdu in response.pdus {

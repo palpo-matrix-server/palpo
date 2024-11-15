@@ -50,7 +50,6 @@ use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJsonValue};
 use crate::core::signatures::Ed25519KeyPair;
 use crate::core::UnixMillis;
-use crate::federation::DestinationResponse;
 use crate::schema::*;
 use crate::{db, AppResult, JsonValue, MatrixError, ServerConfig};
 
@@ -65,7 +64,6 @@ type SyncHandle = (
     Option<String>,                                   // since
     Receiver<Option<AppResult<SyncEventsResBodyV3>>>, // rx
 );
-type WellKnownMap = HashMap<OwnedServerName, DestinationResponse>;
 type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries
                                       // type SyncHandle = (
@@ -73,8 +71,7 @@ type RateLimitState = (Instant, u32); // Time if last failed try, number of fail
                                       //     Receiver<Option<AppResult<sync_events::v3::Response>>>, // rx
                                       // );
 
-type LazyRwLock<T> = LazyLock<RwLock<T>>;
-pub static ACTUAL_DESTINATION_CACHE: LazyRwLock<WellKnownMap> = LazyLock::new(Default::default); // actual_destination, host
+pub type LazyRwLock<T> = LazyLock<RwLock<T>>;
 pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);
 pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
     vec![
@@ -290,6 +287,7 @@ pub fn federation_client() -> reqwest::Client {
             reqwest_client_builder(conf)
                 .expect("build reqwest client failed")
                 .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
+                .timeout(Duration::from_secs(2 * 60))
                 .build()
                 .expect("build reqwest client failed")
         })

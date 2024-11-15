@@ -952,6 +952,6 @@ CREATE TABLE outgoing_requests (
     server_id text,
     pdu_id text,
     edu_json bytea,
-    state text NOT NULL DEFAULT 'pending',
+    state text NOT NULL DEFAULT 'created',
     data bytea
 );

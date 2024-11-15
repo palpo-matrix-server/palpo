@@ -5,13 +5,14 @@
 /// Get mapped room ID and resident homeservers for a given room alias.
 use std::collections::BTreeMap;
 
-use crate::sending::{SendRequest, SendResult};
-use crate::user::ProfileField;
-use crate::{OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId};
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use crate::sending::{SendRequest, SendResult};
+use crate::user::ProfileField;
+use crate::{OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId};
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1querydirectory
@@ -24,10 +25,11 @@ use serde_json::Value as JsonValue;
 //     }
 // };
 
-pub fn directory_request(room_alias: &RoomAliasId) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(room_alias.server_name().build_url(&format!(
-        "federation/v1/query/directory?room_alias={room_alias}"
-    ))?))
+pub fn directory_request(origin: &str, room_alias: &RoomAliasId) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/query/directory?room_alias={room_alias}"
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Request type for the `get_room_information` endpoint.
@@ -72,12 +74,15 @@ impl RoomInfoResBody {
 //     }
 // };
 
-pub fn profile_request(args: ProfileReqArgs) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(args.user_id.server_name().build_url(&format!(
-        "/federation/v1/query/profile?user_id={}{}",
+pub fn profile_request(origin: &str, args: ProfileReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/query/profile?user_id={}{}",
         args.user_id,
-        args.field.map(|field|format!("&field={}", field.to_string())).unwrap_or_default()
-    ))?))
+        args.field
+            .map(|field| format!("&field={}", field.to_string()))
+            .unwrap_or_default()
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Request type for the `get_profile_information` endpoint.

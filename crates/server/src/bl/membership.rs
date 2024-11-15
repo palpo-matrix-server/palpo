@@ -18,19 +18,14 @@ use crate::core::serde::{
     to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
 };
 use crate::core::state::event_auth;
-use crate::core::{federation, UnixMillis};
-use crate::core::{OwnedServerName, ServerName};
-use crate::event::NewDbEvent;
+use crate::core::{federation, OwnedServerName, ServerName, UnixMillis};
+use crate::event::{gen_event_id_canonical_json, NewDbEvent, PduBuilder, PduEvent};
 use crate::membership::federation::membership::{
-    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBodyV2,
+    send_leave_request_v2, InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2,
+    SendJoinReqBodyV2, SendLeaveReqArgsV2,
 };
 use crate::room::state::{self, CompressedStateEvent};
-use crate::{
-    db,
-    event::{gen_event_id_canonical_json, PduBuilder, PduEvent},
-    AppError, AppResult, MatrixError, SigningKeys,
-};
-use crate::{diesel_exists, schema::*};
+use crate::{db, diesel_exists, exts::*, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
 
 pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -234,6 +229,7 @@ pub async fn join_room(
         };
         info!("Asking {remote_server} for send_join");
         let send_join_request = crate::core::federation::membership::send_join_request(
+            &room_id.server_name().map_err(AppError::public)?.origin().await,
             SendJoinArgs {
                 room_id: room_id.to_owned(),
                 event_id: event_id.to_owned(),
@@ -555,6 +551,7 @@ pub async fn join_room(
             let join_event = join_event_stub;
 
             let send_join_request = crate::core::federation::membership::send_join_request(
+                &room_id.server_name().map_err(AppError::public)?.origin().await,
                 SendJoinArgs {
                     room_id: room_id.to_owned(),
                     event_id: event_id.to_owned(),
@@ -628,7 +625,7 @@ async fn make_join_request(
         info!("Asking {remote_server} for make_join");
 
         let make_join_request = crate::core::federation::membership::make_join_request(
-            remote_server,
+            &remote_server.origin().await,
             MakeJoinReqArgs {
                 room_id: room_id.to_owned(),
                 user_id: user_id.to_owned(),
@@ -769,12 +766,9 @@ pub(crate) async fn invite_user(
 
         let room_version_id = crate::room::state::get_room_version(room_id)?;
 
-        let url = invitee_id
-            .server_name()
-            .build_url(&format!("/federation/v2/invite/{}/{}", room_id, pdu.event_id))?;
         println!("====vvvvvvvvvvvvvvinvite_user  1");
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
-            invitee_id.server_name(),
+            &invitee_id.server_name().origin().await,
             InviteUserReqArgs {
                 room_id: room_id.to_owned(),
                 event_id: (&*pdu.event_id).to_owned(),
@@ -958,7 +952,13 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .collect();
 
     for remote_server in servers {
-        let make_leave_response = make_leave_request(room_id, user_id)?.send::<MakeLeaveResBody>().await;
+        let make_leave_response = make_leave_request(
+            &room_id.server_name().map_err(AppError::internal)?.origin().await,
+            room_id,
+            user_id,
+        )?
+        .send::<MakeLeaveResBody>()
+        .await;
 
         make_leave_response_and_server = make_leave_response.map(|r| (r, remote_server)).map_err(Into::into);
 
@@ -1015,12 +1015,19 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
 
-    crate::sending::put(remote_server.build_url(&format!("federation/v2/send_leave/{room_id}/{event_id}"))?)
-        .stuff(SendLeaveReqBodyV2 {
+    let request = send_leave_request_v2(
+        &remote_server.origin().await,
+        SendLeaveReqArgsV2 {
+            room_id: room_id.to_owned(),
+            event_id,
+        },
+        SendLeaveReqBodyV2 {
             pdu: PduEvent::convert_to_outgoing_federation_event(leave_event.clone()),
-        })?
-        .send::<()>()
-        .await?;
+        },
+    )?
+    .into_inner();
+
+    crate::sending::send_federation_request(&remote_server, request).await?;
 
     Ok(())
 }

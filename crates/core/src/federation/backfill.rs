@@ -6,6 +6,7 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1backfillroomid
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -22,13 +23,14 @@ use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, ServerName, UnixMillis};
 //     }
 // };
 
-pub fn backfill_request(server: &ServerName, args: BackfillReqArgs) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(server.build_url(&format!(
-        "/federation/v1/backfill/{}&limit={}&{}",
+pub fn backfill_request(origin: &str, args: BackfillReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/backfill/{}&limit={}&{}",
         &args.room_id,
         args.limit,
         args.v.iter().map(|v| format!("v={v}")).collect::<Vec<_>>().join("&")
-    ))?))
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Request type for the `get_backfill` endpoint.

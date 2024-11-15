@@ -1,9 +1,11 @@
-use crate::events::space::child::HierarchySpaceChildEvent;
-use crate::{room::RoomType, serde::RawJson, space::SpaceRoomJoinRule, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId};
-
+use reqwest::Url;
 use salvo::prelude::*;
 /// Spaces endpoints.
 use serde::{Deserialize, Serialize};
+
+use crate::events::space::child::HierarchySpaceChildEvent;
+use crate::sending::{SendRequest, SendResult};
+use crate::{room::RoomType, serde::RawJson, space::SpaceRoomJoinRule, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId};
 
 /// The summary of a parent space.
 ///
@@ -244,6 +246,7 @@ impl From<SpaceHierarchyChildSummaryInit> for SpaceHierarchyChildSummary {
         }
     }
 }
+
 /// `GET /_matrix/federation/*/hierarchy/{room_id}`
 ///
 /// Get the space tree in a depth-first manner to locate child rooms of a given space.
@@ -260,10 +263,16 @@ impl From<SpaceHierarchyChildSummaryInit> for SpaceHierarchyChildSummary {
 //     }
 // };
 
+pub fn hierarchy_request(origin: &str, args: HierarchyReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/client/v1/rooms/{}/hierarchy?suggested_only={}",
+        args.room_id, args.suggested_only
+    ))?;
+    Ok(crate::sending::get(url))
+}
 /// Request type for the `hierarchy` endpoint.
-
-#[derive(ToSchema, Deserialize, Debug)]
-pub struct HierarchyReqBody {
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct HierarchyReqArgs {
     /// The room ID of the space to get a hierarchy for.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -278,7 +287,6 @@ pub struct HierarchyReqBody {
 
 /// Response type for the `hierarchy` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
-
 pub struct HierarchyResBody {
     /// A summary of the space’s children.
     ///

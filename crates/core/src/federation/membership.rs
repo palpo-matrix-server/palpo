@@ -1,5 +1,6 @@
 //! Room membership endpoints.
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -9,11 +10,14 @@ use crate::sending::{SendError, SendRequest, SendResult};
 use crate::{serde::RawJson, RawJsonValue, UnixMillis};
 
 pub fn invite_user_request_v2(
-    remote_server: &ServerName,
+    origin: &str,
     args: InviteUserReqArgs,
     body: InviteUserReqBodyV2,
 ) -> SendResult<SendRequest> {
-    let url = remote_server.build_url(&format!("/federation/v2/invite/{}/{}", args.room_id, args.event_id))?;
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v2/invite/{}/{}",
+        args.room_id, args.event_id
+    ))?;
     crate::sending::put(url).stuff(body)
 }
 #[derive(ToParameters, Deserialize, Debug)]
@@ -278,13 +282,11 @@ pub struct RequestInitV1 {
 //     }
 // };
 
-pub fn make_leave_request(room_id: &RoomId, user_id: &UserId) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(
-        room_id
-            .server_name()
-            .map_err(SendError::other)?
-            .build_url(&format!("federation/v1/make_leave/{room_id}/{user_id}"))?,
-    ))
+pub fn make_leave_request(origin: &str, room_id: &RoomId, user_id: &UserId) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/make_leave/{room_id}/{user_id}"
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Response type for the `get_leave_event` endpoint.
@@ -321,6 +323,29 @@ impl MakeLeaveResBody {
 //     }
 // };
 
+pub fn send_leave_request_v2(
+    origin: &str,
+    args: SendLeaveReqArgsV2,
+    body: SendLeaveReqBodyV2,
+) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/v2/send_leave/{}/{}",
+        args.room_id, args.event_id
+    ))?;
+    crate::sending::put(url).stuff(body)
+}
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+pub struct SendLeaveReqArgsV2 {
+    /// The room ID that is about to be left.
+    ///
+    /// Do not use this. Instead, use the `room_id` field inside the PDU.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The event ID for the leave event.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+}
 /// Request type for the `create_leave_event` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct SendLeaveReqBodyV2 {
@@ -352,15 +377,11 @@ crate::json_body_modifier!(SendLeaveReqBodyV2);
 //     }
 // };
 
-pub fn send_join_request(args: SendJoinArgs, body: SendJoinReqBodyV2) -> SendResult<SendRequest> {
-    let url = args
-        .room_id
-        .server_name()
-        .map_err(|e| SendError::Other(e.to_string()))?
-        .build_url(&format!(
-            "federation/v2/send_join/{}/{}?omit_members={}",
-            &args.room_id, &args.event_id, args.omit_members
-        ))?;
+pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBodyV2) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v2/send_join/{}/{}?omit_members={}",
+        &args.room_id, &args.event_id, args.omit_members
+    ))?;
     crate::sending::put(url).stuff(body)
 }
 /// Request type for the `create_join_event` endpoint.
@@ -403,9 +424,9 @@ pub struct SendJoinArgs {
 //     }
 // };
 
-pub fn make_join_request(remote_server: &ServerName, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
-    let url = remote_server.build_url(&format!(
-        "/federation/v1/make_join/{}/{}?ver=[{}]",
+pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/make_join/{}/{}?ver=[{}]",
         args.room_id,
         args.user_id,
         args.ver

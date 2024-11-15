@@ -9,7 +9,7 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::StateEventType;
 use crate::core::federation::directory::{public_rooms_request, PublicRoomsReqBody};
 use crate::core::ServerName;
-use crate::{AppError, AppResult, MatrixError};
+use crate::{exts::*, AppError, AppResult, MatrixError};
 
 pub async fn get_public_rooms(
     server: Option<&ServerName>,
@@ -20,7 +20,7 @@ pub async fn get_public_rooms(
 ) -> AppResult<PublicRoomsResBody> {
     if let Some(other_server) = server.filter(|server| *server != crate::server_name().as_str()) {
         let body = public_rooms_request(
-            other_server,
+            &other_server.origin().await,
             PublicRoomsReqBody {
                 limit,
                 since: since.map(ToOwned::to_owned),

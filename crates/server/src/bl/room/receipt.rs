@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use diesel::prelude::*;
 use palpo_core::JsonValue;
 
-use crate::core::events::receipt::{ReceiptEvent, ReceiptEventContent, Receipt,ReceiptType};
+use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::events::{AnySyncEphemeralRoomEvent, SyncEphemeralRoomEvent};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
@@ -72,7 +72,8 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
-    let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> = BTreeMap::new();
+    let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
+        BTreeMap::new();
     let receipts = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::event_sn.ge(event_sn))
@@ -85,7 +86,7 @@ pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeral
             json_data,
             ..
         } = receipt;
-        let mut event_map     = event_content.entry(event_id).or_default();
+        let mut event_map = event_content.entry(event_id).or_default();
         let receipt_type = ReceiptType::from(receipt_type);
         let mut type_map = event_map.entry(receipt_type).or_default();
         type_map.insert(user_id, serde_json::from_value(json_data).unwrap_or_default());

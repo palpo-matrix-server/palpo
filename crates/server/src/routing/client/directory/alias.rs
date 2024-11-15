@@ -21,7 +21,9 @@ use crate::{db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, EmptyResul
 pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
     let room_alias = room_alias.into_inner();
     if room_alias.is_remote() {
-        let response = directory_request(&room_alias)?.send::<RoomInfoResBody>().await?;
+        let response = directory_request(&room_alias.server_name().origin().await, &room_alias)?
+            .send::<RoomInfoResBody>()
+            .await?;
 
         let mut servers = response.servers;
         servers.shuffle(&mut rand::thread_rng());
