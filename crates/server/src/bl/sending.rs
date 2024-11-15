@@ -478,9 +478,8 @@ async fn handle_events(
                 .into_inner();
             let response = crate::appservice::send_request(registration, request)
                 .await
-                .map_err(|e| (kind.clone(), e.into()))?
-                .map(|_response| kind.clone())
-                .map_err(|e| (kind.clone(), e.into()));
+                .map_err(|e| (kind.clone(), e.into()))
+                .map(|_response| kind.clone());
 
             drop(permit);
             response

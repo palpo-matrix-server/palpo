@@ -542,7 +542,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             &origin.origin().await,
             RoomStateAtEventReqArgs {
                 room_id: room_id.to_owned(),
-                event_id: incoming_pdu.event_id.clone(),
+                event_id: (&*incoming_pdu.event_id).to_owned(),
             },
         )?
         .into_inner();
@@ -1196,7 +1196,7 @@ pub(crate) async fn fetch_join_signing_keys(
             RemoteServerKeysBatchReqBody {
                 server_keys: servers.clone(),
             },
-        );
+        )?.into_inner();
         if let Ok(keys) = crate::sending::send_federation_request(&server, request)
             .await?
             .json::<RemoteServerKeysBatchResBody>()
@@ -1236,7 +1236,7 @@ pub(crate) async fn fetch_join_signing_keys(
     let mut futures: FuturesUnordered<_> = servers
         .into_keys()
         .map(|server| async move {
-            let request = get_server_key_request(&server.origin())?.into_inner();
+            let request = get_server_key_request(&server.origin().await)?.into_inner();
             let server_keys = crate::sending::send_federation_request(&server, request)
                 .await?
                 .json::<ServerKeysResBody>()
@@ -1386,7 +1386,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
 
     debug!("Fetching signing keys for {} over federation", origin);
 
-    let key_request = get_server_key_request(&origin.origin())?.into_inner();
+    let key_request = get_server_key_request(&origin.origin().await)?.into_inner();
     if let Some(mut server_key) = crate::sending::send_federation_request(origin, key_request)
         .await?
         .json::<ServerKeysResBody>()

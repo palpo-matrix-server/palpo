@@ -11,6 +11,7 @@ use futures_util::stream::{FuturesUnordered, StreamExt};
 use salvo::http::header::AUTHORIZATION;
 use salvo::prelude::*;
 use tokio::sync::{mpsc, Mutex, Semaphore};
+use salvo::http::headers::{CacheControl, Header};
 
 use crate::core::authorization::XMatrix;
 use crate::core::identifiers::*;
