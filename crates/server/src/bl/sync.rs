@@ -703,7 +703,6 @@ async fn load_joined_room(
         None
     };
 
-    println!("FFFFFFFFFFFirst pdu: {:#?}", timeline_pdus.first());
     let prev_batch = timeline_pdus.first().map(|(sn, _)| sn.to_string());
 
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
@@ -711,7 +710,6 @@ async fn load_joined_room(
     let read_receipts = crate::room::receipt::read_receipts(&room_id, since_sn)?;
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
         vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?];
-    println!("====eeeeeeeeeeeeeeeeeeeedus: {edus:#?}");
 
     if crate::room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(
