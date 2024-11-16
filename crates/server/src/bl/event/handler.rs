@@ -1240,8 +1240,8 @@ pub(crate) async fn fetch_join_signing_keys(
             let server_keys = crate::sending::send_federation_request(&server, request)
                 .await?
                 .json::<ServerKeysResBody>()
-                .await?;
-            Ok::<_, AppError>(server_keys)
+                .await;
+            Ok::<_, AppError>((server_keys, server))
         })
         .collect();
 
