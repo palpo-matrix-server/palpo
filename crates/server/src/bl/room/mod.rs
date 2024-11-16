@@ -514,14 +514,6 @@ pub fn invited_member_count(room_id: &RoomId) -> AppResult<u64> {
 /// Returns an iterator over all rooms a user left.
 #[tracing::instrument]
 pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
-    println!(
-        "===========room left user: {:?}  {:#?}",
-        user_id,
-        room_users::table
-            .filter(room_users::user_id.eq(user_id))
-            .select((room_users::room_id, room_users::membership))
-            .load::<(OwnedRoomId, String)>(&mut *db::connect()?)
-    );
     let room_event_ids = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq_any(vec![
