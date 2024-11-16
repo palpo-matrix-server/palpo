@@ -6,19 +6,18 @@ use std::time::{Duration, Instant};
 use base64::{engine::general_purpose, Engine as _};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use palpo_core::events::push_rules::PushRulesEventContent;
 use tokio::sync::{mpsc, Mutex, Semaphore};
 
-use crate::core::appservice::event::PushEventsReqBody;
+use crate::core::appservice::event::{push_events_request, PushEventsReqBody};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::receipt::ReceiptType;
-use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap};
+use crate::core::events::push_rules::PushRulesEventContent;
+use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
 use crate::core::events::{AnySyncEphemeralRoomEvent, GlobalAccountDataEventType};
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody};
+use crate::core::federation::transaction::{send_messages_request, Edu, SendMessageReqBody, SendMessageResBody};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
 use crate::core::{device_id, push, UnixMillis};
-use crate::{db, utils, AppError, AppResult, PduEvent};
+use crate::{db, exts::*, utils, AppError, AppResult, PduEvent};
 
 use super::room::receipt;
 use super::{curr_sn, outgoing_requests};
@@ -104,6 +103,7 @@ pub fn start_handler() {
 }
 
 async fn handler() -> AppResult<()> {
+    println!("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHandler");
     let mut receiver = MPSC_RECEIVER.get().expect("receiver should exist").lock().await;
     let mut futures = FuturesUnordered::new();
     let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
@@ -112,6 +112,10 @@ async fn handler() -> AppResult<()> {
     let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
 
     for (id, outgoing_kind, event) in active_requests()? {
+        println!(
+            "active_requests: {:?}  outgoing_kind:{outgoing_kind:?}   event:{event:?}",
+            id
+        );
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
             .or_insert_with(Vec::new);
@@ -131,10 +135,13 @@ async fn handler() -> AppResult<()> {
     }
 
     loop {
+        println!("============loop   futures: {:?}", futures.len());
         tokio::select! {
             Some(response) = futures.next() => {
+                println!("============response  === 0");
                 match response {
                     Ok(outgoing_kind) => {
+                        println!("============response  === 0");
                         delete_all_active_requests_for(&outgoing_kind)?;
 
                         // Find events that have been added since starting the last request
@@ -154,7 +161,8 @@ async fn handler() -> AppResult<()> {
                             current_transaction_status.remove(&outgoing_kind);
                         }
                     }
-                    Err((outgoing_kind, _)) => {
+                    Err((outgoing_kind, x)) => {
+                        println!("============response error  === {outgoing_kind:?}  {x:?}");
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
                             TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
@@ -167,6 +175,7 @@ async fn handler() -> AppResult<()> {
                 };
             },
             Some((outgoing_kind, event, id)) = receiver.recv() => {
+                println!("============recv   outgoing_kind:{outgoing_kind:?}   event:{event:?}   id:{id}");
                 if let Ok(Some(events)) = select_events(
                     &outgoing_kind,
                     vec![(id, event)],
@@ -218,19 +227,26 @@ fn select_events(
 
     let mut events = Vec::new();
 
+    println!("------select_events: outgoing_kind:{outgoing_kind:?}   retry:{retry}");
     if retry {
         // We retry the previous transaction
+        println!("------select_events: retry");
         for (_, e) in active_requests_for(outgoing_kind)?.into_iter() {
+            println!("------select_events   0");
             events.push(e);
         }
     } else {
+        println!("------select_events: not retry");
         mark_as_active(&new_events)?;
         for (_, e) in new_events {
+            println!("------select_events   1");
             events.push(e);
         }
 
         if let OutgoingKind::Normal(server_name) = outgoing_kind {
+            println!("------select_events   2");
             if let Ok((select_edus, last_count)) = select_edus(server_name) {
+                println!("------select_events   3");
                 events.extend(select_edus.into_iter().map(SendingEventType::Edu));
             }
         }
@@ -457,16 +473,13 @@ async fn handle_events(
                     })
                     .collect::<Vec<_>>(),
             ));
-            let url = registration
-                .build_url(&format!("/app/v1/transactions/{}", txn_id))
-                .map_err(|e| (kind.clone(), e.into()))?;
-            let response = crate::sending::post(url)
-                .stuff(req_body)
+            let request = push_events_request(registration.url.as_deref().unwrap_or_default(), txn_id, req_body)
                 .map_err(|e| (kind.clone(), e.into()))?
-                .send::<()>()
+                .into_inner();
+            let response = crate::appservice::send_request(registration, request)
                 .await
-                .map(|_response| kind.clone())
-                .map_err(|e| (kind.clone(), e.into()));
+                .map_err(|e| (kind.clone(), e.into()))
+                .map(|_response| kind.clone());
 
             drop(permit);
             response
@@ -581,29 +594,32 @@ async fn handle_events(
                     })
                     .collect::<Vec<_>>(),
             ));
-            let response = crate::sending::post(
-                server
-                    .build_url(&format!("federation/v1/send/{txn_id}"))
-                    .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?,
+            let request = send_messages_request(
+                &server.origin().await,
+                txn_id,
+                SendMessageReqBody {
+                    origin: crate::server_name().to_owned(),
+                    pdus: pdu_jsons,
+                    edus: edu_jsons,
+                    origin_server_ts: UnixMillis::now(),
+                },
             )
-            .stuff(SendMessageReqBody {
-                origin: crate::server_name().to_owned(),
-                pdus: pdu_jsons,
-                edus: edu_jsons,
-                origin_server_ts: UnixMillis::now(),
-            })
             .map_err(|e| (kind.clone(), e.into()))?
-            .send::<SendMessageResBody>()
-            .await
-            .map(|response| {
-                for pdu in response.pdus {
-                    if pdu.1.is_err() {
-                        warn!("Failed to send to {}: {:?}", server, pdu);
+            .into_inner();
+            let response = crate::sending::send_federation_request(server, request)
+                .await
+                .map_err(|e| (kind.clone(), e.into()))?
+                .json::<SendMessageResBody>()
+                .await
+                .map(|response| {
+                    for pdu in response.pdus {
+                        if pdu.1.is_err() {
+                            warn!("Failed to send to {}: {:?}", server, pdu);
+                        }
                     }
-                }
-                kind.clone()
-            })
-            .map_err(|e| (kind, e.into()));
+                    kind.clone()
+                })
+                .map_err(|e| (kind, e.into()));
 
             drop(permit);
 
@@ -785,7 +801,10 @@ fn mark_as_active(events: &[(i64, SendingEventType)]) -> AppResult<()> {
             &[]
         };
         diesel::update(outgoing_requests::table.find(id))
-            .set((outgoing_requests::data.eq(value), outgoing_requests::state.eq("done")))
+            .set((
+                outgoing_requests::data.eq(value),
+                outgoing_requests::state.eq("pending"),
+            ))
             .execute(&mut *db::connect()?)?;
     }
 

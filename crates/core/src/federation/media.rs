@@ -1,6 +1,7 @@
 /// Endpoints for the media repository.
 use std::time::Duration;
 
+use reqwest::Url;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
@@ -19,8 +20,11 @@ const GENERATED_BOUNDARY_LENGTH: usize = 30;
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1mediathumbnailmediaid
-pub fn thumbnail_request(server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
-    let mut url = server.build_url(&format!("/federation/v1/media/thumbnail/{}", args.media_id))?;
+pub fn thumbnail_request(origin: &str, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/media/thumbnail/{}",
+        args.media_id
+    ))?;
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("width", &args.width.to_string());
@@ -99,9 +103,9 @@ pub struct ThumbnailResBody {
 //     }
 // };
 
-pub fn content_request(server: &ServerName, args: ContentReqArgs) -> SendResult<SendRequest> {
-    let url = server.build_url(&format!(
-        "federation/v1/media/download/{}?timeout_ms={}",
+pub fn content_request(origin: &str, args: ContentReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}federation/v1/media/download/{}?timeout_ms={}",
         args.media_id,
         args.timeout_ms.as_millis()
     ))?;

@@ -1,3 +1,5 @@
+use itertools::Itertools;
+use reqwest::Url;
 /// Endpoints for handling room knocking.
 /// `GET /_matrix/federation/*/make_knock/{room_id}/{user_id}`
 ///
@@ -5,9 +7,6 @@
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1make_knockroomiduser_id
-use crate::{OwnedUserId, RoomVersionId};
-use itertools::Itertools;
-
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +14,7 @@ use crate::events::AnyStrippedStateEvent;
 use crate::sending::{SendError, SendRequest, SendResult};
 use crate::serde::{RawJson, RawJsonValue};
 use crate::OwnedRoomId;
+use crate::{OwnedUserId, RoomVersionId};
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -25,18 +25,14 @@ use crate::OwnedRoomId;
 //     }
 // };
 
-pub fn make_knock_request(args: MakeKnockReqArgs) -> SendResult<SendRequest> {
+pub fn make_knock_request(origin: &str, args: MakeKnockReqArgs) -> SendResult<SendRequest> {
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
     let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
-    Ok(crate::sending::get(
-        args.room_id
-            .server_name()
-            .map_err(SendError::other)?
-            .build_url(&format!(
-                "federation/v1/make_knock/{}/{}{}",
-                args.room_id, args.user_id, ver
-            ))?,
-    ))
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/make_knock/{}/{}{}",
+        args.room_id, args.user_id, ver
+    ))?;
+    Ok(crate::sending::get(url))
 }
 
 /// Request type for the `create_knock_event_template` endpoint.

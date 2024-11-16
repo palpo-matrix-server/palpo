@@ -10,7 +10,7 @@ use salvo::Response;
 
 use crate::core::client::media::ContentReqArgs;
 use crate::core::ServerName;
-use crate::{join_path, AppResult};
+use crate::{exts::*, join_path, AppResult};
 
 pub async fn get_remote_content(
     mxc: &str,
@@ -27,13 +27,16 @@ pub async fn get_remote_content(
     //             return Err(e.into());
     //         }
     //     };
-    let mut content_req = crate::core::client::media::content_request(ContentReqArgs {
-        server_name: server_name.to_owned(),
-        media_id: media_id.to_owned(),
-        allow_remote: false,
-        timeout_ms: Duration::from_secs(20),
-        allow_redirect: false,
-    })?
+    let mut content_req = crate::core::client::media::content_request(
+        &server_name.origin().await,
+        ContentReqArgs {
+            server_name: server_name.to_owned(),
+            media_id: media_id.to_owned(),
+            allow_remote: false,
+            timeout_ms: Duration::from_secs(20),
+            allow_redirect: false,
+        },
+    )?
     .into_inner();
     let content_response: reqwest::Response = crate::sending::send_federation_request(server_name, content_req).await?;
 

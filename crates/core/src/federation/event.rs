@@ -1,7 +1,9 @@
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RawJsonValue, UnixMillis};
+use crate::sending::{SendRequest, SendResult};
+use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RawJsonValue, UnixMillis};
 
 /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 ///
@@ -81,6 +83,10 @@ impl EventByTimestampResBody {
 //     pub event_id: OwnedEventId,
 // }
 
+pub fn get_events_request(origin: &str, event_id: &EventId) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/event/{event_id}"))?;
+    Ok(crate::sending::get(url))
+}
 /// Response type for the `get_event` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct EventResBody {
@@ -187,6 +193,13 @@ fn is_default_limit(val: &usize) -> bool {
 //         1.0 => "/_matrix/federation/v1/state_ids/:room_id",
 //     }
 // };
+pub fn room_state_ids_request(origin: &str, args: RoomStateAtEventReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/state_ids/{}?event_id={}",
+        args.room_id, args.event_id
+    ))?;
+    Ok(crate::sending::get(url))
+}
 
 /// Request type for the `get_state_ids` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]

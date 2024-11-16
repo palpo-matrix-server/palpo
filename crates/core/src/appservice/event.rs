@@ -7,12 +7,14 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixappv1transactionstxnid
 
+use reqwest::Url;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::events::receipt::ReceiptContent;
 use crate::events::AnyTimelineEvent;
 use crate::presence::PresenceContent;
+use crate::sending::{SendRequest, SendResult};
 use crate::serde::from_raw_json_value;
 use crate::{serde::RawJson, JsonValue, OwnedRoomId, OwnedUserId, RawJsonValue};
 
@@ -32,6 +34,10 @@ use crate::{serde::RawJson, JsonValue, OwnedRoomId, OwnedUserId, RawJsonValue};
 //     }
 // };
 
+pub fn push_events_request(origin: &str, txn_id: &str, body: PushEventsReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/app/v1/transactions/{}", txn_id))?;
+    crate::sending::post(url).stuff(body)
+}
 /// Request type for the `push_events` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]

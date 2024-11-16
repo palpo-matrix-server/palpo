@@ -307,10 +307,13 @@ pub(super) async fn ban_user(
             ..event
         }
     } else if body.user_id.is_remote() {
-        let profile_request = profile_request(ProfileReqArgs {
-            user_id: body.user_id.to_owned(),
-            field: None,
-        })?
+        let profile_request = profile_request(
+            &body.user_id.server_name().origin().await,
+            ProfileReqArgs {
+                user_id: body.user_id.to_owned(),
+                field: None,
+            },
+        )?
         .into_inner();
         let ProfileResBody {
             avatar_url,

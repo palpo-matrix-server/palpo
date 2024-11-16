@@ -3,6 +3,9 @@ use salvo::prelude::*;
 use crate::core::identifiers::*;
 use crate::{AppResult, AuthedInfo};
 
+mod url;
+pub use url::*;
+
 pub trait DepotExt {
     fn authed_info(&self) -> AppResult<&AuthedInfo>;
     fn take_authed_info(&mut self) -> AppResult<AuthedInfo>;

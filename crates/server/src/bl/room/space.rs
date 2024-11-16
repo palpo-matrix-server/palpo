@@ -1,30 +1,23 @@
 use std::sync::{LazyLock, Mutex};
 
-use crate::room::state::DbRoomStateField;
+use crate::{room::state::DbRoomStateField, GetUrlOrigin};
 use lru_cache::LruCache;
 use tracing::{debug, error, warn};
 
-use crate::core::{
-    events::{
-        room::{
-            avatar::RoomAvatarEventContent,
-            canonical_alias::RoomCanonicalAliasEventContent,
-            create::RoomCreateEventContent,
-            guest_access::{GuestAccess, RoomGuestAccessEventContent},
-            history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent},
-            join_rules::{self, AllowRule, JoinRule, RoomJoinRulesEventContent},
-            topic::RoomTopicEventContent,
-        },
-        space::child::SpaceChildEventContent,
-        StateEventType,
-    },
-    space::SpaceRoomJoinRule,
-    OwnedRoomId, RoomId, UserId,
-    {
-        client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk},
-        federation,
-    },
+use crate::core::client::space::HierarchyResBody;
+use crate::core::client::space::{HierarchyReqArgs, SpaceHierarchyRoomsChunk};
+use crate::core::events::room::{
+    avatar::RoomAvatarEventContent,
+    canonical_alias::RoomCanonicalAliasEventContent,
+    create::RoomCreateEventContent,
+    guest_access::{GuestAccess, RoomGuestAccessEventContent},
+    history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent},
+    join_rules::{self, AllowRule, JoinRule, RoomJoinRulesEventContent},
+    topic::RoomTopicEventContent,
 };
+use crate::core::events::{space::child::SpaceChildEventContent, StateEventType};
+use crate::core::federation::space::hierarchy_request;
+use crate::core::{federation, space::SpaceRoomJoinRule, OwnedRoomId, RoomId, UserId};
 use crate::PduEvent;
 use crate::{AppError, AppResult, MatrixError};
 
@@ -174,12 +167,18 @@ pub async fn get_hierarchy(
                 break;
             }
             debug!("Asking {server} for /hierarchy");
-            if let Ok(response) = crate::sending::get(server.build_url(&format!(
-                "/client/v1/rooms/{}/hierarchy?suggested_only={}",
-                current_room, suggested_only
-            ))?)
-            .send::<federation::space::HierarchyResBody>()
-            .await
+            let request = hierarchy_request(
+                &server.origin().await,
+                federation::space::HierarchyReqArgs {
+                    room_id: current_room.clone(),
+                    suggested_only,
+                },
+            )?
+            .into_inner();
+            if let Ok(response) = crate::sending::send_federation_request(&server, request)
+                .await?
+                .json::<federation::space::HierarchyResBody>()
+                .await
             {
                 warn!("Got response from {server} for /hierarchy\n{response:?}");
                 let chunk = SpaceHierarchyRoomsChunk {

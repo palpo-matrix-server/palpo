@@ -4,6 +4,7 @@ pub use content::*;
 
 use std::time::Duration;
 
+use reqwest::Url;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
@@ -148,8 +149,11 @@ impl ConfigResBody {
 //         })
 //     }
 // }
-pub fn thumbnail_request(server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
-    let mut url = server.build_url(&format!("/media/v3/thumbnail/{server}/{}", args.media_id))?;
+pub fn thumbnail_request(origin: &str, server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/media/v3/thumbnail/{server}/{}",
+        args.media_id
+    ))?;
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("width", &args.width.to_string());

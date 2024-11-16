@@ -13,11 +13,13 @@ use crate::core::directory::QueryCriteria;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::events::StateEventType;
-use crate::core::federation::directory::{remote_server_keys_request, RemoteServerKeysReqArgs};
 use crate::core::federation::directory::{
-    RemoteServerKeysBatchReqBody, RemoteServerKeysBatchResBody, ServerKeysResBody,
+    remote_server_keys_batch_request, remote_server_keys_request, RemoteServerKeysBatchReqBody,
+    RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs, ServerKeysResBody,
 };
-use crate::core::federation::event::RoomStateIdsResBody;
+use crate::core::federation::event::{
+    get_events_request, room_state_ids_request, RoomStateAtEventReqArgs, RoomStateIdsResBody,
+};
 use crate::core::federation::key::get_server_key_request;
 use crate::core::federation::membership::{SendJoinResBodyV1, SendJoinResBodyV2};
 use crate::core::identifiers::*;
@@ -26,8 +28,7 @@ use crate::core::state::{self, RoomVersion, StateMap};
 use crate::core::{OwnedServerName, ServerName, UnixMillis};
 use crate::event::{NewDbEvent, PduEvent};
 use crate::room::state::{CompressedStateEvent, DbRoomStateField};
-use crate::schema::*;
-use crate::{db, AppError, AppResult, MatrixError, SigningKeys};
+use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKeys};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -537,12 +538,18 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         debug!("Calling /state_ids");
         // Call /state_ids to find out what the state at this pdu is. We trust the server's
         // response to some extend, but we still do a lot of checks on the events
-        match crate::sending::get(origin.build_url(&format!(
-            "federation/v1/state_ids/{}?event_id={}",
-            room_id, incoming_pdu.event_id
-        ))?)
-        .send::<RoomStateIdsResBody>()
-        .await
+        let request = room_state_ids_request(
+            &origin.origin().await,
+            RoomStateAtEventReqArgs {
+                room_id: room_id.to_owned(),
+                event_id: (&*incoming_pdu.event_id).to_owned(),
+            },
+        )?
+        .into_inner();
+        match crate::sending::send_federation_request(origin, request)
+            .await?
+            .json::<RoomStateIdsResBody>()
+            .await
         {
             Ok(res) => {
                 debug!("Fetching state events at event.");
@@ -869,8 +876,10 @@ pub(crate) async fn fetch_and_handle_outliers(
             }
 
             info!("Fetching {} over federation.", next_id);
-            match crate::sending::get(origin.build_url(&format!("/federation/v1/event/{}", next_id))?)
-                .send::<EventResBody>()
+            let request = get_events_request(&origin.origin().await, &next_id)?.into_inner();
+            match crate::sending::send_federation_request(&origin, request)
+                .await?
+                .json::<EventResBody>()
                 .await
             {
                 Ok(res) => {
@@ -1182,11 +1191,15 @@ pub(crate) async fn fetch_join_signing_keys(
     }
     for server in &conf.trusted_servers {
         info!("Asking batch signing keys from trusted server {}", server);
-        if let Ok(keys) = crate::sending::post(server.build_url("/key/v2/query")?)
-            .stuff(RemoteServerKeysBatchReqBody {
+        let request = remote_server_keys_batch_request(
+            &server.origin().await,
+            RemoteServerKeysBatchReqBody {
                 server_keys: servers.clone(),
-            })?
-            .send::<RemoteServerKeysBatchResBody>()
+            },
+        )?.into_inner();
+        if let Ok(keys) = crate::sending::send_federation_request(&server, request)
+            .await?
+            .json::<RemoteServerKeysBatchResBody>()
             .await
         {
             trace!("Got signing keys: {:?}", keys);
@@ -1223,12 +1236,12 @@ pub(crate) async fn fetch_join_signing_keys(
     let mut futures: FuturesUnordered<_> = servers
         .into_keys()
         .map(|server| async move {
-            Ok::<_, AppError>((
-                crate::sending::get(server.build_url("/key/v2/server")?)
-                    .send::<ServerKeysResBody>()
-                    .await,
-                server,
-            ))
+            let request = get_server_key_request(&server.origin().await)?.into_inner();
+            let server_keys = crate::sending::send_federation_request(&server, request)
+                .await?
+                .json::<ServerKeysResBody>()
+                .await;
+            Ok::<_, AppError>((server_keys, server))
         })
         .collect();
 
@@ -1373,7 +1386,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
 
     debug!("Fetching signing keys for {} over federation", origin);
 
-    let key_request = get_server_key_request(origin)?.into_inner();
+    let key_request = get_server_key_request(&origin.origin().await)?.into_inner();
     if let Some(mut server_key) = crate::sending::send_federation_request(origin, key_request)
         .await?
         .json::<ServerKeysResBody>()
@@ -1414,7 +1427,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
     for server in &conf.trusted_servers {
         debug!("Asking {} for {}'s signing key", server, origin);
         let keys_request = remote_server_keys_request(
-            server,
+            &server.origin().await,
             RemoteServerKeysReqArgs {
                 server_name: origin.to_owned(),
                 minimum_valid_until_ts: UnixMillis::from_system_time(

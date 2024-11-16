@@ -38,7 +38,12 @@ pub fn authed_router() -> Router {
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        let profile = profile_request(ProfileReqArgs { user_id, field: None })?.send().await?;
+        let profile = profile_request(
+            &user_id.server_name().origin().await,
+            ProfileReqArgs { user_id, field: None },
+        )?
+        .send()
+        .await?;
 
         return json_ok(profile);
     }
@@ -211,10 +216,13 @@ async fn set_avatar_url(
 async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        let body = profile_request(ProfileReqArgs {
-            user_id,
-            field: Some(ProfileField::DisplayName),
-        })?
+        let body = profile_request(
+            &user_id.server_name().origin().await,
+            ProfileReqArgs {
+                user_id,
+                field: Some(ProfileField::DisplayName),
+            },
+        )?
         .send::<DisplayNameResBody>()
         .await?;
         json_ok(body)

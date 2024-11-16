@@ -9,6 +9,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +19,9 @@ use crate::sending::{SendRequest, SendResult};
 use crate::serde::Base64;
 use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, ServerName};
 
-pub fn get_server_key_request(origin: &ServerName) -> SendResult<SendRequest> {
-    Ok(crate::sending::get(origin.build_url("/key/v2/server")?))
+pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/key/v2/server"))?;
+    Ok(crate::sending::get(url))
 }
 
 // const METADATA: Metadata = metadata! {

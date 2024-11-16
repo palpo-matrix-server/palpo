@@ -4,6 +4,7 @@
 ///
 use std::time::Duration;
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -25,9 +26,9 @@ use crate::{OwnedMxcUri, OwnedServerName};
 //     }
 // };
 
-pub fn content_request(args: ContentReqArgs) -> SendResult<SendRequest> {
-    let url = args.server_name.build_url(&format!(
-        "client/v1/media/download/{}/{}?allow_remote={}&allow_redirect={}",
+pub fn content_request(origin: &str, args: ContentReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/client/v1/media/download/{}/{}?allow_remote={}&allow_redirect={}",
         args.server_name, args.media_id, args.allow_remote, args.allow_redirect
     ))?;
     Ok(crate::sending::get(url))

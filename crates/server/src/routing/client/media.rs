@@ -21,7 +21,7 @@ use crate::core::client::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::media::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{db, empty_ok, exts::*, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 pub fn self_auth_router() -> Router {
     Router::with_path("media")
@@ -363,7 +363,7 @@ pub async fn get_thumbnail(
         return Ok(());
     } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
         let request = crate::core::federation::media::thumbnail_request(
-            &args.server_name,
+            &args.server_name.origin().await,
             crate::core::federation::media::ThumbnailReqArgs {
                 height: args.height,
                 width: args.width,

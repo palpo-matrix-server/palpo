@@ -5,6 +5,7 @@
 /// Get all the public rooms for the homeserver.
 use std::collections::BTreeMap;
 
+use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +13,7 @@ use crate::directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server};
 use crate::federation::discovery::ServerSigningKeys;
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::RawJson;
-use crate::{OwnedServerName, OwnedServerSigningKeyId, ServerName, UnixMillis};
+use crate::{EventId, OwnedServerName, OwnedServerSigningKeyId, ServerName, UnixMillis};
 
 /// `POST /_matrix/federation/*/publicRooms`
 ///
@@ -30,8 +31,9 @@ use crate::{OwnedServerName, OwnedServerSigningKeyId, ServerName, UnixMillis};
 //     }
 // };
 
-pub fn public_rooms_request(server: &ServerName, body: PublicRoomsReqBody) -> SendResult<SendRequest> {
-    crate::sending::get(server.build_url("federation/v1/publicRooms")?).stuff(body)
+pub fn public_rooms_request(origin: &str, body: PublicRoomsReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/publicRooms"))?;
+    crate::sending::get(url).stuff(body)
 }
 
 /// Request type for the `get_filtered_public_rooms` endpoint.
@@ -103,6 +105,11 @@ impl ServerResBody {
 //     }
 // };
 
+pub fn remote_server_keys_batch_request(origin: &str, body: RemoteServerKeysBatchReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/key/v2/query",))?;
+    crate::sending::post(url).stuff(body)
+}
+
 /// Request type for the `get_remote_server_keys_batch` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
@@ -149,9 +156,9 @@ impl RemoteServerKeysBatchResBody {
 //     }
 // };
 
-pub fn remote_server_keys_request(server_name: &ServerName, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
-    let url = server_name.build_url(&format!(
-        "/key/v2/query/{}?minimum_valid_until_ts={}",
+pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/key/v2/query/{}?minimum_valid_until_ts={}",
         args.server_name, args.minimum_valid_until_ts
     ))?;
     Ok(crate::sending::get(url))
