@@ -151,10 +151,6 @@ pub fn update_membership(
         None
     };
 
-    println!(
-        "======================membership update, user_id: {:?}, room_id: {:?}, membership: {:?}",
-        user_id, room_id, membership
-    );
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
@@ -314,7 +310,6 @@ pub fn update_membership(
             })?;
         }
         MembershipState::Leave | MembershipState::Ban => {
-            println!("======================membership leave or ban");
             db::connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
@@ -329,7 +324,6 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-                println!("======================membership leave or ban  1");
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
@@ -345,7 +339,6 @@ pub fn update_membership(
                         created_at: UnixMillis::now(),
                     })
                     .execute(conn)?;
-                println!("======================membership leave or ban  2");
                 Ok(())
             })?;
         }

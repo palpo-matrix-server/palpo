@@ -9,7 +9,7 @@ use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 ///
 /// - A user can only access their own filters
 #[endpoint]
-pub(super) async fn get_filter(
+pub(super) fn get_filter(
     _aa: AuthArgs,
     filter_id: PathParam<i64>,
     depot: &mut Depot,
@@ -26,7 +26,7 @@ pub(super) async fn get_filter(
 // #POST /_matrix/client/r0/user/{user_id}/filter
 /// Creates a new filter to be used by other endpoints.
 #[endpoint]
-pub(super) async fn create_filter(
+pub(super) fn create_filter(
     _aa: AuthArgs,
     body: JsonBody<CreateFilterReqBody>,
     depot: &mut Depot,
