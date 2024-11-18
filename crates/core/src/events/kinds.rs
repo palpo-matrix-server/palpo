@@ -12,7 +12,7 @@ use super::{
     RedactedUnsigned, RedactionDeHelper, RoomAccountDataEventContent, StateEventContent, StateEventType,
     StaticStateEventContent, ToDeviceEventContent,
 };
-
+use crate::events::receipt::ReceiptEventContent;
 use crate::serde::{from_raw_json_value, RawJson, RawJsonValue};
 use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId};
 
@@ -93,6 +93,11 @@ impl<C: EphemeralRoomEventContent> Serialize for SyncEphemeralRoomEvent<C> {
         state.serialize_field("type", &self.content.event_type())?;
         state.serialize_field("content", &self.content)?;
         state.end()
+    }
+}
+impl SyncEphemeralRoomEvent<ReceiptEventContent> {
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
     }
 }
 

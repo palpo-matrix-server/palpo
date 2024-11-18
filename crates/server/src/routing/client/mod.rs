@@ -308,7 +308,6 @@ async fn sync_events_v3(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBodyV3> {
-    println!("Sync Request: {:?}", req.uri());
     let authed = depot.authed_info()?.clone();
     let mut rx = match crate::SYNC_RECEIVERS
         .write()

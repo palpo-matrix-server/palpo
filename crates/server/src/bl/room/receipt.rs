@@ -79,7 +79,10 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
 }
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
+pub fn read_receipts(
+    room_id: &RoomId,
+    event_sn: i64,
+) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
     let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
         BTreeMap::new();
     let receipts = event_receipts::table
@@ -100,9 +103,9 @@ pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeral
         type_map.insert(user_id, serde_json::from_value(json_data).unwrap_or_default());
     }
 
-    Ok(SyncEphemeralRoomEvent {
-        content: ReceiptEventContent(event_content),
-    })
+        Ok(SyncEphemeralRoomEvent {
+            content: ReceiptEventContent(event_content),
+        })
 }
 /// Sets a private read marker at `count`.
 #[tracing::instrument]

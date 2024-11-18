@@ -21,6 +21,8 @@ use crate::room::state::DbRoomStateField;
 use crate::schema::*;
 use crate::{AppError, AppResult};
 
+use super::room::receipt::read_receipts;
+
 #[tracing::instrument(skip_all)]
 pub fn sync_events(
     sender_id: OwnedUserId,
@@ -708,10 +710,11 @@ async fn load_joined_room(
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
 
     let read_receipts = crate::room::receipt::read_receipts(&room_id, since_sn)?;
-    // let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
-    //     vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?];
-    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
-        vec![];
+    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = if !read_receipts.is_empty() {
+        vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?]
+    } else {
+        Vec::new()
+    };
 
     if crate::room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(
@@ -751,7 +754,7 @@ async fn load_joined_room(
         state: StateV3 {
             events: state_events.iter().map(|pdu| pdu.to_sync_state_event()).collect(),
         },
-        ephemeral:   { events: edus },
+        ephemeral: EphemeralV3 { events: edus },
         unread_thread_notifications: BTreeMap::new(),
         unread_count: None,
     })
