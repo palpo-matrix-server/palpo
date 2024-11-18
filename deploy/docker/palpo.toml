@@ -54,7 +54,7 @@ trusted_servers = ["matrix.org"]
 
 [db]
 url = "postgres://palpo:changeme@postgres:5432/palpo"
-pool_size = 1
+pool_size = 10
 
 [well_known]
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access palpo with the host
