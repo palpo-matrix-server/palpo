@@ -47,7 +47,7 @@ use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult,
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");
-    for v in ["v3", "v1", "r0"] {
+    for v in ["v3", "v1", "r0", "unstable"] {
         client = client
             .push(
                 Router::with_path(v)

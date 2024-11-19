@@ -21,13 +21,13 @@ fn default_db_pooll_size() -> u32 {
     10
 }
 fn default_tcp_timeout() -> u64 {
-    10
+    10000
 }
 fn default_connection_timeout() -> u64 {
-    30
+    30000
 }
 fn default_statement_timeout() -> u64 {
-    30
+    30000
 }
 fn default_helper_threads() -> usize {
     10

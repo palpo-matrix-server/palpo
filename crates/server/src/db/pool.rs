@@ -22,18 +22,7 @@ impl DieselPool {
         r2d2_config: r2d2::Builder<ConnectionManager<PgConnection>>,
     ) -> Result<DieselPool, PoolError> {
         let manager = ConnectionManager::new(connection_url(config, url));
-
-        // For crates.io we want the behavior of creating a database pool to be slightly different
-        // than the defaults of R2D2: the library's build() method assumes its consumers always
-        // need a database connection to operate, so it blocks creating a pool until a minimum
-        // number of connections is available.
-        //
-        // crates.io can actually operate in a limited capacity without a database connections,
-        // especially by serving download requests to our users. Because of that we don't want to
-        // block indefinitely waiting for a connection: we instead need to wait for a bit (to avoid
-        // serving errors for the first connections until the pool is initialized) and if we can't
-        // establish any connection continue booting up the application. The database pool will
-        // automatically be marked as unhealthy and the rest of the application will adapt.
+     
         let pool = DieselPool {
             inner: r2d2_config.build_unchecked(manager),
         };
@@ -77,31 +66,6 @@ impl Deref for DieselPool {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct ConnectionConfig {
-    pub statement_timeout: Duration,
-    pub read_only: bool,
-}
-
-impl CustomizeConnection<PgConnection, r2d2::Error> for ConnectionConfig {
-    fn on_acquire(&self, conn: &mut PgConnection) -> Result<(), r2d2::Error> {
-        use diesel::sql_query;
-
-        sql_query(format!(
-            "SET statement_timeout = {}",
-            self.statement_timeout.as_millis()
-        ))
-        .execute(conn)
-        .map_err(r2d2::Error::QueryError)?;
-        if self.read_only {
-            sql_query("SET default_transaction_read_only = 't'")
-                .execute(conn)
-                .map_err(r2d2::Error::QueryError)?;
-        }
-        Ok(())
     }
 }
 
