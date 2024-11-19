@@ -121,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let db_config = r2d2::Pool::builder()
             .max_size(conf.db.pool_size)
             .min_idle(conf.db.min_idle)
-            .connection_timeout(Duration::from_millis(conf.db.connection_timeout))
+            .connection_timeout(Duration::from_secs(conf.db.connection_timeout))
             .connection_customizer(Box::new(db_connection_config))
             .thread_pool(thread_pool.clone());
 
