@@ -103,7 +103,6 @@ pub fn start_handler() {
 }
 
 async fn handler() -> AppResult<()> {
-    println!("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHandler");
     let mut receiver = MPSC_RECEIVER.get().expect("receiver should exist").lock().await;
     let mut futures = FuturesUnordered::new();
     let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
@@ -135,13 +134,10 @@ async fn handler() -> AppResult<()> {
     }
 
     loop {
-        println!("============loop   futures: {:?}", futures.len());
         tokio::select! {
             Some(response) = futures.next() => {
-                println!("============response  === 0");
                 match response {
                     Ok(outgoing_kind) => {
-                        println!("============response  === 0");
                         delete_all_active_requests_for(&outgoing_kind)?;
 
                         // Find events that have been added since starting the last request
@@ -175,7 +171,6 @@ async fn handler() -> AppResult<()> {
                 };
             },
             Some((outgoing_kind, event, id)) = receiver.recv() => {
-                println!("============recv   outgoing_kind:{outgoing_kind:?}   event:{event:?}   id:{id}");
                 if let Ok(Some(events)) = select_events(
                     &outgoing_kind,
                     vec![(id, event)],
@@ -227,26 +222,19 @@ fn select_events(
 
     let mut events = Vec::new();
 
-    println!("------select_events: outgoing_kind:{outgoing_kind:?}   retry:{retry}");
     if retry {
         // We retry the previous transaction
-        println!("------select_events: retry");
         for (_, e) in active_requests_for(outgoing_kind)?.into_iter() {
-            println!("------select_events   0");
             events.push(e);
         }
     } else {
-        println!("------select_events: not retry");
         mark_as_active(&new_events)?;
         for (_, e) in new_events {
-            println!("------select_events   1");
             events.push(e);
         }
 
         if let OutgoingKind::Normal(server_name) = outgoing_kind {
-            println!("------select_events   2");
             if let Ok((select_edus, last_count)) = select_edus(server_name) {
-                println!("------select_events   3");
                 events.extend(select_edus.into_iter().map(SendingEventType::Edu));
             }
         }
