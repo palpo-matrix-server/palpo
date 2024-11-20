@@ -1196,7 +1196,8 @@ pub(crate) async fn fetch_join_signing_keys(
             RemoteServerKeysBatchReqBody {
                 server_keys: servers.clone(),
             },
-        )?.into_inner();
+        )?
+        .into_inner();
         if let Ok(keys) = crate::sending::send_federation_request(&server, request)
             .await?
             .json::<RemoteServerKeysBatchResBody>()

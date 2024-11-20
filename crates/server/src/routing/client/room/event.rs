@@ -30,7 +30,7 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
     })?;
 
     if !crate::room::state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this event.").into());
+        return Err(MatrixError::not_found("Event not found.").into());
     }
 
     let mut event = event.clone();
