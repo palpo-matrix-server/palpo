@@ -144,11 +144,11 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
+    let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
     if let Some(state_key) = &new_pdu.state_key {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
         let field_id = ensure_field(&new_pdu.kind.to_string().into(), state_key)?.id;
-        let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
 
         let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
 
@@ -183,7 +183,9 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         )?;
         Ok(frame_id)
     } else {
-        prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into())
+        let frame_id = prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
+        update_point_frame_id(point_id, frame_id)?;
+        Ok(frame_id)
     }
 }
 
@@ -352,12 +354,16 @@ pub fn get_state_event_id(
     event_type: &StateEventType,
     state_key: &str,
 ) -> AppResult<Option<Arc<EventId>>> {
-    let state_key_id = ensure_field_id(event_type, state_key)?;
-    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
-    Ok(full_state
-        .iter()
-        .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
-        .and_then(|compressed| compressed.split().ok().map(|(_, id)| id)))
+    if let Some(state_key_id) = get_field_id(event_type, state_key)? {
+        println!("========frame_id:{frame_id}  state_key_id: {state_key_id}");
+        let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
+        Ok(full_state
+            .iter()
+            .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
+            .and_then(|compressed| compressed.split().ok().map(|(_, id)| id)))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
@@ -369,6 +375,7 @@ pub fn get_pdu(frame_id: i64, event_type: &StateEventType, state_key: &str) -> A
 /// Get membership for given user in state
 fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
     get_pdu(frame_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(MembershipState::Leave), |s| {
+        println!("========frame_id:{frame_id}  pdu content: {:#?}", s);
         serde_json::from_str(s.content.get())
             .map(|c: RoomMemberEventContent| c.membership)
             .map_err(|_| AppError::internal("Invalid room membership event in database."))
@@ -448,7 +455,7 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
     let frame_id = match get_pdu_frame_id(event_id).unwrap() {
         Some(frame_id) => frame_id,
-        None => return Ok(true),
+        None => return Ok(false),
     };
 
     if let Some(visibility) = USER_VISIBILITY_CACHE

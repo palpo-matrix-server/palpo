@@ -22,7 +22,7 @@ impl DieselPool {
         r2d2_config: r2d2::Builder<ConnectionManager<PgConnection>>,
     ) -> Result<DieselPool, PoolError> {
         let manager = ConnectionManager::new(connection_url(config, url));
-     
+
         let pool = DieselPool {
             inner: r2d2_config.build_unchecked(manager),
         };
