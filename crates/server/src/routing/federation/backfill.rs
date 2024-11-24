@@ -14,14 +14,14 @@ pub fn router() -> Router {
 /// history visibility allows.
 #[endpoint]
 async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> JsonResult<BackfillResBody> {
-    let authed = depot.authed_info()?;
-    debug!("Got backfill request from: {}", authed.server_name());
+    let server_name = &crate::config().server_name;
+    debug!("Got backfill request from: {}", server_name);
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    crate::event::handler::acl_check(server_name, &args.room_id)?;
 
     let until = args
         .v
@@ -43,7 +43,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {
-        if crate::room::state::server_can_see_event(authed.server_name(), &args.room_id, &pdu.event_id)? {
+        if crate::room::state::server_can_see_event(server_name, &args.room_id, &pdu.event_id)? {
             if let Some(pdu_json) = crate::room::timeline::get_pdu_json(&pdu.event_id)? {
                 events.push(PduEvent::convert_to_outgoing_federation_event(pdu_json));
             }
@@ -51,7 +51,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     }
 
     json_ok(BackfillResBody {
-        origin: crate::config().server_name.to_owned(),
+        origin: server_name.to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdus: events,
     })

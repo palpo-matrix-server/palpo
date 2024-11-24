@@ -336,32 +336,7 @@ pub async fn get_thumbnail(
     res: &mut Response,
 ) -> AppResult<()> {
     println!("==============get_thumbnail   0  {:?}", req.uri());
-    if let Ok(DbThumbnail {
-        content_disposition,
-        content_type,
-        ..
-    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height)
-    {
-        let thumb_path = crate::media_path(
-            &args.server_name,
-            &format!("{}.{}x{}", args.media_id, args.width, args.height),
-        );
-
-        res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-        let mut file = NamedFile::builder(&thumb_path)
-            .content_type(
-                Mime::from_str(&content_type)
-                    .ok()
-                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-            )
-            .build()
-            .await?;
-        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-            file.set_content_disposition(content_disposition);
-        }
-
-        return Ok(());
-    } else if &*args.server_name != &crate::config().server_name && args.allow_remote {
+    if &*args.server_name != &crate::config().server_name && args.allow_remote {
         let request = crate::core::federation::media::thumbnail_request(
             &args.server_name.origin().await,
             crate::core::federation::media::ThumbnailReqArgs {
@@ -375,33 +350,65 @@ pub async fn get_thumbnail(
         )?
         .into_inner();
         let mut response = crate::sending::send_federation_request(&args.server_name, request).await?;
-        *response.headers_mut() = response.headers().clone();
+        *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
         let thumb_path = crate::media_path(
             &args.server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
+        std::fs::create_dir_all(utils::fs::get_parent_dir(&thumb_path))?;
         let mut f = File::create(&thumb_path).await?;
         f.write_all(&bytes).await?;
 
         res.body = ResBody::Once(bytes);
         return Ok(());
-    } else {
-        return Err(MatrixError::not_found("Media not found.").into());
+    }
+
+    match crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height) {
+        Ok(Some(DbThumbnail {
+            content_disposition,
+            content_type,
+            ..
+        })) => {
+            let thumb_path = crate::media_path(
+                &args.server_name,
+                &format!("{}.{}x{}", args.media_id, args.width, args.height),
+            );
+
+            res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
+            let mut file = NamedFile::builder(&thumb_path)
+                .content_type(
+                    Mime::from_str(&content_type)
+                        .ok()
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
+                )
+                .build()
+                .await?;
+            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+                file.set_content_disposition(content_disposition);
+            }
+
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::error!(error = ?e, "get_thumbnail error");
+            return Err(MatrixError::not_found("Media not found.").into());
+        }
+        _ =>{}
     }
 
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
-    if let Ok(DbThumbnail {
+    if let Some(DbThumbnail {
         media_id,
         width,
         height,
         content_disposition,
         content_type,
         ..
-    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)
+    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
         let mut file = NamedFile::builder(&thumb_path)

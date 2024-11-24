@@ -355,7 +355,6 @@ pub fn get_state_event_id(
     state_key: &str,
 ) -> AppResult<Option<Arc<EventId>>> {
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
-        println!("========frame_id:{frame_id}  state_key_id: {state_key_id}");
         let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
         Ok(full_state
             .iter()

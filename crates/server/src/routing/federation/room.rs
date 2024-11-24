@@ -25,13 +25,14 @@ pub fn router() -> Router {
 /// Retrieves the current state of the room.
 #[endpoint]
 async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
-    let authed = depot.authed_info()?;
+    
+    let server_name = &crate::config().server_name;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    crate::event::handler::acl_check(server_name, &args.room_id)?;
 
     let state_hash =
         crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
@@ -111,13 +112,13 @@ fn get_state_at_event(
     args: RoomStateAtEventReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<RoomStateIdsResBody> {
-    let authed = depot.authed_info()?;
+    let server_name = &crate::config().server_name;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    crate::event::handler::acl_check(server_name, &args.room_id)?;
 
     let frame_id =
         crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;

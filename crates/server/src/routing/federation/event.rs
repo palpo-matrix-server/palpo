@@ -23,7 +23,7 @@ pub fn router() -> Router {
 /// - Only works if a user of this server is currently invited or joined the room
 #[endpoint]
 fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot) -> JsonResult<EventResBody> {
-    let authed = depot.authed_info()?;
+    let server_name = &crate::config().server_name;
 
     let event = crate::room::timeline::get_pdu_json(&event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &event_id);
@@ -38,16 +38,16 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
 
-    if !crate::room::is_server_in_room(authed.server_name(), room_id)? {
+    if !crate::room::is_server_in_room(server_name, room_id)? {
         return Err(MatrixError::forbidden("Server is not in room").into());
     }
 
-    if !crate::room::state::server_can_see_event(authed.server_name(), &room_id, &event_id)? {
+    if !crate::room::state::server_can_see_event(server_name, &room_id, &event_id)? {
         return Err(MatrixError::forbidden("Server is not allowed to see event.").into());
     }
 
     json_ok(EventResBody {
-        origin: crate::config().server_name.to_owned(),
+        origin: server_name.to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdu: PduEvent::convert_to_outgoing_federation_event(event),
     })
@@ -59,13 +59,13 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 /// - This does not include the event itself
 #[endpoint]
 fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<EventAuthorizationResBody> {
-    let authed = depot.authed_info()?;
+let server_name = &crate::config().server_name;
 
-    if !crate::room::is_server_in_room(authed.server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    crate::event::handler::acl_check(server_name, &args.room_id)?;
 
     let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
@@ -106,13 +106,13 @@ fn missing_events(
     body: JsonBody<MissingEventReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<MissingEventResBody> {
-    let authed = depot.authed_info()?;
+    let server_name = &crate::config().server_name;
     let room_id = room_id.into_inner();
-    if !crate::room::is_server_in_room(authed.server_name(), &room_id)? {
+    if !crate::room::is_server_in_room(server_name, &room_id)? {
         return Err(MatrixError::forbidden("Server is not in room").into());
     }
 
-    crate::event::handler::acl_check(authed.server_name(), &room_id)?;
+    crate::event::handler::acl_check(server_name, &room_id)?;
 
     let mut queued_events = body.latest_events.clone();
     let mut events = Vec::new();
@@ -141,7 +141,7 @@ fn missing_events(
                 continue;
             }
 
-            if !crate::room::state::server_can_see_event(authed.server_name(), &room_id, &queued_events[i])? {
+            if !crate::room::state::server_can_see_event(server_name, &room_id, &queued_events[i])? {
                 i += 1;
                 continue;
             }

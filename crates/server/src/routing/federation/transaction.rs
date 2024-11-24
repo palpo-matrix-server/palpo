@@ -29,7 +29,7 @@ async fn send_message(
     body: JsonBody<SendMessageReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
-    let authed = depot.authed_info()?;
+    let server_name = &crate::config().server_name;
     let mut resolved_map = BTreeMap::new();
 
     let pub_key_map = RwLock::new(BTreeMap::new());
@@ -72,7 +72,7 @@ async fn send_message(
         resolved_map.insert(
             event_id.clone(),
             crate::event::handler::handle_incoming_pdu(
-                authed.server_name(),
+                &server_name,
                 &event_id,
                 &room_id,
                 value,
@@ -233,7 +233,7 @@ async fn send_message(
                 master_key,
                 self_signing_key,
             }) => {
-                if user_id.server_name() != authed.server_name() {
+                if user_id.server_name() != server_name {
                     continue;
                 }
                 if let Some(master_key) = master_key {

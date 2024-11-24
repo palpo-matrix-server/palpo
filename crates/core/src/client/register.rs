@@ -15,7 +15,7 @@ use crate::client::uiaa::AuthData;
 use crate::{OwnedClientSecret, OwnedDeviceId, OwnedSessionId, OwnedUserId};
 
 /// Request type for the `register` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Default, Debug)]
 pub struct RegisterReqBody {
     /// The desired password for the account.
     ///
@@ -78,6 +78,19 @@ pub struct RegisterReqBody {
     /// [refresh tokens]: https://spec.matrix.org/latest/client-server-api/#refreshing-access-tokens
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub refresh_token: bool,
+}
+impl RegisterReqBody {
+    pub fn is_default(&self) -> bool {
+        self.password.is_none()
+            && self.username.is_none()
+            && self.device_id.is_none()
+            && self.initial_device_display_name.is_none()
+            && self.auth.is_none()
+            && self.kind == Default::default()
+            && !self.inhibit_login
+            && self.login_type.is_none()
+            && !self.refresh_token
+    }
 }
 
 /// Response type for the `register` endpoint.

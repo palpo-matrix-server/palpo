@@ -113,6 +113,8 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             if !worked {
                 return Err(AppError::Uiaa(uiaa));
             }
+        } else if body.is_default() {
+            return Err(MatrixError::not_json("Not json").into());
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(

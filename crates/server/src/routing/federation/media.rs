@@ -21,7 +21,6 @@ use crate::{db, hoops, AppResult, AuthArgs, MatrixError};
 pub fn router() -> Router {
     Router::with_path("media")
         .hoop(hoops::limit_rate)
-        .hoop(hoops::auth_by_access_token_or_signatures)
         .push(Router::with_path("download/<media_id>").get(get_content))
         .push(Router::with_path("thumbnail/<media_id>").get(get_thumbnail))
 }
@@ -71,23 +70,20 @@ pub async fn get_thumbnail(
     depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
-    println!("==========s====get_thumbnail   0  {:?}   {:?}", req.uri(), args);
+    println!("GGGGGGGGGGGGGGGGGGthubmnail");
     let server_name = &crate::config().server_name;
     let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
-    println!("==========s====get_thumbnailss  {:#?}", tbs);
 
-    if let Ok(DbThumbnail {
+    if let Some(DbThumbnail {
         content_disposition,
         content_type,
         ..
-    }) = crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)
+    }) = crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
     {
-        println!("=========s=====get_thumbnail   1");
         let thumb_path = crate::media_path(
             server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
-        println!("=========s=====get_thumbnail   1   {thumb_path:?}");
 
         res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
         let mut file = NamedFile::builder(&thumb_path)
@@ -105,21 +101,18 @@ pub async fn get_thumbnail(
         return Ok(());
     }
 
-    println!("==========s====get_thumbnail   4");
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    println!("==========s====get_thumbnail   5");
     let thumb_path = crate::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
-    if let Ok(DbThumbnail {
+    if let Some(DbThumbnail {
         media_id,
         width,
         height,
         content_disposition,
         content_type,
         ..
-    }) = crate::media::get_thumbnail(server_name, &args.media_id, width, height)
+    }) = crate::media::get_thumbnail(server_name, &args.media_id, width, height)?
     {
-        println!("==========s====get_thumbnail   6");
         // Using saved thumbnail
         let mut file = NamedFile::builder(&thumb_path)
             .content_type(
@@ -144,7 +137,6 @@ pub async fn get_thumbnail(
     {
         // Generate a thumbnail
         let image_path = crate::media_path(server_name, &args.media_id);
-        println!("==========s====get_thumbnail   7n  {:?}", image_path);
         if let Ok(image) = image::open(&image_path) {
             let original_width = image.width();
             let original_height = image.height();
@@ -238,7 +230,6 @@ pub async fn get_thumbnail(
             file.send(req.headers(), res).await;
             Ok(())
         } else {
-            println!("==========s====get_thumbnail   8");
             // Couldn't parse file to generate thumbnail, send original
             let mut file = NamedFile::builder(&image_path)
                 .content_type(
@@ -253,6 +244,7 @@ pub async fn get_thumbnail(
             if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
                 file.set_content_disposition(content_disposition);
             }
+            println!("GGGGGGGGGGGGGGGGGGthubmnail2=====send file");
             file.send(req.headers(), res).await;
             Ok(())
         }
