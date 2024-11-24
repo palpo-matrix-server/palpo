@@ -1075,6 +1075,7 @@ pub(crate) async fn fetch_required_signing_keys(
             }
         };
 
+        println!("DDDDDDDDDD  fetch_required_signing_keys signature_server:{signature_server:?} {keys:#?}");
         pub_key_map.write().await.insert(signature_server.clone(), keys);
     }
 
@@ -1089,6 +1090,7 @@ fn get_server_keys_from_cache(
     room_version: &RoomVersionId,
     pub_key_map: &mut RwLockWriteGuard<'_, BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
+    println!("DDDDDDDDDD  get_server_keys_from_cache");
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
         error!("Invalid PDU in server response: {:?}: {:?}", pdu, e);
         AppError::public("Invalid PDU in server response")
@@ -1176,9 +1178,11 @@ pub(crate) async fn fetch_join_signing_keys(
         // Try to fetch keys, failure is okay
         // Servers we couldn't find in the cache will be added to `servers`
         for pdu in &event.room_state.state {
+            println!("DDDDDDDDDD  0");
             let _ = get_server_keys_from_cache(pdu, &mut servers, room_version, &mut pkm);
         }
         for pdu in &event.room_state.auth_chain {
+            println!("DDDDDDDDDD  1");
             let _ = get_server_keys_from_cache(pdu, &mut servers, room_version, &mut pkm);
         }
 
@@ -1225,6 +1229,7 @@ pub(crate) async fn fetch_join_signing_keys(
 
                 pkm.insert(k.server_name.to_string(), result);
             }
+            println!("DDDDDDDDDD fetch_join_signing_keys pub_key_map  {pub_key_map:#?}");
         }
 
         if servers.is_empty() {
@@ -1253,6 +1258,7 @@ pub(crate) async fn fetch_join_signing_keys(
             let result = crate::add_signing_key_from_origin(&origin, get_keys_response.0.clone())?;
             pub_key_map.write().await.insert(origin.to_string(), result);
         }
+        println!("DDDDDDDDDD  Done handling result  {pub_key_map:#?}");
         info!("Done handling result");
     }
     info!("Search for signing keys done");
@@ -1348,7 +1354,8 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
 
     trace!("Loading signing keys for {}", origin);
 
-    let result = crate::signing_keys_for(origin)?;
+    let result: Option<SigningKeys> = crate::signing_keys_for(origin)?;
+    println!("DDDDDDDD Loading signing keys for {}  result: {:#?}", origin,  result);
 
     let mut expires_soon_or_has_expired = false;
 
@@ -1386,42 +1393,49 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         .expect("Should be valid until year 500,000,000");
 
     debug!("Fetching signing keys for {} over federation", origin);
+    println!("Fetching signing keys for {} over federation", origin);
 
     let key_request = get_server_key_request(&origin.origin().await)?.into_inner();
-    if let Some(mut server_key) = crate::sending::send_federation_request(origin, key_request)
+    match crate::sending::send_federation_request(origin, key_request)
         .await?
         .json::<ServerKeysResBody>()
         .await
-        .ok()
         .map(|resp| resp.0)
     {
-        // Keys should only be valid for a maximum of seven days
-        server_key.valid_until_ts = server_key.valid_until_ts.min(
-            UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
-                .expect("Should be valid until year 500,000,000"),
-        );
-
-        crate::add_signing_key_from_origin(origin, server_key.clone())?;
-
-        if keys.valid_until_ts > server_key.valid_until_ts {
-            keys.valid_until_ts = server_key.valid_until_ts;
+        Ok(mut server_key) =>{
+            println!("DDDDDDDDDDDloaded server key: {:#?}", server_key);
+            // Keys should only be valid for a maximum of seven days
+            server_key.valid_until_ts = server_key.valid_until_ts.min(
+                UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
+                    .expect("Should be valid until year 500,000,000"),
+            );
+    
+            crate::add_signing_key_from_origin(origin, server_key.clone())?;
+    
+            if keys.valid_until_ts > server_key.valid_until_ts {
+                keys.valid_until_ts = server_key.valid_until_ts;
+            }
+    
+            keys.verify_keys.extend(
+                server_key
+                    .verify_keys
+                    .into_iter()
+                    .map(|(id, key)| (id.to_string(), key)),
+            );
+            keys.old_verify_keys.extend(
+                server_key
+                    .old_verify_keys
+                    .into_iter()
+                    .map(|(id, key)| (id.to_string(), key)),
+            );
+    
+            if contains_all_ids(&keys) {
+                return Ok(keys);
+            }
         }
-
-        keys.verify_keys.extend(
-            server_key
-                .verify_keys
-                .into_iter()
-                .map(|(id, key)| (id.to_string(), key)),
-        );
-        keys.old_verify_keys.extend(
-            server_key
-                .old_verify_keys
-                .into_iter()
-                .map(|(id, key)| (id.to_string(), key)),
-        );
-
-        if contains_all_ids(&keys) {
-            return Ok(keys);
+        Err(e) => {
+            warn!("Failed to find public key for server: {} error:{}", origin, e);
+            println!("DDDDDFailed to find public key for server: {} error:{}", origin, e);
         }
     }
 

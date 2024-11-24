@@ -543,7 +543,7 @@ pub fn verify_event(
     let canonical_json = from_json_str(&canonical_json(&redacted)?).map_err(JsonError::from)?;
 
     for entity_id in servers_to_check {
-        let signature_set = match signature_map.get(entity_id.as_str()) {
+        let signature_set: &BTreeMap<String, CanonicalJsonValue> = match signature_map.get(entity_id.as_str()) {
             Some(CanonicalJsonValue::Object(set)) => set,
             Some(_) => return Err(JsonError::not_multiples_of_type("signature sets", JsonType::Object)),
             None => return Err(VerificationError::signature_not_found(entity_id)),

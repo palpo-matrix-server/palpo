@@ -33,13 +33,13 @@ pub struct NewDbThumbnail {
     pub created_at: UnixMillis,
 }
 
-pub fn get_thumbnail(origin_server: &ServerName, media_id: &str, width: u32, height: u32) -> AppResult<DbThumbnail> {
+pub fn get_thumbnail(origin_server: &ServerName, media_id: &str, width: u32, height: u32) -> AppResult<Option<DbThumbnail>> {
     media_thumbnails::table
         .filter(media_thumbnails::origin_server.eq(origin_server))
         .filter(media_thumbnails::media_id.eq(media_id))
         .filter(media_thumbnails::width.eq(width as i32))
         .filter(media_thumbnails::height.eq(height as i32))
-        .first::<DbThumbnail>(&mut *db::connect()?)
+        .first::<DbThumbnail>(&mut *db::connect()?).optional()
         .map_err(Into::into)
 }
 

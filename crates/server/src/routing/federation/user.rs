@@ -35,8 +35,8 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonRes
 /// Gets devices and identity keys for the given users.
 #[endpoint]
 async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
-    let authed = depot.authed_info()?;
-    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == authed.server_name()).await?;
+    let server_name = &crate::config().server_name;
+    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == server_name).await?;
 
     cjson_ok(KeysResBody {
         device_keys: result.device_keys,
@@ -49,9 +49,10 @@ async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depo
 /// Gets information on all devices of the user.
 #[endpoint]
 fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<DevicesResBody> {
-    let authed = depot.authed_info()?;
+    let server_name = &crate::config().server_name;
+    let user_id = user_id.into_inner();
     let stream_id = device_streams::table
-        .filter(device_streams::user_id.eq(authed.user_id()))
+        .filter(device_streams::user_id.eq(&user_id))
         .select(device_streams::id)
         .order_by(device_streams::id.desc())
         .first::<i64>(&mut *db::connect()?)
@@ -60,7 +61,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
 
     let mut devices = vec![];
     for (device_id, display_name) in user_devices::table
-        .filter(user_devices::user_id.eq(authed.user_id()))
+        .filter(user_devices::user_id.eq(&user_id))
         .select((user_devices::device_id, user_devices::display_name))
         .load::<(OwnedDeviceId, Option<String>)>(&mut *db::connect()?)?
     {
@@ -71,16 +72,15 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
             device_display_name: display_name,
         })
     }
-    let sender_server_name = authed.server_name();
     json_ok(DevicesResBody {
-        user_id: authed.user_id().to_owned(),
         stream_id: stream_id as u64,
         devices,
-        master_key: crate::user::get_master_key(Some(authed.user_id()), &user_id, &|u| {
-            u.server_name() == sender_server_name
+        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| {
+            u.server_name() == server_name
         })?,
-        self_signing_key: crate::user::get_self_signing_key(Some(authed.user_id()), &user_id, &|u| {
-            u.server_name() == sender_server_name
+        self_signing_key: crate::user::get_self_signing_key(Some(&user_id), &user_id, &|u| {
+            u.server_name() == server_name
         })?,
+        user_id: user_id.to_owned(),
     })
 }

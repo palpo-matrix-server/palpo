@@ -16,7 +16,7 @@ use crate::{
 pub fn router_v1() -> Router {
     Router::new()
         .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
-        .push(Router::with_path("invite/<room_id>/<user_id>").put(invite_user))
+        .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
         .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
         .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v1))
         .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave_event))
@@ -24,7 +24,7 @@ pub fn router_v1() -> Router {
 pub fn router_v2() -> Router {
     Router::new()
         .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
-        .push(Router::with_path("invite/<room_id>/<user_id>").put(invite_user))
+        .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
         .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
         .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v2))
         .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave_event))
@@ -99,8 +99,8 @@ fn invite_user(
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
-    let authed = depot.authed_info()?;
-    crate::event::handler::acl_check(authed.server_name(), &args.room_id)?;
+    let server_name = &crate::config().server_name;
+    crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
     if !crate::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
@@ -114,7 +114,7 @@ fn invite_user(
         utils::to_canonical_object(&body.event).map_err(|_| MatrixError::invalid_param("Invite event is invalid."))?;
 
     crate::core::signatures::hash_and_sign_event(
-        &crate::config().server_name.as_str(),
+        server_name.as_str(),
         crate::keypair(),
         &mut signed_event,
         &body.room_version,
