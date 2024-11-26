@@ -782,9 +782,10 @@ CREATE TABLE IF NOT EXISTS event_relations
     room_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
+    event_type text NOT NULL,
     child_id text NOT NULL,
     child_sn bigint NOT NULL,
-    child_event_type text NOT NULL,
+    child_type text NOT NULL,
     rel_type text,
     CONSTRAINT event_relations_ukey UNIQUE (room_id, event_id, child_id, rel_type)
 );

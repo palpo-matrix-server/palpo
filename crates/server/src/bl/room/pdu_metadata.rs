@@ -29,9 +29,10 @@ pub struct DbEventRelation {
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub event_type: String,
     pub child_id: OwnedEventId,
     pub child_sn: i64,
-    pub child_event_type: String,
+    pub child_type: String,
     pub rel_type: Option<String>,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -40,9 +41,10 @@ pub struct NewDbEventRelation {
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
+    pub event_type: String,
     pub child_id: OwnedEventId,
     pub child_sn: i64,
-    pub child_event_type: String,
+    pub child_type: String,
     pub rel_type: Option<String>,
 }
 
@@ -51,19 +53,20 @@ pub fn add_relation(
     room_id: &RoomId,
     event_id: &EventId,
     child_id: &EventId,
-    child_event_type: String,
+    child_ty: String,
     rel_type: Option<RelationType>,
 ) -> AppResult<()> {
-    let event_sn = crate::event::get_event_sn(event_id)?;
-    let child_sn = crate::event::get_event_sn(child_id)?;
+    let (event_sn, event_type) = crate::event::get_event_sn_and_type(event_id)?;
+    let (child_sn, child_type) = crate::event::get_event_sn_and_type(child_id)?;
     diesel::insert_into(event_relations::table)
         .values(&NewDbEventRelation {
             room_id: room_id.to_owned(),
             event_id: event_id.to_owned(),
             event_sn,
+            event_type,
             child_id: child_id.to_owned(),
             child_sn,
-            child_event_type,
+            child_type,
             rel_type: rel_type.map(|v| v.to_string()),
         })
         .execute(&mut db::connect()?)?;
@@ -98,6 +101,7 @@ pub fn paginate_relations_with_filter(
 
     match dir {
         crate::core::Direction::Forward => {
+            println!("DDDDDDDDDDDD   0");
             let events_after: Vec<_> = crate::room::pdu_metadata::get_relations(
                 user_id,
                 room_id,
@@ -124,6 +128,7 @@ pub fn paginate_relations_with_filter(
             }) // Stop at `to`
             .collect();
 
+            println!("DDDDDDDDDDDD   events_after  {events_after:#?}");
             next_token = events_after.last().map(|(count, _)| count).copied();
 
             let events_after: Vec<_> = events_after
@@ -140,6 +145,7 @@ pub fn paginate_relations_with_filter(
             })
         }
         crate::core::Direction::Backward => {
+            println!("DDDDDDDDDDDD   1");
             let events_before: Vec<_> = crate::room::pdu_metadata::get_relations(
                 user_id,
                 &room_id,
@@ -193,26 +199,36 @@ pub fn get_relations(
     to: Option<i64>,
     limit: usize,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
+    println!(
+        "AAAAAAAAAAll relations: {:#?}",
+        event_relations::table.load::<DbEventRelation>(&mut *db::connect()?)
+    );
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))
         .into_boxed();
+    println!("============room_id: {:#?}  event_id: {event_id:?}", room_id);
     if let Some(child_event_type) = child_event_type {
+        println!("============child_event_type: {:#?}", child_event_type);
         query = query.filter(event_relations::child_event_type.eq(child_event_type.to_string()));
     }
     if let Some(rel_type) = rel_type {
+        println!("============rel_type: {:#?}", rel_type);
         query = query.filter(event_relations::rel_type.eq(rel_type.to_string()));
     }
     if let Some(from) = from {
+        println!("============from: {:#?}", from);
         query = query.filter(event_relations::child_sn.ge(from));
     }
     if let Some(to) = to {
+        println!("============to: {:#?}", to);
         query = query.filter(event_relations::child_sn.le(to));
     }
     let relations = query
         .order_by(event_relations::child_sn.desc())
         .limit(limit as i64)
         .load::<DbEventRelation>(&mut *db::connect()?)?;
+    println!("AAAAAAAAAAll relations: {:#?}", relations);
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
         if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.event_id)? {
@@ -222,6 +238,7 @@ pub fn get_relations(
             pdus.push((relation.event_sn, pdu));
         }
     }
+    println!("AAAAAAAAAAll pdus: {:#?}", pdus);
     Ok(pdus)
 }
 

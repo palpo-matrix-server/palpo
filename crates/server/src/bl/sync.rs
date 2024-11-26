@@ -92,6 +92,7 @@ pub fn sync_events(
                 joined_rooms.insert(room_id.to_owned(), joined_room);
             }
 
+            println!("===========left_users: {left_users:#?}");
             if crate::allow_local_presence() {
                 // Take presence updates from this room
                 for (user_id, presence_event) in crate::user::presences_since(&room_id, since_sn)? {
@@ -223,8 +224,7 @@ pub fn sync_events(
             .collect();
 
         for left_room in left_rooms.keys() {
-            let left_users = crate::room::get_joined_users(left_room, None)?;
-            for user_id in left_users {
+            for user_id in crate::room::get_joined_users(left_room, None)? {
                 let dont_share_encrypted_room =
                     crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
                         .into_iter()
@@ -241,8 +241,9 @@ pub fn sync_events(
                             )
                         })
                         .all(|encrypted| !encrypted);
-                // If the user doesn't share an encrypted room with the target anymore, we need to tell
-                // them
+                // If the user doesn't share an encrypted room with the target anymore, we need 
+                // to tell them.
+                println!("dont_share_encrypted_room: {} sender_id:{sender_id:?} user_id:{user_id}", dont_share_encrypted_room);
                 if dont_share_encrypted_room {
                     device_list_left.insert(user_id);
                 }
@@ -262,10 +263,12 @@ pub fn sync_events(
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need to tell
             // them
+            println!("dont_share_encrypted_room222: {} sender_id:{sender_id:?} user_id:{user_id}", dont_share_encrypted_room);
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }
         }
+        println!("=============device_list_left: {device_list_left:#?}  left_rooms: {left_rooms:#?}");
 
         // Remove all to-device events the device received *last time*
         crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;

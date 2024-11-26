@@ -110,3 +110,11 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
         .first::<i64>(&mut *db::connect()?)
         .map_err(Into::into)
 }
+
+pub fn get_event_sn_and_type(event_id: &EventId) -> AppResult<(i64, String)> {
+    events::table
+        .find(event_id)
+        .select((events::sn, events::event_type))
+        .first::<i64>(&mut *db::connect()?)
+        .map_err(Into::into)
+}

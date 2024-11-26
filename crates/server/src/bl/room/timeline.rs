@@ -329,37 +329,46 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     }
 
     // Update Relationships
-    #[derive(Deserialize)]
+    #[derive(Deserialize,Clone, Debug)]
     struct ExtractRelatesTo {
         #[serde(rename = "m.relates_to")]
         relates_to: Relation,
     }
 
-    #[derive(Clone, Debug, Deserialize)]
+    #[derive(Deserialize, Clone, Debug)]
     struct ExtractEventId {
         event_id: OwnedEventId,
     }
-    #[derive(Clone, Debug, Deserialize)]
+    #[derive(Deserialize, Clone, Debug)]
     struct ExtractRelatesToEventId {
         #[serde(rename = "m.relates_to")]
         relates_to: ExtractEventId,
     }
 
-    // if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-    //     crate::room::pdu_metadata::add_relation(&pdu.room_id,
-    //         &pdu.event_id,
-    //         &content.relates_to.event_id,
-    //         content.relates_to.rel_type(),
-    //     )?;
-    // }
+    if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
+        println!("xxxxxxxxxxxxxxxxxx 0  {:?}", content);
+        let relto_type = events::table
+            .find(&content.relates_to.event_id)
+            .select(events::event_type)
+            .first::<String>(&mut *db::connect()?)?;
+        crate::room::pdu_metadata::add_relation(
+            &pdu.room_id,
+            &pdu.event_id,
+            &content.relates_to.event_id,
+            relto_type,
+            None,
+        )?;
+    }
 
     if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
+        println!("xxxxxxxxxxxxxxxxxx 1  {:?}", content);
+        
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
             Relation::Reply { in_reply_to } => {
                 // We need to do it again here, because replies don't have
                 // event_id as a top level field
-                let child_event_type = events::table
+                let relto_type = events::table
                     .find(&in_reply_to.event_id)
                     .select(events::event_type)
                     .first::<String>(&mut *db::connect()?)?;
@@ -367,7 +376,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                     &pdu.room_id,
                     &pdu.event_id,
                     &in_reply_to.event_id,
-                    child_event_type,
+                    relto_type,
                     rel_type,
                 )?;
             }

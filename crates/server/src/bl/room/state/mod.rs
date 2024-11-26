@@ -374,7 +374,6 @@ pub fn get_pdu(frame_id: i64, event_type: &StateEventType, state_key: &str) -> A
 /// Get membership for given user in state
 fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
     get_pdu(frame_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(MembershipState::Leave), |s| {
-        println!("========frame_id:{frame_id}  pdu content: {:#?}", s);
         serde_json::from_str(s.content.get())
             .map(|c: RoomMemberEventContent| c.membership)
             .map_err(|_| AppError::internal("Invalid room membership event in database."))
