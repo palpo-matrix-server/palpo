@@ -1431,7 +1431,6 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
                     .into_iter()
                     .map(|(id, key)| (id.to_string(), key)),
             );
-
             if contains_all_ids(&keys) {
                 return Ok(keys);
             }
