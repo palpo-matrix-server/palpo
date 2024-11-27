@@ -75,9 +75,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
     json_ok(DevicesResBody {
         stream_id: stream_id as u64,
         devices,
-        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| {
-            u.server_name() == server_name
-        })?,
+        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| u.server_name() == server_name)?,
         self_signing_key: crate::user::get_self_signing_key(Some(&user_id), &user_id, &|u| {
             u.server_name() == server_name
         })?,

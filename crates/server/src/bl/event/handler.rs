@@ -332,7 +332,7 @@ fn handle_outlier_pdu<'a>(
             check_room_id(room_id, &auth_event)?;
 
             match auth_events.entry((
-                auth_event.kind.to_string().into(),
+                auth_event.event_ty.to_string().into(),
                 auth_event.state_key.clone().expect("all auth events have state keys"),
             )) {
                 hash_map::Entry::Vacant(v) => {
@@ -432,7 +432,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 .ok_or_else(|| AppError::internal("Could not find prev event, but we know the state."))?;
 
             if let Some(state_key) = &prev_pdu.state_key {
-                let state_key_id = crate::room::state::ensure_field_id(&prev_pdu.kind.to_string().into(), state_key)?;
+                let state_key_id =
+                    crate::room::state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
 
                 state.insert(state_key_id, Arc::from(prev_event));
                 // Now it's the state after the pdu
@@ -472,7 +473,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
                 if let Some(state_key) = &prev_event.state_key {
                     let state_key_id =
-                        crate::room::state::ensure_field_id(&prev_event.kind.to_string().into(), state_key)?;
+                        crate::room::state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
                     leaf_state.insert(state_key_id, Arc::from(&*prev_event.event_id));
                     // Now it's the state after the pdu
                 }
@@ -482,12 +483,12 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
                 for (k, id) in leaf_state {
                     if let Ok(DbRoomStateField {
-                        event_type, state_key, ..
+                        event_ty, state_key, ..
                     }) = crate::room::state::get_field(k)
                     {
                         // FIXME: Undo .to_string().into() when StateMap
                         //        is updated to use StateEventType
-                        state.insert((event_type.to_string().into(), state_key), id.clone());
+                        state.insert((event_ty.to_string().into(), state_key), id.clone());
                     } else {
                         warn!("Failed to get_state_key_id.");
                     }
@@ -570,7 +571,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                         .clone()
                         .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
 
-                    let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), &state_key)?;
+                    let state_key_id =
+                        crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
 
                     match state.entry(state_key_id) {
                         hash_map::Entry::Vacant(v) => {
@@ -627,7 +629,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Soft fail check before doing state res
     let auth_events = crate::room::state::get_auth_events(
         room_id,
-        &incoming_pdu.kind,
+        &incoming_pdu.event_ty,
         &incoming_pdu.sender,
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
@@ -677,7 +679,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
         if let Some(state_key) = &incoming_pdu.state_key {
-            let state_key_id = crate::room::state::ensure_field_id(&incoming_pdu.kind.to_string().into(), state_key)?;
+            let state_key_id =
+                crate::room::state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
 
             state_after.insert(state_key_id, Arc::from(&*incoming_pdu.event_id));
         }
@@ -761,8 +764,8 @@ fn resolve_state(
                     crate::room::state::get_field(k)
                         .map(
                             |DbRoomStateField {
-                                 event_type, state_key, ..
-                             }| ((event_type.to_string().into(), state_key), event_id),
+                                 event_ty, state_key, ..
+                             }| ((event_ty.to_string().into(), state_key), event_id),
                         )
                         .ok()
                 })
@@ -1355,7 +1358,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
     trace!("Loading signing keys for {}", origin);
 
     let result: Option<SigningKeys> = crate::signing_keys_for(origin)?;
-    println!("DDDDDDDD Loading signing keys for {}  result: {:#?}", origin,  result);
+    println!("DDDDDDDD Loading signing keys for {}  result: {:#?}", origin, result);
 
     let mut expires_soon_or_has_expired = false;
 
@@ -1402,20 +1405,20 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
         .await
         .map(|resp| resp.0)
     {
-        Ok(mut server_key) =>{
+        Ok(mut server_key) => {
             println!("DDDDDDDDDDDloaded server key: {:#?}", server_key);
             // Keys should only be valid for a maximum of seven days
             server_key.valid_until_ts = server_key.valid_until_ts.min(
                 UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
                     .expect("Should be valid until year 500,000,000"),
             );
-    
+
             crate::add_signing_key_from_origin(origin, server_key.clone())?;
-    
+
             if keys.valid_until_ts > server_key.valid_until_ts {
                 keys.valid_until_ts = server_key.valid_until_ts;
             }
-    
+
             keys.verify_keys.extend(
                 server_key
                     .verify_keys
@@ -1428,7 +1431,6 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
                     .into_iter()
                     .map(|(id, key)| (id.to_string(), key)),
             );
-    
             if contains_all_ids(&keys) {
                 return Ok(keys);
             }

@@ -15,7 +15,7 @@ pub(super) fn get_relation(
 ) -> JsonResult<RelationEventsResBody> {
     let authed = depot.authed_info()?;
 
-    let res = crate::room::pdu_metadata::paginate_relations_with_filter(
+    let body = crate::room::pdu_metadata::paginate_relations_with_filter(
         authed.user_id(),
         &args.room_id,
         &args.event_id,
@@ -27,7 +27,7 @@ pub(super) fn get_relation(
         args.recurse,
         args.dir,
     )?;
-    json_ok(res)
+    json_ok(body)
 }
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}
@@ -39,7 +39,7 @@ pub(super) async fn get_relation_by_rel_type(
 ) -> JsonResult<RelationEventsResBody> {
     let authed = depot.authed_info()?;
 
-    let res = crate::room::pdu_metadata::paginate_relations_with_filter(
+    let body = crate::room::pdu_metadata::paginate_relations_with_filter(
         authed.user_id(),
         &args.room_id,
         &args.event_id,
@@ -52,7 +52,7 @@ pub(super) async fn get_relation_by_rel_type(
         args.dir,
     )?;
 
-    json_ok(res)
+    json_ok(body)
 }
 
 // #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}/{event_type}
@@ -64,7 +64,7 @@ pub(super) async fn get_relation_by_rel_type_and_event_type(
 ) -> JsonResult<RelationEventsResBody> {
     let authed = depot.authed_info()?;
 
-    let res = crate::room::pdu_metadata::paginate_relations_with_filter(
+    let body = crate::room::pdu_metadata::paginate_relations_with_filter(
         authed.user_id(),
         &args.room_id,
         &args.event_id,
@@ -77,5 +77,5 @@ pub(super) async fn get_relation_by_rel_type_and_event_type(
         args.dir,
     )?;
 
-    json_ok(res)
+    json_ok(body)
 }

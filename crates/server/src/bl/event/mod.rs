@@ -28,7 +28,7 @@ pub struct DbEventData {
 pub struct DbEvent {
     pub id: OwnedEventId,
     pub sn: i64,
-    pub event_type: String,
+    pub ty: String,
     pub room_id: OwnedRoomId,
     pub unrecognized_keys: Option<String>,
     pub depth: i64,
@@ -49,7 +49,7 @@ pub struct DbEvent {
 pub struct NewDbEvent {
     pub id: OwnedEventId,
     #[serde(rename = "type")]
-    pub event_type: String,
+    pub ty: String,
     pub room_id: OwnedRoomId,
     pub unrecognized_keys: Option<String>,
     pub depth: i64,
@@ -108,5 +108,13 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
         .find(event_id)
         .select(events::sn)
         .first::<i64>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(i64, String)> {
+    events::table
+        .find(event_id)
+        .select((events::sn, events::ty))
+        .first::<(i64, String)>(&mut *db::connect()?)
         .map_err(Into::into)
 }

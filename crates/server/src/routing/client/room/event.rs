@@ -203,10 +203,10 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     for (field_id, event_id) in state_ids {
         let DbRoomStateField {
-            event_type, state_key, ..
+            event_ty, state_key, ..
         } = crate::room::state::get_field(field_id)?;
 
-        if event_type != StateEventType::RoomMember {
+        if event_ty != StateEventType::RoomMember {
             let pdu = match crate::room::timeline::get_pdu(&event_id)? {
                 Some(pdu) => pdu,
                 None => {
@@ -252,7 +252,7 @@ pub(super) async fn send_redact(
 
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomRedaction,
+            event_ty: TimelineEventType::RoomRedaction,
             content: to_raw_value(&RoomRedactionEventContent {
                 redacts: Some(args.event_id.clone()),
                 reason: body.reason.clone(),

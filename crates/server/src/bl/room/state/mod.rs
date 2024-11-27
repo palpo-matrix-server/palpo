@@ -78,7 +78,7 @@ pub fn force_state(
             Err(_) => continue,
         };
 
-        match pdu.kind {
+        match pdu.event_ty {
             TimelineEventType::RoomMember => {
                 #[derive(Deserialize)]
                 struct ExtractMembership {
@@ -148,7 +148,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     if let Some(state_key) = &new_pdu.state_key {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
-        let field_id = ensure_field(&new_pdu.kind.to_string().into(), state_key)?.id;
+        let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
         let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
 
@@ -334,7 +334,7 @@ pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, Strin
         if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             result.insert(
                 (
-                    pdu.kind.to_string().into(),
+                    pdu.event_ty.to_string().into(),
                     pdu.state_key
                         .as_ref()
                         .ok_or_else(|| AppError::public("State event has no state key."))?
@@ -374,7 +374,6 @@ pub fn get_pdu(frame_id: i64, event_type: &StateEventType, state_key: &str) -> A
 /// Get membership for given user in state
 fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
     get_pdu(frame_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(MembershipState::Leave), |s| {
-        println!("========frame_id:{frame_id}  pdu content: {:#?}", s);
         serde_json::from_str(s.content.get())
             .map(|c: RoomMemberEventContent| c.membership)
             .map_err(|_| AppError::internal("Invalid room membership event in database."))
@@ -652,7 +651,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
     let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
     let new_event = PduBuilder {
-        event_type: TimelineEventType::RoomMember,
+        event_ty: TimelineEventType::RoomMember,
         content,
         unsigned: None,
         state_key: Some(target_user.into()),

@@ -339,7 +339,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
             // TODO: missed calls
             notification.counts = NotificationCounts::new(unread, 0);
 
-            if event.kind == TimelineEventType::RoomEncrypted
+            if event.event_ty == TimelineEventType::RoomEncrypted
                 || tweaks
                     .iter()
                     .any(|t| matches!(t, Tweak::Highlight(true) | Tweak::Sound(_)))
@@ -354,10 +354,10 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
                     .await?;
             } else {
                 notification.sender = Some(event.sender.clone());
-                notification.event_type = Some(event.kind.clone());
+                notification.event_type = Some(event.event_ty.clone());
                 notification.content = serde_json::value::to_raw_value(&event.content).ok();
 
-                if event.kind == TimelineEventType::RoomMember {
+                if event.event_ty == TimelineEventType::RoomMember {
                     notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
                 }
 

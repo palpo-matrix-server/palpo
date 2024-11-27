@@ -155,7 +155,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         {
             if let Some(state_hash) = crate::room::state::get_pdu_frame_id(&pdu.event_id).unwrap() {
                 if let Some(prev_state) =
-                    crate::room::state::get_pdu(state_hash, &pdu.kind.to_string().into(), state_key).unwrap()
+                    crate::room::state::get_pdu(state_hash, &pdu.event_ty.to_string().into(), state_key).unwrap()
                 {
                     unsigned.insert(
                         "prev_content".to_owned(),
@@ -244,7 +244,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     }
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
-    match pdu.kind {
+    match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
                 redact_pdu(redact_id, pdu)?;
@@ -329,52 +329,47 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     }
 
     // Update Relationships
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone, Debug)]
     struct ExtractRelatesTo {
         #[serde(rename = "m.relates_to")]
         relates_to: Relation,
     }
 
-    #[derive(Clone, Debug, Deserialize)]
+    #[derive(Deserialize, Clone, Debug)]
     struct ExtractEventId {
         event_id: OwnedEventId,
     }
-    #[derive(Clone, Debug, Deserialize)]
+    #[derive(Deserialize, Clone, Debug)]
     struct ExtractRelatesToEventId {
         #[serde(rename = "m.relates_to")]
         relates_to: ExtractEventId,
     }
-
-    // if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-    //     crate::room::pdu_metadata::add_relation(&pdu.room_id,
-    //         &pdu.event_id,
-    //         &content.relates_to.event_id,
-    //         content.relates_to.rel_type(),
-    //     )?;
-    // }
-
+    let mut relates_added = false;
     if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
             Relation::Reply { in_reply_to } => {
                 // We need to do it again here, because replies don't have
                 // event_id as a top level field
-                let child_event_type = events::table
-                    .find(&in_reply_to.event_id)
-                    .select(events::event_type)
-                    .first::<String>(&mut *db::connect()?)?;
-                crate::room::pdu_metadata::add_relation(
-                    &pdu.room_id,
-                    &pdu.event_id,
-                    &in_reply_to.event_id,
-                    child_event_type,
-                    rel_type,
-                )?;
+                crate::room::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
+                relates_added = true;
             }
             Relation::Thread(thread) => {
+                crate::room::pdu_metadata::add_relation(
+                    &pdu.room_id,
+                    &thread.event_id,
+                    &pdu.event_id,
+                    rel_type,
+                )?;
+                relates_added = true;
                 crate::room::thread::add_to_thread(&thread.event_id, pdu)?;
             }
             _ => {} // TODO: Aggregate other types
+        }
+    }
+    if !relates_added {
+        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
+            crate::room::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
         }
     }
 
@@ -386,7 +381,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
 
         // If the RoomMember event has a non-empty state_key, it is targeted at someone.
         // If it is our appservice user, we send this PDU to it.
-        if pdu.kind == TimelineEventType::RoomMember {
+        if pdu.event_ty == TimelineEventType::RoomMember {
             if let Some(state_key_uid) = &pdu
                 .state_key
                 .as_ref()
@@ -405,7 +400,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
 
         let matching_users = || {
             crate::server_name() == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
-                || pdu.kind == TimelineEventType::RoomMember
+                || pdu.event_ty == TimelineEventType::RoomMember
                     && pdu.state_key.as_ref().map_or(false, |state_key| {
                         UserId::parse(state_key).map_or(false, |user_id| {
                             crate::server_name() == user_id.server_name() && appservice.is_user_match(&user_id)
@@ -475,7 +470,7 @@ pub fn create_hash_and_sign_event(
     room_id: &RoomId,
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
-        event_type,
+        event_ty,
         content,
         unsigned,
         state_key,
@@ -507,7 +502,7 @@ pub fn create_hash_and_sign_event(
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
     let auth_events =
-        crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
+        crate::room::state::get_auth_events(room_id, &event_ty, sender_id, state_key.as_deref(), &content)?;
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
@@ -520,8 +515,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_type.to_string().into(), state_key, None)?
-        {
+        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_ty.to_string().into(), state_key, None)? {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -537,7 +531,7 @@ pub fn create_hash_and_sign_event(
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
-        event_type: event_type.to_string(),
+        ty: event_ty.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
         depth: depth as i64,
@@ -563,10 +557,10 @@ pub fn create_hash_and_sign_event(
     let mut pdu = PduEvent {
         event_id: event_id.into(),
         event_sn,
+        event_ty,
         room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
         origin_server_ts: UnixMillis::now(),
-        kind: event_type,
         content,
         state_key,
         prev_events,
@@ -745,7 +739,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.kind == TimelineEventType::RoomMember {
+    if pdu.event_ty == TimelineEventType::RoomMember {
         if let Some(state_key_uid) = &pdu
             .state_key
             .as_ref()
@@ -851,7 +845,7 @@ pub fn get_pdus(
                 }
             }
             if !filter.not_types.is_empty() {
-                query = query.filter(events::event_type.ne_all(&filter.not_types));
+                query = query.filter(events::ty.ne_all(&filter.not_types));
             }
             if !filter.not_rooms.is_empty() {
                 query = query.filter(events::room_id.ne_all(&filter.not_rooms));
@@ -868,7 +862,7 @@ pub fn get_pdus(
             }
             if let Some(types) = &filter.types {
                 if !types.is_empty() {
-                    query = query.filter(events::event_type.eq_any(types));
+                    query = query.filter(events::ty.eq_any(types));
                 }
             }
         }
@@ -1011,7 +1005,7 @@ pub async fn backfill_pdu(
     // // Insert pdu
     // prepend_backfill_pdu(&pdu, &event_id, &value)?;
 
-    if pdu.kind == TimelineEventType::RoomMessage {
+    if pdu.event_ty == TimelineEventType::RoomMessage {
         #[derive(Deserialize)]
         struct ExtractBody {
             body: Option<String>,

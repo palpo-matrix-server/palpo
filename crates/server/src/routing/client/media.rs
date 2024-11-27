@@ -395,7 +395,7 @@ pub async fn get_thumbnail(
             tracing::error!(error = ?e, "get_thumbnail error");
             return Err(MatrixError::not_found("Media not found.").into());
         }
-        _ =>{}
+        _ => {}
     }
 
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file

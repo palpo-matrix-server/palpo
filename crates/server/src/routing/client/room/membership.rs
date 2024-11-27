@@ -355,7 +355,7 @@ pub(super) async fn ban_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
             unsigned: None,
             state_key: Some(body.user_id.to_string()),
@@ -393,7 +393,7 @@ pub(super) async fn unban_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
             unsigned: None,
             state_key: Some(body.user_id.to_string()),
@@ -439,7 +439,7 @@ pub(super) async fn kick_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
             unsigned: None,
             state_key: Some(body.user_id.to_string()),
@@ -473,7 +473,7 @@ pub(crate) async fn knock_room(
 
     let pdu = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
             unsigned: None,
             state_key: Some(authed.user_id().to_string()),

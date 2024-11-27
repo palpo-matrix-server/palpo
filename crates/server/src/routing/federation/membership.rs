@@ -74,7 +74,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response)
     .expect("member event is valid value");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content,
             unsigned: None,
             state_key: Some(args.user_id.to_string()),
