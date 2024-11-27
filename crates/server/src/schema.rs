@@ -193,8 +193,8 @@ diesel::table! {
 diesel::table! {
     event_receipts (id) {
         id -> Int8,
+        ty -> Text,
         room_id -> Text,
-        receipt_type -> Text,
         user_id -> Text,
         event_id -> Text,
         event_sn -> Int8,
@@ -209,9 +209,10 @@ diesel::table! {
         room_id -> Text,
         event_id -> Text,
         event_sn -> Int8,
+        event_ty -> Text,
         child_id -> Text,
         child_sn -> Int8,
-        child_event_type -> Text,
+        child_ty -> Text,
         rel_type -> Nullable<Text>,
     }
 }
@@ -247,7 +248,7 @@ diesel::table! {
     events (id) {
         id -> Text,
         sn -> Int8,
-        event_type -> Text,
+        ty -> Text,
         room_id -> Text,
         unrecognized_keys -> Nullable<Text>,
         depth -> Int8,
@@ -372,7 +373,7 @@ diesel::table! {
 diesel::table! {
     room_state_fields (id) {
         id -> Int8,
-        event_type -> Text,
+        event_ty -> Text,
         state_key -> Text,
     }
 }
@@ -724,7 +725,7 @@ diesel::table! {
 diesel::table! {
     users (id) {
         id -> Text,
-        user_type -> Nullable<Text>,
+        ty -> Nullable<Text>,
         is_admin -> Bool,
         is_guest -> Bool,
         appservice_id -> Nullable<Text>,

@@ -92,7 +92,6 @@ pub fn sync_events(
                 joined_rooms.insert(room_id.to_owned(), joined_room);
             }
 
-            println!("===========left_users: {left_users:#?}");
             if crate::allow_local_presence() {
                 // Take presence updates from this room
                 for (user_id, presence_event) in crate::user::presences_since(&room_id, since_sn)? {
@@ -171,11 +170,11 @@ pub fn sync_events(
             for (key, event_id) in left_state_ids {
                 if full_state || since_state_ids.get(&key) != Some(&event_id) {
                     let DbRoomStateField {
-                        event_type, state_key, ..
+                        event_ty, state_key, ..
                     } = crate::room::state::get_field(key)?;
 
                     if !lazy_load_enabled
-                    || event_type != StateEventType::RoomMember
+                    || event_ty != StateEventType::RoomMember
                     || full_state
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || sender_id == state_key
@@ -241,9 +240,12 @@ pub fn sync_events(
                             )
                         })
                         .all(|encrypted| !encrypted);
-                // If the user doesn't share an encrypted room with the target anymore, we need 
+                // If the user doesn't share an encrypted room with the target anymore, we need
                 // to tell them.
-                println!("dont_share_encrypted_room: {} sender_id:{sender_id:?} user_id:{user_id}", dont_share_encrypted_room);
+                println!(
+                    "dont_share_encrypted_room: {} sender_id:{sender_id:?} user_id:{user_id}",
+                    dont_share_encrypted_room
+                );
                 if dont_share_encrypted_room {
                     device_list_left.insert(user_id);
                 }
@@ -263,12 +265,14 @@ pub fn sync_events(
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need to tell
             // them
-            println!("dont_share_encrypted_room222: {} sender_id:{sender_id:?} user_id:{user_id}", dont_share_encrypted_room);
+            println!(
+                "dont_share_encrypted_room222: {} sender_id:{sender_id:?} user_id:{user_id}",
+                dont_share_encrypted_room
+            );
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }
         }
-        println!("=============device_list_left: {device_list_left:#?}  left_rooms: {left_rooms:#?}");
 
         // Remove all to-device events the device received *last time*
         crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
@@ -422,7 +426,7 @@ async fn load_joined_room(
 
                 for hero in crate::room::timeline::all_pdus(sender_id, &room_id, until_sn)?
                     .into_iter() // Ignore all broken pdus
-                    .filter(|(_, pdu)| pdu.kind == TimelineEventType::RoomMember)
+                    .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {
                         let content: RoomMemberEventContent = serde_json::from_str(pdu.content.get())
                             .map_err(|_| AppError::public("Invalid member event in database."))?;
@@ -473,10 +477,10 @@ async fn load_joined_room(
 
             for (state_key_id, id) in current_state_ids {
                 let DbRoomStateField {
-                    event_type, state_key, ..
+                    event_ty, state_key, ..
                 } = crate::room::state::get_field(state_key_id)?;
 
-                if event_type != StateEventType::RoomMember {
+                if event_ty != StateEventType::RoomMember {
                     let pdu = match crate::room::timeline::get_pdu(&id)? {
                         Some(pdu) => pdu,
                         None => {
@@ -555,7 +559,7 @@ async fn load_joined_room(
                             }
                         };
 
-                        if pdu.kind == TimelineEventType::RoomMember {
+                        if pdu.event_ty == TimelineEventType::RoomMember {
                             match UserId::parse(pdu.state_key.as_ref().expect("State event has state key").clone()) {
                                 Ok(state_key_user_id) => {
                                     lazy_loaded.insert(state_key_user_id);
@@ -611,11 +615,11 @@ async fn load_joined_room(
 
             let send_member_count = state_events
                 .iter()
-                .any(|event| event.kind == TimelineEventType::RoomMember);
+                .any(|event| event.event_ty == TimelineEventType::RoomMember);
 
             // if encrypted_room {
             for state_event in &state_events {
-                if state_event.kind != TimelineEventType::RoomMember {
+                if state_event.event_ty != TimelineEventType::RoomMember {
                     continue;
                 }
 

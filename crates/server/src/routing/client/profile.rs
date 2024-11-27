@@ -145,7 +145,7 @@ async fn set_avatar_url(
         .map(|room_id| {
             Ok::<_, AppError>((
                 PduBuilder {
-                    event_type: TimelineEventType::RoomMember,
+                    event_ty: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
                         ..serde_json::from_str(
@@ -259,7 +259,7 @@ async fn set_display_name(
         .map(|room_id| {
             Ok::<_, AppError>((
                 PduBuilder {
-                    event_type: TimelineEventType::RoomMember,
+                    event_ty: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
                         ..serde_json::from_str(

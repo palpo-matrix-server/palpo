@@ -29,10 +29,10 @@ pub struct DbEventRelation {
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
-    pub event_type: String,
+    pub event_ty: String,
     pub child_id: OwnedEventId,
     pub child_sn: i64,
-    pub child_type: String,
+    pub child_ty: String,
     pub rel_type: Option<String>,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -41,10 +41,10 @@ pub struct NewDbEventRelation {
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
     pub event_sn: i64,
-    pub event_type: String,
+    pub event_ty: String,
     pub child_id: OwnedEventId,
     pub child_sn: i64,
-    pub child_type: String,
+    pub child_ty: String,
     pub rel_type: Option<String>,
 }
 
@@ -53,20 +53,19 @@ pub fn add_relation(
     room_id: &RoomId,
     event_id: &EventId,
     child_id: &EventId,
-    child_ty: String,
     rel_type: Option<RelationType>,
 ) -> AppResult<()> {
-    let (event_sn, event_type) = crate::event::get_event_sn_and_type(event_id)?;
-    let (child_sn, child_type) = crate::event::get_event_sn_and_type(child_id)?;
+    let (event_sn, event_ty) = crate::event::get_event_sn_and_ty(event_id)?;
+    let (child_sn, child_ty) = crate::event::get_event_sn_and_ty(child_id)?;
     diesel::insert_into(event_relations::table)
         .values(&NewDbEventRelation {
             room_id: room_id.to_owned(),
             event_id: event_id.to_owned(),
             event_sn,
-            event_type,
+            event_ty,
             child_id: child_id.to_owned(),
             child_sn,
-            child_type,
+            child_ty,
             rel_type: rel_type.map(|v| v.to_string()),
         })
         .execute(&mut db::connect()?)?;
@@ -85,7 +84,11 @@ pub fn paginate_relations_with_filter(
     recurse: bool,
     dir: Direction,
 ) -> AppResult<RelationEventsResBody> {
-    let from: Option<i64> = from.map(|from| from.parse()).transpose()?;
+    let prev_batch = from.map(|from| from.to_string());
+    let from = from.map(|from| from.parse()).transpose()?.unwrap_or_else(|| match dir {
+        Direction::Forward => i64::MIN,
+        Direction::Backward => i64::MAX,
+    });
     let to: Option<i64> = to.map(|to| to.parse()).transpose()?;
 
     // Use limit or else 10, with maximum 100
@@ -99,143 +102,83 @@ pub fn paginate_relations_with_filter(
 
     let next_token;
 
-    match dir {
-        crate::core::Direction::Forward => {
-            println!("DDDDDDDDDDDD   0");
-            let events_after: Vec<_> = crate::room::pdu_metadata::get_relations(
-                user_id,
-                room_id,
-                target,
-                filter_event_type.as_ref(),
-                filter_rel_type.as_ref(),
-                from,
-                to,
-                limit,
-            )? // TODO: should be relations_after
-            .into_iter()
-            .filter(|(_, pdu)| {
-                filter_event_type.as_ref().map_or(true, |t| &pdu.kind == t)
-                    && if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-                        filter_rel_type
-                            .as_ref()
-                            .map_or(true, |r| &content.relates_to.rel_type == r)
-                    } else {
-                        false
-                    }
-            })
-            .filter(|(_, pdu)| {
-                crate::room::state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false)
-            }) // Stop at `to`
-            .collect();
+    let events: Vec<_> = crate::room::pdu_metadata::get_relations(
+        user_id,
+        room_id,
+        target,
+        filter_event_type.as_ref(),
+        filter_rel_type.as_ref(),
+        from,
+        to,
+        dir,
+        limit,
+    )?;
 
-            println!("DDDDDDDDDDDD   events_after  {events_after:#?}");
-            next_token = events_after.last().map(|(count, _)| count).copied();
+    next_token = match dir {
+        Direction::Forward => events.last().map(|(count, _)| *count + 1),
+        Direction::Backward => events.last().map(|(count, _)| *count - 1),
+    };
 
-            let events_after: Vec<_> = events_after
-                .into_iter()
-                .rev() // relations are always most recent first
-                .map(|(_, pdu)| pdu.to_message_like_event())
-                .collect();
+    let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_message_like_event()).collect();
 
-            Ok(RelationEventsResBody {
-                chunk: events_after,
-                next_batch: next_token.map(|t| t.to_string()),
-                prev_batch: from.map(|from| from.to_string()),
-                recursion_depth: if recurse { Some(depth.into()) } else { None },
-            })
-        }
-        crate::core::Direction::Backward => {
-            println!("DDDDDDDDDDDD   1");
-            let events_before: Vec<_> = crate::room::pdu_metadata::get_relations(
-                user_id,
-                &room_id,
-                target,
-                filter_event_type.as_ref(),
-                filter_rel_type.as_ref(),
-                from,
-                to,
-                limit,
-            )?
-            .into_iter()
-            .filter(|(_, pdu)| {
-                filter_event_type.as_ref().map_or(true, |t| &pdu.kind == t)
-                    && if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-                        filter_rel_type
-                            .as_ref()
-                            .map_or(true, |r| &content.relates_to.rel_type == r)
-                    } else {
-                        false
-                    }
-            })
-            .filter(|(_, pdu)| {
-                crate::room::state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false)
-            })
-            .collect();
-
-            next_token = events_before.last().map(|(count, _)| count).copied();
-
-            let events_before: Vec<_> = events_before
-                .into_iter()
-                .map(|(_, pdu)| pdu.to_message_like_event())
-                .collect();
-
-            Ok(RelationEventsResBody {
-                chunk: events_before,
-                next_batch: next_token.map(|t| t.to_string()),
-                prev_batch: from.map(|from| from.to_string()),
-                recursion_depth: if recurse { Some(depth.into()) } else { None },
-            })
-        }
-    }
+    Ok(RelationEventsResBody {
+        chunk: events,
+        next_batch: next_token.map(|t| t.to_string()),
+        prev_batch,
+        recursion_depth: if recurse { Some(depth.into()) } else { None },
+    })
 }
 
 pub fn get_relations(
     user_id: &UserId,
     room_id: &RoomId,
     event_id: &EventId,
-    child_event_type: Option<&TimelineEventType>,
+    child_ty: Option<&TimelineEventType>,
     rel_type: Option<&RelationType>,
-    from: Option<i64>,
+    from: i64,
     to: Option<i64>,
+    dir: Direction,
     limit: usize,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    println!(
-        "AAAAAAAAAAll relations: {:#?}",
-        event_relations::table.load::<DbEventRelation>(&mut *db::connect()?)
-    );
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))
         .into_boxed();
-    println!("============room_id: {:#?}  event_id: {event_id:?}", room_id);
-    if let Some(child_event_type) = child_event_type {
-        println!("============child_event_type: {:#?}", child_event_type);
-        query = query.filter(event_relations::child_event_type.eq(child_event_type.to_string()));
+    if let Some(child_ty) = child_ty {
+        query = query.filter(event_relations::child_ty.eq(child_ty.to_string()));
     }
     if let Some(rel_type) = rel_type {
-        println!("============rel_type: {:#?}", rel_type);
         query = query.filter(event_relations::rel_type.eq(rel_type.to_string()));
     }
-    if let Some(from) = from {
-        println!("============from: {:#?}", from);
-        query = query.filter(event_relations::child_sn.ge(from));
-    }
-    if let Some(to) = to {
-        println!("============to: {:#?}", to);
-        query = query.filter(event_relations::child_sn.le(to));
+    match dir {
+        Direction::Forward => {
+            query = query.filter(event_relations::child_sn.ge(from));
+            if let Some(to) = to {
+                query = query.filter(event_relations::child_sn.le(to));
+            }
+            query = query.order_by(event_relations::child_sn.asc());
+        }
+        Direction::Backward => {
+            query = query.filter(event_relations::child_sn.le(from));
+            if let Some(to) = to {
+                query = query.filter(event_relations::child_sn.ge(to));
+            }
+            query = query.order_by(event_relations::child_sn.desc());
+        }
     }
     let relations = query
-        .order_by(event_relations::child_sn.desc())
         .limit(limit as i64)
         .load::<DbEventRelation>(&mut *db::connect()?)?;
     println!("AAAAAAAAAAll relations: {:#?}", relations);
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.event_id)? {
+        if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.child_id)? {
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }
-            pdus.push((relation.event_sn, pdu));
+            if crate::room::state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false) {
+                pdus.push((relation.child_sn, pdu));
+            }
         }
     }
     println!("AAAAAAAAAAll pdus: {:#?}", pdus);

@@ -99,9 +99,9 @@ pub async fn get_hierarchy(
             let mut children_pdus = Vec::new();
             for (key, event_id) in state {
                 let DbRoomStateField {
-                    event_type, state_key, ..
+                    event_ty, state_key, ..
                 } = crate::room::state::get_field(key)?;
-                if event_type != StateEventType::SpaceChild {
+                if event_ty != StateEventType::SpaceChild {
                     continue;
                 }
 

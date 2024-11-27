@@ -47,7 +47,7 @@ use crate::{db, diesel_exists, AppError, AppResult};
 #[diesel(table_name = users)]
 pub struct DbUser {
     pub id: OwnedUserId,
-    pub user_type: Option<String>,
+    pub ty: Option<String>,
     pub is_admin: bool,
     pub is_guest: bool,
     pub appservice_id: Option<String>,
@@ -68,7 +68,7 @@ pub struct DbUser {
 #[diesel(table_name = users)]
 pub struct NewDbUser {
     pub id: OwnedUserId,
-    pub user_type: Option<String>,
+    pub ty: Option<String>,
     pub is_admin: bool,
     pub is_guest: bool,
     pub appservice_id: Option<String>,
@@ -157,7 +157,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
     let user = diesel::insert_into(users::table)
         .values(NewDbUser {
             id: user_id.clone(),
-            user_type: None,
+            ty: None,
             is_admin: false,
             is_guest: password.is_none(),
             appservice_id: None,

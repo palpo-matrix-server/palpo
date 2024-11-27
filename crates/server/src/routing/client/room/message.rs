@@ -209,7 +209,7 @@ pub(super) async fn send_message(
 
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: args.event_type.to_string().into(),
+            event_ty: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
             state_key: None,
@@ -259,7 +259,7 @@ pub(super) async fn post_message(
     let mut unsigned = BTreeMap::new();
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: args.event_type.to_string().into(),
+            event_ty: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
             state_key: None,

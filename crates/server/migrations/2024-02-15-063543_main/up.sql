@@ -69,7 +69,7 @@ CREATE TABLE user_devices
 drop table  if exists users CASCADE;
 CREATE TABLE users (
     id text NOT NULL PRIMARY KEY,
-    user_type text,
+    ty text,
     is_admin boolean NOT NULL DEFAULT false,
     is_guest boolean NOT NULL DEFAULT false,
     appservice_id text,
@@ -127,13 +127,8 @@ CREATE TABLE user_refresh_tokens
     expired_at bigint,
     ultimate_session_expired_at bigint,
     created_at bigint NOT NULL,
-    CONSTRAINT user_refresh_tokens_token_key UNIQUE (token),
-    CONSTRAINT user_refresh_tokens_next_token_id_fkey FOREIGN KEY (next_token_id)
-        REFERENCES user_refresh_tokens (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE
+    CONSTRAINT user_refresh_tokens_token_key UNIQUE (token)
 );
-DROP INDEX IF EXISTS user_refresh_tokens_next_token_id;
 CREATE INDEX user_refresh_tokens_next_token_id
     ON user_refresh_tokens USING btree
     (next_token_id ASC NULLS LAST)
@@ -432,7 +427,7 @@ drop table if exists events CASCADE;
 CREATE TABLE events (
     id text NOT NULL PRIMARY KEY,
     sn bigint not null default nextval('occur_sn_seq'),
-    event_type text NOT NULL,
+    ty text NOT NULL,
     room_id text NOT NULL,
     unrecognized_keys text,
     depth bigint DEFAULT 0 NOT NULL,
@@ -520,9 +515,9 @@ DROP TABLE IF EXISTS room_state_fields CASCADE;
 CREATE TABLE room_state_fields
 (
     id bigserial NOT NULL PRIMARY KEY,
-    event_type text NOT NULL,
+    event_ty text NOT NULL,
     state_key text NOT null,
-    CONSTRAINT room_state_fields_ukey UNIQUE (event_type, state_key)
+    CONSTRAINT room_state_fields_ukey UNIQUE (event_ty, state_key)
 );
 
 DROP TABLE IF EXISTS room_state_deltas CASCADE;
@@ -782,10 +777,10 @@ CREATE TABLE IF NOT EXISTS event_relations
     room_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
-    event_type text NOT NULL,
+    event_ty text NOT NULL,
     child_id text NOT NULL,
     child_sn bigint NOT NULL,
-    child_type text NOT NULL,
+    child_ty text NOT NULL,
     rel_type text,
     CONSTRAINT event_relations_ukey UNIQUE (room_id, event_id, child_id, rel_type)
 );
@@ -793,8 +788,8 @@ CREATE TABLE IF NOT EXISTS event_relations
 DROP TABLE IF EXISTS event_receipts CASCADE;
 CREATE TABLE event_receipts (
     id bigserial NOT NULL PRIMARY KEY,
+    ty text NOT NULL,
     room_id text NOT NULL,
-    receipt_type text NOT NULL,
     user_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
@@ -802,7 +797,7 @@ CREATE TABLE event_receipts (
     receipt_at bigint NOT NULL
 );
 ALTER TABLE ONLY event_receipts
-    ADD CONSTRAINT event_receipts_ukey UNIQUE (room_id, receipt_type, user_id);
+    ADD CONSTRAINT event_receipts_ukey UNIQUE (ty, room_id, user_id);
 CREATE INDEX event_receipts_room_id_idx ON event_receipts USING btree (room_id);
 CREATE INDEX event_receipts_event_sn_idx ON event_receipts USING btree (event_sn);
 

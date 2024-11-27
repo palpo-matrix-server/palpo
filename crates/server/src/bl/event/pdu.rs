@@ -25,11 +25,11 @@ pub struct EventHash {
 pub struct PduEvent {
     pub event_id: Arc<EventId>,
     pub event_sn: i64,
+    #[serde(rename = "type")]
+    pub event_ty: TimelineEventType,
     pub room_id: OwnedRoomId,
     pub sender: OwnedUserId,
     pub origin_server_ts: UnixMillis,
-    #[serde(rename = "type")]
-    pub kind: TimelineEventType,
     pub content: Box<RawJsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_key: Option<String>,
@@ -50,7 +50,7 @@ impl PduEvent {
     pub fn redact(&mut self, reason: &PduEvent) -> AppResult<()> {
         self.unsigned = None;
 
-        let allowed: &[&str] = match self.kind {
+        let allowed: &[&str] = match self.event_ty {
             TimelineEventType::RoomMember => &["join_authorised_via_users_server", "membership"],
             TimelineEventType::RoomCreate => &["creator"],
             TimelineEventType::RoomJoinRules => &["join_rule"],
@@ -119,7 +119,7 @@ impl PduEvent {
     pub fn to_sync_room_event(&self) -> RawJson<AnySyncTimelineEvent> {
         let mut json = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -143,7 +143,7 @@ impl PduEvent {
     pub fn to_any_event(&self) -> RawJson<AnyEphemeralRoomEvent> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -167,7 +167,7 @@ impl PduEvent {
     pub fn to_room_event(&self) -> RawJson<AnyTimelineEvent> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -191,7 +191,7 @@ impl PduEvent {
     pub fn to_message_like_event(&self) -> RawJson<AnyMessageLikeEvent> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -215,7 +215,7 @@ impl PduEvent {
     pub fn to_state_event(&self) -> RawJson<AnyStateEvent> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -234,7 +234,7 @@ impl PduEvent {
     pub fn to_sync_state_event(&self) -> RawJson<AnySyncStateEvent> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -252,7 +252,7 @@ impl PduEvent {
     pub fn to_stripped_state_event(&self) -> RawJson<AnyStrippedStateEvent> {
         let data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "sender": self.sender,
             "state_key": self.state_key,
         });
@@ -264,7 +264,7 @@ impl PduEvent {
     pub fn to_stripped_spacechild_state_event(&self) -> RawJson<HierarchySpaceChildEvent> {
         let data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "sender": self.sender,
             "state_key": self.state_key,
             "origin_server_ts": self.origin_server_ts,
@@ -277,7 +277,7 @@ impl PduEvent {
     pub fn to_member_event(&self) -> RawJson<StateEvent<RoomMemberEventContent>> {
         let mut data = json!({
             "content": self.content,
-            "type": self.kind,
+            "type": self.event_ty,
             "event_id": *self.event_id,
             "sender": self.sender,
             "origin_server_ts": self.origin_server_ts,
@@ -338,7 +338,7 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn event_type(&self) -> &TimelineEventType {
-        &self.kind
+        &self.event_ty
     }
 
     fn content(&self) -> &RawJsonValue {
@@ -389,7 +389,7 @@ impl Ord for PduEvent {
 #[derive(Debug, Deserialize)]
 pub struct PduBuilder {
     #[serde(rename = "type")]
-    pub event_type: TimelineEventType,
+    pub event_ty: TimelineEventType,
     pub content: Box<RawJsonValue>,
     pub unsigned: Option<BTreeMap<String, serde_json::Value>>,
     pub state_key: Option<String>,

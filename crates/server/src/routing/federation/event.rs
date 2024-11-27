@@ -59,7 +59,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 /// - This does not include the event itself
 #[endpoint]
 fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<EventAuthorizationResBody> {
-let server_name = &crate::config().server_name;
+    let server_name = &crate::config().server_name;
 
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());

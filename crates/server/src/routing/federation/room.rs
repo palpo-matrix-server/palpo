@@ -25,7 +25,6 @@ pub fn router() -> Router {
 /// Retrieves the current state of the room.
 #[endpoint]
 async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
-    
     let server_name = &crate::config().server_name;
 
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {

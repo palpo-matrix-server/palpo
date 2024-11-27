@@ -471,7 +471,7 @@ pub async fn sync_events_v4(
                                     continue;
                                 }
                             };
-                            if pdu.kind == TimelineEventType::RoomMember {
+                            if pdu.event_ty == TimelineEventType::RoomMember {
                                 if let Some(state_key) = &pdu.state_key {
                                     let user_id = UserId::parse(state_key.clone())
                                         .map_err(|_| AppError::public("Invalid UserId in member PDU."))?;

@@ -326,7 +326,7 @@ pub async fn join_room(
                 .execute(&mut *db::connect()?)?;
 
             if let Some(state_key) = &pdu.state_key {
-                let state_key_id = crate::room::state::ensure_field_id(&pdu.kind.to_string().into(), state_key)?;
+                let state_key_id = crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
                 state.insert(state_key_id, pdu.event_id.clone());
             }
         }
@@ -469,7 +469,7 @@ pub async fn join_room(
         // Try normal join first
         let error = match crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_type: TimelineEventType::RoomMember,
+                event_ty: TimelineEventType::RoomMember,
                 content: to_raw_json_value(&event).expect("event is valid, we just created it"),
                 unsigned: None,
                 state_key: Some(user_id.to_string()),
@@ -743,7 +743,7 @@ pub(crate) async fn invite_user(
 
             let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
                 PduBuilder {
-                    event_type: TimelineEventType::RoomMember,
+                    event_ty: TimelineEventType::RoomMember,
                     content,
                     unsigned: None,
                     state_key: Some(invitee_id.to_string()),
@@ -825,7 +825,7 @@ pub(crate) async fn invite_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_type: TimelineEventType::RoomMember,
+            event_ty: TimelineEventType::RoomMember,
             content: to_raw_json_value(&RoomMemberEventContent {
                 membership: MembershipState::Invite,
                 display_name: crate::user::display_name(invitee_id)?,
@@ -909,7 +909,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
 
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_type: TimelineEventType::RoomMember,
+                event_ty: TimelineEventType::RoomMember,
                 content: to_raw_json_value(&event).expect("event is valid, we just created it"),
                 unsigned: None,
                 state_key: Some(user_id.to_string()),
