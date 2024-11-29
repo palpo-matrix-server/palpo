@@ -23,7 +23,7 @@ pub struct DbRoomUser {
     pub state_data: Option<JsonValue>,
     pub created_at: UnixMillis,
 }
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = room_users)]
 pub struct NewDbRoomUser {
     pub event_id: OwnedEventId,

@@ -1154,7 +1154,7 @@ fn get_server_keys_from_cache(
 
         trace!("Loading signing keys for {}", origin);
 
-        if let Some(result) = crate::signing_keys_for(origin)? {
+        if let Some(result) = crate::server_key::signing_keys_for(origin)? {
             if !contains_all_ids(&result) {
                 trace!("Signing key not loaded for {}", origin);
                 servers.insert(origin.to_owned(), BTreeMap::new());
@@ -1357,7 +1357,7 @@ pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>)
 
     trace!("Loading signing keys for {}", origin);
 
-    let result: Option<SigningKeys> = crate::signing_keys_for(origin)?;
+    let result: Option<SigningKeys> = crate::server_key::signing_keys_for(origin)?;
     println!("DDDDDDDD Loading signing keys for {}  result: {:#?}", origin, result);
 
     let mut expires_soon_or_has_expired = false;

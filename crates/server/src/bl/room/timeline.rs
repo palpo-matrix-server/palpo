@@ -355,12 +355,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
                 relates_added = true;
             }
             Relation::Thread(thread) => {
-                crate::room::pdu_metadata::add_relation(
-                    &pdu.room_id,
-                    &thread.event_id,
-                    &pdu.event_id,
-                    rel_type,
-                )?;
+                crate::room::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
                 crate::room::thread::add_to_thread(&thread.event_id, pdu)?;
             }
@@ -692,18 +687,11 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
                     }
                 }
 
-                println!(
-                    "vvvvvddddddddd sender: {sender:?}  content.membership: {:?}  key: {:?}",
-                    content.membership,
-                    pdu.state_key()
-                );
                 if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
-                    println!("vvvvvvvvvvvvvcdd       ==0");
                     if target == server_user {
                         warn!("Palpo user cannot be banned in admins room");
                         return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
                     }
-                    println!("vvvvvvvvvvvvvcdd       ==1");
 
                     let count = crate::room::get_joined_users(room_id, None)?
                         .iter()

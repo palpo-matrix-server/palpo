@@ -1,0 +1,257 @@
+mod acquire;
+mod request;
+mod verify;
+pub use acquire::*;
+pub use request::*;
+pub use verify::*;
+
+use std::borrow::Borrow;
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
+
+use diesel::prelude::*;
+use futures_util::StreamExt;
+use serde_json::value::RawValue as RawJsonValue;
+
+use crate::core::serde::{CanonicalJsonObject, RawJson};
+use crate::core::{
+    federation::discovery::{ServerSigningKeys, VerifyKey},
+    signatures::{self, Ed25519KeyPair, PublicKeyMap, PublicKeySet},
+    JsonValue, OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
+};
+use crate::schema::*;
+use crate::{
+    db,
+    exts::*,
+    utils::{timepoint_from_now, IterStream},
+    AppError, AppResult, Server,
+};
+
+pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
+pub type PubKeyMap = PublicKeyMap;
+pub type PubKeys = PublicKeySet;
+
+async fn add_signing_keys(new_keys: ServerSigningKeys) {
+    let origin = &new_keys.server_name;
+
+    // (timo) Not atomic, but this is not critical
+    let mut keys: ServerSigningKeys = server_signing_keys::table
+        .filter(server_signing_keys::server_id.eq(origin))
+        .select(server_signing_keys::key_data)
+        .load::<ServerSigningKeys>(&mut *db::connect()?);
+
+    keys.verify_keys.extend(new_keys.verify_keys);
+    keys.old_verify_keys.extend(new_keys.old_verify_keys);
+    db.server_signingkeys.raw_put(origin, Json(&keys));
+}
+
+pub async fn required_keys_exist(object: &CanonicalJsonObject, version: &RoomVersionId) -> bool {
+    use signatures::required_keys;
+
+    let Ok(required_keys) = required_keys(object, version) else {
+        return false;
+    };
+
+    required_keys
+        .iter()
+        .flat_map(|(server, key_ids)| key_ids.iter().map(move |key_id| (server, key_id)))
+        .stream()
+        .all(|(server, key_id)| verify_key_exists(server, key_id).unwrap_or(false))
+        .await
+}
+
+pub async fn verify_key_exists(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<bool> {
+    type KeysMap<'a> = BTreeMap<&'a ServerSigningKeyId, &'a RawJsonValue>;
+
+    let key_data = server_signing_keys::table
+        .filter(server_signing_keys::server_id.eq(server))
+        .select(server_signing_keys::key_data)
+        .first::<RawJson<ServerSigningKeys>>(&mut *db::connect()?)
+        .optional()?;
+
+    let Some(keys) = key_data else {
+        return Ok(false);
+    };
+
+    if let Ok(Some(verify_keys)) = keys.get_field::<KeysMap<'_>>("verify_keys") {
+        if verify_keys.contains_key(key_id) {
+            return Ok(true);
+        }
+    }
+
+    if let Ok(Some(old_verify_keys)) = keys.get_field::<KeysMap<'_>>("old_verify_keys") {
+        if old_verify_keys.contains_key(key_id) {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+pub async fn verify_keys_for(server: &ServerName) -> VerifyKeys {
+    let mut keys = signing_keys_for(server)
+        .await
+        .map(|keys| merge_old_keys(keys).verify_keys)
+        .unwrap_or(BTreeMap::new());
+
+    if !server.is_remote() {
+        keys.extend(verify_keys.clone().into_iter());
+    }
+
+    keys
+}
+
+pub async fn signing_keys_for(server: &ServerName) -> AppResult<Option<ServerSigningKeys>> {
+    let key_data = server_signing_keys::table
+        .filter(server_signing_keys::server_id.eq(server))
+        .select(server_signing_keys::key_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?;
+    if let Some(key_data) = key_data {
+        Ok(serde_json::from_value(key_data).map(Option::Some)?)
+    } else {
+        Ok(None)
+    }
+}
+
+fn minimum_valid_ts() -> UnixMillis {
+    let timepoint = timepoint_from_now(Duration::from_secs(3600)).expect("SystemTime should not overflow");
+    UnixMillis::from_system_time(timepoint).expect("UInt should not overflow")
+}
+
+fn merge_old_keys(mut keys: ServerSigningKeys) -> ServerSigningKeys {
+    keys.verify_keys.extend(
+        keys.old_verify_keys
+            .clone()
+            .into_iter()
+            .map(|(key_id, old)| (key_id, VerifyKey::new(old.key))),
+    );
+
+    keys
+}
+
+fn extract_key(mut keys: ServerSigningKeys, key_id: &ServerSigningKeyId) -> Option<VerifyKey> {
+    keys.verify_keys
+        .remove(key_id)
+        .or_else(|| keys.old_verify_keys.remove(key_id).map(|old| VerifyKey::new(old.key)))
+}
+
+fn key_exists(keys: &ServerSigningKeys, key_id: &ServerSigningKeyId) -> bool {
+    keys.verify_keys.contains_key(key_id) || keys.old_verify_keys.contains_key(key_id)
+}
+
+pub async fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
+    let required = match signatures::required_keys(object, version) {
+        Ok(required) => required,
+        Err(e) => {
+            return Err(AppError::public(format!(
+                "Failed to determine keys required to verify: {e}"
+            )))
+        }
+    };
+
+    let batch = required
+        .iter()
+        .map(|(s, ids)| (s.borrow(), ids.iter().map(Borrow::borrow)));
+
+    Ok(get_pubkeys(batch).await)
+}
+
+pub async fn get_pubkeys<'a, S, K>(batch: S) -> PubKeyMap
+where
+    S: Iterator<Item = (&'a ServerName, K)> + Send,
+    K: Iterator<Item = &'a ServerSigningKeyId> + Send,
+{
+    let mut keys = PubKeyMap::new();
+    for (server, key_ids) in batch {
+        let pubkeys = get_pubkeys_for(server, key_ids).await;
+        keys.insert(server.into(), pubkeys);
+    }
+
+    keys
+}
+
+pub async fn get_pubkeys_for<'a, I>(origin: &ServerName, key_ids: I) -> PubKeys
+where
+    I: Iterator<Item = &'a ServerSigningKeyId> + Send,
+{
+    let mut keys = PubKeys::new();
+    for key_id in key_ids {
+        if let Ok(verify_key) = get_verify_key(origin, key_id).await {
+            keys.insert(key_id.into(), verify_key.key);
+        }
+    }
+
+    keys
+}
+
+pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+    let notary_first = crate::config().query_trusted_key_servers_first;
+    let notary_only = crate::config().only_query_trusted_key_servers;
+
+    if let Some(result) = verify_keys_for(origin).await.remove(key_id) {
+        return Ok(result);
+    }
+
+    if notary_first {
+        if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+            return Ok(result);
+        }
+    }
+
+    if !notary_only {
+        if let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
+            return Ok(result);
+        }
+    }
+
+    if !notary_first {
+        if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+            return Ok(result);
+        }
+    }
+
+    tracing::error!(?key_id, ?origin, "Failed to fetch federation signing-key");
+    Err(AppError::public("Failed to fetch federation signing-key"))
+}
+
+async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+    for notary in &crate::config().trusted_servers {
+        if let Ok(server_keys) = notary_request(notary, origin).await {
+            for server_key in server_keys.clone() {
+                add_signing_keys(server_key).await;
+            }
+
+            for server_key in server_keys {
+                if let Some(result) = extract_key(server_key, key_id) {
+                    return Ok(result);
+                }
+            }
+        }
+    }
+
+    Err(AppError::public("Failed to fetch signing-key from notaries"))
+}
+
+async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+    if let Ok(server_key) = server_request(origin).await {
+        add_signing_keys(server_key.clone()).await;
+        if let Some(result) = extract_key(server_key, key_id) {
+            return Ok(result);
+        }
+    }
+
+    Err(AppError::public("Failed to fetch signing-key from origin"))
+}
+pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
+    use signatures::sign_json;
+
+    let server_name = crate::config().server_name.as_str();
+    sign_json(server_name, crate::keypair(), object).map_err(Into::into)
+}
+
+pub fn hash_and_sign_event(object: &mut CanonicalJsonObject, room_version: &RoomVersionId) -> AppResult<()> {
+    use signatures::hash_and_sign_event;
+
+    let server_name = crate::config().server_name.as_str();
+    hash_and_sign_event(server_name, crate::keypair(), object, room_version).map_err(Into::into)
+}

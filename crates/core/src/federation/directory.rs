@@ -131,11 +131,11 @@ crate::json_body_modifier!(RemoteServerKeysBatchReqBody);
 
 pub struct RemoteServerKeysBatchResBody {
     /// The queried server's keys, signed by the notary server.
-    pub server_keys: Vec<RawJson<ServerSigningKeys>>,
+    pub server_keys: Vec<ServerSigningKeys>,
 }
 impl RemoteServerKeysBatchResBody {
     /// Creates a new `Response` with the given keys.
-    pub fn new(server_keys: Vec<RawJson<ServerSigningKeys>>) -> Self {
+    pub fn new(server_keys: Vec<ServerSigningKeys>) -> Self {
         Self { server_keys }
     }
 }
@@ -178,6 +178,20 @@ pub struct RemoteServerKeysReqArgs {
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default = "UnixMillis::now")]
     pub minimum_valid_until_ts: UnixMillis,
+}
+
+/// Response type for the `get_remote_server_keys` endpoint.
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+
+pub struct RemoteServerKeysResBody {
+    /// The queried server's keys, signed by the notary server.
+    pub server_keys: Vec<ServerSigningKeys>,
+}
+impl RemoteServerKeysResBody {
+    /// Creates a new `Response` with the given keys.
+    pub fn new(server_keys: Vec<ServerSigningKeys>) -> Self {
+        Self { server_keys }
+    }
 }
 
 /// `GET /_matrix/federation/*/version`
@@ -239,20 +253,6 @@ impl ServerVersionsResBody {
     }
 }
 
-/// Response type for the `get_remote_server_keys` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-
-pub struct RemoteServerKeysResBody {
-    /// The queried server's keys, signed by the notary server.
-    pub server_keys: Vec<RawJson<ServerSigningKeys>>,
-}
-impl RemoteServerKeysResBody {
-    /// Creates a new `Response` with the given keys.
-    pub fn new(server_keys: Vec<RawJson<ServerSigningKeys>>) -> Self {
-        Self { server_keys }
-    }
-}
-
 /// `GET /_matrix/key/*/server`
 ///
 /// Get the homeserver's published signing keys.
@@ -267,6 +267,11 @@ impl RemoteServerKeysResBody {
 //         1.0 => "/_matrix/key/v2/server",
 //     }
 // };
+
+pub fn server_keys_request(origin: &str) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/key/v2/server",))?;
+    Ok(crate::sending::get(url))
+}
 
 /// Response type for the `get_server_keys` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
