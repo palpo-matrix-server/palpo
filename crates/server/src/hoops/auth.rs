@@ -13,7 +13,8 @@ use salvo::prelude::*;
 
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::{signatures, OwnedServerName};
-use crate::schema::*;
+use crate::schema::*;use crate::core::authorization::XMatrix;
+use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::{db, AppResult, AuthArgs, AuthedInfo, MatrixError};
 
@@ -75,14 +76,15 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
         return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
     };
 
-    let origin_signatures = BTreeMap::from_iter([(x_matrix.key.clone(), CanonicalJsonValue::String(x_matrix.sig))]);
+    let origin_signatures = BTreeMap::from_iter([(x_matrix.key.as_str().to_owned(), CanonicalJsonValue::String(x_matrix.sig.to_string()))]);
 
+    let origin = &x_matrix.origin;
     let signatures = BTreeMap::from_iter([(
-        x_matrix.origin.as_str().to_owned(),
+        origin.as_str().to_owned(),
         CanonicalJsonValue::Object(origin_signatures),
     )]);
 
-    let mut request_map = BTreeMap::from_iter([
+    let mut authorization = BTreeMap::from_iter([
         (
             "destination".to_owned(),
             CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
@@ -93,7 +95,7 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
         ),
         (
             "origin".to_owned(),
-            CanonicalJsonValue::String(x_matrix.origin.as_str().to_owned()),
+            CanonicalJsonValue::String(origin.as_str().to_owned()),
         ),
         (
             "uri".to_owned(),
@@ -114,34 +116,17 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
         .and_then(|payload| serde_json::from_slice::<CanonicalJsonValue>(payload).ok());
 
     if let Some(json_body) = &json_body {
-        request_map.insert("content".to_owned(), json_body.clone());
+        authorization.insert("content".to_owned(), json_body.clone());
     };
 
-    let keys_result = crate::event::handler::fetch_signing_keys(&x_matrix.origin, vec![x_matrix.key.to_owned()]).await;
+    let key = crate::server_key::get_verify_key(origin, &x_matrix.key).await?;
 
-    let keys = match keys_result {
-        Ok(b) => b,
-        Err(e) => {
-            warn!("Failed to fetch signing keys: {}", e);
-            return Err(MatrixError::forbidden("Failed to fetch signing keys.").into());
-        }
-    };
-
-    // Only verify_keys that are currently valid should be used for validating requests
-    // as per MSC4029
-    let pub_key_map = BTreeMap::from_iter([(
-        x_matrix.origin.as_str().to_owned(),
-        if keys.valid_until_ts > UnixMillis::now() {
-            keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect()
-        } else {
-            BTreeMap::new()
-        },
-    )]);
-
-    if let Err(e) = signatures::verify_json(&pub_key_map, &request_map) {
+    let keys: PubKeys = [(x_matrix.key.to_string(), key.key)].into();
+    let keys: PubKeyMap = [(origin.as_str().into(), keys)].into();
+    if let Err(e) = signatures::verify_json(&keys, &authorization) {
         warn!(
             "Failed to verify json request from {}: {}\n{:?}",
-            x_matrix.origin, e, request_map
+            x_matrix.origin, e, authorization
         );
 
         if req.uri().to_string().contains('@') {
@@ -155,59 +140,5 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
         Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into())
     } else {
         Ok(())
-    }
-}
-
-struct XMatrix {
-    origin: OwnedServerName,
-    key: String, // KeyName?
-    sig: String,
-}
-
-impl Credentials for XMatrix {
-    const SCHEME: &'static str = "X-Matrix";
-
-    fn decode(value: &HeaderValue) -> Option<Self> {
-        debug_assert!(
-            value.as_bytes().starts_with(b"X-Matrix "),
-            "HeaderValue to decode should start with \"X-Matrix ..\", received = {value:?}",
-        );
-
-        let parameters = str::from_utf8(&value.as_bytes()["X-Matrix ".len()..])
-            .ok()?
-            .trim_start();
-
-        let mut origin = None;
-        let mut key = None;
-        let mut sig = None;
-
-        for entry in parameters.split_terminator(',') {
-            let (name, value) = entry.split_once('=')?;
-
-            // It's not at all clear why some fields are quoted and others not in the spec,
-            // let's simply accept either form for every field.
-            let value = value
-                .strip_prefix('"')
-                .and_then(|rest| rest.strip_suffix('"'))
-                .unwrap_or(value);
-
-            // FIXME: Catch multiple fields of the same name
-            match name {
-                "origin" => origin = Some(value.try_into().ok()?),
-                "key" => key = Some(value.to_owned()),
-                "sig" => sig = Some(value.to_owned()),
-                _ => debug!("Unexpected field `{}` in X-Matrix Authorization header", name),
-            }
-        }
-
-        Some(Self {
-            origin: origin?,
-            key: key?,
-            sig: sig?,
-        })
-    }
-
-    fn encode(&self) -> HeaderValue {
-        todo!()
     }
 }

@@ -2,6 +2,7 @@ mod acquire;
 mod request;
 mod verify;
 pub use acquire::*;
+use palpo_core::serde::test::serde_json_eq;
 pub use request::*;
 pub use verify::*;
 
@@ -12,7 +13,7 @@ use diesel::prelude::*;
 use futures_util::StreamExt;
 use serde_json::value::RawValue as RawJsonValue;
 
-use crate::core::serde::{CanonicalJsonObject, RawJson};
+use crate::core::serde::{Base64, CanonicalJsonObject, RawJson};
 use crate::core::{
     federation::discovery::{ServerSigningKeys, VerifyKey},
     signatures::{self, Ed25519KeyPair, PublicKeyMap, PublicKeySet},
@@ -30,56 +31,64 @@ pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
 pub type PubKeyMap = PublicKeyMap;
 pub type PubKeys = PublicKeySet;
 
-async fn add_signing_keys(new_keys: ServerSigningKeys) {
-    let origin = &new_keys.server_name;
+fn add_signing_keys(new_keys: ServerSigningKeys) -> AppResult<()> {
+    let server = &new_keys.server_name;
 
     // (timo) Not atomic, but this is not critical
-    let mut keys: ServerSigningKeys = server_signing_keys::table
-        .filter(server_signing_keys::server_id.eq(origin))
+    let keys = server_signing_keys::table
+        .find(server)
         .select(server_signing_keys::key_data)
-        .load::<ServerSigningKeys>(&mut *db::connect()?);
+        .first::<JsonValue>(&mut *db::connect()?)?;
+    let mut keys = serde_json::from_value::<ServerSigningKeys>(keys)?;
 
     keys.verify_keys.extend(new_keys.verify_keys);
     keys.old_verify_keys.extend(new_keys.old_verify_keys);
-    db.server_signingkeys.raw_put(origin, Json(&keys));
+    diesel::update(server_signing_keys::table.find(server))
+        .set(server_signing_keys::key_data.eq(serde_json::to_value(keys)?))
+        .execute(&mut *db::connect()?)?;
+    Ok(())
 }
 
-pub async fn required_keys_exist(object: &CanonicalJsonObject, version: &RoomVersionId) -> bool {
+pub fn required_keys_exist(object: &CanonicalJsonObject, version: &RoomVersionId) -> bool {
     use signatures::required_keys;
 
     let Ok(required_keys) = required_keys(object, version) else {
         return false;
     };
 
-    required_keys
+    let key_ids = required_keys
         .iter()
-        .flat_map(|(server, key_ids)| key_ids.iter().map(move |key_id| (server, key_id)))
-        .stream()
-        .all(|(server, key_id)| verify_key_exists(server, key_id).unwrap_or(false))
-        .await
+        .flat_map(|(server, key_ids)| key_ids.iter().map(move |key_id| (server, key_id)));
+    for (server, key_id) in key_ids {
+        if !verify_key_exists(server, key_id).unwrap_or(false) {
+            return false;
+        }
+    }
+    true
 }
 
-pub async fn verify_key_exists(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<bool> {
-    type KeysMap<'a> = BTreeMap<&'a ServerSigningKeyId, &'a RawJsonValue>;
+pub fn verify_key_exists(server: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<bool> {
+    type KeysMap<'a> = BTreeMap<&'a str, &'a RawJsonValue>;
 
     let key_data = server_signing_keys::table
         .filter(server_signing_keys::server_id.eq(server))
         .select(server_signing_keys::key_data)
-        .first::<RawJson<ServerSigningKeys>>(&mut *db::connect()?)
+        .first::<JsonValue>(&mut *db::connect()?)
         .optional()?;
 
     let Some(keys) = key_data else {
         return Ok(false);
     };
+    let keys: RawJson<ServerSigningKeys> = RawJson::from_value(&keys)?;
 
     if let Ok(Some(verify_keys)) = keys.get_field::<KeysMap<'_>>("verify_keys") {
-        if verify_keys.contains_key(key_id) {
+        if verify_keys.contains_key(&key_id.as_str()) {
             return Ok(true);
         }
     }
 
     if let Ok(Some(old_verify_keys)) = keys.get_field::<KeysMap<'_>>("old_verify_keys") {
-        if old_verify_keys.contains_key(key_id) {
+        if old_verify_keys.contains_key(&key_id.as_str()) {
             return Ok(true);
         }
     }
@@ -87,30 +96,32 @@ pub async fn verify_key_exists(origin: &ServerName, key_id: &ServerSigningKeyId)
     Ok(false)
 }
 
-pub async fn verify_keys_for(server: &ServerName) -> VerifyKeys {
+pub fn verify_keys_for(server: &ServerName) -> VerifyKeys {
     let mut keys = signing_keys_for(server)
-        .await
         .map(|keys| merge_old_keys(keys).verify_keys)
         .unwrap_or(BTreeMap::new());
 
     if !server.is_remote() {
+        let keypair = crate::keypair();
+        let verify_key = VerifyKey {
+            key: Base64::new(keypair.public_key().to_vec()),
+        };
+
+        let id = format!("ed25519:{}", keypair.version());
+        let verify_keys: VerifyKeys = [(id.try_into().expect("should work"), verify_key)].into();
+
         keys.extend(verify_keys.clone().into_iter());
     }
 
     keys
 }
 
-pub async fn signing_keys_for(server: &ServerName) -> AppResult<Option<ServerSigningKeys>> {
+pub  fn signing_keys_for(server: &ServerName) -> AppResult<ServerSigningKeys> {
     let key_data = server_signing_keys::table
         .filter(server_signing_keys::server_id.eq(server))
         .select(server_signing_keys::key_data)
-        .first::<JsonValue>(&mut *db::connect()?)
-        .optional()?;
-    if let Some(key_data) = key_data {
-        Ok(serde_json::from_value(key_data).map(Option::Some)?)
-    } else {
-        Ok(None)
-    }
+        .first::<JsonValue>(&mut *db::connect()?)?;
+    Ok(serde_json::from_value(key_data)?)
 }
 
 fn minimum_valid_ts() -> UnixMillis {
@@ -139,7 +150,7 @@ fn key_exists(keys: &ServerSigningKeys, key_id: &ServerSigningKeyId) -> bool {
     keys.verify_keys.contains_key(key_id) || keys.old_verify_keys.contains_key(key_id)
 }
 
-pub async fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
+pub async  fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
     let required = match signatures::required_keys(object, version) {
         Ok(required) => required,
         Err(e) => {
@@ -188,24 +199,31 @@ pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) ->
     let notary_first = crate::config().query_trusted_key_servers_first;
     let notary_only = crate::config().only_query_trusted_key_servers;
 
-    if let Some(result) = verify_keys_for(origin).await.remove(key_id) {
+    if let Some(result) = verify_keys_for(origin).remove(key_id) {
+		println!("=====xx    verify_keys_for {}  {:#?}", origin, result);
         return Ok(result);
     }
 
     if notary_first {
+		println!("=====xx    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+			println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_only {
+		println!("=====xx    notary_only {}", notary_only);
         if let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
+			println!("=====xx    get_verify_key_from_origin {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_first {
+		println!("=====xx2    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+			println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
@@ -218,7 +236,7 @@ async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSignin
     for notary in &crate::config().trusted_servers {
         if let Ok(server_keys) = notary_request(notary, origin).await {
             for server_key in server_keys.clone() {
-                add_signing_keys(server_key).await;
+                add_signing_keys(server_key)?;
             }
 
             for server_key in server_keys {
@@ -234,7 +252,7 @@ async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSignin
 
 async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
     if let Ok(server_key) = server_request(origin).await {
-        add_signing_keys(server_key.clone()).await;
+        add_signing_keys(server_key.clone())?;
         if let Some(result) = extract_key(server_key, key_id) {
             return Ok(result);
         }

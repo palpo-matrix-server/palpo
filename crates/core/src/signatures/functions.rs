@@ -19,7 +19,7 @@ use crate::{
         verification::{Ed25519Verifier, Verified, Verifier},
         Error, JsonError, ParseError, VerificationError,
     },
-    OwnedEventId, OwnedServerName, RoomVersionId, UserId,OwnedServerSigningKeyId
+    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
 };
 
 const MAX_PDU_BYTES: usize = 65_535;

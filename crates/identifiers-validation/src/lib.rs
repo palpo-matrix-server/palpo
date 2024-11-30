@@ -14,6 +14,7 @@ pub mod room_version_id;
 pub mod server_name;
 pub mod user_id;
 pub mod voip_version_id;
+pub mod server_signing_key_version;
 
 pub use error::Error;
 

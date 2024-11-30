@@ -27,8 +27,9 @@ where
     let mut batch = Batch::new();
     events
         .cloned()
-        .map(RawJson::<CanonicalJsonObject>::from_json)
+        .map(RawJson::<CanonicalJsonObject>::from_raw_value)
         .map(|event| event.get_field::<Signatures>("signatures"))
+		.filter_map(|v|v.ok().flatten())
         .flat_map(IntoIterator::into_iter)
         .for_each(|(server, sigs)| {
             batch.entry(server).or_default().extend(sigs.into_keys());
@@ -117,7 +118,7 @@ where
     let mut missing = Batch::new();
     for (server, key_ids) in batch {
         for key_id in key_ids {
-            if !verify_key_exists(server, key_id).await.unwrap_or(false) {
+            if !verify_key_exists(server, key_id).unwrap_or(false) {
                 missing.entry(server.into()).or_default().push(key_id.into());
             }
         }
@@ -164,7 +165,7 @@ async fn acquire_origin(
                 "received server_keys"
             );
 
-            add_signing_keys(server_keys.clone()).await;
+            let _ = add_signing_keys(server_keys.clone());
             key_ids.retain(|key_id| !key_exists(&server_keys, key_id));
         }
     }
@@ -201,7 +202,7 @@ where
 
 async fn acquire_notary_result(missing: &mut Batch, server_keys: ServerSigningKeys) {
     let server = &server_keys.server_name;
-    add_signing_keys(server_keys.clone()).await;
+    let _ = add_signing_keys(server_keys.clone());
 
     if let Some(key_ids) = missing.get_mut(server) {
         key_ids.retain(|key_id| key_exists(&server_keys, key_id));

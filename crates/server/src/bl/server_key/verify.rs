@@ -41,7 +41,7 @@ pub async fn validate_and_add_event_id_no_fetch(
     room_version: &RoomVersionId,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, room_version)?;
-    if !required_keys_exist(&value, room_version).await {
+    if !required_keys_exist(&value, room_version) {
         return Err(AppError::public(format!(
             "Event {event_id} cannot be verified: missing keys."
         )));
@@ -56,7 +56,7 @@ pub async fn validate_and_add_event_id_no_fetch(
     Ok((event_id, value))
 }
 
-pub async fn verify_event(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<Verified> {
+pub async  fn verify_event(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<Verified> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
     let keys = get_event_keys(event, room_version).await?;
     signatures::verify_event(&keys, event, room_version).map_err(Into::into)

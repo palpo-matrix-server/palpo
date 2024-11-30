@@ -620,47 +620,50 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
             }
         }
-        AdminCommand::VerifyJson => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let string = body[1..body.len() - 1].join("\n");
-                match serde_json::from_str(&string) {
-                    Ok(value) => {
-                        let pub_key_map = RwLock::new(BTreeMap::new());
-
-                        // Generally we shouldn't be checking against expired keys unless required, so in the admin
-                        // room it might be best to not allow expired keys
-                        crate::event::handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
-
-                        let mut expired_key_map = BTreeMap::new();
-                        let mut valid_key_map = BTreeMap::new();
-
-                        for (server, keys) in pub_key_map.into_inner().into_iter() {
-                            if keys.valid_until_ts > UnixMillis::now() {
-                                valid_key_map.insert(
-                                    server,
-                                    keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                );
-                            } else {
-                                expired_key_map.insert(
-                                    server,
-                                    keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                );
-                            }
-                        }
-                        if crate::core::signatures::verify_json(&valid_key_map, &value).is_ok() {
-                            RoomMessageEventContent::text_plain("Signature correct")
-                        } else if let Err(e) = crate::core::signatures::verify_json(&expired_key_map, &value) {
-                            RoomMessageEventContent::text_plain(format!("Signature verification failed: {e}"))
-                        } else {
-                            RoomMessageEventContent::text_plain("Signature correct (with expired keys)")
-                        }
-                    }
-                    Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-            }
+        _ => {
+            RoomMessageEventContent::text_plain("Command not implemented.")
         }
+        // AdminCommand::VerifyJson => {
+        //     if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
+        //         let string = body[1..body.len() - 1].join("\n");
+        //         match serde_json::from_str(&string) {
+        //             Ok(value) => {
+        //                 let pub_key_map = RwLock::new(BTreeMap::new());
+
+        //                 // Generally we shouldn't be checking against expired keys unless required, so in the admin
+        //                 // room it might be best to not allow expired keys
+        //                 // crate::event::handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
+
+        //                 let mut expired_key_map = BTreeMap::new();
+        //                 let mut valid_key_map = BTreeMap::new();
+
+        //                 for (server, keys) in pub_key_map.into_inner().into_iter() {
+        //                     if keys.valid_until_ts > UnixMillis::now() {
+        //                         valid_key_map.insert(
+        //                             server,
+        //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
+        //                         );
+        //                     } else {
+        //                         expired_key_map.insert(
+        //                             server,
+        //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
+        //                         );
+        //                     }
+        //                 }
+        //                 if crate::core::signatures::verify_json(&valid_key_map, &value).is_ok() {
+        //                     RoomMessageEventContent::text_plain("Signature correct")
+        //                 } else if let Err(e) = crate::core::signatures::verify_json(&expired_key_map, &value) {
+        //                     RoomMessageEventContent::text_plain(format!("Signature verification failed: {e}"))
+        //                 } else {
+        //                     RoomMessageEventContent::text_plain("Signature correct (with expired keys)")
+        //                 }
+        //             }
+        //             Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
+        //         }
+        //     } else {
+        //         RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
+        //     }
+        // }
     };
 
     Ok(reply_message_content)

@@ -300,8 +300,11 @@ pub async fn join_room(
         let mut state = HashMap::new();
         let pub_key_map = RwLock::new(BTreeMap::new());
 
-        info!("Fetching join signing keys");
-        crate::event::handler::fetch_join_signing_keys(&send_join_response, &room_version_id, &pub_key_map).await?;
+        info!("Acquiring server signing keys for response events");
+        let resp_events = &send_join_response.room_state;
+        let resp_state = &resp_events.state;
+        let resp_auth = &resp_events.auth_chain;
+        crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
         info!("Going through send_join response room_state");
         for result in send_join_response
