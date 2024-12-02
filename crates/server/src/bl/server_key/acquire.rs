@@ -29,7 +29,7 @@ where
         .cloned()
         .map(RawJson::<CanonicalJsonObject>::from_raw_value)
         .map(|event| event.get_field::<Signatures>("signatures"))
-		.filter_map(|v|v.ok().flatten())
+        .filter_map(|v| v.ok().flatten())
         .flat_map(IntoIterator::into_iter)
         .for_each(|(server, sigs)| {
             batch.entry(server).or_default().extend(sigs.into_keys());

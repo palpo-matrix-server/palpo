@@ -11,9 +11,10 @@ use salvo::http::{
 };
 use salvo::prelude::*;
 
+use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::{signatures, OwnedServerName};
-use crate::schema::*;use crate::core::authorization::XMatrix;
+use crate::schema::*;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::{db, AppResult, AuthArgs, AuthedInfo, MatrixError};
@@ -76,7 +77,10 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
         return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
     };
 
-    let origin_signatures = BTreeMap::from_iter([(x_matrix.key.as_str().to_owned(), CanonicalJsonValue::String(x_matrix.sig.to_string()))]);
+    let origin_signatures = BTreeMap::from_iter([(
+        x_matrix.key.as_str().to_owned(),
+        CanonicalJsonValue::String(x_matrix.sig.to_string()),
+    )]);
 
     let origin = &x_matrix.origin;
     let signatures = BTreeMap::from_iter([(

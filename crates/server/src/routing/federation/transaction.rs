@@ -32,7 +32,7 @@ async fn send_message(
     let server_name = &crate::config().server_name;
     let mut resolved_map = BTreeMap::new();
 
-    let pub_key_map = RwLock::new(BTreeMap::new());
+    // let pub_key_map = RwLock::new(BTreeMap::new());
 
     // This is all the auth_events that have been recursively fetched so they don't have to be
     // deserialized over and over again.
@@ -71,7 +71,7 @@ async fn send_message(
         let start_time = Instant::now();
         resolved_map.insert(
             event_id.clone(),
-            crate::event::handler::handle_incoming_pdu(&server_name, &event_id, &room_id, value, true, &pub_key_map)
+            crate::event::handler::handle_incoming_pdu(&server_name, &event_id, &room_id, value, true)
                 .await,
         );
 

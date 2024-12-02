@@ -53,14 +53,14 @@ use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKey
 ///     trust a set of state we got from a remote)
 /// 13. Use state resolution to find new room state
 /// 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
-#[tracing::instrument(skip(value, is_timeline_event, pub_key_map))]
+#[tracing::instrument(skip(value, is_timeline_event))]
 pub(crate) async fn handle_incoming_pdu(
     origin: &ServerName,
     event_id: &EventId,
     room_id: &RoomId,
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
+    // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     // 0. Check the server is in the room
     if !crate::room::room_exists(room_id)? {
@@ -90,8 +90,7 @@ pub(crate) async fn handle_incoming_pdu(
     let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
-    let (incoming_pdu, val) =
-        handle_outlier_pdu(origin, &create_event, event_id, room_id, value, false, pub_key_map).await?;
+    let (incoming_pdu, val) = handle_outlier_pdu(origin, &create_event, event_id, room_id, value, false).await?;
     check_room_id(room_id, &incoming_pdu)?;
 
     // 8. if not timeline event: stop
@@ -110,7 +109,6 @@ pub(crate) async fn handle_incoming_pdu(
         &create_event,
         room_id,
         room_version_id,
-        pub_key_map,
         incoming_pdu.prev_events.clone(),
     )
     .await?;
@@ -152,9 +150,7 @@ pub(crate) async fn handle_incoming_pdu(
                 .unwrap()
                 .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
 
-            if let Err(e) =
-                upgrade_outlier_to_timeline_pdu(&pdu, json, &create_event, origin, room_id, pub_key_map).await
-            {
+            if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, &create_event, origin, room_id).await {
                 errors += 1;
                 warn!("Prev event {} failed: {}", prev_id, e);
                 match crate::BAD_EVENT_RATE_LIMITER
@@ -189,15 +185,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(
-        &incoming_pdu,
-        val,
-        &create_event,
-        origin,
-        room_id,
-        pub_key_map,
-    )
-    .await?;
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, &create_event, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -213,7 +201,6 @@ fn handle_outlier_pdu<'a>(
     room_id: &'a RoomId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
-    pub_key_map: &'a RwLock<BTreeMap<String, SigningKeys>>,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     Box::pin(async move {
         // 1.1. Remove unsigned field
@@ -246,18 +233,7 @@ fn handle_outlier_pdu<'a>(
             )
         };
 
-        let guard = pub_key_map.read().await;
-        let pkey_map = (*guard).clone();
-
-        // Removing all the expired keys, unless the room version allows stale keys
-        let filtered_keys = crate::filter_keys_server_map(pkey_map, origin_server_ts, room_version_id);
-
-        let mut val = match crate::core::signatures::verify_event(&filtered_keys, &value, room_version_id) {
-            Err(e) => {
-                // Drop
-                warn!("Dropping bad event {}: {}", event_id, e,);
-                return Err(MatrixError::invalid_param("Signature verification failed").into());
-            }
+       let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
@@ -274,6 +250,11 @@ fn handle_outlier_pdu<'a>(
                 obj
             }
             Ok(crate::core::signatures::Verified::All) => value,
+            Err(e) => {
+                // Drop
+                warn!("Dropping bad event {}: {}", event_id, e,);
+                return Err(MatrixError::invalid_param("Signature verification failed").into());
+            }
         };
 
         // Now that we have checked the signature and hashes we can add the eventID and convert
@@ -304,7 +285,6 @@ fn handle_outlier_pdu<'a>(
                 create_event,
                 room_id,
                 room_version_id,
-                pub_key_map,
             )
             .await?;
         }
@@ -374,14 +354,13 @@ fn handle_outlier_pdu<'a>(
     })
 }
 
-#[tracing::instrument(skip(incoming_pdu, val, create_event, pub_key_map))]
+#[tracing::instrument(skip(incoming_pdu, val, create_event))]
 pub async fn upgrade_outlier_to_timeline_pdu(
     incoming_pdu: &PduEvent,
     val: BTreeMap<String, CanonicalJsonValue>,
     create_event: &PduEvent,
     origin: &ServerName,
     room_id: &RoomId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     let conf = crate::config();
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
@@ -554,7 +533,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                     create_event,
                     room_id,
                     room_version_id,
-                    pub_key_map,
                 )
                 .await?;
 
@@ -823,7 +801,6 @@ pub(crate) async fn fetch_and_handle_outliers(
     create_event: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
@@ -934,7 +911,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                 }
             }
 
-            match handle_outlier_pdu(origin, create_event, next_id, room_id, value.clone(), true, pub_key_map).await {
+            match handle_outlier_pdu(origin, create_event, next_id, room_id, value.clone(), true).await {
                 Ok((pdu, json)) => {
                     if next_id == id {
                         pdus.push((pdu, Some(json)));
@@ -955,7 +932,6 @@ async fn fetch_unknown_prev_events(
     create_event: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
     initial_set: Vec<Arc<EventId>>,
 ) -> AppResult<(
     Vec<Arc<EventId>>,
@@ -978,7 +954,6 @@ async fn fetch_unknown_prev_events(
             create_event,
             room_id,
             room_version_id,
-            pub_key_map,
         )
         .await?
         .pop()

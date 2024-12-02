@@ -593,14 +593,14 @@ pub async fn join_room(
                     return Err(MatrixError::invalid_param("Server sent event with wrong event id").into());
                 }
 
-                let pub_key_map = RwLock::new(BTreeMap::new());
+                // let pub_key_map = RwLock::new(BTreeMap::new());
                 crate::event::handler::handle_incoming_pdu(
                     &remote_server,
                     &signed_event_id,
                     room_id,
                     signed_value,
                     true,
-                    &pub_key_map,
+                    // &pub_key_map,
                 )
                 .await?;
             } else {
@@ -781,8 +781,6 @@ pub(crate) async fn invite_user(
             .json::<InviteUserResBodyV2>()
             .await?;
 
-        let pub_key_map = RwLock::new(BTreeMap::new());
-
         // We do not add the event_id field to the pdu here because of signature and hashes checks
         let (event_id, value) = match gen_event_id_canonical_json(&send_join_response.event, &room_version_id) {
             Ok(t) => t,
@@ -811,7 +809,7 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-        crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true, &pub_key_map).await?;
+        crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
         let servers = crate::room::participating_servers(room_id)?
@@ -927,6 +925,7 @@ pub fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) ->
 }
 
 async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+    println!("================{user_id} {room_id}   {:?}", crate::server_name());
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
 
     let invite_state = crate::room::state::get_invite_state(user_id, room_id)?

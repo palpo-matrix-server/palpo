@@ -953,9 +953,9 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
             .await
         {
             Ok(response) => {
-                let mut pub_key_map = RwLock::new(BTreeMap::new());
+                // let mut pub_key_map = RwLock::new(BTreeMap::new());
                 for pdu in response.pdus {
-                    if let Err(e) = backfill_pdu(backfill_server, pdu, &mut pub_key_map).await {
+                    if let Err(e) = backfill_pdu(backfill_server, pdu).await {
                         warn!("Failedcar to add backfilled pdu: {e}");
                     }
                 }
@@ -975,7 +975,6 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
 pub async fn backfill_pdu(
     origin: &ServerName,
     pdu: Box<RawJsonValue>,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     let (event_id, value, room_id) = crate::parse_incoming_pdu(&pdu)?;
 
@@ -985,7 +984,7 @@ pub async fn backfill_pdu(
         return Ok(());
     }
 
-    crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false, pub_key_map).await?;
+    crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");
     let pdu = get_pdu(&event_id)?.expect("We just created it");

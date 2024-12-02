@@ -56,7 +56,7 @@ pub async fn validate_and_add_event_id_no_fetch(
     Ok((event_id, value))
 }
 
-pub async  fn verify_event(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<Verified> {
+pub async fn verify_event(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<Verified> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
     let keys = get_event_keys(event, room_version).await?;
     signatures::verify_event(&keys, event, room_version).map_err(Into::into)

@@ -24,7 +24,7 @@ use crate::{
     db,
     exts::*,
     utils::{timepoint_from_now, IterStream},
-    AppError, AppResult, Server,
+    AppError, AppResult, DbServerSigningKeys, Server,
 };
 
 pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
@@ -32,20 +32,37 @@ pub type PubKeyMap = PublicKeyMap;
 pub type PubKeys = PublicKeySet;
 
 fn add_signing_keys(new_keys: ServerSigningKeys) -> AppResult<()> {
-    let server = &new_keys.server_name;
+    let server: &palpo_core::OwnedServerName = &new_keys.server_name;
 
     // (timo) Not atomic, but this is not critical
     let keys = server_signing_keys::table
         .find(server)
         .select(server_signing_keys::key_data)
-        .first::<JsonValue>(&mut *db::connect()?)?;
-    let mut keys = serde_json::from_value::<ServerSigningKeys>(keys)?;
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?;
+    let mut keys = if let Some(keys) = keys {
+        serde_json::from_value::<ServerSigningKeys>(keys)?
+    } else {
+        // Just insert "now", it doesn't matter
+        ServerSigningKeys::new(server.to_owned(), UnixMillis::now())
+    };
 
     keys.verify_keys.extend(new_keys.verify_keys);
     keys.old_verify_keys.extend(new_keys.old_verify_keys);
-    diesel::update(server_signing_keys::table.find(server))
-        .set(server_signing_keys::key_data.eq(serde_json::to_value(keys)?))
-        .execute(&mut *db::connect()?)?;
+    diesel::insert_into(server_signing_keys::table)
+        .values(DbServerSigningKeys {
+            server_id: server.to_owned(),
+            key_data: serde_json::to_value(&keys)?,
+            updated_at: UnixMillis::now(),
+            created_at: UnixMillis::now(),
+        })
+        .on_conflict(server_signing_keys::server_id)
+        .do_update()
+        .set((
+            server_signing_keys::key_data.eq(serde_json::to_value(&keys)?),
+            server_signing_keys::updated_at.eq(UnixMillis::now()),
+        ))
+        .execute(&mut db::connect()?)?;
     Ok(())
 }
 
@@ -116,7 +133,7 @@ pub fn verify_keys_for(server: &ServerName) -> VerifyKeys {
     keys
 }
 
-pub  fn signing_keys_for(server: &ServerName) -> AppResult<ServerSigningKeys> {
+pub fn signing_keys_for(server: &ServerName) -> AppResult<ServerSigningKeys> {
     let key_data = server_signing_keys::table
         .filter(server_signing_keys::server_id.eq(server))
         .select(server_signing_keys::key_data)
@@ -150,7 +167,7 @@ fn key_exists(keys: &ServerSigningKeys, key_id: &ServerSigningKeyId) -> bool {
     keys.verify_keys.contains_key(key_id) || keys.old_verify_keys.contains_key(key_id)
 }
 
-pub async  fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
+pub async fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
     let required = match signatures::required_keys(object, version) {
         Ok(required) => required,
         Err(e) => {
@@ -200,30 +217,30 @@ pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) ->
     let notary_only = crate::config().only_query_trusted_key_servers;
 
     if let Some(result) = verify_keys_for(origin).remove(key_id) {
-		println!("=====xx    verify_keys_for {}  {:#?}", origin, result);
+        println!("=====xx    verify_keys_for {}  {:#?}", origin, result);
         return Ok(result);
     }
 
     if notary_first {
-		println!("=====xx    notary_first {}", notary_first);
+        println!("=====xx    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-			println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
+            println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_only {
-		println!("=====xx    notary_only {}", notary_only);
+        println!("=====xxbb    notary_only {}", notary_only);
         if let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
-			println!("=====xx    get_verify_key_from_origin {}  {:#?}", origin, result);
+            println!("=====xx    get_verify_key_from_origin {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_first {
-		println!("=====xx2    notary_first {}", notary_first);
+        println!("=====xx2    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-			println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
+            println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
@@ -254,9 +271,11 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     if let Ok(server_key) = server_request(origin).await {
         add_signing_keys(server_key.clone())?;
         if let Some(result) = extract_key(server_key, key_id) {
+            println!("bbbbbbbbbbbbb2");
             return Ok(result);
         }
     }
+    println!("Failed to fetch signing-key from origin");
 
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
