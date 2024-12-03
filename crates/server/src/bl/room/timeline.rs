@@ -177,15 +177,19 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // Insert pdu
+    let event_data = DbEventData {
+        event_id: (&*pdu.event_id).to_owned(),
+        event_sn: pdu.event_sn,
+        room_id: pdu.room_id.to_owned(),
+        internal_metadata: None,
+        json_data: serde_json::to_value(&pdu_json)?,
+        format_version: None,
+    };
     diesel::insert_into(event_datas::table)
-        .values(DbEventData {
-            event_id: (&*pdu.event_id).to_owned(),
-            event_sn: pdu.event_sn,
-            room_id: pdu.room_id.to_owned(),
-            internal_metadata: None,
-            json_data: serde_json::to_value(&pdu_json)?,
-            format_version: None,
-        })
+        .values(&event_data)
+        .on_conflict((event_datas::event_id, event_datas::event_sn))
+        .do_update()
+        .set(&event_data)
         .execute(&mut db::connect()?)?;
 
     // See if the event matches any known pushers
@@ -766,6 +770,7 @@ pub fn append_incoming_pdu(
         return Ok(());
     }
 
+    println!("================append incoming pdu  {:#?}", pdu.event_id);
     crate::room::timeline::append_pdu(pdu, pdu_json, new_room_leaves)
 }
 
@@ -972,10 +977,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
 }
 
 #[tracing::instrument(skip(pdu))]
-pub async fn backfill_pdu(
-    origin: &ServerName,
-    pdu: Box<RawJsonValue>,
-) -> AppResult<()> {
+pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppResult<()> {
     let (event_id, value, room_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event

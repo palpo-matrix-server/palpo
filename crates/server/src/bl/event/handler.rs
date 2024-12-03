@@ -233,7 +233,7 @@ fn handle_outlier_pdu<'a>(
             )
         };
 
-       let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
+        let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
@@ -948,15 +948,10 @@ async fn fetch_unknown_prev_events(
     let mut amount = 0;
 
     while let Some(prev_event_id) = todo_outlier_stack.pop() {
-        if let Some((pdu, json_opt)) = fetch_and_handle_outliers(
-            origin,
-            &[prev_event_id.clone()],
-            create_event,
-            room_id,
-            room_version_id,
-        )
-        .await?
-        .pop()
+        if let Some((pdu, json_opt)) =
+            fetch_and_handle_outliers(origin, &[prev_event_id.clone()], create_event, room_id, room_version_id)
+                .await?
+                .pop()
         {
             check_room_id(room_id, &pdu)?;
 

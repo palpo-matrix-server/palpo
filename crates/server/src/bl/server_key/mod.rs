@@ -217,30 +217,23 @@ pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) ->
     let notary_only = crate::config().only_query_trusted_key_servers;
 
     if let Some(result) = verify_keys_for(origin).remove(key_id) {
-        println!("=====xx    verify_keys_for {}  {:#?}", origin, result);
         return Ok(result);
     }
 
     if notary_first {
-        println!("=====xx    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-            println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_only {
-        println!("=====xxbb    notary_only {}", notary_only);
         if let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
-            println!("=====xx    get_verify_key_from_origin {}  {:#?}", origin, result);
             return Ok(result);
         }
     }
 
     if !notary_first {
-        println!("=====xx2    notary_first {}", notary_first);
         if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-            println!("=====xx    get_verify_key_from_notaries {}  {:#?}", origin, result);
             return Ok(result);
         }
     }

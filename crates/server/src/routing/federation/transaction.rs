@@ -71,8 +71,7 @@ async fn send_message(
         let start_time = Instant::now();
         resolved_map.insert(
             event_id.clone(),
-            crate::event::handler::handle_incoming_pdu(&server_name, &event_id, &room_id, value, true)
-                .await,
+            crate::event::handler::handle_incoming_pdu(&server_name, &event_id, &room_id, value, true).await,
         );
 
         let elapsed = start_time.elapsed();
