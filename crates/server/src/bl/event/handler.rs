@@ -27,7 +27,7 @@ use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::{self, RoomVersion, StateMap};
 use crate::core::{OwnedServerName, ServerName, UnixMillis};
 use crate::event::{NewDbEvent, PduEvent};
-use crate::room::state::{CompressedStateEvent, DbRoomStateField};
+use crate::room::state::{CompressedState, DbRoomStateField};
 use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKeys};
 
 /// When receiving an event one needs to:
@@ -150,6 +150,7 @@ pub(crate) async fn handle_incoming_pdu(
                 .unwrap()
                 .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
 
+                println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV===??/ upgrade_outlier_to_timeline_pdu 00  {:#?}", incoming_pdu);
             if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, &create_event, origin, room_id).await {
                 errors += 1;
                 warn!("Prev event {} failed: {}", prev_id, e);
@@ -185,6 +186,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV===??/ upgrade_outlier_to_timeline_pdu 11  {:#?}", incoming_pdu);
     crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, &create_event, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -606,11 +608,13 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
     )?;
+    println!("==ppppppppp auth_events: {:#?}", auth_events);
 
     let soft_fail = !state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
     .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
+    println!("==========auth_check soft_fail: {soft_fail:?}  incoming_pdu:{incoming_pdu:#?}");
 
     // 13. Use state resolution to find new room state
 
@@ -711,7 +715,7 @@ fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, Arc<EventId>>,
-) -> AppResult<Arc<HashSet<CompressedStateEvent>>> {
+) -> AppResult<Arc<HashSet<CompressedState>>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?
         .ok_or_else(|| AppError::public("every room has state"))?;

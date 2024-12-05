@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use diesel::prelude::*;
 use lru_cache::LruCache;
 
-use super::{CompressedStateEvent, StateDiff};
+use super::{CompressedState, StateDiff};
 use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{db, AppResult};
@@ -13,52 +13,58 @@ pub static STATE_INFO_CACHE: LazyLock<
     Mutex<
         LruCache<
             i64,
-            Vec<(
-                i64,                                // state frame id
-                Arc<HashSet<CompressedStateEvent>>, // full state
-                Arc<HashSet<CompressedStateEvent>>, // added
-                Arc<HashSet<CompressedStateEvent>>, // removed
-            )>,
+            Vec<FrameInfo>,
         >,
     >,
 > = LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
 
+#[derive(Clone, Default)]
+pub struct FrameInfo {
+    pub id: i64,
+    pub full_state: Arc<HashSet<CompressedState>>,
+    pub appended: Arc<HashSet<CompressedState>>,
+    pub disposed: Arc<HashSet<CompressedState>>,
+}
+
 /// Returns a stack with info on state_hash, full state, added diff and removed diff for the selected state_hash and each parent layer.
-pub fn load_frame_info(
-    frame_id: i64,
-) -> AppResult<
-    Vec<(
-        i64,                                // state frame id
-        Arc<HashSet<CompressedStateEvent>>, // full state
-        Arc<HashSet<CompressedStateEvent>>, // added
-        Arc<HashSet<CompressedStateEvent>>, // removed
-    )>,
-> {
+pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
     if let Some(r) = STATE_INFO_CACHE.lock().unwrap().get_mut(&frame_id) {
         return Ok(r.clone());
     }
 
     let StateDiff {
         parent_id,
-        append_data,
-        remove_data,
+        appended,
+        disposed,
     } = super::load_state_diff(frame_id)?;
 
     if let Some(parent_id) = parent_id {
+		println!("parent is {parent_id}  frame_id: {frame_id}");
         let mut response = load_frame_info(parent_id)?;
-        let mut state = (*response.last().unwrap().1).clone();
-        state.extend(append_data.iter().copied());
-        let remove_data = (*remove_data).clone();
-        for r in &remove_data {
-            state.remove(r);
+        let mut full_state = (*response.last().unwrap().full_state).clone();
+        full_state.extend(appended.iter().copied());
+        let disposed = (*disposed).clone();
+        for r in &disposed {
+            full_state.remove(r);
         }
 
-        response.push((frame_id, Arc::new(state), append_data, Arc::new(remove_data)));
+        response.push(FrameInfo {
+            id: frame_id,
+            full_state: Arc::new(full_state),
+            appended,
+            disposed: Arc::new(disposed),
+        });
         STATE_INFO_CACHE.lock().unwrap().insert(frame_id, response.clone());
 
         Ok(response)
     } else {
-        let response = vec![(frame_id, append_data.clone(), append_data, remove_data)];
+        println!("parent is none  frame_id: {frame_id}");
+        let response = vec![FrameInfo {
+            id: frame_id,
+            full_state: appended.clone(),
+            appended,
+            disposed,
+        }];
         STATE_INFO_CACHE.lock().unwrap().insert(frame_id, response.clone());
         Ok(response)
     }

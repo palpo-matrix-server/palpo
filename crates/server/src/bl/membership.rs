@@ -24,7 +24,7 @@ use crate::membership::federation::membership::{
     send_leave_request_v2, InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2,
     SendJoinReqBodyV2, SendLeaveReqArgsV2,
 };
-use crate::room::state::{self, CompressedStateEvent};
+use crate::room::state::{self, CompressedState};
 use crate::{db, diesel_exists, exts::*, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
 
 pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
@@ -381,7 +381,7 @@ pub async fn join_room(
                     .map(|(k, event_id)| {
                         let event_sn = crate::event::get_event_sn(&event_id)?;
                         let point_id = crate::room::state::ensure_point(room_id, &event_id, event_sn)?;
-                        Ok(CompressedStateEvent::new(k, point_id))
+                        Ok(CompressedState::new(k, point_id))
                     })
                     .collect::<AppResult<_>>()?,
             ),

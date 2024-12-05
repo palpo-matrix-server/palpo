@@ -36,8 +36,8 @@ pub struct DbRoomStateDelta {
     pub frame_id: i64,
     pub room_id: OwnedRoomId,
     pub parent_id: Option<i64>,
-    pub append_data: Vec<u8>,
-    pub remove_data: Vec<u8>,
+    pub appended: Vec<u8>,
+    pub disposed: Vec<u8>,
 }
 // #[derive(Insertable, Debug, Clone)]
 // #[diesel(table_name = room_state_deltas)]
@@ -45,8 +45,8 @@ pub struct DbRoomStateDelta {
 //     pub room_id: OwnedRoomId,
 //     pub frame_id: i64,
 //     pub parent_id: Option<i64>,
-//     pub append_data: Vec<u8>,
-//     pub remove_data: Vec<u8>,
+//     pub appended: Vec<u8>,
+//     pub disposed: Vec<u8>,
 // }
 
 pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
@@ -58,10 +58,10 @@ pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), boo
 pub fn force_state(
     room_id: &RoomId,
     frame_id: i64,
-    append_data: Arc<HashSet<CompressedStateEvent>>,
-    _remove_data: Arc<HashSet<CompressedStateEvent>>,
+    appended: Arc<HashSet<CompressedState>>,
+    _disposed_data: Arc<HashSet<CompressedState>>,
 ) -> AppResult<()> {
-    let event_ids = append_data
+    let event_ids = appended
         .iter()
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
@@ -150,11 +150,11 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
-        let new_compressed_event = CompressedStateEvent::new(field_id, point_id);
+        let new_compressed_event = CompressedState::new(field_id, point_id);
 
         let replaces = states_parents
             .last()
-            .map(|info| info.1.iter().find(|bytes| bytes.starts_with(&field_id.to_be_bytes())))
+            .map(|info| info.full_state.iter().find(|bytes| bytes.starts_with(&field_id.to_be_bytes())))
             .unwrap_or_default();
 
         if Some(&new_compressed_event) == replaces {
@@ -162,12 +162,12 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         }
 
         // TODO: state_hash with deterministic inputs
-        let mut append_data = HashSet::new();
-        append_data.insert(new_compressed_event);
+        let mut appended = HashSet::new();
+        appended.insert(new_compressed_event);
 
-        let mut remove_data = HashSet::new();
+        let mut disposed = HashSet::new();
         if let Some(replaces) = replaces {
-            remove_data.insert(*replaces);
+            disposed.insert(*replaces);
         }
 
         let hash_data = utils::hash_keys(&vec![new_compressed_event.as_bytes()]);
@@ -176,8 +176,8 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         calc_and_save_state_delta(
             &new_pdu.room_id,
             frame_id,
-            Arc::new(append_data),
-            Arc::new(remove_data),
+            Arc::new(appended),
+            Arc::new(disposed),
             2,
             states_parents,
         )?;
@@ -286,9 +286,11 @@ pub fn get_auth_events(
     } else {
         return Ok(HashMap::new());
     };
+    println!("???????????frame_ikd: {}  kind:{kind:?}  sender:{sender} state_key: {state_key:?}", frame_id);
 
     let auth_events = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
 
+    println!("mmmmmmmmmmmmmauth_events: {:?}", auth_events);
     let mut sauth_events = auth_events
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -298,25 +300,30 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
+    println!("mmmmmmmmmmmmmauth_events111: {:?}", sauth_events);
 
-    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
-
+    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").full_state;
     let mut state_map = StateMap::new();
+    println!("=====full state: {:?}", full_state);
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!("fffitem========state_key_id: {}  event_id: {}", state_key_id, event_id);
         if let Some(key) = sauth_events.remove(&state_key_id) {
+            println!("???????????key: {:?}", key);
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+                println!("???????????insertpdu");
                 state_map.insert(key, pdu);
             }
         }
     }
+    println!("???????????state_map: {:?}", state_map);
     Ok(state_map)
 }
 
 /// Builds a StateMap by iterating over all keys that start
 /// with state_hash, this gives the full state for the given state_hash.
 pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>> {
-    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
+    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").full_state;
     let mut map = HashMap::new();
     for compressed in full_state.iter() {
         let splited = compressed.split()?;
@@ -326,7 +333,7 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>
 }
 
 pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, String), PduEvent>> {
-    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
+    let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").full_state;
 
     let mut result = HashMap::new();
     for compressed in full_state.iter() {
@@ -355,7 +362,7 @@ pub fn get_state_event_id(
     state_key: &str,
 ) -> AppResult<Option<Arc<EventId>>> {
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
-        let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").1;
+        let full_state = load_frame_info(frame_id)?.pop().expect("there is always one layer").full_state;
         Ok(full_state
             .iter()
             .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
@@ -547,11 +554,11 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
 /// Returns the new state_hash, and the state diff from the previous room state
 pub fn save_state(
     room_id: &RoomId,
-    new_compressed_events: Arc<HashSet<CompressedStateEvent>>,
+    new_compressed_events: Arc<HashSet<CompressedState>>,
 ) -> AppResult<(
     i64,
-    Arc<HashSet<CompressedStateEvent>>,
-    Arc<HashSet<CompressedStateEvent>>,
+    Arc<HashSet<CompressedState>>,
+    Arc<HashSet<CompressedState>>,
 )> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
@@ -568,12 +575,12 @@ pub fn save_state(
 
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
-    let (append_data, remove_data) = if let Some(parent_stateinfo) = states_parents.last() {
-        let append_data: HashSet<_> = new_compressed_events.difference(&parent_stateinfo.1).copied().collect();
+    let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
+        let appended: HashSet<_> = new_compressed_events.difference(&parent_state_info.full_state).copied().collect();
 
-        let remove_data: HashSet<_> = parent_stateinfo.1.difference(&new_compressed_events).copied().collect();
+        let disposed: HashSet<_> = parent_state_info.full_state.difference(&new_compressed_events).copied().collect();
 
-        (Arc::new(append_data), Arc::new(remove_data))
+        (Arc::new(appended), Arc::new(disposed))
     } else {
         (new_compressed_events, Arc::new(HashSet::new()))
     };
@@ -582,15 +589,15 @@ pub fn save_state(
         calc_and_save_state_delta(
             room_id,
             new_frame_id,
-            append_data.clone(),
-            remove_data.clone(),
-            2, // every state change is 2 event changes on average
+            appended.clone(),
+            disposed.clone(),
+            1_000_000, // high number because no state will be based on this one
             states_parents,
         )?;
     };
     set_room_state(room_id, new_frame_id)?;
 
-    Ok((new_frame_id, append_data, remove_data))
+    Ok((new_frame_id, appended, disposed))
 }
 
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).

@@ -526,8 +526,8 @@ CREATE TABLE room_state_deltas
     frame_id bigint NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     parent_id bigint,
-    append_data bytea NOT NULL,
-    remove_data bytea NOT NULL
+    appended bytea NOT NULL,
+    disposed bytea NOT NULL
 );
 
 -- DROP TABLE IF EXISTS room_states CASCADE;

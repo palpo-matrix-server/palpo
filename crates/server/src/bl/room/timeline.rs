@@ -17,7 +17,7 @@ use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonV
 use crate::core::state::Event;
 use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
 use crate::event::{DbEventData, NewDbEvent};
-use crate::room::state::CompressedStateEvent;
+use crate::room::state::CompressedState;
 use crate::{db, utils, AppError, AppResult, MatrixError, SigningKeys};
 use crate::{
     diesel_exists,
@@ -500,6 +500,7 @@ pub fn create_hash_and_sign_event(
         create_event_content.map_or(conf.room_version.clone(), |create_event| create_event.room_version);
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
+    println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV===??/ timeline");
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_ty, sender_id, state_key.as_deref(), &content)?;
 
@@ -755,7 +756,7 @@ pub fn append_incoming_pdu(
     pdu: &PduEvent,
     pdu_json: CanonicalJsonObject,
     new_room_leaves: Vec<OwnedEventId>,
-    state_ids_compressed: Arc<HashSet<CompressedStateEvent>>,
+    state_ids_compressed: Arc<HashSet<CompressedState>>,
     soft_fail: bool,
 ) -> AppResult<()> {
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;

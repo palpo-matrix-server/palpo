@@ -365,8 +365,8 @@ diesel::table! {
         frame_id -> Int8,
         room_id -> Text,
         parent_id -> Nullable<Int8>,
-        append_data -> Bytea,
-        remove_data -> Bytea,
+        appended -> Bytea,
+        disposed -> Bytea,
     }
 }
 
