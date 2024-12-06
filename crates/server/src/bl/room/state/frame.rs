@@ -20,7 +20,7 @@ pub static STATE_INFO_CACHE: LazyLock<
 
 #[derive(Clone, Default)]
 pub struct FrameInfo {
-    pub id: i64,
+    pub frame_id: i64,
     pub full_state: Arc<HashSet<CompressedState>>,
     pub appended: Arc<HashSet<CompressedState>>,
     pub disposed: Arc<HashSet<CompressedState>>,
@@ -32,6 +32,8 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
         return Ok(r.clone());
     }
 
+    println!("llllllllllload_frame_info frame_id: {frame_id}");
+
     let StateDiff {
         parent_id,
         appended,
@@ -39,34 +41,35 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
     } = super::load_state_diff(frame_id)?;
 
     if let Some(parent_id) = parent_id {
-		println!("parent is {parent_id}  frame_id: {frame_id}");
-        let mut response = load_frame_info(parent_id)?;
-        let mut full_state = (*response.last().unwrap().full_state).clone();
+		println!("load_frame_info frame_id: {frame_id}, parent is {parent_id}");
+        let mut info = load_frame_info(parent_id)?;
+        let mut full_state = (*info.last().expect("at least one frame").full_state).clone();
         full_state.extend(appended.iter().copied());
         let disposed = (*disposed).clone();
         for r in &disposed {
+            println!("RRRRRREvmove state: {r:?}   {:?}", r.split().unwrap());
             full_state.remove(r);
         }
 
-        response.push(FrameInfo {
-            id: frame_id,
+        info.push(FrameInfo {
+            frame_id,
             full_state: Arc::new(full_state),
             appended,
             disposed: Arc::new(disposed),
         });
-        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, response.clone());
+        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, info.clone());
 
-        Ok(response)
+        Ok(info)
     } else {
-        println!("parent is none  frame_id: {frame_id}");
-        let response = vec![FrameInfo {
-            id: frame_id,
+        println!("load_frame_info frame_id: {frame_id} parent is none");
+        let info = vec![FrameInfo {
+            frame_id: frame_id,
             full_state: appended.clone(),
             appended,
             disposed,
         }];
-        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, response.clone());
-        Ok(response)
+        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, info.clone());
+        Ok(info)
     }
 }
 

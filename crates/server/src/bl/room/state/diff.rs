@@ -15,6 +15,14 @@ pub struct StateDiff {
     pub appended: Arc<HashSet<CompressedState>>,
     pub disposed: Arc<HashSet<CompressedState>>,
 }
+
+#[derive(Clone, Default)]
+pub struct DeltaInfo {
+    pub frame_id: i64,
+    pub appended: Arc<HashSet<CompressedState>>,
+    pub disposed: Arc<HashSet<CompressedState>>,
+}
+
 #[derive(Eq, Hash, PartialEq, Copy, Debug, Clone)]
 pub struct CompressedState([u8; 2 * size_of::<i64>()]);
 impl CompressedState {
@@ -126,8 +134,8 @@ pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> App
 /// based on layer n-2. If that layer is also too big, it will recursively fix above layers too.
 ///
 /// * `point_id` - Shortstate_hash of this state
-/// * `added` - Added to base. Each vec is state_key_id+shorteventid
-/// * `removed` - Removed from base. Each vec is state_key_id+shorteventid
+/// * `appended` - Added to base. Each vec is state_key_id+shorteventid
+/// * `disposed` - Removed from base. Each vec is state_key_id+shorteventid
 /// * `diff_to_sibling` - Approximately how much the diff grows each time for this layer
 /// * `parent_states` - A stack with info on state_hash, full state, added diff and removed diff for each parent layer
 #[tracing::instrument(skip(appended, disposed, diff_to_sibling, parent_states))]
@@ -139,11 +147,17 @@ pub fn calc_and_save_state_delta(
     diff_to_sibling: usize,
     mut parent_states: Vec<FrameInfo>,
 ) -> AppResult<()> {
+    println!("cccccccccccccccccccccccccccccccccalc_and_save_state_delta frame_id: {frame_id} parent_states.len: {}", parent_states.len());
     let diff_sum = appended.len() + disposed.len();
 
+    for item in disposed.iter() {
+        println!("ddddddddddddddisposed: {item:?}   {:?}", item.split().unwrap());
+    }
+    
     if parent_states.len() > 3 {
         // Number of layers
         // To many layers, we have to go deeper
+        println!("To many layers, we have to go deeper frame_id: {frame_id}");
         let parent = parent_states.pop().unwrap();
 
         let mut parent_appended = (*parent.appended).clone();
@@ -176,6 +190,7 @@ pub fn calc_and_save_state_delta(
     }
 
     if parent_states.is_empty() {
+        println!("ssssssssssave_state_delta 00 frame_id: {frame_id}");
         // There is no parent layer, create a new state
         return save_state_delta(
             room_id,
@@ -191,12 +206,11 @@ pub fn calc_and_save_state_delta(
     // Else we have two options.
     // 1. We add the current diff on top of the parent layer.
     // 2. We replace a layer above
-
     let parent = parent_states.pop().unwrap();
     let parent_diff = parent.appended.len() + parent.disposed.len();
 
     if diff_sum * diff_sum >= 2 * diff_to_sibling * parent_diff {
-        // Diff too big, we replace above layer(s)
+         // Diff too big, we replace above layer(s)
         let mut parent_appended = (*parent.appended).clone();
         let mut parent_disposed = (*parent.disposed).clone();
 
@@ -230,7 +244,7 @@ pub fn calc_and_save_state_delta(
             room_id,
             frame_id,
             StateDiff {
-                parent_id: Some(parent.id),
+                parent_id: Some(parent.frame_id),
                 appended,
                 disposed,
             },

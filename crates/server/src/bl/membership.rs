@@ -16,14 +16,14 @@ use crate::core::federation::membership::{
 use crate::core::identifiers::*;
 use crate::core::serde::{
     to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
-};
+}; use crate::membership::state::FrameInfo;
 use crate::core::state::event_auth;
 use crate::core::{federation, OwnedServerName, ServerName, UnixMillis};
 use crate::event::{gen_event_id_canonical_json, NewDbEvent, PduBuilder, PduEvent};
 use crate::membership::federation::membership::{
     send_leave_request_v2, InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2,
     SendJoinReqBodyV2, SendLeaveReqArgsV2,
-};
+};use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedState};
 use crate::{db, diesel_exists, exts::*, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
 
@@ -373,7 +373,8 @@ pub async fn join_room(
         // }
 
         info!("Saving state from send_join");
-        let (state_hash_before_join, new, removed) = crate::room::state::save_state(
+        println!("cccccccccccccaffff call 11 ffff save_state");
+        let DeltaInfo{frame_id, appended, disposed} = crate::room::state::save_state(
             room_id,
             Arc::new(
                 state
@@ -387,7 +388,7 @@ pub async fn join_room(
             ),
         )?;
 
-        crate::room::state::force_state(room_id, state_hash_before_join, new, removed)?;
+        crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
 
         info!("Updating joined counts for new room");
         crate::room::update_room_servers(room_id)?;

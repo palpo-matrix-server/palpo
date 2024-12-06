@@ -761,6 +761,7 @@ pub fn append_incoming_pdu(
 ) -> AppResult<()> {
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
+    println!("cccccccccccccappend_append_incoming_pdu");
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     crate::room::state::save_state(&pdu.room_id, state_ids_compressed)?;
