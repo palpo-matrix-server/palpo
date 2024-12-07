@@ -323,6 +323,7 @@ pub async fn join_room(
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
+            println!("{}  aaaaaaaaaaaaddddddd   2  event_id {:?}", crate::server_name(), &event_id);
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
                 .on_conflict_do_nothing()
@@ -346,6 +347,7 @@ pub async fn join_room(
                 Err(_) => continue,
             };
 
+            println!("{}  aaaaaaaaaaaaddddddd    1   event_id {:?}", crate::server_name(), &event_id);
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
                 .on_conflict_do_nothing()

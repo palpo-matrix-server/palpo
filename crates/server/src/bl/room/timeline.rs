@@ -16,7 +16,7 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::Event;
 use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
-use crate::event::{DbEventData, NewDbEvent};
+use crate::event::{DbEvent, DbEventData, NewDbEvent};
 use crate::room::state::CompressedState;
 use crate::{db, utils, AppError, AppResult, MatrixError, SigningKeys};
 use crate::{
@@ -94,6 +94,13 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .filter(events::outlier.eq(false))
         .filter(events::id.eq(event_id));
     if diesel_exists!(query, &mut *db::connect()?)? {
+        println!(
+            "{}  gggggggggggggggget_non_xxxdata:{event_id}  {:#?}", crate::server_name() ,
+            event_datas::table
+                .filter(event_datas::event_id.eq(event_id))
+                .select(event_datas::json_data)
+                .first::<JsonValue>(&mut *db::connect()?)
+        );
         event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select(event_datas::json_data)
@@ -102,6 +109,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
             .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
             .transpose()
     } else {
+        println!("vvv");
         Ok(None)
     }
 }
@@ -185,6 +193,7 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
+    println!("{}  insert event_datas   event_data {:?}", crate::server_name(), event_data);
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -500,7 +509,6 @@ pub fn create_hash_and_sign_event(
         create_event_content.map_or(conf.room_version.clone(), |create_event| create_event.room_version);
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
-    println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV===??/ timeline");
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_ty, sender_id, state_key.as_deref(), &content)?;
 
@@ -546,6 +554,7 @@ pub fn create_hash_and_sign_event(
         soft_failed: false,
         rejection_reason: None,
     };
+    println!("{}  aaaaaaaaaaaaddddddd   4  event_id {:?}", crate::server_name(), event_id);
     let event_sn = diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict(events::id)

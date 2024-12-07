@@ -615,7 +615,6 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
             states_parents,
         )?;
     };
-    set_room_state(room_id, new_frame_id)?;
 
     Ok(DeltaInfo {
         frame_id: new_frame_id,
