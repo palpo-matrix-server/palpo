@@ -150,10 +150,6 @@ pub fn calc_and_save_state_delta(
     println!("cccccccccccccccccccccccccccccccccalc_and_save_state_delta frame_id: {frame_id} parent_states.len: {}", parent_states.len());
     let diff_sum = appended.len() + disposed.len();
 
-    for item in disposed.iter() {
-        println!("ddddddddddddddisposed: {item:?}   {:?}", item.split().unwrap());
-    }
-    
     if parent_states.len() > 3 {
         // Number of layers
         // To many layers, we have to go deeper

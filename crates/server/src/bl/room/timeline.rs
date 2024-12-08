@@ -96,7 +96,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     if diesel_exists!(query, &mut *db::connect()?)? {
         println!(
             "{}  gggggggggggggggget_non_xxxdata:{event_id}  {:#?}", crate::server_name() ,
-            event_datas::table
+            event_datas::table                                                                                     
                 .filter(event_datas::event_id.eq(event_id))
                 .select(event_datas::json_data)
                 .first::<JsonValue>(&mut *db::connect()?)
@@ -109,7 +109,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
             .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
             .transpose()
     } else {
-        println!("vvv");
         Ok(None)
     }
 }
@@ -656,6 +655,7 @@ pub fn create_hash_and_sign_event(
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+    println!("MMMnnnnnnn  1");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -722,10 +722,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         }
     }
 
-    // We append to state before appending the pdu, so we don't have a moment in time with the
-    // pdu without it's state. This is okay because append_pdu can't fail.
-    let frame_id = crate::room::state::append_to_state(&pdu)?;
-
     append_pdu(
         &pdu,
         pdu_json,
@@ -733,6 +729,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         // of the room
         vec![(*pdu.event_id).to_owned()],
     )?;
+    let frame_id = crate::room::state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist

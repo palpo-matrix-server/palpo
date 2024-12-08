@@ -187,6 +187,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             2,
             states_parents,
         )?;
+        println!("vvvvvvvvvvvvvvv??");
         Ok(frame_id)
     } else {
         let frame_id = prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
@@ -688,6 +689,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         redacts: None,
     };
 
+    println!("MMMnnnnnnn  2");
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 
