@@ -126,7 +126,7 @@ pub fn authed_router() -> Router {
 async fn initial_sync(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
-// #POST /_matrix/client/r0/rooms/{room_id}/read_markers
+/// #POST /_matrix/client/r0/rooms/{room_id}/read_markers
 /// Sets different types of read markers.
 ///
 /// - Updates fully-read account data event to `fully_read`
@@ -191,7 +191,7 @@ fn set_read_markers(
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/rooms/{room_id}/aliases
+/// #GET /_matrix/client/r0/rooms/{room_id}/aliases
 /// Lists all aliases of the room.
 ///
 /// - Only users joined to the room are allowed to call this
@@ -209,7 +209,7 @@ async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut
     })
 }
 
-// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
+/// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
 /// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
 #[endpoint]
 async fn hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot) -> JsonResult<HierarchyResBody> {
@@ -229,7 +229,7 @@ async fn hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot) -> 
     json_ok(body)
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/upgrade
+/// #POST /_matrix/client/r0/rooms/{room_id}/upgrade
 /// Upgrades the room.
 ///
 /// - Creates a replacement room
@@ -423,7 +423,7 @@ async fn upgrade(
     json_ok(UpgradeRoomResBody { replacement_room })
 }
 
-// #GET /_matrix/client/r0/publicRooms
+/// #GET /_matrix/client/r0/publicRooms
 /// Lists the public rooms on this server.
 ///
 /// - Rooms are ordered by the number of joined members
@@ -439,7 +439,7 @@ pub(super) async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) ->
     .await?;
     json_ok(body)
 }
-// #POST /_matrix/client/r0/publicRooms
+/// #POST /_matrix/client/r0/publicRooms
 /// Lists the public rooms on this server.
 ///
 /// - Rooms are ordered by the number of joined members
@@ -459,7 +459,7 @@ pub(super) async fn get_filtered_public_rooms(
     json_ok(body)
 }
 
-// #POST /_matrix/client/r0/createRoom
+/// #POST /_matrix/client/r0/createRoom
 /// Creates a new room.
 ///
 /// - Room ID is randomly generated

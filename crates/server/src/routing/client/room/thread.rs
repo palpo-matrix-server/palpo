@@ -4,7 +4,7 @@ use crate::core::client::room::{ThreadsReqArgs, ThreadsResBody};
 use crate::room::thread::ThreadsNextBatch;
 use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/threads
+/// #GET /_matrix/client/r0/rooms/{room_id}/threads
 #[endpoint]
 pub(super) async fn list_threads(_aa: AuthArgs, args: ThreadsReqArgs, depot: &mut Depot) -> JsonResult<ThreadsResBody> {
     let authed = depot.authed_info()?;

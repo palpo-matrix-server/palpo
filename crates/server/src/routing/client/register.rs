@@ -223,7 +223,7 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
     }))
 }
 
-// #GET /_matrix/client/r0/register/available
+/// #GET /_matrix/client/r0/register/available
 /// Checks if a username is valid and available on this server.
 ///
 /// Conditions for returning true:

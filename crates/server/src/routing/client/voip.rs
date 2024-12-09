@@ -18,7 +18,7 @@ pub fn authed_router() -> Router {
         .get(turn_server)
 }
 
-// #GET /_matrix/client/r0/voip/turnServer
+/// #GET /_matrix/client/r0/voip/turnServer
 /// TODO: Returns information about the recommended turn server.
 #[endpoint]
 async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerResBody> {

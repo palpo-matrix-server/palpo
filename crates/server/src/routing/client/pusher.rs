@@ -19,7 +19,7 @@ pub fn authed_router() -> Router {
         .push(Router::with_hoop(hoops::limit_rate).push(Router::with_path("set").post(set_pusher)))
 }
 
-// #GET /_matrix/client/r0/pushers
+/// #GET /_matrix/client/r0/pushers
 /// Gets all currently active pushers for the sender user.
 #[endpoint]
 async fn pushers(depot: &mut Depot) -> JsonResult<PushersResBody> {
@@ -33,7 +33,7 @@ async fn pushers(depot: &mut Depot) -> JsonResult<PushersResBody> {
     })
 }
 
-// #POST /_matrix/client/r0/pushers/set
+/// #POST /_matrix/client/r0/pushers/set
 /// Adds a pusher for the sender user.
 ///
 /// - TODO: Handle `append`

@@ -16,7 +16,7 @@ pub fn authed_router() -> Router {
         .post(search)
 }
 
-// #POST /_matrix/client/r0/user_directory/search
+/// #POST /_matrix/client/r0/user_directory/search
 /// Searches all known users for a match.
 ///
 /// - Hides any local users that aren't in any public rooms (i.e. those that have the join rule set to public)

@@ -334,7 +334,7 @@ pub fn send_leave_request_v2(
     ))?;
     crate::sending::put(url).stuff(body)
 }
-#[derive(ToSchema, Deserialize, Serialize, Debug)]
+#[derive(ToParameters, Deserialize, Serialize, Debug)]
 pub struct SendLeaveReqArgsV2 {
     /// The room ID that is about to be left.
     ///
@@ -348,7 +348,8 @@ pub struct SendLeaveReqArgsV2 {
 }
 /// Request type for the `create_leave_event` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendLeaveReqBodyV2 {
+#[salvo(schema(value_type = Object))]
+pub struct SendLeaveReqBodyV2(
     // /// The room ID that is about to be left.
     // ///
     // /// Do not use this. Instead, use the `room_id` field inside the PDU.
@@ -359,9 +360,8 @@ pub struct SendLeaveReqBodyV2 {
     // #[salvo(parameter(parameter_in = Path))]
     // pub event_id: OwnedEventId,
     /// The PDU.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub pdu: Box<RawJsonValue>,
-}
+    pub Box<RawJsonValue>,
+);
 crate::json_body_modifier!(SendLeaveReqBodyV2);
 
 /// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`

@@ -16,7 +16,7 @@ use crate::utils::HtmlEscape;
 use crate::PduBuilder;
 use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
+/// #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
 /// Gets a single event.
 ///
 /// - You have to currently be joined to the room (TODO: Respect history visibility)
@@ -39,7 +39,7 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
     json_ok(RoomEventResBody::new(event.to_room_event()))
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
+/// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
 pub(super) fn report(
@@ -96,7 +96,7 @@ pub(super) fn report(
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/rooms/{room_id}/context/{event_id}
+/// #GET /_matrix/client/r0/rooms/{room_id}/context/{event_id}
 /// Allows loading room history around an event.
 ///
 /// - Only works if the user is joined (TODO: always allow, but only show events if the user was
@@ -237,7 +237,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     })
 }
 
-// #PUT /_matrix/client/r0/rooms/{room_id}/redact/{event_id}/{txn_id}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/redact/{event_id}/{txn_id}
 /// Tries to send a redaction event into the room.
 ///
 /// - TODO: Handle txn id

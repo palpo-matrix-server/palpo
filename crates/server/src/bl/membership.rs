@@ -1014,9 +1014,8 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
             room_id: room_id.to_owned(),
             event_id,
         },
-        SendLeaveReqBodyV2 {
-            pdu: PduEvent::convert_to_outgoing_federation_event(leave_event.clone()),
-        },
+        SendLeaveReqBodyV2 ( PduEvent::convert_to_outgoing_federation_event(leave_event.clone()),
+    ),
     )?
     .into_inner();
 

@@ -73,7 +73,7 @@ async fn get_versions(_aa: AuthArgs) -> EmptyResult {
     //TODO: https://github.com/matrix-org/matrix-spec-proposals/pull/3723
     empty_ok()
 }
-// #GET /_matrix/federation/v1/version
+/// #GET /_matrix/federation/v1/version
 /// Get version information on this server.
 #[endpoint]
 async fn version() -> JsonResult<ServerVersionResBody> {

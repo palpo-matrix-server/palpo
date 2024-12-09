@@ -4,7 +4,7 @@ use salvo::prelude::*;
 use crate::core::client::filter::{CreateFilterReqBody, CreateFilterResBody, FilterResBody};
 use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
-// #GET /_matrix/client/r0/user/{user_id}/filter/{filter_id}
+/// #GET /_matrix/client/r0/user/{user_id}/filter/{filter_id}
 /// Loads a filter that was previously created.
 ///
 /// - A user can only access their own filters
@@ -19,7 +19,7 @@ pub(super) fn get_filter(_aa: AuthArgs, filter_id: PathParam<i64>, depot: &mut D
     json_ok(FilterResBody::new(filter))
 }
 
-// #POST /_matrix/client/r0/user/{user_id}/filter
+/// #POST /_matrix/client/r0/user/{user_id}/filter
 /// Creates a new filter to be used by other endpoints.
 #[endpoint]
 pub(super) fn create_filter(

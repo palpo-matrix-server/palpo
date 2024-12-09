@@ -27,7 +27,7 @@ use crate::{
     PduBuilder,
 };
 
-// #POST /_matrix/client/r0/rooms/{room_id}/members
+/// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
 ///
 /// - Only works if the user is currently joined
@@ -79,7 +79,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     json_ok(MembersResBody { chunk: states })
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/joined_members
+/// #POST /_matrix/client/r0/rooms/{room_id}/joined_members
 /// Lists all members of a room.
 ///
 /// - The sender user must be in the room
@@ -112,7 +112,7 @@ pub(super) fn joined_members(
     json_ok(JoinedMembersResBody { joined })
 }
 
-// #POST /_matrix/client/r0/joined_rooms
+/// #POST /_matrix/client/r0/joined_rooms
 /// Lists all rooms the user has joined.
 #[endpoint]
 pub(crate) async fn joined_rooms(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<JoinedRoomsResBody> {
@@ -123,7 +123,7 @@ pub(crate) async fn joined_rooms(_aa: AuthArgs, depot: &mut Depot) -> JsonResult
     })
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/forget
+/// #POST /_matrix/client/r0/rooms/{room_id}/forget
 /// Forgets about a room.
 ///
 /// - If the sender user currently left the room: Stops sender user from receiving information about the room
@@ -140,7 +140,7 @@ pub(super) async fn forget_room(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, 
     empty_ok()
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/leave
+/// #POST /_matrix/client/r0/rooms/{room_id}/leave
 /// Tries to leave the sender user from a room.
 ///
 /// - This should always work if the user is currently joined.
@@ -157,7 +157,7 @@ pub(super) async fn leave_room(
     empty_ok()
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/join
+/// #POST /_matrix/client/r0/rooms/{room_id}/join
 /// Tries to join the sender user into a room.
 ///
 /// - If the server knowns about this room: creates the join event and does auth rules locally
@@ -198,7 +198,7 @@ pub(super) async fn join_room_by_id(
     json_ok(JoinRoomResBody { room_id })
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/invite
+/// #POST /_matrix/client/r0/rooms/{room_id}/invite
 /// Tries to send an invite event into the room.
 #[endpoint]
 pub(super) async fn invite_user(
@@ -227,7 +227,7 @@ pub(super) async fn invite_user(
     empty_ok()
 }
 
-// #POST /_matrix/client/r0/join/{room_id_or_alias}
+/// #POST /_matrix/client/r0/join/{room_id_or_alias}
 /// Tries to join the sender user into a room.
 ///
 /// - If the server knowns about this room: creates the join event and does auth rules locally
@@ -281,7 +281,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     })
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/ban
+/// #POST /_matrix/client/r0/rooms/{room_id}/ban
 /// Tries to send a ban event into the room.
 #[endpoint]
 pub(super) async fn ban_user(
@@ -369,7 +369,7 @@ pub(super) async fn ban_user(
     empty_ok()
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/unban
+/// #POST /_matrix/client/r0/rooms/{room_id}/unban
 /// Tries to send an unban event into the room.
 #[endpoint]
 pub(super) async fn unban_user(
@@ -406,7 +406,7 @@ pub(super) async fn unban_user(
 
     empty_ok()
 }
-// #POST /_matrix/client/r0/rooms/{room_id}/kick
+/// #POST /_matrix/client/r0/rooms/{room_id}/kick
 /// Tries to send a kick event into the room.
 #[endpoint]
 pub(super) async fn kick_user(

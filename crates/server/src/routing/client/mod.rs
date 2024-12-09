@@ -112,7 +112,7 @@ pub fn router() -> Router {
     client.push(Router::with_path("versions").get(supported_versions))
 }
 
-// #POST /_matrix/client/r0/search
+/// #POST /_matrix/client/r0/search
 /// Searches rooms for messages.
 ///
 /// - Only works if the user is currently joined to the room (TODO: Respect history visibility)
@@ -217,7 +217,7 @@ fn search(
     }))
 }
 
-// #GET /_matrix/client/r0/capabilities
+/// #GET /_matrix/client/r0/capabilities
 /// Get information on the supported feature set and other relevent capabilities of this server.
 #[endpoint]
 async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
@@ -239,7 +239,7 @@ async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     })
 }
 
-// #GET /_matrix/client/versions
+/// #GET /_matrix/client/versions
 /// Get the versions of the specification and unstable features supported by this server.
 ///
 /// - Versions take the form MAJOR.MINOR.PATCH
@@ -271,7 +271,7 @@ async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/sync
+/// #GET /_matrix/client/r0/sync
 /// Synchronize the client's state with the latest state on the server.
 ///
 /// - This endpoint takes a `since` parameter which should be the `next_batch` value from a

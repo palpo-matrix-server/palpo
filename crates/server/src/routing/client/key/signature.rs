@@ -6,7 +6,7 @@ use salvo::prelude::*;
 use crate::core::client::key::{UploadSignaturesReqBody, UploadSignaturesResBody};
 use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
 
-// #POST /_matrix/client/r0/keys/signatures/upload
+/// #POST /_matrix/client/r0/keys/signatures/upload
 /// Uploads end-to-end key signatures from the sender user.
 #[endpoint]
 pub(super) async fn upload(

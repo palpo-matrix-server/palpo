@@ -12,7 +12,7 @@ use crate::diesel_exists;
 use crate::schema::*;
 use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, JsonValue, MatrixError, PduBuilder};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/messages
+/// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
 ///
 /// - Only works if the user is joined (TODO: always allow, but only show events where the user was
@@ -172,7 +172,7 @@ pub(super) async fn get_messages(
     json_ok(resp)
 }
 
-// #PUT /_matrix/client/r0/rooms/{room_id}/send/{event_type}/{txn_id}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/send/{event_type}/{txn_id}
 /// Send a message event into the room.
 ///
 /// - Is a NOOP if the txn id was already used before and returns the same event id again
@@ -231,7 +231,7 @@ pub(super) async fn send_message(
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/send/{event_type}
+/// #POST /_matrix/client/r0/rooms/{room_id}/send/{event_type}
 /// Send a message event into the room.
 ///
 /// - Is a NOOP if the txn id was already used before and returns the same event id again

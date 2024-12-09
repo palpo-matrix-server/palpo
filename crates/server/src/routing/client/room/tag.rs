@@ -9,7 +9,7 @@ use crate::core::events::RoomAccountDataEventType;
 use crate::core::user::UserRoomReqArgs;
 use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult};
 
-// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
+/// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.
 ///
 /// - Gets the tag event of the room account data.
@@ -29,7 +29,7 @@ pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut 
     })
 }
 
-// #PUT /_matrix/client/r0/user/{user_id}/rooms/{room_id}/tags/{tag}
+/// #PUT /_matrix/client/r0/user/{user_id}/rooms/{room_id}/tags/{tag}
 /// Adds a tag to the room.
 ///
 /// - Inserts the tag into the tag event of the room account data.
@@ -62,7 +62,7 @@ pub(super) async fn upsert_tag(
     empty_ok()
 }
 
-// #DELETE /_matrix/client/r0/user/{user_id}/rooms/{room_id}/tags/{tag}
+/// #DELETE /_matrix/client/r0/user/{user_id}/rooms/{room_id}/tags/{tag}
 /// Deletes a tag from the room.
 ///
 /// - Removes the tag from the tag event of the room account data.

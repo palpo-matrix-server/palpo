@@ -13,7 +13,7 @@ pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/<event_type>/<txn_id>").put(send_to_device)
 }
 
-// #PUT /_matrix/client/r0/sendToDevice/{event_type}/{txn_id}
+/// #PUT /_matrix/client/r0/sendToDevice/{event_type}/{txn_id}
 /// Send a to-device event to a set of client devices.
 #[endpoint]
 fn send_to_device(

@@ -9,7 +9,7 @@ pub fn router() -> Router {
     Router::with_path("backfill/<room_id>").get(history)
 }
 
-// #GET /_matrix/federation/v1/backfill/<room_id>
+/// #GET /_matrix/federation/v1/backfill/<room_id>
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]

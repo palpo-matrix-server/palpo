@@ -5,7 +5,7 @@ use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::{empty_ok, utils, AuthArgs, DepotExt, EmptyResult, SESSION_ID_LENGTH};
 
-// #POST /_matrix/client/r0/keys/device_signing/upload
+/// #POST /_matrix/client/r0/keys/device_signing/upload
 /// Uploads end-to-end key information for the sender user.
 ///
 /// - Requires UIAA to verify password

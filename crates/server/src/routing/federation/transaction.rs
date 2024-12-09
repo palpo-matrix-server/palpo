@@ -20,7 +20,7 @@ pub fn router() -> Router {
     Router::with_path("send/<txn_id>").put(send_message)
 }
 
-// #PUT /_matrix/federation/v1/send/{txn_id}
+/// #PUT /_matrix/federation/v1/send/{txn_id}
 /// Push EDUs and PDUs to this server.
 #[endpoint]
 async fn send_message(

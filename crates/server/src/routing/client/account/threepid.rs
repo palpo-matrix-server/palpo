@@ -23,7 +23,7 @@ pub fn authed_router() -> Router {
         .push(Router::with_path("delete").post(delete))
 }
 
-// #GET _matrix/client/v3/account/3pid
+/// #GET _matrix/client/v3/account/3pid
 /// Get a list of third party identifiers associated with this account.
 ///
 /// - Currently always returns empty list
