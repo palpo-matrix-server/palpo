@@ -252,15 +252,14 @@ pub(super) async fn send_redact(
 
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomRedaction,
+            event_type: TimelineEventType::RoomRedaction,
             content: to_raw_value(&RoomRedactionEventContent {
                 redacts: Some(args.event_id.clone()),
                 reason: body.reason.clone(),
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
-            state_key: None,
             redacts: Some(args.event_id.into()),
+            ..Default::default()
         },
         authed.user_id(),
         &args.room_id,

@@ -260,14 +260,13 @@ async fn upgrade(
     // Fail if the sender does not have the required permissions
     let tombstone_event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomTombstone,
+            event_type: TimelineEventType::RoomTombstone,
             content: to_raw_value(&RoomTombstoneEventContent {
                 body: "This room has been replaced".to_owned(),
                 replacement_room: replacement_room.clone(),
             })?,
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -322,11 +321,10 @@ async fn upgrade(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomCreate,
+            event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&create_event_content).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &replacement_room,
@@ -335,7 +333,7 @@ async fn upgrade(
     // Join the new room
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
                 display_name: crate::user::display_name(authed.user_id())?,
@@ -347,9 +345,8 @@ async fn upgrade(
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(authed.user_id().to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &replacement_room,
@@ -377,11 +374,10 @@ async fn upgrade(
 
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_ty: event_ty.to_string().into(),
+                event_type: event_ty.to_string().into(),
                 content: event_content,
-                unsigned: None,
                 state_key: Some("".to_owned()),
-                redacts: None,
+                ..Default::default()
             },
             authed.user_id(),
             &replacement_room,
@@ -410,11 +406,10 @@ async fn upgrade(
     // Modify the power levels in the old room to prevent sending of events and inviting new users
     let _ = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomPowerLevels,
+            event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&power_levels_event_content).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -564,11 +559,10 @@ pub(super) async fn create_room(
     // 1. The room create event
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomCreate,
+            event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&content).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -577,7 +571,7 @@ pub(super) async fn create_room(
     // 2. Let the room creator join
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
                 display_name: crate::user::display_name(authed.user_id())?,
@@ -589,9 +583,8 @@ pub(super) async fn create_room(
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(authed.user_id().to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -628,11 +621,10 @@ pub(super) async fn create_room(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomPowerLevels,
+            event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&power_levels_content)?,
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -642,15 +634,14 @@ pub(super) async fn create_room(
     if let Some(room_alias_id) = &alias {
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_ty: TimelineEventType::RoomCanonicalAlias,
+                event_type: TimelineEventType::RoomCanonicalAlias,
                 content: to_raw_value(&RoomCanonicalAliasEventContent {
                     alias: Some(room_alias_id.to_owned()),
                     alt_aliases: vec![],
                 })
                 .expect("We checked that alias earlier, it must be fine"),
-                unsigned: None,
                 state_key: Some("".to_owned()),
-                redacts: None,
+                ..Default::default()
             },
             authed.user_id(),
             &room_id,
@@ -661,16 +652,15 @@ pub(super) async fn create_room(
     // 5.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomJoinRules,
+            event_type: TimelineEventType::RoomJoinRules,
             content: to_raw_value(&RoomJoinRulesEventContent::new(match preset {
                 RoomPreset::PublicChat => JoinRule::Public,
                 // according to spec "invite" is the default
                 _ => JoinRule::Invite,
             }))
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -679,12 +669,11 @@ pub(super) async fn create_room(
     // 5.2 History Visibility
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomHistoryVisibility,
+            event_type: TimelineEventType::RoomHistoryVisibility,
             content: to_raw_value(&RoomHistoryVisibilityEventContent::new(HistoryVisibility::Shared))
                 .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -693,15 +682,14 @@ pub(super) async fn create_room(
     // 5.3 Guest Access
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomGuestAccess,
+            event_type: TimelineEventType::RoomGuestAccess,
             content: to_raw_value(&RoomGuestAccessEventContent::new(match preset {
                 RoomPreset::PublicChat => GuestAccess::Forbidden,
                 _ => GuestAccess::CanJoin,
             }))
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -718,7 +706,7 @@ pub(super) async fn create_room(
         pdu_builder.state_key.get_or_insert_with(|| "".to_owned());
 
         // Silently skip encryption events if they are not allowed
-        if pdu_builder.event_ty == TimelineEventType::RoomEncryption && !crate::allow_encryption() {
+        if pdu_builder.event_type == TimelineEventType::RoomEncryption && !crate::allow_encryption() {
             continue;
         }
 
@@ -729,12 +717,11 @@ pub(super) async fn create_room(
     if let Some(name) = &body.name {
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_ty: TimelineEventType::RoomName,
+                event_type: TimelineEventType::RoomName,
                 content: to_raw_value(&RoomNameEventContent::new(name.clone()))
                     .expect("event is valid, we just created it"),
-                unsigned: None,
                 state_key: Some("".to_owned()),
-                redacts: None,
+                ..Default::default()
             },
             authed.user_id(),
             &room_id,
@@ -744,12 +731,11 @@ pub(super) async fn create_room(
     if let Some(topic) = &body.topic {
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_ty: TimelineEventType::RoomTopic,
+                event_type: TimelineEventType::RoomTopic,
                 content: to_raw_value(&RoomTopicEventContent { topic: topic.clone() })
                     .expect("event is valid, we just created it"),
-                unsigned: None,
                 state_key: Some("".to_owned()),
-                redacts: None,
+                ..Default::default()
             },
             authed.user_id(),
             &room_id,

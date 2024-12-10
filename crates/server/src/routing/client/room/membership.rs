@@ -153,7 +153,7 @@ pub(super) async fn leave_room(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
-    crate::membership::leave_room(authed.user_id(), &room_id, body.reason.clone())?;
+    crate::membership::leave_room(authed.user_id(), &room_id, body.reason.clone()).await?;
     empty_ok()
 }
 
@@ -356,11 +356,10 @@ pub(super) async fn ban_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(body.user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -394,11 +393,10 @@ pub(super) async fn unban_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(body.user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -440,11 +438,10 @@ pub(super) async fn kick_user(
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(body.user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,
@@ -474,11 +471,10 @@ pub(crate) async fn knock_room(
 
     let pdu = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(authed.user_id().to_string()),
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &room_id,

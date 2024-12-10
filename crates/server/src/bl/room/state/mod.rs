@@ -664,6 +664,12 @@ pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMe
 
 #[tracing::instrument]
 pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
+    println!("xxxxxxxx????xxx1 user_id:{user_id:?}  room_id:{room_id:?}  {:?}",  room_users::table
+    .filter(room_users::user_id.eq(user_id))
+    .filter(room_users::room_id.eq(room_id))
+    .select(room_users::state_data)
+    .first::<Option<JsonValue>>(&mut *db::connect()?)
+    .optional());
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -672,8 +678,10 @@ pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<
         .optional()?
         .flatten()
     {
+        println!("MMMMMMMMMMMMM  1");
         Ok(Some(serde_json::from_value(state)?))
     } else {
+        println!("MMMMMMMMMMMMM  2");
         Ok(None)
     }
 }
@@ -682,11 +690,10 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
     let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
     let new_event = PduBuilder {
-        event_ty: TimelineEventType::RoomMember,
+        event_type: TimelineEventType::RoomMember,
         content,
-        unsigned: None,
         state_key: Some(target_user.into()),
-        redacts: None,
+        ..Default::default()
     };
 
     println!("MMMnnnnnnn  2");

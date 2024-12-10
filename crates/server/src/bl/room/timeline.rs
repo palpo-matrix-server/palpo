@@ -477,11 +477,12 @@ pub fn create_hash_and_sign_event(
     room_id: &RoomId,
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
-        event_ty,
+        event_type,
         content,
         unsigned,
         state_key,
         redacts,
+        ..
     } = pdu_builder;
 
     let conf = crate::config();
@@ -509,7 +510,7 @@ pub fn create_hash_and_sign_event(
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
     let auth_events =
-        crate::room::state::get_auth_events(room_id, &event_ty, sender_id, state_key.as_deref(), &content)?;
+        crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
@@ -522,7 +523,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_ty.to_string().into(), state_key, None)? {
+        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_type.to_string().into(), state_key, None)? {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -538,7 +539,7 @@ pub fn create_hash_and_sign_event(
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
-        ty: event_ty.to_string(),
+        ty: event_type.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
         depth: depth as i64,
@@ -565,7 +566,7 @@ pub fn create_hash_and_sign_event(
     let mut pdu = PduEvent {
         event_id: event_id.into(),
         event_sn,
-        event_ty,
+        event_ty: event_type,
         room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
         origin_server_ts: UnixMillis::now(),

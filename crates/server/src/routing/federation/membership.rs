@@ -9,16 +9,17 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId, OwnedUserId};
-use crate::{exts::*,
-    empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent,
+use crate::core::{EventId,RoomVersionId, OwnedUserId};
+use crate::{
+    empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
+    PduEvent,
 };
 
 pub fn router_v1() -> Router {
     Router::new()
         .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
         .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
+        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave))
         .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v1))
         .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave))
 }
@@ -26,7 +27,7 @@ pub fn router_v2() -> Router {
     Router::new()
         .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
         .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<event_id>").get(make_leave))
+        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave))
         .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v2))
         .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave))
 }
@@ -76,11 +77,10 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response)
     println!("MMMnnnnnnn  3");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content,
-            unsigned: None,
             state_key: Some(args.user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         &args.user_id,
         &args.room_id,
@@ -102,8 +102,10 @@ fn invite_user(
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
     let server_name = &crate::config().server_name;
+    println!("==============call federation invite_user  {server_name:?}");
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
+    println!("==============call federation 0");
     if !crate::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
             body.room_version.clone(),
@@ -112,6 +114,7 @@ fn invite_user(
         .into());
     }
 
+    println!("==============call federation 1");
     let mut signed_event =
         utils::to_canonical_object(&body.event).map_err(|_| MatrixError::invalid_param("Invite event is invalid."))?;
 
@@ -123,6 +126,7 @@ fn invite_user(
     )
     .map_err(|_| MatrixError::invalid_param("Failed to sign event."))?;
 
+    println!("==============call federation 1");
     // Generate event id
     let event_id = EventId::parse(format!(
         "${}",
@@ -143,6 +147,7 @@ fn invite_user(
     )
     .map_err(|_| MatrixError::invalid_param("sender is not a user id."))?;
 
+    println!("==============call federation 2");
     let invited_user: Box<_> = serde_json::from_value(
         signed_event
             .get("state_key")
@@ -154,6 +159,7 @@ fn invite_user(
 
     let mut invite_state = body.invite_room_state.clone();
 
+    println!("==============call federation 3");
     let mut event: JsonObject = serde_json::from_str(body.event.get())
         .map_err(|_| MatrixError::invalid_param("Invalid invite event bytes."))?;
 
@@ -167,10 +173,15 @@ fn invite_user(
         MatrixError::invalid_param("Invalid invite event.")
     })?;
 
+    println!("==============call federation 4");
     invite_state.push(pdu.to_stripped_state_event());
 
-    // If we are active in the room, the remote server will notify us about the join via /send
+    // If we are active in the room, the remote server will notify us about the join via /send.
+    // If we are not in the room, we need to manually
+    // record the invited state for client /sync through update_membership(), and
+    // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
+        println!("==============call federation 5");
         crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -182,15 +193,55 @@ fn invite_user(
         )?;
     }
 
+    println!("==============call federation 6");
     json_ok(InviteUserResBodyV2 {
         event: PduEvent::convert_to_outgoing_federation_event(signed_event),
     })
 }
 
+/// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
-async fn make_leave(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
-    panic!("make_leaveNot implemented")
+async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
+    let server_name = &crate::config().server_name;
+    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
+        return Err(MatrixError::forbidden("Server is not in room").into());
+    }
+
+    if args.user_id.server_name() != server_name {
+        return Err(MatrixError::invalid_param(
+            "Not allowed to leave on behalf of another server/user",
+        ).into());
+    }
+
+    // ACL check origin
+    crate::event::handler::acl_check(server_name, &args.room_id)?;
+
+    let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
+    // let state_lock = services.rooms.state.mutex.lock(&body.room_id).await;
+
+    let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
+            PduBuilder::state(
+                args.user_id.to_string(),
+                &RoomMemberEventContent::new(MembershipState::Leave),
+            ),
+            &args.user_id,
+            &args.room_id,
+        )?;
+
+    // drop(state_lock);
+
+    // room v3 and above removed the "event_id" field from remote PDU format
+    match room_version_id {
+		RoomVersionId::V1 | RoomVersionId::V2 => {},
+		_ => {
+			pdu_json.remove("event_id");
+		},
+	};
+
+    json_ok(MakeLeaveResBody {
+        room_version: Some(room_version_id),
+        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
+    })
 }
 
 /// #PUT /_matrix/federation/v2/send_join/{room_id}/{event_id}
@@ -249,9 +300,9 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
     .map_err(|_| MatrixError::invalid_param("Event content is empty or invalid"))?;
 
     if content.membership != MembershipState::Leave {
-        return Err(MatrixError::invalid_param(
-            "Not allowed to send a non-leave membership event to leave endpoint.",
-        ).into());
+        return Err(
+            MatrixError::invalid_param("Not allowed to send a non-leave membership event to leave endpoint.").into(),
+        );
     }
 
     let event_type: StateEventType = serde_json::from_value(
@@ -264,9 +315,9 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
     .map_err(|_| MatrixError::bad_json("Event does not have a valid state event type."))?;
 
     if event_type != StateEventType::RoomMember {
-        return Err(MatrixError::invalid_param(
-            "Not allowed to send non-membership state event to leave endpoint.",
-        ).into());
+        return Err(
+            MatrixError::invalid_param("Not allowed to send non-membership state event to leave endpoint.").into(),
+        );
     }
 
     // ACL check sender server name
@@ -282,9 +333,7 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
     crate::event::handler::acl_check(sender.server_name(), &args.room_id)?;
 
     if sender.server_name() != server_name {
-        return Err(MatrixError::invalid_param(
-            "Not allowed to leave on behalf of another server.",
-        ).into());
+        return Err(MatrixError::invalid_param("Not allowed to leave on behalf of another server.").into());
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
@@ -302,13 +351,12 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
 
     // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
 
-    crate::event::handler::handle_incoming_pdu(server_name, &event_id, &args.room_id, value, true)
-        .await?;
+    crate::event::handler::handle_incoming_pdu(server_name, &event_id, &args.room_id, value, true).await?;
 
     // drop(mutex_lock);
 
     let servers = crate::room::get_room_servers(&args.room_id, false)?;
-        crate::sending::send_pdu(servers.into_iter(), &event_id)?;
+    crate::sending::send_pdu(servers.into_iter(), &event_id)?;
 
     empty_ok()
 }
