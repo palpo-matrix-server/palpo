@@ -6,7 +6,7 @@ use serde_json::{json, value::to_raw_value};
 use crate::core::events::{
     room::member::RoomMemberEventContent, space::child::HierarchySpaceChildEvent, AnyEphemeralRoomEvent,
     AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent,
-    AnyTimelineEvent, StateEvent, TimelineEventType,EventContent,StateEventType, MessageLikeEventType
+    AnyTimelineEvent, EventContent, MessageLikeEventType, StateEvent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
@@ -394,43 +394,43 @@ pub struct PduBuilder {
     pub unsigned: Option<BTreeMap<String, serde_json::Value>>,
     pub state_key: Option<String>,
     pub redacts: Option<Arc<EventId>>,
-	pub timestamp: Option<UnixMillis>,
+    pub timestamp: Option<UnixMillis>,
 }
 
 impl PduBuilder {
-	pub fn state<T>(state_key: String, content: &T) -> Self
-	where
-		T: EventContent<EventType = StateEventType>,
-	{
-		Self {
-			event_type: content.event_type().into(),
-			content: to_raw_value(content).expect("Builder failed to serialize state event content to RawValue"),
-			state_key: Some(state_key),
-			..Self::default()
-		}
-	}
+    pub fn state<T>(state_key: String, content: &T) -> Self
+    where
+        T: EventContent<EventType = StateEventType>,
+    {
+        Self {
+            event_type: content.event_type().into(),
+            content: to_raw_value(content).expect("Builder failed to serialize state event content to RawValue"),
+            state_key: Some(state_key),
+            ..Self::default()
+        }
+    }
 
-	pub fn timeline<T>(content: &T) -> Self
-	where
-		T: EventContent<EventType = MessageLikeEventType>,
-	{
-		Self {
-			event_type: content.event_type().into(),
-			content: to_raw_value(content).expect("Builder failed to serialize timeline event content to RawValue"),
-			..Self::default()
-		}
-	}
+    pub fn timeline<T>(content: &T) -> Self
+    where
+        T: EventContent<EventType = MessageLikeEventType>,
+    {
+        Self {
+            event_type: content.event_type().into(),
+            content: to_raw_value(content).expect("Builder failed to serialize timeline event content to RawValue"),
+            ..Self::default()
+        }
+    }
 }
 
 impl Default for PduBuilder {
-	fn default() -> Self {
-		Self {
-			event_type: "m.room.message".into(),
-			content: Box::<RawJsonValue>::default(),
-			unsigned: None,
-			state_key: None,
-			redacts: None,
-			timestamp: None,
-		}
-	}
+    fn default() -> Self {
+        Self {
+            event_type: "m.room.message".into(),
+            content: Box::<RawJsonValue>::default(),
+            unsigned: None,
+            state_key: None,
+            redacts: None,
+            timestamp: None,
+        }
+    }
 }

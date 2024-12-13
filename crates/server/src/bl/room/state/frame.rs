@@ -9,14 +9,8 @@ use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{db, AppResult};
 
-pub static STATE_INFO_CACHE: LazyLock<
-    Mutex<
-        LruCache<
-            i64,
-            Vec<FrameInfo>,
-        >,
-    >,
-> = LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
+pub static STATE_INFO_CACHE: LazyLock<Mutex<LruCache<i64, Vec<FrameInfo>>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
 
 #[derive(Clone, Default)]
 pub struct FrameInfo {

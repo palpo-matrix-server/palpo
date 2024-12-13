@@ -9,7 +9,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId,RoomVersionId, OwnedUserId};
+use crate::core::{EventId, OwnedUserId, RoomVersionId};
 use crate::{
     empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
     PduEvent,
@@ -209,23 +209,23 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
     // let state_lock = services.rooms.state.mutex.lock(&body.room_id).await;
 
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
-            PduBuilder::state(
-                args.user_id.to_string(),
-                &RoomMemberEventContent::new(MembershipState::Leave),
-            ),
-            &args.user_id,
-            &args.room_id,
-        )?;
+        PduBuilder::state(
+            args.user_id.to_string(),
+            &RoomMemberEventContent::new(MembershipState::Leave),
+        ),
+        &args.user_id,
+        &args.room_id,
+    )?;
 
     // drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format
     match room_version_id {
-		RoomVersionId::V1 | RoomVersionId::V2 => {},
-		_ => {
-			pdu_json.remove("event_id");
-		},
-	};
+        RoomVersionId::V1 | RoomVersionId::V2 => {}
+        _ => {
+            pdu_json.remove("event_id");
+        }
+    };
 
     json_ok(MakeLeaveResBody {
         room_version: Some(room_version_id),

@@ -204,7 +204,7 @@ pub fn calc_and_save_state_delta(
     let parent_diff = parent.appended.len() + parent.disposed.len();
 
     if diff_sum * diff_sum >= 2 * diff_to_sibling * parent_diff {
-         // Diff too big, we replace above layer(s)
+        // Diff too big, we replace above layer(s)
         let mut parent_appended = (*parent.appended).clone();
         let mut parent_disposed = (*parent.disposed).clone();
 

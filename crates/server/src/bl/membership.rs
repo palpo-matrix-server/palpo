@@ -152,7 +152,9 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
-    let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)? || servers.is_empty() || (servers.len() == 1 && servers[0] == crate::server_name());
+    let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)?
+        || servers.is_empty()
+        || (servers.len() == 1 && servers[0] == crate::server_name());
     // Ask a remote server if we are not participating in this room
     if !local_join {
         info!("Joining {room_id} over federation.");
@@ -806,7 +808,10 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-		println!("DDDDDDDDDDD:origin: {:?} room_id: {:?} value:{:#?}", origin, room_id, value);
+        println!(
+            "DDDDDDDDDDD:origin: {:?} room_id: {:?} value:{:#?}",
+            origin, room_id, value
+        );
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
@@ -936,7 +941,8 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         )?
         .into_inner();
         let make_leave_response =
-            crate::sending::send_federation_request(&room_id.server_name().map_err(AppError::internal)?, request).await?
+            crate::sending::send_federation_request(&room_id.server_name().map_err(AppError::internal)?, request)
+                .await?
                 .json::<MakeLeaveResBody>()
                 .await;
 
