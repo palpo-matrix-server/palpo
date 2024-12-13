@@ -32,8 +32,6 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
         return Ok(r.clone());
     }
 
-    println!("llllllllllload_frame_info frame_id: {frame_id}");
-
     let StateDiff {
         parent_id,
         appended,
@@ -41,13 +39,11 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
     } = super::load_state_diff(frame_id)?;
 
     if let Some(parent_id) = parent_id {
-		println!("load_frame_info frame_id: {frame_id}, parent is {parent_id}");
         let mut info = load_frame_info(parent_id)?;
         let mut full_state = (*info.last().expect("at least one frame").full_state).clone();
         full_state.extend(appended.iter().copied());
         let disposed = (*disposed).clone();
         for r in &disposed {
-            println!("RRRRRREvmove state: {r:?}   {:?}", r.split().unwrap());
             full_state.remove(r);
         }
 
@@ -61,7 +57,6 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
 
         Ok(info)
     } else {
-        println!("load_frame_info frame_id: {frame_id} parent is none");
         let info = vec![FrameInfo {
             frame_id: frame_id,
             full_state: appended.clone(),

@@ -64,7 +64,7 @@ pub struct DbUser {
     pub created_at: UnixMillis,
 }
 
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = users)]
 pub struct NewDbUser {
     pub id: OwnedUserId,
@@ -154,15 +154,19 @@ pub fn get_user(user_id: &UserId) -> AppResult<Option<DbUser>> {
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();
+    let new_user = NewDbUser {
+        id: user_id.clone(),
+        ty: None,
+        is_admin: false,
+        is_guest: password.is_none(),
+        appservice_id: None,
+        created_at: UnixMillis::now(),
+    };
     let user = diesel::insert_into(users::table)
-        .values(NewDbUser {
-            id: user_id.clone(),
-            ty: None,
-            is_admin: false,
-            is_guest: password.is_none(),
-            appservice_id: None,
-            created_at: UnixMillis::now(),
-        })
+        .values(&new_user)
+        .on_conflict(users::id)
+        .do_update()
+        .set(&new_user)
         .get_result::<DbUser>(&mut *db::connect()?)?;
     if let Some(password) = password {
         let hash = crate::utils::hash_password(password)?;

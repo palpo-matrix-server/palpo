@@ -152,8 +152,9 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<JoinRoomResBody> {
+    let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)? || servers.is_empty() || (servers.len() == 1 && servers[0] == crate::server_name());
     // Ask a remote server if we are not participating in this room
-    if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
+    if !local_join {
         info!("Joining {room_id} over federation.");
 
         let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
@@ -325,11 +326,6 @@ pub async fn join_room(
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
-            println!(
-                "{}  aaaaaaaaaaaaddddddd   2  event_id {:?}",
-                crate::server_name(),
-                &event_id
-            );
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
                 .on_conflict_do_nothing()
@@ -353,11 +349,6 @@ pub async fn join_room(
                 Err(_) => continue,
             };
 
-            println!(
-                "{}  aaaaaaaaaaaaddddddd    1   event_id {:?}",
-                crate::server_name(),
-                &event_id
-            );
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
                 .on_conflict_do_nothing()
@@ -385,7 +376,6 @@ pub async fn join_room(
         // }
 
         info!("Saving state from send_join");
-        println!("cccccccccccccaffff call 11 ffff save_state");
         let DeltaInfo {
             frame_id,
             appended,
@@ -587,15 +577,7 @@ pub async fn join_room(
                 .json::<SendJoinResBodyV2>()
                 .await?;
 
-            // let send_join_response = crate::sending::put(remote_server.build_url(&format!(
-            //     "federation/v2/send_join/{room_id}/{event_id}?omit_members=false"
-            // ))?)
-            // .stuff(SendJoinReqBodyV2 {
-            //     pdu: PduEvent::convert_to_outgoing_federation_event(join_event.clone()),
-            // })?
-            // .send::<SendJoinResBody>()
-            // .await?;
-
+            println!("ssssssssssssssigsend_join_response {:#?}", send_join_response);
             if let Some(signed_raw) = send_join_response.room_state.event {
                 let (signed_event_id, signed_value) = match gen_event_id_canonical_json(&signed_raw, &room_version_id) {
                     Ok(t) => t,
@@ -746,9 +728,7 @@ pub(crate) async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     let conf = crate::config();
-    println!("iiiiiiiiiiiiiiiiiiiiiinvite user 0  inviter_id: {inviter_id} invitee_id:{invitee_id} {room_id}");
     if invitee_id.server_name() != crate::server_name() {
-        println!("iiiiiiiiiiiiiiiiii 0");
         let (pdu, pdu_json, invite_room_state) = {
             let content = to_raw_json_value(&RoomMemberEventContent {
                 avatar_url: None,
@@ -762,7 +742,6 @@ pub(crate) async fn invite_user(
             })
             .expect("member event is valid value");
 
-            println!("MMMnnnnnnn =======  0");
             let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
                 PduBuilder {
                     event_type: TimelineEventType::RoomMember,
@@ -827,6 +806,7 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
+		println!("DDDDDDDDDDD:origin: {:?} room_id: {:?} value:{:#?}", origin, room_id, value);
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
@@ -892,7 +872,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         // )?;
 
         // We always drop the invite, we can't rely on other servers
-        println!("LLLLLLdelete room user 0");
         diesel::delete(
             room_users::table
                 .filter(room_users::room_id.eq(room_id))
@@ -905,7 +884,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             error!("Trying to leave a room you are not a member of.");
-            println!("LLLLLLdelete room user 2");
             diesel::delete(
                 room_users::table
                     .filter(room_users::room_id.eq(room_id))
@@ -937,15 +915,9 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
 }
 
 async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
-    println!(
-        "==xx======remote_leave_room======={user_id} {room_id}   {:?}",
-        crate::server_name()
-    );
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
-    println!("==xx======1");
     let invite_state = crate::room::state::get_invite_state(user_id, room_id)?
         .ok_or(MatrixError::bad_state("User is not invited."))?;
-    println!("==xx======2");
 
     let servers: HashSet<_> = invite_state
         .iter()
@@ -955,21 +927,19 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .filter_map(|sender| UserId::parse(sender).ok())
         .map(|user| user.server_name().to_owned())
         .collect();
-    println!("==xx======3");
 
     for remote_server in servers {
-        println!("==xx======4");
-
-        let make_leave_response = make_leave_request(
+        let request = make_leave_request(
             &room_id.server_name().map_err(AppError::internal)?.origin().await,
             room_id,
             user_id,
         )?
-        .send::<MakeLeaveResBody>()
-        .await;
-        println!("==xx======5");
+        .into_inner();
+        let make_leave_response =
+            crate::sending::send_federation_request(&room_id.server_name().map_err(AppError::internal)?, request).await?
+                .json::<MakeLeaveResBody>()
+                .await;
 
-        println!("==xx======6 remote_server:{remote_server:?} {:#?}", make_leave_response);
         make_leave_response_and_server = make_leave_response.map(|r| (r, remote_server)).map_err(Into::into);
 
         if make_leave_response_and_server.is_ok() {
@@ -977,16 +947,13 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         }
     }
 
-    println!("==xx======7");
     let (make_leave_response, remote_server) = make_leave_response_and_server?;
 
-    println!("==xx======7 xd  {:?}", make_leave_response);
     let room_version_id = match make_leave_response.room_version {
         Some(version) if crate::supported_room_versions().contains(&version) => version,
         _ => return Err(AppError::public("Room version is not supported")),
     };
 
-    println!("==xx======8");
     let mut leave_event_stub = serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
         .map_err(|_| AppError::public("Invalid make_leave event json received from server."))?;
 
@@ -1002,7 +969,6 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
     // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
     leave_event_stub.remove("event_id");
 
-    println!("==xx======9");
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
     crate::core::signatures::hash_and_sign_event(
         crate::server_name().as_str(),
@@ -1012,7 +978,6 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
     )
     .expect("event is valid, we just created it");
 
-    println!("==xx======9");
     // Generate event id
     let event_id = EventId::parse(format!(
         "${}",
@@ -1027,7 +992,6 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
 
-    println!("==xx======9");
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
 
@@ -1041,7 +1005,6 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
     )?
     .into_inner();
 
-    println!("==xx======10");
     crate::sending::send_federation_request(&remote_server, request).await?;
 
     Ok(())

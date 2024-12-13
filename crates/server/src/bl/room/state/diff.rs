@@ -147,7 +147,6 @@ pub fn calc_and_save_state_delta(
     diff_to_sibling: usize,
     mut parent_states: Vec<FrameInfo>,
 ) -> AppResult<()> {
-    println!("cccccccccccccccccccccccccccccccccalc_and_save_state_delta frame_id: {frame_id} parent_states.len: {}", parent_states.len());
     let diff_sum = appended.len() + disposed.len();
 
     if parent_states.len() > 3 {
@@ -186,7 +185,6 @@ pub fn calc_and_save_state_delta(
     }
 
     if parent_states.is_empty() {
-        println!("ssssssssssave_state_delta 00 frame_id: {frame_id}");
         // There is no parent layer, create a new state
         return save_state_delta(
             room_id,

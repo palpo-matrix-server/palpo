@@ -139,10 +139,8 @@ pub fn update_membership(
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config();
-    println!("=====update_membership  0");
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name {
-        println!("=====update_membership  1");
+    if user_id.server_name() != &conf.server_name && !crate::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
@@ -152,7 +150,6 @@ pub fn update_membership(
     } else {
         None
     };
-    println!("=====update_membership  2  state_data: {:?}", state_data);
 
     match &membership {
         MembershipState::Join => {
@@ -241,7 +238,6 @@ pub fn update_membership(
                 //     .first::<bool>(conn)
                 //     .optional()?
                 //     .unwrap_or_default();
-        println!("LLLLLLdelete room user 3");
                 diesel::delete(
                     room_users::table
                         .filter(room_users::room_id.eq(room_id))
@@ -267,7 +263,6 @@ pub fn update_membership(
             })?;
         }
         MembershipState::Invite => {
-            println!("=====update_membership  3");
             // We want to know if the sender is ignored by the receiver
             let is_ignored = crate::user::get_data::<IgnoredUserListEventContent>(
                 user_id, // Receiver
@@ -275,13 +270,10 @@ pub fn update_membership(
                 &GlobalAccountDataEventType::IgnoredUserList.to_string(),
             )?
             .map_or(false, |ignored| {
-                println!("=====update_membership  4");
                 ignored.ignored_users.iter().any(|(user, _details)| user == sender)
             });
 
-            println!("=====update_membership  5");
             if is_ignored {
-                println!("=====update_membership  6");
                 return Ok(());
             }
 
@@ -293,15 +285,12 @@ pub fn update_membership(
                 //     .first::<bool>(conn)
                 //     .optional()?
                 //     .unwrap_or_default();
-        println!("=====update_membership  7");
-        println!("LLLLLLdelete room user 4");
                 diesel::delete(
                     room_users::table
                         .filter(room_users::room_id.eq(room_id))
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-            println!("=====update_membership  8  membership:{}", membership.to_string());
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
@@ -317,12 +306,6 @@ pub fn update_membership(
                         created_at: UnixMillis::now(),
                     })
                     .execute(conn)?;
-                println!("xxxxxxxxxxxxxxxxxxxxxx  {:?}",  room_users::table
-                .filter(room_users::user_id.eq(user_id))
-                .filter(room_users::room_id.eq(room_id))
-                .select(room_users::state_data)
-                .first::<Option<JsonValue>>(conn)
-                .optional());
                 Ok(())
             })?;
         }
@@ -361,23 +344,8 @@ pub fn update_membership(
         }
         _ => {}
     }
-    println!("=====update_membership    9");
     update_room_servers(room_id)?;
-    println!("xxxxxxxxxxxxxxxxxxxxxx1  {:?}",  room_users::table
-    .filter(room_users::user_id.eq(user_id))
-    .filter(room_users::room_id.eq(room_id))
-    .select(room_users::state_data)
-    .first::<Option<JsonValue>>(&mut *db::connect()?)
-    .optional());
-    println!("=====update_membership    10");
     update_room_currents(room_id)?;
-    println!("xxxxxxxxxxxxxxxxxxxxxx2  user_id:{user_id:?}  room_id:{room_id:?}  {:?}",  room_users::table
-    .filter(room_users::user_id.eq(user_id))
-    .filter(room_users::room_id.eq(room_id))
-    .select(room_users::state_data)
-    .first::<Option<JsonValue>>(&mut *db::connect()?)
-    .optional());
-    println!("=====update_membership    11");
     Ok(())
 }
 

@@ -94,13 +94,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .filter(events::outlier.eq(false))
         .filter(events::id.eq(event_id));
     if diesel_exists!(query, &mut *db::connect()?)? {
-        println!(
-            "{}  gggggggggggggggget_non_xxxdata:{event_id}  {:#?}", crate::server_name() ,
-            event_datas::table                                                                                     
-                .filter(event_datas::event_id.eq(event_id))
-                .select(event_datas::json_data)
-                .first::<JsonValue>(&mut *db::connect()?)
-        );
         event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select(event_datas::json_data)
@@ -192,7 +185,6 @@ pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
-    println!("{}  insert event_datas   event_data {:?}", crate::server_name(), event_data);
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -554,7 +546,6 @@ pub fn create_hash_and_sign_event(
         soft_failed: false,
         rejection_reason: None,
     };
-    println!("{}  aaaaaaaaaaaaddddddd   4  event_id {:?}", crate::server_name(), event_id);
     let event_sn = diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict(events::id)
@@ -656,7 +647,6 @@ pub fn create_hash_and_sign_event(
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
-    println!("MMMnnnnnnn  1");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -768,7 +758,6 @@ pub fn append_incoming_pdu(
 ) -> AppResult<()> {
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
-    println!("cccccccccccccappend_append_incoming_pdu");
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     crate::room::state::save_state(&pdu.room_id, state_ids_compressed)?;
@@ -779,7 +768,6 @@ pub fn append_incoming_pdu(
         return Ok(());
     }
 
-    println!("================append incoming pdu  {:#?}", pdu.event_id);
     crate::room::timeline::append_pdu(pdu, pdu_json, new_room_leaves)
 }
 

@@ -32,8 +32,8 @@ use crate::{OwnedServerName, UnixMillis};
 // };
 
 pub fn send_messages_request(origin: &str, txn_id: &str, body: SendMessageReqBody) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/publicRooms"))?;
-    crate::sending::post(url).stuff(body)
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/send/{txn_id}"))?;
+    crate::sending::put(url).stuff(body)
 }
 
 /// Request type for the `send_transaction_message` endpoint.

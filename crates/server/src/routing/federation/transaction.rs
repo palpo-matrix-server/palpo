@@ -29,6 +29,7 @@ async fn send_message(
     body: JsonBody<SendMessageReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
+    println!("==========================get   send message");
     let server_name = &crate::config().server_name;
     let mut resolved_map = BTreeMap::new();
 
@@ -83,13 +84,13 @@ async fn send_message(
         );
     }
 
-    // for pdu in &resolved_map {
-    //     if let Err(e) = pdu.1 {
-    //         if matches!(e, MatrixError::not_found(_)) {
-    //             warn!("Incoming PDU failed {:?}", pdu);
-    //         }
-    //     }
-    // }
+    for (id, result) in &resolved_map {
+        if let Err(e) = result {
+            if matches!(e, AppError::Matrix(_)) {
+                warn!("Incoming PDU failed {id}: {e:?}");
+            }
+        }
+    }
 
     for edu in &body.edus {
         match edu {

@@ -324,7 +324,7 @@ pub fn auth_check<E: Event>(
         .deserialize()?;
 
     if !matches!(membership_state, MembershipState::Join) {
-        warn!("sender's membership is not join");
+        warn!("sender's membership is not join, current state is `{}`", membership_state);
         return Ok(false);
     }
 

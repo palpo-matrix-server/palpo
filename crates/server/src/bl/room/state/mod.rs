@@ -142,7 +142,6 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
-    println!("xxxxxxxxxappend_to_state new_pdu： {:#?}", new_pdu);
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
     let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
@@ -161,7 +160,6 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
                     .find(|bytes| bytes.starts_with(&field_id.to_be_bytes()))
             })
             .unwrap_or_default();
-        println!("=======xxxx state_key: {state_key} replaces: {replaces:#?}",);
 
         if Some(&new_compressed_event) == replaces {
             return prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists.").into());
@@ -187,7 +185,6 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
             2,
             states_parents,
         )?;
-        println!("vvvvvvvvvvvvvvv??");
         Ok(frame_id)
     } else {
         let frame_id = prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
@@ -319,7 +316,6 @@ pub fn get_auth_events(
             }
         }
     }
-    println!("???????????state_map: {:?}", state_map);
     Ok(state_map)
 }
 
@@ -565,10 +561,6 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
 
 /// Returns the new state_hash, and the state diff from the previous room state
 pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<CompressedState>>) -> AppResult<DeltaInfo> {
-    println!(
-        "xxxxxxxxxsave_state new_compressed_events： {:#?}",
-        new_compressed_events
-    );
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
     let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
@@ -599,7 +591,6 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
             .difference(&new_compressed_events)
             .copied()
             .collect();
-        println!("xxxxxxxxxx????xx222 appended: {:#?} disposed: {:#?}", appended, disposed);
 
         (Arc::new(appended), Arc::new(disposed))
     } else {
@@ -664,12 +655,6 @@ pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMe
 
 #[tracing::instrument]
 pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
-    println!("xxxxxxxx????xxx1 user_id:{user_id:?}  room_id:{room_id:?}  {:?}",  room_users::table
-    .filter(room_users::user_id.eq(user_id))
-    .filter(room_users::room_id.eq(room_id))
-    .select(room_users::state_data)
-    .first::<Option<JsonValue>>(&mut *db::connect()?)
-    .optional());
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -678,10 +663,8 @@ pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<
         .optional()?
         .flatten()
     {
-        println!("MMMMMMMMMMMMM  1");
         Ok(Some(serde_json::from_value(state)?))
     } else {
-        println!("MMMMMMMMMMMMM  2");
         Ok(None)
     }
 }
@@ -696,7 +679,6 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         ..Default::default()
     };
 
-    println!("MMMnnnnnnn  2");
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 

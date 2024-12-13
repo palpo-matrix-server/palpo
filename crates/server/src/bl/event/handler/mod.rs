@@ -191,6 +191,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("ccccccccccccupgrade_outlier_to_timeline_pdu 1");
     crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, &create_event, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -349,7 +350,6 @@ fn handle_outlier_pdu<'a>(
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
-            println!("{}  aaaaaaaaaaaaddddddd   3  event_id {:?}", crate::server_name(), &incoming_pdu.event_id);
         diesel::insert_into(events::table)
             .values(NewDbEvent::from_canonical_json(&incoming_pdu.event_id, &val)?)
             .on_conflict_do_nothing()
@@ -398,7 +398,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         state_at_incoming_resolved(incoming_pdu, room_id, &room_version_id).await?
     }.unwrap_or_default();
 
-
     let event_data = DbEventData {
         event_id: (&*incoming_pdu.event_id).to_owned(),
         event_sn: incoming_pdu.event_sn,
@@ -407,7 +406,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         json_data: serde_json::to_value(&val)?,
         format_version: None,
     };
-    println!("{}  insert event_datas xxx  event_data {:?}", crate::server_name(), event_data);
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -415,6 +413,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .set(&event_data)
         .execute(&mut db::connect()?)?;
 
+        println!("===== upgrade_outlier_to_timeline_pdu  4  origin: {origin:?} incoming_pdu: {incoming_pdu:#?}  state_at_incoming_event: {state_at_incoming_event:#?}");
     if state_at_incoming_event.is_empty() {
         state_at_incoming_event =
             fetch_state(origin, create_event, room_id, &room_version_id, &incoming_pdu.event_id).await?.unwrap_or_default();
@@ -455,7 +454,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         auth_events.get(&(k.clone(), s.to_owned()))
     })
     .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
-    println!("==========auth_check soft_fail: {soft_fail:?}  incoming_pdu:{incoming_pdu:#?}");
 
     // 13. Use state resolution to find new room state
 
@@ -465,7 +463,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     debug!("Calculating extremities");
     let mut extremities = crate::room::state::get_forward_extremities(room_id)?;
 
-    println!("ddd=========0");
     // Remove any forward extremities that are referenced by this incoming event's prev_events
     for prev_event in &incoming_pdu.prev_events {
         if extremities.contains(prev_event) {
@@ -473,7 +470,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         }
     }
 
-    println!("ddd=========1");
     // // Only keep those extremities were not referenced yet
     // extremities.retain(|id| {
     //     !matches!(
@@ -487,36 +483,28 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         state_at_incoming_event
             .iter()
             .map(|(field_id, event_id)| {
-                println!("ddd=========2");
                 crate::room::state::compress_event(room_id, *field_id, event_id, crate::event::get_event_sn(event_id)?)
             })
             .collect::<AppResult<_>>()?,
     );
 
-    println!("ddd=========3");
     if incoming_pdu.state_key.is_some() {
-        println!("ddd=========4");
         debug!("Preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
         if let Some(state_key) = &incoming_pdu.state_key {
-            println!("ddd=========4---0");
             let state_key_id =
                 crate::room::state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
-                println!("ddd=========4---x");
 
             state_after.insert(state_key_id, Arc::from(&*incoming_pdu.event_id));
         }
 
-        println!("ddd=========4---1");
         let new_room_state = resolve_state(room_id, room_version_id, state_after)?;
 
-        println!("ddd=========4---2");
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
 
-        println!("cccccccccccccaffff call 00  ffff save_state");
         let DeltaInfo {
             frame_id,
             appended,
@@ -525,13 +513,11 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
         crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
     }
-    println!("ddd=========5");
 
     // 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
     debug!("Starting soft fail auth check");
 
     if soft_fail {
-        println!("cccccccccccalll append_incoming_pdu 0");
         crate::room::timeline::append_incoming_pdu(
             &incoming_pdu,
             val,
@@ -545,7 +531,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         crate::room::pdu_metadata::mark_event_soft_failed(&incoming_pdu.event_id)?;
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
-    println!("ddd=========6");
 
     debug!("Appending pdu to timeline");
     extremities.insert(incoming_pdu.event_id.clone());
@@ -554,7 +539,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
 
-    println!("cccccccccccalll append_incoming_pdu 1 {compressed_state_ids:?}");
     let pdu_id = crate::room::timeline::append_incoming_pdu(
         &incoming_pdu,
         val,
@@ -583,18 +567,14 @@ fn resolve_state(
 
     let fork_states = [current_state_ids, incoming_state];
 
-    println!("mmmmmmmmmmmmm  =0 fork_states: {:?}", fork_states);
     let mut auth_chain_sets = Vec::new();
     debug!("Loading fork states");
     for state in &fork_states {
         for event_id in state.values() {
-            println!("mmmmmmmmmmmmm  =1");
             auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, event_id)?);
-        
-    println!("mmmmmmmmmmmmm  =2");}
+        }
     }
 
-    println!("mmmmmmmmmmmmm  =3");
     let fork_states: Vec<_> = fork_states
         .into_iter()
         .map(|map| {
@@ -611,19 +591,15 @@ fn resolve_state(
                 .collect::<StateMap<_>>()
         })
         .collect();
-
-        println!("mmmmmmmmmmmmm  =4");
     debug!("Resolving state");
 
     // let lock = crate::STATERES_MUTEX.lock;
-    println!("mmmmmmmmmmmmm  =5");
     let state =
         match state::resolve(
             room_version_id,
             &fork_states,
             auth_chain_sets,
             |id| {
-                println!("mmmmmmmmmmmmm  =???");
                 match crate::room::timeline::get_pdu(id) {
                 Err(e) => {
                     error!("LOOK AT ME Failed to fetch event: {}", e);
@@ -639,8 +615,6 @@ fn resolve_state(
                 ));
             }
         };
-
-        println!("mmmmmmmmmmmmm  =5");
     // drop(lock);
 
     debug!("State resolution done. Compressing state");
@@ -648,10 +622,8 @@ fn resolve_state(
     let new_room_state = state
         .into_iter()
         .map(|((event_type, state_key), event_id)| {
-     println!("mmmmmmmmmmmmm  =6");
-            let state_key_id = crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+     let state_key_id = crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
             let event_sn = crate::event::get_event_sn(&event_id)?;
-            println!("mmmmmmmmmmmmm  =7");
             crate::room::state::compress_event(room_id, state_key_id, &event_id, event_sn)
         })
         .collect::<AppResult<_>>()?;

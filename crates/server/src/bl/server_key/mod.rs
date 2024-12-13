@@ -264,7 +264,6 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     if let Ok(server_key) = server_request(origin).await {
         add_signing_keys(server_key.clone())?;
         if let Some(result) = extract_key(server_key, key_id) {
-            println!("bbbbbbbbbbbbb2");
             return Ok(result);
         }
     }

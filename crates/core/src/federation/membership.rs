@@ -310,7 +310,7 @@ pub fn send_leave_request_v2(
     body: SendLeaveReqBodyV2,
 ) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}/_matrix/v2/send_leave/{}/{}",
+        "{origin}/_matrix/federation/v2/send_leave/{}/{}",
         args.room_id, args.event_id
     ))?;
     crate::sending::put(url).stuff(body)
