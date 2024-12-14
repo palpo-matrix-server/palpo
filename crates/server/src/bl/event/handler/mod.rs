@@ -192,7 +192,6 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("ccccccccccccupgrade_outlier_to_timeline_pdu 1");
     crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, &create_event, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -415,7 +414,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .set(&event_data)
         .execute(&mut db::connect()?)?;
 
-    println!("===== upgrade_outlier_to_timeline_pdu  4  origin: {origin:?} incoming_pdu: {incoming_pdu:#?}  state_at_incoming_event: {state_at_incoming_event:#?}");
     if state_at_incoming_event.is_empty() {
         state_at_incoming_event = fetch_state(origin, create_event, room_id, &room_version_id, &incoming_pdu.event_id)
             .await?

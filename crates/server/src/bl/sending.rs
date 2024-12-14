@@ -138,7 +138,6 @@ async fn handler() -> AppResult<()> {
             Some(response) = futures.next() => {
                 match response {
                     Ok(outgoing_kind) => {
-                        println!("==============outgoing_kind:{outgoing_kind:?}");
                         delete_all_active_requests_for(&outgoing_kind)?;
 
                         // Find events that have been added since starting the last request
@@ -597,7 +596,6 @@ async fn handle_events(
             )
             .map_err(|e| (kind.clone(), e.into()))?
             .into_inner();
-            println!("=============request  url: {:?}", request.url());
             let response = crate::sending::send_federation_request(server, request)
                 .await
                 .map_err(|e| (kind.clone(), e.into()))?

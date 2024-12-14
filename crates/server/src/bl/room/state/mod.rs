@@ -236,7 +236,20 @@ pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
 
 /// Returns the room's version.
 pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    if let Some(room_version) = rooms::table
+        .find(room_id)
+        .select(rooms::version)
+        .first::<String>(&mut *db::connect()?)
+        .optional()?
+    {
+        return Ok(RoomVersionId::try_from(&*room_version)?);
+    }
+    println!(
+        "GGGGGGGGGGGet room version 0  current server:{:?}   room_id: {room_id:?}",
+        crate::server_name()
+    );
     let create_event = get_state(room_id, &StateEventType::RoomCreate, "", None)?;
+    println!("GGGGGGGGGGGet room version create_event: {create_event:?}");
 
     let create_event_content: RoomCreateEventContent = create_event
         .as_ref()
@@ -248,7 +261,7 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         })
         .transpose()?
         .ok_or_else(|| MatrixError::invalid_param("No create event found"))?;
-
+    println!("GGGGGGGGGGGet0");
     Ok(create_event_content.room_version)
 }
 

@@ -2,6 +2,7 @@ use salvo::oapi::{extract::*, server};
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
+use diesel::prelude::*;
 
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -9,11 +10,12 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId, OwnedUserId, RoomVersionId};
-use crate::{
+use crate::core::{EventId, UnixMillis, OwnedUserId, RoomVersionId};
+use crate::{db,
     empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
     PduEvent,
-};
+};use crate::room::NewDbRoom;
+use crate::schema::*;
 
 pub fn router_v1() -> Router {
     Router::new()
@@ -99,6 +101,7 @@ fn invite_user(
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
+    let body = body.into_inner();
     let server_name = &crate::config().server_name;
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
@@ -182,6 +185,15 @@ fn invite_user(
             Some(invite_state),
         )?;
     }
+
+    diesel::insert_into(rooms::table).values(NewDbRoom {
+        id: args.room_id.clone(),
+        version: body.room_version.to_string(),
+        is_public: false,
+        has_auth_chain_index: false,
+        created_by: sender.clone(),
+        created_at: UnixMillis::now(),
+    }).on_conflict_do_nothing().execute(&mut db::connect()?)?;
 
     json_ok(InviteUserResBodyV2 {
         event: PduEvent::convert_to_outgoing_federation_event(signed_event),

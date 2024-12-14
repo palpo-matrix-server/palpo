@@ -808,10 +808,6 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-        println!(
-            "DDDDDDDDDDD:origin: {:?} room_id: {:?} value:{:#?}",
-            origin, room_id, value
-        );
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
