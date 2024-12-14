@@ -38,6 +38,7 @@ clap = { version = "4.5.1", default-features = false }
 config = "0.14.0"
 cookie = "0.18.0"
 cruet = "0.14"
+cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
 diesel_migrations = "2"

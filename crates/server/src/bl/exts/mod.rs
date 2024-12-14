@@ -65,3 +65,9 @@ impl IsRemote for OwnedRoomAliasId {
         self.server_name() != crate::server_name()
     }
 }
+
+impl IsRemote for ServerName {
+    fn is_remote(&self) -> bool {
+        self != crate::server_name()
+    }
+}

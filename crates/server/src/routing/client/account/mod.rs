@@ -41,7 +41,7 @@ pub fn authed_router() -> Router {
         .push(threepid::authed_router())
 }
 
-// #POST /_matrix/client/v3/account/3pid/email/requestToken
+/// #POST /_matrix/client/v3/account/3pid/email/requestToken
 /// "This API should be used to request validation tokens when adding an email address to an account"
 ///
 /// - 403 signals that The homeserver does not allow the third party identifier as a contact option.
@@ -50,7 +50,7 @@ async fn token_via_email(_aa: AuthArgs) -> EmptyResult {
     Err(MatrixError::threepid_denied("Third party identifier is not allowed").into())
 }
 
-// #POST /_matrix/client/v3/account/3pid/msisdn/requestToken
+/// #POST /_matrix/client/v3/account/3pid/msisdn/requestToken
 /// "This API should be used to request validation tokens when adding an phone number to an account"
 ///
 /// - 403 signals that The homeserver does not allow the third party identifier as a contact option.
@@ -59,7 +59,7 @@ async fn token_via_msisdn(_aa: AuthArgs) -> EmptyResult {
     Err(MatrixError::threepid_denied("Third party identifier is not allowed").into())
 }
 
-// #GET _matrix/client/r0/account/whoami
+/// #GET _matrix/client/r0/account/whoami
 ///
 /// Get user_id of the sender user.
 ///
@@ -75,7 +75,7 @@ async fn whoami(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<WhoamiResBody> {
     })
 }
 
-// #POST /_matrix/client/r0/account/deactivate
+/// #POST /_matrix/client/r0/account/deactivate
 /// Deactivate sender user account.
 ///
 /// - Leaves all rooms and rejects all invitations

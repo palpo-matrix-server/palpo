@@ -140,7 +140,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name {
+    if user_id.server_name() != &conf.server_name && !crate::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
@@ -475,12 +475,21 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
         .filter(room_servers::server_id.eq(server));
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
 }
-pub fn get_room_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .select(room_servers::server_id)
-        .load::<OwnedServerName>(&mut *db::connect()?)
-        .map_err(Into::into)
+pub fn get_room_servers(room_id: &RoomId, includes_self: bool) -> AppResult<Vec<OwnedServerName>> {
+    if includes_self {
+        room_servers::table
+            .filter(room_servers::room_id.eq(room_id))
+            .select(room_servers::server_id)
+            .load::<OwnedServerName>(&mut *db::connect()?)
+            .map_err(Into::into)
+    } else {
+        room_servers::table
+            .filter(room_servers::room_id.eq(room_id))
+            .filter(room_servers::server_id.ne(room_id.server_name().map_err(AppError::public)?))
+            .select(room_servers::server_id)
+            .load::<OwnedServerName>(&mut *db::connect()?)
+            .map_err(Into::into)
+    }
 }
 
 pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {

@@ -10,6 +10,7 @@ pub mod media;
 pub mod membership;
 pub mod room;
 pub mod sending;
+pub mod server_key;
 pub mod state;
 pub mod transaction_id;
 pub mod uiaa;
@@ -657,19 +658,19 @@ pub fn add_signing_key_from_origin(origin: &ServerName, new_keys: ServerSigningK
     }
 }
 
-/// This returns an empty `Ok(None)` when there are no keys found for the server.
-pub fn signing_keys_for(origin: &ServerName) -> AppResult<Option<SigningKeys>> {
-    let key_data = server_signing_keys::table
-        .filter(server_signing_keys::server_id.eq(origin))
-        .select(server_signing_keys::key_data)
-        .first::<JsonValue>(&mut *db::connect()?)
-        .optional()?;
-    if let Some(key_data) = key_data {
-        Ok(serde_json::from_value(key_data).map(Option::Some)?)
-    } else {
-        Ok(None)
-    }
-}
+// /// This returns an empty `Ok(None)` when there are no keys found for the server.
+// pub fn signing_keys_for(origin: &ServerName) -> AppResult<Option<SigningKeys>> {
+//     let key_data = server_signing_keys::table
+//         .filter(server_signing_keys::server_id.eq(origin))
+//         .select(server_signing_keys::key_data)
+//         .first::<JsonValue>(&mut *db::connect()?)
+//         .optional()?;
+//     if let Some(key_data) = key_data {
+//         Ok(serde_json::from_value(key_data).map(Option::Some)?)
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 /// Filters the key map of multiple servers down to keys that should be accepted given the expiry time,
 /// room version, and timestamp of the paramters
@@ -768,14 +769,17 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
         tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         MatrixError::bad_json("Invalid PDU in server response")
     })?;
+    println!("xxxxxxxxxxxxxx pdu value: {:?}", value);
 
     let room_id: OwnedRoomId = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
         .ok_or(MatrixError::invalid_param("Invalid room id in pdu"))?;
 
+        println!("=======xxxx room_id: {:?}", room_id);
     let room_version_id = crate::room::state::get_room_version(&room_id)?;
 
+    println!("=======xxxx room_version_id: {:?}", room_version_id);
     let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
@@ -783,6 +787,7 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
             return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
         }
     };
+    println!("xxxxxxxxxdone");
     Ok((event_id, value, room_id))
 }
 

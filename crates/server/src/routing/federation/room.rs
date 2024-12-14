@@ -21,7 +21,7 @@ pub fn router() -> Router {
         .push(Router::with_path("state_ids/<room_id>").get(get_state_at_event))
 }
 
-// #GET /_matrix/federation/v1/state/{room_id}
+/// #GET /_matrix/federation/v1/state/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
 async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
@@ -60,7 +60,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
     })
 }
 
-// #GET /_matrix/federation/v1/publicRooms
+/// #GET /_matrix/federation/v1/publicRooms
 /// Lists the public rooms on this server.
 #[endpoint]
 async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult<PublicRoomsResBody> {
@@ -75,7 +75,7 @@ async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult
     json_ok(body)
 }
 
-// #POST /_matrix/federation/v1/publicRooms
+/// #POST /_matrix/federation/v1/publicRooms
 /// Lists the public rooms on this server.
 #[endpoint]
 async fn get_filtered_public_rooms(
@@ -103,7 +103,7 @@ async fn make_knock(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 
-// #GET /_matrix/federation/v1/state_ids/{room_id}
+/// #GET /_matrix/federation/v1/state_ids/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
 fn get_state_at_event(

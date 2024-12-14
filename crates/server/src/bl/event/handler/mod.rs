@@ -1,3 +1,8 @@
+mod fetch_state;
+mod state_at_incoming;
+use fetch_state::fetch_state;
+use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
+
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::pin::Pin;
@@ -26,8 +31,10 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::{self, RoomVersion, StateMap};
 use crate::core::{OwnedServerName, ServerName, UnixMillis};
+use crate::event::DbEventData;
 use crate::event::{NewDbEvent, PduEvent};
-use crate::room::state::{CompressedStateEvent, DbRoomStateField};
+use crate::room::state::DeltaInfo;
+use crate::room::state::{CompressedState, DbRoomStateField, FrameInfo};
 use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKeys};
 
 /// When receiving an event one needs to:
@@ -53,14 +60,14 @@ use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKey
 ///     trust a set of state we got from a remote)
 /// 13. Use state resolution to find new room state
 /// 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
-#[tracing::instrument(skip(value, is_timeline_event, pub_key_map))]
+#[tracing::instrument(skip(value, is_timeline_event))]
 pub(crate) async fn handle_incoming_pdu(
     origin: &ServerName,
     event_id: &EventId,
     room_id: &RoomId,
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
+    // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     // 0. Check the server is in the room
     if !crate::room::room_exists(room_id)? {
@@ -90,8 +97,7 @@ pub(crate) async fn handle_incoming_pdu(
     let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
-    let (incoming_pdu, val) =
-        handle_outlier_pdu(origin, &create_event, event_id, room_id, value, false, pub_key_map).await?;
+    let (incoming_pdu, val) = handle_outlier_pdu(origin, &create_event, event_id, room_id, value, false).await?;
     check_room_id(room_id, &incoming_pdu)?;
 
     // 8. if not timeline event: stop
@@ -110,7 +116,6 @@ pub(crate) async fn handle_incoming_pdu(
         &create_event,
         room_id,
         room_version_id,
-        pub_key_map,
         incoming_pdu.prev_events.clone(),
     )
     .await?;
@@ -152,9 +157,7 @@ pub(crate) async fn handle_incoming_pdu(
                 .unwrap()
                 .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
 
-            if let Err(e) =
-                upgrade_outlier_to_timeline_pdu(&pdu, json, &create_event, origin, room_id, pub_key_map).await
-            {
+            if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, &create_event, origin, room_id).await {
                 errors += 1;
                 warn!("Prev event {} failed: {}", prev_id, e);
                 match crate::BAD_EVENT_RATE_LIMITER
@@ -189,15 +192,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(
-        &incoming_pdu,
-        val,
-        &create_event,
-        origin,
-        room_id,
-        pub_key_map,
-    )
-    .await?;
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, &create_event, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -213,7 +208,6 @@ fn handle_outlier_pdu<'a>(
     room_id: &'a RoomId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
-    pub_key_map: &'a RwLock<BTreeMap<String, SigningKeys>>,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     Box::pin(async move {
         // 1.1. Remove unsigned field
@@ -229,12 +223,6 @@ fn handle_outlier_pdu<'a>(
 
         let room_version_id = &create_event_content.room_version;
         let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
-
-        // TODO: For RoomVersion6 we must check that RawJson<..> is canonical do we anywhere?: https://matrix.org/docs/spec/rooms/v6#canonical-json
-
-        // We go through all the signatures we see on the value and fetch the corresponding signing
-        // keys
-        fetch_required_signing_keys(&value, pub_key_map).await?;
 
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("Invalid PDU, no origin_server_ts field");
@@ -252,18 +240,7 @@ fn handle_outlier_pdu<'a>(
             )
         };
 
-        let guard = pub_key_map.read().await;
-        let pkey_map = (*guard).clone();
-
-        // Removing all the expired keys, unless the room version allows stale keys
-        let filtered_keys = crate::filter_keys_server_map(pkey_map, origin_server_ts, room_version_id);
-
-        let mut val = match crate::core::signatures::verify_event(&filtered_keys, &value, room_version_id) {
-            Err(e) => {
-                // Drop
-                warn!("Dropping bad event {}: {}", event_id, e,);
-                return Err(MatrixError::invalid_param("Signature verification failed").into());
-            }
+        let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
@@ -280,6 +257,11 @@ fn handle_outlier_pdu<'a>(
                 obj
             }
             Ok(crate::core::signatures::Verified::All) => value,
+            Err(e) => {
+                // Drop
+                warn!("Dropping bad event {}: {}", event_id, e,);
+                return Err(MatrixError::invalid_param("Signature verification failed").into());
+            }
         };
 
         // Now that we have checked the signature and hashes we can add the eventID and convert
@@ -310,7 +292,6 @@ fn handle_outlier_pdu<'a>(
                 create_event,
                 room_id,
                 room_version_id,
-                pub_key_map,
             )
             .await?;
         }
@@ -380,14 +361,13 @@ fn handle_outlier_pdu<'a>(
     })
 }
 
-#[tracing::instrument(skip(incoming_pdu, val, create_event, pub_key_map))]
+#[tracing::instrument(skip(incoming_pdu, val, create_event))]
 pub async fn upgrade_outlier_to_timeline_pdu(
     incoming_pdu: &PduEvent,
     val: BTreeMap<String, CanonicalJsonValue>,
     create_event: &PduEvent,
     origin: &ServerName,
     room_id: &RoomId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     let conf = crate::config();
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
@@ -412,197 +392,33 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // the state from a known point and resolve if > 1 prev_event
 
     debug!("Requesting state at event");
-    let mut state_at_incoming_event = None;
-
-    if incoming_pdu.prev_events.len() == 1 {
-        let prev_event = &*incoming_pdu.prev_events[0];
-        let prev_frame_id = crate::room::state::get_pdu_frame_id(prev_event)?;
-
-        let state = if let Some(frame_id) = prev_frame_id {
-            Some(crate::room::state::get_full_state_ids(frame_id))
-        } else {
-            None
-        };
-
-        if let Some(Ok(mut state)) = state {
-            debug!("Using cached state");
-            let prev_pdu = crate::room::timeline::get_pdu(prev_event)
-                .ok()
-                .flatten()
-                .ok_or_else(|| AppError::internal("Could not find prev event, but we know the state."))?;
-
-            if let Some(state_key) = &prev_pdu.state_key {
-                let state_key_id =
-                    crate::room::state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
-
-                state.insert(state_key_id, Arc::from(prev_event));
-                // Now it's the state after the pdu
-            }
-
-            state_at_incoming_event = Some(state);
-        }
+    let mut state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
+        state_at_incoming_degree_one(incoming_pdu).await?
     } else {
-        debug!("Calculating state at event using state res");
-        let mut extremity_sstate_hashes = HashMap::new();
-
-        let mut okay = true;
-        for prev_eventid in &incoming_pdu.prev_events {
-            let prev_event = if let Ok(Some(pdu)) = crate::room::timeline::get_pdu(prev_eventid) {
-                pdu
-            } else {
-                okay = false;
-                break;
-            };
-
-            let sstate_hash = if let Ok(Some(s)) = crate::room::state::get_pdu_frame_id(prev_eventid) {
-                s
-            } else {
-                okay = false;
-                break;
-            };
-
-            extremity_sstate_hashes.insert(sstate_hash, prev_event);
-        }
-
-        if okay {
-            let mut fork_states = Vec::with_capacity(extremity_sstate_hashes.len());
-            let mut auth_chain_sets = Vec::with_capacity(extremity_sstate_hashes.len());
-
-            for (sstate_hash, prev_event) in extremity_sstate_hashes {
-                let mut leaf_state: HashMap<_, _> = crate::room::state::get_full_state_ids(sstate_hash)?;
-
-                if let Some(state_key) = &prev_event.state_key {
-                    let state_key_id =
-                        crate::room::state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
-                    leaf_state.insert(state_key_id, Arc::from(&*prev_event.event_id));
-                    // Now it's the state after the pdu
-                }
-
-                let mut state = StateMap::with_capacity(leaf_state.len());
-                let mut starting_events = Vec::with_capacity(leaf_state.len());
-
-                for (k, id) in leaf_state {
-                    if let Ok(DbRoomStateField {
-                        event_ty, state_key, ..
-                    }) = crate::room::state::get_field(k)
-                    {
-                        // FIXME: Undo .to_string().into() when StateMap
-                        //        is updated to use StateEventType
-                        state.insert((event_ty.to_string().into(), state_key), id.clone());
-                    } else {
-                        warn!("Failed to get_state_key_id.");
-                    }
-                    starting_events.push(id);
-                }
-
-                for starting_event in starting_events {
-                    auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, &starting_event)?);
-                }
-
-                fork_states.push(state);
-            }
-
-            let lock = crate::STATERES_MUTEX.lock();
-
-            let result = state::resolve(room_version_id, &fork_states, auth_chain_sets, |id| {
-                let res = crate::room::timeline::get_pdu(id);
-                if let Err(e) = &res {
-                    error!("LOOK AT ME Failed to fetch event: {}", e);
-                }
-                res.ok().flatten()
-            });
-            drop(lock);
-
-            state_at_incoming_event = match result {
-                Ok(new_state) => Some(
-                    new_state
-                        .into_iter()
-                        .map(|((event_type, state_key), event_id)| {
-                            let state_key_id =
-                                crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                            Ok((state_key_id, event_id))
-                        })
-                        .collect::<AppResult<_>>()?,
-                ),
-                Err(e) => {
-                    warn!(
-                        "State resolution on prev events failed, either an event could not be found or deserialization: {}",
-                        e
-                    );
-                    None
-                }
-            }
-        }
+        state_at_incoming_resolved(incoming_pdu, room_id, &room_version_id).await?
     }
+    .unwrap_or_default();
 
-    if state_at_incoming_event.is_none() {
-        debug!("Calling /state_ids");
-        // Call /state_ids to find out what the state at this pdu is. We trust the server's
-        // response to some extend, but we still do a lot of checks on the events
-        let request = room_state_ids_request(
-            &origin.origin().await,
-            RoomStateAtEventReqArgs {
-                room_id: room_id.to_owned(),
-                event_id: (&*incoming_pdu.event_id).to_owned(),
-            },
-        )?
-        .into_inner();
-        match crate::sending::send_federation_request(origin, request)
+    let event_data = DbEventData {
+        event_id: (&*incoming_pdu.event_id).to_owned(),
+        event_sn: incoming_pdu.event_sn,
+        room_id: incoming_pdu.room_id.to_owned(),
+        internal_metadata: None,
+        json_data: serde_json::to_value(&val)?,
+        format_version: None,
+    };
+    diesel::insert_into(event_datas::table)
+        .values(&event_data)
+        .on_conflict((event_datas::event_id, event_datas::event_sn))
+        .do_update()
+        .set(&event_data)
+        .execute(&mut db::connect()?)?;
+
+    if state_at_incoming_event.is_empty() {
+        state_at_incoming_event = fetch_state(origin, create_event, room_id, &room_version_id, &incoming_pdu.event_id)
             .await?
-            .json::<RoomStateIdsResBody>()
-            .await
-        {
-            Ok(res) => {
-                debug!("Fetching state events at event.");
-                let state_vec = fetch_and_handle_outliers(
-                    origin,
-                    &res.pdu_ids.iter().map(|x| Arc::from(&**x)).collect::<Vec<_>>(),
-                    create_event,
-                    room_id,
-                    room_version_id,
-                    pub_key_map,
-                )
-                .await?;
-
-                let mut state: HashMap<_, Arc<EventId>> = HashMap::new();
-                for (pdu, _) in state_vec {
-                    let state_key = pdu
-                        .state_key
-                        .clone()
-                        .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
-
-                    let state_key_id =
-                        crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
-
-                    match state.entry(state_key_id) {
-                        hash_map::Entry::Vacant(v) => {
-                            v.insert(Arc::from(&*pdu.event_id));
-                        }
-                        hash_map::Entry::Occupied(_) => {
-                            return Err(AppError::internal(
-                                "State event's type and state_key combination exists multiple times.",
-                            ))
-                        }
-                    }
-                }
-
-                // The original create event must still be in the state
-                let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "")?;
-
-                if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
-                    return Err(AppError::internal("Incoming event refers to wrong create event."));
-                }
-
-                state_at_incoming_event = Some(state);
-            }
-            Err(e) => {
-                warn!("Fetching state for event failed: {}", e);
-                return Err(e.into());
-            }
-        };
+            .unwrap_or_default();
     }
-
-    let state_at_incoming_event = state_at_incoming_event.expect("we always set this to some above");
 
     debug!("Starting auth check");
     // 11. Check the auth of the event passes based on the state of the event
@@ -690,9 +506,13 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
 
-        let (sstate_hash, new, removed) = crate::room::state::save_state(room_id, new_room_state)?;
+        let DeltaInfo {
+            frame_id,
+            appended,
+            disposed,
+        } = crate::room::state::save_state(room_id, new_room_state)?;
 
-        crate::room::state::force_state(room_id, sstate_hash, new, removed)?;
+        crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
     }
 
     // 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
@@ -739,7 +559,7 @@ fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, Arc<EventId>>,
-) -> AppResult<Arc<HashSet<CompressedStateEvent>>> {
+) -> AppResult<Arc<HashSet<CompressedState>>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?
         .ok_or_else(|| AppError::public("every room has state"))?;
@@ -772,7 +592,6 @@ fn resolve_state(
                 .collect::<StateMap<_>>()
         })
         .collect();
-
     debug!("Resolving state");
 
     // let lock = crate::STATERES_MUTEX.lock;
@@ -796,7 +615,6 @@ fn resolve_state(
                 ));
             }
         };
-
     // drop(lock);
 
     debug!("State resolution done. Compressing state");
@@ -829,7 +647,6 @@ pub(crate) async fn fetch_and_handle_outliers(
     create_event: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
@@ -940,7 +757,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                 }
             }
 
-            match handle_outlier_pdu(origin, create_event, next_id, room_id, value.clone(), true, pub_key_map).await {
+            match handle_outlier_pdu(origin, create_event, next_id, room_id, value.clone(), true).await {
                 Ok((pdu, json)) => {
                     if next_id == id {
                         pdus.push((pdu, Some(json)));
@@ -961,7 +778,6 @@ async fn fetch_unknown_prev_events(
     create_event: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
     initial_set: Vec<Arc<EventId>>,
 ) -> AppResult<(
     Vec<Arc<EventId>>,
@@ -978,16 +794,10 @@ async fn fetch_unknown_prev_events(
     let mut amount = 0;
 
     while let Some(prev_event_id) = todo_outlier_stack.pop() {
-        if let Some((pdu, json_opt)) = fetch_and_handle_outliers(
-            origin,
-            &[prev_event_id.clone()],
-            create_event,
-            room_id,
-            room_version_id,
-            pub_key_map,
-        )
-        .await?
-        .pop()
+        if let Some((pdu, json_opt)) =
+            fetch_and_handle_outliers(origin, &[prev_event_id.clone()], create_event, room_id, room_version_id)
+                .await?
+                .pop()
         {
             check_room_id(room_id, &pdu)?;
 
@@ -1041,233 +851,6 @@ async fn fetch_unknown_prev_events(
     Ok((sorted, eventid_info))
 }
 
-#[tracing::instrument(skip_all)]
-pub(crate) async fn fetch_required_signing_keys(
-    event: &BTreeMap<String, CanonicalJsonValue>,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
-) -> AppResult<()> {
-    let signatures = event
-        .get("signatures")
-        .ok_or(AppError::public("No signatures in server response pdu."))?
-        .as_object()
-        .ok_or(AppError::public("Invalid signatures object in server response pdu."))?;
-
-    // We go through all the signatures we see on the value and fetch the corresponding signing
-    // keys
-    for (signature_server, signature) in signatures {
-        let signature_object = signature.as_object().ok_or(AppError::public(
-            "Invalid signatures content object in server response pdu.",
-        ))?;
-
-        let signature_ids = signature_object.keys().cloned().collect::<Vec<_>>();
-
-        let fetch_res = fetch_signing_keys(
-            signature_server
-                .as_str()
-                .try_into()
-                .map_err(|_| AppError::public("Invalid servername in signatures of server response pdu."))?,
-            signature_ids,
-        )
-        .await;
-
-        let keys = match fetch_res {
-            Ok(keys) => keys,
-            Err(_) => {
-                warn!("Signature verification failed: Could not fetch signing key.",);
-                continue;
-            }
-        };
-
-        println!("DDDDDDDDDD  fetch_required_signing_keys signature_server:{signature_server:?} {keys:#?}");
-        pub_key_map.write().await.insert(signature_server.clone(), keys);
-    }
-
-    Ok(())
-}
-
-// Gets a list of servers for which we don't have the signing key yet. We go over
-// the PDUs and either cache the key or add it to the list that needs to be retrieved.
-fn get_server_keys_from_cache(
-    pdu: &RawJsonValue,
-    servers: &mut BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>>,
-    room_version: &RoomVersionId,
-    pub_key_map: &mut RwLockWriteGuard<'_, BTreeMap<String, SigningKeys>>,
-) -> AppResult<()> {
-    println!("DDDDDDDDDD  get_server_keys_from_cache");
-    let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        error!("Invalid PDU in server response: {:?}: {:?}", pdu, e);
-        AppError::public("Invalid PDU in server response")
-    })?;
-
-    let event_id = format!(
-        "${}",
-        crate::core::signatures::reference_hash(&value, room_version).expect("palpo can calculate reference hashes")
-    );
-    let event_id = <&EventId>::try_from(event_id.as_str()).expect("palpo's reference hashes are valid event ids");
-
-    if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(event_id) {
-        // Exponential backoff
-        let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
-        if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-            min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-        }
-
-        if time.elapsed() < min_elapsed_duration {
-            debug!("Backing off from {}", event_id);
-            return Err(AppError::public("bad event, still backing off"));
-        }
-    }
-
-    let signatures = value
-        .get("signatures")
-        .ok_or(AppError::public("No signatures in server response pdu."))?
-        .as_object()
-        .ok_or(AppError::public("Invalid signatures object in server response pdu."))?;
-
-    for (signature_server, signature) in signatures {
-        let signature_object = signature.as_object().ok_or(AppError::public(
-            "Invalid signatures content object in server response pdu.",
-        ))?;
-
-        let signature_ids = signature_object.keys().cloned().collect::<Vec<_>>();
-
-        let contains_all_ids = |keys: &SigningKeys| {
-            signature_ids.iter().all(|id| {
-                keys.verify_keys
-                    .keys()
-                    .map(ToString::to_string)
-                    .any(|key_id| id == &key_id)
-                    || keys
-                        .old_verify_keys
-                        .keys()
-                        .map(ToString::to_string)
-                        .any(|key_id| id == &key_id)
-            })
-        };
-
-        let origin = <&ServerName>::try_from(signature_server.as_str())
-            .map_err(|_| AppError::public("Invalid servername in signatures of server response pdu."))?;
-
-        if servers.contains_key(origin) || pub_key_map.contains_key(origin.as_str()) {
-            continue;
-        }
-
-        trace!("Loading signing keys for {}", origin);
-
-        if let Some(result) = crate::signing_keys_for(origin)? {
-            if !contains_all_ids(&result) {
-                trace!("Signing key not loaded for {}", origin);
-                servers.insert(origin.to_owned(), BTreeMap::new());
-            }
-
-            pub_key_map.insert(origin.to_string(), result);
-        }
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn fetch_join_signing_keys(
-    event: &SendJoinResBodyV2,
-    room_version: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
-) -> AppResult<()> {
-    let conf = crate::config();
-    let mut servers: BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>> = BTreeMap::new();
-
-    {
-        let mut pkm = pub_key_map.write().await;
-
-        // Try to fetch keys, failure is okay
-        // Servers we couldn't find in the cache will be added to `servers`
-        for pdu in &event.room_state.state {
-            println!("DDDDDDDDDD  0");
-            let _ = get_server_keys_from_cache(pdu, &mut servers, room_version, &mut pkm);
-        }
-        for pdu in &event.room_state.auth_chain {
-            println!("DDDDDDDDDD  1");
-            let _ = get_server_keys_from_cache(pdu, &mut servers, room_version, &mut pkm);
-        }
-
-        drop(pkm);
-    }
-
-    if servers.is_empty() {
-        info!("We had all keys locally");
-        return Ok(());
-    }
-    for server in &conf.trusted_servers {
-        info!("Asking batch signing keys from trusted server {}", server);
-        let request = remote_server_keys_batch_request(
-            &server.origin().await,
-            RemoteServerKeysBatchReqBody {
-                server_keys: servers.clone(),
-            },
-        )?
-        .into_inner();
-        if let Ok(keys) = crate::sending::send_federation_request(&server, request)
-            .await?
-            .json::<RemoteServerKeysBatchResBody>()
-            .await
-        {
-            trace!("Got signing keys: {:?}", keys);
-            let mut pkm = pub_key_map.write().await;
-            for k in keys.server_keys {
-                let k = match k.deserialize() {
-                    Ok(key) => key,
-                    Err(e) => {
-                        warn!(
-                            "Received error {} while fetching keys from trusted server {}",
-                            e, server
-                        );
-                        // warn!("{}", k.into_json());
-                        continue;
-                    }
-                };
-
-                // TODO: Check signature from trusted server?
-                servers.remove(&k.server_name);
-
-                let result = crate::add_signing_key_from_trusted_server(&k.server_name, k.clone())?;
-
-                pkm.insert(k.server_name.to_string(), result);
-            }
-            println!("DDDDDDDDDD fetch_join_signing_keys pub_key_map  {pub_key_map:#?}");
-        }
-
-        if servers.is_empty() {
-            info!("Trusted server supplied all signing keys");
-            return Ok(());
-        }
-    }
-
-    info!("Asking individual servers for signing keys: {servers:?}");
-    let mut futures: FuturesUnordered<_> = servers
-        .into_keys()
-        .map(|server| async move {
-            let request = get_server_key_request(&server.origin().await)?.into_inner();
-            let server_keys = crate::sending::send_federation_request(&server, request)
-                .await?
-                .json::<ServerKeysResBody>()
-                .await;
-            Ok::<_, AppError>((server_keys, server))
-        })
-        .collect();
-
-    while let Some(result) = futures.next().await {
-        info!("Received new result");
-        if let Ok((Ok(get_keys_response), origin)) = result {
-            info!("Result is from {origin}");
-            let result = crate::add_signing_key_from_origin(&origin, get_keys_response.0.clone())?;
-            pub_key_map.write().await.insert(origin.to_string(), result);
-        }
-        println!("DDDDDDDDDD  Done handling result  {pub_key_map:#?}");
-        info!("Done handling result");
-    }
-    info!("Search for signing keys done");
-    Ok(())
-}
-
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
     let acl_event = match crate::room::state::get_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
@@ -1294,225 +877,6 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         info!("Server {} was denied by room ACL in {}", server_name, room_id);
         Err(MatrixError::forbidden("Server was denied by room ACL").into())
     }
-}
-
-/// Search the DB for the signing keys of the given server, if we don't have them
-/// fetch them from the server and save to our DB.
-#[tracing::instrument(skip_all)]
-pub async fn fetch_signing_keys(origin: &ServerName, signature_ids: Vec<String>) -> AppResult<SigningKeys> {
-    let contains_all_ids = |keys: &SigningKeys| {
-        signature_ids.iter().all(|id| {
-            keys.verify_keys
-                .keys()
-                .map(ToString::to_string)
-                .any(|key_id| id == &key_id)
-                || keys
-                    .old_verify_keys
-                    .keys()
-                    .map(ToString::to_string)
-                    .any(|key_id| id == &key_id)
-        })
-    };
-    let conf = crate::config();
-    let permit = crate::SERVER_NAME_RATE_LIMITER
-        .read()
-        .unwrap()
-        .get(origin)
-        .map(|s| Arc::clone(s).acquire_owned());
-
-    let permit = match permit {
-        Some(p) => p,
-        None => {
-            let mut write = crate::SERVER_NAME_RATE_LIMITER.write().unwrap();
-            let s = Arc::clone(
-                write
-                    .entry(origin.to_owned())
-                    .or_insert_with(|| Arc::new(Semaphore::new(1))),
-            );
-
-            s.acquire_owned()
-        }
-    }
-    .await;
-
-    let back_off = |id| match crate::BAD_SIGNATURE_RATE_LIMITER.write().unwrap().entry(id) {
-        hash_map::Entry::Vacant(e) => {
-            e.insert((Instant::now(), 1));
-        }
-        hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
-    };
-
-    if let Some((time, tries)) = crate::BAD_SIGNATURE_RATE_LIMITER.read().unwrap().get(&signature_ids) {
-        // Exponential backoff
-        let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
-        if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-            min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-        }
-
-        if time.elapsed() < min_elapsed_duration {
-            debug!("Backing off from {:?}", signature_ids);
-            return Err(AppError::public("bad signature, still backing off"));
-        }
-    }
-
-    trace!("Loading signing keys for {}", origin);
-
-    let result: Option<SigningKeys> = crate::signing_keys_for(origin)?;
-    println!("DDDDDDDD Loading signing keys for {}  result: {:#?}", origin, result);
-
-    let mut expires_soon_or_has_expired = false;
-
-    if let Some(result) = result.clone() {
-        let ts_threshold = UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(30 * 60))
-            .expect("Should be valid until year 500,000,000");
-
-        debug!(
-            "The treshhold is {:?}, found time is {:?} for server {}",
-            ts_threshold, result.valid_until_ts, origin
-        );
-
-        if contains_all_ids(&result) {
-            // We want to ensure that the keys remain valid by the time the other functions that handle signatures reach them
-            if result.valid_until_ts > ts_threshold {
-                debug!(
-                    "Keys for {} are deemed as valid, as they expire at {:?}",
-                    &origin, &result.valid_until_ts
-                );
-                return Ok(result);
-            }
-
-            expires_soon_or_has_expired = true;
-        }
-    }
-
-    let mut keys = result.unwrap_or_else(|| SigningKeys {
-        verify_keys: BTreeMap::new(),
-        old_verify_keys: BTreeMap::new(),
-        valid_until_ts: UnixMillis::now(),
-    });
-
-    // We want to set this to the max, and then lower it whenever we see older keys
-    keys.valid_until_ts = UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
-        .expect("Should be valid until year 500,000,000");
-
-    debug!("Fetching signing keys for {} over federation", origin);
-    println!("Fetching signing keys for {} over federation", origin);
-
-    let key_request = get_server_key_request(&origin.origin().await)?.into_inner();
-    match crate::sending::send_federation_request(origin, key_request)
-        .await?
-        .json::<ServerKeysResBody>()
-        .await
-        .map(|resp| resp.0)
-    {
-        Ok(mut server_key) => {
-            println!("DDDDDDDDDDDloaded server key: {:#?}", server_key);
-            // Keys should only be valid for a maximum of seven days
-            server_key.valid_until_ts = server_key.valid_until_ts.min(
-                UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
-                    .expect("Should be valid until year 500,000,000"),
-            );
-
-            crate::add_signing_key_from_origin(origin, server_key.clone())?;
-
-            if keys.valid_until_ts > server_key.valid_until_ts {
-                keys.valid_until_ts = server_key.valid_until_ts;
-            }
-
-            keys.verify_keys.extend(
-                server_key
-                    .verify_keys
-                    .into_iter()
-                    .map(|(id, key)| (id.to_string(), key)),
-            );
-            keys.old_verify_keys.extend(
-                server_key
-                    .old_verify_keys
-                    .into_iter()
-                    .map(|(id, key)| (id.to_string(), key)),
-            );
-            if contains_all_ids(&keys) {
-                return Ok(keys);
-            }
-        }
-        Err(e) => {
-            warn!("Failed to find public key for server: {} error:{}", origin, e);
-            println!("DDDDDFailed to find public key for server: {} error:{}", origin, e);
-        }
-    }
-
-    for server in &conf.trusted_servers {
-        debug!("Asking {} for {}'s signing key", server, origin);
-        let keys_request = remote_server_keys_request(
-            &server.origin().await,
-            RemoteServerKeysReqArgs {
-                server_name: origin.to_owned(),
-                minimum_valid_until_ts: UnixMillis::from_system_time(
-                    SystemTime::now()
-                        .checked_add(Duration::from_secs(3600))
-                        .expect("SystemTime to large"),
-                )
-                .unwrap_or(UnixMillis::now()),
-            },
-        )?
-        .into_inner();
-        if let Some(server_keys) = crate::sending::send_federation_request(server, keys_request)
-            .await?
-            .json::<RemoteServerKeysBatchResBody>()
-            .await
-            .ok()
-            .map(|resp| {
-                resp.server_keys
-                    .into_iter()
-                    .filter_map(|e| e.deserialize().ok())
-                    .collect::<Vec<_>>()
-            })
-        {
-            trace!("Got signing keys: {:?}", server_keys);
-            for mut k in server_keys {
-                if k.valid_until_ts
-                    // Half an hour should give plenty of time for the server to respond with keys that are still
-                    // valid, given we requested keys which are valid at least an hour from now
-                    < UnixMillis::from_system_time(
-                    SystemTime::now() + Duration::from_secs(30 * 60),
-                )
-                    .expect("Should be valid until year 500,000,000")
-                {
-                    // Keys should only be valid for a maximum of seven days
-                    k.valid_until_ts = k.valid_until_ts.min(
-                        UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
-                            .expect("Should be valid until year 500,000,000"),
-                    );
-
-                    if keys.valid_until_ts > k.valid_until_ts {
-                        keys.valid_until_ts = k.valid_until_ts;
-                    }
-
-                    crate::add_signing_key_from_trusted_server(origin, k.clone())?;
-                    keys.verify_keys
-                        .extend(k.verify_keys.into_iter().map(|(id, key)| (id.to_string(), key)));
-                    keys.old_verify_keys
-                        .extend(k.old_verify_keys.into_iter().map(|(id, key)| (id.to_string(), key)));
-                } else {
-                    warn!(
-                        "Server {} gave us keys older than we requested, valid until: {:?}",
-                        origin, k.valid_until_ts
-                    );
-                }
-
-                if contains_all_ids(&keys) {
-                    return Ok(keys);
-                }
-            }
-        }
-    }
-
-    drop(permit);
-
-    back_off(signature_ids);
-
-    warn!("Failed to find public key for server: {}", origin);
-    Err(AppError::public("Failed to find public key for server").into())
 }
 
 fn check_room_id(room_id: &RoomId, pdu: &PduEvent) -> AppResult<()> {

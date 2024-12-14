@@ -30,7 +30,7 @@ pub fn authed_router() -> Router {
         .push(Router::with_path("displayname").put(set_display_name))
 }
 
-// #GET /_matrix/client/r0/profile/{user_d}
+/// #GET /_matrix/client/r0/profile/{user_d}
 /// Returns the display_name, avatar_url and blurhash of the user.
 ///
 /// - If user is on another server: Fetches profile over federation
@@ -64,7 +64,7 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
     })
 }
 
-// #GET /_matrix/client/r0/profile/{user_id}/avatar_url
+/// #GET /_matrix/client/r0/profile/{user_id}/avatar_url
 /// Returns the avatar_url and blurhash of the user.
 ///
 /// - If user is on another server: Fetches avatar_url and blurhash over federation
@@ -101,7 +101,7 @@ async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonR
     })
 }
 
-// #PUT /_matrix/client/r0/profile/{user_id}/avatar_url
+/// #PUT /_matrix/client/r0/profile/{user_id}/avatar_url
 /// Updates the avatar_url and blurhash.
 ///
 /// - Also makes sure other users receive the update using presence EDUs
@@ -145,7 +145,7 @@ async fn set_avatar_url(
         .map(|room_id| {
             Ok::<_, AppError>((
                 PduBuilder {
-                    event_ty: TimelineEventType::RoomMember,
+                    event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
                         ..serde_json::from_str(
@@ -164,9 +164,8 @@ async fn set_avatar_url(
                         .map_err(|_| AppError::internal("Database contains invalid PDU."))?
                     })
                     .expect("event is valid, we just created it"),
-                    unsigned: None,
                     state_key: Some(user_id.to_string()),
-                    redacts: None,
+                    ..Default::default()
                 },
                 room_id,
             ))
@@ -208,7 +207,7 @@ async fn set_avatar_url(
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/profile/{user_id}/displayname
+/// #GET /_matrix/client/r0/profile/{user_id}/displayname
 /// Returns the display_name of the user.
 ///
 /// - If user is on another server: Fetches display_name over federation
@@ -233,7 +232,7 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
     }
 }
 
-// #PUT /_matrix/client/r0/profile/{user_id}/displayname
+/// #PUT /_matrix/client/r0/profile/{user_id}/displayname
 /// Updates the display_name.
 ///
 /// - Also makes sure other users receive the update using presence EDUs
@@ -259,7 +258,7 @@ async fn set_display_name(
         .map(|room_id| {
             Ok::<_, AppError>((
                 PduBuilder {
-                    event_ty: TimelineEventType::RoomMember,
+                    event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
                         ..serde_json::from_str(
@@ -278,9 +277,8 @@ async fn set_display_name(
                         .map_err(|_| AppError::internal("Database contains invalid PDU."))?
                     })
                     .expect("event is valid, we just created it"),
-                    unsigned: None,
                     state_key: Some(user_id.to_string()),
-                    redacts: None,
+                    ..Default::default()
                 },
                 room_id,
             ))
