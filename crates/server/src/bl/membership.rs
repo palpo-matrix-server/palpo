@@ -885,12 +885,15 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             error!("Trying to leave a room you are not a member of.");
-            diesel::delete(
-                room_users::table
-                    .filter(room_users::room_id.eq(room_id))
-                    .filter(room_users::user_id.eq(user_id)),
-            )
-            .execute(&mut *db::connect()?)?;
+            crate::room::timeline::build_and_append_pdu(
+                PduBuilder::state(
+                    user_id.to_string(),
+                    &RoomMemberEventContent::new(MembershipState::Leave),
+                ),
+                user_id,
+                room_id,
+            )?;
+            println!("oooooooooooooo0");
             return Ok(());
         };
 

@@ -1,8 +1,8 @@
+use diesel::prelude::*;
 use salvo::oapi::{extract::*, server};
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
-use diesel::prelude::*;
 
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -10,12 +10,13 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId, UnixMillis, OwnedUserId, RoomVersionId};
-use crate::{db,
-    empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,
-    PduEvent,
-};use crate::room::NewDbRoom;
+use crate::core::{EventId, OwnedUserId, RoomVersionId, UnixMillis};
+use crate::room::NewDbRoom;
 use crate::schema::*;
+use crate::{
+    db, empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
+    PduBuilder, PduEvent,
+};
 
 pub fn router_v1() -> Router {
     Router::new()
@@ -96,7 +97,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response)
 /// #PUT /_matrix/federation/v2/invite/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]
-fn invite_user(
+async fn invite_user(
     args: RoomEventReqArgs,
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
@@ -175,6 +176,16 @@ fn invite_user(
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
+        // for state in &invite_state {
+        //     let state_event = state.deserialize()?;
+        //     // let pdu = PduBuilder::state(state_event.state_key(), &state_event);
+        //     // let Ok((event_id, value, room_id)) = crate::parse_incoming_pdu(&pdu) else {
+        //     //     println!("===uuuuuuuuuuuuuuuuuuuppdu failed: {pdu:#?}");
+        //     //     continue;
+        //     // };
+        //     let _ = crate::event::handler::handle_incoming_pdu(args.room_id.server_name().unwrap(), &event_id, &args.room_id, pdu, true).await;
+        // }
+        println!("===uuuuuuuuuuuuuuuuuuupdate_membership  0");
         crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -184,16 +195,20 @@ fn invite_user(
             &sender,
             Some(invite_state),
         )?;
+        println!("===uuuuuuuuuuuuuuuuuuupdate_membership  1");
     }
 
-    diesel::insert_into(rooms::table).values(NewDbRoom {
-        id: args.room_id.clone(),
-        version: body.room_version.to_string(),
-        is_public: false,
-        has_auth_chain_index: false,
-        created_by: sender.clone(),
-        created_at: UnixMillis::now(),
-    }).on_conflict_do_nothing().execute(&mut db::connect()?)?;
+    diesel::insert_into(rooms::table)
+        .values(NewDbRoom {
+            id: args.room_id.clone(),
+            version: body.room_version.to_string(),
+            is_public: false,
+            has_auth_chain_index: false,
+            created_by: sender.clone(),
+            created_at: UnixMillis::now(),
+        })
+        .on_conflict_do_nothing()
+        .execute(&mut db::connect()?)?;
 
     json_ok(InviteUserResBodyV2 {
         event: PduEvent::convert_to_outgoing_federation_event(signed_event),

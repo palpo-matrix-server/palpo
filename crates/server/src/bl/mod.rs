@@ -769,17 +769,14 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
         tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         MatrixError::bad_json("Invalid PDU in server response")
     })?;
-    println!("xxxxxxxxxxxxxx pdu value: {:?}", value);
 
     let room_id: OwnedRoomId = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
         .ok_or(MatrixError::invalid_param("Invalid room id in pdu"))?;
 
-        println!("=======xxxx room_id: {:?}", room_id);
     let room_version_id = crate::room::state::get_room_version(&room_id)?;
 
-    println!("=======xxxx room_version_id: {:?}", room_version_id);
     let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
@@ -787,7 +784,6 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
             return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
         }
     };
-    println!("xxxxxxxxxdone");
     Ok((event_id, value, room_id))
 }
 

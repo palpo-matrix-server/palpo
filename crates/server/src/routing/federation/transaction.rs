@@ -35,7 +35,9 @@ async fn send_message(
 
     let txn_start_time = Instant::now();
     let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
+    println!("======={}=hdd 0  {:#?}", crate::server_name(), body.pdus);
     handle_edus(body.edus, &body.origin).await;
+    println!("========hdd 1");
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -94,6 +96,7 @@ async fn handle_pdus(
         }
     }
 
+    println!("hhhhhhhhhhhhhhhh0");
     Ok(resolved_map)
 }
 

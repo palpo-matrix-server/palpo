@@ -92,12 +92,12 @@ pub struct ServerConfig {
     pub presence_idle_timeout_s: u64,
     #[serde(default = "default_presence_offline_timeout_s")]
     pub presence_offline_timeout_s: u64,
-	/// Config option to control maximum time federation user can indicate
-	/// typing.
-	///
-	/// default: 30
-	#[serde(default = "default_typing_federation_timeout_s")]
-	pub typing_federation_timeout_s: u64,
+    /// Config option to control maximum time federation user can indicate
+    /// typing.
+    ///
+    /// default: 30
+    #[serde(default = "default_typing_federation_timeout_s")]
+    pub typing_federation_timeout_s: u64,
 
     #[serde(default = "default_space_path")]
     pub space_path: String,
@@ -306,7 +306,9 @@ fn default_presence_idle_timeout_s() -> u64 {
 fn default_presence_offline_timeout_s() -> u64 {
     15 * 60
 }
-fn default_typing_federation_timeout_s() -> u64 { 30 }
+fn default_typing_federation_timeout_s() -> u64 {
+    30
+}
 
 pub fn default_room_version() -> RoomVersionId {
     RoomVersionId::V10
