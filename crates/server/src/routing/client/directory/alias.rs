@@ -13,7 +13,7 @@ use crate::room::DbRoomAlias;
 use crate::schema::*;
 use crate::{db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
-// #GET /_matrix/client/r0/directory/room/{room_alias}
+/// #GET /_matrix/client/r0/directory/room/{room_alias}
 /// Resolve an alias locally or over federation.
 ///
 /// - TODO: Suggest more servers to join via
@@ -61,7 +61,7 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
     json_ok(AliasResBody::new(room_id, vec![crate::config().server_name.to_owned()]))
 }
 
-// #PUT /_matrix/client/r0/directory/room/{room_alias}
+/// #PUT /_matrix/client/r0/directory/room/{room_alias}
 /// Creates a new room alias on this server.
 #[endpoint]
 pub(super) async fn upsert_alias(
@@ -97,7 +97,7 @@ pub(super) async fn upsert_alias(
     empty_ok()
 }
 
-// #DELETE /_matrix/client/r0/directory/room/{room_alias}
+/// #DELETE /_matrix/client/r0/directory/room/{room_alias}
 /// Deletes a room alias from this server.
 ///
 /// - TODO: additional access control checks

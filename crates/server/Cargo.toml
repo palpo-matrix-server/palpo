@@ -31,6 +31,7 @@ chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["std", "derive", "help", "usage", "error-context"] }
 config = { workspace = true }
 cookie = { workspace = true }
+cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
 dotenvy = { workspace = true }
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }

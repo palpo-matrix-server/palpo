@@ -41,7 +41,7 @@ pub fn self_auth_router() -> Router {
         )
 }
 
-// #GET /_matrix/media/r0/download/{server_name}/{media_id}
+/// #GET /_matrix/media/r0/download/{server_name}/{media_id}
 /// Load media from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true
@@ -83,7 +83,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
     }
 }
 
-// #GET /_matrix/media/r0/download/{server_name}/{media_id}/{file_name}
+/// #GET /_matrix/media/r0/download/{server_name}/{media_id}/{file_name}
 /// Load media from our server or over federation, permitting desired filename.
 ///
 /// - Only allows federation if `allow_remote` is true
@@ -154,7 +154,7 @@ pub fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     }))
 }
 
-// #POST /_matrix/media/r0/upload
+/// #POST /_matrix/media/r0/upload
 /// Permanently save media in the server.
 ///
 /// - Some metadata will be saved in the database
@@ -229,7 +229,7 @@ pub async fn create_content(
     })
 }
 
-// #PUT /_matrix/media/*/upload/{serverName}/{mediaId}
+/// #PUT /_matrix/media/*/upload/{serverName}/{mediaId}
 /// Upload media to an MXC URI that was created with create_mxc_uri.
 #[endpoint]
 pub async fn upload_content(
@@ -295,7 +295,7 @@ pub async fn upload_content(
     }
 }
 
-// #GET /_matrix/media/r0/config
+/// #GET /_matrix/media/r0/config
 /// Returns max upload size.
 #[endpoint]
 pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
@@ -310,7 +310,7 @@ pub async fn preview_url(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 
-/// #GET /_matrix/media/r0/thumbnail/{server_name}/{media_id}
+//// #GET /_matrix/media/r0/thumbnail/{server_name}/{media_id}
 /// Load media thumbnail from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true

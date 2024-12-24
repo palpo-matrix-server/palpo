@@ -13,7 +13,7 @@ use crate::{AppResult, MatrixError};
 pub async fn send_state_event_for_key(
     user_id: &UserId,
     room_id: &RoomId,
-    event_ty: &StateEventType,
+    event_type: &StateEventType,
     json: RawJson<AnyStateEventContent>,
     state_key: String,
 ) -> AppResult<Arc<EventId>> {
@@ -48,11 +48,10 @@ pub async fn send_state_event_for_key(
     }
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: event_ty.to_string().into(),
+            event_type: event_type.to_string().into(),
             content: serde_json::from_value(serde_json::to_value(json)?)?,
-            unsigned: None,
             state_key: Some(state_key),
-            redacts: None,
+            ..Default::default()
         },
         user_id,
         room_id,

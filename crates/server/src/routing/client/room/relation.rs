@@ -6,7 +6,7 @@ use crate::core::client::relation::{
 };
 use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}
+/// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}
 #[endpoint]
 pub(super) fn get_relation(
     _aa: AuthArgs,
@@ -30,7 +30,7 @@ pub(super) fn get_relation(
     json_ok(body)
 }
 
-// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}
+/// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}
 #[endpoint]
 pub(super) async fn get_relation_by_rel_type(
     _aa: AuthArgs,
@@ -55,7 +55,7 @@ pub(super) async fn get_relation_by_rel_type(
     json_ok(body)
 }
 
-// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}/{event_type}
+/// #GET /_matrix/client/r0/rooms/{room_id}/relations/{event_id}/{rel_type}/{event_type}
 #[endpoint]
 pub(super) async fn get_relation_by_rel_type_and_event_type(
     _aa: AuthArgs,

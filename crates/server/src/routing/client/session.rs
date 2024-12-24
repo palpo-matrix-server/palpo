@@ -44,7 +44,7 @@ pub fn authed_router() -> Router {
         )
 }
 
-// #GET /_matrix/client/r0/login
+/// #GET /_matrix/client/r0/login
 /// Get the supported login types of this server. One of these should be used as the `type` field
 /// when logging in.
 #[endpoint]
@@ -53,7 +53,7 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
     Ok(Json(LoginTypesResBody::new(flows)))
 }
 
-// #POST /_matrix/client/r0/login
+/// #POST /_matrix/client/r0/login
 /// Authenticates the user and returns an access token it can use in subsequent requests.
 ///
 /// - The user needs to authenticate using their password (or if enabled using a json web token)
@@ -152,7 +152,7 @@ async fn get_token(_aa: AuthArgs) -> EmptyResult {
     // Ok(())
 }
 
-// #POST /_matrix/client/r0/logout
+/// #POST /_matrix/client/r0/logout
 /// Log out the current device.
 ///
 /// - Invalidates access token
@@ -170,7 +170,7 @@ async fn logout(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     empty_ok()
 }
 
-// #POST /_matrix/client/r0/logout/all
+/// #POST /_matrix/client/r0/logout/all
 /// Log out all devices of this user.
 ///
 /// - Invalidates all access tokens

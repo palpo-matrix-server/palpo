@@ -12,7 +12,7 @@ use crate::diesel_exists;
 use crate::schema::*;
 use crate::{db, exts::*, json_ok, AuthArgs, JsonResult, JsonValue, MatrixError, PduBuilder};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/messages
+/// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
 ///
 /// - Only works if the user is joined (TODO: always allow, but only show events where the user was
@@ -172,7 +172,7 @@ pub(super) async fn get_messages(
     json_ok(resp)
 }
 
-// #PUT /_matrix/client/r0/rooms/{room_id}/send/{event_type}/{txn_id}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/send/{event_type}/{txn_id}
 /// Send a message event into the room.
 ///
 /// - Is a NOOP if the txn id was already used before and returns the same event id again
@@ -209,11 +209,10 @@ pub(super) async fn send_message(
 
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: args.event_type.to_string().into(),
+            event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
-            state_key: None,
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &args.room_id,
@@ -231,7 +230,7 @@ pub(super) async fn send_message(
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/send/{event_type}
+/// #POST /_matrix/client/r0/rooms/{room_id}/send/{event_type}
 /// Send a message event into the room.
 ///
 /// - Is a NOOP if the txn id was already used before and returns the same event id again
@@ -259,11 +258,10 @@ pub(super) async fn post_message(
     let mut unsigned = BTreeMap::new();
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: args.event_type.to_string().into(),
+            event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
-            state_key: None,
-            redacts: None,
+            ..Default::default()
         },
         authed.user_id(),
         &args.room_id,

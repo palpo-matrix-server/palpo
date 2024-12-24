@@ -36,7 +36,7 @@ async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 
-// #GET /_matrix/key/v2/server
+/// #GET /_matrix/key/v2/server
 /// Gets the public signing keys of this server.
 ///
 /// - Matrix does not support invalidating public keys, so the key returned by this will be valid

@@ -44,7 +44,7 @@ pub fn authed_router() -> Router {
         )
 }
 
-// #GET /_matrix/client/r0/room_keys/keys
+/// #GET /_matrix/client/r0/room_keys/keys
 /// Retrieves all keys from the backup.
 #[endpoint]
 async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot) -> JsonResult<KeysResBody> {
@@ -65,7 +65,7 @@ async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Dep
     json_ok(KeysResBody { rooms })
 }
 
-// #GET /_matrix/client/r0/room_keys/keys/{room_id}
+/// #GET /_matrix/client/r0/room_keys/keys/{room_id}
 /// Retrieves all keys from the backup for a given room.
 #[endpoint]
 fn get_keys_for_room(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) -> JsonResult<KeysForRoomResBody> {
@@ -78,7 +78,7 @@ fn get_keys_for_room(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot)
         [(room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())].into_iter(),
     )))
 }
-// #GET /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
+/// #GET /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
 /// Retrieves a key from the backup.
 #[endpoint]
 async fn get_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mut Depot) -> JsonResult<KeyBackupData> {
@@ -97,7 +97,7 @@ async fn get_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mu
     json_ok(key_backup_data)
 }
 
-// #PUT /_matrix/client/r0/room_keys/keys
+/// #PUT /_matrix/client/r0/room_keys/keys
 /// Add the received backup keys to the database.
 ///
 /// - Only manipulating the most recently created version of the backup is allowed
@@ -135,7 +135,7 @@ fn add_keys(
     })
 }
 
-// #PUT /_matrix/client/r0/room_keys/keys/{room_id}
+/// #PUT /_matrix/client/r0/room_keys/keys/{room_id}
 /// Add the received backup keys to the database.
 ///
 /// - Only manipulating the most recently created version of the backup is allowed
@@ -176,7 +176,7 @@ fn add_keys_for_room(
         etag: key_backup::get_etag(authed.user_id(), args.version, conn)?,
     })
 }
-// #PUT /_matrix/client/r0/room_keys/keys/{room_d}/{session_id}
+/// #PUT /_matrix/client/r0/room_keys/keys/{room_d}/{session_id}
 /// Add the received backup key to the database.
 ///
 /// - Only manipulating the most recently created version of the backup is allowed
@@ -223,7 +223,7 @@ fn add_keys_for_session(
     json_ok(body.0)
 }
 
-// #GET /_matrix/client/r0/room_keys/version/{version}
+/// #GET /_matrix/client/r0/room_keys/version/{version}
 /// Get information about an existing backup.
 #[endpoint]
 fn get_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> JsonResult<VersionResBody> {
@@ -242,7 +242,7 @@ fn get_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> Jso
     })
 }
 
-// #POST /_matrix/client/r0/room_keys/version
+/// #POST /_matrix/client/r0/room_keys/version
 /// Creates a new backup.
 #[endpoint]
 fn create_version(
@@ -259,7 +259,7 @@ fn create_version(
     json_ok(CreateVersionResBody { version })
 }
 
-// #PUT /_matrix/client/r0/room_keys/version/{version}
+/// #PUT /_matrix/client/r0/room_keys/version/{version}
 /// Update information about an existing backup. Only `auth_data` can be modified.
 #[endpoint]
 fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &mut Depot) -> EmptyResult {
@@ -270,7 +270,7 @@ fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &m
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/room_keys/version
+/// #GET /_matrix/client/r0/room_keys/version
 /// Get information about the latest backup version.
 #[endpoint]
 fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody> {
@@ -295,7 +295,7 @@ fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody
         version: version.to_string(),
     })
 }
-// #DELETE /_matrix/client/r0/room_keys/version/{version}
+/// #DELETE /_matrix/client/r0/room_keys/version/{version}
 /// Delete an existing key backup.
 ///
 /// - Deletes both information about the backup, as well as all key data related to the backup
@@ -310,7 +310,7 @@ fn delete_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> 
     empty_ok()
 }
 
-// #DELETE /_matrix/client/r0/room_keys/keys
+/// #DELETE /_matrix/client/r0/room_keys/keys
 /// Delete the keys from the backup.
 #[endpoint]
 fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
@@ -324,7 +324,7 @@ fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot)
         etag: key_backup::get_etag(authed.user_id(), version, conn)?,
     })
 }
-// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}
+/// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}
 /// Delete the keys from the backup for a given room.
 #[endpoint]
 fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
@@ -338,7 +338,7 @@ fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) 
         etag: key_backup::get_etag(authed.user_id(), args.version, conn)?,
     })
 }
-// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
+/// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
 /// Delete a key from the backup.
 #[endpoint]
 fn delete_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {

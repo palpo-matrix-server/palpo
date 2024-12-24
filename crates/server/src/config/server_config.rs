@@ -92,6 +92,12 @@ pub struct ServerConfig {
     pub presence_idle_timeout_s: u64,
     #[serde(default = "default_presence_offline_timeout_s")]
     pub presence_offline_timeout_s: u64,
+    /// Config option to control maximum time federation user can indicate
+    /// typing.
+    ///
+    /// default: 30
+    #[serde(default = "default_typing_federation_timeout_s")]
+    pub typing_federation_timeout_s: u64,
 
     #[serde(default = "default_space_path")]
     pub space_path: String,
@@ -104,6 +110,46 @@ pub struct ServerConfig {
     pub auto_acme: Option<String>,
     #[serde(default = "false_value")]
     pub enable_tls: bool,
+
+    /// Whether to query the servers listed in trusted_servers first or query
+    /// the origin server first. For best security, querying the origin server
+    /// first is advised to minimize the exposure to a compromised trusted
+    /// server. For maximum federation/join performance this can be set to true,
+    /// however other options exist to query trusted servers first under
+    /// specific high-load circumstances and should be evaluated before setting
+    /// this to true.
+    #[serde(default)]
+    pub query_trusted_key_servers_first: bool,
+
+    /// Whether to query the servers listed in trusted_servers first
+    /// specifically on room joins. This option limits the exposure to a
+    /// compromised trusted server to room joins only. The join operation
+    /// requires gathering keys from many origin servers which can cause
+    /// significant delays. Therefor this defaults to true to mitigate
+    /// unexpected delays out-of-the-box. The security-paranoid or those
+    /// willing to tolerate delays are advised to set this to false. Note that
+    /// setting query_trusted_key_servers_first to true causes this option to
+    /// be ignored.
+    #[serde(default = "true_value")]
+    pub query_trusted_key_servers_first_on_join: bool,
+
+    /// Only query trusted servers for keys and never the origin server. This is
+    /// intended for clusters or custom deployments using their trusted_servers
+    /// as forwarding-agents to cache and deduplicate requests. Notary servers
+    /// do not act as forwarding-agents by default, therefor do not enable this
+    /// unless you know exactly what you are doing.
+    #[serde(default)]
+    pub only_query_trusted_key_servers: bool,
+
+    /// Maximum number of keys to request in each trusted server batch query.
+    ///
+    /// default: 1024
+    #[serde(default = "default_trusted_server_batch_size")]
+    pub trusted_server_batch_size: usize,
+}
+
+fn default_trusted_server_batch_size() -> usize {
+    256
 }
 
 fn default_space_path() -> String {
@@ -259,6 +305,9 @@ fn default_presence_idle_timeout_s() -> u64 {
 
 fn default_presence_offline_timeout_s() -> u64 {
     15 * 60
+}
+fn default_typing_federation_timeout_s() -> u64 {
+    30
 }
 
 pub fn default_room_version() -> RoomVersionId {

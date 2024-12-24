@@ -112,7 +112,7 @@ pub fn router() -> Router {
     client.push(Router::with_path("versions").get(supported_versions))
 }
 
-// #POST /_matrix/client/r0/search
+/// #POST /_matrix/client/r0/search
 /// Searches rooms for messages.
 ///
 /// - Only works if the user is currently joined to the room (TODO: Respect history visibility)
@@ -133,6 +133,7 @@ fn search(
         .clone()
         .unwrap_or_else(|| crate::user::joined_rooms(authed.user_id(), 0).unwrap_or_default());
 
+    println!("RRRRRRRRRroom_ids: {room_ids:#?}");
     // Use limit or else 10, with maximum 100
     let limit = filter.limit.unwrap_or(10).min(100) as usize;
 
@@ -154,6 +155,7 @@ fn search(
         None => 0, // Default to the start
     };
 
+    println!("RRRRRRRRRRsearches: {searches:#?}");
     let mut results = Vec::new();
     for _ in 0..skip + limit {
         if let Some(s) = searches
@@ -166,6 +168,7 @@ fn search(
         }
     }
 
+    println!("RRRRRRRRRResulsts: {results:#?}");
     let results: Vec<_> = results
         .iter()
         .filter_map(|result| {
@@ -214,7 +217,7 @@ fn search(
     }))
 }
 
-// #GET /_matrix/client/r0/capabilities
+/// #GET /_matrix/client/r0/capabilities
 /// Get information on the supported feature set and other relevent capabilities of this server.
 #[endpoint]
 async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
@@ -236,7 +239,7 @@ async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     })
 }
 
-// #GET /_matrix/client/versions
+/// #GET /_matrix/client/versions
 /// Get the versions of the specification and unstable features supported by this server.
 ///
 /// - Versions take the form MAJOR.MINOR.PATCH
@@ -268,7 +271,7 @@ async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/sync
+/// #GET /_matrix/client/r0/sync
 /// Synchronize the client's state with the latest state on the server.
 ///
 /// - This endpoint takes a `since` parameter which should be the `next_batch` value from a

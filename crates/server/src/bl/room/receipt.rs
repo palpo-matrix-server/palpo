@@ -39,10 +39,6 @@ pub struct NewDbReceipt {
 /// Replaces the previous read receipt.
 #[tracing::instrument]
 pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> AppResult<()> {
-    println!(
-        "============update_read  user_id: {:?}, room_id: {:?}, event: {:#?}",
-        user_id, room_id, event
-    );
     for (event_id, receipts) in event.content {
         if let Ok(event_sn) = crate::event::get_event_sn(&event_id) {
             for (receipt_ty, user_receipts) in receipts {

@@ -14,7 +14,7 @@ struct ExtractGlobalEventContent {
     content: RawJson<AnyGlobalAccountDataEventContent>,
 }
 
-// #GET /_matrix/client/r0/user/{user_id}/account_data/{event_type}
+/// #GET /_matrix/client/r0/user/{user_id}/account_data/{event_type}
 /// Gets some account data for the sender user.
 #[endpoint]
 pub(super) async fn get_global_data(
@@ -30,7 +30,7 @@ pub(super) async fn get_global_data(
     json_ok(GlobalAccountDataResBody(RawJson::from_value(&content)?))
 }
 
-// #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
+/// #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
 /// Sets some account data for the sender user.
 #[endpoint]
 pub(super) async fn set_global_data(
@@ -47,7 +47,7 @@ pub(super) async fn set_global_data(
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/user/{user_id}/rooms/{roomId}/account_data/{event_type}
+/// #GET /_matrix/client/r0/user/{user_id}/rooms/{roomId}/account_data/{event_type}
 /// Gets some account data for the sender user.
 #[endpoint]
 pub(super) async fn get_room_data(
@@ -64,7 +64,7 @@ pub(super) async fn get_room_data(
     json_ok(RoomAccountDataResBody(RawJson::from_value(&content)?))
 }
 
-// #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
+/// #PUT /_matrix/client/r0/user/{user_id}/account_data/{event_type}
 /// Sets some room account data for the sender user.
 #[endpoint]
 pub(super) async fn set_room_data(

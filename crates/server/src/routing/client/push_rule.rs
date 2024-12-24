@@ -39,7 +39,7 @@ async fn global() -> EmptyResult {
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
+/// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
 /// Retrieves a single specified push rule for this user.
 #[endpoint]
 fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleResBody> {
@@ -64,7 +64,7 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
     }
 }
 
-// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
+/// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
 /// Creates a single specified push rule for this user.
 #[endpoint]
 async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) -> EmptyResult {
@@ -143,7 +143,7 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     empty_ok()
 }
 
-// #DELETE /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
+/// #DELETE /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}
 /// Deletes a single specified push rule for this user.
 #[endpoint]
 async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResult {
@@ -181,7 +181,7 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/pushrules
+/// #GET /_matrix/client/r0/pushrules
 /// Retrieves the push rules event for this user.
 #[endpoint]
 async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
@@ -199,7 +199,7 @@ async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
     })
 }
 
-// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
+/// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
 /// Gets the actions of a single specified push rule for this user.
 #[endpoint]
 async fn get_actions(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleActionsResBody> {
@@ -225,7 +225,7 @@ async fn get_actions(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResul
     json_ok(RuleActionsResBody { actions })
 }
 
-// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
+/// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
 /// Sets the actions of a single specified push rule for this user.
 #[endpoint]
 fn set_actions(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleActionsReqBody>, depot: &mut Depot) -> EmptyResult {
@@ -260,7 +260,7 @@ fn set_actions(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleActionsReqBody>
     empty_ok()
 }
 
-// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/enabled
+/// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/enabled
 /// Gets the enabled status of a single specified push rule for this user.
 #[endpoint]
 fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleEnabledResBody> {
@@ -286,7 +286,7 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
     json_ok(RuleEnabledResBody { enabled })
 }
 
-// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/enabled
+/// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/enabled
 /// Sets the enabled status of a single specified push rule for this user.
 #[endpoint]
 fn set_enabled(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleEnabledReqBody>, depot: &mut Depot) -> EmptyResult {
