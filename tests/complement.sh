@@ -45,7 +45,7 @@ set -o pipefail
 
 # Post-process the results into an easy-to-compare format
 cat "$LOG_FILE.jsonl" | jq -c '
-    select(sss
+    select(
         (.Action == "pass" or .Action == "fail" or .Action == "skip")
         and .Test != null
     ) | {Action: .Action, Test: .Test}

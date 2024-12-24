@@ -861,7 +861,9 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !crate::room::room_exists(room_id)? && room_id.server_name().map_err(AppError::public)? != crate::server_name() {
+    println!("server name: {}    room_id: {}   user_id: {}", crate::server_name(), room_id, user_id);
+    if !crate::room::room_exists(room_id)? || room_id.server_name().map_err(AppError::public)? != crate::server_name() {
+        println!("xxxxxxxxxxxx0  remote");
         if let Err(e) = remote_leave_room(user_id, room_id).await {
             warn!("Failed to leave room {} remotely: {}", user_id, e);
             // Don't tell the client about this error
@@ -879,7 +881,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .filter(room_users::user_id.eq(user_id)),
         )
         .execute(&mut *db::connect()?)?;
-    } else {
+    } else { println!("xxxxxxxxxxxx1  local");
+        
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms
