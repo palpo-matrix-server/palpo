@@ -576,10 +576,14 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
 pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<CompressedState>>) -> AppResult<DeltaInfo> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
+    println!("bbbbbbbbbbsave state  0");
     let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
 
+    println!("bbbbbbbbbbsave state  1?0");
     let new_frame_id = ensure_frame(room_id, hash_data)?;
+    println!("bbbbbbbbbbsave state  1?1");
 
+    println!("bbbbbbbbbbsave state  2");
     if Some(new_frame_id) == prev_frame_id {
         return Ok(DeltaInfo {
             frame_id: new_frame_id,
@@ -587,12 +591,15 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
             disposed: Arc::new(HashSet::new()),
         });
     }
+    println!("bbbbbbbbbbsave state  3");
     for new_compressed_event in new_compressed_events.iter() {
         update_point_frame_id(new_compressed_event.point_id(), new_frame_id)?;
     }
 
+    println!("bbbbbbbbbbsave state  4");
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
+    println!("bbbbbbbbbbsave state  5");
     let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
         let appended: HashSet<_> = new_compressed_events
             .difference(&parent_state_info.full_state)

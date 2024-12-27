@@ -581,14 +581,17 @@ fn resolve_state(
     incoming_state: HashMap<i64, Arc<EventId>>,
 ) -> AppResult<Arc<HashSet<CompressedState>>> {
     debug!("Loading current room state ids");
+    println!("VVresolve_state  0");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
 
+    println!("VVresolve_state  1");
     let current_state_ids = if let Some(current_frame_id) = current_frame_id {
         crate::room::state::get_full_state_ids(current_frame_id)?
     } else {
         HashMap::new()
     };
 
+    println!("VVresolve_state  2");
     let fork_states = [current_state_ids, incoming_state];
 
     let mut auth_chain_sets = Vec::new();
@@ -599,6 +602,7 @@ fn resolve_state(
         }
     }
 
+    println!("VVresolve_state  3");
     let fork_states: Vec<_> = fork_states
         .into_iter()
         .map(|map| {
@@ -617,6 +621,7 @@ fn resolve_state(
         .collect();
     debug!("Resolving state");
 
+    println!("VVresolve_state  4");
     // let lock = crate::STATERES_MUTEX.lock;
     let state =
         match state::resolve(
@@ -642,6 +647,7 @@ fn resolve_state(
 
     debug!("State resolution done. Compressing state");
 
+    println!("VVresolve_state  5");
     let new_room_state = state
         .into_iter()
         .map(|((event_type, state_key), event_id)| {
