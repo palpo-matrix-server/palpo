@@ -312,7 +312,7 @@ pub fn auth_check<E: Event>(
     let sender_member_event = match sender_member_event {
         Some(mem) => mem,
         None => {
-            warn!("sender not found in room");
+            warn!("sender `{}`, not found in room", sender);
             return Ok(false);
         }
     };

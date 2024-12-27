@@ -698,7 +698,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         state_key: Some(target_user.into()),
         ..Default::default()
     };
-
+    println!("=====user_can_invite user_can_invite");
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 

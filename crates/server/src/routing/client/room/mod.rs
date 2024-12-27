@@ -556,6 +556,7 @@ pub(super) async fn create_room(
         return Err(MatrixError::bad_json("Invalid creation content").into());
     }
 
+    println!("pppppppppppp0");
     // 1. The room create event
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -568,6 +569,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("pppppppppppp1");
     // 2. Let the room creator join
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -590,6 +592,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("pppppppppppp2");
     // 3. Power levels
     // Figure out preset. We need it for preset specific events
     let preset = body.preset.clone().unwrap_or(match &body.visibility {
@@ -601,6 +604,7 @@ pub(super) async fn create_room(
     let mut users = BTreeMap::new();
     users.insert(authed.user_id().clone(), 100);
 
+    println!("pppppppppppp2-------0");
     if preset == RoomPreset::TrustedPrivateChat {
         for invite_ in &body.invite {
             users.insert(invite_.clone(), 100);
@@ -619,6 +623,7 @@ pub(super) async fn create_room(
         }
     }
 
+    println!("pppppppppppp3");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -630,6 +635,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("pppppppppppp4");
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
         crate::room::timeline::build_and_append_pdu(
@@ -648,6 +654,7 @@ pub(super) async fn create_room(
         )?;
     }
 
+    println!("pppppppppppp5");
     // 5. Events set by preset
     // 5.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
@@ -666,6 +673,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("pppppppppppp6");
     // 5.2 History Visibility
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -679,6 +687,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("pppppppppppp7");
     // 5.3 Guest Access
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -710,11 +719,13 @@ pub(super) async fn create_room(
             continue;
         }
 
+        println!("pppppppppppp8");
         crate::room::timeline::build_and_append_pdu(pdu_builder, authed.user_id(), &room_id)?;
     }
 
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
+        println!("pppppppppppp9");
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomName,
@@ -729,6 +740,7 @@ pub(super) async fn create_room(
     }
 
     if let Some(topic) = &body.topic {
+        println!("pppppppppppp9");
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomTopic,
@@ -744,15 +756,18 @@ pub(super) async fn create_room(
 
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
+        println!("pppppppppppp10");
         let _ = crate::membership::invite_user(authed.user_id(), user_id, &room_id, None, body.is_direct).await;
     }
 
     // Homeserver specific stuff
     if let Some(alias) = alias {
+        println!("pppppppppppp11");
         crate::room::set_alias(&room_id, &alias, authed.user_id())?;
     }
 
     if body.visibility == Visibility::Public {
+        println!("pppppppppppp12");
         crate::room::directory::set_public(&room_id, true)?;
     }
 

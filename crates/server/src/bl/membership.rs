@@ -745,6 +745,7 @@ pub(crate) async fn invite_user(
             })
             .expect("member event is valid value");
 
+            println!("=====invate user create_hash_and_sign_event");
             let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
                 PduBuilder {
                     event_type: TimelineEventType::RoomMember,

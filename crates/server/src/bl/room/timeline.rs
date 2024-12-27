@@ -579,6 +579,7 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
+    println!("ccccccccccccauth_check 0");
     let auth_checked = crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
@@ -648,6 +649,7 @@ pub fn create_hash_and_sign_event(
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+    println!("=====create_hash_and_sign_event build_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -714,6 +716,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         }
     }
 
+    println!("=======build_and_append_pdu  0");
     append_pdu(
         &pdu,
         pdu_json,
@@ -721,12 +724,15 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         // of the room
         vec![(*pdu.event_id).to_owned()],
     )?;
+    println!("=======build_and_append_pdu  1");
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
+    println!("=======build_and_append_pdu  2");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     crate::room::state::set_room_state(room_id, frame_id)?;
 
+    println!("=======build_and_append_pdu  2");
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
@@ -739,10 +745,13 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
             servers.insert(state_key_uid.server_name().to_owned());
         }
     }
+    println!("=======build_and_append_pdu  3");
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
+    println!("=======build_and_append_pdu  4");
     crate::sending::send_pdu(servers.into_iter(), &pdu.event_id)?;
+    println!("=======build_and_append_pdu  5");
 
     Ok(pdu)
 }

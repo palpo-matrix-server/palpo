@@ -102,6 +102,75 @@ pub(crate) async fn handle_incoming_pdu(
     // if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
     //     return Ok(());
     // }
+    // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+    let (sorted_prev_events, mut eventid_info) =
+        fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
+
+    println!("HHHHHHHHHHHHHHHHH 3");
+    let mut errors = 0;
+    debug!(events = ?sorted_prev_events, "Got previous events");
+    for prev_id in sorted_prev_events {
+        // Check for disabled again because it might have changed
+        if crate::room::is_disabled(room_id)? {
+            return Err(MatrixError::forbidden("Federation of this room is currently disabled on this server.").into());
+        }
+
+        if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
+            // Exponential backoff
+            let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
+            if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
+                min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
+            }
+
+            if time.elapsed() < min_elapsed_duration {
+                info!("Backing off from {}", prev_id);
+                continue;
+            }
+        }
+
+        if errors >= 5 {
+            break;
+        }
+
+        if let Some((pdu, json)) = eventid_info.remove(&*prev_id) {
+            // // Skip old events
+            // if pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
+            //     continue;
+            // }
+
+            let start_time = Instant::now();
+            crate::ROOM_ID_FEDERATION_HANDLE_TIME
+                .write()
+                .unwrap()
+                .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
+
+            if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, origin, room_id).await {
+                errors += 1;
+                warn!("Prev event {} failed: {}", prev_id, e);
+                match crate::BAD_EVENT_RATE_LIMITER
+                    .write()
+                    .unwrap()
+                    .entry((*prev_id).to_owned())
+                {
+                    hash_map::Entry::Vacant(e) => {
+                        e.insert((Instant::now(), 1));
+                    }
+                    hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
+                }
+            }
+            let elapsed = start_time.elapsed();
+            crate::ROOM_ID_FEDERATION_HANDLE_TIME
+                .write()
+                .unwrap()
+                .remove(&room_id.to_owned());
+            debug!(
+                "Handling prev event {} took {}m{}s",
+                prev_id,
+                elapsed.as_secs() / 60,
+                elapsed.as_secs() % 60
+            );
+        }
+    }
 
     // Done with prev events, now handling the incoming event
 
@@ -213,77 +282,6 @@ fn handle_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         println!("MMMMMMMMMMMMMM=??==3");
-        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        let (sorted_prev_events, mut eventid_info) =
-            fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
-
-        println!("HHHHHHHHHHHHHHHHH 3");
-        let mut errors = 0;
-        debug!(events = ?sorted_prev_events, "Got previous events");
-        for prev_id in sorted_prev_events {
-            // Check for disabled again because it might have changed
-            if crate::room::is_disabled(room_id)? {
-                return Err(
-                    MatrixError::forbidden("Federation of this room is currently disabled on this server.").into(),
-                );
-            }
-
-            if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
-                // Exponential backoff
-                let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
-                if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-                    min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-                }
-
-                if time.elapsed() < min_elapsed_duration {
-                    info!("Backing off from {}", prev_id);
-                    continue;
-                }
-            }
-
-            if errors >= 5 {
-                break;
-            }
-
-            if let Some((pdu, json)) = eventid_info.remove(&*prev_id) {
-                // // Skip old events
-                // if pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-                //     continue;
-                // }
-
-                let start_time = Instant::now();
-                crate::ROOM_ID_FEDERATION_HANDLE_TIME
-                    .write()
-                    .unwrap()
-                    .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
-
-                if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, origin, room_id).await {
-                    errors += 1;
-                    warn!("Prev event {} failed: {}", prev_id, e);
-                    match crate::BAD_EVENT_RATE_LIMITER
-                        .write()
-                        .unwrap()
-                        .entry((*prev_id).to_owned())
-                    {
-                        hash_map::Entry::Vacant(e) => {
-                            e.insert((Instant::now(), 1));
-                        }
-                        hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
-                    }
-                }
-                let elapsed = start_time.elapsed();
-                crate::ROOM_ID_FEDERATION_HANDLE_TIME
-                    .write()
-                    .unwrap()
-                    .remove(&room_id.to_owned());
-                debug!(
-                    "Handling prev event {} took {}m{}s",
-                    prev_id,
-                    elapsed.as_secs() / 60,
-                    elapsed.as_secs() % 60
-                );
-            }
-        }
         for id in &incoming_pdu.auth_events {
             let auth_event = match crate::room::timeline::get_pdu(id)? {
                 Some(e) => e,
@@ -505,7 +503,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         debug!("Preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
-    println!("UUUUUUUUUUUUUU 14---0");
+        println!("UUUUUUUUUUUUUU 14---0");
         let mut state_after = state_at_incoming_event.clone();
         if let Some(state_key) = &incoming_pdu.state_key {
             let state_key_id =
@@ -851,8 +849,8 @@ async fn fetch_missing_prev_events(
 
                 //     graph.insert(prev_event_id.clone(), pdu.prev_events.iter().cloned().collect());
                 // } else {
-                    // Time based check failed
-                    graph.insert(prev_event_id.clone(), HashSet::new());
+                // Time based check failed
+                graph.insert(prev_event_id.clone(), HashSet::new());
                 // }
 
                 eventid_info.insert(prev_event_id.clone(), (Arc::new(pdu), json));
