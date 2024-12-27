@@ -473,6 +473,7 @@ async fn handle_events(
             response
         }
         OutgoingKind::Push(user_id, pushkey) => {
+            println!("hhhhhhhhhhhhhhandle events push, user_id:{user_id:?}   pushkey: {pushkey:?}");
             let mut pdus = Vec::new();
 
             for event in &events {
@@ -570,8 +571,8 @@ async fn handle_events(
                 }
             }
 
-            let max_requst = crate::sending::max_request();
-            let permit = max_requst.acquire().await;
+            let max_request = crate::sending::max_request();
+            let permit = max_request.acquire().await;
 
             let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
                 &events
@@ -600,6 +601,7 @@ async fn handle_events(
                 .json::<SendMessageResBody>()
                 .await
                 .map(|response| {
+                    println!("RRRRRRRRRRRRRRREsponse: {:#?}", response);
                     for pdu in response.pdus {
                         if pdu.1.is_err() {
                             warn!("Failed to send to {}: {:?}", server, pdu);
@@ -757,12 +759,22 @@ fn queue_requests(requests: &[(&OutgoingKind, SendingEventType)]) -> AppResult<V
 }
 
 fn active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(i64, SendingEventType)>> {
-    // let prefix = outgoing_kind.get_prefix();
-    //     self.servercurrentevent_data
-    //         .scan_prefix(prefix)
-    //         .map(|(key, v)| parse_servercurrentevent(&key, v).map(|(_, e)| (key, e))),
-    // TODO: fixme
-    Ok(vec![])
+    let list = outgoing_requests::table
+        .filter(outgoing_requests::kind.eq(outgoing_kind.name()))
+        .load::<DbOutgoingRequest>(&mut *db::connect()?)?
+        .into_iter()
+        .filter_map(|r| {
+            if let Some(value) = r.edu_json {
+                Some((r.id, SendingEventType::Edu(value)))
+            } else if let Some(pdu_id) = r.pdu_id {
+                Some((r.id, SendingEventType::Pdu(pdu_id)))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(list)
 }
 
 fn queued_requests(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(i64, SendingEventType)>> {

@@ -42,9 +42,10 @@ pub struct DbRoom {
     pub id: OwnedRoomId,
     pub version: String,
     pub is_public: bool,
+    pub min_depth: i64,
+    pub state_frame_id: Option<i64>,
     pub has_auth_chain_index: bool,
     pub disabled: bool,
-    pub state_frame_id: Option<i64>,
     pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
 }
@@ -54,6 +55,7 @@ pub struct NewDbRoom {
     pub id: OwnedRoomId,
     pub version: String,
     pub is_public: bool,
+    pub min_depth: i64,
     pub has_auth_chain_index: bool,
     pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
@@ -98,6 +100,7 @@ pub fn ensure_room(id: &RoomId, created_by: &UserId) -> AppResult<OwnedRoomId> {
             id: id.to_owned(),
             version: default_room_version().to_string(),
             is_public: false,
+            min_depth: 0,
             has_auth_chain_index: false,
             created_by: created_by.to_owned(),
             created_at: UnixMillis::now(),
@@ -140,7 +143,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name {
+    if user_id.server_name() != &conf.server_name && !crate::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
@@ -475,12 +478,21 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
         .filter(room_servers::server_id.eq(server));
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
 }
-pub fn get_room_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .select(room_servers::server_id)
-        .load::<OwnedServerName>(&mut *db::connect()?)
-        .map_err(Into::into)
+pub fn get_room_servers(room_id: &RoomId, includes_self: bool) -> AppResult<Vec<OwnedServerName>> {
+    if includes_self {
+        room_servers::table
+            .filter(room_servers::room_id.eq(room_id))
+            .select(room_servers::server_id)
+            .load::<OwnedServerName>(&mut *db::connect()?)
+            .map_err(Into::into)
+    } else {
+        room_servers::table
+            .filter(room_servers::room_id.eq(room_id))
+            .filter(room_servers::server_id.ne(room_id.server_name().map_err(AppError::public)?))
+            .select(room_servers::server_id)
+            .load::<OwnedServerName>(&mut *db::connect()?)
+            .map_err(Into::into)
+    }
 }
 
 pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {
@@ -625,4 +637,12 @@ pub fn server_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
         .select(room_servers::room_id)
         .load::<OwnedRoomId>(&mut *db::connect()?)
         .map_err(Into::into)
+}
+
+pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    let room_version = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .select(rooms::version)
+        .first::<String>(&mut *db::connect()?)?;
+    Ok(RoomVersionId::try_from(room_version)?)
 }

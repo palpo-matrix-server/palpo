@@ -12,6 +12,7 @@ pub mod room_id;
 pub mod room_id_or_alias_id;
 pub mod room_version_id;
 pub mod server_name;
+pub mod server_signing_key_version;
 pub mod user_id;
 pub mod voip_version_id;
 

@@ -19,7 +19,7 @@ pub fn router() -> Router {
         .push(Router::with_path("<query_type>").get(query_by_type))
 }
 
-// #GET /_matrix/federation/v1/query/profile
+/// #GET /_matrix/federation/v1/query/profile
 /// Gets information on a profile.
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
@@ -55,7 +55,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
     })
 }
 
-// #GET /_matrix/federation/v1/query/directory
+/// #GET /_matrix/federation/v1/query/directory
 /// Resolve a room alias to a room id.
 #[endpoint]
 async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, true>) -> JsonResult<RoomInfoResBody> {

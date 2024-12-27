@@ -5,7 +5,7 @@ use crate::core::client::uiaa::AuthData;
 use crate::{AuthArgs, AuthedInfo};
 use crate::{hoops, DepotExt, json_ok, empty_ok, JsonResult};
 
-// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receiptType}/{event_id}
+/// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receiptType}/{event_id}
 /// Sets private read marker and public read receipt EDU.
 #[endpoint]
 pub(super) async fn create(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {

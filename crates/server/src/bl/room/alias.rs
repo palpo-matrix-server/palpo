@@ -115,15 +115,14 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
         if state_alias.is_some() {
             crate::room::timeline::build_and_append_pdu(
                 PduBuilder {
-                    event_ty: TimelineEventType::RoomCanonicalAlias,
+                    event_type: TimelineEventType::RoomCanonicalAlias,
                     content: to_raw_value(&RoomCanonicalAliasEventContent {
                         alias: None,
                         alt_aliases: vec![], // TODO
                     })
                     .expect("We checked that alias earlier, it must be fine"),
-                    unsigned: None,
                     state_key: Some("".to_owned()),
-                    redacts: None,
+                    ..Default::default()
                 },
                 &user.id,
                 &room_id,

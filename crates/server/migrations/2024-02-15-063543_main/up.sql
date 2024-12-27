@@ -294,9 +294,10 @@ CREATE TABLE rooms (
     id text NOT NULL PRIMARY KEY,
     version text NOT NULL,
     is_public boolean NOT NULL default false,
+    min_depth bigint not null default 0,
+    state_frame_id bigint,
     has_auth_chain_index boolean not null default false,
     disabled boolean  not null default false,
-    state_frame_id bigint,
     created_by text NOT NULL,
     created_at bigint NOT NULL
 );
@@ -526,8 +527,8 @@ CREATE TABLE room_state_deltas
     frame_id bigint NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     parent_id bigint,
-    append_data bytea NOT NULL,
-    remove_data bytea NOT NULL
+    appended bytea NOT NULL,
+    disposed bytea NOT NULL
 );
 
 -- DROP TABLE IF EXISTS room_states CASCADE;

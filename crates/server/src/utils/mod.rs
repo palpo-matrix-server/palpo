@@ -9,6 +9,10 @@ use crate::{AppError, AppResult};
 pub mod fs;
 pub mod hash;
 pub use hash::*;
+pub mod time;
+pub use time::*;
+pub mod stream;
+pub use stream::*;
 
 pub fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
     let number = match old.map(|bytes| bytes.try_into()) {

@@ -25,7 +25,7 @@ pub fn router() -> Router {
         .push(Router::with_path("thumbnail/<media_id>").get(get_thumbnail))
 }
 
-// #GET /_matrix/media/r0/download/{server_name}/{media_id}
+/// #GET /_matrix/media/r0/download/{server_name}/{media_id}
 /// Load media from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true

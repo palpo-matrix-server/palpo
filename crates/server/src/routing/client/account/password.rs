@@ -14,7 +14,7 @@ pub fn authed_router() -> Router {
         .post(change_password)
 }
 
-// #POST /_matrix/client/r0/account/password
+/// #POST /_matrix/client/r0/account/password
 /// Changes the password of this account.
 ///
 /// - Requires UIAA to verify user password

@@ -12,12 +12,12 @@ pub fn router() -> Router {
     Router::new()
         .push(Router::with_path("event/<event_id>").get(get_event))
         .push(Router::with_path("event_auth/<room_id>/<event_id>").put(auth_chain))
-        .push(Router::with_path("timestamp_to_event/<room_id>").put(event_by_timestamp))
-        .push(Router::with_path("get_missing_events/<room_id>").put(missing_events))
+        .push(Router::with_path("timestamp_to_event/<room_id>").get(event_by_timestamp))
+        .push(Router::with_path("get_missing_events/<room_id>").post(missing_events))
         .push(Router::with_path("exchange_third_party_invite/<room_id>").put(exchange_third_party_invite))
 }
 
-// #GET /_matrix/federation/v1/event/{event_id}
+/// #GET /_matrix/federation/v1/event/{event_id}
 /// Retrieves a single event from the server.
 ///
 /// - Only works if a user of this server is currently invited or joined the room
@@ -53,7 +53,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
     })
 }
 
-// #GET /_matrix/federation/v1/event_auth/{room_id}/{event_id}
+/// #GET /_matrix/federation/v1/event_auth/{room_id}/{event_id}
 /// Retrieves the auth chain for a given event.
 ///
 /// - This does not include the event itself
@@ -97,7 +97,7 @@ async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 
-// #POST /_matrix/federation/v1/get_missing_events/{room_id}
+/// #POST /_matrix/federation/v1/get_missing_events/{room_id}
 /// Retrieves events that the sender is missing.
 #[endpoint]
 fn missing_events(

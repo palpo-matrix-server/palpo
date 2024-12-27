@@ -24,14 +24,14 @@ pub fn authed_router() -> Router {
         .push(Router::with_path("device_signing/upload").post(device_signing::upload))
 }
 
-// #POST /_matrix/client/r0/keys/claim
+/// #POST /_matrix/client/r0/keys/claim
 /// Claims one-time keys
 #[endpoint]
 async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
     cjson_ok(key::claim_keys(&body.one_time_keys).await?)
 }
 
-// #POST /_matrix/client/r0/keys/query
+/// #POST /_matrix/client/r0/keys/query
 /// Get end-to-end encryption keys for the given users.
 ///
 /// - Always fetches users from other servers over federation
@@ -43,7 +43,7 @@ async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depo
     cjson_ok(key::query_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
 }
 
-// #POST /_matrix/client/r0/keys/upload
+/// #POST /_matrix/client/r0/keys/upload
 /// Publish end-to-end encryption keys for the sender device.
 ///
 /// - Adds one time keys
@@ -69,7 +69,7 @@ async fn upload_keys(
     })
 }
 
-// #POST /_matrix/client/r0/keys/changes
+/// #POST /_matrix/client/r0/keys/changes
 /// Gets a list of users who have updated their device identity keys since the previous sync token.
 ///
 /// - TODO: left users

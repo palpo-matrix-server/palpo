@@ -11,7 +11,7 @@ use crate::schema::*;
 use crate::{db, diesel_exists, AuthArgs};
 use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
 
-// #GET /_matrix/client/r0/directory/list/room/{room_id}
+/// #GET /_matrix/client/r0/directory/list/room/{room_id}
 /// Gets the visibility of a given room in the room directory.
 #[endpoint]
 pub(super) async fn get_visibility(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>) -> JsonResult<VisibilityResBody> {
@@ -27,7 +27,7 @@ pub(super) async fn get_visibility(_aa: AuthArgs, room_id: PathParam<OwnedRoomId
 
     json_ok(VisibilityResBody { visibility })
 }
-// #PUT /_matrix/client/r0/directory/list/room/{room_id}
+/// #PUT /_matrix/client/r0/directory/list/room/{room_id}
 /// Sets the visibility of a given room in the room directory.
 ///
 /// - TODO: Access control checks

@@ -18,7 +18,7 @@ pub fn authed_router() -> Router {
         )
 }
 
-// #GET /_matrix/client/r0/thirdparty/protocols
+/// #GET /_matrix/client/r0/thirdparty/protocols
 /// TODO: Fetches all metadata about protocols supported by the homeserver.
 #[endpoint]
 async fn protocols(_aa: AuthArgs) -> JsonResult<ProtocolsResBody> {

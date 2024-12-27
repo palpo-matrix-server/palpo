@@ -312,7 +312,7 @@ pub fn auth_check<E: Event>(
     let sender_member_event = match sender_member_event {
         Some(mem) => mem,
         None => {
-            warn!("sender not found in room");
+            warn!("sender `{}`, not found in room", sender);
             return Ok(false);
         }
     };
@@ -324,7 +324,10 @@ pub fn auth_check<E: Event>(
         .deserialize()?;
 
     if !matches!(membership_state, MembershipState::Join) {
-        warn!("sender's membership is not join");
+        warn!(
+            "sender's membership is not join, current state is `{}`",
+            membership_state
+        );
         return Ok(false);
     }
 

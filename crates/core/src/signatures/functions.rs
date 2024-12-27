@@ -19,7 +19,7 @@ use crate::{
         verification::{Ed25519Verifier, Verified, Verifier},
         Error, JsonError, ParseError, VerificationError,
     },
-    OwnedEventId, OwnedServerName, RoomVersionId, UserId,
+    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
 };
 
 const MAX_PDU_BYTES: usize = 65_535;
@@ -610,6 +610,34 @@ fn canonical_json_with_fields_to_remove(object: &CanonicalJsonObject, fields: &[
     }
 
     to_json_string(&owned_object).map_err(|e| Error::Json(e.into()))
+}
+
+/// Extracts the server names and key ids to check signatures for given event.
+pub fn required_keys(
+    object: &CanonicalJsonObject,
+    version: &RoomVersionId,
+) -> Result<BTreeMap<OwnedServerName, Vec<OwnedServerSigningKeyId>>, Error> {
+    use CanonicalJsonValue::Object;
+
+    let mut map = BTreeMap::<OwnedServerName, Vec<OwnedServerSigningKeyId>>::new();
+    let Some(Object(signatures)) = object.get("signatures") else {
+        return Ok(map);
+    };
+
+    for server in servers_to_check_signatures(object, version)? {
+        let Some(Object(set)) = signatures.get(server.as_str()) else {
+            continue;
+        };
+
+        let entry = map.entry(server.clone()).or_default();
+        set.into_iter()
+            .map(|(k, _)| k.clone())
+            .map(TryInto::try_into)
+            .filter_map(Result::ok)
+            .for_each(|key_id| entry.push(key_id));
+    }
+
+    Ok(map)
 }
 
 /// Extracts the server names to check signatures for given event.

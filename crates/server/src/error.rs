@@ -67,6 +67,8 @@ pub enum AppError {
     MxcUriError(#[from] palpo_core::identifiers::MxcUriError),
     #[error("ImageError: `{0}`")]
     ImageError(#[from] image::ImageError),
+    #[error("Signatures: `{0}`")]
+    Signatures(#[from] palpo_core::signatures::Error),
 }
 
 impl AppError {

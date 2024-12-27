@@ -21,7 +21,7 @@ use crate::room::state::UserCanSeeEvent;
 use crate::utils::HtmlEscape;
 use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
-// #GET /_matrix/client/r0/rooms/{room_id}/state
+/// #GET /_matrix/client/r0/rooms/{room_id}/state
 /// Get all state events for a room.
 ///
 /// - If not joined: Only works if current room history visibility is world readable
@@ -49,7 +49,7 @@ pub(super) fn get_state(
             .collect(),
     })
 }
-// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
+/// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
 pub fn report(
@@ -105,7 +105,7 @@ pub fn report(
     ));
     empty_ok()
 }
-// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}
+/// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}
 /// Get single state event of a room.
 ///
 /// - If not joined: Only works if current room history visibility is world readable
@@ -141,7 +141,7 @@ pub(super) fn state_for_key(
     ))
 }
 
-// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}
+/// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}
 /// Get single state event of a room.
 ///
 /// - If not joined: Only works if current room history visibility is world readable
@@ -175,7 +175,7 @@ pub(super) async fn state_for_empty_key(
     ))
 }
 
-// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}
 /// Sends a state event into the room.
 ///
 /// - The only requirement for the content is that it has to be valid json
@@ -204,7 +204,7 @@ pub(super) async fn send_state_for_key(
     json_ok(SendStateEventResBody { event_id })
 }
 
-// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}
 /// Sends a state event into the room.
 ///
 /// - The only requirement for the content is that it has to be valid json
@@ -238,7 +238,7 @@ pub(super) async fn send_state_for_empty_key(
     json_ok(SendStateEventResBody { event_id })
 }
 
-// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
+/// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
 #[endpoint]
 pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut Depot) -> EmptyResult {
@@ -295,7 +295,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
     }
     empty_ok()
 }
-// #PUT /_matrix/client/r0/rooms/{room_id}/typing/{user_id}
+/// #PUT /_matrix/client/r0/rooms/{room_id}/typing/{user_id}
 /// Sets the typing state of the sender user.
 #[endpoint]
 pub async fn send_typing(

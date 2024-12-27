@@ -21,7 +21,7 @@ pub fn router() -> Router {
         .push(Router::with_path("devices/<user_id>").get(get_devices))
 }
 
-// #POST /_matrix/federation/v1/user/keys/claim
+/// #POST /_matrix/federation/v1/user/keys/claim
 /// Claims one-time keys.
 #[endpoint]
 async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
@@ -31,7 +31,7 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonRes
         one_time_keys: result.one_time_keys,
     })
 }
-// #POST /_matrix/federation/v1/user/keys/query
+/// #POST /_matrix/federation/v1/user/keys/query
 /// Gets devices and identity keys for the given users.
 #[endpoint]
 async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
@@ -45,7 +45,7 @@ async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depo
     })
 }
 
-// #GET /_matrix/federation/v1/user/devices/{user_id}
+/// #GET /_matrix/federation/v1/user/devices/{user_id}
 /// Gets information on all devices of the user.
 #[endpoint]
 fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<DevicesResBody> {

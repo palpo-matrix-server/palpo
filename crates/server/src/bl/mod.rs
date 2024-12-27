@@ -10,6 +10,7 @@ pub mod media;
 pub mod membership;
 pub mod room;
 pub mod sending;
+pub mod server_key;
 pub mod state;
 pub mod transaction_id;
 pub mod uiaa;
@@ -657,19 +658,19 @@ pub fn add_signing_key_from_origin(origin: &ServerName, new_keys: ServerSigningK
     }
 }
 
-/// This returns an empty `Ok(None)` when there are no keys found for the server.
-pub fn signing_keys_for(origin: &ServerName) -> AppResult<Option<SigningKeys>> {
-    let key_data = server_signing_keys::table
-        .filter(server_signing_keys::server_id.eq(origin))
-        .select(server_signing_keys::key_data)
-        .first::<JsonValue>(&mut *db::connect()?)
-        .optional()?;
-    if let Some(key_data) = key_data {
-        Ok(serde_json::from_value(key_data).map(Option::Some)?)
-    } else {
-        Ok(None)
-    }
-}
+// /// This returns an empty `Ok(None)` when there are no keys found for the server.
+// pub fn signing_keys_for(origin: &ServerName) -> AppResult<Option<SigningKeys>> {
+//     let key_data = server_signing_keys::table
+//         .filter(server_signing_keys::server_id.eq(origin))
+//         .select(server_signing_keys::key_data)
+//         .first::<JsonValue>(&mut *db::connect()?)
+//         .optional()?;
+//     if let Some(key_data) = key_data {
+//         Ok(serde_json::from_value(key_data).map(Option::Some)?)
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 /// Filters the key map of multiple servers down to keys that should be accepted given the expiry time,
 /// room version, and timestamp of the paramters

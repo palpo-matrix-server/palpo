@@ -7,7 +7,7 @@ use std::{
 
 use palpo_macros::IdZst;
 
-use super::{crypto_algorithms::SigningKeyAlgorithm, DeviceId, KeyName};
+use super::{crypto_algorithms::SigningKeyAlgorithm, DeviceId, KeyName, ServerSigningKeyVersion};
 
 /// A key algorithm and key name delimited by a colon.
 #[repr(transparent)]
@@ -61,10 +61,10 @@ pub type SigningKeyId<K> = KeyId<SigningKeyAlgorithm, K>;
 pub type OwnedSigningKeyId<K> = OwnedKeyId<SigningKeyAlgorithm, K>;
 
 /// Algorithm + key name for homeserver signing keys.
-pub type ServerSigningKeyId = SigningKeyId<KeyName>;
+pub type ServerSigningKeyId = SigningKeyId<ServerSigningKeyVersion>;
 
 /// Algorithm + key name for homeserver signing keys.
-pub type OwnedServerSigningKeyId = OwnedSigningKeyId<KeyName>;
+pub type OwnedServerSigningKeyId = OwnedSigningKeyId<ServerSigningKeyVersion>;
 
 /// Algorithm + key name for device keys.
 pub type DeviceSigningKeyId = SigningKeyId<DeviceId>;

@@ -29,6 +29,7 @@ pub use self::{
     room_or_alias_id::{OwnedRoomOrAliasId, RoomOrAliasId},
     room_version_id::RoomVersionId,
     server_name::{OwnedServerName, ServerName},
+    server_signing_key_version::{OwnedServerSigningKeyVersion, ServerSigningKeyVersion},
     session_id::{OwnedSessionId, SessionId},
     signatures::{DeviceSignatures, EntitySignatures, ServerSignatures, Signatures},
     transaction_id::{OwnedTransactionId, TransactionId},
@@ -53,6 +54,7 @@ mod room_id;
 mod room_or_alias_id;
 mod room_version_id;
 mod server_name;
+mod server_signing_key_version;
 mod session_id;
 mod signatures;
 mod transaction_id;

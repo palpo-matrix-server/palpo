@@ -36,7 +36,7 @@ pub fn authed_router() -> Router {
         )
 }
 
-// #GET /_matrix/client/r0/devices/{device_id}
+/// #GET /_matrix/client/r0/devices/{device_id}
 /// Get metadata on a single device of the sender user.
 #[endpoint]
 async fn get_device(
@@ -52,7 +52,7 @@ async fn get_device(
     ))
 }
 
-// #GET /_matrix/client/r0/devices
+/// #GET /_matrix/client/r0/devices
 /// Get metadata on all devices of the sender user.
 #[endpoint]
 async fn list_devices(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<DevicesResBody> {
@@ -66,7 +66,7 @@ async fn list_devices(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<DevicesRes
     })
 }
 
-// #PUT /_matrix/client/r0/devices/{device_id}
+/// #PUT /_matrix/client/r0/devices/{device_id}
 /// Updates the metadata on a given device of the sender user.
 #[endpoint]
 fn update_device(
@@ -86,7 +86,7 @@ fn update_device(
     empty_ok()
 }
 
-// #DELETE /_matrix/client/r0/devices/{deviceId}
+/// #DELETE /_matrix/client/r0/devices/{deviceId}
 /// Deletes the given device.
 ///
 /// - Requires UIAA to verify user password
@@ -133,7 +133,7 @@ async fn delete_device(
     empty_ok()
 }
 
-// #PUT /_matrix/client/r0/devices/{deviceId}
+/// #PUT /_matrix/client/r0/devices/{deviceId}
 /// Deletes the given device.
 ///
 /// - Requires UIAA to verify user password

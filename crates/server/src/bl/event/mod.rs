@@ -12,7 +12,7 @@ use crate::core::{JsonValue, RawJsonValue, UnixMillis};
 use crate::schema::*;
 use crate::{db, AppError, AppResult, MatrixError};
 
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
+#[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]
 pub struct DbEventData {
     pub event_id: OwnedEventId,
@@ -23,7 +23,7 @@ pub struct DbEventData {
     pub format_version: Option<i64>,
 }
 
-#[derive(Identifiable, Queryable, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct DbEvent {
     pub id: OwnedEventId,
@@ -34,7 +34,7 @@ pub struct DbEvent {
     pub depth: i64,
     pub origin_server_ts: Option<UnixMillis>,
     pub received_at: Option<i64>,
-    pub sender: Option<OwnedUserId>,
+    pub sender_id: Option<OwnedUserId>,
     pub contains_url: bool,
     pub worker_id: Option<String>,
     pub state_key: Option<String>,

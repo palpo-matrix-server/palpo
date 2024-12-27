@@ -21,7 +21,7 @@ pub fn authed_router() -> Router {
         .push(Router::with_hoop(hoops::limit_rate).put(set_status))
 }
 
-// #GET /_matrix/client/r0/presence/{user_id}/status
+/// #GET /_matrix/client/r0/presence/{user_id}/status
 /// Gets the presence state of the given user.
 ///
 /// - Only works if you share a room with the user
@@ -54,7 +54,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
     }
 }
 
-// #PUT /_matrix/client/r0/presence/{user_id}/status
+/// #PUT /_matrix/client/r0/presence/{user_id}/status
 /// Sets the presence state of the sender user.
 #[endpoint]
 async fn set_status(

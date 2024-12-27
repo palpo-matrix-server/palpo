@@ -217,11 +217,9 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
 
                  crate::room::timeline::build_and_append_pdu(
                     PduBuilder {
-                        event_ty: TimelineEventType::RoomMessage,
+                        event_type: TimelineEventType::RoomMessage,
                         content: to_raw_value(&message_content).expect("event is valid, we just created it"),
-                        unsigned: None,
-                        state_key: None,
-                        redacts: None,
+                        ..Default::default()
                     },
                     &palpo_user,
                     &palpo_room,
@@ -538,7 +536,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 crate::user::deactivate(&user_id, &user_id)?;
 
                 if leave_rooms {
-                    crate::membership::leave_all_rooms(&user_id)?;
+                    crate::membership::leave_all_rooms(&user_id).await?;
                 }
 
                 RoomMessageEventContent::text_plain(format!("User {user_id} has been deactivated"))
@@ -587,7 +585,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
 
                 if leave_rooms {
                     for user_id in &user_ids {
-                        crate::membership::leave_all_rooms(user_id).ok();
+                        crate::membership::leave_all_rooms(user_id).await.ok();
                     }
                 }
 
@@ -620,47 +618,47 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
             }
         }
-        AdminCommand::VerifyJson => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let string = body[1..body.len() - 1].join("\n");
-                match serde_json::from_str(&string) {
-                    Ok(value) => {
-                        let pub_key_map = RwLock::new(BTreeMap::new());
+        _ => RoomMessageEventContent::text_plain("Command not implemented."), // AdminCommand::VerifyJson => {
+                                                                              //     if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
+                                                                              //         let string = body[1..body.len() - 1].join("\n");
+                                                                              //         match serde_json::from_str(&string) {
+                                                                              //             Ok(value) => {
+                                                                              //                 let pub_key_map = RwLock::new(BTreeMap::new());
 
-                        // Generally we shouldn't be checking against expired keys unless required, so in the admin
-                        // room it might be best to not allow expired keys
-                        crate::event::handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
+                                                                              //                 // Generally we shouldn't be checking against expired keys unless required, so in the admin
+                                                                              //                 // room it might be best to not allow expired keys
+                                                                              //                 // crate::event::handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
 
-                        let mut expired_key_map = BTreeMap::new();
-                        let mut valid_key_map = BTreeMap::new();
+                                                                              //                 let mut expired_key_map = BTreeMap::new();
+                                                                              //                 let mut valid_key_map = BTreeMap::new();
 
-                        for (server, keys) in pub_key_map.into_inner().into_iter() {
-                            if keys.valid_until_ts > UnixMillis::now() {
-                                valid_key_map.insert(
-                                    server,
-                                    keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                );
-                            } else {
-                                expired_key_map.insert(
-                                    server,
-                                    keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                );
-                            }
-                        }
-                        if crate::core::signatures::verify_json(&valid_key_map, &value).is_ok() {
-                            RoomMessageEventContent::text_plain("Signature correct")
-                        } else if let Err(e) = crate::core::signatures::verify_json(&expired_key_map, &value) {
-                            RoomMessageEventContent::text_plain(format!("Signature verification failed: {e}"))
-                        } else {
-                            RoomMessageEventContent::text_plain("Signature correct (with expired keys)")
-                        }
-                    }
-                    Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-            }
-        }
+                                                                              //                 for (server, keys) in pub_key_map.into_inner().into_iter() {
+                                                                              //                     if keys.valid_until_ts > UnixMillis::now() {
+                                                                              //                         valid_key_map.insert(
+                                                                              //                             server,
+                                                                              //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
+                                                                              //                         );
+                                                                              //                     } else {
+                                                                              //                         expired_key_map.insert(
+                                                                              //                             server,
+                                                                              //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
+                                                                              //                         );
+                                                                              //                     }
+                                                                              //                 }
+                                                                              //                 if crate::core::signatures::verify_json(&valid_key_map, &value).is_ok() {
+                                                                              //                     RoomMessageEventContent::text_plain("Signature correct")
+                                                                              //                 } else if let Err(e) = crate::core::signatures::verify_json(&expired_key_map, &value) {
+                                                                              //                     RoomMessageEventContent::text_plain(format!("Signature verification failed: {e}"))
+                                                                              //                 } else {
+                                                                              //                     RoomMessageEventContent::text_plain("Signature correct (with expired keys)")
+                                                                              //                 }
+                                                                              //             }
+                                                                              //             Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
+                                                                              //         }
+                                                                              //     } else {
+                                                                              //         RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
+                                                                              //     }
+                                                                              // }
     };
 
     Ok(reply_message_content)
@@ -792,11 +790,12 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // 1. The room create event
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomCreate,
+            event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&content).expect("event is valid, we just created it"),
             unsigned: None,
             state_key: Some("".to_owned()),
             redacts: None,
+            timestamp: None,
         },
         &palpo_user,
         &room_id,
@@ -805,7 +804,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // 2. Make palpo bot join
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
                 display_name: None,
@@ -817,9 +816,8 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(palpo_user.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -831,7 +829,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomPowerLevels,
+            event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&RoomPowerLevelsEventContent {
                 users,
                 ..Default::default()
@@ -840,6 +838,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
             unsigned: None,
             state_key: Some("".to_owned()),
             redacts: None,
+            timestamp: None,
         },
         &palpo_user,
         &room_id,
@@ -848,12 +847,11 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // 4.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomJoinRules,
+            event_type: TimelineEventType::RoomJoinRules,
             content: to_raw_value(&RoomJoinRulesEventContent::new(JoinRule::Invite))
                 .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -862,12 +860,11 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // 4.2 History Visibility
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomHistoryVisibility,
+            event_type: TimelineEventType::RoomHistoryVisibility,
             content: to_raw_value(&RoomHistoryVisibilityEventContent::new(HistoryVisibility::Shared))
                 .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -876,12 +873,11 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     // 4.3 Guest Access
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomGuestAccess,
+            event_type: TimelineEventType::RoomGuestAccess,
             content: to_raw_value(&RoomGuestAccessEventContent::new(GuestAccess::Forbidden))
                 .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -891,11 +887,10 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     let room_name = format!("{} Admin Room", &conf.server_name);
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomName,
+            event_type: TimelineEventType::RoomName,
             content: to_raw_value(&RoomNameEventContent::new(room_name)).expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -903,14 +898,13 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomTopic,
+            event_type: TimelineEventType::RoomTopic,
             content: to_raw_value(&RoomTopicEventContent {
                 topic: format!("Manage {}", &conf.server_name),
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -923,15 +917,14 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomCanonicalAlias,
+            event_type: TimelineEventType::RoomCanonicalAlias,
             content: to_raw_value(&RoomCanonicalAliasEventContent {
                 alias: Some(alias.clone()),
                 alt_aliases: Vec::new(),
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -956,7 +949,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
     // Invite and join the real user
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Invite,
                 display_name: None,
@@ -968,16 +961,15 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
     )?;
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomMember,
+            event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
                 display_name: Some(display_name),
@@ -989,9 +981,8 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some(user_id.to_string()),
-            redacts: None,
+            ..Default::default()
         },
         user_id,
         &room_id,
@@ -1004,15 +995,14 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
 
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
-            event_ty: TimelineEventType::RoomPowerLevels,
+            event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&RoomPowerLevelsEventContent {
                 users,
                 ..Default::default()
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
             state_key: Some("".to_owned()),
-            redacts: None,
+            ..Default::default()
         },
         &palpo_user,
         &room_id,
@@ -1021,15 +1011,13 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
     // Send welcome message
     crate::room::timeline::build_and_append_pdu(
             PduBuilder {
-                event_ty: TimelineEventType::RoomMessage,
+                event_type: TimelineEventType::RoomMessage,
                 content: to_raw_value(&RoomMessageEventContent::text_html(
                         format!("## Thank you for trying out Palpo!\n\nPalpo is currently in Beta. This means you can join and participate in most Matrix rooms, but not all features are supported and you might run into bugs from time to time.\n\nHelpful links:\n> Website: https://palpo.im\n> Git and Documentation: https://gitlab.com/famedly/palpo\n> Report issues: https://gitlab.com/famedly/palpo/-/issues\n\nFor a list of available commands, send the following message in this room: `@palpo:{}: --help`\n\nHere are some rooms you can join (by typing the command):\n\nPalpo room (Ask questions and get notified on updates):\n`/join #palpo:fachschaften.org`\n\nPalpo lounge (Off-topic, only Palpo users are allowed to join)\n`/join #palpo-lounge:palpo.im`", &conf.server_name),
                         format!("<h2>Thank you for trying out Palpo!</h2>\n<p>Palpo is currently in Beta. This means you can join and participate in most Matrix rooms, but not all features are supported and you might run into bugs from time to time.</p>\n<p>Helpful links:</p>\n<blockquote>\n<p>Website: https://palpo.im<br>Git and Documentation: https://gitlab.com/famedly/palpo<br>Report issues: https://gitlab.com/famedly/palpo/-/issues</p>\n</blockquote>\n<p>For a list of available commands, send the following message in this room: <code>@palpo:{}: --help</code></p>\n<p>Here are some rooms you can join (by typing the command):</p>\n<p>Palpo room (Ask questions and get notified on updates):<br><code>/join #palpo:fachschaften.org</code></p>\n<p>Palpo lounge (Off-topic, only Palpo users are allowed to join)<br><code>/join #palpo-lounge:palpo.im</code></p>\n", &conf.server_name),
                 ))
                 .expect("event is valid, we just created it"),
-                unsigned: None,
-                state_key: None,
-                redacts: None,
+                ..Default::default()
             },
             &palpo_user,
             &room_id,
