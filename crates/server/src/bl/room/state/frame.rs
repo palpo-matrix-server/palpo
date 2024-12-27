@@ -95,22 +95,13 @@ pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<Option<i64>> {
 }
 /// Returns (state_hash, already_existed)
 pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
-    let frame_id = room_state_frames::table
-        .filter(room_state_frames::room_id.eq(room_id))
-        .select(room_state_frames::id)
-        .first::<i64>(&mut *db::connect()?)
-        .optional()?;
-    if let Some(frame_id) = frame_id {
-        Ok(frame_id)
-    } else {
-        diesel::insert_into(room_state_frames::table)
-            .values((
-                room_state_frames::room_id.eq(room_id),
-                room_state_frames::hash_data.eq(hash_data),
-            ))
-            .on_conflict_do_nothing()
-            .returning(room_state_frames::id)
-            .get_result(&mut *db::connect()?)
-            .map_err(Into::into)
-    }
+    diesel::insert_into(room_state_frames::table)
+    .values((
+        room_state_frames::room_id.eq(room_id),
+        room_state_frames::hash_data.eq(hash_data),
+    ))
+    .on_conflict_do_nothing()
+    .returning(room_state_frames::id)
+    .get_result(&mut *db::connect()?)
+    .map_err(Into::into)
 }
