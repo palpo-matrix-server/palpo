@@ -594,6 +594,7 @@ pub async fn join_room(
                 }
 
                 // let pub_key_map = RwLock::new(BTreeMap::new());
+                println!("CCCCCCCCCCCCCCCCCCCCCCCCC0");
                 crate::event::handler::handle_incoming_pdu(
                     &remote_server,
                     &signed_event_id,
@@ -808,6 +809,7 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
+        println!("CCCCCCCCCCCCCCCCCCCCCCCCC1");
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
@@ -863,7 +865,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
     // Ask a remote server if we don't have this room
     println!("server name: {}    room_id: {}   user_id: {}", crate::server_name(), room_id, user_id);
     if !crate::room::room_exists(room_id)? || room_id.server_name().map_err(AppError::public)? != crate::server_name() {
-        println!("xxxxxxxxxxxx0  remote");
         if let Err(e) = remote_leave_room(user_id, room_id).await {
             warn!("Failed to leave room {} remotely: {}", user_id, e);
             // Don't tell the client about this error
@@ -881,8 +882,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .filter(room_users::user_id.eq(user_id)),
         )
         .execute(&mut *db::connect()?)?;
-    } else { println!("xxxxxxxxxxxx1  local");
-        
+    } else { 
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms

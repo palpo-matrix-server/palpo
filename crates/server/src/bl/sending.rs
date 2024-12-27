@@ -583,7 +583,6 @@ async fn handle_events(
                     })
                     .collect::<Vec<_>>(),
             ));
-            println!("vvvvvvvvvvvvvvvpdus: {pdu_jsons:#?}    edus: {edu_jsons:#?}");
             let request = send_messages_request(
                 &server.origin().await,
                 txn_id,
@@ -602,6 +601,7 @@ async fn handle_events(
                 .json::<SendMessageResBody>()
                 .await
                 .map(|response| {
+                    println!("RRRRRRRRRRRRRRREsponse: {:#?}", response);
                     for pdu in response.pdus {
                         if pdu.1.is_err() {
                             warn!("Failed to send to {}: {:?}", server, pdu);

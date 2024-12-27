@@ -294,9 +294,10 @@ CREATE TABLE rooms (
     id text NOT NULL PRIMARY KEY,
     version text NOT NULL,
     is_public boolean NOT NULL default false,
+    min_depth bigint not null default 0,
+    state_frame_id bigint,
     has_auth_chain_index boolean not null default false,
     disabled boolean  not null default false,
-    state_frame_id bigint,
     created_by text NOT NULL,
     created_at bigint NOT NULL
 );

@@ -35,9 +35,7 @@ async fn send_message(
 
     let txn_start_time = Instant::now();
     let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
-    println!("======={}=hdd 0  {:#?}", crate::server_name(), body.pdus);
     handle_edus(body.edus, &body.origin).await;
-    println!("========hdd 1");
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -56,7 +54,7 @@ async fn handle_pdus(
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
-            Err(e) => {
+            Err(e) => {println!("======ssssssss ould not parse PDU");
                 warn!("Could not parse PDU: {e}");
                 continue;
             }
@@ -65,18 +63,16 @@ async fn handle_pdus(
         // We do not add the event_id field to the pdu here because of signature
         // and hashes checks
     }
-
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
         // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(&room_id).await;
 
-        println!("cccccccccccc handle_incoming_pdu 4");
+        println!("CCCCCCCCCCCCCCCCCCCCCCCCC4");
         let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true)
             .await
             .map(|_| ());
-        println!("cccccccccccc handle_incoming_pdu 4--end");
 
         // drop(mutex_lock);
         debug!(
@@ -96,7 +92,6 @@ async fn handle_pdus(
         }
     }
 
-    println!("hhhhhhhhhhhhhhhh0");
     Ok(resolved_map)
 }
 

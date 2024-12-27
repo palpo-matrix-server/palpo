@@ -36,7 +36,6 @@ use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKey
 /// on the events
 pub(super) async fn fetch_state(
     origin: &ServerName,
-    create_event: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
@@ -60,7 +59,6 @@ pub(super) async fn fetch_state(
     let state_vec = super::fetch_and_handle_outliers(
         origin,
         &res.pdu_ids.iter().map(|x| Arc::from(&**x)).collect::<Vec<_>>(),
-        create_event,
         room_id,
         room_version_id,
     )
@@ -87,12 +85,12 @@ pub(super) async fn fetch_state(
         }
     }
 
-    // The original create event must still be in the state
-    let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "")?;
+    // // The original create event must still be in the state
+    // let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "")?;
 
-    if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
-        return Err(AppError::internal("Incoming event refers to wrong create event."));
-    }
+    // if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
+    //     return Err(AppError::internal("Incoming event refers to wrong create event."));
+    // }
 
     Ok(Some(state))
 }

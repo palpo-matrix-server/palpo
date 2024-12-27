@@ -984,6 +984,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
+    println!("CCCCCCCCCCCCCCCCCCCCCCCCC2");
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");

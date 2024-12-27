@@ -2,11 +2,12 @@ use diesel::prelude::*;
 use salvo::oapi::{extract::*, server};
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
+use stats_room_currents::state_events;
 use ulid::Ulid;
 
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::{StateEventType,AnyStrippedStateEvent, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
@@ -102,6 +103,7 @@ async fn invite_user(
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
+    println!("EEEEEEEEEEEEEEEEEEEivate user");
     let body = body.into_inner();
     let server_name = &crate::config().server_name;
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -176,17 +178,7 @@ async fn invite_user(
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
-        // for state in &invite_state {
-        //     let state_event = state.deserialize()?;
-        //     // let pdu = PduBuilder::state(state_event.state_key(), &state_event);
-        //     // let Ok((event_id, value, room_id)) = crate::parse_incoming_pdu(&pdu) else {
-        //     //     println!("===uuuuuuuuuuuuuuuuuuuppdu failed: {pdu:#?}");
-        //     //     continue;
-        //     // };
-        //     let _ = crate::event::handler::handle_incoming_pdu(args.room_id.server_name().unwrap(), &event_id, &args.room_id, pdu, true).await;
-        // }
-        println!("===uuuuuuuuuuuuuuuuuuupdate_membership  0");
-        crate::room::update_membership(
+      crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
             &args.room_id,
@@ -195,7 +187,6 @@ async fn invite_user(
             &sender,
             Some(invite_state),
         )?;
-        println!("===uuuuuuuuuuuuuuuuuuupdate_membership  1");
     }
 
     diesel::insert_into(rooms::table)
@@ -203,6 +194,7 @@ async fn invite_user(
             id: args.room_id.clone(),
             version: body.room_version.to_string(),
             is_public: false,
+            min_depth: 0,
             has_auth_chain_index: false,
             created_by: sender.clone(),
             created_at: UnixMillis::now(),
@@ -367,6 +359,7 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
 
     // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
 
+    println!("CCCCCCCCCCCCCCCCCCCCCCCCC3");
     crate::event::handler::handle_incoming_pdu(server_name, &event_id, &args.room_id, value, true).await?;
 
     // drop(mutex_lock);

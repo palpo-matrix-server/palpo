@@ -42,9 +42,10 @@ pub struct DbRoom {
     pub id: OwnedRoomId,
     pub version: String,
     pub is_public: bool,
+    pub min_depth: i64,
+    pub state_frame_id: Option<i64>,
     pub has_auth_chain_index: bool,
     pub disabled: bool,
-    pub state_frame_id: Option<i64>,
     pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
 }
@@ -54,6 +55,7 @@ pub struct NewDbRoom {
     pub id: OwnedRoomId,
     pub version: String,
     pub is_public: bool,
+    pub min_depth: i64,
     pub has_auth_chain_index: bool,
     pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
@@ -98,6 +100,7 @@ pub fn ensure_room(id: &RoomId, created_by: &UserId) -> AppResult<OwnedRoomId> {
             id: id.to_owned(),
             version: default_room_version().to_string(),
             is_public: false,
+            min_depth: 0,
             has_auth_chain_index: false,
             created_by: created_by.to_owned(),
             created_at: UnixMillis::now(),
@@ -291,7 +294,6 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-                println!("============state data: {:#?}", state_data);
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
@@ -635,4 +637,12 @@ pub fn server_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
         .select(room_servers::room_id)
         .load::<OwnedRoomId>(&mut *db::connect()?)
         .map_err(Into::into)
+}
+
+pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    let room_version = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .select(rooms::version)
+        .first::<String>(&mut *db::connect()?)?;
+    Ok(RoomVersionId::try_from(room_version)?)
 }

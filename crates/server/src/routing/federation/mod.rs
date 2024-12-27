@@ -84,15 +84,3 @@ async fn version() -> JsonResult<ServerVersionResBody> {
         }),
     })
 }
-
-#[endpoint]
-async fn notifications(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
-    panic!("notifications Not implemented")
-}
-
-#[endpoint]
-async fn sync(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
-    panic!("syncNot implemented")
-}

@@ -440,9 +440,10 @@ diesel::table! {
         id -> Text,
         version -> Text,
         is_public -> Bool,
+        min_depth -> Int8,
+        state_frame_id -> Nullable<Int8>,
         has_auth_chain_index -> Bool,
         disabled -> Bool,
-        state_frame_id -> Nullable<Int8>,
         created_by -> Text,
         created_at -> Int8,
     }
