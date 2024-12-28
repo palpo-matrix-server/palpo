@@ -133,7 +133,6 @@ fn search(
         .clone()
         .unwrap_or_else(|| crate::user::joined_rooms(authed.user_id(), 0).unwrap_or_default());
 
-    println!("RRRRRRRRRroom_ids: {room_ids:#?}");
     // Use limit or else 10, with maximum 100
     let limit = filter.limit.unwrap_or(10).min(100) as usize;
 
@@ -155,7 +154,6 @@ fn search(
         None => 0, // Default to the start
     };
 
-    println!("RRRRRRRRRRsearches: {searches:#?}");
     let mut results = Vec::new();
     for _ in 0..skip + limit {
         if let Some(s) = searches
@@ -168,7 +166,6 @@ fn search(
         }
     }
 
-    println!("RRRRRRRRRResulsts: {results:#?}");
     let results: Vec<_> = results
         .iter()
         .filter_map(|result| {

@@ -335,7 +335,6 @@ pub async fn get_thumbnail(
     depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
-    println!("==============get_thumbnail   0  {:?}", req.uri());
     if &*args.server_name != &crate::config().server_name && args.allow_remote {
         let request = crate::core::federation::media::thumbnail_request(
             &args.server_name.origin().await,

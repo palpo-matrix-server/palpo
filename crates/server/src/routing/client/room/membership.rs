@@ -207,14 +207,11 @@ pub(super) async fn invite_user(
     body: JsonBody<InviteUserReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
-    println!("====vvvvvvvvvvvvvv  0");
     let authed = depot.authed_info()?;
 
-    println!("====vvvvvvvvvvvvvv  00");
     let InvitationRecipient::UserId { user_id } = &body.recipient else {
         return Err(MatrixError::not_found("User not found.").into());
     };
-    println!("====vvvvvvvvvvvvvv  1");
     crate::membership::invite_user(
         authed.user_id(),
         user_id,
@@ -223,7 +220,6 @@ pub(super) async fn invite_user(
         false,
     )
     .await?;
-    println!("====vvvvvvvvvvvvvv  2");
     empty_ok()
 }
 

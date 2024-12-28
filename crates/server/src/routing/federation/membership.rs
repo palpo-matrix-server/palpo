@@ -78,7 +78,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response)
         join_authorized_via_users_server: None,
     })
     .expect("member event is valid value");
-println!("=====make_join user_can_invite");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -104,7 +103,6 @@ async fn invite_user(
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
-    println!("EEEEEEEEEEEEEEEEEEEivate user");
     let body = body.into_inner();
     let server_name = &crate::config().server_name;
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -360,7 +358,6 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
 
     // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCCCC3");
     crate::event::handler::handle_incoming_pdu(server_name, &event_id, &args.room_id, value, true).await?;
 
     // drop(mutex_lock);

@@ -70,7 +70,6 @@ pub async fn get_thumbnail(
     depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
-    println!("GGGGGGGGGGGGGGGGGGthubmnail");
     let server_name = &crate::config().server_name;
     let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
 
@@ -244,7 +243,6 @@ pub async fn get_thumbnail(
             if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
                 file.set_content_disposition(content_disposition);
             }
-            println!("GGGGGGGGGGGGGGGGGGthubmnail2=====send file");
             file.send(req.headers(), res).await;
             Ok(())
         }

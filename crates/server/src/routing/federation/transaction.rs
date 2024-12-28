@@ -54,7 +54,7 @@ async fn handle_pdus(
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
-            Err(e) => {println!("======ssssssss ould not parse PDU");
+            Err(e) => {
                 warn!("Could not parse PDU: {e}");
                 continue;
             }
@@ -69,7 +69,6 @@ async fn handle_pdus(
         let pdu_start_time = Instant::now();
         // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(&room_id).await;
 
-        println!("CCCCCCCCCCCCCCCCCCCCCCCCC4");
         let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true)
             .await
             .map(|_| ());

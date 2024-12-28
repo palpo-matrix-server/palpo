@@ -111,10 +111,6 @@ async fn handler() -> AppResult<()> {
     let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
 
     for (id, outgoing_kind, event) in active_requests()? {
-        println!(
-            "active_requests: {:?}  outgoing_kind:{outgoing_kind:?}   event:{event:?}",
-            id
-        );
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
             .or_insert_with(Vec::new);
@@ -158,7 +154,6 @@ async fn handler() -> AppResult<()> {
                         }
                     }
                     Err((outgoing_kind, x)) => {
-                        println!("============response error  === {outgoing_kind:?}  {x:?}");
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
                             TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
@@ -473,7 +468,6 @@ async fn handle_events(
             response
         }
         OutgoingKind::Push(user_id, pushkey) => {
-            println!("hhhhhhhhhhhhhhandle events push, user_id:{user_id:?}   pushkey: {pushkey:?}");
             let mut pdus = Vec::new();
 
             for event in &events {
@@ -601,7 +595,6 @@ async fn handle_events(
                 .json::<SendMessageResBody>()
                 .await
                 .map(|response| {
-                    println!("RRRRRRRRRRRRRRREsponse: {:#?}", response);
                     for pdu in response.pdus {
                         if pdu.1.is_err() {
                             warn!("Failed to send to {}: {:?}", server, pdu);

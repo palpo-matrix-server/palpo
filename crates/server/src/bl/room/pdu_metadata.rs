@@ -169,7 +169,6 @@ pub fn get_relations(
     let relations = query
         .limit(limit as i64)
         .load::<DbEventRelation>(&mut *db::connect()?)?;
-    println!("AAAAAAAAAAll relations: {:#?}", relations);
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
         if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.child_id)? {
@@ -181,7 +180,6 @@ pub fn get_relations(
             }
         }
     }
-    println!("AAAAAAAAAAll pdus: {:#?}", pdus);
     Ok(pdus)
 }
 

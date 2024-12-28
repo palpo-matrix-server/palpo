@@ -192,12 +192,9 @@ fn add_keys_for_session(
     let authed = depot.authed_info()?;
     let body = body.into_inner();
 
-    println!("========add_keys_for_session========1");
     let conn = &mut db::connect()?;
-    println!("========add_keys_for_session========2");
     let keys_version = key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
-    println!("========add_keys_for_session========3");
     if args.version != keys_version.version {
         return Err(MatrixError::invalid_param(
             "You may only manipulate the most recently created version of the backup.",
@@ -205,7 +202,6 @@ fn add_keys_for_session(
         .into());
     }
 
-    println!("========add_keys_for_session========4");
     key_backup::add_key(
         authed.user_id(),
         args.version,
@@ -215,7 +211,6 @@ fn add_keys_for_session(
         conn,
     )?;
 
-    println!("========add_keys_for_session========5");
     // json_ok(ModifyKeysResBody {
     //     count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
     //     etag: key_backup::get_etag(authed.user_id(), args.version)?,

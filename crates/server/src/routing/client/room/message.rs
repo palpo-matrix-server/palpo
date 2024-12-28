@@ -24,7 +24,6 @@ pub(super) async fn get_messages(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
-    println!("MESSAGE REQUEST: {}", req.uri().to_string());
     let authed = depot.authed_info()?;
 
     let until_sn = if !diesel_exists!(
@@ -51,7 +50,6 @@ pub(super) async fn get_messages(
     } else {
         None
     };
-    println!("UNTIL SN: {:?}", until_sn);
 
     let from: i64 = args
         .from
@@ -119,7 +117,6 @@ pub(super) async fn get_messages(
                 limit,
                 Some(&args.filter),
             )?;
-            println!("FROM {from}   {:#?}", events_before);
 
             for (_, event) in &events_before {
                 /* TODO: Remove this when these are resolved:

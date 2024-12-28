@@ -579,7 +579,6 @@ pub async fn join_room(
                 .json::<SendJoinResBodyV2>()
                 .await?;
 
-            println!("ssssssssssssssigsend_join_response {:#?}", send_join_response);
             if let Some(signed_raw) = send_join_response.room_state.event {
                 let (signed_event_id, signed_value) = match gen_event_id_canonical_json(&signed_raw, &room_version_id) {
                     Ok(t) => t,
@@ -594,7 +593,6 @@ pub async fn join_room(
                 }
 
                 // let pub_key_map = RwLock::new(BTreeMap::new());
-                println!("CCCCCCCCCCCCCCCCCCCCCCCCC0");
                 crate::event::handler::handle_incoming_pdu(
                     &remote_server,
                     &signed_event_id,
@@ -638,9 +636,6 @@ async fn make_join_request(
         )?
         .into_inner();
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
-        if let Err(e) = &make_join_response {
-            println!("make_join_response  {} {:?}", e, e);
-        }
         if let Ok(make_join_response) = make_join_response {
             let res_body = make_join_response.json::<MakeJoinResBody>().await;
             make_join_res_body_and_server = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
@@ -745,7 +740,6 @@ pub(crate) async fn invite_user(
             })
             .expect("member event is valid value");
 
-            println!("=====invate user create_hash_and_sign_event");
             let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
                 PduBuilder {
                     event_type: TimelineEventType::RoomMember,
@@ -810,7 +804,6 @@ pub(crate) async fn invite_user(
         )
         .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-        println!("CCCCCCCCCCCCCCCCCCCCCCCCC1");
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
 
         // Bind to variable because of lifetimes
@@ -864,7 +857,6 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    println!("server name: {}    room_id: {}   user_id: {}", crate::server_name(), room_id, user_id);
     if !crate::room::room_exists(room_id)? || room_id.server_name().map_err(AppError::public)? != crate::server_name() {
         if let Err(e) = remote_leave_room(user_id, room_id).await {
             warn!("Failed to leave room {} remotely: {}", user_id, e);
@@ -897,7 +889,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 user_id,
                 room_id,
             )?;
-            println!("oooooooooooooo0");
             return Ok(());
         };
 

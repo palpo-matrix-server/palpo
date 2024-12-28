@@ -214,7 +214,6 @@ pub fn get_to_device_events(user_id: &UserId, device_id: &DeviceId) -> AppResult
         .load::<DbDeviceInbox>(&mut *db::connect()?)?
         .into_iter()
         .map(|event| {
-            println!("============devic event data: {:?}", event.json_data);
             serde_json::from_value(event.json_data.clone())
                 .map_err(|_| AppError::public("Invalid JSON in device inbox"))
         })
@@ -228,7 +227,6 @@ pub fn add_to_device_event(
     event_type: &str,
     content: serde_json::Value,
 ) -> AppResult<()> {
-    println!("================add to device event: sender: {sender}, target_user_id: {target_user_id}  target_device_id: {target_device_id}  event_type:{event_type} {:?}", content);
     let mut json = serde_json::Map::new();
     json.insert("type".to_owned(), event_type.to_owned().into());
     json.insert("sender".to_owned(), sender.to_string().into());

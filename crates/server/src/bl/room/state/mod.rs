@@ -244,12 +244,7 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     {
         return Ok(RoomVersionId::try_from(&*room_version)?);
     }
-    println!(
-        "GGGGGGGGGGGet room version 0  current server:{:?}   room_id: {room_id:?}",
-        crate::server_name()
-    );
     let create_event = get_state(room_id, &StateEventType::RoomCreate, "", None)?;
-    println!("GGGGGGGGGGGet room version create_event: {create_event:?}");
 
     let create_event_content: RoomCreateEventContent = create_event
         .as_ref()
@@ -261,7 +256,6 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         })
         .transpose()?
         .ok_or_else(|| MatrixError::invalid_param("No create event found"))?;
-    println!("GGGGGGGGGGGet0");
     Ok(create_event_content.room_version)
 }
 
@@ -576,14 +570,10 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
 pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<CompressedState>>) -> AppResult<DeltaInfo> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
-    println!("bbbbbbbbbbsave state  0");
     let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
 
-    println!("bbbbbbbbbbsave state  1?0");
     let new_frame_id = ensure_frame(room_id, hash_data)?;
-    println!("bbbbbbbbbbsave state  1?1");
 
-    println!("bbbbbbbbbbsave state  2");
     if Some(new_frame_id) == prev_frame_id {
         return Ok(DeltaInfo {
             frame_id: new_frame_id,
@@ -591,15 +581,12 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
             disposed: Arc::new(HashSet::new()),
         });
     }
-    println!("bbbbbbbbbbsave state  3");
     for new_compressed_event in new_compressed_events.iter() {
         update_point_frame_id(new_compressed_event.point_id(), new_frame_id)?;
     }
 
-    println!("bbbbbbbbbbsave state  4");
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
-    println!("bbbbbbbbbbsave state  5");
     let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
         let appended: HashSet<_> = new_compressed_events
             .difference(&parent_state_info.full_state)
@@ -698,7 +685,6 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         state_key: Some(target_user.into()),
         ..Default::default()
     };
-    println!("=====user_can_invite user_can_invite");
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 

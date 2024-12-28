@@ -242,10 +242,6 @@ pub fn sync_events(
                         .all(|encrypted| !encrypted);
                 // If the user doesn't share an encrypted room with the target anymore, we need
                 // to tell them.
-                println!(
-                    "dont_share_encrypted_room: {} sender_id:{sender_id:?} user_id:{user_id}",
-                    dont_share_encrypted_room
-                );
                 if dont_share_encrypted_room {
                     device_list_left.insert(user_id);
                 }
@@ -265,10 +261,6 @@ pub fn sync_events(
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need to tell
             // them
-            println!(
-                "dont_share_encrypted_room222: {} sender_id:{sender_id:?} user_id:{user_id}",
-                dont_share_encrypted_room
-            );
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }

@@ -267,7 +267,6 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
             return Ok(result);
         }
     }
-    println!("Failed to fetch signing-key from origin");
 
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
