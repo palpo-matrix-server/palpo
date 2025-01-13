@@ -18,7 +18,7 @@ pub fn router() -> Router {
                 .push(Router::with_path("claim").post(claim_keys))
                 .push(Router::with_path("query").post(query_keys)),
         )
-        .push(Router::with_path("devices/<user_id>").get(get_devices))
+        .push(Router::with_path("devices/{user_id}").get(get_devices))
 }
 
 /// #POST /_matrix/federation/v1/user/keys/claim

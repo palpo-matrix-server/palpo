@@ -18,7 +18,7 @@ pub fn router() -> Router {
             .push(
                 Router::with_path("query")
                     .post(query_keys)
-                    .push(Router::with_path("<server_name>").get(query_keys_from_server)),
+                    .push(Router::with_path("{server_name}").get(query_keys_from_server)),
             )
             .push(Router::with_path("server").get(server_signing_keys)),
     )

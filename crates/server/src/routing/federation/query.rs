@@ -16,7 +16,7 @@ pub fn router() -> Router {
     Router::with_path("query")
         .push(Router::with_path("profile").get(get_profile))
         .push(Router::with_path("directory").get(get_directory))
-        .push(Router::with_path("<query_type>").get(query_by_type))
+        .push(Router::with_path("{query_type}").get(query_by_type))
 }
 
 /// #GET /_matrix/federation/v1/query/profile

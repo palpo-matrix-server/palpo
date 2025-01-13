@@ -16,7 +16,7 @@ use crate::user::NewDbPresence;
 use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn authed_router() -> Router {
-    Router::with_path("presence/<user_id>/status")
+    Router::with_path("presence/{user_id}/status")
         .get(get_status)
         .push(Router::with_hoop(hoops::limit_rate).put(set_status))
 }

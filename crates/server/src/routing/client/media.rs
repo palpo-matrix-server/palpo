@@ -27,17 +27,17 @@ pub fn self_auth_router() -> Router {
     Router::with_path("media")
         .oapi_tag("client")
         .push(
-            Router::with_path("download/<server_name>/<media_id>")
+            Router::with_path("download/{server_name}/{media_id}")
                 .hoop(hoops::auth_by_access_token_or_signatures)
                 .get(get_content)
-                .push(Router::with_path("<filename>").get(get_content_with_filename)),
+                .push(Router::with_path("{filename}").get(get_content_with_filename)),
         )
         .push(
             Router::with_hoop(hoops::limit_rate)
                 .hoop(hoops::auth_by_access_token)
                 .push(Router::with_path("config").get(get_config))
                 .push(Router::with_path("preview_url").get(preview_url))
-                .push(Router::with_path("thumbnail/<server_name>/<media_id>").get(get_thumbnail)),
+                .push(Router::with_path("thumbnail/{server_name}/{media_id}").get(get_thumbnail)),
         )
 }
 
