@@ -44,13 +44,13 @@ use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult,
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")
-        .push(Router::with_path("<room_id>").push(Router::with_path("initialSync").get(initial_sync)))
+        .push(Router::with_path("{room_id}").push(Router::with_path("initialSync").get(initial_sync)))
 }
 pub fn authed_router() -> Router {
     Router::with_path("rooms")
         .push(
             Router::with_hoop(hoops::limit_rate).push(
-                Router::with_path("<room_id>")
+                Router::with_path("{room_id}")
                     .push(Router::with_path("forget").post(membership::forget_room))
                     .push(Router::with_path("leave").post(membership::leave_room))
                     .push(Router::with_path("join").post(membership::join_room_by_id))
@@ -59,9 +59,9 @@ pub fn authed_router() -> Router {
                     .push(Router::with_path("aliases").get(get_aliases))
                     .push(Router::with_path("hierarchy").get(hierarchy))
                     .push(Router::with_path("threads").get(thread::list_threads))
-                    .push(Router::with_path("typing/<user_id>").put(state::send_typing))
+                    .push(Router::with_path("typing/{user_id}").put(state::send_typing))
                     .push(
-                        Router::with_path("receipt/<receipt_type>/<event_id>")
+                        Router::with_path("receipt/{receipt_type}/{event_id}")
                             .post(state::send_receipt)
                             .put(state::send_receipt),
                     )
@@ -70,7 +70,7 @@ pub fn authed_router() -> Router {
         )
         .push(
             Router::with_hoop(hoops::limit_rate).push(
-                Router::with_path("<room_id>")
+                Router::with_path("{room_id}")
                     .push(Router::with_path("ban").post(membership::ban_user))
                     .push(Router::with_path("unban").post(membership::unban_user))
                     .push(Router::with_path("kick").post(membership::kick_user))
@@ -78,7 +78,7 @@ pub fn authed_router() -> Router {
                     .push(Router::with_path("joined_members").get(membership::joined_members))
                     .push(
                         Router::with_path("state").get(state::get_state).push(
-                            Router::with_path("<event_type>")
+                            Router::with_path("{event_type}")
                                 .put(state::send_state_for_empty_key)
                                 .get(state::state_for_empty_key)
                                 .push(
@@ -88,14 +88,14 @@ pub fn authed_router() -> Router {
                                 ),
                         ),
                     )
-                    .push(Router::with_path("context").push(Router::with_path("<event_id>").get(event::get_context)))
+                    .push(Router::with_path("context").push(Router::with_path("{event_id}").get(event::get_context)))
                     .push(
                         Router::with_path("relations").push(
-                            Router::with_path("<event_id>").get(relation::get_relation).push(
+                            Router::with_path("{event_id}").get(relation::get_relation).push(
                                 Router::with_path("<rel_type>")
                                     .get(relation::get_relation_by_rel_type)
                                     .push(
-                                        Router::with_path("<event_type>")
+                                        Router::with_path("{event_type}")
                                             .get(relation::get_relation_by_rel_type_and_event_type),
                                     ),
                             ),
@@ -103,9 +103,9 @@ pub fn authed_router() -> Router {
                     )
                     .push(Router::with_path("upgrade").post(upgrade))
                     .push(Router::with_path("messages").get(message::get_messages))
-                    .push(Router::with_path("send/<event_type>").post(message::post_message))
-                    .push(Router::with_path("send/<event_type>/<txn_id>").put(message::send_message))
-                    .push(Router::with_path("redact/<event_id>/<txn_id>").put(event::send_redact))
+                    .push(Router::with_path("send/{event_type}").post(message::post_message))
+                    .push(Router::with_path("send/{event_type}/{txn_id}").put(message::send_message))
+                    .push(Router::with_path("redact/{event_id}/{txn_id}").put(event::send_redact))
                     .push(
                         Router::with_path("tags")
                             .get(tag::list_tags)
@@ -113,7 +113,7 @@ pub fn authed_router() -> Router {
                     )
                     .push(
                         Router::with_path("event").push(
-                            Router::with_path("<event_id>")
+                            Router::with_path("{event_id}")
                                 .get(event::get_room_event)
                                 .post(event::report),
                         ),

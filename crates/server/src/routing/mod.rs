@@ -32,7 +32,7 @@ pub fn router() -> Router {
                 .push(Router::with_path("client").get(well_known_client))
                 .push(Router::with_path("server").get(well_known_server)),
         )
-        .push(Router::with_path("<*path>").get(StaticDir::new("./static")))
+        .push(Router::with_path("{*path}").get(StaticDir::new("./static")))
 }
 fn get_origin_host(req: &mut Request) -> Option<String> {
     let origin = req

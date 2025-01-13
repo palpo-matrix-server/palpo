@@ -13,8 +13,8 @@ pub fn router() -> Router {
     Router::with_path("app").oapi_tag("appservice").push(
         Router::with_path("v1")
             .push(Router::with_path("ping").post(ping))
-            .push(Router::with_path("rooms/<room_alias>").get(query_rooms))
-            .push(Router::with_path("users/<user_id>").get(query_users))
+            .push(Router::with_path("rooms/{room_alias}").get(query_rooms))
+            .push(Router::with_path("users/{user_id}").get(query_users))
             .push(third_party::router())
             .push(transaction::router()),
     )

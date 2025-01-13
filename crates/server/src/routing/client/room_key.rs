@@ -19,7 +19,7 @@ pub fn authed_router() -> Router {
                 .put(add_keys)
                 .delete(delete_keys)
                 .push(
-                    Router::with_path("<room_id>")
+                    Router::with_path("{room_id}")
                         .get(get_keys_for_room)
                         .put(add_keys_for_room)
                         .delete(delete_room_keys)

@@ -18,7 +18,7 @@ use crate::user::NewDbPresence;
 use crate::{json_ok, AppError, AppResult, AuthArgs, DepotExt, JsonResult, MatrixError};
 
 pub fn router() -> Router {
-    Router::with_path("send/<txn_id>").put(send_message)
+    Router::with_path("send/{txn_id}").put(send_message)
 }
 
 /// #PUT /_matrix/federation/v1/send/{txn_id}

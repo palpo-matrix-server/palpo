@@ -21,19 +21,19 @@ use crate::{
 
 pub fn router_v1() -> Router {
     Router::new()
-        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
-        .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave))
-        .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v1))
-        .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave))
+        .push(Router::with_path("make_join/{room_id}/{user_id}").get(make_join))
+        .push(Router::with_path("invite/{room_id}/{event_id}").put(invite_user))
+        .push(Router::with_path("make_leave/{room_id}/{user_id}").get(make_leave))
+        .push(Router::with_path("send_join/{room_id}/{event_id}").put(send_join_v1))
+        .push(Router::with_path("send_leave/{room_id}/{event_id}").put(send_leave))
 }
 pub fn router_v2() -> Router {
     Router::new()
-        .push(Router::with_path("make_join/<room_id>/<user_id>").get(make_join))
-        .push(Router::with_path("invite/<room_id>/<event_id>").put(invite_user))
-        .push(Router::with_path("make_leave/<room_id>/<user_id>").get(make_leave))
-        .push(Router::with_path("send_join/<room_id>/<event_id>").put(send_join_v2))
-        .push(Router::with_path("send_leave/<room_id>/<event_id>").put(send_leave))
+        .push(Router::with_path("make_join/{room_id}/{user_id}").get(make_join))
+        .push(Router::with_path("invite/{room_id}/{event_id}").put(invite_user))
+        .push(Router::with_path("make_leave/{room_id}/{user_id}").get(make_leave))
+        .push(Router::with_path("send_join/{room_id}/{event_id}").put(send_join_v2))
+        .push(Router::with_path("send_leave/{room_id}/{event_id}").put(send_leave))
 }
 
 /// #GET /_matrix/federation/v1/make_join/{room_id}/{user_id}

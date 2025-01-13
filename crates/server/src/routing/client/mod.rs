@@ -88,7 +88,7 @@ pub fn router() -> Router {
                     .push(push_rule::authed_router())
                     .push(presence::authed_router())
                     .push(Router::with_path("joined_rooms").get(room::membership::joined_rooms))
-                    .push(Router::with_path("join/<room_id_or_alias>").post(room::membership::join_room_by_id_or_alias))
+                    .push(Router::with_path("join/{room_id_or_alias}").post(room::membership::join_room_by_id_or_alias))
                     .push(Router::with_path("createRoom").post(room::create_room))
                     .push(Router::with_path("notifications").get(get_notifications))
                     .push(Router::with_path("sync").get(sync_events_v3).post(sync_events_v4))
@@ -97,7 +97,7 @@ pub fn router() -> Router {
                             .get(device::dehydrated)
                             .put(device::upsert_dehydrated)
                             .delete(device::delete_dehydrated)
-                            .push(Router::with_path("<device_id>/events").post(to_device::for_dehydrated)),
+                            .push(Router::with_path("{device_id}/events").post(to_device::for_dehydrated)),
                     ),
             )
             .push(
@@ -106,7 +106,7 @@ pub fn router() -> Router {
                     .hoop(hoops::auth_by_access_token)
                     .push(Router::with_path("search").post(search))
                     .push(Router::with_path("capabilities").get(get_capabilities))
-                    .push(Router::with_path("knock/<room_id_or_alias>").post(room::membership::knock_room)),
+                    .push(Router::with_path("knock/{room_id_or_alias}").post(room::membership::knock_room)),
             )
     }
     client.push(Router::with_path("versions").get(supported_versions))

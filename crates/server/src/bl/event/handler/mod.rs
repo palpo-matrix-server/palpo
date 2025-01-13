@@ -275,53 +275,54 @@ fn handle_outlier_pdu<'a>(
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("Auth check for {} based on auth events", incoming_pdu.event_id);
 
-        // Build map of auth events
-        let mut auth_events = HashMap::new();
-        for id in &incoming_pdu.auth_events {
-            let auth_event = match crate::room::timeline::get_pdu(id)? {
-                Some(e) => e,
-                None => {
-                    warn!("Could not find auth event {}", id);
-                    continue;
-                }
-            };
+        // // Build map of auth events
+        // let mut auth_events = HashMap::new();
+        // println!("MMMMMMMMMMMMMM=??==3");
+        // for id in &incoming_pdu.auth_events {
+        //     let auth_event = match crate::room::timeline::get_pdu(id)? {
+        //         Some(e) => e,
+        //         None => {
+        //             warn!("Could not find auth event {}", id);
+        //             continue;
+        //         }
+        //     };
 
-            check_room_id(room_id, &auth_event)?;
+        //     check_room_id(room_id, &auth_event)?;
 
-            match auth_events.entry((
-                auth_event.event_ty.to_string().into(),
-                auth_event.state_key.clone().expect("all auth events have state keys"),
-            )) {
-                hash_map::Entry::Vacant(v) => {
-                    v.insert(auth_event);
-                }
-                hash_map::Entry::Occupied(_) => {
-                    return Err(MatrixError::invalid_param(
-                        "Auth event's type and state_key combination exists multiple times.",
-                    )
-                    .into());
-                }
-            }
-        }
+        //     match auth_events.entry((
+        //         auth_event.event_ty.to_string().into(),
+        //         auth_event.state_key.clone().expect("all auth events have state keys"),
+        //     )) {
+        //         hash_map::Entry::Vacant(v) => {
+        //             v.insert(auth_event);
+        //         }
+        //         hash_map::Entry::Occupied(_) => {
+        //             return Err(MatrixError::invalid_param(
+        //                 "Auth event's type and state_key combination exists multiple times.",
+        //             )
+        //             .into());
+        //         }
+        //     }
+        // }
 
-        // The original create event must be in the auth events
-        if !matches!(
-            auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
-            Some(_) | None
-        ) {
-            return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
-        }
+        // // The original create event must be in the auth events
+        // if !matches!(
+        //     auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
+        //     Some(_) | None
+        // ) {
+        //     return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
+        // }
 
-        if !state::event_auth::auth_check(
-            &room_version,
-            &incoming_pdu,
-            None::<PduEvent>, // TODO: third party invite
-            |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
-        )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed outllier pdu"))?
-        {
-            return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
-        }
+        // if !state::event_auth::auth_check(
+        //     &room_version,
+        //     &incoming_pdu,
+        //     None::<PduEvent>, // TODO: third party invite
+        //     |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
+        // )
+        // .map_err(|_e| MatrixError::invalid_param("Auth check failed outllier pdu"))?
+        // {
+        //     return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
+        // }
 
         debug!("Validation successful.");
 

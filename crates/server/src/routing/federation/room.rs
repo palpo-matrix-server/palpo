@@ -10,15 +10,15 @@ use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, Matr
 
 pub fn router() -> Router {
     Router::new()
-        .push(Router::with_path("state/<room_id>").get(get_state))
+        .push(Router::with_path("state/{room_id}").get(get_state))
         .push(
             Router::with_path("publicRooms")
                 .get(get_public_rooms)
                 .post(get_filtered_public_rooms),
         )
-        .push(Router::with_path("send_knock/<room_id>/<event_id>").put(send_knock))
-        .push(Router::with_path("make_knock/<room_id>/<user_id>").put(make_knock))
-        .push(Router::with_path("state_ids/<room_id>").get(get_state_at_event))
+        .push(Router::with_path("send_knock/{room_id}/{event_id}").put(send_knock))
+        .push(Router::with_path("make_knock/{room_id}/{user_id}").put(make_knock))
+        .push(Router::with_path("state_ids/{room_id}").get(get_state_at_event))
 }
 
 /// #GET /_matrix/federation/v1/state/{room_id}

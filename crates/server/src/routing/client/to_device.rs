@@ -10,7 +10,7 @@ use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, Sen
 use crate::{empty_ok, AuthArgs, DepotExt, EmptyResult, MatrixError};
 
 pub fn authed_router() -> Router {
-    Router::with_path("sendToDevice/<event_type>/<txn_id>").put(send_to_device)
+    Router::with_path("sendToDevice/{event_type}/{txn_id}").put(send_to_device)
 }
 
 /// #PUT /_matrix/client/r0/sendToDevice/{event_type}/{txn_id}

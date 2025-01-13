@@ -24,13 +24,13 @@ pub fn authed_router() -> Router {
         .get(list_rules)
         .push(Router::with_path("global").get(global))
         .push(
-            Router::with_path("<scope>/<kind>/<rule_id>")
+            Router::with_path("{scope}/{kind}/{rule_id}")
                 .get(get_rule)
                 .delete(delete_rule)
                 .push(Router::with_path("actions").get(get_actions).put(set_actions))
                 .push(Router::with_path("enabled").get(get_enabled).put(set_enabled)),
         )
-        .push(Router::with_hoop(hoops::limit_rate).push(Router::with_path("<scope>/<kind>/<rule_id>").put(set_rule)))
+        .push(Router::with_hoop(hoops::limit_rate).push(Router::with_path("{scope}/{kind}/{rule_id}").put(set_rule)))
 }
 
 #[endpoint]
