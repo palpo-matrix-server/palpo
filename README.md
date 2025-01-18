@@ -1,14 +1,50 @@
 # Palpo: A Rust Matrix Server Implementation
 
-This is a matrix server project under development and is not yet available.
+Palpo is a cutting-edge chat server written in Rust and supporting Matrix protocol and PostgreSQL database, aiming to deliver high performance, scalability, and robust federation capabilities. With Palpo, we aspire to redefine decentralized communication—providing real-time messaging and collaboration at minimal operational cost. We welcome open-source contributors and all kinds of help!
 
-Some of the code comes from or references [ruma](https://github.com/ruma/ruma) and [conduit](https://gitlab.com/famedly/conduit).
+---
 
-Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the demo server url to test.
+## Project Highlights
 
-## TODO List
+- **High-Performance Rust Core**  
+  Based Salvo web server, Palpo leverages Rust’s safety and concurrency model, enabling a low-overhead server that is both fast and reliable.
 
-### Complement tests
+- **Open Ecosystem**  
+  Portions of our code reference or derive inspiration from the excellent work in [ruma](https://github.com/ruma/ruma) and [conduit](https://gitlab.com/famedly/conduit). By building atop established open-source projects, we aim for compatibility and rapid iteration.
+
+- **Federation & Standards**  
+  Palpo implements the Matrix protocol to ensure **full interoperability** with other Matrix homeservers, facilitating a **truly decentralized network** of real-time communication.
+
+- **Demo Server**  
+  - **URL**: [https://matrix.palpo.im](https://matrix.palpo.im)  
+  - To test quickly, open [Cinny](https://app.cinny.in/) and use `https://matrix.palpo.im` as your custom homeserver.
+
+---
+
+## Current progress
+All Complement test reslts: [__test_all.result.jsonl](tests/results/__test_all.result.jsonl)
+
+---
+
+## 2025 TODO List
+
+### Upcoming Features
+
+- [ ] **Search**: Implement robust, indexed search for room history
+- [ ] **Bug fixes**: Fill missing previous events  
+- [ ] **Protocol fallback**: Support older server versions where remote federations can’t upgrade  
+- [ ] **Sliding Sync**: Lightweight sync mechanism for better performance on mobile and web clients
+- [ ] **SSO Identity Providers**: Integrate single sign-on flows for enterprise deployments  
+- [ ] **Server Management**: Provide UI and CLI tools for config, monitoring, upgrades
+
+### Database Layer
+
+- [ ] **Multi-DB Support**: Add MySQL & SQLite integration  
+- [ ] **Caching**: Use Redis for faster data reads/writes  
+- [ ] **Main-Replica Setup**: Boost performance for high-traffic environments  
+- [ ] **Documentation & Website**: Enhance developer docs and build an informative project site
+
+### Major tests to be passed
 - [ ] Complement tests `TestDeviceListUpdates/*`.
 - [ ] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
 - [ ] Complement tests `TestDeviceListsUpdateOverFederation/*`.
@@ -17,19 +53,4 @@ Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the d
 - [ ] Complement tests `TestRoomState/*`.
 - [ ] Complement tests `TestToDeviceMessagesOverFederation/*`.
 - [ ] Other complement tests.
-
-### Features
-- [ ] Fix bug: fill missing previous events.
-- [ ] Search.
-- [ ] Fallback older versions when remote federation server does not support the target version protocol.
-- [ ] Sliding sync.
-- [ ] SSO Identity Providers.
-- [ ] Server managemen, UI and CLI.
-
-### Database
-- [ ] Support for Mysql, Sqlite.
-- [ ] Use redis as data cache to improve data access speed.
-- [ ] Support main-replica databases for performance.
-- [ ] Documentation and Website.
-
-All Complement test reslts: [__test_all.result.jsonl](tests/results/__test_all.result.jsonl)
+We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing. The following scenarios need attention:
