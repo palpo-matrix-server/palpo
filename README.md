@@ -54,4 +54,4 @@ All Complement test reslts: [__test_all.result.jsonl](tests/results/__test_all.r
 - [ ] Complement tests `TestToDeviceMessagesOverFederation/*`.
 - [ ] Other complement tests.
 
-We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing. The following scenarios need attention:
+We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing. 
