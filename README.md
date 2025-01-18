@@ -8,6 +8,8 @@ Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the d
 
 ## TODO List
 
+### Complement tests
+- [ ] Fill missing previous events.
 - [ ] Complement tests `TestDeviceListUpdates/*`.
 - [ ] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
 - [ ] Complement tests `TestDeviceListsUpdateOverFederation/*`.
@@ -15,10 +17,19 @@ Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the d
 - [ ] Complement tests `TestRoomMembers/*`.
 - [ ] Complement tests `TestRoomState/*`.
 - [ ] Complement tests `TestToDeviceMessagesOverFederation/*`.
-- [ ] Search
-- [ ] Fill missing previous events.
-- [ ] Use redis as data cache to improve data access speed. 
-- [ ] Support for Mysql, Sqlite.
+- [ ] Other complement tests.
+
+### Features
+- [ ] Search.
 - [ ] Fallback older versions when remote federation server does not support the target version protocol.
+- [ ] Sliding sync.
+- [ ] SSO Identity Providers.
+- [ ] Server managemen, UI and CLI.
+
+### Database
+- [ ] Support for Mysql, Sqlite.
+- [ ] Use redis as data cache to improve data access speed.
+- [ ] Support main-replica databases for performance.
+- [ ] Documentation and Website.
 
 All Complement test reslts: [__test_all.result.jsonl](tests/results/__test_all.result.jsonl)
