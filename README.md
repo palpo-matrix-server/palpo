@@ -9,7 +9,6 @@ Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the d
 ## TODO List
 
 ### Complement tests
-- [ ] Fill missing previous events.
 - [ ] Complement tests `TestDeviceListUpdates/*`.
 - [ ] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
 - [ ] Complement tests `TestDeviceListsUpdateOverFederation/*`.
@@ -20,6 +19,7 @@ Demo Server: https://matrix.palpo.im Go to https://app.cinny.in/ and input the d
 - [ ] Other complement tests.
 
 ### Features
+- [ ] Fix bug: fill missing previous events.
 - [ ] Search.
 - [ ] Fallback older versions when remote federation server does not support the target version protocol.
 - [ ] Sliding sync.
