@@ -1,8 +1,7 @@
-use std::collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::time::{Duration, Instant};
 
-use diesel::prelude::*;
 use tokio::sync::watch::Sender;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
@@ -18,10 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::schema::*;
 use crate::{AppError, AppResult};
-
-use super::room::receipt::read_receipts;
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(

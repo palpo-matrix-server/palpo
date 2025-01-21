@@ -279,12 +279,11 @@ pub fn federation_client() -> reqwest::Client {
             // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
             let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
 
-            let jwt_decoding_key = conf
-                .jwt_secret
-                .as_ref()
-                .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
+            // let jwt_decoding_key = conf
+            //     .jwt_secret
+            //     .as_ref()
+            //     .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
 
-            let name_override = Arc::clone(&tls_name_override);
             reqwest_client_builder(conf)
                 .expect("build reqwest client failed")
                 .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))

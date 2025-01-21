@@ -121,7 +121,8 @@ pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> App
                 .flat_map(|event| event.as_bytes())
                 .cloned()
                 .collect::<Vec<_>>(),
-        }).on_conflict_do_nothing()
+        })
+        .on_conflict_do_nothing()
         .execute(&mut db::connect()?)?;
     Ok(())
 }

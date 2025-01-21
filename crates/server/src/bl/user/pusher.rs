@@ -66,7 +66,6 @@ impl TryInto<Pusher> for DbPusher {
     fn try_into(self) -> AppResult<Pusher> {
         let Self {
             user_id,
-            access_token_id,
             profile_tag,
             kind,
             app_id,
@@ -75,11 +74,6 @@ impl TryInto<Pusher> for DbPusher {
             pushkey,
             lang,
             data,
-            enabled,
-            last_stream_ordering,
-            last_success,
-            failing_since,
-            created_at,
             ..
         } = self;
         Ok(Pusher {

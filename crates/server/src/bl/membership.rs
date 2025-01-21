@@ -1,6 +1,6 @@
-use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use diesel::prelude::*;
 use tokio::sync::RwLock;
@@ -17,7 +17,6 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
 };
-use crate::core::state::event_auth;
 use crate::core::{federation, OwnedServerName, ServerName, UnixMillis};
 use crate::event::{gen_event_id_canonical_json, NewDbEvent, PduBuilder, PduEvent};
 use crate::membership::federation::membership::{
@@ -25,9 +24,8 @@ use crate::membership::federation::membership::{
     SendJoinReqBodyV2, SendLeaveReqArgsV2,
 };
 use crate::membership::state::DeltaInfo;
-use crate::membership::state::FrameInfo;
 use crate::room::state::{self, CompressedState};
-use crate::{db, diesel_exists, exts::*, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
+use crate::{db, diesel_exists, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
 
 pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -75,15 +73,15 @@ pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
         }
     };
 
-    let origin: OwnedServerName = serde_json::from_value(
-        serde_json::to_value(
-            value
-                .get("origin")
-                .ok_or(MatrixError::invalid_param("Event needs an origin field."))?,
-        )
-        .expect("CanonicalJson is valid json value"),
-    )
-    .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
+    // let origin: OwnedServerName = serde_json::from_value(
+    //     serde_json::to_value(
+    //         value
+    //             .get("origin")
+    //             .ok_or(MatrixError::invalid_param("Event needs an origin field."))?,
+    //     )
+    //     .expect("CanonicalJson is valid json value"),
+    // )
+    // .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
     // let mutex = Arc::clone(
     //     crate::ROOMID_MUTEX_FEDERATION
@@ -420,7 +418,7 @@ pub async fn join_room(
     } else {
         info!("We can join locally");
         let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
-        let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
+        // let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
         let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
             .as_ref()
@@ -664,12 +662,12 @@ async fn validate_and_add_event_id(
     ))
     .expect("palpo's reference hash~es are valid event ids");
 
-    let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
-        Entry::Vacant(e) => {
-            e.insert((Instant::now(), 1));
-        }
-        Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
-    };
+    // let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
+    //     Entry::Vacant(e) => {
+    //         e.insert((Instant::now(), 1));
+    //     }
+    //     Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
+    // };
 
     if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&event_id) {
         // Exponential backoff
@@ -725,7 +723,6 @@ pub(crate) async fn invite_user(
     reason: Option<String>,
     is_direct: bool,
 ) -> AppResult<()> {
-    let conf = crate::config();
     if invitee_id.server_name() != crate::server_name() {
         let (pdu, pdu_json, invite_room_state) = {
             let content = to_raw_json_value(&RoomMemberEventContent {
@@ -875,7 +872,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .filter(room_users::user_id.eq(user_id)),
         )
         .execute(&mut *db::connect()?)?;
-    } else { 
+    } else {
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms

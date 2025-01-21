@@ -74,7 +74,7 @@ impl NewDbEvent {
         Ok(Self::from_json_value(id, serde_json::to_value(value)?)?)
     }
     pub fn from_json_value(id: &EventId, mut value: JsonValue) -> AppResult<Self> {
-        let mut obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
+        let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
         Ok(serde_json::from_value(value)?)
     }

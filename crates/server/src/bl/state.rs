@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::bl::outgoing_requests::state;
 use crate::core::RawJson;
 
 use crate::core::{

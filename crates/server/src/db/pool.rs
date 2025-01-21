@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::time::Duration;
 
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager, CustomizeConnection, State};
+use diesel::r2d2::{self, ConnectionManager, State};
 use thiserror::Error;
 
 use super::connection_url;

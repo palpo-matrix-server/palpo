@@ -43,13 +43,13 @@ async fn protocol_locations(_aa: AuthArgs) -> JsonResult<LocationsResBody> {
 }
 
 #[endpoint]
-async fn users(_aa: AuthArgs, req: &mut Request) -> JsonResult<UsersResBody> {
+async fn users(_aa: AuthArgs) -> JsonResult<UsersResBody> {
     // TODDO: LATER
     json_ok(UsersResBody::default())
 }
 
 #[endpoint]
-async fn protocol_users(_aa: AuthArgs, req: &mut Request) -> JsonResult<UsersResBody> {
+async fn protocol_users(_aa: AuthArgs) -> JsonResult<UsersResBody> {
     // TODDO: LATER
     json_ok(UsersResBody::default())
 }

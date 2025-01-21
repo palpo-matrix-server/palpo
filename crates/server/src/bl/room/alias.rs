@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::core::UnixMillis;
 use crate::room::StateEventType;
 use crate::user::DbUser;
-use crate::{db, diesel_exists, AppError, AppResult, MatrixError, PduBuilder};
+use crate::{db, AppError, AppResult, MatrixError, PduBuilder};
 use crate::{schema::*, GetUrlOrigin};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]

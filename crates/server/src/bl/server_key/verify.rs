@@ -1,26 +1,12 @@
-use std::borrow::Borrow;
-
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
-
-use futures_util::StreamExt;
 use serde_json::value::RawValue as RawJsonValue;
 
-use super::{extract_key, get_event_keys, PubKeyMap, PubKeys};
+use super::get_event_keys;
 use crate::core::canonical_json::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::core::identifiers::*;
-use crate::core::signatures::Verified;
-use crate::core::{
-    federation::discovery::{ServerSigningKeys, VerifyKey},
-    serde::RawJson,
-    signatures::{self, Ed25519KeyPair, PublicKeyMap, PublicKeySet},
-    OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
-};
+use crate::core::signatures::{self, Verified};
 use crate::event::gen_event_id_canonical_json;
 use crate::server_key::required_keys_exist;
-use crate::{
-    utils::{timepoint_from_now, IterStream},
-    AppError, AppResult, Server,
-};
+use crate::{AppError, AppResult};
 
 pub async fn validate_and_add_event_id(
     pdu: &RawJsonValue,

@@ -42,7 +42,6 @@ use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::UserId;
-use crate::user::NewDbPresence;
 use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
@@ -305,7 +304,6 @@ async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 async fn sync_events_v3(
     _aa: AuthArgs,
     args: SyncEventsReqArgsV3,
-    req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBodyV3> {
     let authed = depot.authed_info()?.clone();

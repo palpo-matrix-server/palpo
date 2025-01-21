@@ -4,7 +4,6 @@ use std::net::Ipv4Addr;
 
 use diesel::expression::AsExpression;
 use palpo_macros::IdZst;
-use url::Url;
 
 /// A Matrix-spec compliant [server name].
 ///

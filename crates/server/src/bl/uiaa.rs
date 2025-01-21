@@ -111,7 +111,7 @@ pub fn try_auth(
 
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
-            if (user_id != &auth_user_id) {
+            if user_id != &auth_user_id {
                 return Err(MatrixError::forbidden("User ID does not match.").into());
             }
 

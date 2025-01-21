@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::{room::member::RoomMemberEventContent, AnyStrippedStateEvent, StateEventType};
 use crate::identifiers::*;
-use crate::sending::{SendError, SendRequest, SendResult};
+use crate::sending::{SendRequest, SendResult};
 use crate::{serde::RawJson, RawJsonValue, UnixMillis};
 
 pub fn invite_user_request_v2(

@@ -28,7 +28,6 @@ pub mod utils;
 
 pub mod error;
 pub use crate::core::error::MatrixError;
-use crate::core::ServerName;
 pub use error::AppError;
 pub use palpo_core as core;
 #[macro_use]
@@ -38,15 +37,9 @@ mod macros;
 pub(crate) use serde_json::Value as JsonValue;
 
 use std::env;
-use std::sync::Arc;
 use std::time::Duration;
 
-use diesel::r2d2;
 use dotenvy::dotenv;
-use figment::{
-    providers::{Env, Format, Toml},
-    Figment,
-};
 use salvo::cors::{self, AllowHeaders, Cors};
 use salvo::http::Method;
 use salvo::logging::Logger;
@@ -55,12 +48,10 @@ pub use diesel::result::Error as DieselError;
 use salvo::catcher::Catcher;
 use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::prelude::*;
-use scheduled_thread_pool::ScheduledThreadPool;
 use tracing_futures::Instrument;
 use tracing_subscriber::fmt::format::FmtSpan;
 
 use crate::config::ServerConfig;
-use crate::db::{ConnectionConfig, DieselPool};
 
 pub type AppResult<T> = Result<T, crate::AppError>;
 pub type JsonResult<T> = Result<Json<T>, crate::AppError>;
@@ -100,39 +91,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .init();
     }
 
-    let raw_config = Figment::new()
-        .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
-        .merge(Env::prefixed("PALPO_").global());
-
-    let conf = match raw_config.extract::<ServerConfig>() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("It looks like your config is invalid. The following error occurred: {e}");
-            std::process::exit(1);
-        }
-    };
-    let thread_pool = Arc::new(ScheduledThreadPool::new(conf.db.helper_threads));
-
-    let db_primary = {
-        let db_connection_config = ConnectionConfig {
-            statement_timeout: conf.db.statement_timeout,
-        };
-
-        let db_config = r2d2::Pool::builder()
-            .max_size(conf.db.pool_size)
-            .min_idle(conf.db.min_idle)
-            .connection_timeout(Duration::from_millis(conf.db.connection_timeout))
-            .connection_customizer(Box::new(db_connection_config))
-            .thread_pool(thread_pool.clone());
-
-        DieselPool::new(&conf.db.url, &conf.db, db_config).unwrap()
-    };
-    crate::db::DIESEL_POOL
-        .set(db_primary)
-        .expect("diesel pool should be set");
-    let enable_tls = conf.enable_tls;
-    crate::config::CONFIG.set(conf).expect("config should be set");
-    crate::db::migrate();
+    crate::config::init();
+    let config = crate::config::get();
+    crate::db::init(&config.db);
 
     crate::sending::start_handler();
 
@@ -168,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::admin::supervise();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
-    if enable_tls {
+    if config.enable_tls {
         let config = RustlsConfig::new(
             Keycert::new()
                 .cert_from_path("./certs/cert.pem")?

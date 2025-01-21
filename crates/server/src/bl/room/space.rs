@@ -4,8 +4,7 @@ use crate::{room::state::DbRoomStateField, GetUrlOrigin};
 use lru_cache::LruCache;
 use tracing::{debug, error, warn};
 
-use crate::core::client::space::HierarchyResBody;
-use crate::core::client::space::{HierarchyReqArgs, SpaceHierarchyRoomsChunk};
+use crate::core::client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk};
 use crate::core::events::room::{
     avatar::RoomAvatarEventContent,
     canonical_alias::RoomCanonicalAliasEventContent,

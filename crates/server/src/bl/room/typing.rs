@@ -7,7 +7,7 @@ use crate::core::events::typing::TypingEventContent;
 use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
-use crate::{AppError, AppResult};
+use crate::{ AppResult};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
     LazyLock::new(Default::default); // u64 is unix timestamp of timeout
@@ -26,12 +26,12 @@ pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> App
     let event_sn = crate::next_sn()?;
     LAST_TYPING_UPDATE.write().await.insert(room_id.to_owned(), event_sn);
 
-    let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(room_id, None)? {
-        s
-    } else {
-        error!("Room {} has no state", room_id);
-        return Err(AppError::public("Room has no state"));
-    };
+    // let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(room_id, None)? {
+    //     s
+    // } else {
+    //     error!("Room {} has no state", room_id);
+    //     return Err(AppError::public("Room has no state"));
+    // };
     // // Save the state after this sync so we can send the correct state diff next sync
     // let point_id = crate::room::state::ensure_point(&room_id, &OwnedEventId::from_str(&Ulid::new().to_string())?, event_sn as i64)?;
     // crate::room::state::update_point_frame_id(point_id, current_frame_id)?;

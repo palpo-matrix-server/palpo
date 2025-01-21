@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::core::client::filter::UrlFilter;
@@ -16,9 +16,9 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::state::Event;
 use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
-use crate::event::{DbEvent, DbEventData, NewDbEvent};
+use crate::event::{DbEventData, NewDbEvent};
 use crate::room::state::CompressedState;
-use crate::{db, utils, AppError, AppResult, MatrixError, SigningKeys};
+use crate::{db, utils, AppError, AppResult, MatrixError};
 use crate::{
     diesel_exists,
     event::{EventHash, PduBuilder, PduEvent},
@@ -26,13 +26,10 @@ use crate::{
 };
 use crate::{schema::*, GetUrlOrigin};
 use diesel::prelude::*;
-use diesel::sql_types::Json;
-use outgoing_requests::data;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use ulid::Ulid;
 

@@ -3,9 +3,7 @@ use std::time::Instant;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use tokio::sync::RwLock;
 
-use crate::core::canonical_json::CanonicalJsonObject;
 use crate::core::device::{DeviceListUpdateContent, DirectDeviceContent};
 use crate::core::events::receipt::{ReceiptContent, ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::events::typing::TypingContent;
@@ -13,9 +11,9 @@ use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageR
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
 use crate::core::to_device::DeviceIdOrAllDevices;
-use crate::core::{RawJson, RawJsonValue, UnixMillis};
+use crate::core::{ RawJsonValue, UnixMillis};
 use crate::user::NewDbPresence;
-use crate::{json_ok, AppError, AppResult, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AppError, AppResult, AuthArgs, JsonResult, };
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -26,12 +24,10 @@ pub fn router() -> Router {
 #[endpoint]
 async fn send_message(
     _aa: AuthArgs,
-    txn_id: PathParam<OwnedTransactionId>,
+    _txn_id: PathParam<OwnedTransactionId>,
     body: JsonBody<SendMessageReqBody>,
-    depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
     let body = body.into_inner();
-    let server_name = &crate::config().server_name;
 
     let txn_start_time = Instant::now();
     let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
@@ -241,7 +237,7 @@ async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListU
         return;
     }
 
-    crate::user::mark_device_key_update(&user_id);
+    let _ = crate::user::mark_device_key_update(&user_id);
 }
 
 async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceContent) {

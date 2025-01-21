@@ -1,19 +1,12 @@
-use std::{collections::BTreeMap, iter::FromIterator, str};
+use std::{collections::BTreeMap, iter::FromIterator};
 
 use diesel::prelude::*;
-use palpo_core::UnixMillis;
-use salvo::http::{
-    headers::{
-        authorization::{Authorization, Credentials},
-        HeaderMapExt,
-    },
-    HeaderValue,
-};
+use salvo::http::headers::{authorization::Authorization, HeaderMapExt};
 use salvo::prelude::*;
 
 use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
-use crate::core::{signatures, OwnedServerName};
+use crate::core::{signatures, };
 use crate::schema::*;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
@@ -71,7 +64,7 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
     }
 }
 
-async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+async fn auth_by_signatures_inner(req: &mut Request, _depot: &mut Depot) -> AppResult<()> {
     let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
         warn!("Missing or invalid Authorization header");
         return Err(MatrixError::forbidden("Missing or invalid authorization header").into());

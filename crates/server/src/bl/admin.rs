@@ -8,11 +8,9 @@ use std::{
 
 use clap::Parser;
 use diesel::prelude::*;
-use palpo_core::UnixMillis;
 use regex::Regex;
 use serde_json::value::to_raw_value;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use tokio::sync::RwLock;
 
 use super::event::PduBuilder;
 use crate::core::appservice::Registration;

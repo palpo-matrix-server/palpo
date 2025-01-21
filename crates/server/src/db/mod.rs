@@ -1,8 +1,10 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, CustomizeConnection, State};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use scheduled_thread_pool::ScheduledThreadPool;
 use url::Url;
 
 use crate::config::DbConfig;
@@ -16,7 +18,22 @@ pub static DIESEL_POOL: OnceLock<DieselPool> = OnceLock::new();
 pub static REPLICA_POOL: OnceLock<Option<DieselPool>> = OnceLock::new();
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-pub fn migrate() {
+
+pub fn init(config: &DbConfig) {
+    let builder = r2d2::Pool::builder()
+        .max_size(config.pool_size)
+        .min_idle(config.min_idle)
+        .connection_timeout(Duration::from_millis(config.connection_timeout))
+        .connection_customizer(Box::new(ConnectionConfig {
+            statement_timeout: config.statement_timeout,
+        }))
+        .thread_pool(Arc::new(ScheduledThreadPool::new(config.helper_threads)));
+
+    let pool = DieselPool::new(&config.url, &config, builder).expect("diesel pool should be created");
+    crate::db::DIESEL_POOL.set(pool).expect("diesel pool should be set");
+    migrate();
+}
+fn migrate() {
     let conn = &mut db::connect().expect("db connect should worked");
     println!(
         "Has pending migration: {}",

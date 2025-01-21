@@ -6,7 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -24,7 +24,7 @@ pub fn router() -> Router {
 /// #GET /_matrix/federation/v1/state/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
-async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
+async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs) -> JsonResult<RoomStateResBody> {
     let server_name = &crate::config().server_name;
 
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {
@@ -106,11 +106,7 @@ async fn make_knock(_aa: AuthArgs) -> EmptyResult {
 /// #GET /_matrix/federation/v1/state_ids/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
-fn get_state_at_event(
-    _aa: AuthArgs,
-    args: RoomStateAtEventReqArgs,
-    depot: &mut Depot,
-) -> JsonResult<RoomStateIdsResBody> {
+fn get_state_at_event(_aa: AuthArgs, args: RoomStateAtEventReqArgs) -> JsonResult<RoomStateIdsResBody> {
     let server_name = &crate::config().server_name;
 
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {

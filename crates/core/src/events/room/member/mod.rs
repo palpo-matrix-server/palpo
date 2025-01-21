@@ -263,7 +263,7 @@ impl RedactedStateEventContent for RedactedRoomMemberEventContent {
 }
 
 impl EventContentFromType for RedactedRoomMemberEventContent {
-    fn from_parts(ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
+    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
         serde_json::from_str(content.get())
     }
 }

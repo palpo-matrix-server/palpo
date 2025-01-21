@@ -1,35 +1,10 @@
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
-use std::future::Future;
-use std::pin::Pin;
+use std::collections::{hash_map, HashMap};
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime};
 
-use diesel::prelude::*;
-use futures_util::{stream::FuturesUnordered, StreamExt};
-use palpo_core::federation::event::EventResBody;
-use tokio::sync::{RwLock, RwLockWriteGuard, Semaphore};
-
-use crate::core::directory::QueryCriteria;
-use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::server_acl::RoomServerAclEventContent;
-use crate::core::events::StateEventType;
-use crate::core::federation::directory::{
-    remote_server_keys_batch_request, remote_server_keys_request, RemoteServerKeysBatchReqBody,
-    RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs, ServerKeysResBody,
-};
-use crate::core::federation::event::{
-    get_events_request, room_state_ids_request, RoomStateAtEventReqArgs, RoomStateIdsResBody,
-};
-use crate::core::federation::key::get_server_key_request;
-use crate::core::federation::membership::{SendJoinResBodyV1, SendJoinResBodyV2};
+use crate::core::federation::event::{room_state_ids_request, RoomStateAtEventReqArgs, RoomStateIdsResBody};
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
-use crate::core::state::{self, RoomVersion, StateMap};
-use crate::core::{OwnedServerName, ServerName, UnixMillis};
-use crate::event::{NewDbEvent, PduEvent};
-use crate::room::state::DeltaInfo;
-use crate::room::state::{CompressedState, DbRoomStateField, FrameInfo};
-use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError, SigningKeys};
+use crate::core::{ ServerName,};
+use crate::{ exts::*,  AppError, AppResult};
 
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks

@@ -1,7 +1,5 @@
 use palpo_macros::IdZst;
 
-use super::{IdParseError, KeyName};
-
 /// The version of a [homeserver signing key].
 ///
 /// This is an opaque character sequences of `[a-zA-Z0-9_]`. This type is provided simply for its

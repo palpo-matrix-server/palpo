@@ -1,22 +1,14 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashMap;
 use std::future::Future;
 use std::net::IpAddr;
 use std::net::SocketAddr;
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
-use base64::{engine::general_purpose, Engine as _};
-use diesel::prelude::*;
-use futures_util::stream::{FuturesUnordered, StreamExt};
-use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::{CacheControl, Header};
-use salvo::prelude::*;
-use tokio::sync::{mpsc, Mutex, Semaphore};
 
-use crate::core::authorization::XMatrix;
 use crate::core::identifiers::*;
-use crate::core::signatures;
-use crate::{AppError, AppResult, AuthedInfo, LazyRwLock, MatrixError};
+use crate::LazyRwLock;
 
 type WellKnownMap = HashMap<OwnedServerName, DestinationResponse>;
 pub static ACTUAL_DESTINATION_CACHE: LazyRwLock<WellKnownMap> = LazyLock::new(Default::default); // actual_destination, host

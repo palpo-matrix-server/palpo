@@ -1,10 +1,5 @@
-use std::fmt::Debug;
-use std::net::{IpAddr, SocketAddr};
-use std::time::{Duration, Instant};
-
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
-use salvo::http::headers::{CacheControl, Header};
 
 use crate::core::authorization::XMatrix;
 use crate::core::{signatures, MatrixError, ServerName};

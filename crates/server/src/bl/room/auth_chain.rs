@@ -58,7 +58,7 @@ pub fn cache_auth_chain(event_id: &EventId, auth_chain: Arc<HashSet<i64>>) -> Ap
         };
         diesel::insert_into(event_auth_chains::table)
             .values(&chain)
-            .on_conflict((event_auth_chains::event_id))
+            .on_conflict(event_auth_chains::event_id)
             .do_update()
             .set(&chain)
             .execute(&mut db::connect()?)

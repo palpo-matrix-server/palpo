@@ -1,7 +1,7 @@
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::events::{GlobalAccountDataEventType, StateEventType};
+use crate::events::GlobalAccountDataEventType;
 use crate::serde::StringEnum;
 use crate::{OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr};
 

@@ -8,7 +8,7 @@ use crate::core::client::backup::*;
 use crate::core::serde::RawJson;
 use crate::schema::*;
 use crate::user::key_backup::{self, DbRoomKey, DbRoomKeysVersion};
-use crate::{db, empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, JsonValue, MatrixError};
+use crate::{db, empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult,  MatrixError};
 
 pub fn authed_router() -> Router {
     Router::with_path("room_keys")
@@ -272,16 +272,9 @@ fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody
     let authed = depot.authed_info()?;
 
     let conn = &mut db::connect()?;
-    let DbRoomKeysVersion {
-        user_id,
-        version,
-        algorithm,
-        auth_data,
-        is_trashed,
-        etag,
-        ..
-    } = key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
-        .ok_or(MatrixError::not_found("Key backup does not exist."))?;
+    let DbRoomKeysVersion { version, algorithm, .. } =
+        key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
+            .ok_or(MatrixError::not_found("Key backup does not exist."))?;
 
     json_ok(VersionResBody {
         algorithm: RawJson::from_value(&algorithm)?,

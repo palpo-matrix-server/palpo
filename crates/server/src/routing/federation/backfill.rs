@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{user_id, UnixMillis};
 use crate::PduEvent;
-use crate::{json_ok, AuthArgs, DepotExt, JsonResult, MatrixError};
+use crate::{json_ok, AuthArgs, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("backfill/{room_id}").get(history)
@@ -13,7 +13,7 @@ pub fn router() -> Router {
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]
-async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> JsonResult<BackfillResBody> {
+async fn history(_aa: AuthArgs, args: BackfillReqArgs) -> JsonResult<BackfillResBody> {
     let server_name = &crate::config().server_name;
     debug!("Got backfill request from: {}", server_name);
 

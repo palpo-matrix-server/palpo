@@ -2,7 +2,7 @@
 use salvo::oapi::ToSchema;
 
 use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedServerName, PrivOwnedStr, ServerName, UnixMillis};
+use crate::PrivOwnedStr;
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

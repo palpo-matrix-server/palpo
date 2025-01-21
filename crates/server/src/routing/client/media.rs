@@ -5,10 +5,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use diesel::prelude::*;
-use hickory_resolver::proto::op::Header;
 use image::imageops::FilterType;
 use mime::Mime;
-use room_tags::content;
 use salvo::fs::NamedFile;
 use salvo::http::header::CONTENT_TYPE;
 use salvo::http::{HeaderValue, ResBody};
@@ -112,7 +110,7 @@ pub async fn get_content_with_filename(
 
     let path = crate::media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
-        let mut file = NamedFile::builder(path)
+        let file = NamedFile::builder(path)
             .content_type(
                 metadata
                     .content_type
@@ -247,7 +245,7 @@ pub async fn upload_content(
         .await
         .unwrap();
 
-    let mxc = format!("mxc://{}/{}", crate::config().server_name, args.media_id);
+    // let mxc = format!("mxc://{}/{}", crate::config().server_name, args.media_id);
 
     let conf = crate::config();
 
@@ -332,7 +330,6 @@ pub async fn get_thumbnail(
     _aa: AuthArgs,
     args: ThumbnailReqArgs,
     req: &mut Request,
-    depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
     if &*args.server_name != &crate::config().server_name && args.allow_remote {
@@ -348,7 +345,7 @@ pub async fn get_thumbnail(
             },
         )?
         .into_inner();
-        let mut response = crate::sending::send_federation_request(&args.server_name, request).await?;
+        let response = crate::sending::send_federation_request(&args.server_name, request).await?;
         *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
@@ -401,9 +398,6 @@ pub async fn get_thumbnail(
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail {
-        media_id,
-        width,
-        height,
         content_disposition,
         content_type,
         ..
@@ -427,7 +421,6 @@ pub async fn get_thumbnail(
     } else if let Ok(Some(DbMetadata {
         content_disposition,
         content_type,
-        media_id,
         ..
     })) = crate::media::get_metadata(&args.server_name, &args.media_id)
     {

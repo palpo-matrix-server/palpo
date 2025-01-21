@@ -1,13 +1,12 @@
 use diesel::prelude::*;
-use salvo::oapi::{extract::*, server};
+use salvo::oapi::{extract::*, };
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
-use stats_room_currents::state_events;
 use ulid::Ulid;
 
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType,AnyStrippedStateEvent, TimelineEventType};
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
@@ -15,7 +14,7 @@ use crate::core::{EventId, OwnedUserId, RoomVersionId, UnixMillis};
 use crate::room::NewDbRoom;
 use crate::schema::*;
 use crate::{
-    db, empty_ok, exts::*, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
+    db, empty_ok, json_ok, utils, AppError, EmptyResult, JsonResult, MatrixError,
     PduBuilder, PduEvent,
 };
 
@@ -39,7 +38,7 @@ pub fn router_v2() -> Router {
 /// #GET /_matrix/federation/v1/make_join/{room_id}/{user_id}
 /// Creates a join template.
 #[endpoint]
-async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot, res: &mut Response) -> JsonResult<MakeJoinResBody> {
+async fn make_join(args: MakeJoinReqArgs) -> JsonResult<MakeJoinResBody> {
     if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -177,7 +176,7 @@ async fn invite_user(
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
-      crate::room::update_membership(
+        crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
             &args.room_id,
@@ -254,11 +253,7 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
 /// #PUT /_matrix/federation/v2/send_join/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]
-async fn send_join_v2(
-    args: RoomEventReqArgs,
-    body: JsonBody<SendJoinReqBodyV2>,
-    depot: &mut Depot,
-) -> JsonResult<SendJoinResBodyV2> {
+async fn send_join_v2(args: RoomEventReqArgs, body: JsonBody<SendJoinReqBodyV2>) -> JsonResult<SendJoinResBodyV2> {
     let server_name = args.room_id.server_name().map_err(AppError::public)?;
     crate::event::handler::acl_check(&server_name, &args.room_id)?;
 

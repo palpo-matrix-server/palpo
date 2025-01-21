@@ -8,7 +8,7 @@ use crate::core::federation::directory::{
 };
 use crate::core::federation::discovery::ServerSigningKeys;
 use crate::core::{MatrixError, OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId};
-use crate::{AppError, AppResult};
+use crate::AppResult;
 
 type Batch = BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>>;
 

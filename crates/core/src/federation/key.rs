@@ -17,7 +17,7 @@ use crate::encryption::OneTimeKey;
 use crate::encryption::{CrossSigningKey, DeviceKeys};
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::Base64;
-use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, ServerName};
+use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId};
 
 pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/key/v2/server"))?;

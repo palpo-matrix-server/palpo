@@ -9,7 +9,7 @@ use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBo
 use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::AuthArgs;
-use crate::{cjson_ok, db, json_ok, AppError, CjsonResult, DepotExt, JsonResult};
+use crate::{cjson_ok, db, json_ok, AppError, CjsonResult,  JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("user")
@@ -34,7 +34,7 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonRes
 /// #POST /_matrix/federation/v1/user/keys/query
 /// Gets devices and identity keys for the given users.
 #[endpoint]
-async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
+async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>) -> CjsonResult<KeysResBody> {
     let server_name = &crate::config().server_name;
     let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == server_name).await?;
 
@@ -48,7 +48,7 @@ async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depo
 /// #GET /_matrix/federation/v1/user/devices/{user_id}
 /// Gets information on all devices of the user.
 #[endpoint]
-fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<DevicesResBody> {
+fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DevicesResBody> {
     let server_name = &crate::config().server_name;
     let user_id = user_id.into_inner();
     let stream_id = device_streams::table

@@ -11,7 +11,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::events::AnyStrippedStateEvent;
-use crate::sending::{SendError, SendRequest, SendResult};
+use crate::sending::{SendRequest, SendResult};
 use crate::serde::{RawJson, RawJsonValue};
 use crate::OwnedRoomId;
 use crate::{OwnedUserId, RoomVersionId};

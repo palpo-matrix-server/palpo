@@ -5,7 +5,6 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
 use crate::core::client::profile::*;
-use crate::core::events::presence::PresenceEventContent;
 use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{profile_request, ProfileReqArgs};

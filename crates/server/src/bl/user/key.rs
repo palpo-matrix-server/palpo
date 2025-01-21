@@ -8,13 +8,12 @@ use serde_json::json;
 
 use crate::core::client::key::ClaimKeysResBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
 use crate::core::{client, federation};
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
 use crate::schema::*;
 use crate::user::clean_signatures;
-use crate::{db, diesel_exists, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
+use crate::{db, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
@@ -244,7 +243,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
                         .send::<federation::key::KeysResBody>(),
                 )
                 .await
-                .map_err(|e| AppError::public("Query took too long")),
+                .map_err(|_e| AppError::public("Query took too long")),
             )
         })
         .collect();
@@ -476,7 +475,7 @@ pub fn add_device_keys(user_id: &OwnedUserId, device_id: &OwnedDeviceId, device_
     };
     diesel::insert_into(e2e_device_keys::table)
         .values(&new_device_key)
-        .on_conflict(((e2e_device_keys::user_id, e2e_device_keys::device_id)))
+        .on_conflict((e2e_device_keys::user_id, e2e_device_keys::device_id))
         .do_update()
         .set(&new_device_key)
         .execute(&mut db::connect()?)?;
@@ -525,9 +524,9 @@ pub fn add_cross_signing_keys(
     if let Some(user_signing_key) = user_signing_key {
         let mut user_signing_key_ids = user_signing_key.keys.values();
 
-        let user_signing_key_id = user_signing_key_ids
-            .next()
-            .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
+        // let user_signing_key_id = user_signing_key_ids
+        //     .next()
+        //     .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
 
         if user_signing_key_ids.next().is_some() {
             return Err(MatrixError::invalid_param("User signing key contained more than one key.").into());

@@ -27,10 +27,10 @@ pub fn authed_router() -> Router {
 /// - Only works if you share a room with the user
 #[endpoint]
 fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<PresenceResBody> {
-    let authed = depot.authed_info()?;
+    // let authed = depot.authed_info()?;
     let user_id = user_id.into_inner();
 
-    let mut presence = crate::user::get_last_presence(&user_id)?;
+    let presence = crate::user::get_last_presence(&user_id)?;
     // for room_id in crate::room::user::get_shared_rooms(vec![authed.user.id.clone(), user_id.clone()])? {
     //     if let Some(last_presence) = crate::user::get_last_presence_in_room(&user_id, &room_id)? {
     //         presence = Some(last_presence);

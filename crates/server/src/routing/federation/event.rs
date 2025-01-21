@@ -6,7 +6,7 @@ use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingE
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::UnixMillis;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent};
 
 pub fn router() -> Router {
     Router::new()
@@ -22,7 +22,7 @@ pub fn router() -> Router {
 ///
 /// - Only works if a user of this server is currently invited or joined the room
 #[endpoint]
-fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot) -> JsonResult<EventResBody> {
+fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>) -> JsonResult<EventResBody> {
     let server_name = &crate::config().server_name;
 
     let event = crate::room::timeline::get_pdu_json(&event_id)?.ok_or_else(|| {
@@ -58,7 +58,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 ///
 /// - This does not include the event itself
 #[endpoint]
-fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<EventAuthorizationResBody> {
+fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthorizationResBody> {
     let server_name = &crate::config().server_name;
 
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {
@@ -104,7 +104,6 @@ fn missing_events(
     _aa: AuthArgs,
     room_id: PathParam<OwnedRoomId>,
     body: JsonBody<MissingEventReqBody>,
-    depot: &mut Depot,
 ) -> JsonResult<MissingEventResBody> {
     let server_name = &crate::config().server_name;
     let room_id = room_id.into_inner();

@@ -2,30 +2,23 @@ mod acquire;
 mod request;
 mod verify;
 pub use acquire::*;
-use palpo_core::serde::test::serde_json_eq;
 pub use request::*;
 pub use verify::*;
 
 use std::borrow::Borrow;
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, time::Duration};
 
 use diesel::prelude::*;
-use futures_util::StreamExt;
 use serde_json::value::RawValue as RawJsonValue;
 
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJson};
 use crate::core::{
     federation::discovery::{ServerSigningKeys, VerifyKey},
-    signatures::{self, Ed25519KeyPair, PublicKeyMap, PublicKeySet},
+    signatures::{self, PublicKeyMap, PublicKeySet},
     JsonValue, OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
 };
 use crate::schema::*;
-use crate::{
-    db,
-    exts::*,
-    utils::{timepoint_from_now, IterStream},
-    AppError, AppResult, DbServerSigningKeys, Server,
-};
+use crate::{db, exts::*, utils::timepoint_from_now, AppError, AppResult, DbServerSigningKeys};
 
 pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
 pub type PubKeyMap = PublicKeyMap;

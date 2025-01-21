@@ -253,7 +253,7 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
 
     let doc_header = format!("Owned variant of {id}");
     let (impl_generics, ty_generics, _where_clause) = input.generics.split_for_impl();
-    let generic_params = &input.generics.params;
+    let _generic_params = &input.generics.params;
 
     let id_ty = quote! { #id #ty_generics };
     let owned_ty = quote! { #owned #ty_generics };

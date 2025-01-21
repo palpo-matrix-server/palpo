@@ -4,9 +4,8 @@ use diesel::prelude::*;
 use palpo_core::JsonValue;
 
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
-use crate::core::events::{AnySyncEphemeralRoomEvent, SyncEphemeralRoomEvent};
+use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
 use crate::core::UnixMillis;
 use crate::schema::*;
 use crate::{db, AppResult};
@@ -82,9 +81,9 @@ pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeral
             json_data,
             ..
         } = receipt;
-        let mut event_map = event_content.entry(event_id).or_default();
+        let event_map = event_content.entry(event_id).or_default();
         let receipt_type = ReceiptType::from(ty);
-        let mut type_map = event_map.entry(receipt_type).or_default();
+        let type_map = event_map.entry(receipt_type).or_default();
         type_map.insert(user_id, serde_json::from_value(json_data).unwrap_or_default());
     }
 

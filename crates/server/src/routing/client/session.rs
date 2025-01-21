@@ -80,7 +80,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             let Some(user) = crate::user::get_user(&user_id)? else {
                 return Err(MatrixError::forbidden("User not found.").into());
             };
-            if let Err(e) = crate::user::vertify_password(&user, &password) {
+            if let Err(_e) = crate::user::vertify_password(&user, &password) {
                 res.status_code(StatusCode::FORBIDDEN); //for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
                 return Err(MatrixError::forbidden("Wrong username or password.").into());
             }

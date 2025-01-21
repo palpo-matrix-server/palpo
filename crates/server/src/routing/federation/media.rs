@@ -1,4 +1,4 @@
-use std::fs;
+
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
@@ -7,13 +7,13 @@ use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
 use salvo::fs::NamedFile;
-use salvo::http::{HeaderValue, ResBody};
+use salvo::http::{HeaderValue, };
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::core::federation::media::*;
-use crate::core::{OwnedMxcUri, UnixMillis};
+use crate::core::{ UnixMillis};
 use crate::media::*;
 use crate::schema::*;
 use crate::{db, hoops, AppResult, AuthArgs, MatrixError};
@@ -67,11 +67,10 @@ pub async fn get_thumbnail(
     _aa: AuthArgs,
     args: ThumbnailReqArgs,
     req: &mut Request,
-    depot: &mut Depot,
     res: &mut Response,
 ) -> AppResult<()> {
     let server_name = &crate::config().server_name;
-    let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
+    // let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
 
     if let Some(DbThumbnail {
         content_disposition,
@@ -104,9 +103,6 @@ pub async fn get_thumbnail(
 
     let thumb_path = crate::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail {
-        media_id,
-        width,
-        height,
         content_disposition,
         content_type,
         ..
@@ -130,7 +126,6 @@ pub async fn get_thumbnail(
     } else if let Ok(Some(DbMetadata {
         content_disposition,
         content_type,
-        media_id,
         ..
     })) = crate::media::get_metadata(server_name, &args.media_id)
     {

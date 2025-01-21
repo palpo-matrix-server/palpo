@@ -8,9 +8,9 @@ use salvo::prelude::*;
 
 use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
-use crate::core::serde::{Base64, RawJson};
+use crate::core::serde::{Base64, };
 use crate::core::{OwnedServerSigningKeyId, UnixMillis};
-use crate::{empty_ok, json_ok, AppResult, AuthArgs, EmptyResult, JsonResult};
+use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("key").oapi_tag("federation").push(
@@ -43,7 +43,7 @@ async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
 /// forever.
 // Response type for this endpoint is Json because we need to calculate a signature for the response
 #[endpoint]
-async fn server_signing_keys(_aa: AuthArgs, res: &mut Response) -> JsonResult<ServerKeysResBody> {
+async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
     // BTreeMap<std::string::String, CanonicalJsonValue>
     let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
     verify_keys.insert(

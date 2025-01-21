@@ -27,7 +27,7 @@ pub async fn get_remote_content(
     //             return Err(e.into());
     //         }
     //     };
-    let mut content_req = crate::core::client::media::content_request(
+    let content_req = crate::core::client::media::content_request(
         &server_name.origin().await,
         ContentReqArgs {
             server_name: server_name.to_owned(),

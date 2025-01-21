@@ -1,6 +1,5 @@
 //! Endpoints to retrieve information from a homeserver about a resource.
 
-use diesel::prelude::*;
 use palpo_core::federation::query::ProfileReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -8,9 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::schema::*;
-use crate::user::DbProfile;
-use crate::{db, empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{ empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
 
 pub fn router() -> Router {
     Router::with_path("query")

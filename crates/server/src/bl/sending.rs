@@ -12,14 +12,13 @@ use crate::core::appservice::event::{push_events_request, PushEventsReqBody};
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
-use crate::core::events::{AnySyncEphemeralRoomEvent, GlobalAccountDataEventType};
+use crate::core::events::GlobalAccountDataEventType;
 use crate::core::federation::transaction::{send_messages_request, Edu, SendMessageReqBody, SendMessageResBody};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
 use crate::core::{device_id, push, UnixMillis};
 use crate::{db, exts::*, utils, AppError, AppResult, PduEvent};
 
-use super::room::receipt;
 use super::{curr_sn, outgoing_requests};
 
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]
@@ -95,8 +94,8 @@ enum TransactionStatus {
 
 pub fn start_handler() {
     let (sender, receiver) = mpsc::unbounded_channel();
-    MPSC_SENDER.set(sender);
-    MPSC_RECEIVER.set(Mutex::new(receiver));
+    let _ = MPSC_SENDER.set(sender);
+    let _ = MPSC_RECEIVER.set(Mutex::new(receiver));
     tokio::spawn(async move {
         handler().await.unwrap();
     });
@@ -153,7 +152,7 @@ async fn handler() -> AppResult<()> {
                             current_transaction_status.remove(&outgoing_kind);
                         }
                     }
-                    Err((outgoing_kind, x)) => {
+                    Err((outgoing_kind, _x)) => {
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
                             TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
