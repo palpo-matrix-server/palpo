@@ -11,9 +11,9 @@ use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageR
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
 use crate::core::to_device::DeviceIdOrAllDevices;
-use crate::core::{ RawJsonValue, UnixMillis};
+use crate::core::{RawJsonValue, UnixMillis};
 use crate::user::NewDbPresence;
-use crate::{json_ok, AppError, AppResult, AuthArgs, JsonResult, };
+use crate::{json_ok, AppError, AppResult, AuthArgs, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)

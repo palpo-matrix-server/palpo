@@ -3,8 +3,10 @@ mod state_at_incoming;
 use fetch_state::fetch_state;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
+use std::borrow::Borrow;
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::future::Future;
+use std::iter::once;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -440,7 +442,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
     debug!("Calculating extremities");
-    let mut extremities = crate::room::state::get_forward_extremities(room_id)?;
+    let mut extremities: HashSet<_> = crate::room::state::get_forward_extremities(room_id)?.into_iter().collect();
 
     // Remove any forward extremities that are referenced by this incoming event's prev_events
     for prev_event in &incoming_pdu.prev_events {
@@ -450,12 +452,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     }
 
     // // Only keep those extremities were not referenced yet
-    // extremities.retain(|id| {
-    //     !matches!(
-    //         crate::room::pdu_metadata::is_event_referenced(room_id, id),
-    //         Ok(true)
-    //     )
-    // });
+    // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
     debug!("Compressing state at event");
     let compressed_state_ids = Arc::new(
@@ -497,13 +494,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     debug!("Starting soft fail auth check");
 
     if soft_fail {
-        crate::room::timeline::append_incoming_pdu(
-            &incoming_pdu,
-            val,
-            extremities.iter().map(|e| (**e).to_owned()).collect(),
-            compressed_state_ids,
-            soft_fail,
-        )?;
+        let extremities = extremities.iter().map(Borrow::borrow);
+        crate::room::timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
 
         // Soft fail, we keep the event as an outlier but don't add it to the timeline
         warn!("Event was soft failed: {:?}", incoming_pdu);
@@ -511,22 +503,21 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
 
-    debug!("Appending pdu to timeline");
-    extremities.insert(incoming_pdu.event_id.clone());
-
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
-
-    // let pdu_id = crate::room::timeline::append_incoming_pdu(
-    //     &incoming_pdu,
-    //     val,
-    //     extremities.iter().map(|e| (**e).to_owned()).collect(),
-    //     compressed_state_ids,
-    //     soft_fail,
-    // )?;
-
+    let extremities = extremities
+        .iter()
+        .map(Borrow::borrow)
+        .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
+    let pdu_id = crate::room::timeline::append_incoming_pdu(
+        &incoming_pdu,
+        val,
+        extremities,
+        compressed_state_ids,
+        soft_fail,
+    )?;
 
     // Event has passed all auth/stateres checks
     // drop(state_lock);

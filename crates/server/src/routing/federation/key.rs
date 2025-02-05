@@ -8,7 +8,7 @@ use salvo::prelude::*;
 
 use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
-use crate::core::serde::{Base64, };
+use crate::core::serde::Base64;
 use crate::core::{OwnedServerSigningKeyId, UnixMillis};
 use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
 

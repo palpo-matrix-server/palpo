@@ -1,4 +1,6 @@
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
+use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::core::client::filter::UrlFilter;
@@ -139,7 +141,10 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 ///
 /// Returns pdu id
 #[tracing::instrument(skip(pdu, pdu_json, leaves))]
-pub fn append_pdu(pdu: &PduEvent, mut pdu_json: CanonicalJsonObject, leaves: Vec<OwnedEventId>) -> AppResult<()> {
+pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, leaves: L) -> AppResult<()>
+where
+    L: Iterator<Item = &'a EventId> + Send + 'a,
+{
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -715,7 +720,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         pdu_json,
         // Since this PDU references all pdu_leaves we can update the leaves
         // of the room
-        vec![(*pdu.event_id).to_owned()],
+        once(pdu.event_id.borrow()),
     )?;
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
@@ -746,13 +751,16 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 /// Append the incoming event setting the state snapshot to the state from the
 /// server that sent the event.
 #[tracing::instrument(skip_all)]
-pub fn append_incoming_pdu(
-    pdu: &PduEvent,
+pub fn append_incoming_pdu<'a, L>(
+    pdu: &'a PduEvent,
     pdu_json: CanonicalJsonObject,
-    new_room_leaves: Vec<OwnedEventId>,
+    new_room_leaves: L,
     state_ids_compressed: Arc<HashSet<CompressedState>>,
     soft_fail: bool,
-) -> AppResult<()> {
+) -> AppResult<()>
+where
+    L: Iterator<Item = &'a EventId> + Send + 'a,
+{
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the

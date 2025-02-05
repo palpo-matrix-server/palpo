@@ -9,7 +9,7 @@ use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBo
 use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::AuthArgs;
-use crate::{cjson_ok, db, json_ok, AppError, CjsonResult,  JsonResult};
+use crate::{cjson_ok, db, json_ok, AppError, CjsonResult, JsonResult};
 
 pub fn router() -> Router {
     Router::with_path("user")

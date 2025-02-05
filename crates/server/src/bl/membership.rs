@@ -1,4 +1,6 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::iter::once;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -401,11 +403,7 @@ pub async fn join_room(
         crate::room::update_room_currents(room_id)?;
 
         info!("Appending new room join event");
-        crate::room::timeline::append_pdu(
-            &parsed_join_pdu,
-            join_event,
-            vec![(*parsed_join_pdu.event_id).to_owned()],
-        )?;
+        crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow()))?;
 
         // We append to state before appending the pdu, so we don't have a moment in time with the
         // pdu without it's state. This is okay because append_pdu can't fail.

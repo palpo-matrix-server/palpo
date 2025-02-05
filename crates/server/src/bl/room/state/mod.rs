@@ -259,10 +259,11 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     Ok(create_event_content.room_version)
 }
 
-pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<HashSet<Arc<EventId>>> {
+pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<Arc<EventId>>> {
     let event_ids = event_forward_extremities::table
         .filter(event_forward_extremities::room_id.eq(room_id))
         .select(event_forward_extremities::event_id)
+        .distinct()
         .load::<OwnedEventId>(&mut *db::connect()?)?
         .into_iter()
         .map(|id| id.into())
@@ -270,7 +271,10 @@ pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<HashSet<Arc<EventI
     Ok(event_ids)
 }
 
-pub fn set_forward_extremities(room_id: &RoomId, event_ids: Vec<OwnedEventId>) -> AppResult<()> {
+pub fn set_forward_extremities<'a, I>(room_id: &'a RoomId, event_ids: I) -> AppResult<()>
+where
+    I: Iterator<Item = &'a EventId> + Send + 'a,
+{
     for event_id in event_ids {
         diesel::insert_into(event_forward_extremities::table)
             .values((

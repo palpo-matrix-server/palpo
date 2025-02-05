@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use salvo::oapi::{extract::*, };
+use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
@@ -13,10 +13,7 @@ use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{EventId, OwnedUserId, RoomVersionId, UnixMillis};
 use crate::room::NewDbRoom;
 use crate::schema::*;
-use crate::{
-    db, empty_ok, json_ok, utils, AppError, EmptyResult, JsonResult, MatrixError,
-    PduBuilder, PduEvent,
-};
+use crate::{db, empty_ok, json_ok, utils, AppError, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent};
 
 pub fn router_v1() -> Router {
     Router::new()

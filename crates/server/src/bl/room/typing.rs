@@ -7,7 +7,7 @@ use crate::core::events::typing::TypingEventContent;
 use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::identifiers::*;
 use crate::core::UnixMillis;
-use crate::{ AppResult};
+use crate::AppResult;
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
     LazyLock::new(Default::default); // u64 is unix timestamp of timeout

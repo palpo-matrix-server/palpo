@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use crate::core::federation::event::{room_state_ids_request, RoomStateAtEventReqArgs, RoomStateIdsResBody};
 use crate::core::identifiers::*;
-use crate::core::{ ServerName,};
-use crate::{ exts::*,  AppError, AppResult};
+use crate::core::ServerName;
+use crate::{exts::*, AppError, AppResult};
 
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks

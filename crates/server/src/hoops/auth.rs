@@ -6,7 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
-use crate::core::{signatures, };
+use crate::core::signatures;
 use crate::schema::*;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};

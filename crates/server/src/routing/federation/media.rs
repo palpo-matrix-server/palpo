@@ -1,4 +1,3 @@
-
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
@@ -7,13 +6,13 @@ use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
 use salvo::fs::NamedFile;
-use salvo::http::{HeaderValue, };
+use salvo::http::HeaderValue;
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::core::federation::media::*;
-use crate::core::{ UnixMillis};
+use crate::core::UnixMillis;
 use crate::media::*;
 use crate::schema::*;
 use crate::{db, hoops, AppResult, AuthArgs, MatrixError};
