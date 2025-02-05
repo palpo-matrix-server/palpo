@@ -92,12 +92,15 @@ pub(crate) async fn handle_incoming_pdu(
     //     return Ok(());
     // }
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+    println!("xxx===00000000000000000");
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
+        println!("xxx===00000000000000000---1");
 
     let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
+        println!("xxx===00000000000000000---2");
         // Check for disabled again because it might have changed
         if crate::room::is_disabled(room_id)? {
             return Err(MatrixError::forbidden("Federation of this room is currently disabled on this server.").into());

@@ -7,12 +7,12 @@ use std::collections::BTreeMap;
 
 use reqwest::Url;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize,Serializer, Serialize};use serde::ser::SerializeStruct;
 
 use crate::directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server};
 use crate::federation::discovery::ServerSigningKeys;
-use crate::sending::{SendRequest, SendResult};
-use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis};
+use crate::sending::{SendRequest, SendResult};use crate::serde::CanonicalJsonObject;
+use crate::{OwnedServerName, OwnedServerSigningKeyId, RawJson,UnixMillis};
 
 /// `POST /_matrix/federation/*/publicRooms`
 ///
@@ -273,7 +273,7 @@ pub fn server_keys_request(origin: &str) -> SendResult<SendRequest> {
 }
 
 /// Response type for the `get_server_keys` endpoint.
-#[derive(ToSchema, Serialize, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Debug)]
 
 pub struct ServerKeysResBody(
     /// Queried server key, signed by the notary server.
@@ -287,8 +287,25 @@ impl ServerKeysResBody {
     }
 }
 
+
 impl From<ServerSigningKeys> for ServerKeysResBody {
     fn from(server_key: ServerSigningKeys) -> Self {
         Self::new(server_key)
+    }
+}
+
+impl Serialize for ServerKeysResBody {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut st = serializer.serialize_struct("server_keys_res_body", 2)?;
+
+        st.serialize_field("old_verify_keys", &self.0.old_verify_keys)?;
+        st.serialize_field("server_name", &self.0.server_name)?;
+        st.serialize_field("signatures", &self.0.signatures)?;
+        st.serialize_field("valid_until_ts", &self.0.valid_until_ts)?;
+        st.serialize_field("verify_keys", &self.0.verify_keys)?;
+        st.end()
     }
 }

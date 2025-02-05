@@ -3,13 +3,12 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 use std::time::SystemTime;
 
-use palpo_core::serde::CanonicalJsonObject;
 use salvo::prelude::*;
 
 use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
-use crate::core::serde::Base64;
-use crate::core::{OwnedServerSigningKeyId, UnixMillis};
+use crate::core::serde::{CanonicalJsonObject, Base64};
+use crate::core::{OwnedServerSigningKeyId,RawJson, UnixMillis};
 use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
 
 pub fn router() -> Router {
@@ -69,9 +68,8 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
         &crate::config().server_name.as_str(),
         crate::keypair(),
         &mut server_keys,
-    )
-    .unwrap();
-
+    )?;
     let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
+    
     json_ok(ServerKeysResBody::new(server_keys))
 }

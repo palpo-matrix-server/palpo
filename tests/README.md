@@ -12,5 +12,5 @@ those are.
 
 
 ```bash
-bash ./complement.sh ../../complement  _output_log.jsonl  _output_results.jsonl
+bash ./tests/complement.sh ../complement  __test.result.log  __test.result.jsonl
 ```
