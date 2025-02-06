@@ -1,9 +1,3 @@
-//! `POST /_matrix/client/*/register`
-//!
-//! Register an account on this homeserver.
-//! `/v3/` ([spec])
-//!
-//! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 use diesel::prelude::*;
 use palpo_core::presence::PresenceState;
 use salvo::oapi::extract::{JsonBody, QueryParam};
@@ -43,8 +37,14 @@ pub fn authed_router() -> Router {
         .push(Router::with_path("msisdn/requestToken").post(token_via_msisdn))
 }
 
+/// `POST /_matrix/client/*/register`
+///
+/// Register an account on this homeserver.
+/// `/v3/` ([spec])
+///
+/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 #[endpoint]
-fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) -> JsonResult<RegisterResBody> {
+fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot, res: &mut Response) -> JsonResult<RegisterResBody> {
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
         return Err(MatrixError::forbidden("Registration has been disabled.").into());
@@ -113,8 +113,6 @@ fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot) ->
             if !worked {
                 return Err(AppError::Uiaa(uiaa));
             }
-        } else if body.is_default() {
-            return Err(MatrixError::not_json("Not json").into());
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
