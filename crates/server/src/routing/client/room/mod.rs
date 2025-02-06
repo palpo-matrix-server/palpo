@@ -82,7 +82,7 @@ pub fn authed_router() -> Router {
                                 .put(state::send_state_for_empty_key)
                                 .get(state::state_for_empty_key)
                                 .push(
-                                    Router::with_path("<state_key>")
+                                    Router::with_path("{state_key}")
                                         .put(state::send_state_for_key)
                                         .get(state::state_for_key),
                                 ),
@@ -92,7 +92,7 @@ pub fn authed_router() -> Router {
                     .push(
                         Router::with_path("relations").push(
                             Router::with_path("{event_id}").get(relation::get_relation).push(
-                                Router::with_path("<rel_type>")
+                                Router::with_path("{rel_type}")
                                     .get(relation::get_relation_by_rel_type)
                                     .push(
                                         Router::with_path("{event_type}")
@@ -109,7 +109,7 @@ pub fn authed_router() -> Router {
                     .push(
                         Router::with_path("tags")
                             .get(tag::list_tags)
-                            .push(Router::with_path("<tag>").put(tag::upsert_tag).delete(tag::delete_tag)),
+                            .push(Router::with_path("{tag}").put(tag::upsert_tag).delete(tag::delete_tag)),
                     )
                     .push(
                         Router::with_path("event").push(

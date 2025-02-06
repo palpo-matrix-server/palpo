@@ -4,6 +4,6 @@ use crate::{empty_ok, AuthArgs, EmptyResult};
 
 #[endpoint]
 pub(super) async fn request_token(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

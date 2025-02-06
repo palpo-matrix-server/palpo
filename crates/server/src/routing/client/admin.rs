@@ -8,6 +8,6 @@ pub fn authed_router() -> Router {
 
 #[endpoint]
 async fn whois(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

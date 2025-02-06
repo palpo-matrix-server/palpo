@@ -94,12 +94,12 @@ async fn get_filtered_public_rooms(
 }
 #[endpoint]
 async fn send_knock(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 #[endpoint]
 async fn make_knock(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 

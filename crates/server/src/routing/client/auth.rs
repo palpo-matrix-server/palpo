@@ -8,6 +8,6 @@ pub fn authed_router() -> Router {
 
 #[endpoint]
 async fn uiaa_fallback(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

@@ -40,7 +40,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h --run "TestRegistration/parallel/POST_{}_returns_a_set_of_flows" -json ./tests/ ./tests/csapi| tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room" -json ./tests/ ./tests/csapi| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

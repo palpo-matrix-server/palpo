@@ -25,13 +25,13 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn query_keys(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
 #[endpoint]
 async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 

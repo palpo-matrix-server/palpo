@@ -21,7 +21,7 @@ pub fn authed_router() -> Router {
                 .push(
                     Router::with_path("filter")
                         .post(filter::create_filter)
-                        .push(Router::with_path("<filter_id>").get(filter::get_filter)),
+                        .push(Router::with_path("{filter_id}").get(filter::get_filter)),
                 )
                 .push(
                     Router::with_path("account_data/{event_type}")

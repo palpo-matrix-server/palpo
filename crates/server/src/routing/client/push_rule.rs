@@ -35,7 +35,7 @@ pub fn authed_router() -> Router {
 
 #[endpoint]
 async fn global() -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 

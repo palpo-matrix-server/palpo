@@ -11,17 +11,17 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn bind(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 #[endpoint]
 async fn unbind(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
 #[endpoint]
 async fn validated(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

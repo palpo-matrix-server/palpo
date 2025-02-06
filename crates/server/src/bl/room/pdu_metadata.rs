@@ -84,6 +84,7 @@ pub fn paginate_relations_with_filter(
     recurse: bool,
     dir: Direction,
 ) -> AppResult<RelationEventsResBody> {
+    println!("vvvvvvvvvvvvvvvvvfilter_rel_type   {filter_rel_type:?}");
     let prev_batch = from.map(|from| from.to_string());
     let from = from.map(|from| from.parse()).transpose()?.unwrap_or_else(|| match dir {
         Direction::Forward => i64::MIN,
@@ -140,6 +141,7 @@ pub fn get_relations(
     dir: Direction,
     limit: usize,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
+    println!("get_relations            {rel_type:?}");
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))

@@ -304,7 +304,7 @@ pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
 
 #[endpoint]
 pub async fn preview_url(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 

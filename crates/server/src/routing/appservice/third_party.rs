@@ -19,34 +19,34 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn protocols(_aa: AuthArgs) -> JsonResult<ProtocolsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(ProtocolsResBody::default())
 }
 #[endpoint]
 async fn protocol(_aa: AuthArgs) -> JsonResult<Option<ProtocolResBody>> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(None)
 }
 #[endpoint]
 async fn locations(_aa: AuthArgs) -> JsonResult<LocationsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(LocationsResBody::default())
 }
 
 #[endpoint]
 async fn protocol_locations(_aa: AuthArgs) -> JsonResult<LocationsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(LocationsResBody::default())
 }
 
 #[endpoint]
 async fn users(_aa: AuthArgs, req: &mut Request) -> JsonResult<UsersResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(UsersResBody::default())
 }
 
 #[endpoint]
 async fn protocol_users(_aa: AuthArgs, req: &mut Request) -> JsonResult<UsersResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(UsersResBody::default())
 }

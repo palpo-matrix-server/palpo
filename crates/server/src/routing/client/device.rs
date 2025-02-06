@@ -29,7 +29,7 @@ pub fn authed_router() -> Router {
         // )
         .push(Router::with_path("delete_devices").post(delete_devices))
         .push(
-            Router::with_path("<device_id>")
+            Router::with_path("{device_id}")
                 .get(get_device)
                 .delete(delete_device)
                 .put(update_device),

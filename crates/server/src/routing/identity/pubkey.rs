@@ -11,18 +11,18 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn public_key(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
 #[endpoint]
 async fn is_valid(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
 #[endpoint]
 async fn ephemeral_is_valid(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

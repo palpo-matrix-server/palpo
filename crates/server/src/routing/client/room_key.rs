@@ -24,7 +24,7 @@ pub fn authed_router() -> Router {
                         .put(add_keys_for_room)
                         .delete(delete_room_keys)
                         .push(
-                            Router::with_path("<session_id>")
+                            Router::with_path("{session_id}")
                                 .get(get_session_keys)
                                 .put(add_keys_for_session)
                                 .delete(delete_session_keys),
@@ -36,7 +36,7 @@ pub fn authed_router() -> Router {
                 .get(latest_version)
                 .post(create_version)
                 .push(
-                    Router::with_path("<version>")
+                    Router::with_path("{version}")
                         .get(get_version)
                         .post(update_version)
                         .delete(delete_version),

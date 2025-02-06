@@ -48,6 +48,6 @@ pub(super) async fn set_visibility(
 
 #[endpoint]
 pub(super) async fn set_visibility_with_network_id(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

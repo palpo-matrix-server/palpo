@@ -8,6 +8,6 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn on_bind(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

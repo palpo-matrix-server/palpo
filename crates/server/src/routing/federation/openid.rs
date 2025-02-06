@@ -8,6 +8,6 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn userinfo(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

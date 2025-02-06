@@ -66,6 +66,6 @@ async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, t
 }
 #[endpoint]
 async fn query_by_type(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

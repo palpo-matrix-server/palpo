@@ -9,6 +9,6 @@ pub fn router() -> Router {
 
 #[endpoint]
 async fn send_event(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

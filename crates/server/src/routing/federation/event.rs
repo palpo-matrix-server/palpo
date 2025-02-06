@@ -93,7 +93,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthoriz
 
 #[endpoint]
 async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
@@ -166,6 +166,6 @@ fn missing_events(
 
 #[endpoint]
 async fn exchange_third_party_invite(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

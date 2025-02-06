@@ -88,6 +88,6 @@ fn send_to_device(
 
 #[endpoint]
 pub(super) async fn for_dehydrated(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

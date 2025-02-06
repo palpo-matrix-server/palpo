@@ -201,12 +201,12 @@ async fn refresh_token(_aa: AuthArgs) -> EmptyResult {
 
 #[endpoint]
 async fn redirect(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }
 
 #[endpoint]
 async fn provider_url(_aa: AuthArgs) -> EmptyResult {
-    // TODDO: todo
+    // TODO: todo
     empty_ok()
 }

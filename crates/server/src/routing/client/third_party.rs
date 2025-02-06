@@ -9,12 +9,12 @@ pub fn authed_router() -> Router {
         .push(
             Router::with_path("location")
                 .get(locations)
-                .push(Router::with_path("<protocol>").get(protocol_locations)),
+                .push(Router::with_path("{protocol}").get(protocol_locations)),
         )
         .push(
             Router::with_path("user")
                 .get(users)
-                .push(Router::with_path("<protocol>").get(protocol_users)),
+                .push(Router::with_path("{protocol}").get(protocol_users)),
         )
 }
 
@@ -22,34 +22,34 @@ pub fn authed_router() -> Router {
 /// TODO: Fetches all metadata about protocols supported by the homeserver.
 #[endpoint]
 async fn protocols(_aa: AuthArgs) -> JsonResult<ProtocolsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(ProtocolsResBody::default())
 }
 #[endpoint]
 async fn protocol(_aa: AuthArgs) -> JsonResult<Option<ProtocolResBody>> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(None)
 }
 #[endpoint]
 async fn locations(_aa: AuthArgs) -> JsonResult<LocationsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(LocationsResBody::default())
 }
 
 #[endpoint]
 async fn protocol_locations(_aa: AuthArgs) -> JsonResult<LocationsResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(LocationsResBody::default())
 }
 
 #[endpoint]
 async fn users(_aa: AuthArgs) -> JsonResult<UsersResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(UsersResBody::default())
 }
 
 #[endpoint]
 async fn protocol_users(_aa: AuthArgs) -> JsonResult<UsersResBody> {
-    // TODDO: LATER
+    // TODO: LATER
     json_ok(UsersResBody::default())
 }
