@@ -335,7 +335,7 @@ pub fn update_membership(
                         event_sn,
                         sender_id: sender.to_owned(),
                         membership: membership.to_string(),
-                        forgotten: true,
+                        forgotten: false,
                         display_name: None,
                         avatar_url: None,
                         state_data,

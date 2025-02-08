@@ -477,9 +477,8 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id, event_id))]
 pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
-    let frame_id = match get_pdu_frame_id(event_id).unwrap() {
-        Some(frame_id) => frame_id,
-        None => return Ok(false),
+    let Some(frame_id) = get_pdu_frame_id(event_id)? else {
+        return Ok(true);
     };
 
     if let Some(visibility) = USER_VISIBILITY_CACHE
@@ -543,7 +542,9 @@ impl UserCanSeeEvent {
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
 pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<UserCanSeeEvent> {
-    let currently_member = crate::room::is_joined(&user_id, &room_id)?;
+    if crate::room::is_joined(&user_id, &room_id)? {
+        return Ok(UserCanSeeEvent::Always);
+    }
 
     let history_visibility = get_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
         Ok(HistoryVisibility::Shared),
@@ -553,13 +554,14 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
                 .map_err(|_| AppError::internal("Invalid history visibility event in database."))
         },
     )?;
-    if currently_member || history_visibility == HistoryVisibility::WorldReadable {
+    if  history_visibility == HistoryVisibility::WorldReadable {
         return Ok(UserCanSeeEvent::Always);
     }
 
     let leave_sn = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
+        .select(room_users::membership.eq("leave"))
         .select(room_users::event_sn)
         .first::<i64>(&mut *db::connect()?)
         .optional()?;

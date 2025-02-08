@@ -24,7 +24,7 @@ pub(super) async fn get_messages(
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
     let authed = depot.authed_info()?;
-
+    
     let until_sn = if !diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))

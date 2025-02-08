@@ -93,7 +93,7 @@ pub(super) fn joined_members(
     let authed = depot.authed_info()?;
 
     let can_see = state::user_can_see_state_events(&authed.user_id(), &room_id)?;
-    if can_see == UserCanSeeEvent::Never {
+    if can_see != UserCanSeeEvent::Always {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
