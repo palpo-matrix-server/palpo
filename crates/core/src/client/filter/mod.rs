@@ -422,14 +422,14 @@ impl CreateFilterResBody {
 
 /// Response type for the `get_filter` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct FilterResBody {
+pub struct FilterResBody(
     /// The filter definition.
-    pub filter: FilterDefinition,
-}
+    pub FilterDefinition,
+);
 impl FilterResBody {
     /// Creates a new `Response` with the given filter definition.
     pub fn new(filter: FilterDefinition) -> Self {
-        Self { filter }
+        Self(filter)
     }
 }
 

@@ -35,22 +35,35 @@ pub struct StateEventsForKeyReqArgs {
     /// The key of the state to look up.
     #[salvo(parameter(parameter_in = Path))]
     pub state_key: String,
+
+    /// Optional parameter to return the event content
+    /// or the full state event.
+    #[salvo(parameter(parameter_in = Query))]
+    pub format: Option<String>,
 }
 
 /// Response type for the `get_state_events_for_key` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct StateEventsForKeyResBody(
+pub struct StateEventsForKeyResBody{
     /// The content of the state event.
     ///
-    /// Since the inner type of the `Raw` does not implement `Deserialize`, you need to use
-    /// [`RawJson::deserialize_as`] to deserialize it.
-    pub RawJson<AnyStateEventContent>,
-);
+    /// This is `serde_json::Value` due to complexity issues with returning only the
+    /// actual JSON content without a top level key.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub content: Option<serde_json::Value>,
+
+    /// The full state event
+    ///
+    /// This is `serde_json::Value` due to complexity issues with returning only the
+    /// actual JSON content without a top level key.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub event: Option<serde_json::Value>,
+}
 impl StateEventsForKeyResBody {
     /// Creates a new `Response` with the given content.
-    pub fn new(content: RawJson<AnyStateEventContent>) -> Self {
-        Self(content)
+    pub fn new(content: serde_json::Value, event: serde_json::Value) -> Self {
+        Self{ content: Some(content), event: Some(event) }
     }
 }
 
@@ -82,19 +95,19 @@ impl StateEventsForKeyResBody {
 /// Response type for the `get_state_events` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct StateEventsResBody {
+pub struct StateEventsResBody (
     /// If the user is a member of the room this will be the current state of the room as a
     /// list of events.
     ///
     /// If the user has left the room then this will be the state of the room when they left as
     /// a list of events.
     #[salvo(schema(value_type = Vec<Object>, additional_properties = true))]
-    pub room_state: Vec<RawJson<AnyStateEvent>>,
-}
+    Vec<RawJson<AnyStateEvent>>
+);
 impl StateEventsResBody {
     /// Creates a new `Response` with the given room state.
     pub fn new(room_state: Vec<RawJson<AnyStateEvent>>) -> Self {
-        Self { room_state }
+        Self (room_state )
     }
 }
 

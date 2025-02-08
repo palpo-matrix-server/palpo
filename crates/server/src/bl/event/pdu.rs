@@ -12,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::{UnixMillis, UserId};
-use crate::{AppError, AppResult};
+use crate::{AppError,JsonValue, AppResult};
 
 /// Content hashes of a PDU.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -213,6 +213,10 @@ impl PduEvent {
 
     #[tracing::instrument]
     pub fn to_state_event(&self) -> RawJson<AnyStateEvent> {
+        serde_json::from_value(self.to_state_event_value()).expect("RawJson::from_value always works")
+    }
+    #[tracing::instrument]
+    pub fn to_state_event_value(&self) -> JsonValue {
         let mut data = json!({
             "content": self.content,
             "type": self.event_ty,
@@ -227,7 +231,7 @@ impl PduEvent {
             data["unsigned"] = json!(unsigned);
         }
 
-        serde_json::from_value(data).expect("RawJson::from_value always works")
+        data
     }
 
     #[tracing::instrument]
@@ -319,6 +323,13 @@ impl PduEvent {
         );
 
         serde_json::from_value(serde_json::to_value(json).expect("valid JSON"))
+    }
+
+    pub fn get_content<T>(&self) -> Result<T, serde_json::Error>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        serde_json::from_str(self.content.get())
     }
 }
 

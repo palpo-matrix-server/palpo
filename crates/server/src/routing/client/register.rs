@@ -44,7 +44,12 @@ pub fn authed_router() -> Router {
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 #[endpoint]
-fn register(aa: AuthArgs, body: JsonBody<RegisterReqBody>, depot: &mut Depot, res: &mut Response) -> JsonResult<RegisterResBody> {
+fn register(
+    aa: AuthArgs,
+    body: JsonBody<RegisterReqBody>,
+    depot: &mut Depot,
+    res: &mut Response,
+) -> JsonResult<RegisterResBody> {
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
         return Err(MatrixError::forbidden("Registration has been disabled.").into());

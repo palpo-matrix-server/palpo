@@ -42,12 +42,11 @@ pub(super) fn get_state(
     let frame_id = crate::room::state::get_room_frame_id(&room_id, Some(can_see.as_until_sn()))?
         .ok_or(AppError::public("state delta not found"))?;
 
-    json_ok(StateEventsResBody {
-        room_state: crate::room::state::get_full_state(frame_id)?
-            .values()
-            .map(|pdu| pdu.to_state_event())
-            .collect(),
-    })
+    let room_state = crate::room::state::get_full_state(frame_id)?
+        .values()
+        .map(|pdu| pdu.to_state_event())
+        .collect();
+    json_ok(StateEventsResBody::new(room_state))
 }
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
@@ -135,10 +134,15 @@ pub(super) fn state_for_key(
         MatrixError::not_found("State event not found.")
     })?;
 
-    json_ok(StateEventsForKeyResBody(
-        serde_json::from_str(event.content.get())
-            .map_err(|_| AppError::internal("Invalid event content in database"))?,
-    ))
+    let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
+    json_ok(StateEventsForKeyResBody {
+        content: Some(event.get_content()?),
+        event: if event_format {
+            Some(event.to_state_event_value())
+        } else {
+            None
+        },
+    })
 }
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}
@@ -148,7 +152,7 @@ pub(super) fn state_for_key(
 #[endpoint]
 pub(super) async fn state_for_empty_key(
     _aa: AuthArgs,
-    args: RoomEventTypeReqArgs,
+    args: StateEventsForKeyReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
@@ -166,11 +170,15 @@ pub(super) async fn state_for_empty_key(
             );
             MatrixError::not_found("State event not found.")
         })?;
-
-    json_ok(StateEventsForKeyResBody(
-        serde_json::from_str(event.content.get())
-            .map_err(|_| AppError::internal("Invalid event content in database"))?,
-    ))
+    let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
+    json_ok(StateEventsForKeyResBody {
+        content: Some(event.get_content()?),
+        event: if event_format {
+            Some(event.to_state_event_value())
+        } else {
+            None
+        },
+    })
 }
 
 /// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}

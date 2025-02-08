@@ -554,7 +554,7 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
                 .map_err(|_| AppError::internal("Invalid history visibility event in database."))
         },
     )?;
-    if  history_visibility == HistoryVisibility::WorldReadable {
+    if history_visibility == HistoryVisibility::WorldReadable {
         return Ok(UserCanSeeEvent::Always);
     }
 

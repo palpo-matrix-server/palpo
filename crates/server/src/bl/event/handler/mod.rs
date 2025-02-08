@@ -95,7 +95,7 @@ pub(crate) async fn handle_incoming_pdu(
     println!("xxx===00000000000000000");
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
-        println!("xxx===00000000000000000---1");
+    println!("xxx===00000000000000000---1");
 
     let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
@@ -445,7 +445,9 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
     debug!("Calculating extremities");
-    let mut extremities: HashSet<_> = crate::room::state::get_forward_extremities(room_id)?.into_iter().collect();
+    let mut extremities: HashSet<_> = crate::room::state::get_forward_extremities(room_id)?
+        .into_iter()
+        .collect();
 
     // Remove any forward extremities that are referenced by this incoming event's prev_events
     for prev_event in &incoming_pdu.prev_events {
@@ -514,13 +516,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .map(Borrow::borrow)
         .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
-    let pdu_id = crate::room::timeline::append_incoming_pdu(
-        &incoming_pdu,
-        val,
-        extremities,
-        compressed_state_ids,
-        soft_fail,
-    )?;
+    let pdu_id =
+        crate::room::timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
 
     // Event has passed all auth/stateres checks
     // drop(state_lock);
