@@ -41,6 +41,21 @@ pub struct StateEventsForKeyReqArgs {
     #[salvo(parameter(parameter_in = Query))]
     pub format: Option<String>,
 }
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct StateEventsForEmptyKeyReqArgs {
+    /// The room to look up the state for.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The type of state to look up.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_type: StateEventType,
+
+    /// Optional parameter to return the event content
+    /// or the full state event.
+    #[salvo(parameter(parameter_in = Query))]
+    pub format: Option<String>,
+}
 
 /// Response type for the `get_state_events_for_key` endpoint.
 #[derive(ToSchema, Serialize, Debug)]

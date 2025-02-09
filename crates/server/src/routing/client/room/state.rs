@@ -6,7 +6,7 @@ use salvo::prelude::*;
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
     SendStateEventReqBody, SendStateEventResBody, StateEventsForKeyReqArgs, StateEventsForKeyResBody,
-    StateEventsResBody,
+    StateEventsResBody,StateEventsForEmptyKeyReqArgs,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::receipt::{
@@ -152,7 +152,7 @@ pub(super) fn state_for_key(
 #[endpoint]
 pub(super) async fn state_for_empty_key(
     _aa: AuthArgs,
-    args: StateEventsForKeyReqArgs,
+    args: StateEventsForEmptyKeyReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
