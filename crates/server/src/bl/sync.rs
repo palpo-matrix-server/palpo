@@ -147,15 +147,15 @@ pub fn sync_events(
                 continue;
             };
 
-            let left_frame_id = match crate::room::state::get_pdu_frame_id(&left_event_id)? {
-                Some(s) => s,
-                None => {
-                    error!("Leave event has no state");
+            let Some(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id)? else {
+                error!("Leave event has no state");
+                continue;
+            };
+            if let Some(since_frame_id) = since_frame_id {
+                if left_frame_id < since_frame_id {
+                    println!("BBBBBBBBBBBBBBBBBBBBB  3");
                     continue;
                 }
-            };
-            if left_frame_id < since_frame_id.unwrap_or_default() || since_frame_id.is_none() {
-                continue;
             }
 
             let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;

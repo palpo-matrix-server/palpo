@@ -192,7 +192,7 @@ impl RoomsV3 {
 pub struct LeftRoomV3 {
     /// The timeline of messages and state changes in the room up to the point when the user
     /// left.
-    #[serde(default, skip_serializing_if = "TimelineV3::is_empty")]
+    #[serde(default)]
     pub timeline: TimelineV3,
 
     /// The state updates for the room up to the start of the timeline.
@@ -326,7 +326,7 @@ pub struct TimelineV3 {
     pub prev_batch: Option<String>,
 
     /// A list of events.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub events: Vec<RawJson<AnySyncTimelineEvent>>,
 }
 
