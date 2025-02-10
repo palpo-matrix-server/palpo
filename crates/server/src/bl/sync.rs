@@ -2,6 +2,7 @@ use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::time::{Duration, Instant};
 
+use diesel::prelude::*;
 use tokio::sync::watch::Sender;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
@@ -17,6 +18,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
+use crate::{db, schema::*};
 use crate::{AppError, AppResult};
 
 #[tracing::instrument(skip_all)]
@@ -62,7 +64,7 @@ pub fn sync_events(
         device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
-        for room_id in all_joined_rooms {
+        for room_id in &all_joined_rooms {
             let joined_room = match load_joined_room(
                 &sender_id,
                 &sender_device_id,
@@ -151,9 +153,19 @@ pub fn sync_events(
                 error!("Leave event has no state");
                 continue;
             };
+            println!("BBBBBBBBBBBBBBBBBBBBB  since_frame_id: {since_frame_id:?}  left_frame_id:{left_frame_id:?}");
             if let Some(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
-                    println!("BBBBBBBBBBBBBBBBBBBBB  3");
+                    continue;
+                }
+            } else {
+                let forgotten = room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .filter(room_users::user_id.eq(&sender_id))
+                    .select(room_users::forgotten)
+                    .first::<bool>(&mut *db::connect()?)
+                    .optional()?;
+                if let Some(true) = forgotten {
                     continue;
                 }
             }

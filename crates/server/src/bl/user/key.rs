@@ -450,8 +450,8 @@ pub fn take_one_time_key(
 }
 
 pub fn count_one_time_keys(
-    user_id: &OwnedUserId,
-    device_id: &OwnedDeviceId,
+    user_id: &UserId,
+    device_id: &DeviceId,
 ) -> AppResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
     let list = e2e_one_time_keys::table
         .filter(e2e_one_time_keys::user_id.eq(user_id))
@@ -464,7 +464,7 @@ pub fn count_one_time_keys(
     ))
 }
 
-pub fn add_device_keys(user_id: &OwnedUserId, device_id: &OwnedDeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
+pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
     let new_device_key = NewDbDeviceKey {
         user_id: user_id.to_owned(),
         device_id: device_id.to_owned(),

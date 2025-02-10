@@ -300,23 +300,8 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
                     })
                     .map_err(|_| AppError::internal("Invalid room history visibility event in database."))
             })?,
-        guest_can_join: crate::room::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(
-            Ok(false),
-            |s| {
-                serde_json::from_str(s.content.get())
-                    .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
-                    .map_err(|_| AppError::internal("Invalid room guest access event in database."))
-            },
-        )?,
-        avatar_url: crate::room::state::get_state(&room_id, &StateEventType::RoomAvatar, "", None)?
-            .map(|s| {
-                serde_json::from_str(s.content.get())
-                    .map(|c: RoomAvatarEventContent| c.url)
-                    .map_err(|_| AppError::internal("Invalid room avatar event in database."))
-            })
-            .transpose()?
-            // url is now an Option<String> so we must flatten
-            .flatten(),
+        guest_can_join: crate::room::state::guest_can_join(&room_id)?,
+        avatar_url: crate::room::state::get_avatar_url(&room_id)?,
         join_rule: {
             let join_rule = crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None)?
                 .map(|s| {

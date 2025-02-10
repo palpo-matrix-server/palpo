@@ -18,6 +18,7 @@ use tracing::warn;
 
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
+use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
@@ -654,10 +655,16 @@ pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<Str
     })
 }
 
-pub fn get_avatar(room_id: &RoomId) -> AppResult<Option<RoomAvatarEventContent>> {
-    get_state(&room_id, &StateEventType::RoomAvatar, "", None)?.map_or(Ok(None), |s| {
-        serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room avatar event in database."))
-    })
+pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
+    Ok(get_state(room_id, &StateEventType::RoomAvatar, "", None)?
+        .map(|s| {
+            serde_json::from_str(s.content.get())
+                .map(|c: RoomAvatarEventContent| c.url)
+                .map_err(|_| AppError::public("Invalid room avatar event in database."))
+        })
+        .transpose()?
+        // url is now an Option<String> so we must flatten
+        .flatten())
 }
 
 pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMemberEventContent>> {
@@ -692,6 +699,13 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
         ..Default::default()
     };
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
+}
+pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
+    get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+        serde_json::from_str(s.content.get())
+            .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
+            .map_err(|_| AppError::internal("Invalid room guest access event in database."))
+    })
 }
 
 // #[tracing::instrument]

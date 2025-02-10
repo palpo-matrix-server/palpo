@@ -26,6 +26,7 @@ use diesel::prelude::*;
 use crate::appservice::RegistrationInfo;
 use crate::config::default_room_version;
 use crate::core::events::room::create::RoomCreateEventContent;
+use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{
     AnyStrippedStateEvent, AnySyncStateEvent, GlobalAccountDataEventType, RoomAccountDataEventType, StateEventType,
@@ -128,6 +129,14 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
         .execute(&mut db::connect()?)
         .map(|_| ())
         .map_err(Into::into)
+}
+
+pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
+    self::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+        serde_json::from_str(s.content.get())
+            .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
+            .map_err(|_| AppError::internal("Invalid room guest access event in database."))
+    })
 }
 
 /// Update current membership data.

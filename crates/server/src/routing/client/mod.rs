@@ -707,7 +707,7 @@ pub async fn sync_events_v4(
             room_id.clone(),
             palpo_core::client::sync_events::SlidingSyncRoomV4 {
                 name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
-                avatar: crate::room::state::get_avatar(&room_id)?.map_or(avatar, |a| a.url),
+                avatar: crate::room::state::get_avatar_url(&room_id)?,
                 initial: Some(room_since_sn == &0),
                 is_dm: None,
                 invite_state: None,

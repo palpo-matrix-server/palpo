@@ -188,11 +188,12 @@ pub(super) async fn join_room_by_id(
     servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
 
     crate::membership::join_room(
-        &authed.user_id(),
+        &authed.user(),
         &room_id,
         body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
+        authed.appservice.as_ref()
     )
     .await?;
     json_ok(JoinRoomResBody { room_id })
@@ -264,11 +265,12 @@ pub(crate) async fn join_room_by_id_or_alias(
     };
 
     let join_room_response = crate::membership::join_room(
-        authed.user_id(),
+        authed.user(),
         &room_id,
         body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
+        authed.appservice.as_ref()
     )
     .await?;
 

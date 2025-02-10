@@ -20,6 +20,8 @@ use crate::core::serde::{
     to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
 };
 use crate::core::{federation, OwnedServerName, ServerName, UnixMillis};
+
+use crate::appservice::RegistrationInfo;
 use crate::event::{gen_event_id_canonical_json, NewDbEvent, PduBuilder, PduEvent};
 use crate::membership::federation::membership::{
     send_leave_request_v2, InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2,
@@ -27,6 +29,7 @@ use crate::membership::federation::membership::{
 };
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedState};
+use crate::user::DbUser;
 use crate::{db, diesel_exists, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
 
 pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
@@ -146,12 +149,25 @@ pub async fn send_join_v2(server_name: &ServerName, room_id: &RoomId, pdu: &RawJ
     Ok(room_state)
 }
 pub async fn join_room(
-    user_id: &UserId,
+    user: &DbUser,
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
+    appservice: Option<&RegistrationInfo>,
 ) -> AppResult<JoinRoomResBody> {
+    // TODO: state lock
+    if user.is_guest && appservice.is_none() && !crate::room::state::guest_can_join(room_id)? {
+        return Err(MatrixError::forbidden("Guests are not allowed to join this room").into());
+    }
+
+    let user_id = &user.id;
+    if crate::room::is_joined(user_id, room_id)? {
+        return Ok(JoinRoomResBody {
+            room_id: room_id.into(),
+        });
+    }
+
     let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0] == crate::server_name());

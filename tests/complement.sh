@@ -40,7 +40,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestArchivedRoomsHistory/timeline_is_empty/initial_sync" -json ./tests/ ./tests/csapi| tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestRoomCreationReportsEventsToMyself/parallel/Joining_room_twice_is_idempotent" -json ./tests/ ./tests/csapi| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format
