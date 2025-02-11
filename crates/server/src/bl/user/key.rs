@@ -449,10 +449,7 @@ pub fn take_one_time_key(
     }
 }
 
-pub fn count_one_time_keys(
-    user_id: &UserId,
-    device_id: &DeviceId,
-) -> AppResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
+pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
     let list = e2e_one_time_keys::table
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))

@@ -193,7 +193,7 @@ pub(super) async fn join_room_by_id(
         body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
-        authed.appservice.as_ref()
+        authed.appservice.as_ref(),
     )
     .await?;
     json_ok(JoinRoomResBody { room_id })
@@ -270,7 +270,7 @@ pub(crate) async fn join_room_by_id_or_alias(
         body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
-        authed.appservice.as_ref()
+        authed.appservice.as_ref(),
     )
     .await?;
 
