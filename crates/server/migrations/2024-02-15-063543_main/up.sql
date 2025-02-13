@@ -808,11 +808,11 @@ CREATE TABLE IF NOT EXISTS event_searches
 (
     id bigserial NOT NULL PRIMARY KEY,
     event_id text NOT NULL,
-    room_id text,
-    sender_id text,
+    room_id text NOT NULL,
+    sender_id text NOT NULL,
     key text NOT NULL,
-    vector tsvector,
-    origin_server_ts bigint,
+    vector tsvector NOT NULL,
+    origin_server_ts bigint NOT NULL,
     stream_ordering bigint
 );
 

@@ -32,6 +32,7 @@ bcrypt = "0.15.0"
 bigdecimal = "0.4"
 blurhash = "0.2"
 bytes = "1.1.0"
+byteorder = "1.5.0"
 chksum = "0.3.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 clap = { version = "4.5.1", default-features = false }
@@ -41,6 +42,7 @@ cruet = "0.14"
 cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
+# diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2"
 dotenvy = "0.15.0"
 ed25519-dalek = "2"

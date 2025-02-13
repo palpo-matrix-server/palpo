@@ -1,6 +1,7 @@
 pub mod handler;
 mod pdu;
 pub use pdu::*;
+pub mod search;
 
 use diesel::prelude::*;
 use palpo_core::serde::CanonicalJsonObject;

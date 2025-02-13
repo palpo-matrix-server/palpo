@@ -192,6 +192,7 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut db::connect()?)?;
+    crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
