@@ -891,15 +891,33 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {
-            error!("Trying to leave a room you are not a member of.");
-            crate::room::timeline::build_and_append_pdu(
-                PduBuilder::state(
-                    user_id.to_string(),
-                    &RoomMemberEventContent::new(MembershipState::Leave),
-                ),
-                user_id,
-                room_id,
-            )?;
+            warn!("Trying to leave a room you are not a member of.");
+            // crate::room::timeline::build_and_append_pdu(
+            //     PduBuilder::state(
+            //         user_id.to_string(),
+            //         &RoomMemberEventContent::new(MembershipState::Leave),
+            //     ),
+            //     user_id,
+            //     room_id,
+            // )?;
+            if let Some((event_id, event_sn)) = room_users::table
+                .filter(room_users::room_id.eq(room_id))
+                .filter(room_users::user_id.eq(user_id))
+                .order_by(room_users::id.desc())
+                .select((room_users::event_id, room_users::event_sn))
+                .first::<(OwnedEventId, i64)>(&mut *db::connect()?)
+                .optional()?
+            {
+                crate::room::update_membership(
+                    &event_id,
+                    event_sn,
+                    room_id,
+                    &user_id,
+                    MembershipState::Leave,
+                    user_id,
+                    None,
+                )?;
+            }
             return Ok(());
         };
 

@@ -438,9 +438,9 @@ CREATE TABLE events (
     contains_url boolean NOT NULL,
     worker_id text,
     state_key text,
-    processed boolean NOT NULL,
-    outlier boolean NOT NULL,
-    soft_failed boolean NOT NULL default false,
+    is_outlier boolean NOT NULL,
+    is_redacted boolean NOT NULL DEFAULT false,
+    soft_failed boolean NOT NULL DEFAULT false,
     rejection_reason text
 --     topological_ordering bigint NOT NULL,
 --     stream_ordering bigint
@@ -808,11 +808,12 @@ CREATE TABLE IF NOT EXISTS event_searches
 (
     id bigserial NOT NULL PRIMARY KEY,
     event_id text NOT NULL,
-    room_id text,
-    sender_id text,
+    event_sn bigint NOT NULL,
+    room_id text NOT NULL,
+    sender_id text NOT NULL,
     key text NOT NULL,
-    vector tsvector,
-    origin_server_ts bigint,
+    vector tsvector NOT NULL,
+    origin_server_ts bigint NOT NULL,
     stream_ordering bigint
 );
 
@@ -825,6 +826,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_searches_event_id_idx
     ON public.event_searches USING btree (event_id ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS event_search_fts_idx
     ON public.event_searches USING gin (vector);
+
+ALTER TABLE ONLY event_searches
+    ADD CONSTRAINT event_searches_ukey UNIQUE (event_id);
 
 
 DROP TABLE IF EXISTS event_push_summaries;

@@ -5,8 +5,8 @@ use salvo::prelude::*;
 
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
-    SendStateEventReqBody, SendStateEventResBody, StateEventsForKeyReqArgs, StateEventsForKeyResBody,
-    StateEventsResBody,StateEventsForEmptyKeyReqArgs,
+    SendStateEventReqBody, SendStateEventResBody, StateEventsForEmptyKeyReqArgs, StateEventsForKeyReqArgs,
+    StateEventsForKeyResBody, StateEventsResBody,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::receipt::{

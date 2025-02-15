@@ -78,9 +78,11 @@
 {"Action":"fail","Test":"TestRequestEncodingFails/POST_rejects_invalid_utf-8_in_JSON"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoin"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoin/Join_should_fail_when_left_allowed_room"}
+{"Action":"fail","Test":"TestRestrictedRoomsLocalJoin/Join_should_fail_with_mangled_join_rules"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoin/Join_should_succeed_when_invited"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_fail_when_left_allowed_room"}
+{"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_fail_with_mangled_join_rules"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_succeed_when_invited"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_when_left_allowed_room"}
@@ -95,7 +97,6 @@
 {"Action":"fail","Test":"TestRestrictedRoomsSpacesSummaryFederation"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself/parallel"}
-{"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself/parallel/Joining_room_twice_is_idempotent"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself/parallel/Setting_state_twice_is_idempotent"}
 {"Action":"fail","Test":"TestRoomMembers"}
 {"Action":"fail","Test":"TestRoomMembers/Parallel"}
@@ -329,10 +330,8 @@
 {"Action":"pass","Test":"TestRemotePngThumbnail/test_/_matrix/client/v1/media_endpoint"}
 {"Action":"pass","Test":"TestRemotePngThumbnail/test_/_matrix/media/v3_endpoint"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoin/Join_should_fail_initially"}
-{"Action":"pass","Test":"TestRestrictedRoomsLocalJoin/Join_should_fail_with_mangled_join_rules"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoin/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_fail_initially"}
-{"Action":"pass","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_fail_with_mangled_join_rules"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_initially"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_with_mangled_join_rules"}
@@ -371,6 +370,7 @@
 {"Action":"pass","Test":"TestRoomCreate/Parallel/POST_/createRoom_rejects_attempts_to_create_rooms_with_numeric_versions"}
 {"Action":"pass","Test":"TestRoomCreate/Parallel/POST_/createRoom_rejects_attempts_to_create_rooms_with_unknown_versions"}
 {"Action":"pass","Test":"TestRoomCreate/Parallel/Rooms_can_be_created_with_an_initial_invite_list_(SYN-205)"}
+{"Action":"pass","Test":"TestRoomCreationReportsEventsToMyself/parallel/Joining_room_twice_is_idempotent"}
 {"Action":"pass","Test":"TestRoomCreationReportsEventsToMyself/parallel/Room_creation_reports_m.room.create_to_myself"}
 {"Action":"pass","Test":"TestRoomCreationReportsEventsToMyself/parallel/Room_creation_reports_m.room.member_to_myself"}
 {"Action":"pass","Test":"TestRoomCreationReportsEventsToMyself/parallel/Setting_room_topic_reports_m.room.topic_to_myself"}

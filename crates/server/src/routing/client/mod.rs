@@ -27,6 +27,9 @@ use std::time::Duration;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::core::serde::CanonicalJsonObject;
+use crate::PduEvent;
+
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -125,92 +128,9 @@ fn search(
     let authed = depot.authed_info()?;
 
     let search_criteria = body.search_categories.room_events.as_ref().unwrap();
-    let filter = &search_criteria.filter;
-
-    let room_ids = filter
-        .rooms
-        .clone()
-        .unwrap_or_else(|| crate::user::joined_rooms(authed.user_id(), 0).unwrap_or_default());
-
-    // Use limit or else 10, with maximum 100
-    let limit = filter.limit.unwrap_or(10).min(100) as usize;
-
-    let mut searches = Vec::new();
-
-    for room_id in room_ids {
-        if !crate::room::is_joined(authed.user_id(), &room_id)? {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
-        }
-
-        if let Some(s) = crate::room::search_pdus(&room_id, &search_criteria.search_term)? {
-            searches.push(s.0.into_iter().peekable());
-        }
-    }
-
-    let skip = match args.next_batch.as_ref().map(|s| s.parse()) {
-        Some(Ok(s)) => s,
-        Some(Err(_)) => return Err(MatrixError::invalid_param("Invalid next_batch token.").into()),
-        None => 0, // Default to the start
-    };
-
-    let mut results = Vec::new();
-    for _ in 0..skip + limit {
-        if let Some(s) = searches
-            .iter_mut()
-            .map(|s| (s.peek().cloned(), s))
-            .max_by_key(|(peek, _)| peek.clone())
-            .and_then(|(_, i)| i.next())
-        {
-            results.push(s);
-        }
-    }
-
-    let results: Vec<_> = results
-        .iter()
-        .filter_map(|result| {
-            crate::room::timeline::get_pdu(result)
-                .ok()?
-                .filter(|pdu| {
-                    crate::room::state::user_can_see_event(authed.user_id(), &pdu.room_id, &pdu.event_id)
-                        .unwrap_or(false)
-                })
-                .map(|pdu| pdu.to_room_event())
-        })
-        .map(|result| SearchResult {
-            context: EventContextResult {
-                end: None,
-                events_after: Vec::new(),
-                events_before: Vec::new(),
-                profile_info: BTreeMap::new(),
-                start: None,
-            },
-            rank: None,
-            result: Some(result),
-        })
-        .skip(skip)
-        .take(limit)
-        .collect();
-
-    let next_batch = if results.len() < limit {
-        None
-    } else {
-        Some((skip + limit).to_string())
-    };
-
-    json_ok(SearchResBody::new(ResultCategories {
-        room_events: ResultRoomEvents {
-            count: Some((results.len() as u32).into()), // TODO: set this to none. Element shouldn't depend on it
-            groups: BTreeMap::new(),                    // TODO
-            next_batch,
-            results,
-            state: BTreeMap::new(), // TODO
-            highlights: search_criteria
-                .search_term
-                .split_terminator(|c: char| !c.is_alphanumeric())
-                .map(str::to_lowercase)
-                .collect(),
-        },
-    }))
+    let room_events =
+        crate::event::search::search_pdus(authed.user_id(), &search_criteria, args.next_batch.as_deref())?;
+    json_ok(SearchResBody::new(ResultCategories { room_events }))
 }
 
 /// #GET /_matrix/client/r0/capabilities

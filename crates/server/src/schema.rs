@@ -1,12 +1,9 @@
 // @generated automatically by Diesel CLI.
 
-pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "tsvector", schema = "pg_catalog"))]
-    pub struct Tsvector;
-}
-
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     appservice_registrations (id) {
         id -> Text,
         url -> Nullable<Text>,
@@ -20,6 +17,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     device_inboxes (id) {
         id -> Int8,
         user_id -> Text,
@@ -31,6 +31,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     device_streams (id) {
         id -> Int8,
         user_id -> Text,
@@ -39,6 +42,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_cross_signing_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -48,6 +54,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_cross_signing_sigs (id) {
         id -> Int8,
         origin_user_id -> Text,
@@ -59,6 +68,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_device_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -71,6 +83,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_fallback_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -84,6 +99,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_key_changes (id) {
         id -> Int8,
         user_id -> Text,
@@ -94,6 +112,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_one_time_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -106,6 +127,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_room_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -121,6 +145,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_room_keys_versions (id) {
         id -> Int8,
         user_id -> Text,
@@ -134,6 +161,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_auth_chains (event_id) {
         event_id -> Text,
         chain_id -> Int8,
@@ -142,6 +172,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_backward_extremities (id) {
         id -> Int8,
         event_id -> Text,
@@ -150,6 +183,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_datas (event_id) {
         event_id -> Text,
         event_sn -> Int8,
@@ -161,6 +197,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_edges (event_id) {
         event_id -> Text,
         prev_event_id -> Text,
@@ -170,6 +209,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_forward_extremities (id) {
         id -> Int8,
         event_id -> Text,
@@ -178,6 +220,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_push_summaries (id) {
         id -> Int8,
         user_id -> Text,
@@ -191,6 +236,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_receipts (id) {
         id -> Int8,
         ty -> Text,
@@ -204,6 +252,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_relations (id) {
         id -> Int8,
         room_id -> Text,
@@ -219,21 +270,25 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::Tsvector;
+    use crate::full_text_search::*;
 
     event_searches (id) {
         id -> Int8,
         event_id -> Text,
-        room_id -> Nullable<Text>,
-        sender_id -> Nullable<Text>,
+        event_sn -> Int8,
+        room_id -> Text,
+        sender_id -> Text,
         key -> Text,
-        vector -> Nullable<Tsvector>,
-        origin_server_ts -> Nullable<Int8>,
+        vector -> Tsvector,
+        origin_server_ts -> Int8,
         stream_ordering -> Nullable<Int8>,
     }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_txn_ids (event_id) {
         event_id -> Text,
         room_id -> Text,
@@ -245,6 +300,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     events (id) {
         id -> Text,
         sn -> Int8,
@@ -258,14 +316,17 @@ diesel::table! {
         contains_url -> Bool,
         worker_id -> Nullable<Text>,
         state_key -> Nullable<Text>,
-        processed -> Bool,
-        outlier -> Bool,
+        is_outlier -> Bool,
+        is_redacted -> Bool,
         soft_failed -> Bool,
         rejection_reason -> Nullable<Text>,
     }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     lazy_load_deliveries (id) {
         id -> Int8,
         user_id -> Text,
@@ -276,6 +337,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     media_metadatas (id) {
         id -> Int8,
         media_id -> Text,
@@ -292,6 +356,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     media_thumbnails (id) {
         id -> Int8,
         media_id -> Text,
@@ -307,6 +374,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     outgoing_requests (id) {
         id -> Int8,
         kind -> Text,
@@ -322,6 +392,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     pushers (id) {
         id -> Int8,
         user_id -> Text,
@@ -344,6 +417,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_aliases (alias_id) {
         alias_id -> Text,
         room_id -> Text,
@@ -353,6 +429,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_servers (id) {
         id -> Int8,
         room_id -> Text,
@@ -361,6 +440,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_state_deltas (frame_id) {
         frame_id -> Int8,
         room_id -> Text,
@@ -371,6 +453,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_state_fields (id) {
         id -> Int8,
         event_ty -> Text,
@@ -379,6 +464,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_state_frames (id) {
         id -> Int8,
         room_id -> Text,
@@ -387,6 +475,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_state_points (id) {
         id -> Int8,
         room_id -> Text,
@@ -397,6 +488,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_tags (id) {
         id -> Int8,
         user_id -> Text,
@@ -409,6 +503,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_threads (id) {
         id -> Text,
         room_id -> Text,
@@ -419,6 +516,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_users (id) {
         id -> Int8,
         event_id -> Text,
@@ -436,6 +536,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     rooms (id) {
         id -> Text,
         version -> Text,
@@ -450,6 +553,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     server_signing_keys (server_id) {
         server_id -> Text,
         key_data -> Json,
@@ -459,6 +565,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     stats_monthly_active_users (id) {
         id -> Int8,
         user_id -> Text,
@@ -467,6 +576,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     stats_room_currents (room_id) {
         room_id -> Text,
         state_events -> Int8,
@@ -481,6 +593,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     stats_user_daily_visits (id) {
         id -> Int8,
         user_id -> Text,
@@ -491,6 +606,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     thread_users (id) {
         id -> Int8,
         thread_id -> Text,
@@ -499,6 +617,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threads (id) {
         id -> Text,
         room_id -> Text,
@@ -509,6 +630,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threepid_guests (id) {
         id -> Int8,
         medium -> Nullable<Text>,
@@ -520,6 +644,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threepid_id_servers (id) {
         id -> Int8,
         user_id -> Text,
@@ -530,6 +657,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threepid_validation_sessions (id) {
         id -> Int8,
         session_id -> Text,
@@ -543,6 +673,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threepid_validation_tokens (id) {
         id -> Int8,
         token -> Text,
@@ -554,6 +687,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_access_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -569,6 +705,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_datas (id) {
         id -> Int8,
         user_id -> Text,
@@ -581,6 +720,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_dehydrated_devices (id) {
         id -> Int8,
         user_id -> Text,
@@ -590,6 +732,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_devices (id) {
         id -> Int8,
         user_id -> Text,
@@ -604,6 +749,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_filters (id) {
         id -> Int8,
         user_id -> Text,
@@ -613,6 +761,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_ignores (id) {
         id -> Int8,
         user_id -> Text,
@@ -622,6 +773,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_openid_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -631,6 +785,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_passwords (id) {
         id -> Int8,
         user_id -> Text,
@@ -640,6 +797,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_presences (id) {
         id -> Int8,
         user_id -> Text,
@@ -655,6 +815,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_profiles (id) {
         id -> Int8,
         user_id -> Text,
@@ -666,6 +829,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_refresh_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -679,6 +845,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_registration_tokens (id) {
         id -> Int8,
         token -> Text,
@@ -691,6 +860,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_sessions (id) {
         id -> Int8,
         user_id -> Text,
@@ -703,6 +875,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_threepids (id) {
         id -> Int8,
         user_id -> Text,
@@ -714,6 +889,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_uiaa_datas (id) {
         id -> Int8,
         user_id -> Text,
@@ -724,6 +902,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     users (id) {
         id -> Text,
         ty -> Nullable<Text>,

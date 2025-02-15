@@ -60,7 +60,7 @@ pub struct StateEventsForEmptyKeyReqArgs {
 /// Response type for the `get_state_events_for_key` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct StateEventsForKeyResBody{
+pub struct StateEventsForKeyResBody {
     /// The content of the state event.
     ///
     /// This is `serde_json::Value` due to complexity issues with returning only the
@@ -78,7 +78,10 @@ pub struct StateEventsForKeyResBody{
 impl StateEventsForKeyResBody {
     /// Creates a new `Response` with the given content.
     pub fn new(content: serde_json::Value, event: serde_json::Value) -> Self {
-        Self{ content: Some(content), event: Some(event) }
+        Self {
+            content: Some(content),
+            event: Some(event),
+        }
     }
 }
 
@@ -110,19 +113,19 @@ impl StateEventsForKeyResBody {
 /// Response type for the `get_state_events` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 
-pub struct StateEventsResBody (
+pub struct StateEventsResBody(
     /// If the user is a member of the room this will be the current state of the room as a
     /// list of events.
     ///
     /// If the user has left the room then this will be the state of the room when they left as
     /// a list of events.
     #[salvo(schema(value_type = Vec<Object>, additional_properties = true))]
-    Vec<RawJson<AnyStateEvent>>
+    Vec<RawJson<AnyStateEvent>>,
 );
 impl StateEventsResBody {
     /// Creates a new `Response` with the given room state.
     pub fn new(room_state: Vec<RawJson<AnyStateEvent>>) -> Self {
-        Self (room_state )
+        Self(room_state)
     }
 }
 

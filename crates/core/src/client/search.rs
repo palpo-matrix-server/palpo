@@ -347,7 +347,8 @@ pub struct ResultRoomEvents {
     pub next_batch: Option<String>,
 
     /// List of results in the requested order.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub results: Vec<SearchResult>,
 
     /// The current state for every room in the results.

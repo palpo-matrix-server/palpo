@@ -20,6 +20,7 @@ palpo-macros = { workspace = true }
 
 anyhow = { workspace = true }
 base64 = { workspace = true }
+byteorder = { workspace = true }
 cruet = { workspace = true }
 async-trait = { workspace = true }
 bcrypt = { workspace = true }
@@ -35,11 +36,13 @@ cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
 dotenvy = { workspace = true }
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
+# diesel_full_text_search = { workspace = true }
 diesel_migrations = { workspace = true }
 fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
+itertools = { workspace = true }
 hickory-resolver = { workspace = true }
 hyper-util = { workspace = true, features = ["client"] }
 hmac = { workspace = true }
