@@ -386,8 +386,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         contains_url: event_data.json_data.get("url").is_some(),
         worker_id: None,
         state_key: incoming_pdu.state_key.clone(),
-        processed: false,
-        outlier: false,
+        is_outlier: false,
+        is_redacted: false,
         soft_failed: false,
         rejection_reason: None,
     };

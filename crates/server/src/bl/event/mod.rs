@@ -39,8 +39,8 @@ pub struct DbEvent {
     pub contains_url: bool,
     pub worker_id: Option<String>,
     pub state_key: Option<String>,
-    pub processed: bool,
-    pub outlier: bool,
+    pub is_outlier: bool,
+    pub is_redacted: bool,
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
     // pub topological_ordering: i64,
@@ -62,9 +62,7 @@ pub struct NewDbEvent {
     pub worker_id: Option<String>,
     pub state_key: Option<String>,
     #[serde(default = "default_false")]
-    pub processed: bool,
-    #[serde(default = "default_false")]
-    pub outlier: bool,
+    pub is_outlier: bool,
     #[serde(default = "default_false")]
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,

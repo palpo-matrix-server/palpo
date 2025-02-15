@@ -275,6 +275,7 @@ diesel::table! {
     event_searches (id) {
         id -> Int8,
         event_id -> Text,
+        event_sn -> Int8,
         room_id -> Text,
         sender_id -> Text,
         key -> Text,
@@ -315,8 +316,8 @@ diesel::table! {
         contains_url -> Bool,
         worker_id -> Nullable<Text>,
         state_key -> Nullable<Text>,
-        processed -> Bool,
-        outlier -> Bool,
+        is_outlier -> Bool,
+        is_redacted -> Bool,
         soft_failed -> Bool,
         rejection_reason -> Nullable<Text>,
     }

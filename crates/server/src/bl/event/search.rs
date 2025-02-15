@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use itertools::Itertools;
+use salvo::http::StatusError;
+use tracing_subscriber::field::debug;
 
-use crate::core::client::search::{Criteria, EventContextResult, ResultRoomEvents, SearchResult};
+use crate::core::canonical_json::CanonicalJsonValue;
+use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};
 use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
@@ -27,41 +31,56 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
         }
     }
 
-    let mut base_query = event_searches::table
+    let base_query = event_searches::table
         .filter(event_searches::room_id.eq_any(&room_ids))
-        .filter(to_tsvector(event_searches::vector).matches(websearch_to_tsquery(&criteria.search_term)));
+        .filter(event_searches::vector.matches(websearch_to_tsquery(&criteria.search_term)));
     let mut data_query = base_query.clone().into_boxed();
-    let mut count_query = base_query.clone().into_boxed();
-    if let Some(next_batch) = next_batch {
-        let next_batch: i64 = next_batch.parse()?;
-        data_query = data_query.filter(event_searches::origin_server_ts.le(next_batch))
+    if let Some(mut next_batch) = next_batch.map(|nb| nb.split('-')) {
+        let server_ts: i64 = next_batch.next().map(str::parse).transpose()?.unwrap_or(0);
+        let event_sn: i64 = next_batch.next().map(str::parse).transpose()?.unwrap_or(0);
+        data_query = data_query
+            .filter(event_searches::origin_server_ts.le(server_ts))
+            .filter(event_searches::event_sn.lt(event_sn));
     }
-    let items = data_query
+    let data_query = data_query
         .select((
-            ts_rank_cd(
-                to_tsvector(event_searches::vector),
-                websearch_to_tsquery(&criteria.search_term),
-            ),
+            ts_rank_cd(event_searches::vector, websearch_to_tsquery(&criteria.search_term)),
             // event_searches::room_id,
             event_searches::event_id,
+            event_searches::event_sn,
             event_searches::origin_server_ts,
             // event_searches::stream_ordering,
         ))
-        .order_by(event_searches::origin_server_ts.desc())
-        .limit(limit as i64)
-        .load::<(f32, OwnedEventId, i64)>(&mut *db::connect()?)?;
-    let count: i64 = count_query.count().first(&mut *db::connect()?)?;
+        .limit(limit as i64);
+    let items = if criteria.order_by == Some(OrderBy::Rank) {
+        data_query
+            .order_by(diesel::dsl::sql::<diesel::sql_types::Int8>("1"))
+            .load::<(f32, OwnedEventId, i64, i64)>(&mut *db::connect()?)?
+    } else {
+        data_query
+            .order_by(event_searches::origin_server_ts.desc())
+            .then_order_by(event_searches::event_sn.desc())
+            .load::<(f32, OwnedEventId, i64, i64)>(&mut *db::connect()?)?
+    };
+    let ids: Vec<i64> = event_searches::table
+        .select(event_searches::id)
+        .load(&mut *db::connect()?)?;
+    let count: i64 = base_query.count().first(&mut *db::connect()?)?;
     let next_batch = if items.len() < limit {
         None
     } else if let Some(last) = items.last() {
-        Some(last.2.to_string())
+        if criteria.order_by == Some(OrderBy::Recent) || criteria.order_by.is_none() {
+            Some(format!("{}-{}", last.3, last.2))
+        } else {
+            None
+        }
     } else {
         None
     };
 
     let results: Vec<_> = items
         .into_iter()
-        .filter_map(|(rank, event_id, _)| {
+        .filter_map(|(rank, event_id, _, _)| {
             crate::room::timeline::get_pdu(&event_id)
                 .ok()?
                 .filter(|pdu| {
@@ -83,8 +102,8 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
         .collect();
 
     Ok(ResultRoomEvents {
-        count: Some((results.len() as u32).into()),
-        groups: BTreeMap::new(),
+        count: Some(count as u64),
+        groups: BTreeMap::new(), // TODO
         next_batch,
         results,
         state: BTreeMap::new(), // TODO
@@ -97,31 +116,42 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
 }
 
 pub fn save_pdu(pdu: &PduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
-    let Some(content) = pdu_json.get("content") else {
+    let Some(CanonicalJsonValue::Object(content)) = pdu_json.get("content") else {
         return Ok(());
     };
     let Some((key, vector)) = (match pdu.event_ty {
-        TimelineEventType::RoomName => pdu_json.get("name").map(|v| (("content.name", v.to_string()))),
-        TimelineEventType::RoomTopic => pdu_json.get("topic").map(|v| (("content.topic", v.to_string()))),
-        TimelineEventType::RoomMessage => pdu_json.get("message").map(|v| (("content.message", v.to_string()))),
+        TimelineEventType::RoomName => content
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|v| (("content.name", v))),
+        TimelineEventType::RoomTopic => content
+            .get("topic")
+            .and_then(|v| v.as_str())
+            .map(|v| (("content.topic", v))),
+        TimelineEventType::RoomMessage => content
+            .get("body")
+            .and_then(|v| v.as_str())
+            .map(|v| (("content.message", v))),
         TimelineEventType::RoomRedaction => {
             // TODO: Redaction
             return Ok(());
         }
-        _ => return Ok(()),
+        _ => {
+            return Ok(());
+        }
     }) else {
         return Ok(());
     };
-    diesel::insert_into(event_searches::table)
-        .values((
-            event_searches::event_id.eq(pdu.event_id.as_str()),
-            event_searches::room_id.eq(pdu.room_id.as_str()),
-            event_searches::key.eq(key),
-            event_searches::vector
-                .eq(diesel::dsl::sql::<TsVector>("to_tsvector('english', '?')")
-                    .bind::<diesel::sql_types::Text, _>(&vector)),
-            event_searches::origin_server_ts.eq(pdu.origin_server_ts),
-        ))
+    diesel::sql_query("INSERT INTO event_searches (event_id, event_sn, room_id, sender_id, key, vector, origin_server_ts) VALUES ($1, $2, $3, $4, $5, to_tsvector('english', $6), $7) ON CONFLICT (event_id) DO UPDATE SET vector = to_tsvector('english', $6), origin_server_ts = $7")
+        .bind::<diesel::sql_types::Text, _>(pdu.event_id.as_str())
+        .bind::<diesel::sql_types::Int8, _>(pdu.event_sn)
+        .bind::<diesel::sql_types::Text, _>(&pdu.room_id)
+        .bind::<diesel::sql_types::Text, _>(&pdu.sender)
+        .bind::<diesel::sql_types::Text, _>(key)
+        .bind::<diesel::sql_types::Text, _>(vector)
+        .bind::<diesel::sql_types::Int8, _>(pdu.origin_server_ts)
+        .bind::<diesel::sql_types::Text, _>(vector)
+        .bind::<diesel::sql_types::Int8, _>(pdu.origin_server_ts)
         .execute(&mut *db::connect()?)?;
 
     Ok(())

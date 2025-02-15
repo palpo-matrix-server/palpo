@@ -42,6 +42,7 @@ fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
+itertools = { workspace = true }
 hickory-resolver = { workspace = true }
 hyper-util = { workspace = true, features = ["client"] }
 hmac = { workspace = true }

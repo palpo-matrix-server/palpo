@@ -26,8 +26,8 @@ pub mod hoops;
 pub mod schema;
 pub mod utils;
 
-pub mod full_text_search;
 pub mod error;
+pub mod full_text_search;
 pub use crate::core::error::MatrixError;
 pub use error::AppError;
 pub use palpo_core as core;

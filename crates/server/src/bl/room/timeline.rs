@@ -90,7 +90,7 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 /// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     let query = events::table
-        .filter(events::outlier.eq(false))
+        .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id));
     if diesel_exists!(query, &mut *db::connect()?)? {
         event_datas::table
@@ -544,8 +544,7 @@ pub fn create_hash_and_sign_event(
         contains_url: content_value.get("url").is_some(),
         worker_id: None,
         state_key: state_key.clone(),
-        processed: false,
-        outlier: false,
+        is_outlier: false,
         soft_failed: false,
         rejection_reason: None,
     };
@@ -910,7 +909,12 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
     if let Some(mut pdu) = get_pdu(event_id)? {
         pdu.redact(reason)?;
-        replace_pdu(&event_id, &utils::to_canonical_object(&pdu)?)?;
+        replace_pdu(event_id, &utils::to_canonical_object(&pdu)?)?;
+        diesel::update(events::table.filter(events::id.eq(event_id)))
+            .set(events::is_redacted.eq(true))
+            .execute(&mut db::connect()?)?;
+        diesel::delete(event_searches::table.filter(event_searches::event_id.eq(event_id)))
+            .execute(&mut db::connect()?)?;
     }
     // If event does not exist, just noop
     Ok(())

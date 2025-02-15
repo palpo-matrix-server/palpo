@@ -21,15 +21,12 @@ mod types {
     impl TextOrNullableText for TsVector {}
     impl TextOrNullableText for Nullable<TsVector> {}
 
-
     #[derive(SqlType)]
     #[diesel(postgres_type(name = "regconfig"))]
     pub struct RegConfig;
 
     impl FromSql<TsVector, Pg> for PgTsVector {
-        fn from_sql(
-            bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
-        ) -> diesel::deserialize::Result<Self> {
+        fn from_sql(bytes: <Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
             let mut cursor = Cursor::new(bytes.as_bytes());
 
             // From Postgres `tsvector.c`:
@@ -274,10 +271,7 @@ mod dsl {
             Contains::new(self, other.as_expression())
         }
 
-        fn contained_by<T: AsExpression<TsQuery>>(
-            self,
-            other: T,
-        ) -> ContainedBy<Self, T::Expression> {
+        fn contained_by<T: AsExpression<TsQuery>>(self, other: T) -> ContainedBy<Self, T::Expression> {
             ContainedBy::new(self, other.as_expression())
         }
     }
@@ -291,7 +285,6 @@ pub use self::dsl::*;
 pub use self::functions::*;
 pub use self::types::*;
 
-#[cfg(all(test, feature = "with-diesel-postgres"))]
 mod tests {
     use super::*;
 
@@ -302,8 +295,7 @@ mod tests {
     #[test]
     fn test_tsvector_from_sql_with_positions() {
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let mut conn =
-            PgConnection::establish(&database_url).expect("Error connecting to database");
+        let mut conn = PgConnection::establish(&database_url).expect("Error connecting to database");
 
         let query = diesel::select(sql::<TsVector>(
             "to_tsvector('a fat cat sat on a mat and ate a fat rat')",
@@ -345,12 +337,9 @@ mod tests {
     #[test]
     fn test_tsvector_from_sql_without_positions() {
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let mut conn =
-            PgConnection::establish(&database_url).expect("Error connecting to database");
+        let mut conn = PgConnection::establish(&database_url).expect("Error connecting to database");
 
-        let query = diesel::select(sql::<TsVector>(
-            "'a fat cat sat on a mat and ate a fat rat'::tsvector",
-        ));
+        let query = diesel::select(sql::<TsVector>("'a fat cat sat on a mat and ate a fat rat'::tsvector"));
         let result: PgTsVector = query.get_result(&mut conn).expect("Error executing query");
 
         let expected = PgTsVector {
