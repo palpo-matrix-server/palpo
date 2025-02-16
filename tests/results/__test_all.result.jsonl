@@ -56,8 +56,6 @@
 {"Action":"fail","Test":"TestKnocking"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestLeaveEventVisibility"}
-{"Action":"fail","Test":"TestLeftRoomFixture"}
-{"Action":"fail","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room"}
 {"Action":"fail","Test":"TestMediaWithoutFileName"}
 {"Action":"fail","Test":"TestMediaWithoutFileName/parallel"}
 {"Action":"fail","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
@@ -114,12 +112,7 @@
 {"Action":"fail","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/state/m.room.power_levels_fetches_powerlevels"}
 {"Action":"fail","Test":"TestSearch"}
 {"Action":"fail","Test":"TestSearch/parallel"}
-{"Action":"fail","Test":"TestSearch/parallel/Can_back-paginate_search_results"}
 {"Action":"fail","Test":"TestSearch/parallel/Can_get_context_around_search_results"}
-{"Action":"fail","Test":"TestSearch/parallel/Can_search_for_an_event_by_body"}
-{"Action":"fail","Test":"TestSearch/parallel/Search_results_with_rank_ordering_do_not_include_redacted_events"}
-{"Action":"fail","Test":"TestSearch/parallel/Search_results_with_recent_ordering_do_not_include_redacted_events"}
-{"Action":"fail","Test":"TestSearch/parallel/Search_works_across_an_upgraded_room_and_its_predecessor"}
 {"Action":"fail","Test":"TestSendJoinPartialStateResponse"}
 {"Action":"fail","Test":"TestSync"}
 {"Action":"fail","Test":"TestSync/parallel"}
@@ -136,6 +129,7 @@
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestTxnIdWithRefreshToken"}
 {"Action":"fail","Test":"TestTxnIdempotency"}
+{"Action":"fail","Test":"TestUnbanViaInvite"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"fail","Test":"TestUploadKey"}
 {"Action":"fail","Test":"TestUploadKey/Parallel"}
@@ -227,8 +221,10 @@
 {"Action":"pass","Test":"TestKeysQueryWithDeviceIDAsObjectFails"}
 {"Action":"pass","Test":"TestLeakyTyping"}
 {"Action":"pass","Test":"TestLeaveEventInviteRejection"}
+{"Action":"pass","Test":"TestLeftRoomFixture"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_'m.room.name'_state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/members_for_a_departed_room"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Getting_messages_going_forward_is_limited_for_a_departed_room"}
 {"Action":"pass","Test":"TestLocalPngThumbnail"}
@@ -434,6 +430,11 @@
 {"Action":"pass","Test":"TestRoomsInvite/Parallel/Uninvited_users_cannot_join_the_room"}
 {"Action":"pass","Test":"TestRoomsInvite/Parallel/Users_cannot_invite_a_user_that_is_already_in_the_room"}
 {"Action":"pass","Test":"TestRoomsInvite/Parallel/Users_cannot_invite_themselves_to_a_room"}
+{"Action":"pass","Test":"TestSearch/parallel/Can_back-paginate_search_results"}
+{"Action":"pass","Test":"TestSearch/parallel/Can_search_for_an_event_by_body"}
+{"Action":"pass","Test":"TestSearch/parallel/Search_results_with_rank_ordering_do_not_include_redacted_events"}
+{"Action":"pass","Test":"TestSearch/parallel/Search_results_with_recent_ordering_do_not_include_redacted_events"}
+{"Action":"pass","Test":"TestSearch/parallel/Search_works_across_an_upgraded_room_and_its_predecessor"}
 {"Action":"pass","Test":"TestSendAndFetchMessage"}
 {"Action":"pass","Test":"TestSendMessageWithTxn"}
 {"Action":"pass","Test":"TestServerCapabilities"}
@@ -459,7 +460,6 @@
 {"Action":"pass","Test":"TestTyping"}
 {"Action":"pass","Test":"TestTyping/Typing_can_be_explicitly_stopped"}
 {"Action":"pass","Test":"TestTyping/Typing_notification_sent_to_local_room_members"}
-{"Action":"pass","Test":"TestUnbanViaInvite"}
 {"Action":"pass","Test":"TestUnknownEndpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Client-server_endpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Key_endpoints"}

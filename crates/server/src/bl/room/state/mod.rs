@@ -176,6 +176,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         }
 
         let hash_data = utils::hash_keys(&vec![new_compressed_event.as_bytes()]);
+        println!("========append_to_state=====call ensure_frame  {:?}", hash_data);
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
         update_point_frame_id(new_compressed_event.point_id(), frame_id)?;
         calc_and_save_state_delta(
@@ -490,8 +491,6 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
         return Ok(*visibility);
     }
 
-    let currently_member = crate::room::is_joined(&user_id, &room_id)?;
-
     let history_visibility =
         get_pdu(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(Ok(HistoryVisibility::Shared), |s| {
             serde_json::from_str(s.content.get())
@@ -501,14 +500,14 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,
-        HistoryVisibility::Shared => currently_member,
+        HistoryVisibility::Shared => crate::room::is_joined(&user_id, &room_id)?,
         HistoryVisibility::Invited => {
             // Allow if any member on requesting server was AT LEAST invited, else deny
             user_was_invited(frame_id, &user_id)
         }
         HistoryVisibility::Joined => {
             // Allow if any member on requested server was joined, else deny
-            user_was_joined(frame_id, &user_id)
+            user_was_joined(frame_id, &user_id) || user_was_joined(frame_id -1, &user_id)
         }
         _ => {
             error!("Unknown history visibility {history_visibility}");
@@ -579,6 +578,7 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
 
     let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
 
+    println!("========save_state=====call ensure_frame  {:?}", hash_data);
     let new_frame_id = ensure_frame(room_id, hash_data)?;
 
     if Some(new_frame_id) == prev_frame_id {
