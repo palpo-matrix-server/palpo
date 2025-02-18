@@ -542,12 +542,13 @@ impl JoinedMembersResBody {
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RoomMember {
     /// The display name of the user.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    // #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub display_name: Option<String>,
 
     /// The mxc avatar url of the user.
     #[serde(
-        skip_serializing_if = "Option::is_none",
+        // skip_serializing_if = "Option::is_none",
         default,
         deserialize_with = "crate::serde::empty_string_as_none"
     )]
