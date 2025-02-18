@@ -40,8 +40,15 @@ pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
 //         .stuff(req_body)
 // }
 
+pub fn claim_keys_request(origin: &str, body: ClaimKeysReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/client/v1/user/keys/claim"
+    ))?;
+    crate::sending::post(url).stuff(body)
+}
+
 /// Request type for the `claim_keys` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct ClaimKeysReqBody {
     #[serde(
         with = "crate::serde::duration::opt_ms",
@@ -54,9 +61,10 @@ pub struct ClaimKeysReqBody {
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub one_time_keys: OneTimeKeyClaims,
 }
+crate::json_body_modifier!(ClaimKeysReqBody);
 
 /// Response type for the `claim_keys` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
 
 pub struct ClaimKeysResBody {
     /// One-time keys for the queried devices

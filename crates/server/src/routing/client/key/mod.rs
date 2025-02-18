@@ -28,7 +28,7 @@ pub fn authed_router() -> Router {
 /// Claims one-time keys
 #[endpoint]
 async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
-    cjson_ok(key::claim_keys(&body.one_time_keys).await?)
+    cjson_ok(key::claim_one_time_keys(&body.one_time_keys).await?)
 }
 
 /// #POST /_matrix/client/r0/keys/query

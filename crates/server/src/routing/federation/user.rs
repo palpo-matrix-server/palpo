@@ -25,7 +25,7 @@ pub fn router() -> Router {
 /// Claims one-time keys.
 #[endpoint]
 async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
-    let result = crate::user::claim_keys(&body.one_time_keys).await?;
+    let result = crate::user::claim_one_time_keys(&body.one_time_keys).await?;
 
     cjson_ok(ClaimKeysResBody {
         one_time_keys: result.one_time_keys,

@@ -176,7 +176,6 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         }
 
         let hash_data = utils::hash_keys(&vec![new_compressed_event.as_bytes()]);
-        println!("========append_to_state=====call ensure_frame  {:?}", hash_data);
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
         update_point_frame_id(new_compressed_event.point_id(), frame_id)?;
         calc_and_save_state_delta(
@@ -578,7 +577,6 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
 
     let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
 
-    println!("========save_state=====call ensure_frame  {:?}", hash_data);
     let new_frame_id = ensure_frame(room_id, hash_data)?;
 
     if Some(new_frame_id) == prev_frame_id {

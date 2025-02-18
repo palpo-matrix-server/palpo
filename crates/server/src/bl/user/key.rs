@@ -3,14 +3,17 @@ use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
+use oauth2::http::Response;
 use palpo_core::UnixMillis;
 use serde_json::json;
 
 use crate::core::client::key::ClaimKeysResBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
+use crate::core::federation::key::claim_keys_request;
 use crate::core::identifiers::*;
 use crate::core::{client, federation};
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
+use crate::exts::*;
 use crate::schema::*;
 use crate::user::clean_signatures;
 use crate::{db, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
@@ -284,7 +287,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     })
 }
 
-pub async fn claim_keys(
+pub async fn claim_one_time_keys(
     one_time_keys_input: &BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>,
 ) -> AppResult<ClaimKeysResBody> {
     let mut one_time_keys = BTreeMap::new();
@@ -297,53 +300,54 @@ pub async fn claim_keys(
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
                 .push((user_id, map));
+            continue;
         }
-
         let mut container = BTreeMap::new();
         for (device_id, key_algorithm) in map {
-            if let Some(one_time_keys) = crate::user::take_one_time_key(user_id, device_id, key_algorithm)? {
+            if let Some(one_time_keys) = crate::user::claim_one_time_key(user_id, device_id, key_algorithm)? {
                 let mut c = BTreeMap::new();
                 c.insert(one_time_keys.0, one_time_keys.1);
                 container.insert(device_id.clone(), c);
             }
         }
-        one_time_keys.insert(user_id.clone(), container);
+        if !container.is_empty() {
+            one_time_keys.insert(user_id.clone(), container);
+        }
     }
 
     let mut failures = BTreeMap::new();
 
-    // let mut futures: FuturesUnordered<_> = get_over_federation
-    //     .into_iter()
-    //     .map(|(server, vec)| async move {
-    //         let mut one_time_keys_input_fed = BTreeMap::new();
-    //         for (user_id, keys) in vec {
-    //             one_time_keys_input_fed.insert(user_id.clone(), keys.clone());
-    //         }
-    //         (
-    //             server,
-    //             crate::sending
-    //                 .post(
-    //                     server,
-    //                     federation::key::ClaimKeysReqBody {
-    //                         one_time_keys: one_time_keys_input_fed,
-    //                     },
-    //                 )
-    //                 .await,
-    //         )
-    //     })
-    //     .collect();
-    //
-    // while let Some((server, response)) = futures.next().await {
-    //     match response {
-    //         Ok(keys) => {
-    //             one_time_keys.extend(keys.one_time_keys);
-    //         }
-    //         Err(_e) => {
-    //             failures.insert(server.to_string(), json!({}));
-    //         }
-    //     }
-    // }
-
+    let mut futures: FuturesUnordered<_> = FuturesUnordered::new();
+    for (server, vec) in get_over_federation.into_iter() {
+        let mut one_time_keys_input_fed = BTreeMap::new();
+        for (user_id, keys) in vec {
+            one_time_keys_input_fed.insert(user_id.clone(), keys.clone());
+        }
+        let request = claim_keys_request(
+            &server.origin().await,
+            federation::key::ClaimKeysReqBody {
+                timeout: None,
+                one_time_keys: one_time_keys_input_fed,
+            },
+        )?
+        .into_inner();
+        futures.push(async move { (server, crate::sending::send_federation_request(server, request).await) });
+    }
+    while let Some((server, response)) = futures.next().await {
+        match response {
+            Ok(response) => match response.json::<federation::key::ClaimKeysResBody>().await {
+                Ok(keys) => {
+                    one_time_keys.extend(keys.one_time_keys);
+                }
+                Err(e) => {
+                    failures.insert(server.to_string(), json!({}));
+                }
+            },
+            Err(_e) => {
+                failures.insert(server.to_string(), json!({}));
+            }
+        }
+    }
     Ok(ClaimKeysResBody {
         failures,
         one_time_keys,
@@ -426,7 +430,7 @@ pub fn add_one_time_key(
     Ok(())
 }
 
-pub fn take_one_time_key(
+pub fn claim_one_time_key(
     user_id: &OwnedUserId,
     device_id: &DeviceId,
     key_algorithm: &DeviceKeyAlgorithm,
