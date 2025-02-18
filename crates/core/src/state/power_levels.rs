@@ -12,7 +12,7 @@ use tracing::error;
 
 use crate::RoomVersion;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct IntRoomPowerLevelsEventContent {
     #[serde(default = "default_power_level")]
     ban: i64,
