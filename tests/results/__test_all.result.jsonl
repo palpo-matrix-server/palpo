@@ -32,6 +32,8 @@
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_for_empty_room"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_several_times"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_has_'is_direct'_flag_in_prev_content_after_joining"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_join_the_room_when_homeserver_is_already_participating_in_the_room"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_reject_invite_when_homeserver_is_already_participating_in_the_room"}
 {"Action":"fail","Test":"TestFederationThumbnail"}
 {"Action":"fail","Test":"TestGetMissingEventsGapFilling"}
 {"Action":"fail","Test":"TestGetRoomMembersAtPoint"}
@@ -51,6 +53,7 @@
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_state_with_unverifiable_auth_events_shouldn't_block_room_join"}
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_unobtainable_keys_shouldn't_block_room_join"}
 {"Action":"fail","Test":"TestJoinViaRoomIDAndServerName"}
+{"Action":"fail","Test":"TestKeyClaimOrdering"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectory"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectoryInMSC3787Room"}
 {"Action":"fail","Test":"TestKnocking"}
@@ -61,6 +64,7 @@
 {"Action":"fail","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
+{"Action":"fail","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
 {"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"fail","Test":"TestOutboundFederationProfile"}
 {"Action":"fail","Test":"TestOutboundFederationProfile/Outbound_federation_can_query_profile_data"}
@@ -134,7 +138,6 @@
 {"Action":"fail","Test":"TestUploadKey"}
 {"Action":"fail","Test":"TestUploadKey/Parallel"}
 {"Action":"fail","Test":"TestUploadKey/Parallel/Can_claim_one_time_key_using_POST"}
-{"Action":"fail","Test":"TestUploadKey/Parallel/Rejects_invalid_device_keys"}
 {"Action":"fail","Test":"TestUrlPreview"}
 {"Action":"fail","Test":"TestUserAppearsInChangedDeviceListOnJoinOverFederation"}
 {"Action":"pass","Test":"TestAddAccountData"}
@@ -469,6 +472,7 @@
 {"Action":"pass","Test":"TestUploadKey/Parallel/Can_query_device_keys_using_POST"}
 {"Action":"pass","Test":"TestUploadKey/Parallel/Can_query_specific_device_keys_using_POST"}
 {"Action":"pass","Test":"TestUploadKey/Parallel/Can_upload_device_keys"}
+{"Action":"pass","Test":"TestUploadKey/Parallel/Rejects_invalid_device_keys"}
 {"Action":"pass","Test":"TestUploadKey/Parallel/Should_reject_keys_claiming_to_belong_to_a_different_user"}
 {"Action":"pass","Test":"TestUploadKey/Parallel/query_for_user_with_no_keys_returns_empty_key_dict"}
 {"Action":"pass","Test":"TestUploadKeyIdempotency"}
