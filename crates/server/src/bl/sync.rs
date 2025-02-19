@@ -153,7 +153,6 @@ pub fn sync_events(
                 error!("Leave event has no state");
                 continue;
             };
-            println!("BBBBBBBBBBBBBBBBBBBBB  since_frame_id: {since_frame_id:?}  left_frame_id:{left_frame_id:?}");
             if let Some(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
                     continue;
@@ -173,7 +172,7 @@ pub fn sync_events(
             let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
             let leave_state_key_id =
                 crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
-            left_state_ids.insert(leave_state_key_id, left_event_id);
+            left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
             for (key, event_id) in left_state_ids {
                 if full_state || since_state_ids.get(&key) != Some(&event_id) {
@@ -200,6 +199,7 @@ pub fn sync_events(
                 }
             }
 
+            let left_event = crate::room::timeline::get_pdu(&left_event_id)?.map(|pdu| pdu.to_sync_room_event());
             left_rooms.insert(
                 room_id.to_owned(),
                 LeftRoomV3 {
@@ -207,7 +207,11 @@ pub fn sync_events(
                     timeline: TimelineV3 {
                         limited: false,
                         prev_batch: Some(since_sn.to_string()),
-                        events: Vec::new(),
+                        events: if let Some(left_event) = left_event {
+                            vec![left_event]
+                        } else {
+                            Vec::new()
+                        },
                     },
                     state: StateV3 {
                         events: left_state_events,
