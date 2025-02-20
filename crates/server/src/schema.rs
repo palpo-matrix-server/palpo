@@ -506,19 +506,6 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    room_threads (id) {
-        id -> Text,
-        room_id -> Text,
-        latest_event_id -> Text,
-        topological_ordering -> Int8,
-        stream_ordering -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
     room_users (id) {
         id -> Int8,
         event_id -> Text,
@@ -609,23 +596,12 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    thread_users (id) {
-        id -> Int8,
-        thread_id -> Text,
-        user_id -> Text,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    threads (id) {
-        id -> Text,
+    threads (event_id) {
+        event_id -> Text,
+        event_sn -> Int8,
         room_id -> Text,
-        latest_event_id -> Text,
-        topological_ordering -> Int8,
-        stream_ordering -> Int8,
+        last_id -> Text,
+        last_sn -> Int8,
     }
 }
 
@@ -960,14 +936,12 @@ diesel::allow_tables_to_appear_in_same_query!(
     room_state_frames,
     room_state_points,
     room_tags,
-    room_threads,
     room_users,
     rooms,
     server_signing_keys,
     stats_monthly_active_users,
     stats_room_currents,
     stats_user_daily_visits,
-    thread_users,
     threads,
     threepid_guests,
     threepid_id_servers,

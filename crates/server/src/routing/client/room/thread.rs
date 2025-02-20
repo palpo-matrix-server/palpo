@@ -1,7 +1,6 @@
 use salvo::prelude::*;
 
 use crate::core::client::room::{ThreadsReqArgs, ThreadsResBody};
-use crate::room::thread::ThreadsNextBatch;
 use crate::{json_ok, AuthArgs, DepotExt, JsonResult};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/threads
@@ -12,14 +11,14 @@ pub(super) async fn list_threads(_aa: AuthArgs, args: ThreadsReqArgs, depot: &mu
     // Use limit or else 10, with maximum 100
     let limit = args.limit.and_then(|l| l.try_into().ok()).unwrap_or(10).min(100);
 
-    let from: Option<ThreadsNextBatch> = if let Some(from) = &args.from {
+    let from: Option<i64> = if let Some(from) = &args.from {
         Some(from.parse()?)
     } else {
         None
     };
 
     let (events, next_batch) =
-        crate::room::thread::get_threads(&args.room_id, authed.user_id(), &args.include, limit, from)?;
+        crate::room::thread::get_threads(&args.room_id, &args.include, limit, from)?;
 
     let threads = events
         .into_iter()
