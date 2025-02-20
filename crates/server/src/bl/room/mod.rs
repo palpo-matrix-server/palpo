@@ -60,16 +60,6 @@ pub struct NewDbRoom {
     pub created_at: UnixMillis,
 }
 
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = room_threads)]
-pub struct DbThread {
-    pub id: String,
-    pub room_id: OwnedRoomId,
-    pub latest_event_id: OwnedEventId,
-    pub topological_ordering: i64,
-    pub stream_ordering: i64,
-}
-
 #[derive(Insertable, Identifiable, Queryable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = stats_room_currents, primary_key(room_id))]
 pub struct DbRoomCurrent {

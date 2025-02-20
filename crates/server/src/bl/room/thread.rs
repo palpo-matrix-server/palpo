@@ -11,85 +11,43 @@ use crate::schema::*;
 use crate::{db, AppResult, MatrixError, PduEvent};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = room_threads)]
-pub struct RoomThread {
-    pub id: OwnedEventId,
+#[diesel(table_name = threads, primary_key(event_id))]
+pub struct DbThread {
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
     pub room_id: OwnedRoomId,
-    pub latest_event_id: OwnedEventId,
-    pub topological_ordering: i64,
-    pub stream_ordering: i64,
-}
-
-#[derive(Clone, Debug)]
-pub struct ThreadsNextBatch {
-    topological_ordering: i64,
-    stream_ordering: i64,
-}
-impl ToString for ThreadsNextBatch {
-    fn to_string(&self) -> String {
-        format!("{}-{}", self.topological_ordering, self.stream_ordering)
-    }
-}
-impl FromStr for ThreadsNextBatch {
-    type Err = MatrixError;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let mut parts = value.splitn(2, '-');
-        let topological_ordering = parts
-            .next()
-            .ok_or_else(|| MatrixError::invalid_param("Invalid next batch"))?
-            .parse()
-            .map_err(|_| MatrixError::invalid_param("Invalid next batch"))?;
-        let stream_ordering = parts
-            .next()
-            .ok_or_else(|| MatrixError::invalid_param("Invalid next batch"))?
-            .parse()
-            .map_err(|_| MatrixError::invalid_param("Invalid next batch"))?;
-
-        Ok(ThreadsNextBatch {
-            topological_ordering,
-            stream_ordering,
-        })
-    }
+    pub last_id: OwnedEventId,
+    pub last_sn: i64,
 }
 
 pub fn get_threads(
     room_id: &RoomId,
-    user_id: &UserId,
     include: &IncludeThreads,
     limit: i64,
-    from_token: Option<ThreadsNextBatch>,
-) -> AppResult<(Vec<(OwnedEventId, PduEvent)>, Option<ThreadsNextBatch>)> {
-    let room_threads = if let Some(from_token) = from_token {
-        room_threads::table
-            .filter(room_threads::room_id.eq(room_id))
-            .filter(room_threads::topological_ordering.le(from_token.topological_ordering))
-            .filter(room_threads::stream_ordering.lt(from_token.stream_ordering))
-            .order_by(room_threads::topological_ordering.desc())
-            .order_by(room_threads::stream_ordering.desc())
+    from_token: Option<i64>,
+) -> AppResult<(Vec<(OwnedEventId, PduEvent)>, Option<i64>)> {
+    let items = if let Some(from_token) = from_token {
+        threads::table
+            .filter(threads::room_id.eq(room_id))
+            .filter(threads::event_sn.le(from_token))
+            .select((threads::event_id, threads::event_sn))
+            .order_by(threads::last_sn.desc())
             .limit(limit)
-            .load::<RoomThread>(&mut *db::connect()?)?
+            .load::<(OwnedEventId, i64)>(&mut *db::connect()?)?
     } else {
-        room_threads::table
-            .filter(room_threads::room_id.eq(room_id))
-            .order_by(room_threads::topological_ordering.desc())
-            .order_by(room_threads::stream_ordering.desc())
+        threads::table
+            .filter(threads::room_id.eq(room_id))
+            .select((threads::event_id, threads::event_sn))
+            .order_by(threads::last_sn.desc())
             .limit(limit)
-            .load::<RoomThread>(&mut *db::connect()?)?
+            .load::<(OwnedEventId, i64)>(&mut *db::connect()?)?
     };
-    let next_token = if let Some(last) = room_threads.last() {
-        Some(ThreadsNextBatch {
-            topological_ordering: last.topological_ordering,
-            stream_ordering: last.stream_ordering,
-        })
-    } else {
-        None
-    };
+    let next_token = items.last().map(|(_, sn)| *sn - 1);
 
-    let mut events = Vec::with_capacity(room_threads.len());
-    for room_thread in &room_threads {
-        if let Some(pdu) = crate::room::timeline::get_pdu(&room_thread.id)? {
-            events.push((room_thread.id.clone(), pdu));
+    let mut events = Vec::with_capacity(items.len());
+    for (event_id, _) in items {
+        if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+            events.push((event_id, pdu));
         }
     }
     Ok((events, next_token))
@@ -141,11 +99,20 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
         crate::room::timeline::replace_pdu(thread_id, &root_pdu_json)?;
     }
 
-    for user_id in [&root_pdu.sender, &pdu.sender] {
-        diesel::insert_into(thread_users::table)
-            .values((thread_users::thread_id.eq(thread_id), thread_users::user_id.eq(user_id)))
-            .on_conflict_do_nothing()
-            .execute(&mut *db::connect()?)?;
-    }
+    diesel::insert_into(threads::table)
+        .values(DbThread {
+            event_id: root_pdu.event_id.as_ref().to_owned(),
+            event_sn: root_pdu.event_sn.clone(),
+            room_id: root_pdu.room_id.clone(),
+            last_id: pdu.event_id.as_ref().to_owned(),
+            last_sn: pdu.event_sn,
+        })
+        .on_conflict(threads::event_id)
+        .do_update()
+        .set((
+            threads::last_id.eq(pdu.event_id.as_ref()),
+            threads::last_sn.eq(pdu.event_sn),
+        ))
+        .execute(&mut *db::connect()?)?;
     Ok(())
 }
