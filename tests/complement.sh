@@ -25,7 +25,8 @@ fi
 TEST_IMAGE="complement-palpo-test"
 
 # Complement tests that are skipped due to flakiness/reliability issues
-SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*|TestJson/Parallel/TestRequestEncodingFails.*'
+SKIPPED_COMPLEMENT_TESTS='-skip=""'
+# SKIPPED_COMPLEMENT_TESTS='-skip=TestClientSpacesSummary.*|TestJoinFederatedRoomFromApplicationServiceBridgeUser.*|TestJumpToDateEndpoint.*'
 
 env \
     -C "$(git rev-parse --show-toplevel)" \
@@ -53,7 +54,7 @@ env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestThreadsEndpoint" -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestRoomSpecificUsernameAtJoin" -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

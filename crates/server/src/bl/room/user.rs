@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppResult, JsonValue};
+use crate::{AppResult, JsonValue, db};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_users)]
@@ -121,10 +121,16 @@ pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId
     }
 
     let mut shared_rooms = user_rooms.pop().map(|i| i.1).unwrap_or_default();
+    if shared_rooms.is_empty() {
+        return Ok(shared_rooms);
+    }
     while let Some((user_id, room_ids)) = user_rooms.pop() {
         let set1: HashSet<_> = shared_rooms.into_iter().collect();
         let set2: HashSet<_> = room_ids.into_iter().collect();
         shared_rooms = set1.intersection(&set2).cloned().collect();
+        if shared_rooms.is_empty() {
+            return Ok(shared_rooms);
+        }
     }
     Ok(shared_rooms)
 }

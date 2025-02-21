@@ -4,11 +4,11 @@ use salvo::prelude::*;
 
 use crate::core::client::user_directory::SearchedUser;
 use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody, SearchUsersResBody};
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::StateEventType;
+use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, hoops, json_ok, AuthArgs, DepotExt, JsonResult};
+use crate::{AuthArgs, DepotExt, JsonResult, db, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")
@@ -35,7 +35,7 @@ fn search(
             user_profiles::user_id
                 .ilike(format!("%{}%", body.search_term))
                 .or(user_profiles::display_name.ilike(format!("%{}%", body.search_term))),
-        )
+        ).filter(user_profiles::user_id.ne(authed.user_id()))
         .select(user_profiles::user_id)
         .load::<OwnedUserId>(&mut *db::connect()?)?;
 
@@ -59,7 +59,7 @@ fn search(
             return Some(user);
         }
 
-        let user_is_in_shared_rooms = crate::room::user::get_shared_rooms(vec![authed.user_id().clone(), user_id])
+        let user_is_in_shared_rooms = !crate::room::user::get_shared_rooms(vec![authed.user_id().clone(), user_id])
             .ok()?
             .is_empty();
 
