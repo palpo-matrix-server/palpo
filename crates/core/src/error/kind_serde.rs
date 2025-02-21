@@ -101,8 +101,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
         let mut retry_after_ms = None;
         let mut room_version = None;
         let mut admin_contact = None;
-        let mut status = None;
-        let mut body = None;
+        let mut status: Option<()> = None;
+        let mut body: Option<()> = None;
         let mut current_version = None;
         let mut extra = BTreeMap::new();
 

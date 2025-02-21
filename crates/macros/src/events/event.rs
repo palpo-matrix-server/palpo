@@ -140,8 +140,8 @@ fn expand_deserialize_event(
     let field_names: Vec<_> = fields.iter().flat_map(|f| &f.ident).collect();
 
     let deserialize_impl_gen = if is_generic {
-        let gen = &input.generics.params;
-        quote! { <'de, #gen> }
+        let gen_params = &input.generics.params;
+        quote! { <'de, #gen_params> }
     } else {
         quote! { <'de> }
     };

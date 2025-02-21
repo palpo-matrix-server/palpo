@@ -56,7 +56,7 @@ pub fn compile_poll_results<'a>(
     end_timestamp: Option<UnixMillis>,
 ) -> IndexMap<&'a str, BTreeSet<&'a UserId>> {
     let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
-    let users_selections = filter_selections(answer_ids, poll.max_selections, responses, end_timestamp);
+    let users_selections = filter_selections(&answer_ids, poll.max_selections, responses, end_timestamp);
 
     aggregate_results(poll.answers.iter().map(|a| a.id.as_str()), users_selections)
 }
@@ -79,7 +79,7 @@ pub fn compile_unstable_poll_results<'a>(
     end_timestamp: Option<UnixMillis>,
 ) -> IndexMap<&'a str, BTreeSet<&'a UserId>> {
     let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
-    let users_selections = filter_selections(answer_ids, poll.max_selections, responses, end_timestamp);
+    let users_selections = filter_selections(&answer_ids, poll.max_selections, responses, end_timestamp);
 
     aggregate_results(poll.answers.iter().map(|a| a.id.as_str()), users_selections)
 }
@@ -89,7 +89,7 @@ fn validate_selections<'a>(
     answer_ids: &BTreeSet<&str>,
     max_selections: u64,
     selections: &'a [String],
-) -> Option<impl Iterator<Item = &'a str>> {
+) -> Option<impl Iterator<Item = &'a str> + use<'a>> {
     // Vote is spoiled if any answer is unknown.
     if selections.iter().any(|s| !answer_ids.contains(s.as_str())) {
         return None;
@@ -99,34 +99,31 @@ fn validate_selections<'a>(
     // in memory.
     let max_selections: usize = max_selections.try_into().unwrap_or(usize::MAX);
 
-    Some(selections.iter().take(max_selections).map(Deref::deref))
+    Some(selections.into_iter().take(max_selections).map(Deref::deref))
 }
 
 fn filter_selections<'a>(
-    answer_ids: BTreeSet<&str>,
+    answer_ids: &BTreeSet<&str>,
     max_selections: u64,
     responses: impl IntoIterator<Item = PollResponseData<'a>>,
     end_timestamp: Option<UnixMillis>,
 ) -> BTreeMap<&'a UserId, (UnixMillis, Option<impl Iterator<Item = &'a str>>)> {
-    responses
-        .into_iter()
-        .filter(|ev| {
-            // Filter out responses after the end_timestamp.
-            end_timestamp.map_or(true, |end_ts| ev.origin_server_ts <= end_ts)
-        })
-        .fold(BTreeMap::new(), |mut acc, data| {
-            let response = acc.entry(data.sender).or_insert((UnixMillis(0), None));
+    let mut filtered_map = BTreeMap::new();
+    for item in responses.into_iter().filter(|ev| {
+        // Filter out responses after the end_timestamp.
+        end_timestamp.map_or(true, |end_ts| ev.origin_server_ts <= end_ts)
+    }) {
+        let response = filtered_map.entry(item.sender).or_insert((UnixMillis(0), None));
 
-            // Only keep the latest selections for each user.
-            if response.0 < data.origin_server_ts {
-                *response = (
-                    data.origin_server_ts,
-                    validate_selections(&answer_ids, max_selections, data.selections),
-                );
-            }
-
-            acc
-        })
+        // Only keep the latest selections for each user.
+        if response.0 < item.origin_server_ts {
+            *response = (
+                item.origin_server_ts,
+                validate_selections(answer_ids, max_selections, item.selections),
+            );
+        }
+    }
+    filtered_map
 }
 
 /// Aggregate the given selections by answer.
