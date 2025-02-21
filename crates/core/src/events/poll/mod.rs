@@ -103,7 +103,7 @@ fn validate_selections<'a>(
 }
 
 fn filter_selections<'a>(
-    answer_ids: BTreeSet<&str>,
+    answer_ids: BTreeSet<&'a str>,
     max_selections: u64,
     responses: impl IntoIterator<Item = PollResponseData<'a>>,
     end_timestamp: Option<UnixMillis>,
