@@ -89,7 +89,7 @@ fn validate_selections<'a>(
     answer_ids: &BTreeSet<&str>,
     max_selections: u64,
     selections: &'a [String],
-) -> Option<impl Iterator<Item = &'a str>> {
+) -> Option<impl Iterator<Item = &'a str> + use<'a>> {
     // Vote is spoiled if any answer is unknown.
     if selections.iter().any(|s| !answer_ids.contains(s.as_str())) {
         return None;
