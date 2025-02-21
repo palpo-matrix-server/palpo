@@ -86,7 +86,7 @@ pub fn compile_unstable_poll_results<'a>(
 
 /// Validate the selections of a response.
 fn validate_selections<'a>(
-    answer_ids: &BTreeSet<&str>,
+    answer_ids: &'a BTreeSet<&'a str>,
     max_selections: u64,
     selections: &'a [String],
 ) -> Option<impl Iterator<Item = &'a str>> {
