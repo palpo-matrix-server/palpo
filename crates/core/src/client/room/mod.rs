@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use crate::client::filter::RoomEventFilter;
 use crate::client::membership::InviteThreepid;
 use crate::events::{
-    room::{create::PreviousRoom, power_levels::RoomPowerLevelsEventContent},
     AnyInitialStateEvent, AnyStateEvent, AnyTimelineEvent,
+    room::{create::PreviousRoom, power_levels::RoomPowerLevelsEventContent},
 };
 use crate::room::{RoomType, Visibility};
 use crate::serde::{RawJson, StringEnum};

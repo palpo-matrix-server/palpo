@@ -7,12 +7,12 @@ use std::{borrow::Cow, collections::BTreeMap};
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{
-    de::{Deserializer, Error},
     Deserialize, Serialize,
+    de::{Deserializer, Error},
 };
 
 use crate::events::EmptyStateKey;
-use crate::{serde::from_raw_json_value, JsonValue, OwnedRoomId, PrivOwnedStr, RawJsonValue};
+use crate::{JsonValue, OwnedRoomId, PrivOwnedStr, RawJsonValue, serde::from_raw_json_value};
 
 /// The content of an `m.room.join_rules` event.
 ///

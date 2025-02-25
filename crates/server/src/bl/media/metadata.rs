@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = media_metadatas)]
@@ -12,8 +12,8 @@ pub struct DbMetadata {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: Option<String>,
-    pub content_disposition: Option<String>,
-    pub upload_name: Option<String>,
+    pub disposition_type: Option<String>,
+    pub file_name: Option<String>,
     pub file_extension: Option<String>,
     pub file_size: i64,
     pub file_hash: Option<String>,
@@ -26,8 +26,8 @@ pub struct NewDbMetadata {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: Option<String>,
-    pub content_disposition: Option<String>,
-    pub upload_name: Option<String>,
+    pub disposition_type: Option<String>,
+    pub file_name: Option<String>,
     pub file_extension: Option<String>,
     pub file_size: i64,
     pub file_hash: Option<String>,

@@ -1,6 +1,6 @@
 use salvo::prelude::*;
 
-use crate::{empty_ok, AuthArgs, EmptyResult};
+use crate::{AuthArgs, EmptyResult, empty_ok};
 
 #[endpoint]
 pub(super) async fn get_mutual_rooms(_aa: AuthArgs) -> EmptyResult {

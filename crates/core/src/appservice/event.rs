@@ -11,12 +11,12 @@ use reqwest::Url;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::events::receipt::ReceiptContent;
 use crate::events::AnyTimelineEvent;
+use crate::events::receipt::ReceiptContent;
 use crate::presence::PresenceContent;
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::from_raw_json_value;
-use crate::{serde::RawJson, JsonValue, OwnedRoomId, OwnedUserId, RawJsonValue};
+use crate::{JsonValue, OwnedRoomId, OwnedUserId, RawJsonValue, serde::RawJson};
 
 /// `PUT /_matrix/app/*/transactions/{txn_id}`
 ///

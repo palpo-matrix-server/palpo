@@ -36,23 +36,23 @@ use std::time::{Duration, Instant, SystemTime};
 use std::{future, iter};
 
 use diesel::prelude::*;
-use futures_util::{stream::FuturesUnordered, FutureExt, StreamExt};
+use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
 use hickory_resolver::TokioAsyncResolver;
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, watch::Receiver, Semaphore};
+use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 use tower_service::Service as TowerService;
 
+use crate::core::UnixMillis;
 use crate::core::client::sync_events::SyncEventsResBodyV3;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJsonValue};
 use crate::core::signatures::Ed25519KeyPair;
-use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{db, AppResult, JsonValue, MatrixError, ServerConfig};
+use crate::{AppResult, JsonValue, MatrixError, ServerConfig, db};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
@@ -67,10 +67,10 @@ type SyncHandle = (
 );
 type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries
-                                      // type SyncHandle = (
-                                      //     Option<String>,                                         // since
-                                      //     Receiver<Option<AppResult<sync_events::v3::Response>>>, // rx
-                                      // );
+// type SyncHandle = (
+//     Option<String>,                                         // since
+//     Receiver<Option<AppResult<sync_events::v3::Response>>>, // rx
+// );
 
 pub type LazyRwLock<T> = LazyLock<RwLock<T>>;
 pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);

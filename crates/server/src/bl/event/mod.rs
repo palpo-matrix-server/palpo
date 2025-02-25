@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::default_false;
 use crate::core::{JsonValue, RawJsonValue, UnixMillis};
 use crate::schema::*;
-use crate::{db, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, db};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]

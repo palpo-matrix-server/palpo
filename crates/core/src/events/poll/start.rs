@@ -10,12 +10,12 @@ mod poll_answers_serde;
 use poll_answers_serde::PollAnswersDeHelper;
 
 use super::{
-    compile_poll_results,
+    PollResponseData, compile_poll_results,
     end::{PollEndEventContent, PollResultsContentBlock},
-    generate_poll_end_fallback_text, PollResponseData,
+    generate_poll_end_fallback_text,
 };
 use crate::events::{message::TextContentBlock, room::message::Relation};
-use crate::{serde::StringEnum, PrivOwnedStr, UnixMillis};
+use crate::{PrivOwnedStr, UnixMillis, serde::StringEnum};
 
 /// The payload for a poll start event.
 ///

@@ -1,6 +1,5 @@
 use salvo::prelude::*;
 
-
 mod msc3391;
 
 pub(super) fn router() -> Router {

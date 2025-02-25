@@ -1,8 +1,11 @@
+use std::fmt::Write;
 /// Endpoints for the media repository.
 use std::time::Duration;
 
+use bytes::BytesMut;
 use reqwest::Url;
 use salvo::oapi::{ToParameters, ToSchema};
+use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::http_headers::ContentDisposition;
@@ -80,13 +83,96 @@ pub struct ThumbnailReqArgs {
 }
 
 /// Response type for the `get_content_thumbnail` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Debug)]
 pub struct ThumbnailResBody {
     /// The metadata of the thumbnail.
     pub metadata: ContentMetadata,
 
     /// The content of the thumbnail.
     pub content: FileOrLocation,
+}
+
+impl Scribe for ThumbnailResBody {
+    /// Serialize the given metadata and content into a `http::Response` `multipart/mixed` body.
+    ///
+    /// Returns a tuple containing the boundary used
+    fn render(self, res: &mut Response) {
+        use std::io::Write as _;
+
+        use rand::Rng as _;
+
+        let boundary = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .map(char::from)
+            .take(GENERATED_BOUNDARY_LENGTH)
+            .collect::<String>();
+
+        let mut body_writer = BytesMut::new();
+
+        // Add first boundary separator and header for the metadata.
+        let _ = write!(
+            body_writer,
+            "\r\n--{boundary}\r\n{}: {}\r\n\r\n",
+            http::header::CONTENT_TYPE,
+            mime::APPLICATION_JSON
+        );
+
+        // Add serialized metadata.
+        match serde_json::to_vec(&self.metadata) {
+            Ok(bytes) => {
+                body_writer.extend_from_slice(&bytes);
+            }
+            Err(e) => {
+                tracing::error!("Failed to serialize metadata: {}", e);
+                res.render(StatusError::internal_server_error().brief("Failed to serialize metadata"));
+                return;
+            }
+        }
+
+        // Add second boundary separator.
+        let _ = write!(body_writer, "\r\n--{boundary}\r\n");
+
+        // Add content.
+        match self.content {
+            FileOrLocation::File(content) => {
+                // Add headers.
+                let content_type = content
+                    .content_type
+                    .as_deref()
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM.as_ref());
+                let _ = write!(body_writer, "{}: {content_type}\r\n", http::header::CONTENT_TYPE);
+
+                if let Some(content_disposition) = &content.content_disposition {
+                    let _ = write!(
+                        body_writer,
+                        "{}: {content_disposition}\r\n",
+                        http::header::CONTENT_DISPOSITION
+                    );
+                }
+
+                // Add empty line separator after headers.
+                body_writer.extend_from_slice(b"\r\n");
+
+                // Add bytes.
+                body_writer.extend_from_slice(&content.file);
+            }
+            FileOrLocation::Location(location) => {
+                // Only add location header and empty line separator.
+                let _ = write!(body_writer, "{}: {location}\r\n\r\n", http::header::LOCATION);
+            }
+        }
+
+        // Add final boundary.
+        let _ = write!(body_writer, "\r\n--{boundary}--");
+
+        let content_type = format!("{MULTIPART_MIXED}; boundary={boundary}");
+
+        res.add_header(http::header::CONTENT_TYPE, content_type, true);
+        if let Err(e) = res.write_body(body_writer) {
+            res.render(StatusError::internal_server_error().brief("Failed to set response body"));
+            tracing::error!("Failed to set response body: {}", e);
+        }
+    }
 }
 
 /// `/v1/` ([spec])

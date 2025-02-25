@@ -2,7 +2,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::events::space::child::HierarchySpaceChildEvent;
-use crate::{room::RoomType, serde::RawJson, space::SpaceRoomJoinRule, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId};
+use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule};
 
 /// Endpoints for spaces.
 ///

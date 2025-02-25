@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -20,10 +20,17 @@ pub fn router() -> Router {
 /// Gets information on a profile.
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
+    println!(
+        "fffffffffffffffederation query get_profile  {:?}   {:?}",
+        args.user_id.server_name(),
+        crate::config().server_name
+    );
     if args.user_id.server_name() != crate::config().server_name {
+        println!("vwwwwwwwwwwwwwww0");
         return Err(MatrixError::invalid_param("Tried to access user from other server.").into());
     }
 
+    println!("vwwwwwwwwwwwwwww1");
     let mut display_name = None;
     let mut avatar_url = None;
     let mut blurhash = None;

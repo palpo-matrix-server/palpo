@@ -11,7 +11,7 @@ use serde_json::Value as JsonValue;
 
 use super::{HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString};
 use crate::events::relation::Reference;
-use crate::{serde::Base64, OwnedDeviceId, OwnedTransactionId};
+use crate::{OwnedDeviceId, OwnedTransactionId, serde::Base64};
 
 /// The content of a to-device `m.key.verification.start` event.
 ///

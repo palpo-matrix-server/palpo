@@ -1,9 +1,9 @@
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use serde_json::Value as JsonValue;
 
 use super::{InReplyTo, Relation, RelationWithoutReplacement, Replacement, Thread};
 use crate::events::relation::CustomRelation;
-use crate::{serde::JsonObject, OwnedEventId};
+use crate::{OwnedEventId, serde::JsonObject};
 
 /// Deserialize an event's `relates_to` field.
 ///

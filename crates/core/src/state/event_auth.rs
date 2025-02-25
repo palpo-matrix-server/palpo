@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, collections::BTreeSet};
 
-use serde::de::{Error as _, IgnoredAny};
 use serde::Deserialize;
+use serde::de::{Error as _, IgnoredAny};
 use serde_json::from_str as from_json_str;
 use tracing::{debug, error, info, warn};
 
@@ -348,11 +348,7 @@ pub fn auth_check<E: Event>(
                 .is_ok_and(|create| create.creator.unwrap() == *sender)
         };
 
-        if is_creator {
-            100
-        } else {
-            0
-        }
+        if is_creator { 100 } else { 0 }
     };
 
     // Allow if and only if sender's current power level is greater than

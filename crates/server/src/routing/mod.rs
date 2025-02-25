@@ -11,7 +11,7 @@ use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use url::Url;
 
-use crate::{hoops, json_ok, AppResult, JsonResult};
+use crate::{AppResult, JsonResult, hoops, json_ok};
 
 pub fn router() -> Router {
     Router::new()

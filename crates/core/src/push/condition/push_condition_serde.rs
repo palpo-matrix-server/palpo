@@ -1,8 +1,8 @@
-use serde::{de, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, de};
 
 use super::RoomVersionFeature;
 use super::{PushCondition, RoomMemberCountIs, ScalarJsonValue};
-use crate::serde::{from_raw_json_value, RawJsonValue};
+use crate::serde::{RawJsonValue, from_raw_json_value};
 
 impl Serialize for PushCondition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

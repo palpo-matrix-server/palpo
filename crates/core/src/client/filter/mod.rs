@@ -10,7 +10,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub use self::{lazy_load::LazyLoadOptions, url::UrlFilter};
-use crate::{serde::StringEnum, OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, serde::StringEnum};
 
 /// Format to use for returned events.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

@@ -1,11 +1,11 @@
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 
 use super::{
     OriginalRoomRedactionEvent, OriginalSyncRoomRedactionEvent, RoomRedactionEvent, RoomRedactionEventContent,
     RoomRedactionUnsigned, SyncRoomRedactionEvent,
 };
 use crate::events::RedactionDeHelper;
-use crate::{serde::from_raw_json_value, OwnedEventId, OwnedRoomId, OwnedUserId, RawJsonValue, UnixMillis};
+use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RawJsonValue, UnixMillis, serde::from_raw_json_value};
 
 impl<'de> Deserialize<'de> for RoomRedactionEvent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

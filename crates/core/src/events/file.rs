@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     message::TextContentBlock,
-    room::{message::Relation, EncryptedFile, JsonWebKey},
+    room::{EncryptedFile, JsonWebKey, message::Relation},
 };
-use crate::{serde::Base64, OwnedMxcUri};
+use crate::{OwnedMxcUri, serde::Base64};
 
 /// The payload for an extensible file message.
 ///

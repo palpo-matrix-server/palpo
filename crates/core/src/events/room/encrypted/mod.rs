@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::message;
 use crate::events::relation::{Annotation, CustomRelation, InReplyTo, Reference, RelationType, Thread};
-use crate::{serde::JsonObject, OwnedDeviceId, OwnedEventId};
+use crate::{OwnedDeviceId, OwnedEventId, serde::JsonObject};
 
 mod relation_serde;
 

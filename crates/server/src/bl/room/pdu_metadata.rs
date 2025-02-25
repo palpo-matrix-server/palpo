@@ -4,12 +4,12 @@ use serde::Deserialize;
 use crate::core::client::relation::RelationEventsResBody;
 use crate::core::identifiers::*;
 use crate::core::{
-    events::{relation::RelationType, TimelineEventType},
     Direction, EventId, RoomId, UserId,
+    events::{TimelineEventType, relation::RelationType},
 };
 use crate::event::PduEvent;
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {

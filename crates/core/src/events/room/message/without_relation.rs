@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{AddMentions, ForwardThread, MessageType, OriginalRoomMessageEvent, Relation, RoomMessageEventContent};
 use crate::events::{
-    relation::{InReplyTo, Thread},
-    room::message::{reply::OriginalEventData, FormattedBody},
     AnySyncTimelineEvent, Mentions,
+    relation::{InReplyTo, Thread},
+    room::message::{FormattedBody, reply::OriginalEventData},
 };
-use crate::{serde::RawJson, OwnedEventId, OwnedUserId, RoomId, UserId};
+use crate::{OwnedEventId, OwnedUserId, RoomId, UserId, serde::RawJson};
 
 /// Form of [`RoomMessageEventContent`] without relation.
 #[derive(ToSchema, Clone, Debug, Serialize)]

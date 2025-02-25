@@ -6,8 +6,8 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::EmptyStateKey;
 use crate::OwnedRoomAliasId;
+use crate::events::EmptyStateKey;
 
 /// The content of an `m.room.canonical_alias` event.
 ///

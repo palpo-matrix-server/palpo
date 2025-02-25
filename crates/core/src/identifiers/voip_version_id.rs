@@ -5,8 +5,8 @@ use std::fmt;
 use palpo_macros::DisplayAsRefStr;
 use salvo::oapi::ToSchema;
 use serde::{
-    de::{self, Visitor},
     Deserialize, Deserializer, Serialize,
+    de::{self, Visitor},
 };
 
 use crate::{IdParseError, PrivOwnedStr};

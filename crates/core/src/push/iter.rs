@@ -1,8 +1,8 @@
 use indexmap::set::{IntoIter as IndexSetIntoIter, Iter as IndexSetIter};
 
 use super::{
-    condition, Action, ConditionalPushRule, FlattenedJson, PatternedPushRule, PushConditionRoomCtx, PushRule, Ruleset,
-    SimplePushRule,
+    Action, ConditionalPushRule, FlattenedJson, PatternedPushRule, PushConditionRoomCtx, PushRule, Ruleset,
+    SimplePushRule, condition,
 };
 use crate::{OwnedRoomId, OwnedUserId};
 

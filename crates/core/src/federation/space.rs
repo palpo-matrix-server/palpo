@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::space::child::HierarchySpaceChildEvent;
 use crate::sending::{SendRequest, SendResult};
-use crate::{room::RoomType, serde::RawJson, space::SpaceRoomJoinRule, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId};
+use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule};
 
 /// The summary of a parent space.
 ///

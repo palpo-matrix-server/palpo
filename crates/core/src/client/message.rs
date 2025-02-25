@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::filter::RoomEventFilter;
 use crate::events::{AnyStateEvent, AnyTimelineEvent, MessageLikeEventType};
-use crate::{serde::RawJson, Direction, OwnedEventId, OwnedRoomId, OwnedTransactionId, UnixMillis};
+use crate::{Direction, OwnedEventId, OwnedRoomId, OwnedTransactionId, UnixMillis, serde::RawJson};
 
 /// `GET /_matrix/client/*/rooms/{room_id}/messages`
 ///

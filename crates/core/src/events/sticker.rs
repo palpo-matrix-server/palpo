@@ -6,8 +6,8 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::room::ImageInfo;
 use crate::OwnedMxcUri;
+use crate::events::room::ImageInfo;
 
 /// The content of an `m.sticker` event.
 ///

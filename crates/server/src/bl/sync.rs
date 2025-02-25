@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 use std::future::Future;
 use std::time::{Duration, Instant};
 
@@ -18,8 +18,8 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{db, schema::*};
 use crate::{AppError, AppResult};
+use crate::{db, schema::*};
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(

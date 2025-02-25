@@ -3,12 +3,11 @@
 use std::fmt;
 
 use proc_macro2::Span;
-use quote::{format_ident, IdentFragment};
+use quote::{IdentFragment, format_ident};
 use syn::{
-    braced,
+    Attribute, Ident, LitStr, Path, Token, braced,
     parse::{self, Parse, ParseStream},
     punctuated::Punctuated,
-    Attribute, Ident, LitStr, Path, Token,
 };
 
 /// Custom keywords for the `event_enum!` macro

@@ -8,8 +8,8 @@
 use std::collections::BTreeMap;
 
 use serde::{
-    de::{Error as _, IgnoredAny},
     Deserialize, Deserializer, Serialize,
+    de::{Error as _, IgnoredAny},
 };
 use serde_json::from_str as from_json_str;
 

@@ -2,8 +2,8 @@
 ///
 /// Get the child events for a given parent event which relate to the parent using the given
 /// `rel_type` and having the given `event_type`.
-use crate::events::{relation::RelationType, AnyMessageLikeEvent, TimelineEventType};
-use crate::{serde::RawJson, Direction, OwnedEventId, OwnedRoomId};
+use crate::events::{AnyMessageLikeEvent, TimelineEventType, relation::RelationType};
+use crate::{Direction, OwnedEventId, OwnedRoomId, serde::RawJson};
 
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};

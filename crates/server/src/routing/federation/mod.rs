@@ -20,7 +20,7 @@ use salvo::prelude::*;
 
 use crate::core::directory::Server;
 use crate::core::federation::directory::ServerVersionResBody;
-use crate::{empty_ok, hoops, json_ok, AppError, AppResult, AuthArgs, EmptyResult, JsonResult};
+use crate::{AppError, AppResult, AuthArgs, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("federation")

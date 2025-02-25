@@ -6,7 +6,7 @@ use palpo_macros::EventContent;
 use serde::{Deserialize, Serialize};
 
 use super::unstable_start::UnstablePollStartContentBlock;
-use super::{validate_selections, PollResponseData};
+use super::{PollResponseData, validate_selections};
 use crate::events::relation::Reference;
 
 /// The payload for an unstable poll response event.

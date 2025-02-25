@@ -7,8 +7,8 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
-use crate::events::{EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType};
 use crate::RawJsonValue;
+use crate::events::{EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType};
 
 /// The content of an `m.policy.rule.user` event.
 ///

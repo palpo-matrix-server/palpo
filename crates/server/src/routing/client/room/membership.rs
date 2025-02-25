@@ -14,7 +14,7 @@ use crate::core::client::membership::{
 use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::query::{profile_request, ProfileReqArgs};
+use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
 use crate::room::state;
@@ -23,8 +23,8 @@ use crate::schema::*;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
-    db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
-    PduBuilder,
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, db, diesel_exists, empty_ok,
+    json_ok,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members

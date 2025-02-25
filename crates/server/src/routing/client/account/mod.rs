@@ -6,7 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::client::account::{DeactivateReqBody, DeactivateResBody, ThirdPartyIdRemovalStatus, WhoamiResBody};
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::{exts::*, hoops, json_ok, utils, AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH};
+use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, exts::*, hoops, json_ok, utils};
 
 pub fn public_router() -> Router {
     Router::with_path("account")

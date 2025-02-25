@@ -2,7 +2,7 @@
 //!
 //! [`m.key.verification.key`]: https://spec.matrix.org/latest/client-server-api/#mkeyverificationkey
 
-use crate::{serde::Base64, OwnedTransactionId};
+use crate::{OwnedTransactionId, serde::Base64};
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};

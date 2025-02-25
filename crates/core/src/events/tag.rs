@@ -8,8 +8,8 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::deserialize_cow_str;
 use crate::PrivOwnedStr;
+use crate::serde::deserialize_cow_str;
 
 /// Map of tag names to tag info.
 pub type Tags = BTreeMap<TagName, TagInfo>;

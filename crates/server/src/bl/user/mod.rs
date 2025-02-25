@@ -41,7 +41,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{OwnedMxcUri, OwnedRoomId, UnixMillis};
 use crate::schema::*;
-use crate::{db, diesel_exists, AppError, AppResult};
+use crate::{AppError, AppResult, db, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]

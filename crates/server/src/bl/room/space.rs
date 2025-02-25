@@ -1,9 +1,10 @@
 use std::sync::{LazyLock, Mutex};
 
-use crate::{room::state::DbRoomStateField, GetUrlOrigin};
+use crate::{GetUrlOrigin, room::state::DbRoomStateField};
 use lru_cache::LruCache;
 use tracing::{debug, error, warn};
 
+use crate::PduEvent;
 use crate::core::client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk};
 use crate::core::events::room::{
     avatar::RoomAvatarEventContent,
@@ -14,10 +15,9 @@ use crate::core::events::room::{
     join_rules::{self, AllowRule, JoinRule, RoomJoinRulesEventContent},
     topic::RoomTopicEventContent,
 };
-use crate::core::events::{space::child::SpaceChildEventContent, StateEventType};
+use crate::core::events::{StateEventType, space::child::SpaceChildEventContent};
 use crate::core::federation::space::hierarchy_request;
-use crate::core::{federation, space::SpaceRoomJoinRule, OwnedRoomId, RoomId, UserId};
-use crate::PduEvent;
+use crate::core::{OwnedRoomId, RoomId, UserId, federation, space::SpaceRoomJoinRule};
 use crate::{AppError, AppResult, MatrixError};
 
 pub enum CachedJoinRule {

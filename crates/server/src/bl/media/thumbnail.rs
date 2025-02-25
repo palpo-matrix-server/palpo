@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = media_thumbnails)]
@@ -12,7 +12,6 @@ pub struct DbThumbnail {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: String,
-    pub content_disposition: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -25,7 +24,6 @@ pub struct NewDbThumbnail {
     pub media_id: String,
     pub origin_server: OwnedServerName,
     pub content_type: String,
-    pub content_disposition: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,

@@ -1,7 +1,6 @@
 use futures_util::{
-    stream,
+    StreamExt, stream,
     stream::{Stream, TryStream},
-    StreamExt,
 };
 
 pub trait IterStream<I: IntoIterator + Send> {

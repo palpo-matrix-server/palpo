@@ -6,20 +6,20 @@ use std::{
     mem,
 };
 
-use base64::{alphabet, Engine};
+use base64::{Engine, alphabet};
 use serde_json::{from_str as from_json_str, to_string as to_json_string};
-use sha2::{digest::Digest, Sha256};
+use sha2::{Sha256, digest::Digest};
 
 use crate::{
-    canonical_json::{redact, CanonicalJsonObject, CanonicalJsonValue, JsonType},
-    serde::{base64::Standard, Base64},
+    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
+    canonical_json::{CanonicalJsonObject, CanonicalJsonValue, JsonType, redact},
+    serde::{Base64, base64::Standard},
     signatures::{
+        Error, JsonError, ParseError, VerificationError,
         keys::{KeyPair, PublicKeyMap},
         split_id,
         verification::{Ed25519Verifier, Verified, Verifier},
-        Error, JsonError, ParseError, VerificationError,
     },
-    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
 };
 
 const MAX_PDU_BYTES: usize = 65_535;

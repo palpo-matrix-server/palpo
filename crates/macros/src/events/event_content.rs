@@ -4,16 +4,16 @@
 use std::{borrow::Cow, fmt};
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
+    DeriveInput, Field, Ident, LitStr, Meta, Token, Type,
     parse::{Parse, ParseStream},
     parse_quote,
     punctuated::Punctuated,
-    DeriveInput, Field, Ident, LitStr, Meta, Token, Type,
 };
 
 use super::event_parse::{EventKind, EventKindVariation};
-use crate::util::{m_prefix_name_to_type_name, PrivateField};
+use crate::util::{PrivateField, m_prefix_name_to_type_name};
 
 mod kw {
     // This `content` field is kept when the event is redacted.

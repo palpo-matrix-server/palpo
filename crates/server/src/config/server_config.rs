@@ -200,11 +200,7 @@ impl fmt::Display for ServerConfig {
                 }
             }),
             ("TURN secret", {
-                if self.turn_secret.is_empty() {
-                    "not set"
-                } else {
-                    "set"
-                }
+                if self.turn_secret.is_empty() { "not set" } else { "set" }
             }),
             ("Turn TTL", &self.turn_ttl.to_string()),
             ("Turn URIs", {
@@ -220,7 +216,7 @@ impl fmt::Display for ServerConfig {
         let mut msg: String = "Active config values:\n\n".to_owned();
 
         for line in lines.into_iter().enumerate() {
-            msg += &format!("{}: {}\n", line.1 .0, line.1 .1);
+            msg += &format!("{}: {}\n", line.1.0, line.1.1);
         }
 
         write!(f, "{msg}")

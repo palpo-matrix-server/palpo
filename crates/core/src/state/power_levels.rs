@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
-use crate::events::{room::power_levels::RoomPowerLevelsEventContent, TimelineEventType};
+use crate::events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent};
 use crate::{
-    power_levels::{default_power_level, NotificationPowerLevels},
-    serde::{btreemap_deserialize_v1_powerlevel_values, deserialize_v1_powerlevel},
     OwnedUserId,
+    power_levels::{NotificationPowerLevels, default_power_level},
+    serde::{btreemap_deserialize_v1_powerlevel_values, deserialize_v1_powerlevel},
 };
 use serde::Deserialize;
-use serde_json::{from_str as from_json_str, Error};
+use serde_json::{Error, from_str as from_json_str};
 use tracing::error;
 
 use crate::RoomVersion;

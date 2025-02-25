@@ -8,8 +8,8 @@
 //! [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1userdevicesuser_id
 
 use crate::{
-    encryption::{CrossSigningKey, DeviceKeys},
     OwnedDeviceId, OwnedUserId,
+    encryption::{CrossSigningKey, DeviceKeys},
 };
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};

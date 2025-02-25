@@ -8,10 +8,10 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::events::{
-    presence::PresenceEvent, AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent,
-    AnySyncEphemeralRoomEvent, AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent,
+    AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncEphemeralRoomEvent,
+    AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent, presence::PresenceEvent,
 };
-use crate::{presence::PresenceState, serde::RawJson, DeviceKeyAlgorithm, OwnedEventId, OwnedRoomId};
+use crate::{DeviceKeyAlgorithm, OwnedEventId, OwnedRoomId, presence::PresenceState, serde::RawJson};
 
 use super::UnreadNotificationsCount;
 use crate::client::filter::FilterDefinition;

@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::AnyTimelineEvent;
 use crate::{
-    serde::{RawJson, StringEnum},
     OwnedRoomId, PrivOwnedStr,
+    serde::{RawJson, StringEnum},
 };
 
 // const METADATA: Metadata = metadata! {

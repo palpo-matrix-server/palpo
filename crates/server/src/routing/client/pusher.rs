@@ -1,10 +1,10 @@
 use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
-use crate::core::client::push::pusher::PushersResBody;
 use crate::core::client::push::SetPusherReqBody;
+use crate::core::client::push::pusher::PushersResBody;
 use crate::core::push::Pusher;
-use crate::{empty_ok, hoops, json_ok, AppError, DepotExt, EmptyResult, JsonResult};
+use crate::{AppError, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushers")

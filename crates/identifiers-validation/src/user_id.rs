@@ -1,4 +1,4 @@
-use crate::{parse_id, Error};
+use crate::{Error, parse_id};
 
 pub fn validate(s: &str) -> Result<(), Error> {
     let colon_idx = parse_id(s, b'@')?;

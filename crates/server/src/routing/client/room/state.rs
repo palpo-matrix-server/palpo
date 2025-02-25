@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
     SendStateEventReqBody, SendStateEventResBody, StateEventsForEmptyKeyReqArgs, StateEventsForKeyReqArgs,
@@ -16,10 +17,9 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::{RoomAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
-use crate::core::UnixMillis;
 use crate::room::state::UserCanSeeEvent;
 use crate::utils::HtmlEscape;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/state
 /// Get all state events for a room.

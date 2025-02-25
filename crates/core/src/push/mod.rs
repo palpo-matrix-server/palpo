@@ -40,15 +40,15 @@ use std::hash::Hash;
 use indexmap::{Equivalent, IndexSet};
 use salvo::prelude::ToSchema;
 
-use crate::{serde::StringEnum, PrivOwnedStr};
+use crate::{PrivOwnedStr, serde::StringEnum};
 
 #[cfg(feature = "unstable-msc3932")]
 pub use self::condition::RoomVersionFeature;
 pub use self::{
     action::{Action, Tweak},
     condition::{
-        ComparisonOperator, FlattenedJson, FlattenedJsonValue, PushCondition, PushConditionPowerLevelsCtx,
-        PushConditionRoomCtx, RoomMemberCountIs, ScalarJsonValue, _CustomPushCondition,
+        _CustomPushCondition, ComparisonOperator, FlattenedJson, FlattenedJsonValue, PushCondition,
+        PushConditionPowerLevelsCtx, PushConditionRoomCtx, RoomMemberCountIs, ScalarJsonValue,
     },
     iter::{AnyPushRule, AnyPushRuleRef, RulesetIntoIter, RulesetIter},
     predefined::{PredefinedContentRuleId, PredefinedOverrideRuleId, PredefinedRuleId, PredefinedUnderrideRuleId},

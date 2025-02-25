@@ -3,7 +3,7 @@ mod types {
     use std::io::{BufRead, Cursor};
 
     use byteorder::{NetworkEndian, ReadBytesExt};
-    use diesel::{deserialize::FromSql, pg::Pg, sql_types::*, Queryable};
+    use diesel::{Queryable, deserialize::FromSql, pg::Pg, sql_types::*};
 
     #[derive(Clone, Copy, SqlType)]
     #[diesel(postgres_type(oid = 3615, array_oid = 3645))]
@@ -93,7 +93,7 @@ pub mod configuration {
 
     use diesel::backend::Backend;
     use diesel::deserialize::{self, FromSql, FromSqlRow};
-    use diesel::expression::{is_aggregate, ValidGrouping};
+    use diesel::expression::{ValidGrouping, is_aggregate};
     use diesel::pg::{Pg, PgValue};
     use diesel::query_builder::{AstPass, QueryFragment, QueryId};
     use diesel::serialize::{self, Output, ToSql};

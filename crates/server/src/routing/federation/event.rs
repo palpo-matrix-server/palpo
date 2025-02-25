@@ -1,12 +1,12 @@
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
-use crate::core::UnixMillis;
-use crate::{empty_ok, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()

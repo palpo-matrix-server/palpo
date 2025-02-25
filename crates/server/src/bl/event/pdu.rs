@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::events::{
-    room::member::RoomMemberEventContent, space::child::HierarchySpaceChildEvent, AnyEphemeralRoomEvent,
-    AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent,
-    AnyTimelineEvent, EventContent, MessageLikeEventType, StateEvent, StateEventType, TimelineEventType,
+    AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
+    AnySyncTimelineEvent, AnyTimelineEvent, EventContent, MessageLikeEventType, StateEvent, StateEventType,
+    TimelineEventType, room::member::RoomMemberEventContent, space::child::HierarchySpaceChildEvent,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;

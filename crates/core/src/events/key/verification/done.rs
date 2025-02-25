@@ -6,8 +6,8 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::relation::Reference;
 use crate::OwnedTransactionId;
+use crate::events::relation::Reference;
 
 /// The content of a to-device `m.m.key.verification.done` event.
 ///

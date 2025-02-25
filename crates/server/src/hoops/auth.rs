@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, iter::FromIterator};
 
 use diesel::prelude::*;
-use salvo::http::headers::{authorization::Authorization, HeaderMapExt};
+use salvo::http::headers::{HeaderMapExt, authorization::Authorization};
 use salvo::prelude::*;
 
 use crate::core::authorization::XMatrix;
@@ -10,7 +10,7 @@ use crate::core::signatures;
 use crate::schema::*;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
-use crate::{db, AppResult, AuthArgs, AuthedInfo, MatrixError};
+use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, db};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {

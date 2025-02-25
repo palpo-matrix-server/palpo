@@ -13,12 +13,12 @@ use serde_json::value::RawValue as RawJsonValue;
 
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJson};
 use crate::core::{
+    JsonValue, OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
     federation::discovery::{ServerSigningKeys, VerifyKey},
     signatures::{self, PublicKeyMap, PublicKeySet},
-    JsonValue, OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
 };
 use crate::schema::*;
-use crate::{db, exts::*, utils::timepoint_from_now, AppError, AppResult, DbServerSigningKeys};
+use crate::{AppError, AppResult, DbServerSigningKeys, db, exts::*, utils::timepoint_from_now};
 
 pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
 pub type PubKeyMap = PublicKeyMap;
@@ -166,7 +166,7 @@ pub async fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionI
         Err(e) => {
             return Err(AppError::public(format!(
                 "Failed to determine keys required to verify: {e}"
-            )))
+            )));
         }
     };
 

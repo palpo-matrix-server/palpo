@@ -8,7 +8,7 @@ use crate::core::events::relation::BundledThread;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::schema::*;
-use crate::{db, AppResult, MatrixError, PduEvent};
+use crate::{AppResult, MatrixError, PduEvent, db};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = threads, primary_key(event_id))]

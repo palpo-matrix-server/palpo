@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use reqwest::Url;
 use salvo::prelude::*;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 
 use crate::device::{DeviceListUpdateContent, DirectDeviceContent};
 use crate::encryption::CrossSigningKey;
@@ -19,7 +19,7 @@ use crate::events::typing::TypingContent;
 use crate::identifiers::*;
 use crate::presence::PresenceContent;
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::{from_raw_json_value, JsonValue, RawJsonValue};
+use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
 use crate::{OwnedServerName, UnixMillis};
 
 // const METADATA: Metadata = metadata! {

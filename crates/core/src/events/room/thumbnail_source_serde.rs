@@ -1,8 +1,8 @@
 //! De-/serialization functions for `Option<MediaSource>` objects representing a thumbnail source.
 
 use serde::{
-    ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer,
+    ser::{SerializeStruct, Serializer},
 };
 
 use super::{EncryptedFile, MediaSource};

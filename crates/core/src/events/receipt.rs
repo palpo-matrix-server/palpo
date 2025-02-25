@@ -5,7 +5,7 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidreceiptreceipttypeeventid
-use std::collections::{btree_map, BTreeMap};
+use std::collections::{BTreeMap, btree_map};
 use std::ops::{Deref, DerefMut};
 
 use palpo_macros::EventContent;
@@ -13,8 +13,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
-    serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum},
     EventId, IdParseError, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, UnixMillis, UserId,
+    serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum},
 };
 
 /// The content of an `m.receipt` event.

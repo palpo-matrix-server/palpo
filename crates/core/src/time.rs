@@ -5,7 +5,7 @@ use std::{
 
 use diesel::deserialize::FromSql;
 use diesel::serialize::ToSql;
-use diesel::{pg, sql_types, AsExpression, FromSqlRow};
+use diesel::{AsExpression, FromSqlRow, pg, sql_types};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 

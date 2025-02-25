@@ -5,13 +5,13 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use salvo::prelude::*;
 use serde::{
-    de::{self, Unexpected},
     Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, Unexpected},
 };
 use std::collections::BTreeMap;
 
 use crate::events::{AnyToDeviceEventContent, ToDeviceEventType};
-use crate::{serde::RawJson, OwnedTransactionId, OwnedUserId};
+use crate::{OwnedTransactionId, OwnedUserId, serde::RawJson};
 
 use crate::OwnedDeviceId;
 

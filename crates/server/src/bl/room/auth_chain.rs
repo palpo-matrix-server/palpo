@@ -10,7 +10,7 @@ use tracing::{error, warn};
 
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppResult, MatrixError};
+use crate::{AppResult, MatrixError, db};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_auth_chains, primary_key(event_id))]

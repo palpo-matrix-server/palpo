@@ -1,8 +1,8 @@
 /// Endpoints for the media repository.
 use salvo::oapi::ToSchema;
 
-use crate::serde::StringEnum;
 use crate::PrivOwnedStr;
+use crate::serde::StringEnum;
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

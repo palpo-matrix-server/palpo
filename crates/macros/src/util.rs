@@ -1,6 +1,6 @@
+use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::TokenStream;
-use proc_macro_crate::{crate_name, FoundCrate};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{Field, Ident, LitStr};
 
 pub(crate) fn import_palpo_core() -> TokenStream {

@@ -6,7 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent};
+use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()

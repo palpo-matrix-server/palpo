@@ -1,8 +1,8 @@
 //! Digital signatures and collections of signatures.
 
-use crate::serde::{base64::Standard, Base64};
+use crate::serde::{Base64, base64::Standard};
 
-use crate::signatures::{split_id, Algorithm, Error};
+use crate::signatures::{Algorithm, Error, split_id};
 
 /// A digital signature.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

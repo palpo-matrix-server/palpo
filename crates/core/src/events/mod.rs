@@ -147,7 +147,7 @@ pub mod voice;
 use std::collections::BTreeSet;
 
 use salvo::oapi::ToSchema;
-use serde::{de::IgnoredAny, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, de::IgnoredAny};
 
 pub use self::{
     content::*,

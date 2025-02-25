@@ -3,13 +3,13 @@
 use std::{fmt, str::FromStr};
 
 use crate::{
+    IdParseError, OwnedServerName, OwnedServerSigningKeyId,
     http_headers::quote_ascii_string_if_required,
     serde::{Base64, Base64DecodeError},
-    IdParseError, OwnedServerName, OwnedServerSigningKeyId,
 };
 use http_auth::ChallengeParser;
-use salvo::http::headers::authorization::Credentials;
 use salvo::http::HeaderValue;
+use salvo::http::headers::authorization::Credentials;
 use thiserror::Error;
 use tracing::debug;
 

@@ -3,8 +3,8 @@
 use std::{fmt, str::FromStr};
 
 use palpo_identifiers_validation::{
-    error::{MatrixIdError, MatrixToError, MatrixUriError},
     Error,
+    error::{MatrixIdError, MatrixToError, MatrixUriError},
 };
 use percent_encoding::{percent_decode_str, percent_encode};
 use url::Url;
@@ -13,7 +13,7 @@ use super::{
     EventId, OwnedEventId, OwnedRoomAliasId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,
     RoomAliasId, RoomId, RoomOrAliasId, UserId,
 };
-use crate::{percent_encode::PATH_PERCENT_ENCODE_SET, PrivOwnedStr, ServerName};
+use crate::{PrivOwnedStr, ServerName, percent_encode::PATH_PERCENT_ENCODE_SET};
 
 const MATRIX_TO_BASE_URL: &str = "https://matrix.to/#/";
 const MATRIX_SCHEME: &str = "matrix";

@@ -3,8 +3,8 @@ use salvo::prelude::*;
 use salvo::size_limiter;
 use url::Url;
 
-use crate::core::MatrixError;
 use crate::AppResult;
+use crate::core::MatrixError;
 
 mod auth;
 pub use auth::*;

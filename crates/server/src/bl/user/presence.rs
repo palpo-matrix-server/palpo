@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use crate::core::{
+    OwnedUserId, RoomId, UserId,
     events::presence::{PresenceEvent, PresenceEventContent},
     presence::PresenceState,
-    OwnedUserId, RoomId, UserId,
 };
 
 use diesel::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]

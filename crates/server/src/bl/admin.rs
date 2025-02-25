@@ -13,7 +13,9 @@ use serde_json::value::to_raw_value;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use super::event::PduBuilder;
+use crate::core::ServerName;
 use crate::core::appservice::Registration;
+use crate::core::events::TimelineEventType;
 use crate::core::events::room::{
     canonical_alias::RoomCanonicalAliasEventContent,
     create::RoomCreateEventContent,
@@ -26,12 +28,10 @@ use crate::core::events::room::{
     power_levels::RoomPowerLevelsEventContent,
     topic::RoomTopicEventContent,
 };
-use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
-use crate::core::ServerName;
 use crate::schema::*;
 use crate::utils::{self, HtmlEscape};
-use crate::{db, AppError, AppResult, PduEvent, AUTO_GEN_PASSWORD_LENGTH};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, db};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]
@@ -442,7 +442,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 Err(e) => {
                     return Ok(RoomMessageEventContent::text_plain(format!(
                         "The supplied username is not a valid username: {e}"
-                    )))
+                    )));
                 }
             };
 
@@ -474,7 +474,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 Err(e) => {
                     return Ok(RoomMessageEventContent::text_plain(format!(
                         "The supplied username is not a valid username: {e}"
-                    )))
+                    )));
                 }
             };
             if user_id.is_historical() {
@@ -554,7 +554,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                         Err(_) => {
                             return Ok(RoomMessageEventContent::text_plain(format!(
                                 "{username} is not a valid username"
-                            )))
+                            )));
                         }
                     }
                 }

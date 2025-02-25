@@ -7,7 +7,7 @@ mod transaction;
 
 use salvo::prelude::*;
 
-use crate::{empty_ok, EmptyResult};
+use crate::{EmptyResult, empty_ok};
 
 pub fn router() -> Router {
     Router::with_path("app").oapi_tag("appservice").push(

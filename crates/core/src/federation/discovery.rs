@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{serde::Base64, OwnedServerName, OwnedServerSigningKeyId, UnixMillis};
+use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis, serde::Base64};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 

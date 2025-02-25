@@ -3,20 +3,20 @@ use palpo_core::presence::PresenceState;
 use salvo::oapi::extract::{JsonBody, QueryParam};
 use salvo::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::client::account::{LoginType, RegistrationKind};
 use crate::core::client::register::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::GlobalAccountDataEventType;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
-use crate::core::UnixMillis;
 use crate::schema::*;
 use crate::user::{NewDbPresence, NewDbProfile};
 use crate::{
-    db, diesel_exists, empty_ok, exts::*, hoops, utils, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError,
-    DEVICE_ID_LENGTH, RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, db, diesel_exists, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {

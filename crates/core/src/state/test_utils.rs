@@ -2,25 +2,25 @@ use std::{
     borrow::Borrow,
     collections::{BTreeMap, HashMap, HashSet},
     sync::{
-        atomic::{AtomicU64, Ordering::SeqCst},
         Arc,
+        atomic::{AtomicU64, Ordering::SeqCst},
     },
 };
 
 use crate::events::{
+    TimelineEventType,
     pdu::{EventHash, Pdu, RoomV3Pdu},
     room::{
         join_rules::{JoinRule, RoomJoinRulesEventContent},
         member::{MembershipState, RoomMemberEventContent},
     },
-    TimelineEventType,
 };
-use crate::{event_id, room_id, user_id, EventId, OwnedEventId, RoomId, RoomVersionId, UnixMillis, UserId};
+use crate::{EventId, OwnedEventId, RoomId, RoomVersionId, UnixMillis, UserId, event_id, room_id, user_id};
 use serde_json::{json, value::to_raw_value as to_raw_json_value};
 use tracing::info;
 
 pub(crate) use self::event::PduEvent;
-use crate::state::{auth_types_for_event, Event, EventTypeExt, StateMap};
+use crate::state::{Event, EventTypeExt, StateMap, auth_types_for_event};
 use crate::{MatrixError, RawJsonValue};
 
 static SERVER_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
@@ -553,9 +553,9 @@ pub(crate) fn INITIAL_EDGES() -> Vec<OwnedEventId> {
 pub(crate) mod event {
     use serde::{Deserialize, Serialize};
 
-    use crate::events::{pdu::Pdu, TimelineEventType};
-    use crate::state::Event;
     use crate::RawJsonValue;
+    use crate::events::{TimelineEventType, pdu::Pdu};
+    use crate::state::Event;
     use crate::{OwnedEventId, RoomId, UnixMillis, UserId};
 
     impl Event for PduEvent {

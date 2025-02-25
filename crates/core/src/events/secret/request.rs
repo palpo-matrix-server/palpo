@@ -4,10 +4,10 @@
 
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
 use crate::events::GlobalAccountDataEventType;
-use crate::{serde::StringEnum, OwnedDeviceId, OwnedTransactionId, PrivOwnedStr};
+use crate::{OwnedDeviceId, OwnedTransactionId, PrivOwnedStr, serde::StringEnum};
 
 /// The content of an `m.secret.request` event.
 ///

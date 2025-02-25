@@ -1,5 +1,5 @@
 use crate::core::third_party::*;
-use crate::{json_ok, AuthArgs, JsonResult};
+use crate::{AuthArgs, JsonResult, json_ok};
 use salvo::prelude::*;
 
 pub fn authed_router() -> Router {

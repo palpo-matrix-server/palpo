@@ -3,7 +3,7 @@ use salvo::prelude::*;
 
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::{empty_ok, utils, AuthArgs, DepotExt, EmptyResult, SESSION_ID_LENGTH};
+use crate::{AuthArgs, DepotExt, EmptyResult, SESSION_ID_LENGTH, empty_ok, utils};
 
 /// #POST /_matrix/client/r0/keys/device_signing/upload
 /// Uploads end-to-end key information for the sender user.

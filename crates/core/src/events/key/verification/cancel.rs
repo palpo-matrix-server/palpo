@@ -7,7 +7,7 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::events::relation::Reference;
-use crate::{serde::StringEnum, OwnedTransactionId, PrivOwnedStr};
+use crate::{OwnedTransactionId, PrivOwnedStr, serde::StringEnum};
 
 /// The content of a to-device `m.key.verification.cancel` event.
 ///

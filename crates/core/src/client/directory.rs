@@ -1,6 +1,7 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::OwnedServerName;
 /// `POST /_matrix/client/*/publicRooms`
 ///
 /// Get the list of rooms in this homeserver's public directory.
@@ -9,7 +10,6 @@ use serde::{Deserialize, Serialize};
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3publicrooms
 use crate::directory::{PublicRoomFilter, RoomNetwork};
 use crate::room::Visibility;
-use crate::OwnedServerName;
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

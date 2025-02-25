@@ -7,7 +7,7 @@ use crate::core::client::account::data::{GlobalAccountDataResBody, RoomAccountDa
 use crate::core::events::AnyGlobalAccountDataEventContent;
 use crate::core::serde::RawJson;
 use crate::core::user::{UserEventTypeReqArgs, UserRoomEventTypeReqArgs};
-use crate::{empty_ok, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
 #[derive(Deserialize)]
 struct ExtractGlobalEventContent {

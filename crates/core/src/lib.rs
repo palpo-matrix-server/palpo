@@ -46,7 +46,7 @@ use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 
 pub use self::identifiers::*;
-pub use self::serde::{canonical_json, JsonValue, RawJson, RawJsonValue};
+pub use self::serde::{JsonValue, RawJson, RawJsonValue, canonical_json};
 pub use self::time::{UnixMillis, UnixSeconds};
 
 // Wrapper around `Box<str>` that cannot be used in a meaningful way outside of

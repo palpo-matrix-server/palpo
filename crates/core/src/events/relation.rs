@@ -11,8 +11,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use super::AnyMessageLikeEvent;
 use crate::PrivOwnedStr;
 use crate::{
-    serde::{JsonObject, RawJson, StringEnum},
     OwnedEventId,
+    serde::{JsonObject, RawJson, StringEnum},
 };
 
 /// Information about the event a [rich reply] is replying to.

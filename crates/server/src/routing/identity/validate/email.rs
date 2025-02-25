@@ -1,6 +1,6 @@
 use salvo::prelude::*;
 
-use crate::{empty_ok, AuthArgs, EmptyResult};
+use crate::{AuthArgs, EmptyResult, empty_ok};
 
 #[endpoint]
 pub(super) async fn create_session(_aa: AuthArgs) -> EmptyResult {

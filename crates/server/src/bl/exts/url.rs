@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 
 use salvo::http::headers::{CacheControl, Header};
 
-use crate::core::identifiers::*;
 use crate::LazyRwLock;
+use crate::core::identifiers::*;
 
 type WellKnownMap = HashMap<OwnedServerName, DestinationResponse>;
 pub static ACTUAL_DESTINATION_CACHE: LazyRwLock<WellKnownMap> = LazyLock::new(Default::default); // actual_destination, host

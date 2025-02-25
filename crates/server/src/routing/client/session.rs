@@ -6,8 +6,8 @@ use crate::core::client::session::*;
 use crate::core::client::uiaa::UserIdentifier;
 use crate::core::identifiers::*;
 use crate::{
-    empty_ok, hoops, json_ok, utils, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, DEVICE_ID_LENGTH,
-    TOKEN_LENGTH,
+    AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, TOKEN_LENGTH, empty_ok, hoops, json_ok,
+    utils,
 };
 
 #[derive(Debug, Deserialize)]

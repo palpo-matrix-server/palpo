@@ -34,7 +34,5 @@ macro_rules! print_query {
 
 #[macro_export]
 macro_rules! debug_query {
-    ($query:expr) => {{
-        format!("{}", diesel::debug_query::<diesel::pg::Pg, _>($query))
-    }};
+    ($query:expr) => {{ format!("{}", diesel::debug_query::<diesel::pg::Pg, _>($query)) }};
 }

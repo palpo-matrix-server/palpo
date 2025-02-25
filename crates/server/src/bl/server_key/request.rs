@@ -1,14 +1,14 @@
 use std::{collections::BTreeMap, fmt::Debug};
 
-use super::{minimum_valid_ts, GetUrlOrigin};
+use super::{GetUrlOrigin, minimum_valid_ts};
+use crate::AppResult;
 use crate::core::directory::QueryCriteria;
 use crate::core::federation::directory::{
-    remote_server_keys_batch_request, remote_server_keys_request, server_keys_request, RemoteServerKeysBatchReqBody,
-    RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs, RemoteServerKeysResBody, ServerKeysResBody,
+    RemoteServerKeysBatchReqBody, RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs, RemoteServerKeysResBody,
+    ServerKeysResBody, remote_server_keys_batch_request, remote_server_keys_request, server_keys_request,
 };
 use crate::core::federation::discovery::ServerSigningKeys;
 use crate::core::{MatrixError, OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId};
-use crate::AppResult;
 
 type Batch = BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>>;
 

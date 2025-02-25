@@ -6,12 +6,12 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::OwnedRoomId;
 use crate::events::{
     EmptyStateKey, EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
     StaticEventContent,
 };
 use crate::serde::RawJsonValue;
-use crate::OwnedRoomId;
 
 /// The content of an `m.room.tombstone` event.
 ///

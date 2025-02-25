@@ -11,22 +11,21 @@ use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::{backfill_request, BackfillResBody};
+use crate::core::federation::backfill::{BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::serde::{to_canonical_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value};
 use crate::core::state::Event;
-use crate::core::{user_id, Direction, RoomVersion, UnixMillis};
+use crate::core::{Direction, RoomVersion, UnixMillis, user_id};
 use crate::event::{DbEventData, NewDbEvent};
 use crate::room::state::CompressedState;
-use crate::{db, utils, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, db, utils};
+use crate::{GetUrlOrigin, schema::*};
 use crate::{
-    diesel_exists,
+    JsonValue, diesel_exists,
     event::{EventHash, PduBuilder, PduEvent},
-    JsonValue,
 };
-use crate::{schema::*, GetUrlOrigin};
 use diesel::prelude::*;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
@@ -617,7 +616,7 @@ pub fn create_hash_and_sign_event(
             return match e {
                 crate::core::signatures::Error::PduSize => Err(MatrixError::too_large("Message is too long").into()),
                 _ => Err(MatrixError::unknown("Signing event failed").into()),
-            }
+            };
         }
     }
 

@@ -14,6 +14,7 @@ use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
 
+use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::CreateRoomResBody;
 use crate::core::client::room::{
@@ -38,9 +39,8 @@ use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEven
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonObject};
-use crate::core::UnixMillis;
 use crate::event::PduBuilder;
-use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")

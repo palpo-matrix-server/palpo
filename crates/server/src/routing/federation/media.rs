@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
@@ -5,17 +6,19 @@ use std::str::FromStr;
 use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
+use palpo_core::http_headers::ContentDispositionType;
 use salvo::fs::NamedFile;
 use salvo::http::HeaderValue;
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-use crate::core::federation::media::*;
 use crate::core::UnixMillis;
+use crate::core::federation::media::*;
 use crate::media::*;
 use crate::schema::*;
-use crate::{db, hoops, AppResult, AuthArgs, MatrixError};
+use crate::utils::content_disposition::make_content_disposition;
+use crate::{AppResult, AuthArgs, JsonResult, MatrixError, db, hoops, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("media")
@@ -39,7 +42,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
             .flatten()
             .unwrap_or_else(|| {
                 metadata
-                    .upload_name
+                    .file_name
                     .as_ref()
                     .map(|name| mime_infer::infer_mime_type(name))
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM)
@@ -69,61 +72,51 @@ pub async fn get_thumbnail(
     res: &mut Response,
 ) -> AppResult<()> {
     let server_name = &crate::config().server_name;
-    // let tbs = media_thumbnails::table.load::<DbThumbnail>(&mut *db::connect()?)?;
-
-    if let Some(DbThumbnail {
-        content_disposition,
-        content_type,
-        ..
-    }) = crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
+    if let Some(DbThumbnail { content_type, .. }) =
+        crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
     {
         let thumb_path = crate::media_path(
             server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
 
-        res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-        let mut file = NamedFile::builder(&thumb_path)
-            .content_type(
-                Mime::from_str(&content_type)
-                    .ok()
-                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-            )
-            .build()
-            .await?;
-        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-            file.set_content_disposition(content_disposition);
-        }
+        let content_disposition =
+            make_content_disposition(Some(ContentDispositionType::Inline), Some(&content_type), None);
+        let content = Content {
+            file: fs::read(&thumb_path)?,
+            content_type: Some(content_type),
+            content_disposition: Some(content_disposition),
+        };
 
+        res.render(ThumbnailResBody {
+            content: FileOrLocation::File(content),
+            metadata: ContentMetadata::new(),
+        });
         return Ok(());
     }
 
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
     let thumb_path = crate::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
-    if let Some(DbThumbnail {
-        content_disposition,
-        content_type,
-        ..
-    }) = crate::media::get_thumbnail(server_name, &args.media_id, width, height)?
+    if let Some(DbThumbnail { content_type, .. }) =
+        crate::media::get_thumbnail(server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
-        let mut file = NamedFile::builder(&thumb_path)
-            .content_type(
-                Mime::from_str(&content_type)
-                    .ok()
-                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-            )
-            .build()
-            .await?;
-        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-            file.set_content_disposition(content_disposition);
-        }
-        file.send(req.headers(), res).await;
+        let content_disposition =
+            make_content_disposition(Some(ContentDispositionType::Inline), Some(&content_type), None);
+        let content = Content {
+            file: fs::read(&thumb_path)?,
+            content_type: Some(content_type),
+            content_disposition: Some(content_disposition),
+        };
 
+        res.render(ThumbnailResBody {
+            content: FileOrLocation::File(content),
+            metadata: ContentMetadata::new(),
+        });
         Ok(())
     } else if let Ok(Some(DbMetadata {
-        content_disposition,
+        disposition_type,
         content_type,
         ..
     })) = crate::media::get_metadata(server_name, &args.media_id)
@@ -134,20 +127,18 @@ pub async fn get_thumbnail(
             let original_width = image.width();
             let original_height = image.height();
             if width > original_width || height > original_height {
-                let mut file = NamedFile::builder(&thumb_path)
-                    .content_type(
-                        content_type
-                            .as_deref()
-                            .map(|c| Mime::from_str(c).ok())
-                            .flatten()
-                            .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-                    )
-                    .build()
-                    .await?;
-                if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                    file.set_content_disposition(content_disposition);
-                }
-                file.send(req.headers(), res).await;
+                let content_disposition =
+                    make_content_disposition(Some(ContentDispositionType::Inline), content_type.as_deref(), None);
+                let content = Content {
+                    file: fs::read(&image_path)?,
+                    content_type: content_type.map(Into::into),
+                    content_disposition: Some(content_disposition),
+                };
+
+                res.render(ThumbnailResBody {
+                    content: FileOrLocation::File(content),
+                    metadata: ContentMetadata::new(),
+                });
                 return Ok(());
             }
 
@@ -196,7 +187,6 @@ pub async fn get_thumbnail(
                     media_id: args.media_id.clone(),
                     origin_server: server_name.clone(),
                     content_type: "mage/png".into(),
-                    content_disposition: None,
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,
                     height: height as i32,
@@ -207,37 +197,31 @@ pub async fn get_thumbnail(
             let mut f = File::create(&thumb_path).await?;
             f.write_all(&thumbnail_bytes).await?;
 
-            let mut file = NamedFile::builder(&thumb_path)
-                .content_type(
-                    content_type
-                        .as_deref()
-                        .map(|c| Mime::from_str(c).ok())
-                        .flatten()
-                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-                )
-                .build()
-                .await?;
-            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                file.set_content_disposition(content_disposition);
-            }
-            file.send(req.headers(), res).await;
+            let content_disposition =
+                make_content_disposition(Some(ContentDispositionType::Inline), content_type.as_deref(), None);
+            let content = Content {
+                file: thumbnail_bytes,
+                content_type: content_type.map(Into::into),
+                content_disposition: Some(content_disposition),
+            };
+
+            res.render(ThumbnailResBody {
+                content: FileOrLocation::File(content),
+                metadata: ContentMetadata::new(),
+            });
             Ok(())
         } else {
-            // Couldn't parse file to generate thumbnail, send original
-            let mut file = NamedFile::builder(&image_path)
-                .content_type(
-                    content_type
-                        .as_deref()
-                        .map(|c| Mime::from_str(c).ok())
-                        .flatten()
-                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-                )
-                .build()
-                .await?;
-            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                file.set_content_disposition(content_disposition);
-            }
-            file.send(req.headers(), res).await;
+            let content_disposition = make_content_disposition(None, content_type.as_deref(), None);
+            let content = Content {
+                file: fs::read(&image_path)?,
+                content_type: content_type.map(Into::into),
+                content_disposition: Some(content_disposition),
+            };
+
+            res.render(ThumbnailResBody {
+                content: FileOrLocation::File(content),
+                metadata: ContentMetadata::new(),
+            });
             Ok(())
         }
     } else {

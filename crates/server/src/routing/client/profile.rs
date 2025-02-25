@@ -7,14 +7,14 @@ use serde_json::value::to_raw_value;
 use crate::core::client::profile::*;
 use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::query::{profile_request, ProfileReqArgs};
+use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
 use crate::diesel_exists;
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::{DbProfile, NewDbPresence};
-use crate::{db, empty_ok, hoops, json_ok, AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder};
+use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, db, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/{user_id}")
@@ -37,13 +37,14 @@ pub fn authed_router() -> Router {
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        let profile = profile_request(
-            &user_id.server_name().origin().await,
-            ProfileReqArgs { user_id, field: None },
-        )?
-        .send()
-        .await?;
+        let server_name = user_id.server_name().to_owned();
+        let request =
+            profile_request(&server_name.origin().await, ProfileReqArgs { user_id, field: None })?.into_inner();
 
+        let profile = crate::sending::send_federation_request(&server_name, request)
+            .await?
+            .json::<ProfileResBody>()
+            .await?;
         return json_ok(profile);
     }
     let DbProfile {
@@ -71,21 +72,21 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
 async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<AvatarUrlResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
-        // TODO
-        //     let response = crate::sending::send_federation_request(
-        //         body.user_id.server_name(),
-        //         // federation::query::get_profile_information::v1::Request {
-        //         ProfileInformationReqBody {
-        //             user_id: body.user_id.clone(),
-        //             field: Some(ProfileField::AvatarUrl),
-        //         },
-        //     )
-        //     .await?;
+        let server_name = user_id.server_name().to_owned();
+        let request = profile_request(
+            &server_name.origin().await,
+            ProfileReqArgs {
+                user_id,
+                field: Some(ProfileField::AvatarUrl),
+            },
+        )?
+        .into_inner();
 
-        //     return json_ok(AvatarUrlResBody {
-        //         avatar_url: response.avatar_url,
-        //         blurhash: response.blurhash,
-        //     });
+        let body: AvatarUrlResBody = crate::sending::send_federation_request(&server_name, request)
+            .await?
+            .json::<AvatarUrlResBody>()
+            .await?;
+        return json_ok(body);
     }
 
     let DbProfile {
@@ -213,22 +214,28 @@ async fn set_avatar_url(
 #[endpoint]
 async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
+    println!("GGGGGGGGGGGGGEt display name is remote: {}", user_id.is_remote());
     if user_id.is_remote() {
-        let body = profile_request(
-            &user_id.server_name().origin().await,
+        let server_name = user_id.server_name().to_owned();
+        let request = profile_request(
+            &server_name.origin().await,
             ProfileReqArgs {
                 user_id,
                 field: Some(ProfileField::DisplayName),
             },
         )?
-        .send::<DisplayNameResBody>()
-        .await?;
-        json_ok(body)
-    } else {
-        json_ok(DisplayNameResBody {
-            display_name: crate::user::display_name(&user_id)?,
-        })
+        .into_inner();
+
+        println!("???????????????????? 0");
+        let body = crate::sending::send_federation_request(&server_name, request)
+            .await?
+            .json::<DisplayNameResBody>()
+            .await?;
+        return json_ok(body);
     }
+    json_ok(DisplayNameResBody {
+        display_name: crate::user::display_name(&user_id)?,
+    })
 }
 
 /// #PUT /_matrix/client/r0/profile/{user_id}/displayname

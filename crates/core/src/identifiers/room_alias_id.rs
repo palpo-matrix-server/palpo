@@ -3,7 +3,7 @@
 use diesel::expression::AsExpression;
 use palpo_macros::IdZst;
 
-use super::{matrix_uri::UriAction, server_name::ServerName, MatrixToUri, MatrixUri, OwnedEventId};
+use super::{MatrixToUri, MatrixUri, OwnedEventId, matrix_uri::UriAction, server_name::ServerName};
 
 /// A Matrix [room alias ID].
 ///

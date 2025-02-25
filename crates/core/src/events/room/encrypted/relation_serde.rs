@@ -1,8 +1,8 @@
 use crate::{
-    serde::{from_raw_json_value, JsonObject},
     OwnedEventId,
+    serde::{JsonObject, from_raw_json_value},
 };
-use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{InReplyTo, Relation, Thread};
 use crate::{JsonValue, RawJsonValue};
