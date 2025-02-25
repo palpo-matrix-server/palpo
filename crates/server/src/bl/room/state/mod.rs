@@ -24,12 +24,12 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::{to_raw_json_value, RawJson};
+use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::event::{PduBuilder, PduEvent};
 use crate::schema::*;
-use crate::{db, utils, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]

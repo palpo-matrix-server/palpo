@@ -1,6 +1,6 @@
 use salvo::prelude::*;
 
-use crate::{empty_ok, AuthArgs, EmptyResult};
+use crate::{AuthArgs, EmptyResult, empty_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("auth/{auth_type}/fallback/web").get(uiaa_fallback)

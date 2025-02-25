@@ -5,7 +5,7 @@ use palpo_core::OwnedEventId;
 
 use crate::core::{EventId, RoomId};
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 /// Returns (state_hash, already_existed)
 pub fn ensure_point(room_id: &RoomId, event_id: &EventId, event_sn: i64) -> AppResult<i64> {

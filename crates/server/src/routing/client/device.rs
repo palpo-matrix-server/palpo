@@ -9,15 +9,15 @@ use diesel::prelude::*;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
+use crate::core::OwnedDeviceId;
 use crate::core::client::device::{
     DeleteDeviceReqBody, DeleteDevicesReqBody, DeviceResBody, DevicesResBody, UpdatedDeviceReqBody,
 };
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::error::ErrorKind;
-use crate::core::OwnedDeviceId;
 use crate::schema::*;
 use crate::user::DbUserDevice;
-use crate::{db, empty_ok, json_ok, utils, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, db, empty_ok, json_ok, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")

@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use serde_json::Value;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
 
 #[derive(Insertable, Identifiable, Debug, Clone)]

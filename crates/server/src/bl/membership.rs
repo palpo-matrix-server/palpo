@@ -12,25 +12,25 @@ use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEv
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
-    make_leave_request, InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2,
-    SendLeaveReqBodyV2,
+    InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2, SendLeaveReqBodyV2,
+    make_leave_request,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    to_canonical_value, to_raw_json_value, CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
+    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{federation, OwnedServerName, ServerName, UnixMillis};
+use crate::core::{OwnedServerName, ServerName, UnixMillis, federation};
 
 use crate::appservice::RegistrationInfo;
-use crate::event::{gen_event_id_canonical_json, NewDbEvent, PduBuilder, PduEvent};
+use crate::event::{NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::membership::federation::membership::{
-    send_leave_request_v2, InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2,
-    SendJoinReqBodyV2, SendLeaveReqArgsV2,
+    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBodyV2,
+    SendLeaveReqArgsV2, send_leave_request_v2,
 };
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedState};
 use crate::user::DbUser;
-use crate::{db, diesel_exists, schema::*, AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys, db, diesel_exists, schema::*};
 
 pub async fn send_join_v1(server_name: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -307,7 +307,9 @@ pub async fn join_room(
                         .insert(remote_server.to_string(), signature.clone());
                 }
                 Err(e) => {
-                    warn!("Server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",);
+                    warn!(
+                        "Server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",
+                    );
                 }
             }
         }
@@ -506,7 +508,9 @@ pub async fn join_room(
         };
 
         if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != crate::server_name()).count() > 0 {
-            info!("We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements");
+            info!(
+                "We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements"
+            );
             let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
 
             let room_version_id = match make_join_response.room_version {

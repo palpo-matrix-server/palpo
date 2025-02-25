@@ -4,7 +4,7 @@ use as_variant::as_variant;
 use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::serde::{from_raw_json_value, JsonValue, RawJsonValue};
+use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
 
 /// This represents the different actions that should be taken when a rule is matched, and
 /// controls how notifications are delivered to the client.

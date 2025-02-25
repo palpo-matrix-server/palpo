@@ -1,7 +1,7 @@
 use crate::{
+    EventId, OwnedEventId, OwnedServerName, RoomVersionId,
     canonical_json::{JsonType, RedactionError},
     serde::Base64DecodeError,
-    EventId, OwnedEventId, OwnedServerName, RoomVersionId,
 };
 use thiserror::Error;
 
@@ -31,7 +31,9 @@ pub enum Error {
     InvalidLength(usize),
 
     /// The signature's ID contains invalid characters in its version.
-    #[error("malformed signature ID: expected version to contain only characters in the character set `[a-zA-Z0-9_]`, found `{0}`")]
+    #[error(
+        "malformed signature ID: expected version to contain only characters in the character set `[a-zA-Z0-9_]`, found `{0}`"
+    )]
     InvalidVersion(String),
 
     /// The signature uses an unsupported algorithm.

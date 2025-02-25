@@ -14,7 +14,7 @@ use crate::core::client::membership::{
 use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::query::{profile_request, ProfileReqArgs};
+use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
 use crate::room::state;
@@ -23,8 +23,8 @@ use crate::schema::*;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
-    db, diesel_exists, empty_ok, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,
-    PduBuilder,
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, db, diesel_exists, empty_ok,
+    json_ok,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -58,6 +58,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         state::get_room_frame_id(&args.room_id, Some(can_see.as_until_sn()))?
             .ok_or_else(|| AppError::public("state delta not found"))?
     };
+    println!("==============state  fulll:  {:#?}", state::get_full_state(frame_id)?);
     let mut states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)

@@ -3,7 +3,6 @@
 /.cargo
 .env.local
 debug.log
-Cargo.lock
 .idea
 /tests/_.*
 sytestout

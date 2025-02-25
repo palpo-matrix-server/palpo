@@ -13,12 +13,12 @@ use crate::events::{
     AnyToDeviceEvent, StateEventType, TimelineEventType,
 };
 use crate::{
-    device::DeviceLists,
-    serde::{deserialize_cow_str, duration::opt_ms, RawJson},
     DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, RoomId, UnixMillis,
+    device::DeviceLists,
+    serde::{RawJson, deserialize_cow_str, duration::opt_ms},
 };
 use salvo::prelude::*;
-use serde::{de::Error as _, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Error as _};
 
 use super::UnreadNotificationsCount;
 

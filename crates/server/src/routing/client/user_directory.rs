@@ -35,7 +35,8 @@ fn search(
             user_profiles::user_id
                 .ilike(format!("%{}%", body.search_term))
                 .or(user_profiles::display_name.ilike(format!("%{}%", body.search_term))),
-        ).filter(user_profiles::user_id.ne(authed.user_id()))
+        )
+        .filter(user_profiles::user_id.ne(authed.user_id()))
         .select(user_profiles::user_id)
         .load::<OwnedUserId>(&mut *db::connect()?)?;
 

@@ -15,21 +15,23 @@ mod room_key;
 mod session;
 mod third_party;
 mod to_device;
+mod unstable;
 mod user;
 mod user_directory;
 mod voip;
 
 pub(crate) mod media;
 
-use std::collections::{hash_map, BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::serde::CanonicalJsonObject;
 use crate::PduEvent;
+use crate::core::serde::CanonicalJsonObject;
 
+use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -44,8 +46,7 @@ use crate::core::client::sync_events::{
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::UserId;
-use crate::{empty_ok, hoops, json_ok, AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");
@@ -111,7 +112,9 @@ pub fn router() -> Router {
                     .push(Router::with_path("knock/{room_id_or_alias}").post(room::membership::knock_room)),
             )
     }
-    client.push(Router::with_path("versions").get(supported_versions))
+    client
+        .push(Router::with_path("versions").get(supported_versions))
+        .push(unstable::router())
 }
 
 /// #POST /_matrix/client/r0/search

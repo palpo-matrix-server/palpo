@@ -5,8 +5,8 @@
 //!
 //! [serde_urlencoded]: https://github.com/nox/serde_urlencoded
 
-use serde::{de, Deserialize, Deserializer};
-pub use serde_json::value::{to_raw_value as to_raw_json_value, RawValue as RawJsonValue, Value as JsonValue};
+use serde::{Deserialize, Deserializer, de};
+pub use serde_json::value::{RawValue as RawJsonValue, Value as JsonValue, to_raw_value as to_raw_json_value};
 
 pub mod base64;
 mod buf;
@@ -19,12 +19,12 @@ mod raw_json;
 pub mod single_element_seq;
 mod strings;
 pub mod test;
-pub use canonical_json::{to_canonical_value, CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue};
+pub use canonical_json::{CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 
 pub use self::{
     base64::{Base64, Base64DecodeError},
     buf::{json_to_buf, slice_to_buf},
-    can_be_empty::{is_empty, CanBeEmpty},
+    can_be_empty::{CanBeEmpty, is_empty},
     cow::deserialize_cow_str,
     raw_json::RawJson,
     strings::{

@@ -3,7 +3,7 @@
 use as_variant::as_variant;
 use palpo_macros::Event;
 use salvo::oapi::ToSchema;
-use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{
     AnyInitialStateEvent, EmptyStateKey, EphemeralRoomEventContent, EventContent, EventContentFromType,
@@ -13,7 +13,7 @@ use super::{
     StaticStateEventContent, ToDeviceEventContent,
 };
 use crate::events::receipt::ReceiptEventContent;
-use crate::serde::{from_raw_json_value, RawJson, RawJsonValue};
+use crate::serde::{RawJson, RawJsonValue, from_raw_json_value};
 use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId};
 
 /// A global account data event.

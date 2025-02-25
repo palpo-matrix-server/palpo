@@ -13,14 +13,13 @@ use crate::{OwnedEventId, UnixMillis};
 
 use self::unstable_poll_answers_serde::UnstablePollAnswersDeHelper;
 use super::{
-    compile_unstable_poll_results, generate_poll_end_fallback_text,
+    PollResponseData, compile_unstable_poll_results, generate_poll_end_fallback_text,
     start::{PollAnswers, PollAnswersError, PollContentBlock, PollKind},
     unstable_end::UnstablePollEndEventContent,
-    PollResponseData,
 };
 use crate::events::{
-    relation::Replacement, room::message::RelationWithoutReplacement, EventContent, MessageLikeEventContent,
-    MessageLikeEventType, RedactContent, RedactedMessageLikeEventContent, StaticEventContent,
+    EventContent, MessageLikeEventContent, MessageLikeEventType, RedactContent, RedactedMessageLikeEventContent,
+    StaticEventContent, relation::Replacement, room::message::RelationWithoutReplacement,
 };
 
 /// The payload for an unstable poll start event.

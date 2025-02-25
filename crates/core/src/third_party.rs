@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{serde::StringEnum, OwnedRoomAliasId, OwnedUserId, PrivOwnedStr, UnixMillis};
+use crate::{OwnedRoomAliasId, OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum};
 
 /// Metadata about a third party protocol.
 ///

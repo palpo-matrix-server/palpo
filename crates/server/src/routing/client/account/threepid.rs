@@ -9,7 +9,7 @@
 use salvo::prelude::*;
 
 use crate::core::client::account::threepid::ThreepidsResBody;
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
+use crate::{AuthArgs, EmptyResult, JsonResult, empty_ok, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("3pid")

@@ -3,7 +3,7 @@
 use diesel::expression::AsExpression;
 use palpo_macros::IdZst;
 
-use super::{crypto_algorithms::DeviceKeyAlgorithm, DeviceId};
+use super::{DeviceId, crypto_algorithms::DeviceKeyAlgorithm};
 
 /// A key algorithm and a device id, combined with a ':'.
 #[repr(transparent)]
@@ -44,7 +44,7 @@ impl DeviceKeyId {
 #[cfg(test)]
 mod tests {
     use super::{DeviceKeyId, OwnedDeviceKeyId};
-    use crate::identifiers::{crypto_algorithms::DeviceKeyAlgorithm, IdParseError};
+    use crate::identifiers::{IdParseError, crypto_algorithms::DeviceKeyAlgorithm};
 
     #[test]
     fn convert_device_key_id() {

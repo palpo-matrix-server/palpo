@@ -6,7 +6,7 @@ use salvo::prelude::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::exts::*;
 use crate::schema::*;
-use crate::{db, empty_ok, hoops, utils, AuthArgs, EmptyResult, SESSION_ID_LENGTH};
+use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, db, empty_ok, hoops, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("password")

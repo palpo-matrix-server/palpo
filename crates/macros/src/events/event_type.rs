@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{parse_quote, Ident, LitStr};
+use syn::{Ident, LitStr, parse_quote};
 
 use super::event_parse::{EventEnumEntry, EventEnumInput, EventKind};
 

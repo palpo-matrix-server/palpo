@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
 
 #[derive(Identifiable, Queryable, Debug, Clone)]

@@ -13,7 +13,7 @@ use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{EventId, OwnedUserId, RoomVersionId, UnixMillis};
 use crate::room::NewDbRoom;
 use crate::schema::*;
-use crate::{db, empty_ok, json_ok, utils, AppError, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent};
+use crate::{AppError, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, db, empty_ok, json_ok, utils};
 
 pub fn router_v1() -> Router {
     Router::new()

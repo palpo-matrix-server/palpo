@@ -3,8 +3,8 @@ use std::{fmt, time::Duration};
 
 use salvo::prelude::*;
 use serde::{
-    de::{self, DeserializeOwned},
     Deserialize, Deserializer, Serialize,
+    de::{self, DeserializeOwned},
 };
 use serde_json::Value as JsonValue;
 

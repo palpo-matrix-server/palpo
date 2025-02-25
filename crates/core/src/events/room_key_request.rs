@@ -7,7 +7,7 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::PrivOwnedStr;
-use crate::{serde::StringEnum, EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId};
+use crate::{EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId, serde::StringEnum};
 
 /// The content of an `m.room_key_request` event.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]

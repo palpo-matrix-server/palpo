@@ -10,10 +10,10 @@ use salvo::oapi::extract::JsonBody;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
 use crate::core::OwnedUserId;
+use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
 use crate::user::NewDbPresence;
-use crate::{empty_ok, hoops, json_ok, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("presence/{user_id}/status")

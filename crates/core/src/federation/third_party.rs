@@ -14,7 +14,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::events::StateEventType;
-use crate::{third_party::Medium, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId};
+use crate::{OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, third_party::Medium};
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,

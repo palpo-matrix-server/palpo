@@ -7,7 +7,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{events::EmptyStateKey, PrivOwnedStr};
+use crate::{PrivOwnedStr, events::EmptyStateKey};
 
 /// The content of an `m.room.guest_access` event.
 ///

@@ -8,8 +8,8 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::room::DbRoom;
 use crate::schema::*;
-use crate::{db, diesel_exists, AuthArgs};
-use crate::{empty_ok, json_ok, EmptyResult, JsonResult};
+use crate::{AuthArgs, db, diesel_exists};
+use crate::{EmptyResult, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/directory/list/room/{room_id}
 /// Gets the visibility of a given room in the room directory.

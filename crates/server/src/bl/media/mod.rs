@@ -8,9 +8,9 @@ use std::time::Duration;
 
 use salvo::Response;
 
-use crate::core::client::media::ContentReqArgs;
 use crate::core::ServerName;
-use crate::{exts::*, join_path, AppResult};
+use crate::core::client::media::ContentReqArgs;
+use crate::{AppResult, exts::*, join_path};
 
 pub async fn get_remote_content(
     mxc: &str,

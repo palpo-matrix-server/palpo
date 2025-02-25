@@ -1,8 +1,8 @@
 use palpo_core::serde::CanonicalJsonError;
-use salvo::http::header::{HeaderValue, CONTENT_TYPE};
+use salvo::http::header::{CONTENT_TYPE, HeaderValue};
 use salvo::http::{Response, StatusError};
 use salvo::oapi::{self, Components, Content, EndpointOutRegister, Operation, RefOr, ToResponse, ToSchema};
-use salvo::{async_trait, Scribe};
+use salvo::{Scribe, async_trait};
 use serde::Serialize;
 
 use crate::core::serde::CanonicalJsonValue;

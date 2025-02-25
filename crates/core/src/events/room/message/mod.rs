@@ -5,25 +5,25 @@
 use std::borrow::Cow;
 
 use crate::{
-    serde::{JsonObject, RawJson, StringEnum},
     OwnedEventId, RoomId,
+    serde::{JsonObject, RawJson, StringEnum},
 };
 #[cfg(feature = "html")]
-use palpo_html::{sanitize_html, HtmlSanitizerMode, RemoveReplyFallback};
+use palpo_html::{HtmlSanitizerMode, RemoveReplyFallback, sanitize_html};
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;
 use tracing::warn;
 
 use self::reply::OriginalEventData;
 #[cfg(feature = "html")]
 use self::sanitize::remove_plain_reply_fallback;
-use crate::events::{
-    relation::{InReplyTo, Replacement, Thread},
-    AnySyncTimelineEvent, Mentions,
-};
 use crate::PrivOwnedStr;
+use crate::events::{
+    AnySyncTimelineEvent, Mentions,
+    relation::{InReplyTo, Replacement, Thread},
+};
 
 mod audio;
 mod content_serde;

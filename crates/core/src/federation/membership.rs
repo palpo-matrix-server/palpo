@@ -4,10 +4,10 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{room::member::RoomMemberEventContent, AnyStrippedStateEvent, StateEventType};
+use crate::events::{AnyStrippedStateEvent, StateEventType, room::member::RoomMemberEventContent};
 use crate::identifiers::*;
 use crate::sending::{SendRequest, SendResult};
-use crate::{serde::RawJson, RawJsonValue, UnixMillis};
+use crate::{RawJsonValue, UnixMillis, serde::RawJson};
 
 pub fn invite_user_request_v2(
     origin: &str,

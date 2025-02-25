@@ -2,7 +2,7 @@ use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
 use crate::core::authorization::XMatrix;
-use crate::core::{signatures, MatrixError, ServerName};
+use crate::core::{MatrixError, ServerName, signatures};
 use crate::{AppError, AppResult};
 
 #[tracing::instrument(skip(request))]
@@ -10,14 +10,17 @@ pub(crate) async fn send_request(
     destination: &ServerName,
     mut request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
+    println!(">>>>>>>>>>>>>>>>>>>1");
     if !crate::config().allow_federation {
         return Err(AppError::public("Federation is disabled."));
     }
 
+    println!(">>>>>>>>>>>>>>>>>>>2");
     if destination == crate::server_name() {
         return Err(AppError::public("Won't send federation request to ourselves"));
     }
 
+    println!(">>>>>>>>>>>>>>>>>>>3");
     debug!("Preparing to send request to {destination}");
     let mut request_map = serde_json::Map::new();
 
@@ -75,11 +78,13 @@ pub(crate) async fn send_request(
 
     let url = request.url().clone();
 
+    println!("Sending request to {destination} at {url}");
     debug!("Sending request to {destination} at {url}");
     let response = crate::federation_client().execute(request).await;
 
     match response {
         Ok(response) => {
+            println!("=================response: {response:#?}");
             let status = response.status();
 
             if status == 200 {

@@ -8,8 +8,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    serde::{Base64, StringEnum},
     EventEncryptionAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr,
+    serde::{Base64, StringEnum},
 };
 
 /// Identity keys for a device.

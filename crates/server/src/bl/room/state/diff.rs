@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use diesel::prelude::*;
 
-use super::{room_state_deltas, DbRoomStateDelta, FrameInfo};
+use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
 use crate::core::{EventId, RoomId};
 use crate::room::state::ensure_point;
-use crate::{db, utils, AppResult};
+use crate::{AppResult, db, utils};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,

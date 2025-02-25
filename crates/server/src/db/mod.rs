@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, CustomizeConnection, State};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use scheduled_thread_pool::ScheduledThreadPool;
 use url::Url;
 

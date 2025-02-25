@@ -20,8 +20,8 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::condition::RoomVersionFeature;
 use crate::push::FlattenedJson;
+use crate::push::condition::RoomVersionFeature;
 use crate::push::{Action, PredefinedOverrideRuleId, PushCondition, PushConditionRoomCtx, PushRule};
 
 /// Like `SimplePushRule`, but with an additional `conditions` field.

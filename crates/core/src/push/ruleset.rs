@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use super::{
-    insert_and_move_rule, Action, AnyPushRuleRef, ConditionalPushRule, FlattenedJson, InsertPushRuleError, NewPushRule,
-    PatternedPushRule, PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter, SimplePushRule,
+    Action, AnyPushRuleRef, ConditionalPushRule, FlattenedJson, InsertPushRuleError, NewPushRule, PatternedPushRule,
+    PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter, SimplePushRule, insert_and_move_rule,
 };
 use crate::push::RemovePushRuleError;
 use crate::serde::RawJson;

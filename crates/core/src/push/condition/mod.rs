@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
-use crate::{power_levels::NotificationPowerLevels, OwnedRoomId, OwnedUserId, UserId};
+use crate::{OwnedRoomId, OwnedUserId, UserId, power_levels::NotificationPowerLevels};
 use crate::{PrivOwnedStr, RoomVersionId};
 
 mod flattened_json;

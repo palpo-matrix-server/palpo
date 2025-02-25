@@ -4,10 +4,10 @@ use std::error::Error as StdError;
 use std::iter::FromIterator;
 use std::{fmt, time::Duration};
 
-use salvo::http::{header, Response, StatusCode};
+use salvo::http::{Response, StatusCode, header};
 use salvo::writing::Scribe;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 
 mod auth;
 pub use auth::*;

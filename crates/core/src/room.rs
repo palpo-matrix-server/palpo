@@ -1,7 +1,7 @@
 //! Common types for rooms.
 
 use crate::events::StateEventType;
-use crate::{serde::StringEnum, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, serde::StringEnum};
 use salvo::prelude::*;
 use serde::Deserialize;
 

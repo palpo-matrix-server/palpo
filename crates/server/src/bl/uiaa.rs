@@ -3,15 +3,15 @@ use std::sync::LazyLock;
 
 use diesel::prelude::*;
 
+use crate::SESSION_ID_LENGTH;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::{
-    client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier},
     JsonValue,
+    client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier},
 };
 use crate::schema::*;
-use crate::SESSION_ID_LENGTH;
-use crate::{db, utils, AppResult, MatrixError};
+use crate::{AppResult, MatrixError, db, utils};
 
 use super::LazyRwLock;
 

@@ -12,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::full_text_search::*;
 use crate::schema::*;
-use crate::{db, AppResult, MatrixError, PduEvent};
+use crate::{AppResult, MatrixError, PduEvent, db};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
     let filter = &criteria.filter;

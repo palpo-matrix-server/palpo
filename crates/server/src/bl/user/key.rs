@@ -1,4 +1,4 @@
-use std::collections::{hash_map, BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, hash_map};
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
@@ -11,12 +11,12 @@ use crate::core::client::key::ClaimKeysResBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::claim_keys_request;
 use crate::core::identifiers::*;
-use crate::core::{client, federation};
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
+use crate::core::{client, federation};
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::clean_signatures;
-use crate::{db, AppError, AppResult, JsonValue, MatrixError, BAD_QUERY_RATE_LIMITER};
+use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, JsonValue, MatrixError, db};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]

@@ -3,12 +3,12 @@ use std::collections::BTreeMap;
 use diesel::prelude::*;
 use palpo_core::JsonValue;
 
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
-use crate::core::events::SyncEphemeralRoomEvent;
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::events::SyncEphemeralRoomEvent;
+use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = event_receipts)]

@@ -5,7 +5,7 @@ use std::hint::unreachable_unchecked;
 use diesel::expression::AsExpression;
 use palpo_macros::IdZst;
 
-use super::{server_name::ServerName, OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId};
+use super::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId, server_name::ServerName};
 
 /// A Matrix [room ID] or a Matrix [room alias ID].
 ///

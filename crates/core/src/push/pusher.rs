@@ -15,11 +15,11 @@
 //! - underride rules
 
 use salvo::prelude::ToSchema;
-use serde::{de, ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de, ser::SerializeStruct};
 use serde_json::value::from_value as from_json_value;
 
 use crate::push::PushFormat;
-use crate::serde::{from_raw_json_value, JsonObject, JsonValue, RawJsonValue};
+use crate::serde::{JsonObject, JsonValue, RawJsonValue, from_raw_json_value};
 
 /// Information for a pusher using the Push Gateway API.
 #[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]

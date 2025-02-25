@@ -4,7 +4,7 @@ use fetch_state::fetch_state;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use std::borrow::Borrow;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::future::Future;
 use std::iter::once;
 use std::pin::Pin;
@@ -14,16 +14,16 @@ use std::time::{Duration, Instant};
 use diesel::prelude::*;
 use palpo_core::federation::event::EventResBody;
 
-use crate::core::events::room::server_acl::RoomServerAclEventContent;
+use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
+use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::federation::event::get_events_request;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::state::{self, RoomVersion, StateMap};
-use crate::core::UnixMillis;
 use crate::event::{DbEvent, DbEventData, NewDbEvent, PduEvent};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
-use crate::{db, exts::*, schema::*, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, db, exts::*, schema::*};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room

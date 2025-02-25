@@ -8,7 +8,7 @@ use serde_json::Value as JsonValue;
 mod value;
 
 pub use self::value::{CanonicalJsonObject, CanonicalJsonValue};
-use crate::{serde::RawJson, RoomVersionId};
+use crate::{RoomVersionId, serde::RawJson};
 
 /// The set of possible errors when serializing to canonical JSON.
 #[derive(Debug)]

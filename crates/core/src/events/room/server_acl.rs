@@ -7,8 +7,8 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use wildmatch::WildMatch;
 
-use crate::events::EmptyStateKey;
 use crate::ServerName;
+use crate::events::EmptyStateKey;
 
 /// The content of an `m.room.server_acl` event.
 ///

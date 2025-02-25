@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::serde::{CanBeEmpty, RawJson, RawJsonValue};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::events::{
     EphemeralRoomEventType, GlobalAccountDataEventType, MessageLikeEventType, RoomAccountDataEventType, StateEventType,

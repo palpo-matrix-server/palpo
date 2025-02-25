@@ -1,8 +1,8 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::StringEnum;
 use crate::PrivOwnedStr;
+use crate::serde::StringEnum;
 
 /// The payload for a server notice message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]

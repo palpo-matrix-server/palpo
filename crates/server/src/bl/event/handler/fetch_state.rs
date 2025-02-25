@@ -1,10 +1,10 @@
-use std::collections::{hash_map, HashMap};
+use std::collections::{HashMap, hash_map};
 use std::sync::Arc;
 
-use crate::core::federation::event::{room_state_ids_request, RoomStateAtEventReqArgs, RoomStateIdsResBody};
-use crate::core::identifiers::*;
 use crate::core::ServerName;
-use crate::{exts::*, AppError, AppResult};
+use crate::core::federation::event::{RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request};
+use crate::core::identifiers::*;
+use crate::{AppError, AppResult, exts::*};
 
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks
@@ -55,7 +55,7 @@ pub(super) async fn fetch_state(
             hash_map::Entry::Occupied(_) => {
                 return Err(AppError::internal(
                     "State event's type and state_key combination exists multiple times.",
-                ))
+                ));
             }
         }
     }

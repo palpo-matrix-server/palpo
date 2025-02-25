@@ -9,7 +9,7 @@ use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, CanonicalJsonObject};
 use crate::core::{OwnedServerSigningKeyId, RawJson, UnixMillis};
-use crate::{empty_ok, json_ok, AuthArgs, EmptyResult, JsonResult};
+use crate::{AuthArgs, EmptyResult, JsonResult, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("key").oapi_tag("federation").push(

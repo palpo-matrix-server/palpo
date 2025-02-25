@@ -1,4 +1,6 @@
+use crate::core::ServerName;
 use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsChunk, PublicRoomsResBody, RoomNetwork};
+use crate::core::events::StateEventType;
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -6,10 +8,8 @@ use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventC
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::topic::RoomTopicEventContent;
-use crate::core::events::StateEventType;
-use crate::core::federation::directory::{public_rooms_request, PublicRoomsReqBody};
-use crate::core::ServerName;
-use crate::{exts::*, AppError, AppResult, MatrixError};
+use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
+use crate::{AppError, AppResult, MatrixError, exts::*};
 
 pub async fn get_public_rooms(
     server: Option<&ServerName>,

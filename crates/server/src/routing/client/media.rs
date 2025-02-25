@@ -19,7 +19,7 @@ use crate::core::client::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::media::*;
 use crate::schema::*;
-use crate::{db, empty_ok, exts::*, hoops, json_ok, utils, AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError};
+use crate::{AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, db, empty_ok, exts::*, hoops, json_ok, utils};
 
 pub fn self_auth_router() -> Router {
     Router::with_path("media")
@@ -53,7 +53,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
             .flatten()
             .unwrap_or_else(|| {
                 metadata
-                    .upload_name
+                    .file_name
                     .as_ref()
                     .map(|name| mime_infer::infer_mime_type(name))
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM)
@@ -61,8 +61,8 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
 
         let path = crate::media_path(&args.server_name, &args.media_id);
         if Path::new(&path).exists() {
-            if let Some(upload_name) = &metadata.upload_name {
-                NamedFile::builder(path).attached_name(upload_name)
+            if let Some(file_name) = &metadata.file_name {
+                NamedFile::builder(path).attached_name(file_name)
             } else {
                 NamedFile::builder(path)
             }
@@ -98,7 +98,7 @@ pub async fn get_content_with_filename(
         content_type.to_owned()
     } else {
         metadata
-            .upload_name
+            .file_name
             .as_ref()
             .map(|name| mime_infer::infer_mime_type(name))
             .unwrap_or(mime::APPLICATION_OCTET_STREAM)
@@ -165,8 +165,8 @@ pub async fn create_content(
     _depot: &mut Depot,
 ) -> JsonResult<CreateContentResBody> {
     // let authed = depot.take_authed_info()?;
-    let upload_name = args.filename.clone();
-    let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
+    let file_name = args.filename.clone();
+    let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let payload = req
         .payload_with_max_size(crate::max_request_size() as usize)
@@ -200,12 +200,9 @@ pub async fn create_content(
         let metadata = NewDbMetadata {
             media_id,
             origin_server: conf.server_name.clone(),
-            content_disposition: args
-                .filename
-                .clone()
-                .map(|filename| format!(r#"inline; filename="{filename}""#)),
+            disposition_type: Some("inline".into()),
             content_type: args.content_type.clone(),
-            upload_name,
+            file_name,
             file_extension,
             file_size: payload.len() as i64,
             file_hash: None,
@@ -237,8 +234,8 @@ pub async fn upload_content(
     _depot: &mut Depot,
 ) -> EmptyResult {
     // let authed = depot.take_authed_info()?;
-    let upload_name = args.filename.clone();
-    let file_extension = upload_name.as_deref().map(utils::fs::get_file_ext);
+    let file_name = args.filename.clone();
+    let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let payload = req
         .payload_with_max_size(crate::max_request_size() as usize)
@@ -269,12 +266,12 @@ pub async fn upload_content(
         let metadata = NewDbMetadata {
             media_id: args.media_id.clone(),
             origin_server: conf.server_name.clone(),
-            content_disposition: args
+            disposition_type: args
                 .filename
                 .clone()
                 .map(|filename| format!(r#"inline; filename="{filename}""#)),
             content_type: args.content_type.clone(),
-            upload_name,
+            file_name,
             file_extension,
             file_size: payload.len() as i64,
             file_hash: None,
@@ -363,7 +360,7 @@ pub async fn get_thumbnail(
 
     match crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height) {
         Ok(Some(DbThumbnail {
-            content_disposition,
+            // content_disposition,
             content_type,
             ..
         })) => {
@@ -381,9 +378,9 @@ pub async fn get_thumbnail(
                 )
                 .build()
                 .await?;
-            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                file.set_content_disposition(content_disposition);
-            }
+            // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+            //     file.set_content_disposition(content_disposition);
+            // }
 
             return Ok(());
         }
@@ -397,11 +394,8 @@ pub async fn get_thumbnail(
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
-    if let Some(DbThumbnail {
-        content_disposition,
-        content_type,
-        ..
-    }) = crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
+    if let Some(DbThumbnail { content_type, .. }) =
+        crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
         let mut file = NamedFile::builder(&thumb_path)
@@ -412,14 +406,14 @@ pub async fn get_thumbnail(
             )
             .build()
             .await?;
-        if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-            file.set_content_disposition(content_disposition);
-        }
+        // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+        //     file.set_content_disposition(content_disposition);
+        // }
         file.send(req.headers(), res).await;
 
         Ok(())
     } else if let Ok(Some(DbMetadata {
-        content_disposition,
+        disposition_type,
         content_type,
         ..
     })) = crate::media::get_metadata(&args.server_name, &args.media_id)
@@ -440,9 +434,9 @@ pub async fn get_thumbnail(
                     )
                     .build()
                     .await?;
-                if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                    file.set_content_disposition(content_disposition);
-                }
+                // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+                //     file.set_content_disposition(content_disposition);
+                // }
                 file.send(req.headers(), res).await;
                 return Ok(());
             }
@@ -492,7 +486,6 @@ pub async fn get_thumbnail(
                     media_id: args.media_id.clone(),
                     origin_server: args.server_name.clone(),
                     content_type: "image/png".into(),
-                    content_disposition: None,
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,
                     height: height as i32,
@@ -513,9 +506,9 @@ pub async fn get_thumbnail(
                 )
                 .build()
                 .await?;
-            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                file.set_content_disposition(content_disposition);
-            }
+            // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+            //     file.set_content_disposition(content_disposition);
+            // }
             file.send(req.headers(), res).await;
             Ok(())
         } else {
@@ -530,9 +523,9 @@ pub async fn get_thumbnail(
                 )
                 .build()
                 .await?;
-            if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
-                file.set_content_disposition(content_disposition);
-            }
+            // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
+            //     file.set_content_disposition(content_disposition);
+            // }
             file.send(req.headers(), res).await;
             Ok(())
         }

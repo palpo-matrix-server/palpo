@@ -5,12 +5,12 @@
 use std::borrow::Cow;
 
 use salvo::oapi::ToSchema;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use serde_json::Value as JsonValue;
 
+use crate::KeyDerivationAlgorithm;
 use crate::macros::EventContent;
 use crate::serde::{Base64, JsonObject};
-use crate::KeyDerivationAlgorithm;
 
 /// A passphrase from which a key is to be derived.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]

@@ -31,6 +31,11 @@ impl IsRemote for UserId {
 }
 impl IsRemote for OwnedUserId {
     fn is_remote(&self) -> bool {
+        println!(
+            "server_name: {:?}   crate server name: {:?}",
+            self.server_name(),
+            crate::server_name()
+        );
         self.server_name() != crate::server_name()
     }
 }

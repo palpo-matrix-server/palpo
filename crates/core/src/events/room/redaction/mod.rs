@@ -14,8 +14,8 @@ use crate::events::{
 };
 use crate::serde::canonical_json::RedactionEvent;
 use crate::{
-    serde::CanBeEmpty, EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId,
-    UnixMillis, UserId,
+    EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
+    serde::CanBeEmpty,
 };
 
 mod event_serde;

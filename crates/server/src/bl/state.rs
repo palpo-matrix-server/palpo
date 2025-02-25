@@ -3,8 +3,8 @@ use std::sync::Arc;
 use crate::core::RawJson;
 
 use crate::core::{
-    events::{room::canonical_alias::RoomCanonicalAliasEventContent, AnyStateEventContent, StateEventType},
     EventId, RoomId, UserId,
+    events::{AnyStateEventContent, StateEventType, room::canonical_alias::RoomCanonicalAliasEventContent},
 };
 use crate::event::PduBuilder;
 use crate::{AppResult, MatrixError};

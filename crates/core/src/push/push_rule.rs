@@ -22,7 +22,7 @@ use crate::push::NewConditionalPushRule;
 use crate::push::NewPatternedPushRule;
 use crate::push::NewSimplePushRule;
 use crate::push::PushCondition;
-use crate::{serde::StringEnum, OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, serde::StringEnum};
 
 /// The kinds of push rules that are available.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

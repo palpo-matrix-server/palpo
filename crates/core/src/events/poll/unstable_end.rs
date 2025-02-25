@@ -3,8 +3,8 @@
 use palpo_macros::EventContent;
 use serde::{Deserialize, Serialize};
 
-use crate::events::relation::Reference;
 use crate::OwnedEventId;
+use crate::events::relation::Reference;
 
 /// The payload for an unstable poll end event.
 ///

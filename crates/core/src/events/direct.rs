@@ -3,7 +3,7 @@
 //! [`m.direct`]: https://spec.matrix.org/latest/client-server-api/#mdirect
 
 use std::{
-    collections::{btree_map, BTreeMap},
+    collections::{BTreeMap, btree_map},
     ops::{Deref, DerefMut},
 };
 

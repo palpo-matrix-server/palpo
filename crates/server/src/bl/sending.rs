@@ -3,21 +3,21 @@ use std::fmt::Debug;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use tokio::sync::{mpsc, Mutex, Semaphore};
+use tokio::sync::{Mutex, Semaphore, mpsc};
 
-use crate::core::appservice::event::{push_events_request, PushEventsReqBody};
+use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
+use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
-use crate::core::events::GlobalAccountDataEventType;
-use crate::core::federation::transaction::{send_messages_request, Edu, SendMessageReqBody, SendMessageResBody};
+use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
-use crate::core::{device_id, push, UnixMillis};
-use crate::{db, exts::*, utils, AppError, AppResult, PduEvent};
+use crate::core::{UnixMillis, device_id, push};
+use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
 

@@ -4,10 +4,10 @@
 
 use palpo_macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
 use super::EventContent;
-use crate::{presence::PresenceState, OwnedMxcUri, OwnedUserId};
+use crate::{OwnedMxcUri, OwnedUserId, presence::PresenceState};
 
 /// Presence event.
 #[derive(ToSchema, Clone, Debug, Event)]

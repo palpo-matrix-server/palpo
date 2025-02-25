@@ -33,7 +33,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedServerName, UnixMillis};
 use crate::schema::*;
-use crate::{db, diesel_exists, AppError, AppResult, APPSERVICE_IN_ROOM_CACHE};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]

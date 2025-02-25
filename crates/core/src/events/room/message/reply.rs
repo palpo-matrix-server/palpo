@@ -4,7 +4,7 @@ use crate::{EventId, RoomId, UserId};
 #[cfg(feature = "html")]
 use palpo_html::Html;
 
-use super::{sanitize::remove_plain_reply_fallback, FormattedBody, MessageType, OriginalRoomMessageEvent, Relation};
+use super::{FormattedBody, MessageType, OriginalRoomMessageEvent, Relation, sanitize::remove_plain_reply_fallback};
 
 pub(super) struct OriginalEventData<'a> {
     pub(super) body: &'a str,

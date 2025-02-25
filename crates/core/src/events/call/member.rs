@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::PrivOwnedStr;
-use crate::{serde::StringEnum, OwnedUserId, UnixMillis};
+use crate::{OwnedUserId, UnixMillis, serde::StringEnum};
 
 /// The member state event for a matrixRTC session.
 ///

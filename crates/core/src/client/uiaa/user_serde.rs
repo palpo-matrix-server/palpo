@@ -2,7 +2,7 @@
 //! in the parent module.
 
 use crate::{serde::from_raw_json_value, third_party::Medium};
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de, ser::SerializeStruct};
 
 use super::{CustomThirdPartyId, UserIdentifier};
 use crate::RawJsonValue;

@@ -6,14 +6,14 @@
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
 use std::borrow::Cow;
-use std::collections::{btree_map, BTreeMap};
+use std::collections::{BTreeMap, btree_map};
 
 use maplit::btreemap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value as from_json_value, to_value as to_json_value, Value as JsonValue};
+use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 
-use crate::{serde::StringEnum, MatrixVersion, PrivOwnedStr, RoomVersionId};
+use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId, serde::StringEnum};
 
 /// Contains information about all the capabilities that the server supports.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]

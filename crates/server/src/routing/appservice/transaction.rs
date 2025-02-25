@@ -1,7 +1,7 @@
 use salvo::prelude::*;
 
 use crate::AuthArgs;
-use crate::{empty_ok, EmptyResult};
+use crate::{EmptyResult, empty_ok};
 
 pub fn router() -> Router {
     Router::with_path("transactions/{txn_id}").put(send_event)

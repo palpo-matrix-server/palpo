@@ -12,7 +12,7 @@ use palpo_identifiers_validation::{
 use proc_macro::TokenStream;
 use proc_macro2 as pm2;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, ItemEnum, ItemStruct};
+use syn::{DeriveInput, ItemEnum, ItemStruct, parse_macro_input};
 
 mod events;
 mod identifiers;

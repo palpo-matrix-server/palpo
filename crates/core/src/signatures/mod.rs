@@ -104,13 +104,13 @@ mod tests {
     use std::collections::BTreeMap;
 
     use crate::{
-        serde::{base64::Standard, Base64},
         RoomVersionId,
+        serde::{Base64, base64::Standard},
     };
-    use pkcs8::{der::Decode, PrivateKeyInfo};
+    use pkcs8::{PrivateKeyInfo, der::Decode};
     use serde_json::{from_str as from_json_str, to_string as to_json_string};
 
-    use super::{canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json, Ed25519KeyPair};
+    use super::{Ed25519KeyPair, canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json};
 
     fn pkcs8() -> Vec<u8> {
         const ENCODED: &str = "\

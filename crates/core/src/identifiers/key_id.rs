@@ -7,7 +7,7 @@ use std::{
 
 use palpo_macros::IdZst;
 
-use super::{crypto_algorithms::SigningKeyAlgorithm, DeviceId, ServerSigningKeyVersion};
+use super::{DeviceId, ServerSigningKeyVersion, crypto_algorithms::SigningKeyAlgorithm};
 
 /// A key algorithm and key name delimited by a colon.
 #[repr(transparent)]

@@ -7,7 +7,7 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::events::{EmptyStateKey, RedactContent, RedactedStateEventContent};
-use crate::{room::RoomType, OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId};
+use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId, room::RoomType};
 
 /// The content of an `m.room.create` event.
 ///

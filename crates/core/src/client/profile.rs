@@ -28,7 +28,7 @@ use crate::OwnedMxcUri;
 // }
 
 /// Response type for the `get_avatar_url` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct AvatarUrlResBody {
     /// The user's avatar URL, if set.
     #[serde(

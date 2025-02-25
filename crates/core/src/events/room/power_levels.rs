@@ -12,9 +12,9 @@ use crate::events::{
     EmptyStateKey, EventContent, EventContentFromType, MessageLikeEventType, RedactContent, RedactedStateEventContent,
     StateEventType, StaticEventContent, TimelineEventType,
 };
-use crate::power_levels::{default_power_level, NotificationPowerLevels};
+use crate::power_levels::{NotificationPowerLevels, default_power_level};
 use crate::serde::RawJsonValue;
-use crate::{push::PushConditionPowerLevelsCtx, OwnedUserId, RoomVersionId, UserId};
+use crate::{OwnedUserId, RoomVersionId, UserId, push::PushConditionPowerLevelsCtx};
 
 /// The content of an `m.room.power_levels` event.
 ///

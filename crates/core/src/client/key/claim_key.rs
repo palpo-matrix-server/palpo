@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::client::key::{SignedKeys, SignedKeysIter};
 use crate::identifiers::*;
 use crate::serde::{JsonValue, RawJsonValue};
-use crate::{encryption::OneTimeKey, DeviceKeyAlgorithm};
+use crate::{DeviceKeyAlgorithm, encryption::OneTimeKey};
 
 impl<'a> IntoIterator for &'a SignedKeys {
     type Item = (&'a str, &'a RawJsonValue);

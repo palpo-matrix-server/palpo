@@ -1,11 +1,11 @@
-use palpo_macros::{event_enum, EventEnumFromEvent};
+use palpo_macros::{EventEnumFromEvent, event_enum};
 use salvo::prelude::*;
-use serde::{de, Deserialize};
+use serde::{Deserialize, de};
 
 use super::room::encrypted;
-use crate::identifiers::*;
 use crate::RawJsonValue;
-use crate::{serde::from_raw_json_value, UnixMillis};
+use crate::identifiers::*;
+use crate::{UnixMillis, serde::from_raw_json_value};
 
 event_enum! {
     /// Any global account data event.

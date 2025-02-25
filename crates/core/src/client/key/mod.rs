@@ -2,7 +2,7 @@
 pub mod claim_key;
 pub use claim_key::*;
 
-use std::collections::{btree_map, BTreeMap};
+use std::collections::{BTreeMap, btree_map};
 use std::ops::Deref;
 use std::time::Duration;
 
@@ -10,10 +10,10 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    DeviceKeyAlgorithm, JsonValue, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr, RawJsonValue,
     client::uiaa::AuthData,
     encryption::{CrossSigningKey, DeviceKeys, OneTimeKey},
     serde::{RawJson, StringEnum},
-    DeviceKeyAlgorithm, JsonValue, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr, RawJsonValue,
 };
 
 /// An iterator over signed key IDs and their associated data.

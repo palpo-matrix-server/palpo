@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
-use ed25519_dalek::{pkcs8::ALGORITHM_OID, SecretKey, Signer, SigningKey, PUBLIC_KEY_LENGTH};
-use pkcs8::{der::zeroize::Zeroizing, DecodePrivateKey, EncodePrivateKey, ObjectIdentifier, PrivateKeyInfo};
+use ed25519_dalek::{PUBLIC_KEY_LENGTH, SecretKey, Signer, SigningKey, pkcs8::ALGORITHM_OID};
+use pkcs8::{DecodePrivateKey, EncodePrivateKey, ObjectIdentifier, PrivateKeyInfo, der::zeroize::Zeroizing};
 
 use crate::serde::Base64;
 use crate::signatures::{Algorithm, Error, ParseError, Signature};

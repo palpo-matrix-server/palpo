@@ -3,7 +3,7 @@
 use diesel::expression::AsExpression;
 use std::{rc::Rc, sync::Arc};
 
-use super::{matrix_uri::UriAction, IdParseError, MatrixToUri, MatrixUri, ServerName};
+use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAction};
 
 /// A Matrix [user ID].
 ///
@@ -156,7 +156,7 @@ use palpo_macros::IdZst;
 #[cfg(test)]
 mod tests {
     use super::{OwnedUserId, UserId};
-    use crate::{server_name, IdParseError};
+    use crate::{IdParseError, server_name};
 
     #[test]
     fn valid_user_id_from_str() {

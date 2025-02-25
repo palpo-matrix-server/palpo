@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::core::identifiers::*;
 use crate::core::{OwnedMxcUri, OwnedRoomId};
 use crate::schema::*;
-use crate::{db, AppResult};
+use crate::{AppResult, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_profiles)]

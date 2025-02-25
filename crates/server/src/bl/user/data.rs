@@ -5,12 +5,12 @@ use serde::de::DeserializeOwned;
 
 use crate::core::identifiers::*;
 use crate::core::{
+    UnixMillis,
     events::{AnyEphemeralRoomEvent, AnyEphemeralRoomEventContent, RoomAccountDataEventType},
     serde::RawJson,
-    UnixMillis,
 };
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue};
+use crate::{AppError, AppResult, JsonValue, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_datas)]

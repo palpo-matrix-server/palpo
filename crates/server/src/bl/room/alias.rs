@@ -2,17 +2,17 @@ use diesel::prelude::*;
 use rand::seq::SliceRandom;
 use serde_json::value::to_raw_value;
 
+use crate::core::UnixMillis;
 use crate::core::client::room::AliasResBody;
+use crate::core::events::TimelineEventType;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
-use crate::core::events::TimelineEventType;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
-use crate::core::UnixMillis;
 use crate::room::StateEventType;
 use crate::user::DbUser;
-use crate::{db, AppError, AppResult, MatrixError, PduBuilder};
-use crate::{schema::*, GetUrlOrigin};
+use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
+use crate::{GetUrlOrigin, schema::*};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_aliases, primary_key(alias_id))]

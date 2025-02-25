@@ -5,7 +5,7 @@
 
 use salvo::prelude::*;
 
-use crate::{empty_ok, AuthArgs, DepotExt, EmptyResult};
+use crate::{AuthArgs, DepotExt, EmptyResult, empty_ok};
 
 pub fn router() -> Router {
     Router::with_path("push")

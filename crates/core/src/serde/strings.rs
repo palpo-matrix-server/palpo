@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, fmt, marker::PhantomData};
 
 use serde::{
+    Deserialize, Serialize,
     de::{self, Deserializer, IntoDeserializer as _, MapAccess, Visitor},
     ser::Serializer,
-    Deserialize, Serialize,
 };
 
 /// Serde deserialization decorator to map empty Strings to None,

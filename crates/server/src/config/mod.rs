@@ -4,8 +4,8 @@ mod server_config;
 use std::sync::OnceLock;
 
 use figment::{
-    providers::{Env, Format, Toml},
     Figment,
+    providers::{Env, Format, Toml},
 };
 
 pub use db_config::*;

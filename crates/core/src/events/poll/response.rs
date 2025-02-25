@@ -6,9 +6,9 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{start::PollContentBlock, validate_selections, PollResponseData};
-use crate::events::relation::Reference;
+use super::{PollResponseData, start::PollContentBlock, validate_selections};
 use crate::OwnedEventId;
+use crate::events::relation::Reference;
 
 /// The payload for a poll response event.
 ///
@@ -89,7 +89,7 @@ impl SelectionsContentBlock {
     ///
     /// Returns the list of valid selections in this `SelectionsContentBlock`, or `None` if there is
     /// no valid selection.
-    pub fn validate<'a>(&'a self, poll: &PollContentBlock) -> Option<impl Iterator<Item = &'a str> > {
+    pub fn validate<'a>(&'a self, poll: &PollContentBlock) -> Option<impl Iterator<Item = &'a str>> {
         let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
         validate_selections(&answer_ids, poll.max_selections, &self.0)
     }

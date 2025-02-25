@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::appservice::{Namespace, Registration};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{db, AppError, AppResult, JsonValue};
+use crate::{AppError, AppResult, JsonValue, db};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]
