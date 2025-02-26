@@ -10,17 +10,14 @@ pub(crate) async fn send_request(
     destination: &ServerName,
     mut request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
-    println!(">>>>>>>>>>>>>>>>>>>1");
     if !crate::config().allow_federation {
         return Err(AppError::public("Federation is disabled."));
     }
 
-    println!(">>>>>>>>>>>>>>>>>>>2");
     if destination == crate::server_name() {
         return Err(AppError::public("Won't send federation request to ourselves"));
     }
 
-    println!(">>>>>>>>>>>>>>>>>>>3");
     debug!("Preparing to send request to {destination}");
     let mut request_map = serde_json::Map::new();
 
@@ -43,6 +40,7 @@ pub(crate) async fn send_request(
         .into(),
     );
     request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
+    println!("==================destination : {destination}=====origin:   {}", crate::server_name().as_str());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
@@ -84,13 +82,13 @@ pub(crate) async fn send_request(
 
     match response {
         Ok(response) => {
-            println!("=================response: {response:#?}");
             let status = response.status();
 
             if status == 200 {
                 Ok(response)
             } else {
                 let body = response.text().await.unwrap_or_default();
+                println!("{} {}: {}", url, status, body);
                 warn!("{} {}: {}", url, status, body);
                 let err_msg = format!("Answer from {destination}: {body}");
                 debug!("Returning error from {destination}");

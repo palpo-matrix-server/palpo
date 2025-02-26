@@ -47,8 +47,8 @@ pub enum AppError {
     Pool(#[from] crate::db::PoolError),
     #[error("utf8: `{0}`")]
     Utf8Error(#[from] std::str::Utf8Error),
-    #[error("redis: `{0}`")]
-    Redis(#[from] redis::RedisError),
+    // #[error("redis: `{0}`")]
+    // Redis(#[from] redis::RedisError),
     #[error("GlobError error: `{0}`")]
     Glob(#[from] globwalk::GlobError),
     #[error("Matrix error: `{0}`")]
