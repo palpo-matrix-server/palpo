@@ -45,7 +45,6 @@
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_has_'is_direct'_flag_in_prev_content_after_joining"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_join_the_room_when_homeserver_is_already_participating_in_the_room"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_reject_invite_when_homeserver_is_already_participating_in_the_room"}
-{"Action":"fail","Test":"TestFederationThumbnail"}
 {"Action":"fail","Test":"TestGetMissingEventsGapFilling"}
 {"Action":"fail","Test":"TestGetRoomMembersAtPoint"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents"}
@@ -87,12 +86,6 @@
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectory"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectoryInMSC3787Room"}
-{"Action":"fail","Test":"TestLeaveEventInviteRejection"}
-{"Action":"fail","Test":"TestLeaveEventVisibility"}
-{"Action":"fail","Test":"TestLocalPngThumbnail"}
-{"Action":"fail","Test":"TestMediaWithoutFileName"}
-{"Action":"fail","Test":"TestMediaWithoutFileName/parallel"}
-{"Action":"fail","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
@@ -100,6 +93,8 @@
 {"Action":"fail","Test":"TestOutboundFederationSend"}
 {"Action":"fail","Test":"TestRemoteAliasRequestsUnderstandUnicode"}
 {"Action":"fail","Test":"TestRemotePngThumbnail"}
+{"Action":"fail","Test":"TestRemotePngThumbnail/test_/_matrix/client/v1/media_endpoint"}
+{"Action":"fail","Test":"TestRemotePngThumbnail/test_/_matrix/media/v3_endpoint"}
 {"Action":"fail","Test":"TestRemotePresence"}
 {"Action":"fail","Test":"TestRemotePresence/Presence_changes_are_also_reported_to_remote_room_members"}
 {"Action":"fail","Test":"TestRemotePresence/Presence_changes_to_UNAVAILABLE_are_reported_to_remote_room_members"}
@@ -140,7 +135,6 @@
 {"Action":"fail","Test":"TestSearch/parallel/Can_get_context_around_search_results"}
 {"Action":"fail","Test":"TestSendJoinPartialStateResponse"}
 {"Action":"fail","Test":"TestSync"}
-{"Action":"fail","Test":"TestSyncFilter"}
 {"Action":"fail","Test":"TestSyncOmitsStateChangeOnFilteredEvents"}
 {"Action":"fail","Test":"TestSync/parallel"}
 {"Action":"fail","Test":"TestSync/parallel/Newly_joined_room_has_correct_timeline_in_incremental_sync"}
@@ -154,7 +148,6 @@
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestTxnIdempotency"}
 {"Action":"fail","Test":"TestTxnIdWithRefreshToken"}
-{"Action":"fail","Test":"TestUnbanViaInvite"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"fail","Test":"TestUploadKey"}
 {"Action":"fail","Test":"TestUploadKey/Parallel"}
@@ -214,6 +207,7 @@
 {"Action":"pass","Test":"TestEvent/Parallel/Large_Event"}
 {"Action":"pass","Test":"TestEvent/Parallel/Large_State_Event"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_see_room_metadata"}
+{"Action":"pass","Test":"TestFederationThumbnail"}
 {"Action":"pass","Test":"TestFetchEvent"}
 {"Action":"pass","Test":"TestFetchEventNonWorldReadable"}
 {"Action":"pass","Test":"TestFetchEventWorldReadable"}
@@ -240,12 +234,17 @@
 {"Action":"pass","Test":"TestKeyChangesLocal/New_login_should_create_a_device_lists.changed_entry"}
 {"Action":"pass","Test":"TestKeysQueryWithDeviceIDAsObjectFails"}
 {"Action":"pass","Test":"TestLeakyTyping"}
+{"Action":"pass","Test":"TestLeaveEventInviteRejection"}
+{"Action":"pass","Test":"TestLeaveEventVisibility"}
 {"Action":"pass","Test":"TestLeftRoomFixture"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_'m.room.name'_state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/members_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Getting_messages_going_forward_is_limited_for_a_departed_room"}
+{"Action":"pass","Test":"TestLocalPngThumbnail"}
+{"Action":"pass","Test":"TestLocalPngThumbnail/test_/_matrix/client/v1/media_endpoint"}
+{"Action":"pass","Test":"TestLocalPngThumbnail/test_/_matrix/media/v3_endpoint"}
 {"Action":"pass","Test":"TestLogin"}
 {"Action":"pass","Test":"TestLogin/parallel"}
 {"Action":"pass","Test":"TestLogin/parallel/GET_/login_yields_a_set_of_flows"}
@@ -281,12 +280,15 @@
 {"Action":"pass","Test":"TestMediaFilenames/Parallel/Unicode/Can_download_with_Unicode_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaFilenames/Parallel/Unicode/Can_download_with_Unicode_file_name_over_federation_via__matrix/client/v1/media/download"}
 {"Action":"pass","Test":"TestMediaFilenames/Parallel/Unicode/Can_upload_with_Unicode_file_name"}
+{"Action":"pass","Test":"TestMediaWithoutFileName"}
 {"Action":"pass","Test":"TestMediaWithoutFileNameCSMediaV1"}
 {"Action":"pass","Test":"TestMediaWithoutFileNameCSMediaV1/parallel"}
 {"Action":"pass","Test":"TestMediaWithoutFileNameCSMediaV1/parallel/Can_download_without_a_file_name_locally"}
 {"Action":"pass","Test":"TestMediaWithoutFileNameCSMediaV1/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaWithoutFileNameCSMediaV1/parallel/Can_upload_without_a_file_name"}
+{"Action":"pass","Test":"TestMediaWithoutFileName/parallel"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_locally"}
+{"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_upload_without_a_file_name"}
 {"Action":"pass","Test":"TestMembersLocal"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel"}
@@ -465,6 +467,9 @@
 {"Action":"pass","Test":"TestSendAndFetchMessage"}
 {"Action":"pass","Test":"TestSendMessageWithTxn"}
 {"Action":"pass","Test":"TestServerCapabilities"}
+{"Action":"pass","Test":"TestSyncFilter"}
+{"Action":"pass","Test":"TestSyncFilter/Can_create_filter"}
+{"Action":"pass","Test":"TestSyncFilter/Can_download_filter"}
 {"Action":"pass","Test":"TestSyncLeaveSection"}
 {"Action":"pass","Test":"TestSyncLeaveSection/Left_rooms_appear_in_the_leave_section_of_full_state_sync"}
 {"Action":"pass","Test":"TestSyncLeaveSection/Left_rooms_appear_in_the_leave_section_of_sync"}
@@ -485,6 +490,7 @@
 {"Action":"pass","Test":"TestTyping"}
 {"Action":"pass","Test":"TestTyping/Typing_can_be_explicitly_stopped"}
 {"Action":"pass","Test":"TestTyping/Typing_notification_sent_to_local_room_members"}
+{"Action":"pass","Test":"TestUnbanViaInvite"}
 {"Action":"pass","Test":"TestUnknownEndpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Client-server_endpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Key_endpoints"}
