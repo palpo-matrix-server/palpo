@@ -104,12 +104,12 @@ js_option = { workspace = true }
 konst = { workspace = true }
 maplit ={ workspace = true }
 mime = { workspace = true }
-oauth2 = { workspace = true }
+# oauth2 = { workspace = true }
 path-slash = { workspace = true }
 percent-encoding = { workspace = true }
 pkcs8 = { workspace = true, features = ["alloc"] }
 rand = { workspace = true }
-redis = { workspace = true }
+# redis = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 salvo = { workspace = true, features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }

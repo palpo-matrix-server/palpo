@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use salvo::Response;
 
-use crate::core::ServerName;
-use crate::core::client::media::ContentReqArgs;
+use crate::core::federation::media::ContentReqArgs;
+use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
 
 pub async fn get_remote_content(
@@ -18,39 +18,35 @@ pub async fn get_remote_content(
     media_id: &str,
     res: &mut Response,
 ) -> AppResult<()> {
-    // let servername: crate::core::OwnedServerName = "127.0.0.1:8448".parse().unwrap();
-    // let content_response = match crate::sending::get(servername.build_url(&format!("media/{media_id}?allow_remote=false"))?)
-    //     .exec()
-    //     .await {
-    //         Ok(s) => s,
-    //         Err(e) => {
-    //             return Err(e.into());
-    //         }
-    //     };
-    let content_req = crate::core::client::media::content_request(
+    let content_req = crate::core::media::content_request(
         &server_name.origin().await,
-        ContentReqArgs {
+        media::ContentReqArgs {
             server_name: server_name.to_owned(),
             media_id: media_id.to_owned(),
-            allow_remote: false,
             timeout_ms: Duration::from_secs(20),
-            allow_redirect: false,
+            allow_remote: true,
+            allow_redirect: true,
         },
     )?
     .into_inner();
-    let content_response: reqwest::Response = crate::sending::send_federation_request(server_name, content_req).await?;
+    let content_response =
+        if let Ok(content_response) = crate::sending::send_federation_request(server_name, content_req).await {
+            content_response
+        } else {
+            let content_req = crate::core::federation::media::content_request(
+                &server_name.origin().await,
+                ContentReqArgs {
+                    media_id: media_id.to_owned(),
+                    timeout_ms: Duration::from_secs(20),
+                },
+            )?
+            .into_inner();
+            crate::sending::send_federation_request(server_name, content_req).await?
+        };
 
     *res.headers_mut() = content_response.headers().to_owned();
     res.status_code(content_response.status());
     res.stream(content_response.bytes_stream());
-
-    // crate::media::create_media(
-    //     mxc.to_owned(),
-    //     content_response.content_disposition.as_deref(),
-    //     content_response.content_type.as_deref(),
-    //     &content_response.file,
-    // )
-    // .await?;
 
     Ok(())
 }

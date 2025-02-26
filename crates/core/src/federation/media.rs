@@ -190,7 +190,7 @@ impl Scribe for ThumbnailResBody {
 
 pub fn content_request(origin: &str, args: ContentReqArgs) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}federation/v1/media/download/{}?timeout_ms={}",
+        "{origin}/_matrix/federation/v1/media/download/{}?timeout_ms={}",
         args.media_id,
         args.timeout_ms.as_millis()
     ))?;

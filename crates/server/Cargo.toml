@@ -36,7 +36,6 @@ cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
 dotenvy = { workspace = true }
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
-# diesel_full_text_search = { workspace = true }
 diesel_migrations = { workspace = true }
 fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml"] }
@@ -52,11 +51,9 @@ lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }
 mime-infer = { workspace = true }
-oauth2 = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }
-redis = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 ring = { workspace = true }

@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use oauth2::http::Response;
 use palpo_core::UnixMillis;
 use serde_json::json;
 
