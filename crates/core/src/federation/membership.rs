@@ -110,7 +110,7 @@ pub struct SendJoinResBodyV2(
 );
 
 #[derive(ToSchema, Serialize, Debug)]
-pub struct SendJoinResBodyV1 (
+pub struct SendJoinResBodyV1(
     /// Full state of the room.
     pub RoomStateV1,
 );
@@ -118,7 +118,7 @@ pub struct SendJoinResBodyV1 (
 impl SendJoinResBodyV1 {
     /// Creates a new `Response` with the given room state.
     pub fn new(room_state: RoomStateV1) -> Self {
-        Self (room_state)
+        Self(room_state)
     }
 }
 
@@ -212,7 +212,6 @@ impl RoomStateV1 {
         }
     }
 }
-
 
 /// Information included alongside an event that is not signed.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]

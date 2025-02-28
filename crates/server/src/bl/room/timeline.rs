@@ -91,20 +91,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     let query = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id));
-    println!(
-        "get_non_outlier_pdu  {event_id}: {} : {}",
-        diesel_exists!(
-            events::table
-                .filter(events::is_outlier.eq(false))
-                .filter(events::id.eq(event_id)),
-            &mut *db::connect()?
-        )?,
-        diesel_exists!(
-            events::table
-                .filter(events::id.eq(event_id)),
-            &mut *db::connect()?
-        )?
-    );
     if diesel_exists!(query, &mut *db::connect()?)? {
         event_datas::table
             .filter(event_datas::event_id.eq(event_id))
@@ -741,7 +727,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         // of the room
         once(pdu.event_id.borrow()),
     )?;
-    println!("aaaaaaaaaaaaaaaaprend pdu: {pdu:#?}");
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time

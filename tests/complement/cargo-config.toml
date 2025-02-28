@@ -1,0 +1,16 @@
+[build]
+[source.crates-io]
+registry = "sparse+https://github.com/rust-lang/crates.io-index/"
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+
+[source.sjtu]
+registry = "sparse+https://mirrors.sjtug.sjtu.edu.cn/git/crates.io-index/"
+
+[source.tuna]
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+
+[source.rustcc]
+registry = "sparse+https://code.aliyun.com/rustcc/crates.io-index.git"

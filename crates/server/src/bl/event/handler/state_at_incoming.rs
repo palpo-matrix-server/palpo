@@ -12,10 +12,13 @@ pub(super) async fn state_at_incoming_degree_one(
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
     let Some(prev_frame_id) = crate::room::state::get_pdu_frame_id(prev_event)? else {
+        println!("DDDDDDDDDDD0  {:#?}", incoming_pdu);
         return Ok(None);
     };
 
-    let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {
+    let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {println!("DDDDDDDDDDD0");
+    println!("DDDDDDDDDDD1");
+         
         return Ok(None);
     };
 

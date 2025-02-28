@@ -16,6 +16,7 @@ pub(super) async fn fetch_state(
     event_id: &EventId,
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
     debug!("Calling /state_ids");
+	println!("FFFFFFFFFFFFFFFFFFFFffech state");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
     let request = room_state_ids_request(

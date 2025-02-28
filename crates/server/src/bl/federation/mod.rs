@@ -5,6 +5,9 @@ use crate::core::authorization::XMatrix;
 use crate::core::{MatrixError, ServerName, signatures};
 use crate::{AppError, AppResult};
 
+mod access_check;
+pub use access_check::access_check;
+
 #[tracing::instrument(skip(request))]
 pub(crate) async fn send_request(
     destination: &ServerName,

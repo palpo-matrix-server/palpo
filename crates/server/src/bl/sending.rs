@@ -615,7 +615,6 @@ pub async fn send_federation_request(
     destination: &ServerName,
     request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
-    println!("gggggggggggget_send_federation_request");
     debug!("Waiting for permit");
     let max_request = max_request();
     let permit = max_request.acquire().await;

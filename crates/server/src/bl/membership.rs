@@ -81,7 +81,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     let event_room_id: OwnedRoomId = serde_json::from_value(
         value
             .get("room_id")
-            .ok_or_else(||MatrixError::bad_json("Event missing room_id property."))?
+            .ok_or_else(|| MatrixError::bad_json("Event missing room_id property."))?
             .clone()
             .into(),
     )
@@ -101,9 +101,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     .map_err(|e| MatrixError::bad_json("Event has invalid state event type: {e}"))?;
 
     if event_type != StateEventType::RoomMember {
-        return Err(MatrixError::bad_json(
-            "Not allowed to send non-membership state event to join endpoint.",
-        ).into());
+        return Err(MatrixError::bad_json("Not allowed to send non-membership state event to join endpoint.").into());
     }
 
     let content: RoomMemberEventContent = serde_json::from_value(
@@ -134,9 +132,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     println!("sender.server_name(): {sender:?}  origin: {origin}");
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
-        return Err(MatrixError::forbidden(
-            "Not allowed to join on behalf of another server.",
-        ).into());
+        return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.").into());
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
@@ -208,8 +204,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
-    crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true)
-        .await?;
+    crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
     // drop(mutex_lock);
 
     let state_ids = crate::room::state::get_full_state_ids(shortstate_hash)?;

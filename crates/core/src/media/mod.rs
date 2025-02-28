@@ -8,8 +8,8 @@ use reqwest::Url;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::sending::{SendRequest, SendResult};
 use crate::PrivOwnedStr;
+use crate::sending::{SendRequest, SendResult};
 use crate::serde::StringEnum;
 use crate::{OwnedMxcUri, OwnedServerName, ServerName, UnixMillis};
 
@@ -29,8 +29,6 @@ pub enum Method {
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
 }
-
-
 
 /// The default duration that the client should be willing to wait to start receiving data.
 pub(crate) fn default_download_timeout() -> Duration {
