@@ -15,9 +15,9 @@ pub static STATE_INFO_CACHE: LazyLock<Mutex<LruCache<i64, Vec<FrameInfo>>>> =
 #[derive(Clone, Default)]
 pub struct FrameInfo {
     pub frame_id: i64,
-    pub full_state: Arc<HashSet<CompressedState>>,
-    pub appended: Arc<HashSet<CompressedState>>,
-    pub disposed: Arc<HashSet<CompressedState>>,
+    pub full_state: Arc<CompressedState>,
+    pub appended: Arc<CompressedState>,
+    pub disposed: Arc<CompressedState>,
 }
 
 /// Returns a stack with info on state_hash, full state, added diff and removed diff for the selected state_hash and each parent layer.
@@ -103,5 +103,15 @@ pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
         .on_conflict_do_nothing()
         .returning(room_state_frames::id)
         .get_result(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_frame_id(room_id: &RoomId, hash_data: &[u8]) -> AppResult<Option<i64>> {
+    room_state_frames::table
+        .filter(room_state_frames::room_id.eq(room_id))
+        .filter(room_state_frames::hash_data.eq(hash_data))
+        .select(room_state_frames::id)
+        .get_result(&mut *db::connect()?)
+        .optional()
         .map_err(Into::into)
 }

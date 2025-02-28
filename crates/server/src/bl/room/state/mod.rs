@@ -59,8 +59,8 @@ pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), boo
 pub fn force_state(
     room_id: &RoomId,
     frame_id: i64,
-    appended: Arc<HashSet<CompressedState>>,
-    _disposed_data: Arc<HashSet<CompressedState>>,
+    appended: Arc<CompressedState>,
+    _disposed_data: Arc<CompressedState>,
 ) -> AppResult<()> {
     let event_ids = appended
         .iter()
@@ -140,9 +140,58 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 /// Generates a new StateHash and associates it with the incoming event.
 ///
 /// This adds all current state events (not including the incoming event)
+/// to `stateid_pduid` and adds the incoming event to `eventid_statehash`.
+#[tracing::instrument(skip(state_ids_compressed), level = "debug")]
+pub fn set_event_state(
+    event_id: &EventId,
+    event_sn: i64,
+    room_id: &RoomId,
+    state_ids_compressed: Arc<CompressedState>,
+) -> AppResult<i64> {
+    println!("===========set_event_state  event_id: {:?}", event_id);
+    let prev_frame_id = get_room_frame_id(room_id, None)?;
+
+    let point_id = ensure_point(room_id, event_id, event_sn)?;
+    let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
+    let frame_id = get_frame_id(room_id, &hash_data)?;
+
+    if let Some(frame_id) = frame_id {
+        update_point_frame_id(point_id, frame_id)?;
+        Ok(frame_id)
+    } else {
+        let frame_id = ensure_frame(room_id, hash_data)?;
+        let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
+
+        let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
+            let appended: CompressedState = state_ids_compressed
+                .difference(&parent_state_info.full_state)
+                .copied()
+                .collect();
+
+            let disposed: CompressedState = parent_state_info
+                .full_state
+                .difference(&state_ids_compressed)
+                .copied()
+                .collect();
+
+            (Arc::new(appended), Arc::new(disposed))
+        } else {
+            (state_ids_compressed, Arc::new(CompressedState::new()))
+        };
+
+        update_point_frame_id(point_id, frame_id)?;
+        calc_and_save_state_delta(room_id, frame_id, appended, disposed, 1_000_000, states_parents)?;
+        Ok(frame_id)
+    }
+}
+
+/// Generates a new StateHash and associates it with the incoming event.
+///
+/// This adds all current state events (not including the incoming event)
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
+    println!("===========append_to_state  new_pdu: {:?}", new_pdu);
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
     let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
@@ -151,7 +200,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
-        let new_compressed_event = CompressedState::new(field_id, point_id);
+        let new_compressed_event = CompressedEvent::new(field_id, point_id);
 
         let replaces = states_parents
             .last()
@@ -167,17 +216,17 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         }
 
         // TODO: state_hash with deterministic inputs
-        let mut appended = HashSet::new();
+        let mut appended = CompressedState::new();
         appended.insert(new_compressed_event);
 
-        let mut disposed = HashSet::new();
+        let mut disposed = CompressedState::new();
         if let Some(replaces) = replaces {
             disposed.insert(*replaces);
         }
 
-        let hash_data = utils::hash_keys(&vec![new_compressed_event.as_bytes()]);
+        let hash_data = utils::hash_keys([new_compressed_event.as_bytes()].into_iter());
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
-        update_point_frame_id(new_compressed_event.point_id(), frame_id)?;
+        update_point_frame_id(point_id, frame_id)?;
         calc_and_save_state_delta(
             &new_pdu.room_id,
             frame_id,
@@ -572,18 +621,23 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
 }
 
 /// Returns the new state_hash, and the state diff from the previous room state
-pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<CompressedState>>) -> AppResult<DeltaInfo> {
+pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>) -> AppResult<DeltaInfo> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
-    let hash_data = utils::hash_keys(&new_compressed_events.iter().map(|bytes| &bytes[..]).collect::<Vec<_>>());
+    let hash_data = utils::hash_keys(new_compressed_events.iter().map(|bytes| &bytes[..]));
 
-    let new_frame_id = ensure_frame(room_id, hash_data)?;
+    let (new_frame_id, frame_existed) = if let Some(frame_id) = get_frame_id(room_id, &hash_data)? {
+        (frame_id, true)
+    } else {
+        let frame_id = ensure_frame(room_id, hash_data)?;
+        (frame_id, false)
+    };
 
     if Some(new_frame_id) == prev_frame_id {
         return Ok(DeltaInfo {
             frame_id: new_frame_id,
-            appended: Arc::new(HashSet::new()),
-            disposed: Arc::new(HashSet::new()),
+            appended: Arc::new(CompressedState::new()),
+            disposed: Arc::new(CompressedState::new()),
         });
     }
     for new_compressed_event in new_compressed_events.iter() {
@@ -593,12 +647,12 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
     let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
-        let appended: HashSet<_> = new_compressed_events
+        let appended: CompressedState = new_compressed_events
             .difference(&parent_state_info.full_state)
             .copied()
             .collect();
 
-        let disposed: HashSet<_> = parent_state_info
+        let disposed: CompressedState = parent_state_info
             .full_state
             .difference(&new_compressed_events)
             .copied()
@@ -606,16 +660,16 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<HashSet<Compresse
 
         (Arc::new(appended), Arc::new(disposed))
     } else {
-        (new_compressed_events, Arc::new(HashSet::new()))
+        (new_compressed_events, Arc::new(CompressedState::new()))
     };
 
-    if Some(new_frame_id) != prev_frame_id {
+    if !frame_existed {
         calc_and_save_state_delta(
             room_id,
             new_frame_id,
             appended.clone(),
             disposed.clone(),
-            1_000_000, // high number because no state will be based on this one
+            2, // every state change is 2 event changes on average
             states_parents,
         )?;
     };

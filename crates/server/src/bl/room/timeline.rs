@@ -760,7 +760,7 @@ pub fn append_incoming_pdu<'a, L>(
     pdu: &'a PduEvent,
     pdu_json: CanonicalJsonObject,
     new_room_leaves: L,
-    state_ids_compressed: Arc<HashSet<CompressedState>>,
+    state_ids_compressed: Arc<CompressedState>,
     soft_fail: bool,
 ) -> AppResult<()>
 where
@@ -770,7 +770,7 @@ where
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    crate::room::state::save_state(&pdu.room_id, state_ids_compressed)?;
+    crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;

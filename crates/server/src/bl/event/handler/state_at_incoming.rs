@@ -1,24 +1,34 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use diesel::prelude::*;
+
 use crate::core::identifiers::*;
 use crate::core::state::{self, StateMap};
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
+use crate::schema::*;
+use crate::{AppError, AppResult, JsonValue, db};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
     let Some(prev_frame_id) = crate::room::state::get_pdu_frame_id(prev_event)? else {
-        println!("DDDDDDDDDDD0  {:#?}", incoming_pdu);
+        println!(
+            "DDDDDDDDDDD0  {:#?} {:#?}",
+            incoming_pdu,
+            event_datas::table
+                .filter(event_datas::event_id.eq(prev_event))
+                .select(event_datas::json_data)
+                .first::<JsonValue>(&mut *db::connect()?)
+        );
         return Ok(None);
     };
 
-    let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {println!("DDDDDDDDDDD0");
-    println!("DDDDDDDDDDD1");
-         
+    let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {
+        println!("DDDDDDDDDDD1");
+
         return Ok(None);
     };
 

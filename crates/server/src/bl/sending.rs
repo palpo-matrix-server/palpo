@@ -446,15 +446,10 @@ async fn handle_events(
                 })?;
             let req_body = PushEventsReqBody { events: pdu_jsons };
 
-            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
-                &events
-                    .iter()
-                    .map(|e| match e {
-                        SendingEventType::Edu(b) => b,
-                        SendingEventType::Pdu(b) => b.as_bytes(),
-                    })
-                    .collect::<Vec<_>>(),
-            ));
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().map(|e| match e {
+                SendingEventType::Edu(b) => b,
+                SendingEventType::Pdu(b) => b.as_bytes(),
+            })));
             let request = push_events_request(registration.url.as_deref().unwrap_or_default(), txn_id, req_body)
                 .map_err(|e| (kind.clone(), e.into()))?
                 .into_inner();
@@ -567,15 +562,10 @@ async fn handle_events(
             let max_request = crate::sending::max_request();
             let permit = max_request.acquire().await;
 
-            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
-                &events
-                    .iter()
-                    .map(|e| match e {
-                        SendingEventType::Edu(b) => b,
-                        SendingEventType::Pdu(b) => b.as_bytes(),
-                    })
-                    .collect::<Vec<_>>(),
-            ));
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().map(|e| match e {
+                SendingEventType::Edu(b) => b,
+                SendingEventType::Pdu(b) => b.as_bytes(),
+            })));
             let request = send_messages_request(
                 &server.origin().await,
                 txn_id,

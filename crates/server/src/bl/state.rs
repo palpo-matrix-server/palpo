@@ -5,9 +5,11 @@ use crate::core::RawJson;
 use crate::core::{
     EventId, RoomId, UserId,
     events::{
-        AnyStateEventContent, StateEventType, room::canonical_alias::RoomCanonicalAliasEventContent,
-        room::member::{RoomMemberEventContent, MembershipState},room::join_rules::{JoinRule,RoomJoinRulesEventContent},
-        room::history_visibility::{HistoryVisibility,RoomHistoryVisibilityEventContent}
+        AnyStateEventContent, StateEventType,
+        room::canonical_alias::RoomCanonicalAliasEventContent,
+        room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent},
+        room::join_rules::{JoinRule, RoomJoinRulesEventContent},
+        room::member::{MembershipState, RoomMemberEventContent},
     },
 };
 use crate::event::PduBuilder;
@@ -66,7 +68,8 @@ fn allowed_to_send_state_event(
         }
         // admin room is a sensitive room, it should not ever be made world readable
         StateEventType::RoomHistoryVisibility => {
-            if let Ok(visibility_content) = serde_json::from_str::<RoomHistoryVisibilityEventContent>(json.inner().get())
+            if let Ok(visibility_content) =
+                serde_json::from_str::<RoomHistoryVisibilityEventContent>(json.inner().get())
             {
                 if crate::room::is_admin_room(room_id)?
                     && visibility_content.history_visibility == HistoryVisibility::WorldReadable

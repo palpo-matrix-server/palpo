@@ -6,7 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{AuthArgs, EmptyResult,DepotExt, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -111,7 +111,6 @@ fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonR
     let origin = depot.origin()?;
 
     crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;
-
 
     let frame_id =
         crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;

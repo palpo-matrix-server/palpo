@@ -4,7 +4,7 @@ use fetch_state::fetch_state;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque, hash_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
 use std::future::Future;
 use std::iter::once;
 use std::pin::Pin;
@@ -370,8 +370,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         incoming_pdu.prev_events.len()
     );
 
-    let _point_id = crate::room::state::ensure_point(room_id, &incoming_pdu.event_id, incoming_pdu.event_sn)?;
-
     let mut state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         println!("===========1");
         state_at_incoming_degree_one(incoming_pdu).await?
@@ -468,7 +466,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
     debug!("Calculating extremities");
-    let mut extremities: HashSet<_> = crate::room::state::get_forward_extremities(room_id)?
+    let mut extremities: BTreeSet<_> = crate::room::state::get_forward_extremities(room_id)?
         .into_iter()
         .collect();
 
@@ -551,7 +549,7 @@ fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, Arc<EventId>>,
-) -> AppResult<Arc<HashSet<CompressedState>>> {
+) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
 
