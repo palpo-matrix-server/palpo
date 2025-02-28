@@ -548,6 +548,8 @@ pub(super) async fn create_room(
         }
     };
 
+    println!("===Validate creation content");
+
     // Validate creation content
     let de_result =
         serde_json::from_str::<CanonicalJsonObject>(to_raw_value(&content).expect("Invalid creation content").get());
@@ -556,6 +558,7 @@ pub(super) async fn create_room(
         return Err(MatrixError::bad_json("Invalid creation content").into());
     }
 
+    println!("===The room create event");
     // 1. The room create event
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -569,6 +572,7 @@ pub(super) async fn create_room(
     )?;
 
     // 2. Let the room creator join
+		println!("=== 2. Let the room creator join");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -591,6 +595,7 @@ pub(super) async fn create_room(
     )?;
 
     // 3. Power levels
+	println!("=== 3. Power levels");
     // Figure out preset. We need it for preset specific events
     let preset = body.preset.clone().unwrap_or(match &body.visibility {
         Visibility::Private => RoomPreset::PrivateChat,
@@ -630,8 +635,10 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+	println!("=== 4. Canonical room alias");
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
+        println!("=== 4. Canonical room alias 0");
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomCanonicalAlias,
@@ -645,11 +652,14 @@ pub(super) async fn create_room(
             },
             authed.user_id(),
             &room_id,
-        )?;
+        ).unwrap();
+        
+	    println!("=== 4. Canonical room alias 1");
     }
 
     // 5. Events set by preset
     // 5.1 Join Rules
+	println!("============== 5.1 Join Rules");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomJoinRules,

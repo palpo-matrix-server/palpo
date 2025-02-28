@@ -41,6 +41,19 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<Option<OwnedRoom
         .transpose()
 }
 
+pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
+    admin_room_id()
+        .map(|admin_room_id| admin_room_id.as_deref() == Some(room_id))
+}
+
+pub fn admin_room_id() -> AppResult<Option<OwnedRoomId>> {
+    let server_name = crate::server_name();
+    crate::room::resolve_local_alias(
+        <&RoomAliasId>::try_from(format!("#admins:{}", server_name).as_str())
+            .expect("#admins:server_name is a valid room alias"),
+    )
+}
+
 pub fn set_alias(
     room_id: impl Into<OwnedRoomId>,
     alias_id: impl Into<OwnedRoomAliasId>,

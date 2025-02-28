@@ -83,7 +83,7 @@ impl EventByTimestampResBody {
 //     pub event_id: OwnedEventId,
 // }
 
-pub fn get_events_request(origin: &str, event_id: &EventId) -> SendResult<SendRequest> {
+pub fn get_events_request(origin: &str, event_id: &EventId, include_unredacted_content: Option<bool>) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/federation/v1/event/{event_id}"))?;
     Ok(crate::sending::get(url))
 }

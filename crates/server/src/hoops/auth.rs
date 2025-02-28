@@ -7,6 +7,7 @@ use salvo::prelude::*;
 use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::signatures;
+use crate::exts::DepotExt;
 use crate::schema::*;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
@@ -64,7 +65,7 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
     }
 }
 
-async fn auth_by_signatures_inner(req: &mut Request, _depot: &mut Depot) -> AppResult<()> {
+async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
     let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
         warn!("Missing or invalid Authorization header");
         return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
@@ -136,6 +137,7 @@ async fn auth_by_signatures_inner(req: &mut Request, _depot: &mut Depot) -> AppR
 
         Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into())
     } else {
+        depot.set_origin(origin.to_owned());
         Ok(())
     }
 }

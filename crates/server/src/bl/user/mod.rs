@@ -88,6 +88,10 @@ pub struct SlidingSyncCache {
     extensions: ExtensionsConfigV4,
 }
 
+pub fn is_local(user_id: &UserId) -> bool {
+    user_id.server_name() == crate::server_name()
+}
+
 /// Returns an iterator over all rooms this user joined.
 pub fn joined_rooms(user_id: &UserId, since_sn: i64) -> AppResult<Vec<OwnedRoomId>> {
     room_users::table

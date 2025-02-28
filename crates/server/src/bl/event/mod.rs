@@ -49,6 +49,7 @@ pub struct DbEvent {
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {
     pub id: OwnedEventId,
+    pub sn: Option<i64>,
     #[serde(rename = "type")]
     pub ty: String,
     pub room_id: OwnedRoomId,

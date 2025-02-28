@@ -40,7 +40,6 @@ pub(crate) async fn send_request(
         .into(),
     );
     request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
-    println!("==================destination : {destination}=====origin:   {}", crate::server_name().as_str());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
@@ -76,7 +75,6 @@ pub(crate) async fn send_request(
 
     let url = request.url().clone();
 
-    println!("Sending request to {destination} at {url}");
     debug!("Sending request to {destination} at {url}");
     let response = crate::federation_client().execute(request).await;
 
@@ -88,7 +86,6 @@ pub(crate) async fn send_request(
                 Ok(response)
             } else {
                 let body = response.text().await.unwrap_or_default();
-                println!("{} {}: {}", url, status, body);
                 warn!("{} {}: {}", url, status, body);
                 let err_msg = format!("Answer from {destination}: {body}");
                 debug!("Returning error from {destination}");
