@@ -164,10 +164,9 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_auth_chains (event_id) {
-        event_id -> Text,
-        chain_id -> Int8,
-        sequence_number -> Int8,
+    event_auth_chains (cache_key) {
+        cache_key -> Array<Nullable<Int8>>,
+        chain_sns -> Array<Nullable<Int8>>,
     }
 }
 

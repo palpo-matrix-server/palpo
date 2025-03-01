@@ -36,7 +36,6 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs) -> JsonResult<MakeJoinResBody> {
-    println!("MMMMMMMMMMMMMMMake join");
     if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }

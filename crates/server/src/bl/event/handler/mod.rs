@@ -57,6 +57,7 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
+    println!("HHHHHHHHHHHHHandl ing incoming pdu  {event_id}");
     // 1. Skip the PDU if we already have it as a timeline event
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
@@ -349,7 +350,9 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     room_id: &RoomId,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
+    println!("HHHHHHHHHHupgrade_outlier_to_timeline_pdu  {}", incoming_pdu.event_id);
     if let Ok(Some(_)) = crate::room::timeline::get_pdu(&incoming_pdu.event_id) {
+        println!("HHHHHHHHHHupgrade_outlier_to_timeline_pdu0");
         return Ok(());
     }
 
@@ -425,6 +428,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     };
 
     debug!("Performing auth check");
+    println!("=============state_at_incoming_event w0");
     // 11. Check the auth of the event passes based on the state of the event
     let auth_checked = state::event_auth::auth_check(
         &room_version,
@@ -439,6 +443,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     )
     .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
 
+    println!("=============state_at_incoming_event w1");
     if !auth_checked {
         return Err(AppError::internal(
             "Event has failed auth check with state at the event.",
@@ -446,6 +451,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     }
     debug!("Auth check succeeded");
 
+    println!("=============state_at_incoming_event w2");
     // Soft fail check before doing state res
     let auth_events = crate::room::state::get_auth_events(
         room_id,
@@ -455,6 +461,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
+    println!("=============state_at_incoming_event w3");
     let soft_fail = !state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
@@ -470,6 +477,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .into_iter()
         .collect();
 
+    println!("=============state_at_incoming_event w4");
     // Remove any forward extremities that are referenced by this incoming event's prev_events
     for prev_event in &incoming_pdu.prev_events {
         if extremities.contains(prev_event) {
@@ -489,6 +497,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             })
             .collect::<AppResult<_>>()?,
     );
+    println!("=============state_at_incoming_event w5");
 
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
@@ -502,8 +511,10 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             state_after.insert(state_key_id, Arc::from(&*incoming_pdu.event_id));
         }
 
+        println!("=============state_at_incoming_event w6");
         let new_room_state = resolve_state(room_id, room_version_id, state_after)?;
 
+        println!("=============state_at_incoming_event w7");
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
 
@@ -513,6 +524,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             disposed,
         } = crate::room::state::save_state(room_id, new_room_state)?;
 
+        println!("=============state_at_incoming_event w8");
         crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
     }
 
@@ -537,6 +549,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .map(Borrow::borrow)
         .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
+    println!("Appended incoming pdu  {}", incoming_pdu.event_id);
     let pdu_id =
         crate::room::timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
 
@@ -552,6 +565,7 @@ fn resolve_state(
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
+    println!("resolve_state 1   current_frame_id:{:?}", current_frame_id);
 
     let current_state_ids = if let Some(current_frame_id) = current_frame_id {
         crate::room::state::get_full_state_ids(current_frame_id)?
@@ -559,15 +573,20 @@ fn resolve_state(
         HashMap::new()
     };
 
+    debug!("Loading fork states");
     let fork_states = [current_state_ids, incoming_state];
 
     let mut auth_chain_sets = Vec::new();
-    debug!("Loading fork states");
     for state in &fork_states {
-        for event_id in state.values() {
-            auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, event_id)?);
-        }
+        println!("resolve_state 3: event_id");
+        auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
+            room_id,
+            state.values().map(|e| &**e),
+        )?);
+        println!("resolve_state 4: event_id");
     }
+
+    println!("resolve_state 5");
 
     let fork_states: Vec<_> = fork_states
         .into_iter()
@@ -592,7 +611,9 @@ fn resolve_state(
         match state::resolve(
             room_version_id,
             &fork_states,
-            auth_chain_sets,
+            auth_chain_sets.iter()
+            .map(|set| set.iter().collect::<HashSet<_>>())
+            .collect::<Vec<_>>(),
             |id| match crate::room::timeline::get_pdu(id) {
                 Err(e) => {
                     error!("LOOK AT ME Failed to fetch event: {}", e);

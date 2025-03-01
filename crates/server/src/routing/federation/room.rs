@@ -43,7 +43,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs) -> JsonResult<RoomStat
         })
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain(&args.room_id, &args.event_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateResBody {
         auth_chain: auth_chain_ids
@@ -120,7 +120,7 @@ fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonR
         .map(|id| (*id).to_owned())
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain(&args.room_id, &args.event_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateIdsResBody {
         auth_chain_ids: auth_chain_ids.into_iter().map(|id| (*id).to_owned()).collect(),

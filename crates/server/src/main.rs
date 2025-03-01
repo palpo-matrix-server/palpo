@@ -58,6 +58,7 @@ pub type AppResult<T> = Result<T, crate::AppError>;
 pub type JsonResult<T> = Result<Json<T>, crate::AppError>;
 pub type CjsonResult<T> = Result<Cjson<T>, crate::AppError>;
 pub type EmptyResult = Result<Json<EmptyObject>, crate::AppError>;
+pub type Seqnum = i64;
 
 pub fn json_ok<T>(data: T) -> JsonResult<T> {
     Ok(Json(data))

@@ -62,7 +62,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     }
 
     // We need to return the state prior to joining, let's keep a reference to that here
-    let shortstate_hash =
+    let frame_id =
         crate::room::state::get_room_frame_id(room_id, None)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
 
     // let pub_key_map = RwLock::new(BTreeMap::new());
@@ -207,11 +207,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
     // drop(mutex_lock);
 
-    let state_ids = crate::room::state::get_full_state_ids(shortstate_hash)?;
-    let mut auth_chain_ids = HashSet::new();
-    for state_id in state_ids.values() {
-        auth_chain_ids.extend(crate::room::auth_chain::get_auth_chain(room_id, state_id)?);
-    }
+    let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
 
     let servers = room_servers::table
         .filter(room_servers::room_id.eq(room_id))

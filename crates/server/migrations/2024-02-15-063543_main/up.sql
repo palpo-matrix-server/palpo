@@ -555,9 +555,8 @@ CREATE INDEX device_inboxes_user_device_idx
 DROP TABLE IF EXISTS event_auth_chains CASCADE;
 CREATE TABLE event_auth_chains
 (
-    event_id text NOT NULL PRIMARY KEY,
-    chain_id bigint NOT NULL,
-    sequence_number bigint NOT NULL
+    cache_key bigint[] NOT NULL PRIMARY KEY,
+    chain_sns bigint[] NOT NULL DEFAULT '{}'
 );
 
 DROP TABLE IF EXISTS event_backward_extremities CASCADE;

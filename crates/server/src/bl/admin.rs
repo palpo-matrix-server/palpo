@@ -372,7 +372,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 let room_id = <&RoomId>::try_from(room_id_str)
                     .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
                 let start = Instant::now();
-                let count = crate::room::auth_chain::get_auth_chain(room_id, &event_id)?.len();
+                let count = crate::room::auth_chain::get_auth_chain_sns(room_id, [&*event_id].into_iter())?.len();
                 let elapsed = start.elapsed();
                 RoomMessageEventContent::text_plain(format!("Loaded auth chain with length {count} in {elapsed:?}"))
             } else {
