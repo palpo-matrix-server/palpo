@@ -440,7 +440,8 @@ CREATE TABLE events (
     is_outlier boolean NOT NULL,
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
-    rejection_reason text
+    rejection_reason text,
+    CONSTRAINT events_ukey UNIQUE (sn)
 --     topological_ordering bigint NOT NULL,
 --     stream_ordering bigint
 );

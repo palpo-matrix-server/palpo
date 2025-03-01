@@ -282,6 +282,7 @@ async fn send_join_v1(
 /// Submits a signed leave event.
 #[endpoint]
 async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBody>) -> EmptyResult {
+    println!("\n\n\n\n\n>>>>>>>>>>>>>>>>>>>>>>send leave");
     let server_name = &crate::config().server_name;
     let origin = depot.origin()?;
     let body = body.into_inner();

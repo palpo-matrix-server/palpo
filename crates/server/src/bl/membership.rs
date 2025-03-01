@@ -204,19 +204,24 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
+    println!("sssssssssssssssss  0");
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
     // drop(mutex_lock);
 
+    println!("sssssssssssssssss  1");
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
 
+    println!("sssssssssssssssss  2");
     let servers = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.ne(crate::server_name()))
         .select(room_servers::server_id)
         .load::<OwnedServerName>(&mut *db::connect()?)?;
 
+    println!("sssssssssssssssss  3");
     crate::sending::send_pdu(servers.into_iter(), &event_id)?;
+    println!("sssssssssssssssss  4");
     Ok(RoomStateV1 {
         auth_chain: auth_chain_ids
             .into_iter()
@@ -446,7 +451,7 @@ pub async fn join_room(
             })?;
 
             diesel::insert_into(events::table)
-                .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
+                .values(NewDbEvent::from_canonical_json(&event_id, Some(pdu.event_sn), &value)?)
                 .on_conflict_do_nothing()
                 .execute(&mut *db::connect()?)?;
 
@@ -469,7 +474,7 @@ pub async fn join_room(
             };
 
             diesel::insert_into(events::table)
-                .values(NewDbEvent::from_canonical_json(&event_id, &value)?)
+                .values(NewDbEvent::from_canonical_json(&event_id, None, &value)?)
                 .on_conflict_do_nothing()
                 .execute(&mut *db::connect()?)?;
         }

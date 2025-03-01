@@ -112,14 +112,13 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    match get_non_outlier_pdu(event_id) {
-        Ok(Some(pdu)) => Ok(Some(pdu)),
-        Ok(None) => Ok(None),
-        Err(e) => {
-            tracing::error!("get pdu error: {:?}", e);
-            Ok(None)
-        }
-    }
+    event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select(event_datas::json_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?
+        .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
+        .transpose()
 }
 
 /// Removes a pdu and creates a new one with the same id.
@@ -144,6 +143,7 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
+    println!("==============append_pdu {}", pdu.event_id);
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -170,12 +170,14 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
+    println!("==============append_pdu   1");
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
+    println!("==============append_pdu   2");
     // Insert pdu
     let event_data = DbEventData {
         event_id: (&*pdu.event_id).to_owned(),
@@ -191,6 +193,10 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut db::connect()?)?;
+    diesel::update(events::table.find(&*pdu.event_id))
+        .set(events::is_outlier.eq(false))
+        .execute(&mut db::connect()?)?;
+    println!("==============append_pdu   4");
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
@@ -641,7 +647,7 @@ pub fn create_hash_and_sign_event(
 
     // Generate short event id
     let _point_id =
-        crate::room::state::ensure_point(room_id, &pdu.event_id, crate::event::get_event_sn(&pdu.event_id)?)?;
+        crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
 
     Ok((pdu, pdu_json))
 }
@@ -766,6 +772,7 @@ pub fn append_incoming_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
+    println!("==============append_incoming_pdu  {}", pdu.event_id);
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
@@ -773,6 +780,7 @@ where
     crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
+        println!("==============soft_fail");
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
         crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
         return Ok(());

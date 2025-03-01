@@ -20,6 +20,7 @@ pub fn ensure_point(room_id: &RoomId, event_id: &EventId, event_sn: i64) -> AppR
         .get_result(&mut *db::connect()?)
         .optional()?;
     if let Some(id) = id {
+        println!("Point already existed: {:?}", id);
         Ok(id)
     } else {
         room_state_points::table
@@ -32,6 +33,20 @@ pub fn ensure_point(room_id: &RoomId, event_id: &EventId, event_sn: i64) -> AppR
 }
 
 pub fn update_point_frame_id(point_id: i64, frame_id: i64) -> AppResult<()> {
+    println!(
+        "Updating point frame_id: {} -> {}  {:#?}",
+        point_id,
+        frame_id,
+        room_state_points::table
+            .select((
+                room_state_points::id,
+                room_state_points::room_id,
+                room_state_points::event_id,
+                room_state_points::event_sn,
+                room_state_points::frame_id
+            ))
+            .load::<(i64, String, String, i64, Option<i64>)>(&mut db::connect()?)?
+    );
     diesel::update(room_state_points::table.filter(room_state_points::id.eq(point_id)))
         .set(room_state_points::frame_id.eq(frame_id))
         .execute(&mut db::connect()?)?;
