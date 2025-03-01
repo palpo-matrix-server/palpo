@@ -124,7 +124,7 @@ pub(super) async fn state_at_incoming_resolved(
         &fork_states,
         auth_chain_sets
             .iter()
-            .map(|set| set.iter().map(|id|Arc::new(&**id)).collect::<HashSet<_>>())
+            .map(|set| set.iter().map(|id|Arc::from(&**id)).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         |id| {
             let res = crate::room::timeline::get_pdu(id);

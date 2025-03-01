@@ -607,28 +607,28 @@ fn resolve_state(
     debug!("Resolving state");
 
     // let lock = crate::STATERES_MUTEX.lock;
-    let state =
-        match state::resolve(
-            room_version_id,
-            &fork_states,
-            auth_chain_sets.iter()
-            .map(|set| set.iter().collect::<HashSet<_>>())
+    let state = match state::resolve(
+        room_version_id,
+        &fork_states,
+        auth_chain_sets
+            .iter()
+            .map(|set| set.iter().map(|id| Arc::from(&**id)).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-            |id| match crate::room::timeline::get_pdu(id) {
-                Err(e) => {
-                    error!("LOOK AT ME Failed to fetch event: {}", e);
-                    None
-                }
-                Ok(pdu) => pdu,
-            },
-        ) {
-            Ok(new_state) => new_state,
-            Err(_) => {
-                return Err(AppError::internal(
-                    "State resolution failed, either an event could not be found or deserialization",
-                ));
+        |id| match crate::room::timeline::get_pdu(id) {
+            Err(e) => {
+                error!("LOOK AT ME Failed to fetch event: {}", e);
+                None
             }
-        };
+            Ok(pdu) => pdu,
+        },
+    ) {
+        Ok(new_state) => new_state,
+        Err(_) => {
+            return Err(AppError::internal(
+                "State resolution failed, either an event could not be found or deserialization",
+            ));
+        }
+    };
     // drop(lock);
 
     debug!("State resolution done. Compressing state");
