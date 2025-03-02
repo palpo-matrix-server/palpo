@@ -107,7 +107,6 @@ async fn make_knock(_aa: AuthArgs) -> EmptyResult {
 /// Retrieves the current state of the room.
 #[endpoint]
 fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonResult<RoomStateIdsResBody> {
-    println!("gggggggggggggggggget_state_at_event");
     let origin = depot.origin()?;
 
     crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;

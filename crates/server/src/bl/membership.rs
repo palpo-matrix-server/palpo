@@ -129,7 +129,6 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
-    println!("sender.server_name(): {sender:?}  origin: {origin}");
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
         return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.").into());
@@ -204,24 +203,19 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
-    println!("sssssssssssssssss  0");
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
     // drop(mutex_lock);
 
-    println!("sssssssssssssssss  1");
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
 
-    println!("sssssssssssssssss  2");
     let servers = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.ne(crate::server_name()))
         .select(room_servers::server_id)
         .load::<OwnedServerName>(&mut *db::connect()?)?;
 
-    println!("sssssssssssssssss  3");
     crate::sending::send_pdu(servers.into_iter(), &event_id)?;
-    println!("sssssssssssssssss  4");
     Ok(RoomStateV1 {
         auth_chain: auth_chain_ids
             .into_iter()
@@ -736,14 +730,9 @@ async fn make_join_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
-    println!("MMMMMMMMMM");
     let mut make_join_res_body_and_server = Err(AppError::public("No server available to assist in joining."));
 
     for remote_server in servers {
-        println!(
-            "rrrrrrrrrrrrrrremote_server: {remote_server:?}  servername:{:?}",
-            crate::server_name()
-        );
         if remote_server == crate::server_name() {
             continue;
         }
@@ -759,10 +748,8 @@ async fn make_join_request(
         )?
         .into_inner();
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
-        println!("rrrrrrrrmake_join_response: {make_join_response:?}");
         if let Ok(make_join_response) = make_join_response {
             let res_body = make_join_response.json::<MakeJoinResBody>().await;
-            println!("BBBBBBBBBody {res_body:?}");
             make_join_res_body_and_server = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
         }
 

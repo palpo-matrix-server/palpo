@@ -282,7 +282,6 @@ async fn send_join_v1(
 /// Submits a signed leave event.
 #[endpoint]
 async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBody>) -> EmptyResult {
-    println!("\n\n\n\n\n>>>>>>>>>>>>>>>>>>>>>>send leave");
     let server_name = &crate::config().server_name;
     let origin = depot.origin()?;
     let body = body.into_inner();
@@ -373,7 +372,6 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    println!("SEEEEEEEEEEEEEEEEEEEee");
     // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &args.room_id, value, true).await?;
     // drop(mutex_lock);

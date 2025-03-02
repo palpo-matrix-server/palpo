@@ -768,7 +768,6 @@ pub fn append_incoming_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!("==============append_incoming_pdu  {}", pdu.event_id);
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
@@ -776,7 +775,6 @@ where
     crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
-        println!("==============soft_fail");
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
         crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
         return Ok(());

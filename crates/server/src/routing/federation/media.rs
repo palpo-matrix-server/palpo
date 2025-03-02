@@ -33,7 +33,6 @@ pub fn router() -> Router {
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    println!("GGGGGGGGGGGGGGGGGGGGGget_content {:?}", args);
     let server_name = &crate::config().server_name;
     if let Some(metadata) = crate::media::get_metadata(server_name, &args.media_id)? {
         let content_type = metadata

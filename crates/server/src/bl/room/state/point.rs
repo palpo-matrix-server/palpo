@@ -20,7 +20,6 @@ pub fn ensure_point(room_id: &RoomId, event_id: &EventId, event_sn: i64) -> AppR
         .get_result(&mut *db::connect()?)
         .optional()?;
     if let Some(id) = id {
-        println!("Point already existed: {:?}", id);
         Ok(id)
     } else {
         room_state_points::table

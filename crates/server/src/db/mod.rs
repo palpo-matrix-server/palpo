@@ -35,10 +35,6 @@ pub fn init(config: &DbConfig) {
 }
 fn migrate() {
     let conn = &mut db::connect().expect("db connect should worked");
-    println!(
-        "Has pending migration: {}",
-        conn.has_pending_migration(MIGRATIONS).unwrap()
-    );
     conn.run_pending_migrations(MIGRATIONS)
         .expect("migrate db should worked");
 }

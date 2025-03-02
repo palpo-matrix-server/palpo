@@ -58,7 +58,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         state::get_room_frame_id(&args.room_id, Some(can_see.as_until_sn()))?
             .ok_or_else(|| AppError::public("state delta not found"))?
     };
-    println!("==============state  fulll:  {:#?}", state::get_full_state(frame_id)?);
     let mut states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
