@@ -225,12 +225,6 @@ pub(super) async fn send_state_for_empty_key(
 ) -> JsonResult<SendStateEventResBody> {
     let authed = depot.authed_info()?;
     let body = body.into_inner();
-
-    // Forbid m.room.encryption if encryption is disabled
-    if args.event_type == StateEventType::RoomEncryption && !crate::allow_encryption() {
-        return Err(MatrixError::forbidden("Encryption has been disabled").into());
-    }
-
     let event_id = crate::state::send_state_event_for_key(
         authed.user_id(),
         &args.room_id,

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::mem::size_of;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -12,20 +12,22 @@ use crate::{AppResult, db, utils};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,
-    pub appended: Arc<HashSet<CompressedState>>,
-    pub disposed: Arc<HashSet<CompressedState>>,
+    pub appended: Arc<CompressedState>,
+    pub disposed: Arc<CompressedState>,
 }
 
 #[derive(Clone, Default)]
 pub struct DeltaInfo {
     pub frame_id: i64,
-    pub appended: Arc<HashSet<CompressedState>>,
-    pub disposed: Arc<HashSet<CompressedState>>,
+    pub appended: Arc<CompressedState>,
+    pub disposed: Arc<CompressedState>,
 }
 
-#[derive(Eq, Hash, PartialEq, Copy, Debug, Clone)]
-pub struct CompressedState([u8; 2 * size_of::<i64>()]);
-impl CompressedState {
+pub type CompressedState = BTreeSet<CompressedEvent>;
+
+#[derive(Eq, Ord, Hash, PartialEq, PartialOrd, Copy, Debug, Clone)]
+pub struct CompressedEvent([u8; 2 * size_of::<i64>()]);
+impl CompressedEvent {
     pub fn new(field_id: i64, point_id: i64) -> Self {
         let mut v = field_id.to_be_bytes().to_vec();
         v.extend_from_slice(&point_id.to_be_bytes());
@@ -50,7 +52,7 @@ impl CompressedState {
         &self.0
     }
 }
-impl Deref for CompressedState {
+impl Deref for CompressedEvent {
     type Target = [u8; 2 * size_of::<i64>()];
 
     fn deref(&self) -> &Self::Target {
@@ -63,9 +65,9 @@ pub fn compress_event(
     field_id: i64,
     event_id: &EventId,
     event_sn: i64,
-) -> AppResult<CompressedState> {
+) -> AppResult<CompressedEvent> {
     let point_id = ensure_point(room_id, event_id, event_sn)?;
-    Ok(CompressedState::new(field_id, point_id))
+    Ok(CompressedEvent::new(field_id, point_id))
 }
 
 pub fn get_detla(frame_id: i64) -> AppResult<DbRoomStateDelta> {
@@ -87,14 +89,14 @@ pub fn load_state_diff(frame_id: i64) -> AppResult<StateDiff> {
         parent_id,
         appended: Arc::new(
             appended
-                .chunks_exact(size_of::<CompressedState>())
-                .map(|chunk| CompressedState(chunk.try_into().expect("we checked the size above")))
+                .chunks_exact(size_of::<CompressedEvent>())
+                .map(|chunk| CompressedEvent(chunk.try_into().expect("we checked the size above")))
                 .collect(),
         ),
         disposed: Arc::new(
             disposed
-                .chunks_exact(size_of::<CompressedState>())
-                .map(|chunk| CompressedState(chunk.try_into().expect("we checked the size above")))
+                .chunks_exact(size_of::<CompressedEvent>())
+                .map(|chunk| CompressedEvent(chunk.try_into().expect("we checked the size above")))
                 .collect(),
         ),
     })
@@ -143,8 +145,8 @@ pub fn save_state_delta(room_id: &RoomId, frame_id: i64, diff: StateDiff) -> App
 pub fn calc_and_save_state_delta(
     room_id: &RoomId,
     frame_id: i64,
-    appended: Arc<HashSet<CompressedState>>,
-    disposed: Arc<HashSet<CompressedState>>,
+    appended: Arc<CompressedState>,
+    disposed: Arc<CompressedState>,
     diff_to_sibling: usize,
     mut parent_states: Vec<FrameInfo>,
 ) -> AppResult<()> {
@@ -153,7 +155,6 @@ pub fn calc_and_save_state_delta(
     if parent_states.len() > 3 {
         // Number of layers
         // To many layers, we have to go deeper
-        println!("To many layers, we have to go deeper frame_id: {frame_id}");
         let parent = parent_states.pop().unwrap();
 
         let mut parent_appended = (*parent.appended).clone();

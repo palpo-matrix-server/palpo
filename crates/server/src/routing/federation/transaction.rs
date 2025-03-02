@@ -12,8 +12,9 @@ use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::{RawJsonValue, UnixMillis};
+use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::user::NewDbPresence;
-use crate::{AppError, AppResult, AuthArgs, JsonResult, json_ok};
+use crate::{AppError, AppResult, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -23,16 +24,29 @@ pub fn router() -> Router {
 /// Push EDUs and PDUs to this server.
 #[endpoint]
 async fn send_message(
-    _aa: AuthArgs,
+    depot: &mut Depot,
     _txn_id: PathParam<OwnedTransactionId>,
     body: JsonBody<SendMessageReqBody>,
 ) -> JsonResult<SendMessageResBody> {
+    let origin = depot.origin()?;
     let body = body.into_inner();
+    if &body.origin != origin {
+        return Err(MatrixError::forbidden("Not allowed to send transactions on behalf of other servers").into());
+    }
+
+    if body.pdus.len() > PDU_LIMIT {
+        return Err(MatrixError::forbidden("Not allowed to send more than {PDU_LIMIT} PDUs in one transaction").into());
+    }
+
+    if body.edus.len() > EDU_LIMIT {
+        return Err(MatrixError::forbidden("Not allowed to send more than {EDU_LIMIT} EDUs in one transaction").into());
+    }
 
     let txn_start_time = Instant::now();
     let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     handle_edus(body.edus, &body.origin).await;
 
+    println!("resolved_map        :  {resolved_map:#?}");
     json_ok(SendMessageResBody {
         pdus: resolved_map
             .into_iter()

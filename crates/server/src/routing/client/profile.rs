@@ -214,7 +214,6 @@ async fn set_avatar_url(
 #[endpoint]
 async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
-    println!("GGGGGGGGGGGGGEt display name is remote: {}", user_id.is_remote());
     if user_id.is_remote() {
         let server_name = user_id.server_name().to_owned();
         let request = profile_request(
@@ -226,7 +225,6 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
         )?
         .into_inner();
 
-        println!("???????????????????? 0");
         let body = crate::sending::send_federation_request(&server_name, request)
             .await?
             .json::<DisplayNameResBody>()

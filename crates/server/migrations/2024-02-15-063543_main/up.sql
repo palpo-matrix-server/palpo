@@ -440,7 +440,8 @@ CREATE TABLE events (
     is_outlier boolean NOT NULL,
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
-    rejection_reason text
+    rejection_reason text,
+    CONSTRAINT events_ukey UNIQUE (sn)
 --     topological_ordering bigint NOT NULL,
 --     stream_ordering bigint
 );
@@ -555,9 +556,8 @@ CREATE INDEX device_inboxes_user_device_idx
 DROP TABLE IF EXISTS event_auth_chains CASCADE;
 CREATE TABLE event_auth_chains
 (
-    event_id text NOT NULL PRIMARY KEY,
-    chain_id bigint NOT NULL,
-    sequence_number bigint NOT NULL
+    cache_key bigint[] NOT NULL PRIMARY KEY,
+    chain_sns bigint[] NOT NULL DEFAULT '{}'
 );
 
 DROP TABLE IF EXISTS event_backward_extremities CASCADE;

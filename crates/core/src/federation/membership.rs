@@ -96,29 +96,29 @@ pub struct InviteUserResBodyV1 {
 }
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendJoinReqBodyV2 {
+#[salvo(schema(value_type = Object))]
+pub struct SendJoinReqBody(
     /// The invite event which needs to be signed.
-    #[salvo(schema(value_type = Object))]
-    pub pdu: Box<RawJsonValue>,
-}
-crate::json_body_modifier!(SendJoinReqBodyV2);
+    pub Box<RawJsonValue>,
+);
+crate::json_body_modifier!(SendJoinReqBody);
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct SendJoinResBodyV2 {
+pub struct SendJoinResBodyV2(
     /// The signed invite event.
-    pub room_state: RoomStateV2,
-}
+    pub RoomStateV2,
+);
 
 #[derive(ToSchema, Serialize, Debug)]
-pub struct SendJoinResBodyV1 {
+pub struct SendJoinResBodyV1(
     /// Full state of the room.
-    pub room_state: RoomStateV1,
-}
+    pub RoomStateV1,
+);
 
 impl SendJoinResBodyV1 {
     /// Creates a new `Response` with the given room state.
     pub fn new(room_state: RoomStateV1) -> Self {
-        Self { room_state }
+        Self(room_state)
     }
 }
 
@@ -213,14 +213,6 @@ impl RoomStateV1 {
     }
 }
 
-#[derive(ToSchema, Deserialize, Debug)]
-pub struct SendJoinReqBodyV1 {
-    /// The invite event which needs to be signed.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    #[salvo(schema(value_type = Object))]
-    pub pdu: Box<RawJsonValue>,
-}
-
 /// Information included alongside an event that is not signed.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct UnsignedEventContentV1 {
@@ -307,7 +299,7 @@ impl MakeLeaveResBody {
 pub fn send_leave_request_v2(
     origin: &str,
     args: SendLeaveReqArgsV2,
-    body: SendLeaveReqBodyV2,
+    body: SendLeaveReqBody,
 ) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v2/send_leave/{}/{}",
@@ -330,20 +322,11 @@ pub struct SendLeaveReqArgsV2 {
 /// Request type for the `create_leave_event` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 #[salvo(schema(value_type = Object))]
-pub struct SendLeaveReqBodyV2(
-    // /// The room ID that is about to be left.
-    // ///
-    // /// Do not use this. Instead, use the `room_id` field inside the PDU.
-    // #[salvo(parameter(parameter_in = Path))]
-    // pub room_id: OwnedRoomId,
-
-    // /// The event ID for the leave event.
-    // #[salvo(parameter(parameter_in = Path))]
-    // pub event_id: OwnedEventId,
+pub struct SendLeaveReqBody(
     /// The PDU.
     pub Box<RawJsonValue>,
 );
-crate::json_body_modifier!(SendLeaveReqBodyV2);
+crate::json_body_modifier!(SendLeaveReqBody);
 
 /// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
 ///
@@ -358,7 +341,7 @@ crate::json_body_modifier!(SendLeaveReqBodyV2);
 //     }
 // };
 
-pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBodyV2) -> SendResult<SendRequest> {
+pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBody) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v2/send_join/{}/{}?omit_members={}",
         &args.room_id, &args.event_id, args.omit_members

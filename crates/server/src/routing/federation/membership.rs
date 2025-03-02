@@ -10,10 +10,10 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId, OwnedUserId, RoomVersionId, UnixMillis};
+use crate::core::{EventId, OwnedRoomId, OwnedUserId, RoomVersionId, UnixMillis};
 use crate::room::NewDbRoom;
-use crate::schema::*;
 use crate::{AppError, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, db, empty_ok, json_ok, utils};
+use crate::{DepotExt, schema::*};
 
 pub fn router_v1() -> Router {
     Router::new()
@@ -250,30 +250,40 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
 /// #PUT /_matrix/federation/v2/send_join/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]
-async fn send_join_v2(args: RoomEventReqArgs, body: JsonBody<SendJoinReqBodyV2>) -> JsonResult<SendJoinResBodyV2> {
-    let server_name = args.room_id.server_name().map_err(AppError::public)?;
-    crate::event::handler::acl_check(&server_name, &args.room_id)?;
+async fn send_join_v2(
+    depot: &mut Depot,
+    args: RoomEventReqArgs,
+    body: JsonBody<SendJoinReqBody>,
+) -> JsonResult<SendJoinResBodyV2> {
+    let body = body.into_inner();
+    // let server_name = args.room_id.server_name().map_err(AppError::public)?;
+    // crate::event::handler::acl_check(&server_name, &args.room_id)?;
 
-    let room_state = crate::membership::send_join_v2(&server_name, &args.room_id, &body.pdu).await?;
+    let room_state = crate::membership::send_join_v2(depot.origin()?, &args.room_id, &body.0).await?;
 
-    json_ok(SendJoinResBodyV2 { room_state })
+    json_ok(SendJoinResBodyV2(room_state))
 }
 
 /// #PUT /_matrix/federation/v1/send_join/{room_id}/{event_id}
 /// Submits a signed join event.
 #[endpoint]
-async fn send_join_v1(args: RoomEventReqArgs, body: JsonBody<SendJoinReqBodyV1>) -> JsonResult<SendJoinResBodyV1> {
-    let server_name = args.room_id.server_name().map_err(AppError::public)?;
-    let room_state = crate::membership::send_join_v1(&server_name, &args.room_id, &body.pdu).await?;
-    json_ok(SendJoinResBodyV1 { room_state })
+async fn send_join_v1(
+    depot: &mut Depot,
+    args: RoomEventReqArgs,
+    body: JsonBody<SendJoinReqBody>,
+) -> JsonResult<SendJoinResBodyV1> {
+    let body = body.into_inner();
+    let room_state = crate::membership::send_join_v1(depot.origin()?, &args.room_id, &body.0).await?;
+    json_ok(SendJoinResBodyV1(room_state))
 }
 
 /// # `PUT /_matrix/federation/v2/send_leave/{roomId}/{eventId}`
 ///
 /// Submits a signed leave event.
 #[endpoint]
-async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>) -> EmptyResult {
+async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBody>) -> EmptyResult {
     let server_name = &crate::config().server_name;
+    let origin = depot.origin()?;
     let body = body.into_inner();
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room").into());
@@ -289,25 +299,39 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
         return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
     };
 
+    let event_room_id: OwnedRoomId = serde_json::from_value(
+        serde_json::to_value(
+            value
+                .get("room_id")
+                .ok_or_else(|| MatrixError::bad_json("Event missing room_id property."))?,
+        )
+        .expect("CanonicalJson is valid json value"),
+    )
+    .map_err(|e| MatrixError::bad_json("room_id field is not a valid room ID: {e}"))?;
+
+    if event_room_id != args.room_id {
+        return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());
+    }
+
     let content: RoomMemberEventContent = serde_json::from_value(
         value
             .get("content")
-            .ok_or_else(|| MatrixError::invalid_param("Event missing content property"))?
+            .ok_or_else(|| MatrixError::bad_json("Event missing content property"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::invalid_param("Event content is empty or invalid"))?;
+    .map_err(|_| MatrixError::bad_json("Event content is empty or invalid"))?;
 
     if content.membership != MembershipState::Leave {
         return Err(
-            MatrixError::invalid_param("Not allowed to send a non-leave membership event to leave endpoint.").into(),
+            MatrixError::bad_json("Not allowed to send a non-leave membership event to leave endpoint.").into(),
         );
     }
 
     let event_type: StateEventType = serde_json::from_value(
         value
             .get("type")
-            .ok_or_else(|| MatrixError::invalid_param("Event missing type property."))?
+            .ok_or_else(|| MatrixError::bad_json("Event missing type property."))?
             .clone()
             .into(),
     )
@@ -323,7 +347,7 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
     let sender: OwnedUserId = serde_json::from_value(
         value
             .get("sender")
-            .ok_or_else(|| MatrixError::invalid_param("Event missing sender property."))?
+            .ok_or_else(|| MatrixError::bad_json("Event missing sender property."))?
             .clone()
             .into(),
     )
@@ -331,9 +355,9 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
 
     crate::event::handler::acl_check(sender.server_name(), &args.room_id)?;
 
-    // if sender.server_name() != server_name {
-    //     return Err(MatrixError::invalid_param("Not allowed to leave on behalf of another server.").into());
-    // }
+    if sender.server_name() != origin {
+        return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
+    }
 
     let state_key: OwnedUserId = serde_json::from_value(
         value
@@ -345,17 +369,14 @@ async fn send_leave(args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBodyV2>
     .map_err(|_| MatrixError::bad_json("state_key is invalid or not a user ID"))?;
 
     if state_key != sender {
-        return Err(MatrixError::invalid_param("state_key does not match sender user.").into());
+        return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
     // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
-
-    crate::event::handler::handle_incoming_pdu(server_name, &event_id, &args.room_id, value, true).await?;
-
+    crate::event::handler::handle_incoming_pdu(origin, &event_id, &args.room_id, value, true).await?;
     // drop(mutex_lock);
 
-    let servers = crate::room::get_room_servers(&args.room_id, false)?;
-    crate::sending::send_pdu(servers.into_iter(), &event_id)?;
-
+    let servers = crate::room::get_room_servers(&args.room_id, false).unwrap();
+    crate::sending::send_pdu(servers.into_iter(), &event_id).unwrap();
     empty_ok()
 }

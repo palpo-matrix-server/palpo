@@ -91,6 +91,19 @@ impl PduEvent {
         Ok(())
     }
 
+    // pub fn redacts_id(&self, room_version: &RoomVersionId) -> Option<OwnedEventId> {
+    //     use RoomVersionId::*;
+
+    //     if self.kind != TimelineEventType::RoomRedaction {
+    //         return None;
+    //     }
+
+    //     match *room_version {
+    //         V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => self.redacts.clone(),
+    //         _ => self.get_content::<RoomRedactionEventContent>().ok()?.redacts,
+    //     }
+    // }
+
     pub fn remove_transaction_id(&mut self) -> AppResult<()> {
         if let Some(unsigned) = &self.unsigned {
             let mut unsigned: BTreeMap<String, Box<RawJsonValue>> = serde_json::from_str(unsigned.get())

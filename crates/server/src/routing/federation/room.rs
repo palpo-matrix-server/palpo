@@ -6,7 +6,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -43,7 +43,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs) -> JsonResult<RoomStat
         })
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain(&args.room_id, &args.event_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateResBody {
         auth_chain: auth_chain_ids
@@ -106,14 +106,10 @@ async fn make_knock(_aa: AuthArgs) -> EmptyResult {
 /// #GET /_matrix/federation/v1/state_ids/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
-fn get_state_at_event(_aa: AuthArgs, args: RoomStateAtEventReqArgs) -> JsonResult<RoomStateIdsResBody> {
-    let server_name = &crate::config().server_name;
+fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonResult<RoomStateIdsResBody> {
+    let origin = depot.origin()?;
 
-    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
-        return Err(MatrixError::forbidden("Server is not in room.").into());
-    }
-
-    crate::event::handler::acl_check(server_name, &args.room_id)?;
+    crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;
 
     let frame_id =
         crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
@@ -123,7 +119,7 @@ fn get_state_at_event(_aa: AuthArgs, args: RoomStateAtEventReqArgs) -> JsonResul
         .map(|id| (*id).to_owned())
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain(&args.room_id, &args.event_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateIdsResBody {
         auth_chain_ids: auth_chain_ids.into_iter().map(|id| (*id).to_owned()).collect(),

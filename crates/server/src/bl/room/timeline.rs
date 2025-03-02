@@ -112,14 +112,13 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    match get_non_outlier_pdu(event_id) {
-        Ok(Some(pdu)) => Ok(Some(pdu)),
-        Ok(None) => Ok(None),
-        Err(e) => {
-            tracing::error!("get pdu error: {:?}", e);
-            Ok(None)
-        }
-    }
+    event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select(event_datas::json_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?
+        .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
+        .transpose()
 }
 
 /// Removes a pdu and creates a new one with the same id.
@@ -190,6 +189,9 @@ where
         .on_conflict((event_datas::event_id, event_datas::event_sn))
         .do_update()
         .set(&event_data)
+        .execute(&mut db::connect()?)?;
+    diesel::update(events::table.find(&*pdu.event_id))
+        .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
@@ -533,6 +535,7 @@ pub fn create_hash_and_sign_event(
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
+        sn: None,
         ty: event_type.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -640,11 +643,72 @@ pub fn create_hash_and_sign_event(
 
     // Generate short event id
     let _point_id =
-        crate::room::state::ensure_point(room_id, &pdu.event_id, crate::event::get_event_sn(&pdu.event_id)?)?;
+        crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
 
     Ok((pdu, pdu_json))
 }
 
+fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
+    let conf = crate::config();
+    match pdu.event_type() {
+        TimelineEventType::RoomEncryption => {
+            warn!("Encryption is not allowed in the admins room");
+            return Err(MatrixError::forbidden("Encryption is not allowed in the admins room.").into());
+        }
+        TimelineEventType::RoomMember => {
+            #[derive(Deserialize)]
+            struct ExtractMembership {
+                membership: MembershipState,
+            }
+
+            let target = pdu
+                .state_key
+                .clone()
+                .filter(|v| v.starts_with("@"))
+                .unwrap_or(sender.as_str().to_owned());
+            let server_name = &conf.server_name;
+            let server_user = format!("@palpo:{}", server_name);
+            let content = serde_json::from_str::<ExtractMembership>(pdu.content.get())
+                .map_err(|_| AppError::internal("Invalid content in pdu."))?;
+
+            if content.membership == MembershipState::Leave {
+                if target == server_user {
+                    warn!("Palpo user cannot leave from admins room");
+                    return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
+                }
+
+                let count = crate::room::get_joined_users(pdu.room_id(), None)?
+                    .iter()
+                    .filter(|m| m.server_name() == server_name)
+                    .filter(|m| m.as_str() != target)
+                    .count();
+                if count < 2 {
+                    warn!("Last admin cannot leave from admins room");
+                    return Err(MatrixError::forbidden("Last admin cannot leave from admins room.").into());
+                }
+            }
+
+            if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
+                if target == server_user {
+                    warn!("Palpo user cannot be banned in admins room");
+                    return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
+                }
+
+                let count = crate::room::get_joined_users(pdu.room_id(), None)?
+                    .iter()
+                    .filter(|m| m.server_name() == server_name)
+                    .filter(|m| m.as_str() != target)
+                    .count();
+                if count < 2 {
+                    warn!("Last admin cannot be banned in admins room");
+                    return Err(MatrixError::forbidden("Last admin cannot be banned in admins room.").into());
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
@@ -654,64 +718,8 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
             .expect("#admins:server_name is a valid room alias"),
     )?;
-    if admin_room.filter(|v| v == room_id).is_some() {
-        match pdu.event_type() {
-            TimelineEventType::RoomEncryption => {
-                warn!("Encryption is not allowed in the admins room");
-                return Err(MatrixError::forbidden("Encryption is not allowed in the admins room.").into());
-            }
-            TimelineEventType::RoomMember => {
-                #[derive(Deserialize)]
-                struct ExtractMembership {
-                    membership: MembershipState,
-                }
-
-                let target = pdu
-                    .state_key
-                    .clone()
-                    .filter(|v| v.starts_with("@"))
-                    .unwrap_or(sender.as_str().to_owned());
-                let server_name = &conf.server_name;
-                let server_user = format!("@palpo:{}", server_name);
-                let content = serde_json::from_str::<ExtractMembership>(pdu.content.get())
-                    .map_err(|_| AppError::internal("Invalid content in pdu."))?;
-
-                if content.membership == MembershipState::Leave {
-                    if target == server_user {
-                        warn!("Palpo user cannot leave from admins room");
-                        return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
-                    }
-
-                    let count = crate::room::get_joined_users(room_id, None)?
-                        .iter()
-                        .filter(|m| m.server_name() == server_name)
-                        .filter(|m| m.as_str() != target)
-                        .count();
-                    if count < 2 {
-                        warn!("Last admin cannot leave from admins room");
-                        return Err(MatrixError::forbidden("Last admin cannot leave from admins room.").into());
-                    }
-                }
-
-                if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
-                    if target == server_user {
-                        warn!("Palpo user cannot be banned in admins room");
-                        return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
-                    }
-
-                    let count = crate::room::get_joined_users(room_id, None)?
-                        .iter()
-                        .filter(|m| m.server_name() == server_name)
-                        .filter(|m| m.as_str() != target)
-                        .count();
-                    if count < 2 {
-                        warn!("Last admin cannot be banned in admins room");
-                        return Err(MatrixError::forbidden("Last admin cannot be banned in admins room.").into());
-                    }
-                }
-            }
-            _ => {}
-        }
+    if crate::room::is_admin_room(room_id)? {
+        check_pdu_for_admin_room(&pdu, sender)?;
     }
 
     append_pdu(
@@ -754,7 +762,7 @@ pub fn append_incoming_pdu<'a, L>(
     pdu: &'a PduEvent,
     pdu_json: CanonicalJsonObject,
     new_room_leaves: L,
-    state_ids_compressed: Arc<HashSet<CompressedState>>,
+    state_ids_compressed: Arc<CompressedState>,
     soft_fail: bool,
 ) -> AppResult<()>
 where
@@ -764,7 +772,7 @@ where
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    crate::room::state::save_state(&pdu.room_id, state_ids_compressed)?;
+    crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;

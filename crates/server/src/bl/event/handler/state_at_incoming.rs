@@ -1,11 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+use diesel::prelude::*;
 
 use crate::core::identifiers::*;
 use crate::core::state::{self, StateMap};
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
+use crate::schema::*;
+use crate::{AppError, AppResult, JsonValue, db};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
@@ -95,7 +98,10 @@ pub(super) async fn state_at_incoming_resolved(
         }
 
         for starting_event in starting_events {
-            auth_chain_sets.push(crate::room::auth_chain::get_auth_chain(room_id, &starting_event)?);
+            auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
+                room_id,
+                [&*starting_event].into_iter(),
+            )?);
         }
 
         fork_states.push(state);
@@ -103,13 +109,21 @@ pub(super) async fn state_at_incoming_resolved(
 
     let lock = crate::STATERES_MUTEX.lock();
 
-    let result = state::resolve(room_version_id, &fork_states, auth_chain_sets, |id| {
-        let res = crate::room::timeline::get_pdu(id);
-        if let Err(e) = &res {
-            error!("LOOK AT ME Failed to fetch event: {}", e);
-        }
-        res.ok().flatten()
-    });
+    let result = state::resolve(
+        room_version_id,
+        &fork_states,
+        auth_chain_sets
+            .iter()
+            .map(|set| set.iter().map(|id|Arc::from(&**id)).collect::<HashSet<_>>())
+            .collect::<Vec<_>>(),
+        |id| {
+            let res = crate::room::timeline::get_pdu(id);
+            if let Err(e) = &res {
+                error!("LOOK AT ME Failed to fetch event: {}", e);
+            }
+            res.ok().flatten()
+        },
+    );
     drop(lock);
 
     match result {

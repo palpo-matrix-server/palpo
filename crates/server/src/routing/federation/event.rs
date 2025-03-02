@@ -80,7 +80,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthoriz
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain(room_id, &args.event_id)?;
+    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
     json_ok(EventAuthorizationResBody {
         auth_chain: auth_chain_ids

@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::Path;
 
-use chksum::sha2_256;
+use chksum::{SHA2_256, sha2_256};
 use fast32::base32::CROCKFORD;
 
 #[derive(Debug)]
@@ -55,8 +55,14 @@ pub fn hash_password(password: &str) -> Result<String, argon2::Error> {
 }
 
 #[tracing::instrument(skip(keys))]
-pub fn hash_keys(keys: &[&[u8]]) -> Vec<u8> {
-    // We only hash the pdu's event ids, not the whole pdu
-    let bytes = keys.join(&0xff);
-    sha2_256::chksum(bytes).unwrap().as_bytes().to_owned()
+pub fn hash_keys<'a, T, I>(mut keys: I) -> Vec<u8>
+where
+    I: Iterator<Item = T> + 'a,
+    T: AsRef<[u8]> + 'a,
+{
+    let mut hash = SHA2_256::new();
+    for key in keys {
+        hash.update(key.as_ref());
+    }
+    hash.digest().as_bytes().to_vec()
 }
