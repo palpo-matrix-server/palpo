@@ -143,7 +143,6 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!("==============append_pdu {}", pdu.event_id);
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -170,14 +169,12 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    println!("==============append_pdu   1");
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
-    println!("==============append_pdu   2");
     // Insert pdu
     let event_data = DbEventData {
         event_id: (&*pdu.event_id).to_owned(),
@@ -196,7 +193,6 @@ where
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
-    println!("==============append_pdu   4");
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers

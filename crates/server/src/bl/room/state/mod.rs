@@ -336,6 +336,13 @@ pub fn set_forward_extremities<'a, I>(room_id: &'a RoomId, event_ids: I) -> AppR
 where
     I: Iterator<Item = &'a EventId> + Send + 'a,
 {
+    let event_ids = event_ids.collect::<Vec<_>>();
+    diesel::delete(
+        event_forward_extremities::table
+            .filter(event_forward_extremities::room_id.eq(room_id))
+            .filter(event_forward_extremities::event_id.ne_all(&event_ids)),
+    )
+    .execute(&mut db::connect()?)?;
     for event_id in event_ids {
         diesel::insert_into(event_forward_extremities::table)
             .values((
@@ -480,68 +487,68 @@ fn user_was_invited(frame_id: i64, user_id: &UserId) -> bool {
     user_membership(frame_id, user_id)
         .map(|s| s == MembershipState::Join || s == MembershipState::Invite)
         .unwrap_or_default() // Return sensible default, i.e. false
-// }
+    // }
 
-// /// Checks if a given user can redact a given event
-// ///
-// /// If federation is true, it allows redaction events from any user of the
-// /// same server as the original event sender
-// pub async fn user_can_redact(
-//     redacts: &EventId,
-//     sender: &UserId,
-//     room_id: &RoomId,
-//     federation: bool,
-// ) -> AppResult<bool> {
-//     let redacting_event = crate::romm::timeline.get_pdu(redacts)?;
+    // /// Checks if a given user can redact a given event
+    // ///
+    // /// If federation is true, it allows redaction events from any user of the
+    // /// same server as the original event sender
+    // pub async fn user_can_redact(
+    //     redacts: &EventId,
+    //     sender: &UserId,
+    //     room_id: &RoomId,
+    //     federation: bool,
+    // ) -> AppResult<bool> {
+    //     let redacting_event = crate::romm::timeline.get_pdu(redacts)?;
 
-//     if redacting_event
-//         .as_ref()
-//         .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomCreate)
-//     {
-//         return Err(MatrixError::forbidden("Redacting m.room.create is not safe, forbidding.").into());
-//     }
+    //     if redacting_event
+    //         .as_ref()
+    //         .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomCreate)
+    //     {
+    //         return Err(MatrixError::forbidden("Redacting m.room.create is not safe, forbidding.").into());
+    //     }
 
-//     if redacting_event
-//         .as_ref()
-//         .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomServerAcl)
-//     {
-//         return Err(MatrixError::forbidden(
-//             "Redacting m.room.server_acl will result in the room being inaccessible for \
-// 			 everyone (empty allow key), forbidding.",
-//         )
-//         .into());
-//     }
+    //     if redacting_event
+    //         .as_ref()
+    //         .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomServerAcl)
+    //     {
+    //         return Err(MatrixError::forbidden(
+    //             "Redacting m.room.server_acl will result in the room being inaccessible for \
+    // 			 everyone (empty allow key), forbidding.",
+    //         )
+    //         .into());
+    //     }
 
-//     if let Ok(pl_event_content) = self
-//         .room_state_get_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
-//         .await
-//     {
-//         let pl_event: RoomPowerLevels = pl_event_content.into();
-//         Ok(pl_event.user_can_redact_event_of_other(sender)
-//             || pl_event.user_can_redact_own_event(sender)
-//                 && if let Ok(redacting_event) = redacting_event {
-//                     if federation {
-//                         redacting_event.sender.server_name() == sender.server_name()
-//                     } else {
-//                         redacting_event.sender == sender
-//                     }
-//                 } else {
-//                     false
-//                 })
-//     } else {
-//         // Falling back on m.room.create to judge power level
-//         if let Ok(room_create) = self.room_state_get(room_id, &StateEventType::RoomCreate, "").await {
-//             Ok(room_create.sender == sender
-//                 || redacting_event
-//                     .as_ref()
-//                     .is_ok_and(|redacting_event| redacting_event.sender == sender))
-//         } else {
-//             Err(Error::bad_database(
-//                 "No m.room.power_levels or m.room.create events in database for room",
-//             ))
-//         }
-//     }
- }
+    //     if let Ok(pl_event_content) = self
+    //         .room_state_get_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
+    //         .await
+    //     {
+    //         let pl_event: RoomPowerLevels = pl_event_content.into();
+    //         Ok(pl_event.user_can_redact_event_of_other(sender)
+    //             || pl_event.user_can_redact_own_event(sender)
+    //                 && if let Ok(redacting_event) = redacting_event {
+    //                     if federation {
+    //                         redacting_event.sender.server_name() == sender.server_name()
+    //                     } else {
+    //                         redacting_event.sender == sender
+    //                     }
+    //                 } else {
+    //                     false
+    //                 })
+    //     } else {
+    //         // Falling back on m.room.create to judge power level
+    //         if let Ok(room_create) = self.room_state_get(room_id, &StateEventType::RoomCreate, "").await {
+    //             Ok(room_create.sender == sender
+    //                 || redacting_event
+    //                     .as_ref()
+    //                     .is_ok_and(|redacting_event| redacting_event.sender == sender))
+    //         } else {
+    //             Err(Error::bad_database(
+    //                 "No m.room.power_levels or m.room.create events in database for room",
+    //             ))
+    //         }
+    //     }
+}
 
 /// Whether a server is allowed to see an event through federation, based on
 /// the room's history_visibility at that event's state.

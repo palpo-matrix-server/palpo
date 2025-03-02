@@ -544,7 +544,6 @@ fn resolve_state(
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
     let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
-    println!("resolve_state 1   current_frame_id:{:?}", current_frame_id);
 
     let current_state_ids = if let Some(current_frame_id) = current_frame_id {
         crate::room::state::get_full_state_ids(current_frame_id)?

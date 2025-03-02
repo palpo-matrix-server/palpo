@@ -21,6 +21,10 @@ use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
 
+
+pub const PDU_LIMIT: usize = 50;
+pub const EDU_LIMIT: usize = 100;
+
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = outgoing_requests)]
 pub struct DbOutgoingRequest {
