@@ -775,7 +775,6 @@ where
     crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
-        println!("==============soft_fail");
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
         crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
         return Ok(());
