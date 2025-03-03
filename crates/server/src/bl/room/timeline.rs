@@ -768,7 +768,6 @@ pub fn append_incoming_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!("==============append_incoming_pdu  {}", pdu.event_id);
     let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
     crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the

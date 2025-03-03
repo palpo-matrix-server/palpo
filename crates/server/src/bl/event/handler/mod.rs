@@ -57,7 +57,6 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
-    println!("HHHHHHHHHHHHHandl ing incoming pdu  {event_id}");
     // 1. Skip the PDU if we already have it as a timeline event
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
@@ -266,7 +265,6 @@ fn handle_outlier_pdu<'a>(
         check_room_id(room_id, &incoming_pdu)?;
 
         if !auth_events_known {
-            println!("==========handle_outlier_pdu 7");
             // 4. fetch any missing auth events doing all checks listed here starting at 1. These are not timeline events
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
             // NOTE: Step 5 is not applied anymore because it failed too often
@@ -283,7 +281,6 @@ fn handle_outlier_pdu<'a>(
             )
             .await?;
         }
-        println!("==========handle_outlier_pdu 7 - 1");
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("Auth check for {} based on auth events", incoming_pdu.event_id);
@@ -316,7 +313,6 @@ fn handle_outlier_pdu<'a>(
                 }
             }
         }
-        println!("==========handle_outlier_pdu 7 - 2");
 
         // The original create event must be in the auth events
         if !matches!(
@@ -326,7 +322,6 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
         }
 
-        println!("==========handle_outlier_pdu 7 - 3");
         if !state::event_auth::auth_check(
             &room_version,
             &incoming_pdu,
@@ -338,7 +333,6 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
         }
 
-        println!("==========handle_outlier_pdu 7 - 4");
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
@@ -351,7 +345,6 @@ fn handle_outlier_pdu<'a>(
             .on_conflict_do_nothing()
             .execute(&mut *db::connect()?)?;
 
-        println!("==========handle_outlier_pdu 7 - 5");
         debug!("Added pdu as outlier.");
 
         Ok((incoming_pdu, val))
@@ -366,9 +359,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     room_id: &RoomId,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
-    println!("HHHHHHHHHHupgrade_outlier_to_timeline_pdu  {}", incoming_pdu.event_id);
     if let Ok(Some(_)) = crate::room::timeline::get_pdu(&incoming_pdu.event_id) {
-        println!("HHHHHHHHHHupgrade_outlier_to_timeline_pdu0");
         return Ok(());
     }
 
@@ -384,10 +375,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
-    println!(
-        "DDDDDDDDDDDDDincoming_pdu.prev_events.len(): {}",
-        incoming_pdu.prev_events.len()
-    );
 
     let mut state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(incoming_pdu).await?
@@ -395,7 +382,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         state_at_incoming_resolved(incoming_pdu, room_id, room_version_id).await?
     };
 
-    println!("=============state_at_incoming_event: {state_at_incoming_event:?}");
     let state_at_incoming_event = match state_at_incoming_event {
         None => fetch_state(origin, room_id, &room_version_id, &incoming_pdu.event_id)
             .await?
@@ -503,7 +489,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             disposed,
         } = crate::room::state::save_state(room_id, new_room_state)?;
 
-        println!("=============state_at_incoming_event w8");
         crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
     }
 
@@ -528,7 +513,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .map(Borrow::borrow)
         .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
-    println!("Appended incoming pdu  {}", incoming_pdu.event_id);
     let pdu_id =
         crate::room::timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
 
@@ -556,15 +540,11 @@ fn resolve_state(
 
     let mut auth_chain_sets = Vec::new();
     for state in &fork_states {
-        println!("resolve_state 3: event_id");
         auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
             room_id,
             state.values().map(|e| &**e),
         )?);
-        println!("resolve_state 4: event_id");
     }
-
-    println!("resolve_state 5");
 
     let fork_states: Vec<_> = fork_states
         .into_iter()
@@ -863,6 +843,7 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         None => return Ok(()),
     };
 
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  0");
     let acl_event_content: RoomServerAclEventContent = match serde_json::from_str(acl_event.content.get()) {
         Ok(content) => content,
         Err(_) => {
@@ -871,14 +852,17 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         }
     };
 
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  1");
     if acl_event_content.allow.is_empty() {
         // Ignore broken acl events
         return Ok(());
     }
 
     if acl_event_content.is_allowed(server_name) {
+        println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  2");
         Ok(())
     } else {
+        println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  30");
         info!("Server {} was denied by room ACL in {}", server_name, room_id);
         Err(MatrixError::forbidden("Server was denied by room ACL").into())
     }

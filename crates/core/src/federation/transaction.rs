@@ -79,8 +79,7 @@ pub struct SendMessageResBody {
     ///
     /// With the `unstable-msc3618` feature, returning `pdus` is optional.
     /// See [MSC3618](https://github.com/matrix-org/matrix-spec-proposals/pull/3618).
-    #[serde(default)]
-    // #[serde(with = "crate::serde::pdu_process_response")]
+    #[serde(default, with = "crate::serde::pdu_process_response")]
     pub pdus: BTreeMap<OwnedEventId, Result<(), String>>,
 }
 crate::json_body_modifier!(SendMessageResBody);

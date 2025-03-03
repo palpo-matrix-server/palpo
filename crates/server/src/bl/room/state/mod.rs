@@ -148,7 +148,6 @@ pub fn set_event_state(
     room_id: &RoomId,
     state_ids_compressed: Arc<CompressedState>,
 ) -> AppResult<i64> {
-    println!("===========set_event_state  event_id: {:?}", event_id);
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
     let point_id = ensure_point(room_id, event_id, event_sn)?;
@@ -156,15 +155,9 @@ pub fn set_event_state(
     let frame_id = get_frame_id(room_id, &hash_data)?;
 
     if let Some(frame_id) = frame_id {
-        println!(
-            "===========set_event_state  0 frame_id: {:?}   event_id: {event_id:?}  point_id:{point_id}",
-            frame_id
-        );
         update_point_frame_id(point_id, frame_id)?;
-        println!("========frame id: {:?}", get_pdu_frame_id(event_id));
         Ok(frame_id)
     } else {
-        println!("===========set_event_state  2");
         let frame_id = ensure_frame(room_id, hash_data)?;
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
@@ -185,12 +178,7 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
-        println!(
-            "===========set_event_state  3 frame_id: {:?}   event_id: {event_id:?}",
-            frame_id
-        );
         update_point_frame_id(point_id, frame_id)?;
-        println!("========frame id: {:?}", get_pdu_frame_id(event_id));
         calc_and_save_state_delta(room_id, frame_id, appended, disposed, 1_000_000, states_parents)?;
         Ok(frame_id)
     }
@@ -202,7 +190,6 @@ pub fn set_event_state(
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
-    println!("===========append_to_state  new_pdu: {:?}", new_pdu);
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
     let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;

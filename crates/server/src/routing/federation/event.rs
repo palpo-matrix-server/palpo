@@ -11,7 +11,7 @@ use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduEvent, 
 pub fn router() -> Router {
     Router::new()
         .push(Router::with_path("event/{event_id}").get(get_event))
-        .push(Router::with_path("event_auth/{room_id}/{event_id}").put(auth_chain))
+        .push(Router::with_path("event_auth/{room_id}/{event_id}").get(auth_chain))
         .push(Router::with_path("timestamp_to_event/{room_id}").get(event_by_timestamp))
         .push(Router::with_path("get_missing_events/{room_id}").post(missing_events))
         .push(Router::with_path("exchange_third_party_invite/{room_id}").put(exchange_third_party_invite))
@@ -63,11 +63,14 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>) -> JsonResult<Eve
 fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthorizationResBody> {
     let server_name = &crate::config().server_name;
 
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEauth chain  0");
     if !crate::room::is_server_in_room(server_name, &args.room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.").into());
     }
 
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEauth chain  1");
     crate::event::handler::acl_check(server_name, &args.room_id)?;
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEauth chain  2");
 
     let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
@@ -79,11 +82,13 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthoriz
         .and_then(|val| val.as_str())
         .ok_or_else(|| AppError::internal("Invalid event in database"))?;
 
+        println!("EEEEEEEEEEEEEEEEEEEEEEEEauth chain  3");
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
 
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
+    println!("EEEEEEEEEEEEEEEEEEEEEEEEauth chain  4");
     json_ok(EventAuthorizationResBody {
         auth_chain: auth_chain_ids
             .into_iter()

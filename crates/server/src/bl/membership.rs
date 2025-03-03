@@ -129,7 +129,6 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
-    println!("sender.server_name(): {sender:?}  origin: {origin}");
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
         return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.").into());
@@ -204,24 +203,19 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
-    println!("sssssssssssssssss  0");
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
     // drop(mutex_lock);
 
-    println!("sssssssssssssssss  1");
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
 
-    println!("sssssssssssssssss  2");
     let servers = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.ne(crate::server_name()))
         .select(room_servers::server_id)
         .load::<OwnedServerName>(&mut *db::connect()?)?;
 
-    println!("sssssssssssssssss  3");
     crate::sending::send_pdu(servers.into_iter(), &event_id)?;
-    println!("sssssssssssssssss  4");
     Ok(RoomStateV1 {
         auth_chain: auth_chain_ids
             .into_iter()
@@ -789,6 +783,7 @@ async fn validate_and_add_event_id(
     ))
     .expect("palpo's reference hash~es are valid event ids");
 
+    // TODO
     // let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
     //     Entry::Vacant(e) => {
     //         e.insert((Instant::now(), 1));
@@ -829,6 +824,7 @@ async fn validate_and_add_event_id(
 
     let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
+    // TODO
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {
     //     warn!("Event {} failed verification {:?} {}", event_id, pdu, e);
     //     back_off(event_id);
