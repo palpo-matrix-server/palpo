@@ -155,7 +155,6 @@ pub fn calc_and_save_state_delta(
     if parent_states.len() > 3 {
         // Number of layers
         // To many layers, we have to go deeper
-        println!("To many layers, we have to go deeper frame_id: {frame_id}");
         let parent = parent_states.pop().unwrap();
 
         let mut parent_appended = (*parent.appended).clone();

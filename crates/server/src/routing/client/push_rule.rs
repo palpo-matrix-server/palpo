@@ -1,10 +1,3 @@
-//! `POST /_matrix/client/*/register`
-//!
-//! Register an account on this homeserver.
-//! `/v3/` ([spec])
-//!
-//! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
-
 use palpo_core::events::push_rules::PushRulesEventContent;
 use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;

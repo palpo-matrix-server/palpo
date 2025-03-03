@@ -70,7 +70,6 @@ pub(crate) async fn handle_incoming_pdu(
     // 1.3.1 Check room ACL on origin field/server
     crate::event::handler::acl_check(origin, &room_id)?;
 
-    println!("               handle_incoming_pdu  18  {}", event_id);
     // 1.3.2 Check room ACL on sender's server name
     let sender: OwnedUserId = serde_json::from_value(
         value
@@ -81,7 +80,6 @@ pub(crate) async fn handle_incoming_pdu(
     )
     .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
 
-    println!("               handle_incoming_pdu  2  {}", event_id);
     if sender.server_name().ne(origin) {
         crate::event::handler::acl_check(sender.server_name(), room_id)?;
     }
@@ -104,16 +102,13 @@ pub(crate) async fn handle_incoming_pdu(
         return Ok(());
     }
 
-    println!("               handle_incoming_pdu 5  {}", event_id);
     // Skip old events
     let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-        println!("               handle_incoming_pdu  6  {}", event_id);
         return Ok(());
     }
 
-    println!("               handle_incoming_pdu  7  {}", event_id);
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
@@ -643,9 +638,7 @@ pub(crate) async fn fetch_and_handle_outliers(
         let mut todo_auth_events: VecDeque<_> = [Arc::clone(id)].into();
         let mut events_in_reverse_order = Vec::new();
         let mut events_all = HashSet::new();
-        println!("========fetch_and_handle_outliers 2");
         while let Some(next_id) = todo_auth_events.pop_front() {
-            println!("========fetch_and_handle_outliers 2 -- 1");
             if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id) {
                 // Exponential backoff
                 let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
@@ -671,7 +664,6 @@ pub(crate) async fn fetch_and_handle_outliers(
             info!("Fetching {} over federation.", next_id);
             let request = get_events_request(&origin.origin().await, &next_id, None)?.into_inner();
 
-            println!("========fetch_and_handle_outliers xx origin: {origin}");
             match crate::sending::send_federation_request(&origin, request)
                 .await?
                 .json::<EventResBody>()

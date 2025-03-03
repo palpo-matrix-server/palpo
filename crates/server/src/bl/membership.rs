@@ -730,14 +730,9 @@ async fn make_join_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
-    println!("MMMMMMMMMM");
     let mut make_join_res_body_and_server = Err(AppError::public("No server available to assist in joining."));
 
     for remote_server in servers {
-        println!(
-            "rrrrrrrrrrrrrrremote_server: {remote_server:?}  servername:{:?}",
-            crate::server_name()
-        );
         if remote_server == crate::server_name() {
             continue;
         }
@@ -753,10 +748,8 @@ async fn make_join_request(
         )?
         .into_inner();
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
-        println!("rrrrrrrrmake_join_response: {make_join_response:?}");
         if let Ok(make_join_response) = make_join_response {
             let res_body = make_join_response.json::<MakeJoinResBody>().await;
-            println!("BBBBBBBBBody {res_body:?}");
             make_join_res_body_and_server = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
         }
 
