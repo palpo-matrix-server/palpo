@@ -207,10 +207,10 @@ impl KeyChangesResBody {
 // };
 
 /// Request type for the `upload_signing_keys` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Clone, Debug)]
 pub struct UploadSigningKeysReqBody {
     /// Additional authentication information for the user-interactive authentication API.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "crate::serde::empty_as_none")]
     pub auth: Option<AuthData>,
 
     /// The user's master key.

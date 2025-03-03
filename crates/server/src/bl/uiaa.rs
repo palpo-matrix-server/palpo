@@ -4,18 +4,16 @@ use std::sync::LazyLock;
 use diesel::prelude::*;
 
 use crate::SESSION_ID_LENGTH;
+use crate::core::client::key::UploadSigningKeysReqBody;
+use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
-use crate::core::{
-    JsonValue,
-    client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier},
-};
 use crate::schema::*;
-use crate::{AppResult, MatrixError, db, utils};
+use crate::{AppResult, JsonValue, MatrixError, db, utils};
 
 use super::LazyRwLock;
 
-static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), CanonicalJsonValue>> =
+static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), UploadSigningKeysReqBody>> =
     LazyLock::new(Default::default);
 
 /// Creates a new Uiaa session. Make sure the session token is unique.
@@ -23,13 +21,13 @@ pub fn create_session(
     user_id: &UserId,
     device_id: &DeviceId,
     uiaa_info: &UiaaInfo,
-    json_body: &CanonicalJsonValue,
+    req_body: UploadSigningKeysReqBody,
 ) -> AppResult<()> {
     set_uiaa_request(
         user_id,
         device_id,
         uiaa_info.session.as_ref().expect("session should be set"), // TODO: better session error handling (why is it optional in palpo?)
-        json_body,
+        req_body,
     );
     update_session(
         user_id,
@@ -71,7 +69,6 @@ pub fn update_session(
         )
         .execute(&mut *db::connect()?)?;
     };
-
     Ok(())
 }
 pub fn get_session(user_id: &UserId, device_id: &DeviceId, session: &str) -> AppResult<UiaaInfo> {
@@ -166,17 +163,17 @@ pub fn try_auth(
     Ok((true, uiaa_info))
 }
 
-pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: &CanonicalJsonValue) {
-    UIAA_REQUESTS.write().expect("write UIAA_REQUESTS failed").insert(
-        (user_id.to_owned(), device_id.to_owned(), session.to_owned()),
-        request.to_owned(),
-    );
+pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: UploadSigningKeysReqBody) {
+    UIAA_REQUESTS
+        .write()
+        .expect("write UIAA_REQUESTS failed")
+        .insert((user_id.to_owned(), device_id.to_owned(), session.to_owned()), request);
 }
 
-pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<CanonicalJsonValue> {
+pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<UploadSigningKeysReqBody> {
     UIAA_REQUESTS
         .read()
         .expect("read UIAA_REQUESTS failed")
         .get(&(user_id.to_owned(), device_id.to_owned(), session.to_owned()))
-        .map(|j| j.to_owned())
+        .map(|j| j.clone())
 }

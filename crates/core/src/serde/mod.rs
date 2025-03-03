@@ -72,6 +72,29 @@ pub fn is_true(b: &bool) -> bool {
     *b
 }
 
+/// Returns None if the serialization fails
+pub fn empty_as_none<'de, D: Deserializer<'de>, T: for <'a> Deserialize<'a>>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    let json = Box::<RawJsonValue>::deserialize(deserializer)?;
+
+    let res = serde_json::from_str::<Option<T>>(json.get()).map_err(de::Error::custom);
+
+    match res {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Empty {}
+            if let Ok(Empty {}) = serde_json::from_str(json.get()) {
+                Ok(None)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
 /// Helper function for `serde_json::value::RawValue` deserialization.
 pub fn from_raw_json_value<'a, T, E>(val: &'a RawJsonValue) -> Result<T, E>
 where

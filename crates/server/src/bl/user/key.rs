@@ -3,15 +3,14 @@ use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use palpo_core::UnixMillis;
 use serde_json::json;
 
-use crate::core::client::key::ClaimKeysResBody;
+use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::claim_keys_request;
 use crate::core::identifiers::*;
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
-use crate::core::{client, federation};
+use crate::core::{UnixMillis, client, federation};
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::clean_signatures;
@@ -524,9 +523,9 @@ pub fn add_cross_signing_keys(
     if let Some(user_signing_key) = user_signing_key {
         let mut user_signing_key_ids = user_signing_key.keys.values();
 
-        // let user_signing_key_id = user_signing_key_ids
-        //     .next()
-        //     .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
+        let user_signing_key_id = user_signing_key_ids
+            .next()
+            .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
 
         if user_signing_key_ids.next().is_some() {
             return Err(MatrixError::invalid_param("User signing key contained more than one key.").into());
@@ -671,4 +670,24 @@ pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>
             .load::<OwnedUserId>(&mut db::connect()?)
             .map_err(Into::into)
     }
+}
+
+// Check if a key provided in `body` differs from the same key stored in the DB. Returns
+// true on the first difference. If a key exists in `body` but does not exist in the DB,
+// returns True. If `body` has no keys, this always returns False.
+// Note by 'key' we mean Matrix key rather than JSON key.
+
+// The purpose of this function is to detect whether or not we need to apply UIA checks.
+// We must apply UIA checks if any key in the database is being overwritten. If a key is
+// being inserted for the first time, or if the key exactly matches what is in the database,
+// then no UIA check needs to be performed.
+
+// Args:
+//     user_id: The user who sent the `body`.
+//     body: The JSON request body from POST /keys/device_signing/upload
+// Returns:
+//     true if any key in `body` has a different value in the database.
+pub fn has_different_keys(user_id: &UserId, body: &UploadSigningKeysReqBody) -> AppResult<bool> {
+    //TODO: NOW
+    Ok(true)
 }
