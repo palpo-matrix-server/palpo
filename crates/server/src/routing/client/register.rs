@@ -109,20 +109,20 @@ fn register(
 
     if body.login_type != Some(LoginType::Appservice) && !is_guest {
         if let Some(auth) = &body.auth {
-            let (worked, uiaa) = crate::uiaa::try_auth(
+            let (authed, uiaa) = crate::uiaa::try_auth(
                 &UserId::parse_with_server_name("", &conf.server_name).expect("we know this is valid"),
-                "".into(),
+                &body.device_id.clone().unwrap_or_else(|| "".into()),
                 &auth,
                 &uiaa_info,
             )?;
-            if !worked {
+            if !authed {
                 return Err(AppError::Uiaa(uiaa));
             }
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
                 &UserId::parse_with_server_name("", crate::server_name()).expect("we know this is valid"),
-                "".into(),
+                &body.device_id.clone().unwrap_or_else(|| "".into()),
                 uiaa_info.session.as_ref().expect("session is always set"),
                 Some(&uiaa_info),
             )?;

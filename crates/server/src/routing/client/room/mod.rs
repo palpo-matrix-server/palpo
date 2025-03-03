@@ -645,8 +645,7 @@ pub(super) async fn create_room(
             },
             authed.user_id(),
             &room_id,
-        )
-        .unwrap();
+        )?;
     }
 
     // 5. Events set by preset
