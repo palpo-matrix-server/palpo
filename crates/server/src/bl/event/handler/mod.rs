@@ -97,7 +97,6 @@ pub(crate) async fn handle_incoming_pdu(
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
-        println!("               handle_incoming_pdu  4  {}", event_id);
         return Ok(());
     }
 
@@ -179,7 +178,6 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("handle incoming pdu :{incoming_pdu:?}");
     crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -335,20 +333,20 @@ fn handle_outlier_pdu<'a>(
             .values(db_event)
             .on_conflict_do_nothing()
             .execute(&mut *db::connect()?)?;
-        // let event_data = DbEventData {
-        //     event_id: (&*incoming_pdu.event_id).to_owned(),
-        //     event_sn: incoming_pdu.event_sn,
-        //     room_id: incoming_pdu.room_id.clone(),
-        //     internal_metadata: None,
-        //     json_data: serde_json::to_value(&val)?,
-        //     format_version: None,
-        // };
-        // diesel::insert_into(event_datas::table)
-        //     .values(&event_data)
-        //     .on_conflict((event_datas::event_id, event_datas::event_sn))
-        //     .do_update()
-        //     .set(&event_data)
-        //     .execute(&mut db::connect()?)?;
+        let event_data = DbEventData {
+            event_id: (&*incoming_pdu.event_id).to_owned(),
+            event_sn: incoming_pdu.event_sn,
+            room_id: incoming_pdu.room_id.clone(),
+            internal_metadata: None,
+            json_data: serde_json::to_value(&val)?,
+            format_version: None,
+        };
+        diesel::insert_into(event_datas::table)
+            .values(&event_data)
+            .on_conflict((event_datas::event_id, event_datas::event_sn))
+            .do_update()
+            .set(&event_data)
+            .execute(&mut db::connect()?)?;
 
         debug!("Added pdu as outlier.");
 
@@ -364,7 +362,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     room_id: &RoomId,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
-    if crate::room::timeline::has_pdu(&incoming_pdu.event_id)? {
+    if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
 
@@ -424,7 +422,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
     )?;
-    println!("===========Gathering auth events==auth_events: {auth_events:?}");
 
     let auch_checked = state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
@@ -848,7 +845,6 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         None => return Ok(()),
     };
 
-    println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  0");
     let acl_event_content: RoomServerAclEventContent = match serde_json::from_str(acl_event.content.get()) {
         Ok(content) => content,
         Err(_) => {
@@ -857,17 +853,14 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         }
     };
 
-    println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  1");
     if acl_event_content.allow.is_empty() {
         // Ignore broken acl events
         return Ok(());
     }
 
     if acl_event_content.is_allowed(server_name) {
-        println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  2");
         Ok(())
     } else {
-        println!("EEEEEEEEEEEEEEEEEEEEEEEEacl_check  30");
         info!("Server {} was denied by room ACL in {}", server_name, room_id);
         Err(MatrixError::forbidden("Server was denied by room ACL").into())
     }

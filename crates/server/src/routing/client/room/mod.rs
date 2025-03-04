@@ -632,7 +632,6 @@ pub(super) async fn create_room(
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
-        println!("=== 4. Canonical room alias 0");
         crate::room::timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomCanonicalAlias,

@@ -105,6 +105,13 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     }
 }
 
+pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
+    Ok(diesel_exists!(
+        events::table.filter(events::id.eq(event_id)).filter(events::is_outlier.eq(false)),
+        &mut *db::connect()?
+    )?)
+}
+
 /// Returns the pdu.
 ///
 /// Checks database if not found in the timeline.
@@ -151,7 +158,6 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!("=======append_pdu=={:?} ", pdu.event_id);
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -515,8 +521,7 @@ pub fn create_hash_and_sign_event(
 
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
-    println!("=======create_hash_and_sign_event=={event_type:?} === {content:?}==auth_events: {auth_events:?}");
-
+   
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
@@ -568,7 +573,6 @@ pub fn create_hash_and_sign_event(
         .returning(events::sn)
         .get_result::<i64>(&mut *db::connect()?)?;
 
-    println!("================event_id: {event_id:?} ======  auth_events:{auth_events:?}");
     let mut pdu = PduEvent {
         event_id: event_id.into(),
         event_sn,
@@ -723,7 +727,6 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
-    println!("======create_hash_and_sign_event build_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(

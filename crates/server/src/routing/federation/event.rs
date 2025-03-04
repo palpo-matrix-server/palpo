@@ -23,7 +23,6 @@ pub fn router() -> Router {
 /// - Only works if a user of this server is currently invited or joined the room
 #[endpoint]
 fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>) -> JsonResult<EventResBody> {
-    println!("EEEEEEEEEEEEEEEEEEEEEEEEget event");
     let server_name = &crate::config().server_name;
 
     let event = crate::room::timeline::get_pdu_json(&event_id)?.ok_or_else(|| {
@@ -31,7 +30,6 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>) -> JsonResult<Eve
         MatrixError::not_found("Event not found.")
     })?;
 
-    println!("EEEEEEEEEEEEEEEEEEEEEEEEget event2");
     let room_id_str = event
         .get("room_id")
         .and_then(|val| val.as_str())
@@ -69,7 +67,6 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs) -> JsonResult<EventAuthoriz
 
     crate::event::handler::acl_check(server_name, &args.room_id)?;
 
-    println!("\n\n\n\n\nauth_chain, event ID: {:?}", args.event_id);
     let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
         MatrixError::not_found("Event not found.")
