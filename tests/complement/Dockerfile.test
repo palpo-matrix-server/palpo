@@ -5,7 +5,7 @@ WORKDIR /work
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY crates crates
-COPY tests/complement/cargo-config.toml .cargo/config.toml
+# COPY tests/complement/cargo-config.toml .cargo/config.toml
 # RUN cargo build --release \
 #     && mv target/release/palpo palpo \
 #     && rm -rf target

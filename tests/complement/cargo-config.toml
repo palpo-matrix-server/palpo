@@ -1,7 +1,7 @@
 [build]
 [source.crates-io]
 registry = "sparse+https://github.com/rust-lang/crates.io-index/"
-replace-with = 'ustc'
+# replace-with = 'ustc'
 
 [source.ustc]
 registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"

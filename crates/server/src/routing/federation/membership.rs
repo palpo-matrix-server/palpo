@@ -74,6 +74,7 @@ async fn make_join(args: MakeJoinReqArgs) -> JsonResult<MakeJoinResBody> {
         join_authorized_via_users_server: None,
     })
     .expect("member event is valid value");
+println!("======create_hash_and_sign_event make join");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -222,6 +223,7 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     // let state_lock = services.rooms.state.mutex.lock(&body.room_id).await;
 
+    println!("======create_hash_and_sign_event make leave");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),

@@ -7,6 +7,7 @@ use diesel::prelude::*;
 use lru_cache::LruCache;
 
 use crate::core::identifiers::*;
+use crate::event::DbEvent;
 use crate::{AppResult, MatrixError, Seqnum, db};
 use crate::{event, schema::*};
 
@@ -28,10 +29,11 @@ where
     let chain_sns = get_auth_chain_sns(room_id, starting_event_ids)?;
 
     let full_auth_chain = events::table
-        .filter(events::sn.eq_any(chain_sns))
+        .filter(events::sn.eq_any(&chain_sns))
         .order_by(events::sn.asc())
         .select(events::id)
         .load::<OwnedEventId>(&mut *db::connect()?)?;
+    println!("===get_auth_chain_ids1 chain_sns:{chain_sns:?},  full_auth_chain: {full_auth_chain:?}");
     Ok(full_auth_chain)
 }
 pub fn get_auth_chain_sns<'a, I>(room_id: &'a RoomId, starting_event_ids: I) -> AppResult<Vec<Seqnum>>
@@ -60,25 +62,31 @@ where
     );
 
     let mut full_auth_chain: Vec<Seqnum> = Vec::with_capacity(starting_events.len());
-    for chunk in buckets {
-        let chunk_key: Vec<Seqnum> = chunk.iter().map(|i| i.0).collect();
+    for bucket in buckets {
+        let bucket_key: Vec<Seqnum> = bucket.iter().map(|i| i.0).collect();
 
-        if chunk_key.is_empty() {
-            return Ok(Vec::new());
+        if bucket_key.is_empty() {
+            continue;
         }
 
-        if let Ok(Some(cached)) = get_cached_auth_chain(&chunk_key) {
-            return Ok(cached.to_vec());
+        if let Ok(Some(cached)) = get_cached_auth_chain(&bucket_key) {
+            println!("====bucket_key: {bucket_key:?} cached: {cached:?}");
+
+            full_auth_chain.extend(cached.to_vec());
+            continue;
         }
 
-        let mut chunk_cache: Vec<_> = vec![];
-        for (event_sn, event_id) in chunk {
+        let mut bucket_cache: Vec<_> = vec![];
+        for (event_sn, event_id) in bucket {
             if let Ok(Some(cached)) = get_cached_auth_chain(&[event_sn]) {
-                return Ok(cached.to_vec());
+                bucket_cache.extend(cached.to_vec());
+                continue;
             }
 
             let auth_chain = get_event_auth_chain(room_id, event_id)?;
+            println!("==3==bucket_key: {bucket_key:?} auth_chain: {auth_chain:?}");
             cache_auth_chain(vec![event_sn], auth_chain.as_slice());
+            bucket_cache.extend(auth_chain);
             debug!(
                 ?event_id,
                 elapsed = ?started.elapsed(),
@@ -86,14 +94,14 @@ where
             );
         }
 
-        cache_auth_chain(chunk_key, chunk_cache.as_slice());
+        cache_auth_chain(bucket_key, bucket_cache.as_slice());
         debug!(
-            chunk_cache_length = ?chunk_cache.len(),
+            bucket_cache_length = ?bucket_cache.len(),
             elapsed = ?started.elapsed(),
-            "Cache missed chunk",
+            "Cache missed bucket",
         );
 
-        full_auth_chain.extend(chunk_cache);
+        full_auth_chain.extend(bucket_cache);
     }
     full_auth_chain.sort_unstable();
     full_auth_chain.dedup();
@@ -103,6 +111,7 @@ where
         "done",
     );
 
+    println!("==4==full_auth_chain: {full_auth_chain:?}");
     Ok(full_auth_chain)
 }
 
@@ -116,6 +125,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
 
         match crate::room::timeline::get_pdu(&event_id)? {
             None => {
+                println!("Could not find pdu mentioned in auth event event_id: {}", event_id);
                 tracing::error!("Could not find pdu mentioned in auth events");
             }
             Some(pdu) => {
@@ -128,9 +138,22 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
                     );
                     return Err(MatrixError::forbidden("auth event for incorrect room").into());
                 }
+                println!("=======event_id:{event_id}===auth_events: {:?}", pdu.auth_events);
+                println!(
+                    "{:#?}",
+                    events::table
+                        .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
+                        .select((events::id, events::sn))
+                        .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
+                );
+                println!(
+                    "{:#?}",
+                    events::table
+                        .load::<DbEvent>(&mut *db::connect()?)?
+                );
 
                 for (auth_event_id, auth_event_sn) in events::table
-                    .filter(events::id.eq_any(pdu.auth_events.iter().map(|e|&**e)))
+                    .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
                 {
@@ -144,10 +167,12 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
         }
     }
 
-    Ok(found.into_iter().collect())
+    let found = found.into_iter().collect();
+    println!("======found: {found:?}");
+    Ok(found)
 }
 
-fn                          get_cached_auth_chain(cache_key: &[Seqnum]) -> AppResult<Option<Arc<Vec<Seqnum>>>> {
+fn get_cached_auth_chain(cache_key: &[Seqnum]) -> AppResult<Option<Arc<Vec<Seqnum>>>> {
     // Check RAM cache
     if let Some(result) = AUTH_CHAIN_CACHE.lock().unwrap().get_mut(cache_key) {
         return Ok(Some(Arc::clone(result)));
