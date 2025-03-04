@@ -776,6 +776,7 @@ async fn validate_and_add_event_id(
     ))
     .expect("palpo's reference hash~es are valid event ids");
 
+    // TODO
     // let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
     //     Entry::Vacant(e) => {
     //         e.insert((Instant::now(), 1));
@@ -816,6 +817,7 @@ async fn validate_and_add_event_id(
 
     let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
+    // TODO
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {
     //     warn!("Event {} failed verification {:?} {}", event_id, pdu, e);
     //     back_off(event_id);

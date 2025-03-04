@@ -38,7 +38,7 @@ pub(super) async fn upload(_aa: AuthArgs, body: JsonBody<UploadSigningKeysReqBod
     };
 
     crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info)?;
-    
+
     if let Some(master_key) = &body.master_key {
         crate::user::add_cross_signing_keys(
             authed.user_id(),

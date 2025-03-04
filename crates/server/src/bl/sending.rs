@@ -21,7 +21,6 @@ use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
 
-
 pub const PDU_LIMIT: usize = 50;
 pub const EDU_LIMIT: usize = 100;
 
@@ -156,7 +155,8 @@ async fn handler() -> AppResult<()> {
                             current_transaction_status.remove(&outgoing_kind);
                         }
                     }
-                    Err((outgoing_kind, _x)) => {
+                    Err((outgoing_kind, event)) => {
+                        tracing::error!("Failed to send event: {:?}", event);
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
                             TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
@@ -358,13 +358,12 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
 
 #[tracing::instrument(skip(pdu_id, user, pushkey))]
 pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppResult<()> {
-    // TODO: fixme
-    // let outgoing_kind = OutgoingKind::Push(user.to_owned(), pushkey);
-    // let event = SendingEventType::Pdu(pdu_id.to_owned());
-    // let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
-    // sender
-    //     .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
-    //     .unwrap();
+    let outgoing_kind = OutgoingKind::Push(user.to_owned(), pushkey);
+    let event = SendingEventType::Pdu(pdu_id.to_owned());
+    let keys = queue_requests(&[(&outgoing_kind, event.clone())])?;
+    sender()
+        .send((outgoing_kind, event, keys.into_iter().next().unwrap()))
+        .unwrap();
 
     Ok(())
 }

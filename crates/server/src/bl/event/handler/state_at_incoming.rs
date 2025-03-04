@@ -19,6 +19,7 @@ pub(super) async fn state_at_incoming_degree_one(
     };
 
     let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {
+
         return Ok(None);
     };
 
@@ -114,7 +115,7 @@ pub(super) async fn state_at_incoming_resolved(
         &fork_states,
         auth_chain_sets
             .iter()
-            .map(|set| set.iter().map(|id|Arc::from(&**id)).collect::<HashSet<_>>())
+            .map(|set| set.iter().map(|id| Arc::from(&**id)).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         |id| {
             let res = crate::room::timeline::get_pdu(id);

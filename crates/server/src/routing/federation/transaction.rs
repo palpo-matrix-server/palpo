@@ -46,7 +46,6 @@ async fn send_message(
     let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     handle_edus(body.edus, &body.origin).await;
 
-    println!("resolved_map        :  {resolved_map:#?}");
     json_ok(SendMessageResBody {
         pdus: resolved_map
             .into_iter()

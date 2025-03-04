@@ -327,14 +327,26 @@ fn handle_outlier_pdu<'a>(
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
+        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, Some(incoming_pdu.event_sn), &val)?;
+        db_event.is_outlier = true;
         diesel::insert_into(events::table)
-            .values(NewDbEvent::from_canonical_json(
-                &incoming_pdu.event_id,
-                Some(incoming_pdu.event_sn),
-                &val,
-            )?)
+            .values(db_event)
             .on_conflict_do_nothing()
             .execute(&mut *db::connect()?)?;
+        let event_data = DbEventData {
+            event_id: (&*incoming_pdu.event_id).to_owned(),
+            event_sn: incoming_pdu.event_sn,
+            room_id: incoming_pdu.room_id.clone(),
+            internal_metadata: None,
+            json_data: serde_json::to_value(&val)?,
+            format_version: None,
+        };
+        diesel::insert_into(event_datas::table)
+            .values(&event_data)
+            .on_conflict((event_datas::event_id, event_datas::event_sn))
+            .do_update()
+            .set(&event_data)
+            .execute(&mut db::connect()?)?;
 
         debug!("Added pdu as outlier.");
 
@@ -350,7 +362,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     room_id: &RoomId,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(Some(_)) = crate::room::timeline::get_pdu(&incoming_pdu.event_id) {
+    if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
 
@@ -402,7 +414,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     }
     debug!("Auth check succeeded");
 
-    // Soft fail check before doing state res
+    debug!("Gathering auth events");
     let auth_events = crate::room::state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
@@ -411,11 +423,13 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
-    debug!("Performing soft-fail check");
     let auch_checked = state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
     .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
+
+    // Soft fail check before doing state res
+    debug!("Performing soft-fail check");
 
     // TODO: NOW
     let soft_fail = false;

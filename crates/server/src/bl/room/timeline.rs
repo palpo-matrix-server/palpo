@@ -1,3 +1,4 @@
+use core::panic;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::iter::once;
@@ -104,6 +105,13 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     }
 }
 
+pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
+    Ok(diesel_exists!(
+        events::table.filter(events::id.eq(event_id)).filter(events::is_outlier.eq(false)),
+        &mut *db::connect()?
+    )?)
+}
+
 /// Returns the pdu.
 ///
 /// Checks database if not found in the timeline.
@@ -119,6 +127,13 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
         .transpose()
+}
+
+pub fn has_pdu(event_id: &EventId) -> AppResult<bool> {
+    Ok(diesel_exists!(
+        event_datas::table.filter(event_datas::event_id.eq(event_id)),
+        &mut *db::connect()?
+    )?)
 }
 
 /// Removes a pdu and creates a new one with the same id.
@@ -506,7 +521,7 @@ pub fn create_hash_and_sign_event(
 
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
-
+   
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
@@ -643,8 +658,7 @@ pub fn create_hash_and_sign_event(
     );
 
     // Generate short event id
-    let _point_id =
-        crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
+    let _point_id = crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
 
     Ok((pdu, pdu_json))
 }

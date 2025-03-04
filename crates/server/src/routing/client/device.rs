@@ -1,4 +1,3 @@
-
 use diesel::prelude::*;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
