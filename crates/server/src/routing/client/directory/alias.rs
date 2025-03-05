@@ -73,7 +73,12 @@ pub(super) async fn upsert_alias(
     let authed = depot.authed_info()?;
     let alias_id = room_alias.into_inner();
     if alias_id.is_remote() {
+        println!("Alias is from another server.");
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
+    }
+
+    if crate::room::resolve_local_alias(&alias_id)?.is_some() {
+        return Err(MatrixError::forbidden("Alias already exists.").into());
     }
 
     let query = room_aliases::table
@@ -84,15 +89,8 @@ pub(super) async fn upsert_alias(
             .brief("A room alias with that name already exists.")
             .into());
     }
-    diesel::insert_into(room_aliases::table)
-        .values(DbRoomAlias {
-            alias_id,
-            room_id: body.room_id.clone(),
-            created_by: authed.user_id().to_owned(),
-            created_at: UnixMillis::now(),
-        })
-        .on_conflict_do_nothing()
-        .execute(&mut *db::connect()?)?;
+    
+    crate::room::set_alias(body.room_id.clone(), alias_id, authed.user_id())?;
 
     empty_ok()
 }

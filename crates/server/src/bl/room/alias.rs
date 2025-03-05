@@ -58,13 +58,16 @@ pub fn set_alias(
     alias_id: impl Into<OwnedRoomAliasId>,
     created_by: impl Into<OwnedUserId>,
 ) -> AppResult<()> {
+    let alias_id = alias_id.into();
+    
     diesel::insert_into(room_aliases::table)
         .values(DbRoomAlias {
-            alias_id: alias_id.into(),
+            alias_id,
             room_id: room_id.into(),
             created_by: created_by.into(),
             created_at: UnixMillis::now(),
         })
+        .on_conflict_do_nothing()
         .execute(&mut db::connect()?)
         .map(|_| ())
         .map_err(Into::into)
