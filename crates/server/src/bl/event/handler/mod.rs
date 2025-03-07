@@ -57,16 +57,11 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
-    println!(
-        "ddddddddddddddddd {} handle_incoming_pdu origin:{origin} event_id:{event_id} room_id:{room_id} is_timeline_event:{is_timeline_event}",
-        crate::server_name()
-    );
     // 1. Skip the PDU if we already have it as a timeline event
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
 
-    println!("LLLLLLLLLLLLLLL  0");
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden("Federation of this room is currently disabled on this server.").into());
@@ -112,15 +107,10 @@ pub(crate) async fn handle_incoming_pdu(
         return Ok(());
     }
 
-    println!(
-        "ddddddddddddddddd   9  incoming_pdu.prev_events: {:?}",
-        incoming_pdu.prev_events
-    );
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
 
-    println!("ddddddddddddddddd   9 - 1");
     let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
@@ -181,7 +171,6 @@ pub(crate) async fn handle_incoming_pdu(
         }
     }
 
-    println!("ddddddddddddddddd   10");
     // Done with prev events, now handling the incoming event
 
     let start_time = Instant::now();
@@ -189,9 +178,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("ddddddddddddddddd   11");
     crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await.unwrap();
-    println!("ddddddddddddddddd   12");
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -374,19 +361,15 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("=================upgrade_outlier_to_timeline_pdu");
     // Skip the PDU if we already have it as a timeline event
-    println!("upgrade_outlier_to_timeline_pdu 1  {}  haspdu:{}", crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)?, crate::room::timeline::has_pdu(&incoming_pdu.event_id)?);
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
-	println!("upgrade_outlier_to_timeline_pdu 2");
 
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
 
-    println!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let timer = Instant::now();
     let room_version_id = &crate::room::room_version(room_id)?;
@@ -641,7 +624,6 @@ pub(crate) async fn fetch_and_handle_outliers(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
-    println!("==================== fetch_and_handle_outliers origin:{origin} events:{events:?} room_id:{room_id} room_version_id:{room_version_id}");
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
             e.insert((Instant::now(), 1));
@@ -685,13 +667,11 @@ pub(crate) async fn fetch_and_handle_outliers(
             }
 
             if crate::room::timeline::has_pdu(&next_id).unwrap_or(false) {
-				println!("Found {next_id} in db2");
                 trace!("Found {} in db", next_id);
                 continue;
             }
 
             info!("Fetching {} over federation.", next_id);
-            println!("Fetching {} over federation.", next_id);
             let request = get_events_request(&origin.origin().await, &next_id, None)?.into_inner();
 
             match crate::sending::send_federation_request(&origin, request)
@@ -789,8 +769,6 @@ async fn fetch_missing_prev_events(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
-    
-    println!("==================== fetch_missing_prev_events origin:{origin} room_id:{room_id} room_version_id:{room_version_id} initial_set:{initial_set:?}");
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut eventid_info = HashMap::new();
@@ -803,7 +781,6 @@ async fn fetch_missing_prev_events(
 
     let room_version_id = &crate::room::room_version(room_id)?;
     while let Some(prev_event_id) = todo_outlier_stack.pop_front() {
-        println!("pppppppppppppprevious id: {prev_event_id}");
         if let Some((pdu, json_opt)) =
             fetch_and_handle_outliers(origin, &[prev_event_id.clone()], room_id, room_version_id)
                 .await?

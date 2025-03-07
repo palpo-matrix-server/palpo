@@ -47,7 +47,6 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|(event_id, event_sn, json)| {
             PduEvent::from_json_value(&event_id, event_sn, json).map_err(|e| {
-                println!("Invalid non outlier PDU in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
             })
         })
@@ -83,7 +82,6 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .optional()?
         .map(|json| {
             serde_json::from_value(json).map_err(|e| {
-                println!("Invalid PDU json in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
             })
         })
@@ -110,7 +108,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|json| {
             PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
-                println!("Invalid non outlier PDU in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
             })
         })
@@ -142,7 +139,6 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|(event_sn, json)| {
             PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
-                println!("Invalid PDU in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
             })
         })
@@ -545,7 +541,7 @@ pub fn create_hash_and_sign_event(
 
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
-    println!("=<<<<<<<<<<<auth_events: {auth_events:?}");
+    
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
@@ -752,7 +748,6 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
-    println!("IIIIIIIIIIIIIbuild_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(

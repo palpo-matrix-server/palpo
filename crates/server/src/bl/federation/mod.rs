@@ -83,7 +83,6 @@ pub(crate) async fn send_request(
     let url = request.url().clone();
 
     debug!("Sending request to {destination} at {url}");
-    println!("=========Sending request to {destination} at {url}");
     // if url.to_string().contains("federation/v1/event/") {
     //     panic!("sdddddddddddddddddd");
     // }

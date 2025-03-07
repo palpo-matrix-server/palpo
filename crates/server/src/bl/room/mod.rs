@@ -278,7 +278,6 @@ pub fn update_membership(
                 ignored.ignored_users.iter().any(|(user, _details)| user == sender)
             });
 
-            println!("===============inviate   0is_ignored: {is_ignored}");
             if is_ignored {
                 return Ok(());
             }
@@ -297,8 +296,7 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-            println!("===============inviate  room_id:{room_id} user_id:{user_id} membership:{membership:?}");
-                diesel::insert_into(room_users::table)
+             diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
@@ -423,7 +421,6 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
         .into_iter()
         .map(|user_id| user_id.server_name().to_owned())
         .collect::<Vec<OwnedServerName>>();
-    println!("================joined servers: {:?}", joined_servers);
 
     diesel::delete(
         room_servers::table
@@ -433,7 +430,6 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut db::connect()?)?;
 
     for joined_server in joined_servers {
-        println!("============={room_id}===joined joined_server: {:?}", joined_server);
         diesel::insert_into(room_servers::table)
             .values((
                 room_servers::room_id.eq(room_id),
@@ -441,10 +437,6 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
             ))
             .on_conflict_do_nothing()
             .execute(&mut db::connect()?)?;
-        println!(
-            "================in in room: {:?}",
-            is_server_in_room(&joined_server, room_id)
-        );
     }
 
     Ok(())

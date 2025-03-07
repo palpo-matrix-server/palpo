@@ -376,7 +376,6 @@ pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
         .filter(room_servers::server_id.ne(crate::server_name()))
         .select(room_servers::server_id)
         .load::<OwnedServerName>(&mut *db::connect()?)?;
-    println!("==========send_pdu_room: room_id: {room_id:?} pdu_id: {:?}, servers:{servers:?}", pdu_id);
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 

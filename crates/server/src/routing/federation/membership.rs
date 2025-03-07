@@ -37,7 +37,6 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
-    println!("================federation make_join 0  {}", crate::server_name());
     if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -47,7 +46,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         return Err(MatrixError::bad_json("Not allowed to join on behalf of another server/user.").into());
     }
 
-    println!("================federation make_join 1");
     crate::event::handler::acl_check(args.user_id.server_name(), &args.room_id)?;
 
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
@@ -78,7 +76,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         }
     };
 
-    println!("================federation make_join 5");
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
         blurhash: None,
@@ -90,7 +87,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         join_authorized_via_users_server,
     })
     .expect("member event is valid value");
-    println!("IIIIIIIIIIIIIbmake_join");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -101,14 +97,11 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         &args.user_id,
         &args.room_id,
     )?;
-    println!("IIIIIIIIIIIIIbmake_join 2");
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
-    println!("IIIIIIIIIIIIIbmake_join 3");
     let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     };
-    println!("IIIIIIIIIIIIIbmake_join 4");
     json_ok(body)
 }
 
@@ -243,7 +236,6 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     // let state_lock = services.rooms.state.mutex.lock(&body.room_id).await;
 
-    println!("IIIIIIIIIIIIIb make_leave");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
@@ -252,7 +244,6 @@ async fn make_leave(args: MakeLeaveReqArgs) -> JsonResult<MakeLeaveResBody> {
         &args.user_id,
         &args.room_id,
     )?;
-    println!("IIIIIIIIIIIIIb make_leave2");
 
     // drop(state_lock);
 
@@ -278,7 +269,6 @@ async fn send_join_v2(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV2> {
-    println!("==============================send_join_v2");
     let body = body.into_inner();
     // let server_name = args.room_id.server_name().map_err(AppError::public)?;
     // crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -296,7 +286,6 @@ async fn send_join_v1(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV1> {
-    println!("==============================send_join_v1");
     let body = body.into_inner();
     let room_state = crate::membership::send_join_v1(depot.origin()?, &args.room_id, &body.0).await?;
     json_ok(SendJoinResBodyV1(room_state))

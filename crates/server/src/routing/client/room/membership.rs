@@ -261,7 +261,6 @@ pub(crate) async fn join_room_by_id_or_alias(
             // TODO
             // banned_room_check(authed.user_id(), Some(&room_id), room_id.server_name(), client)?;
 
-            println!("=======join_room_by_id_or_alias_route  2 servers:{servers:?}");
             // TODO
             // servers.extend(crate::room::state::servers_invite_via(&room_id)?);
 
@@ -274,7 +273,6 @@ pub(crate) async fn join_room_by_id_or_alias(
                 .filter_map(|sender| UserId::parse(sender).ok())
                 .map(|user| user.server_name().to_owned());
 
-            println!("=======join_room_by_id_or_alias_route  2 1 state_servers:{state_servers:?}");
             servers.extend(state_servers);
             if let Ok(server) = room_id.server_name() {
                 servers.push(server.to_owned());
@@ -321,8 +319,6 @@ pub(crate) async fn join_room_by_id_or_alias(
         }
     };
 
-    println!(">>>>>>>>>>>>>>>>before join roomm");
-
     let join_room_response = crate::membership::join_room(
         authed.user(),
         &room_id,
@@ -333,7 +329,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     )
     .await?;
 
-    println!(">>>>>>>>>>>>>>>>after join roomm");
     json_ok(JoinRoomResBody {
         room_id: join_room_response.room_id,
     })

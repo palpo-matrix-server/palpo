@@ -22,7 +22,6 @@ pub async fn send_state_event_for_key(
     json: RawJson<AnyStateEventContent>,
     state_key: String,
 ) -> AppResult<Arc<EventId>> {
-    println!("ssssssssssssend_state_event_for_key");
     allowed_to_send_state_event(room_id, event_type, &state_key, &json)?;
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -86,12 +85,10 @@ fn allowed_to_send_state_event(
         StateEventType::RoomCanonicalAlias => {
             if let Ok(canonical_alias) = serde_json::from_str::<RoomCanonicalAliasEventContent>(json.inner().get()) {
                 let mut aliases = canonical_alias.alt_aliases.clone();
-                println!("alt_aliases: {:?}", aliases);
-
+                
                 if let Some(alias) = canonical_alias.alias {
                     aliases.push(alias);
                 }
-                println!("alias: {:?}", aliases);
 
                 for alias in aliases {
                     if !crate::is_local_server(alias.server_name()) {

@@ -373,7 +373,7 @@ pub fn get_auth_events(
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
             } else {
-                println!("==========pdu is none");
+                tracing::warn!("pdu is not found: {}", event_id);
             }
         }
     }
@@ -803,7 +803,6 @@ pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<
 }
 
 pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) -> AppResult<bool> {
-    println!("IIIIIIIIIIIIIbe user_can_invite");
     let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
     let new_event = PduBuilder {

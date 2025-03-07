@@ -73,7 +73,6 @@ pub(super) async fn upsert_alias(
     let authed = depot.authed_info()?;
     let alias_id = room_alias.into_inner();
     if alias_id.is_remote() {
-        println!("Alias is from another server.");
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
     }
 

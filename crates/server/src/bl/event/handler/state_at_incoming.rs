@@ -13,43 +13,27 @@ use crate::{AppError, AppResult, JsonValue, db};
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
-    println!("=state_at_incoming_degree_one 0");
     let prev_event = &*incoming_pdu.prev_events[0];
     let Some(prev_frame_id) = crate::room::state::get_pdu_frame_id(prev_event)? else {
-        println!("=state_at_incoming_degree_one 1");
         return Ok(None);
     };
 
     let Ok(mut state) = crate::room::state::get_full_state_ids(prev_frame_id) else {
-        println!("=state_at_incoming_degree_one 1-0");
         return Ok(None);
     };
 
     debug!("Using cached state");
-    println!(
-        "=state_at_incoming_degree_one 3 dd prev_event:{}  {:#?}",
-        prev_event,
-        crate::event::get_db_event(prev_event)
-    );
-    println!(
-        "=state_at_incoming_degree_one 3 prev_event:{}  {:#?}",
-        prev_event,
-        crate::room::timeline::has_pdu(prev_event)
-    );
     let prev_pdu = crate::room::timeline::get_pdu(prev_event)
         .ok()
         .flatten()
         .ok_or_else(|| AppError::internal("Could not find prev event, but we know the state."))?;
 
-    println!("=state_at_incoming_degree_one 4");
     if let Some(state_key) = &prev_pdu.state_key {
         let state_key_id = crate::room::state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
 
         state.insert(state_key_id, Arc::from(prev_event));
         // Now it's the state after the pdu
-        println!("=state_at_incoming_degree_one 5");
     }
-    println!("=state_at_incoming_degree_one 6");
 
     Ok(Some(state))
 }
