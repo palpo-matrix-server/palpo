@@ -222,9 +222,6 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut db::connect()?)?;
-    if  crate::event::get_db_event(&*pdu.event_id)?.is_none() {
-        panic!("NNNNNNNNNNNNNNNNNNNNN");
-    }
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
