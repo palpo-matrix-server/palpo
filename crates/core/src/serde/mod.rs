@@ -74,7 +74,7 @@ pub fn is_true(b: &bool) -> bool {
 }
 
 /// Returns None if the serialization fails
-pub fn empty_as_none<'de, D: Deserializer<'de>, T: for <'a> Deserialize<'a>>(
+pub fn empty_as_none<'de, D: Deserializer<'de>, T: for<'a> Deserialize<'a>>(
     deserializer: D,
 ) -> Result<Option<T>, D::Error> {
     let json = Box::<RawJsonValue>::deserialize(deserializer)?;

@@ -4,6 +4,14 @@ use std::collections::{HashMap, HashSet};
 use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
+use diesel::prelude::*;
+use palpo_core::client::filter::RoomEventFilter;
+use palpo_core::federation::backfill::BackfillReqArgs;
+use serde::Deserialize;
+use serde_json::value::to_raw_value;
+use tracing::{error, info, warn};
+use ulid::Ulid;
+
 use crate::core::client::filter::UrlFilter;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -20,20 +28,11 @@ use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, 
 use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, UnixMillis, user_id};
 use crate::event::{DbEventData, NewDbEvent};
+use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::{AppError, AppResult, MatrixError, db, utils};
 use crate::{GetUrlOrigin, schema::*};
-use crate::{
-    JsonValue, diesel_exists,
-    event::{EventHash, PduBuilder, PduEvent},
-};
-use diesel::prelude::*;
-use palpo_core::client::filter::RoomEventFilter;
-use palpo_core::federation::backfill::BackfillReqArgs;
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use tracing::{error, info, warn};
-use ulid::Ulid;
+use crate::{JsonValue, Seqnum, diesel_exists};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -43,11 +42,15 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
     event_datas::table
         .filter(event_datas::room_id.eq(room_id))
         .order(event_datas::event_sn.asc())
-        .select(event_datas::json_data)
-        .first::<JsonValue>(&mut *db::connect()?)
-        .optional()
-        .map(|json| json.map(|json| serde_json::from_value(json).expect("PduEvent is valid")))
-        .map_err(Into::into)
+        .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+        .first::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)
+        .optional()?
+        .map(|(event_id, event_sn, json)| {
+            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|e| {
+                AppError::internal("Invalid PDU in db.")
+            })
+        })
+        .transpose()
 }
 
 #[tracing::instrument]
@@ -62,54 +65,63 @@ pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
 
 /// Returns the `count` of this pdu's id.
 pub fn get_event_sn(event_id: &EventId) -> AppResult<Option<i64>> {
-    Ok(events::table
+    events::table
         .find(event_id)
         .select(events::sn)
         .first::<i64>(&mut *db::connect()?)
-        .optional()?)
+        .optional()
+        .map_err(Into::into)
 }
 
 /// Returns the json of a pdu.
 pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>> {
-    let query = events::table.filter(events::id.eq(event_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
-        event_datas::table
-            .filter(event_datas::event_id.eq(event_id))
-            .select(event_datas::json_data)
-            .first::<JsonValue>(&mut *db::connect()?)
-            .optional()?
-            .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
-            .transpose()
-    } else {
-        Ok(None)
-    }
+    event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select(event_datas::json_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?
+        .map(|json| {
+            serde_json::from_value(json).map_err(|e| {
+                AppError::internal("Invalid PDU in db.")
+            })
+        })
+        .transpose()
 }
 
 /// Returns the pdu.
 ///
 /// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
-    let query = events::table
+    let Some(event_sn) = events::table
         .filter(events::is_outlier.eq(false))
-        .filter(events::id.eq(event_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
-        event_datas::table
-            .filter(event_datas::event_id.eq(event_id))
-            .select(event_datas::json_data)
-            .first::<JsonValue>(&mut *db::connect()?)
-            .optional()?
-            .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
-            .transpose()
-    } else {
-        Ok(None)
-    }
+        .filter(events::id.eq(event_id))
+        .select(events::sn)
+        .first::<Seqnum>(&mut *db::connect()?)
+        .optional()?
+    else {
+        return Ok(None);
+    };
+    event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select(event_datas::json_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?
+        .map(|json| {
+            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
+                AppError::internal("Invalid PDU in db.")
+            })
+        })
+        .transpose()
 }
 
 pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
-    Ok(diesel_exists!(
-        events::table.filter(events::id.eq(event_id)).filter(events::is_outlier.eq(false)),
+    diesel_exists!(
+        events::table
+            .filter(events::id.eq(event_id))
+            .filter(events::is_outlier.eq(false)),
         &mut *db::connect()?
-    )?)
+    )
+    .map_err(Into::into)
 }
 
 /// Returns the pdu.
@@ -122,18 +134,23 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     // }
     event_datas::table
         .filter(event_datas::event_id.eq(event_id))
-        .select(event_datas::json_data)
-        .first::<JsonValue>(&mut *db::connect()?)
+        .select((event_datas::event_sn, event_datas::json_data))
+        .first::<(Seqnum, JsonValue)>(&mut *db::connect()?)
         .optional()?
-        .map(|json| serde_json::from_value(json).map_err(|_| AppError::internal("Invalid PDU in db.")))
+        .map(|(event_sn, json)| {
+            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
+                AppError::internal("Invalid PDU in db.")
+            })
+        })
         .transpose()
 }
 
 pub fn has_pdu(event_id: &EventId) -> AppResult<bool> {
-    Ok(diesel_exists!(
+    diesel_exists!(
         event_datas::table.filter(event_datas::event_id.eq(event_id)),
         &mut *db::connect()?
-    )?)
+    )
+    .map_err(Into::into)
 }
 
 /// Removes a pdu and creates a new one with the same id.
@@ -205,6 +222,9 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut db::connect()?)?;
+    if  crate::event::get_db_event(&*pdu.event_id)?.is_none() {
+        panic!("NNNNNNNNNNNNNNNNNNNNN");
+    }
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
@@ -521,7 +541,8 @@ pub fn create_hash_and_sign_event(
 
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
-   
+    
+
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
@@ -765,7 +786,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    crate::sending::send_pdu(servers.into_iter(), &pdu.event_id)?;
+    crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
 }

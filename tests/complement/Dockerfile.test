@@ -5,14 +5,15 @@ WORKDIR /work
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY crates crates
+COPY target/debug/palpo palpo
 # COPY tests/complement/cargo-config.toml .cargo/config.toml
 # RUN cargo build --release \
 #     && mv target/release/palpo palpo \
 #     && rm -rf target
 # RUN --mount=type=cache,target=/root/.cargo cargo build \
-RUN cargo build \
-&& mv target/debug/palpo palpo \
-&& rm -rf target
+# RUN cargo build \
+# && mv target/debug/palpo palpo \
+# && rm -rf target
 
 COPY tests/complement/palpo.toml palpo.toml
 COPY tests/complement/caddy.json caddy.json
@@ -20,7 +21,7 @@ COPY tests/complement/startup.sh startup.sh
 
 ENV PALPO_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/palpo"
 ENV PALPO_CONFIG=/work/palpo.toml
-ENV RUST_LOG="debug,palpo=warn,palpo_core=warn,salvo=error"
+ENV RUST_LOG="warn,palpo=warn,palpo_core=warn,salvo=error"
 ENV LOG_FORMAT=text
 
 # RUN echo "log = \"warn,_=off,sled=off\"" >> palpo.toml

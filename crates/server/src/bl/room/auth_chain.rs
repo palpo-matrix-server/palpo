@@ -69,7 +69,6 @@ where
         }
 
         if let Ok(Some(cached)) = get_cached_auth_chain(&bucket_key) {
-
             full_auth_chain.extend(cached.to_vec());
             continue;
         }
@@ -133,7 +132,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
                     );
                     return Err(MatrixError::forbidden("auth event for incorrect room").into());
                 }
-       
+
                 for (auth_event_id, auth_event_sn) in events::table
                     .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
                     .select((events::id, events::sn))

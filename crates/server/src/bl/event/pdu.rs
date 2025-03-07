@@ -12,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::{UnixMillis, UserId};
-use crate::{AppError, AppResult, JsonValue};
+use crate::{AppError, AppResult, JsonValue, Seqnum};
 
 /// Content hashes of a PDU.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -329,13 +329,29 @@ impl PduEvent {
         to_raw_value(&pdu_json).expect("CanonicalJson is valid serde_json::Value")
     }
 
-    pub fn from_id_val(event_id: &EventId, mut json: CanonicalJsonObject) -> Result<Self, serde_json::Error> {
+    pub fn from_canonical_object(
+        event_id: &EventId,
+        event_sn: Seqnum,
+        mut json: CanonicalJsonObject,
+    ) -> Result<Self, serde_json::Error> {
         json.insert(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
+        json.insert("event_sn".to_owned(), event_sn.into());
 
         serde_json::from_value(serde_json::to_value(json).expect("valid JSON"))
+    }
+
+    pub fn from_json_value(event_id: &EventId, event_sn: Seqnum, json: JsonValue) -> AppResult<Self> {
+        if let JsonValue::Object(mut obj) = json {
+            obj.insert("event_id".to_owned(), event_id.as_str().into());
+            obj.insert("event_sn".to_owned(), event_sn.into());
+
+            serde_json::from_value(serde_json::Value::Object(obj)).map_err(Into::into)
+        } else {
+            Err(AppError::public("Invalid JSON value"))
+        }
     }
 
     pub fn get_content<T>(&self) -> Result<T, serde_json::Error>

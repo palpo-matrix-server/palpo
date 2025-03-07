@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::events::room::member::RoomMemberEvent;
 use crate::serde::{RawJson, StringEnum};
 use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr, third_party::Medium,
+    OwnedMxcUri, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
+    third_party::Medium,
 };
 
 /// A signature of an `m.third_party_invite` token to prove that this user owns a third party
@@ -390,10 +391,32 @@ impl JoinedRoomsResBody {
 
 /// Request type for the `join_room_by_id` endpoint.
 #[derive(ToSchema, Deserialize, Default, Debug)]
-pub struct JoinRoomReqBody {
+pub struct JoinRoomByIdReqBody {
     /// The signature of a `m.third_party_invite` token to prove that this user owns a third
     /// party identity which has been invited to the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub third_party_signed: Option<ThirdPartySigned>,
+
+    /// Optional reason for joining the room.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+// const METADATA: Metadata = metadata! {
+//     method: POST,
+//     rate_limited: true,
+//     authentication: AccessToken,
+//     history: {
+//         1.0 => "/_matrix/client/r0/join/:room_id_or_alias",
+//         1.1 => "/_matrix/client/v3/join/:room_id_or_alias",
+//     }
+// };
+
+/// Request type for the `join_room_by_id_or_alias` endpoint.
+#[derive(ToSchema, Deserialize, Debug)]
+pub struct JoinRoomByIdOrAliasReqBody {
+    /// The signature of a `m.third_party_invite` token to prove that this user owns a third
+    /// party identity which has been invited to the room.
     pub third_party_signed: Option<ThirdPartySigned>,
 
     /// Optional reason for joining the room.

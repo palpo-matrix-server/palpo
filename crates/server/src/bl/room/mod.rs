@@ -247,7 +247,12 @@ pub fn update_membership(
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
+                        room_server_id: room_id
+                            .server_name()
+                            .map_err(|s| AppError::public("bad room server name"))?
+                            .to_owned(),
                         user_id: user_id.to_owned(),
+                        user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
                         sender_id: sender.to_owned(),
@@ -291,10 +296,15 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-                diesel::insert_into(room_users::table)
+             diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
+                        room_server_id: room_id
+                            .server_name()
+                            .map_err(|s| AppError::public("bad room server name"))?
+                            .to_owned(),
                         user_id: user_id.to_owned(),
+                        user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
                         sender_id: sender.to_owned(),
@@ -327,7 +337,12 @@ pub fn update_membership(
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
+                        room_server_id: room_id
+                            .server_name()
+                            .map_err(|s| AppError::public("bad room server name"))?
+                            .to_owned(),
                         user_id: user_id.to_owned(),
+                        user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
                         sender_id: sender.to_owned(),
@@ -418,7 +433,7 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
         diesel::insert_into(room_servers::table)
             .values((
                 room_servers::room_id.eq(room_id),
-                room_servers::server_id.eq(joined_server),
+                room_servers::server_id.eq(&joined_server),
             ))
             .on_conflict_do_nothing()
             .execute(&mut db::connect()?)?;
@@ -474,22 +489,6 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.eq(server));
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
-}
-pub fn get_room_servers(room_id: &RoomId, includes_self: bool) -> AppResult<Vec<OwnedServerName>> {
-    if includes_self {
-        room_servers::table
-            .filter(room_servers::room_id.eq(room_id))
-            .select(room_servers::server_id)
-            .load::<OwnedServerName>(&mut *db::connect()?)
-            .map_err(Into::into)
-    } else {
-        room_servers::table
-            .filter(room_servers::room_id.eq(room_id))
-            .filter(room_servers::server_id.ne(room_id.server_name().map_err(AppError::public)?))
-            .select(room_servers::server_id)
-            .load::<OwnedServerName>(&mut *db::connect()?)
-            .map_err(Into::into)
-    }
 }
 
 pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {

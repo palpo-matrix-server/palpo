@@ -2,9 +2,9 @@ use std::{collections::BTreeMap, fmt};
 
 use crate::OwnedEventId;
 use serde::{
+    Deserialize, Serialize,
     de::{Deserializer, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
-    Deserialize, Serialize,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -22,16 +22,16 @@ where
 {
     let mut map = serializer.serialize_map(Some(response.len()))?;
     for (key, value) in response {
-        let wrapped_error = WrappedError { error: value.clone().err() };
+        let wrapped_error = WrappedError {
+            error: value.clone().err(),
+        };
         map.serialize_entry(&key, &wrapped_error)?;
     }
     map.end()
 }
 
 #[allow(clippy::type_complexity)]
-pub(crate) fn deserialize<'de, D>(
-    deserializer: D,
-) -> Result<BTreeMap<OwnedEventId, Result<(), String>>, D::Error>
+pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<BTreeMap<OwnedEventId, Result<(), String>>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -68,7 +68,7 @@ where
 mod tests {
     use std::collections::BTreeMap;
 
-    use ruma_common::{event_id, owned_event_id, OwnedEventId};
+    use ruma_common::{OwnedEventId, event_id, owned_event_id};
     use serde_json::{json, value::Serializer as JsonSerializer};
 
     use super::{deserialize, serialize};
@@ -76,8 +76,10 @@ mod tests {
     #[test]
     fn serialize_error() {
         let mut response: BTreeMap<OwnedEventId, Result<(), String>> = BTreeMap::new();
-        response
-            .insert(owned_event_id!("$someevent:matrix.org"), Err("Some processing error.".into()));
+        response.insert(
+            owned_event_id!("$someevent:matrix.org"),
+            Err("Some processing error.".into()),
+        );
 
         let serialized = serialize(&response, JsonSerializer).unwrap();
         let json = json!({
@@ -142,6 +144,10 @@ mod tests {
             "$someevent:matrix.org": {}
         });
         let response = deserialize(json).unwrap();
-        response.get(event_id!("$someevent:matrix.org")).unwrap().as_ref().unwrap();
+        response
+            .get(event_id!("$someevent:matrix.org"))
+            .unwrap()
+            .as_ref()
+            .unwrap();
     }
 }

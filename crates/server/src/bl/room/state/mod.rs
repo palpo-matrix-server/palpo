@@ -67,16 +67,9 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in event_ids {
-        let pdu = match crate::room::timeline::get_pdu_json(&event_id)? {
-            Some(pdu) => pdu,
-            None => continue,
-        };
-
-        let pdu: PduEvent = match serde_json::from_str(
-            &serde_json::to_string(&pdu).expect("CanonicalJsonObj can be serialized to JSON"),
-        ) {
-            Ok(pdu) => pdu,
-            Err(_) => continue,
+        let pdu = match crate::room::timeline::get_pdu(&event_id) {
+            Ok(Some(pdu)) => pdu,
+            _ => continue,
         };
 
         match pdu.event_ty {
@@ -379,6 +372,8 @@ pub fn get_auth_events(
         if let Some(key) = sauth_events.remove(&state_key_id) {
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
+            } else {
+                tracing::warn!("pdu is not found: {}", event_id);
             }
         }
     }
@@ -826,23 +821,13 @@ pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
     })
 }
 
-// #[tracing::instrument]
-// pub fn left_state(
-//     user_id: &UserId,
-//     room_id: &RoomId,
-//
-// ) -> AppResult<Option<Vec<AnyStrippedStateEvent>>> {
-// let mut key = user_id.as_bytes().to_vec();
-// key.push(0xff);
-// key.extend_from_slice(room_id.as_bytes());
-
-// self.userroomid_leftstate
-//     .get(&key)?
-//     .map(|state| {
-//         let state = serde_json::from_slice(&state)
-//             .map_err(|_| AppError::public("Invalid state in userroomid_leftstate."))?;
-
-//         Ok(state)
-//     })
-//     .transpose()
-// }
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut *db::connect()?)
+        .map_err(Into::into)
+}

@@ -17,6 +17,7 @@ use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageR
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
 use crate::core::{UnixMillis, device_id, push};
+use crate::schema::*;
 use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
@@ -368,8 +369,18 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
     Ok(())
 }
 
+#[tracing::instrument]
+pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
+    let servers = room_servers::table
+        .filter(room_servers::room_id.eq(room_id))
+        .filter(room_servers::server_id.ne(crate::server_name()))
+        .select(room_servers::server_id)
+        .load::<OwnedServerName>(&mut *db::connect()?)?;
+    send_pdu_servers(servers.into_iter(), pdu_id)
+}
+
 #[tracing::instrument(skip(servers, pdu_id))]
-pub fn send_pdu<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
+pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
     let requests = servers
         .into_iter()
         .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))

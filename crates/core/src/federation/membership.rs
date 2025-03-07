@@ -1,5 +1,6 @@
 //! Room membership endpoints.
 
+use itertools::Itertools;
 use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -389,15 +390,12 @@ pub struct SendJoinArgs {
 // };
 
 pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
+    let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
+    let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
+
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/make_join/{}/{}?ver=[{}]",
-        args.room_id,
-        args.user_id,
-        args.ver
-            .iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<String>>()
-            .join(",")
+        "{origin}/_matrix/federation/v1/make_join/{}/{}{}",
+        args.room_id, args.user_id, ver
     ))?;
     Ok(crate::sending::get(url))
 }

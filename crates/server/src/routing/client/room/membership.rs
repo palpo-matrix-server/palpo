@@ -7,9 +7,9 @@ use serde_json::value::to_raw_value;
 
 use crate::bl::exts::*;
 use crate::core::client::membership::{
-    BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomReqBody, JoinRoomResBody, JoinedMembersResBody,
-    JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs, MembersResBody, RoomMember,
-    UnbanUserReqBody,
+    BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomByIdOrAliasReqBody, JoinRoomByIdReqBody,
+    JoinRoomResBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs,
+    MembersResBody, RoomMember, UnbanUserReqBody,
 };
 use crate::core::client::room::{KnockReqArgs, KnockReqBody};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -166,7 +166,7 @@ pub(super) async fn leave_room(
 pub(super) async fn join_room_by_id(
     _aa: AuthArgs,
     room_id: PathParam<OwnedRoomId>,
-    body: JsonBody<Option<JoinRoomReqBody>>,
+    body: JsonBody<Option<JoinRoomByIdReqBody>>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     let authed = depot.authed_info()?;
@@ -234,42 +234,97 @@ pub(crate) async fn join_room_by_id_or_alias(
     _aa: AuthArgs,
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
-    body: JsonBody<Option<JoinRoomReqBody>>,
+    via: QueryParam<Vec<OwnedServerName>, false>,
+    body: JsonBody<JoinRoomByIdOrAliasReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     let authed = depot.authed_info()?;
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner();
-    let mut servers = server_name.into_inner().unwrap_or_default();
+
+    // The servers to attempt to join the room through.
+    //
+    // One of the servers must be participating in the room.
+    //
+    // When serializing, this field is mapped to both `server_name` and `via`
+    // with identical values.
+    //
+    // When deserializing, the value is read from `via` if it's not missing or
+    // empty and `server_name` otherwise.
+    let mut servers = via.into_inner().unwrap_or_default();
+    if servers.is_empty() {
+        servers = server_name.into_inner().unwrap_or_default();
+    }
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
-            servers.extend(
-                crate::room::state::get_invite_state(authed.user_id(), &room_id)?
-                    .unwrap_or_default()
-                    .iter()
-                    .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
-                    .filter_map(|event: serde_json::Value| event.get("sender").cloned())
-                    .filter_map(|sender| sender.as_str().map(|s| s.to_owned()))
-                    .filter_map(|sender| UserId::parse(sender).ok())
-                    .map(|user| user.server_name().to_owned()),
-            );
-            servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
+            // TODO
+            // banned_room_check(authed.user_id(), Some(&room_id), room_id.server_name(), client)?;
 
+            // TODO
+            // servers.extend(crate::room::state::servers_invite_via(&room_id)?);
+
+            let state_servers = crate::room::state::get_invite_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let state_servers = state_servers
+                .iter()
+                .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
+                .filter_map(|event: serde_json::Value| event.get("sender").cloned())
+                .filter_map(|sender| sender.as_str().map(|s| s.to_owned()))
+                .filter_map(|sender| UserId::parse(sender).ok())
+                .map(|user| user.server_name().to_owned());
+
+            servers.extend(state_servers);
+            if let Ok(server) = room_id.server_name() {
+                servers.push(server.to_owned());
+            }
+
+            servers.sort_unstable();
+            servers.dedup();
             (servers, room_id)
         }
         Err(room_alias) => {
-            let response = crate::room::get_alias_response(room_alias).await?;
-            (response.servers, response.room_id)
+            let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(servers.clone())).await?;
+
+            // TODO
+            // banned_room_check(
+            //     &services,
+            //     sender_user,
+            //     Some(&room_id),
+            //     Some(room_alias.server_name()),
+            //     client,
+            // )?;
+
+            // let addl_via_servers = crate::room::state::servers_invite_via(&room_id).map(ToOwned::to_owned);
+
+            // TODO: NOW
+            let addl_via_servers = servers.clone();
+            let addl_state_servers =
+                crate::room::state::get_invite_state(authed.user_id(), &room_id)?.unwrap_or_default();
+
+            let mut addl_servers: Vec<_> = addl_state_servers
+                .iter()
+                .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
+                .filter_map(|event: serde_json::Value| event.get("sender").cloned())
+                .filter_map(|sender| sender.as_str().map(|s| s.to_owned()))
+                .filter_map(|sender| UserId::parse(sender).ok())
+                .map(|user| user.server_name().to_owned())
+                .chain(addl_via_servers)
+                .collect();
+
+            addl_servers.sort_unstable();
+            addl_servers.dedup();
+            servers.append(&mut addl_servers);
+
+            (servers, room_id)
         }
     };
 
     let join_room_response = crate::membership::join_room(
         authed.user(),
         &room_id,
-        body.as_ref().map(|body| body.reason.clone()).flatten(),
+        body.reason.clone(),
         &servers,
-        body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
+        body.third_party_signed.as_ref(),
         authed.appservice.as_ref(),
     )
     .await?;

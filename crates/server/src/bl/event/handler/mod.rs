@@ -178,7 +178,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await?;
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await.unwrap();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -666,7 +666,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                 continue;
             }
 
-            if let Ok(Some(_)) = crate::room::timeline::get_pdu(&next_id) {
+            if crate::room::timeline::has_pdu(&next_id).unwrap_or(false) {
                 trace!("Found {} in db", next_id);
                 continue;
             }
@@ -772,7 +772,7 @@ async fn fetch_missing_prev_events(
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut eventid_info = HashMap::new();
-    let mut todo_outlier_stack: Vec<Arc<EventId>> = initial_set;
+    let mut todo_outlier_stack: VecDeque<Arc<EventId>> = initial_set.into();
 
     // let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
     //     .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
@@ -780,7 +780,7 @@ async fn fetch_missing_prev_events(
     let mut amount = 0;
 
     let room_version_id = &crate::room::room_version(room_id)?;
-    while let Some(prev_event_id) = todo_outlier_stack.pop() {
+    while let Some(prev_event_id) = todo_outlier_stack.pop_front() {
         if let Some((pdu, json_opt)) =
             fetch_and_handle_outliers(origin, &[prev_event_id.clone()], room_id, room_version_id)
                 .await?
