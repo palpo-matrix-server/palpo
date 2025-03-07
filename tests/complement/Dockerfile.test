@@ -5,14 +5,15 @@ WORKDIR /work
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY crates crates
+COPY target/debug/palpo palpo
 # COPY tests/complement/cargo-config.toml .cargo/config.toml
 # RUN cargo build --release \
 #     && mv target/release/palpo palpo \
 #     && rm -rf target
 # RUN --mount=type=cache,target=/root/.cargo cargo build \
-RUN cargo build \
-&& mv target/debug/palpo palpo \
-&& rm -rf target
+# RUN cargo build \
+# && mv target/debug/palpo palpo \
+# && rm -rf target
 
 COPY tests/complement/palpo.toml palpo.toml
 COPY tests/complement/caddy.json caddy.json

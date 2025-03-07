@@ -149,6 +149,7 @@ impl StdError for MatrixError {}
 
 impl Scribe for MatrixError {
     fn render(self, res: &mut Response) {
+        println!("MatrixError::render {}", self.to_string());
         res.add_header(header::CONTENT_TYPE, "application/json", true).ok();
 
         if res.status_code.map(|c| c.is_success()).unwrap_or(true) {

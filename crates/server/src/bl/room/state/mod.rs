@@ -67,16 +67,9 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in event_ids {
-        let pdu = match crate::room::timeline::get_pdu_json(&event_id)? {
-            Some(pdu) => pdu,
-            None => continue,
-        };
-
-        let pdu: PduEvent = match serde_json::from_str(
-            &serde_json::to_string(&pdu).expect("CanonicalJsonObj can be serialized to JSON"),
-        ) {
-            Ok(pdu) => pdu,
-            Err(_) => continue,
+        let pdu = match crate::room::timeline::get_pdu(&event_id) {
+            Ok(Some(pdu)) => pdu,
+            _ => continue,
         };
 
         match pdu.event_ty {
@@ -376,20 +369,7 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
-        println!(
-            "==========
-        state_key_id: {:?}, event_id: {:?}",
-            state_key_id, event_id
-        );
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            println!(
-                "==========key: {:?} event_id:{}   {:?}",
-                key,
-                event_id,
-                events::table
-                    .find(&*event_id)
-                    .first::<crate::event::DbEvent>(&mut *db::connect()?)?
-            );
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
             } else {
@@ -397,7 +377,6 @@ pub fn get_auth_events(
             }
         }
     }
-    println!("==========auth state_map: {:?}", state_map);
     Ok(state_map)
 }
 

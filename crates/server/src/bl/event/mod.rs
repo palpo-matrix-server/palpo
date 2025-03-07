@@ -98,15 +98,11 @@ pub fn gen_event_id_canonical_json(
     Ok((event_id, value))
 }
 /// Generates a correct eventId for the incoming pdu.
-pub fn gen_event_id(
-	value: &CanonicalJsonObject,
-	room_version_id: &RoomVersionId,
-) -> AppResult<OwnedEventId> {
-	let reference_hash = crate::core::signatures::reference_hash(value, room_version_id)?;
-	let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
-	Ok(event_id)
+pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId) -> AppResult<OwnedEventId> {
+    let reference_hash = crate::core::signatures::reference_hash(value, room_version_id)?;
+    let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
+    Ok(event_id)
 }
-
 
 pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
     events::table
@@ -121,5 +117,13 @@ pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(i64, String)> {
         .find(event_id)
         .select((events::sn, events::ty))
         .first::<(i64, String)>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_db_event(event_id: &EventId) -> AppResult<Option<DbEvent>> {
+    events::table
+        .find(event_id)
+        .first::<DbEvent>(&mut *db::connect()?)
+        .optional()
         .map_err(Into::into)
 }

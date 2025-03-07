@@ -39,39 +39,16 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
 
+    println!(">>>>>>>>>>>>>>>send_join_v1 0 origin:{origin}");
     crate::event::handler::acl_check(origin, room_id)?;
-
-    // TODO: Palpo does not implement restricted join rules yet, we always reject
-    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
-
-    let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
-        .as_ref()
-        .map(|join_rules_event| {
-            serde_json::from_str(join_rules_event.content.get()).map_err(|e| {
-                warn!("Invalid join rules event: {}", e);
-                AppError::public("Invalid join rules event in db.")
-            })
-        })
-        .transpose()?;
-
-    if let Some(join_rules_event_content) = join_rules_event_content {
-        if matches!(
-            join_rules_event_content.join_rule,
-            JoinRule::Restricted { .. } | JoinRule::KnockRestricted { .. }
-        ) {
-            return Err(MatrixError::unable_to_authorize_join("Palpo does not support restricted rooms yet.").into());
-        }
-    }
 
     // We need to return the state prior to joining, let's keep a reference to that here
     let frame_id =
         crate::room::state::get_room_frame_id(room_id, None)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
 
-    // let pub_key_map = RwLock::new(BTreeMap::new());
-    // let mut auth_cache = EventMap::new();
-
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = crate::room::state::get_room_version(room_id)?;
+
     let (event_id, mut value) = match gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
@@ -131,6 +108,11 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
+    println!(
+        "==================deddddddddddd Sender: {}       origin: {origin:?}",
+        sender
+    );
+
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
         return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.").into());
@@ -144,7 +126,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into(),
     )
     .map_err(|e| MatrixError::bad_json("State key is not a valid user ID: {e}"))?;
-
+    println!(">>>>>>>>>>>>>>>send_join_v1 3");
     if state_key != sender {
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
@@ -182,6 +164,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             );
         }
     }
+    println!(">>>>>>>>>>>>>>>send_join_v1 4");
 
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
         .map_err(|e| MatrixError::invalid_param("Failed to sign send_join event: {e}"))?;
@@ -196,6 +179,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
+    println!(">>>>>>>>>>>>>>>send_join_v1 5");
     // let mutex = Arc::clone(
     //     crate::ROOMID_MUTEX_FEDERATION
     //         .write()
@@ -208,26 +192,51 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     // drop(mutex_lock);
 
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
+
+    let mut state = state_ids
+        .iter()
+        .filter_map(|(_, id)| crate::room::timeline::get_pdu_json(id).ok().flatten())
+        .map(PduEvent::convert_to_outgoing_federation_event)
+        .collect();
+
+    println!(">>>>>>>>>>>>>>>send_join_v1 6");
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
+    let auth_chain = auth_chain_ids
+        .into_iter()
+        .filter_map(|id| crate::room::timeline::get_pdu_json(&id).ok().flatten())
+        .map(PduEvent::convert_to_outgoing_federation_event)
+        .collect();
 
-    let servers = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.ne(crate::server_name()))
-        .select(room_servers::server_id)
-        .load::<OwnedServerName>(&mut *db::connect()?)?;
+    //     let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+    //     println!(">>>>>>>>>>>>>>>send_join_v1 2");
 
-    crate::sending::send_pdu(servers.into_iter(), &event_id)?;
+    //     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
+    //         .as_ref()
+    //         .map(|join_rules_event| {
+    //             serde_json::from_str(join_rules_event.content.get()).map_err(|e| {
+    //                 warn!("Invalid join rules event: {}", e);
+    //                 AppError::public("Invalid join rules event in db.")
+    //             })
+    //         })
+    //         .transpose()?;
+
+    //     if let Some(join_rules_event_content) = join_rules_event_content {
+    //         if matches!(
+    //             join_rules_event_content.join_rule,
+    //             JoinRule::Restricted { .. } | JoinRule::KnockRestricted { .. }
+    //         ) {
+    //             return Err(MatrixError::unable_to_authorize_join("Palpo does not support restricted rooms yet.").into());
+    //         }
+    //     }
+
+    //     // let pub_key_map = RwLock::new(BTreeMap::new());
+    //     // let mut auth_cache = EventMap::new();
+
+    println!(">>>>>>>>>>>>>>>send_join_v1 7");
+    crate::sending::send_pdu_room(room_id, &event_id)?;
     Ok(RoomStateV1 {
-        auth_chain: auth_chain_ids
-            .into_iter()
-            .filter_map(|id| crate::room::timeline::get_pdu_json(&id).ok().flatten())
-            .map(PduEvent::convert_to_outgoing_federation_event)
-            .collect(),
-        state: state_ids
-            .iter()
-            .filter_map(|(_, id)| crate::room::timeline::get_pdu_json(id).ok().flatten())
-            .map(PduEvent::convert_to_outgoing_federation_event)
-            .collect(),
+        auth_chain,
+        state,
         event: None, // TODO: handle restricted joins
     })
 }
@@ -435,6 +444,14 @@ pub async fn join_room(
                 warn!("Invalid PDU in send_join response: {}", e);
                 AppError::public("Invalid join event PDU.")
             })?;
+        diesel::insert_into(events::table)
+            .values(NewDbEvent::from_canonical_json(
+                &event_id,
+                Some(parsed_join_pdu.event_sn),
+                &join_event,
+            )?)
+            .on_conflict_do_nothing()
+            .execute(&mut *db::connect()?)?;
 
         let mut state = HashMap::new();
         let pub_key_map = RwLock::new(BTreeMap::new());
@@ -511,12 +528,10 @@ pub async fn join_room(
                 .values(&db_event)
                 .on_conflict_do_nothing()
                 .execute(&mut *db::connect()?)?;
-            println!(">>>>>>>>>>>>>>>join_room federation join 11  -2 ");
             let event_sn = events::table
                 .find(&event_id)
                 .select(events::sn)
                 .first::<i64>(&mut *db::connect()?)?;
-            println!(">>>>>>>>>>>>>>>join_room federation join 11  -2  {event_sn} value: {value:#?}");
             let event_data = DbEventData {
                 event_id: event_id.to_owned(),
                 event_sn,
@@ -1011,7 +1026,7 @@ pub(crate) async fn invite_user(
             .into_iter()
             .filter(|server| server != crate::server_name());
 
-        crate::sending::send_pdu(servers, &event_id)?;
+        crate::sending::send_pdu_servers(servers, &event_id)?;
         return Ok(());
     }
 

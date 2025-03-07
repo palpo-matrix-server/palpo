@@ -278,6 +278,7 @@ pub fn update_membership(
                 ignored.ignored_users.iter().any(|(user, _details)| user == sender)
             });
 
+            println!("===============inviate   0is_ignored: {is_ignored}");
             if is_ignored {
                 return Ok(());
             }
@@ -296,6 +297,7 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
+            println!("===============inviate  room_id:{room_id} user_id:{user_id} membership:{membership:?}");
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
@@ -494,29 +496,7 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
     let query = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.eq(server));
-    println!(
-        "====================is_server_in_room: {:?}   {}  {:?}",
-        server,
-        room_id,
-        diesel_exists!(query, &mut *db::connect()?)
-    );
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
-}
-pub fn get_room_servers(room_id: &RoomId, includes_self: bool) -> AppResult<Vec<OwnedServerName>> {
-    if includes_self {
-        room_servers::table
-            .filter(room_servers::room_id.eq(room_id))
-            .select(room_servers::server_id)
-            .load::<OwnedServerName>(&mut *db::connect()?)
-            .map_err(Into::into)
-    } else {
-        room_servers::table
-            .filter(room_servers::room_id.eq(room_id))
-            .filter(room_servers::server_id.ne(room_id.server_name().map_err(AppError::public)?))
-            .select(room_servers::server_id)
-            .load::<OwnedServerName>(&mut *db::connect()?)
-            .map_err(Into::into)
-    }
 }
 
 pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {

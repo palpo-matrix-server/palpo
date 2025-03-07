@@ -60,7 +60,9 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
             None
-        } else if crate::federation::user_can_perform_restricted_join(&args.user_id, &args.room_id, &room_version_id).await? {
+        } else if crate::federation::user_can_perform_restricted_join(&args.user_id, &args.room_id, &room_version_id)
+            .await?
+        {
             let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
                 .into_iter()
                 .filter(|user| crate::room::state::user_can_invite(&args.room_id, user, &args.user_id).unwrap_or(false))
@@ -101,10 +103,13 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     )?;
     println!("IIIIIIIIIIIIIbmake_join 2");
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
-    json_ok(MakeJoinResBody {
+    println!("IIIIIIIIIIIIIbmake_join 3");
+    let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
-    })
+    };
+    println!("IIIIIIIIIIIIIbmake_join 4");
+    json_ok(body)
 }
 
 /// #PUT /_matrix/federation/v2/invite/{room_id}/{event_id}
@@ -273,6 +278,7 @@ async fn send_join_v2(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV2> {
+    println!("==============================send_join_v2");
     let body = body.into_inner();
     // let server_name = args.room_id.server_name().map_err(AppError::public)?;
     // crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -290,6 +296,7 @@ async fn send_join_v1(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV1> {
+    println!("==============================send_join_v1");
     let body = body.into_inner();
     let room_state = crate::membership::send_join_v1(depot.origin()?, &args.room_id, &body.0).await?;
     json_ok(SendJoinResBodyV1(room_state))
@@ -394,7 +401,6 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &args.room_id, value, true).await?;
     // drop(mutex_lock);
 
-    let servers = crate::room::get_room_servers(&args.room_id, false).unwrap();
-    crate::sending::send_pdu(servers.into_iter(), &event_id).unwrap();
+    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
     empty_ok()
 }

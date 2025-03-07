@@ -50,7 +50,8 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
                 println!("Invalid non outlier PDU in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
             })
-        }).transpose()
+        })
+        .transpose()
 }
 
 #[tracing::instrument]
@@ -75,23 +76,18 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<Option<i64>> {
 
 /// Returns the json of a pdu.
 pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>> {
-    let query = events::table.filter(events::id.eq(event_id));
-    if diesel_exists!(query, &mut *db::connect()?)? {
-        event_datas::table
-            .filter(event_datas::event_id.eq(event_id))
-            .select(event_datas::json_data)
-            .first::<JsonValue>(&mut *db::connect()?)
-            .optional()?
-            .map(|json| {
-                serde_json::from_value(json).map_err(|e| {
-                    println!("Invalid PDU json in db. Error: {:?}", e);
-                    AppError::internal("Invalid PDU in db.")
-                })
+    event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select(event_datas::json_data)
+        .first::<JsonValue>(&mut *db::connect()?)
+        .optional()?
+        .map(|json| {
+            serde_json::from_value(json).map_err(|e| {
+                println!("Invalid PDU json in db. Error: {:?}", e);
+                AppError::internal("Invalid PDU in db.")
             })
-            .transpose()
-    } else {
-        Ok(None)
-    }
+        })
+        .transpose()
 }
 
 /// Returns the pdu.
@@ -139,21 +135,12 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    let Some(event_sn) = events::table
-        .filter(events::is_outlier.eq(false))
-        .filter(events::id.eq(event_id))
-        .select(events::sn)
-        .first::<Seqnum>(&mut *db::connect()?)
-        .optional()?
-    else {
-        return Ok(None);
-    };
     event_datas::table
         .filter(event_datas::event_id.eq(event_id))
-        .select(event_datas::json_data)
-        .first::<JsonValue>(&mut *db::connect()?)
+        .select((event_datas::event_sn, event_datas::json_data))
+        .first::<(Seqnum, JsonValue)>(&mut *db::connect()?)
         .optional()?
-        .map(|json| {
+        .map(|(event_sn, json)| {
             PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
                 println!("Invalid PDU in db. Error: {:?}", e);
                 AppError::internal("Invalid PDU in db.")
@@ -239,6 +226,9 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut db::connect()?)?;
+    if  crate::event::get_db_event(&*pdu.event_id)?.is_none() {
+        panic!("NNNNNNNNNNNNNNNNNNNNN");
+    }
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
@@ -642,7 +632,6 @@ pub fn create_hash_and_sign_event(
         error!("{:?}", e);
         AppError::internal("Auth check failed when hash and sign event")
     })?;
-    println!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX??");
 
     // TODO: NOW
     // if !auth_checked {
@@ -654,7 +643,6 @@ pub fn create_hash_and_sign_event(
 
     pdu_json.remove("event_id");
 
-    println!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?? 1");
     // Add origin because synapse likes that (and it's required in the spec)
     pdu_json.insert(
         "origin".to_owned(),
@@ -675,7 +663,6 @@ pub fn create_hash_and_sign_event(
             };
         }
     }
-    println!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?? 2");
 
     // Generate event id
     let event_id = EventId::parse_arc(format!(
@@ -689,7 +676,6 @@ pub fn create_hash_and_sign_event(
     diesel::update(events::table.filter(events::sn.eq(event_sn)))
         .set(events::id.eq(&OwnedEventId::from(event_id)))
         .execute(&mut db::connect()?)?;
-    println!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?? 3");
 
     pdu_json.insert(
         "event_id".to_owned(),
@@ -698,7 +684,6 @@ pub fn create_hash_and_sign_event(
 
     // Generate short event id
     let _point_id = crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
-    println!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?? 4");
 
     Ok((pdu, pdu_json))
 }
@@ -806,7 +791,7 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    crate::sending::send_pdu(servers.into_iter(), &pdu.event_id)?;
+    crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
 }
