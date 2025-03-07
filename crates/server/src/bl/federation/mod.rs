@@ -2,7 +2,11 @@ use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
 use crate::core::authorization::XMatrix;
-use crate::core::{MatrixError, ServerName, signatures};
+use crate::core::events::StateEventType;
+use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::identifiers::*;
+use crate::core::serde::CanonicalJsonObject;
+use crate::core::{MatrixError, signatures};
 use crate::{AppError, AppResult};
 
 mod access_check;
@@ -98,6 +102,71 @@ pub(crate) async fn send_request(
         Err(e) => {
             warn!("Could not send request to {} at {}: {}", destination, url, e);
             Err(e.into())
+        }
+    }
+}
+
+/// Checks whether the given user can join the given room via a restricted join.
+pub(crate) async fn user_can_perform_restricted_join(
+    user_id: &UserId,
+    room_id: &RoomId,
+    room_version_id: &RoomVersionId,
+) -> AppResult<bool> {
+    use RoomVersionId::*;
+
+    // restricted rooms are not supported on <=v7
+    if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
+        return Ok(false);
+    }
+
+    if crate::room::is_joined(user_id, room_id).unwrap_or(false) {
+        // joining user is already joined, there is nothing we need to do
+        return Ok(false);
+    }
+
+    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+
+    let Some(Ok(join_rules_event_content)) = join_rules_event.as_ref().map(|join_rules_event| {
+        serde_json::from_str::<RoomJoinRulesEventContent>(join_rules_event.content.get()).map_err(|e| {
+            warn!("Invalid join rules event: {}", e);
+            AppError::internal("Invalid join rules event in db::")
+        })
+    }) else {
+        return Ok(false);
+    };
+
+    let (JoinRule::Restricted(r) | JoinRule::KnockRestricted(r)) = join_rules_event_content.join_rule else {
+        return Ok(false);
+    };
+
+    if r.allow.is_empty() {
+        tracing::info!("{room_id} is restricted but the allow key is empty");
+        return Ok(false);
+    }
+
+    if r.allow
+        .iter()
+        .filter_map(|rule| {
+            if let AllowRule::RoomMembership(membership) = rule {
+                Some(membership)
+            } else {
+                None
+            }
+        })
+        .any(|m| crate::room::is_joined(user_id, &m.room_id).unwrap_or(false))
+    {
+        Ok(true)
+    } else {
+        Err(MatrixError::unable_to_authorize_join("Joining user is not known to be in any required room.").into())
+    }
+}
+
+pub(crate) fn maybe_strip_event_id(pdu_json: &mut CanonicalJsonObject, room_version_id: &RoomVersionId) -> bool {
+    match room_version_id {
+        RoomVersionId::V1 | RoomVersionId::V2 => false,
+        _ => {
+            pdu_json.remove("event_id");
+            true
         }
     }
 }

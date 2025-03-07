@@ -94,17 +94,19 @@ pub fn gen_event_id_canonical_json(
         warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         AppError::public("Invalid PDU in server response")
     })?;
-
-    let event_id = format!(
-        "${}",
-        // Anything higher than version3 behaves the same
-        crate::core::signatures::reference_hash(&value, room_version_id).expect("palpo can calculate reference hashes")
-    )
-    .try_into()
-    .expect("palpo's reference hashes are valid event ids");
-
+    let event_id = gen_event_id(&value, room_version_id)?;
     Ok((event_id, value))
 }
+/// Generates a correct eventId for the incoming pdu.
+pub fn gen_event_id(
+	value: &CanonicalJsonObject,
+	room_version_id: &RoomVersionId,
+) -> AppResult<OwnedEventId> {
+	let reference_hash = crate::core::signatures::reference_hash(value, room_version_id)?;
+	let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
+	Ok(event_id)
+}
+
 
 pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
     events::table

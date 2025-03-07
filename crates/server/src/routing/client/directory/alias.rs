@@ -89,7 +89,7 @@ pub(super) async fn upsert_alias(
             .brief("A room alias with that name already exists.")
             .into());
     }
-    
+
     crate::room::set_alias(body.room_id.clone(), alias_id, authed.user_id())?;
 
     empty_ok()

@@ -14,6 +14,9 @@ use crate::user::DbUser;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
 use crate::{GetUrlOrigin, schema::*};
 
+mod remote;
+use remote::remote_resolve;
+
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_aliases, primary_key(alias_id))]
 pub struct DbRoomAlias {
@@ -23,14 +26,54 @@ pub struct DbRoomAlias {
     pub created_at: UnixMillis,
 }
 
-pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasId>> {
-    room_aliases::table
-        .filter(room_aliases::room_id.eq(room_id))
-        .select(room_aliases::alias_id)
-        .load::<OwnedRoomAliasId>(&mut *db::connect()?)
-        .map_err(Into::into)
+#[inline]
+pub async fn resolve(room: &RoomOrAliasId) -> AppResult<OwnedRoomId> {
+    resolve_with_servers(room, None).await.map(|(room_id, _)| room_id)
 }
 
+pub async fn resolve_with_servers(
+    room: &RoomOrAliasId,
+    servers: Option<Vec<OwnedServerName>>,
+) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
+    if room.is_room_id() {
+        let room_id: &RoomId = room.try_into().expect("valid RoomId");
+        Ok((room_id.to_owned(), servers.unwrap_or_default()))
+    } else {
+        let alias: &RoomAliasId = room.try_into().expect("valid RoomAliasId");
+        resolve_alias(alias, servers).await
+    }
+}
+
+#[tracing::instrument(name = "resolve")]
+pub async fn resolve_alias(
+    room_alias: &RoomAliasId,
+    servers: Option<Vec<OwnedServerName>>,
+) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
+    let server_name = room_alias.server_name();
+    let is_local_server = crate::is_local_server(server_name);
+    let servers_contains_local = || {
+        servers
+            .as_ref()
+            .is_some_and(|servers| servers.contains(&server_name.to_owned()))
+    };
+
+    if !is_local_server && !servers_contains_local() {
+        return remote_resolve(room_alias, servers.unwrap_or_default()).await;
+    }
+
+    let room_id = match resolve_local_alias(room_alias) {
+        Ok(r) => r,
+        Err(_) => resolve_appservice_alias(room_alias).await?,
+    };
+
+    if let Some(room_id) = room_id {
+        Ok((room_id, Vec::new()))
+    } else {
+        Err(MatrixError::not_found("Room with alias not found.").into())
+    }
+}
+
+#[tracing::instrument(level = "debug")]
 pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<Option<OwnedRoomId>> {
     room_aliases::table
         .filter(room_aliases::alias_id.eq(alias_id))
@@ -39,6 +82,32 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<Option<OwnedRoom
         .optional()?
         .map(|room_id| RoomId::parse(room_id).map_err(|_| AppError::public("Room ID is invalid.")))
         .transpose()
+}
+
+async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<Option<OwnedRoomId>> {
+    for appservice in crate::appservice::all()?.values() {
+        let url = appservice
+            .registration
+            .build_url(&format!("app/v1/rooms/{}", room_alias))?;
+        if appservice.aliases.is_match(room_alias.as_str())
+            && matches!(
+                crate::sending::post(url).send::<Option<()>>().await,
+                Ok(Some(_opt_result))
+            )
+        {
+            return resolve_local_alias(room_alias).map_err(|_| MatrixError::not_found("Room does not exist.").into());
+        }
+    }
+
+    Ok(None)
+}
+
+pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasId>> {
+    room_aliases::table
+        .filter(room_aliases::room_id.eq(room_id))
+        .select(room_aliases::alias_id)
+        .load::<OwnedRoomAliasId>(&mut *db::connect()?)
+        .map_err(Into::into)
 }
 
 pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
@@ -59,7 +128,7 @@ pub fn set_alias(
     created_by: impl Into<OwnedUserId>,
 ) -> AppResult<()> {
     let alias_id = alias_id.into();
-    
+
     diesel::insert_into(room_aliases::table)
         .values(DbRoomAlias {
             alias_id,

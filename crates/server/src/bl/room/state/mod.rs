@@ -376,12 +376,28 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!(
+            "==========
+        state_key_id: {:?}, event_id: {:?}",
+            state_key_id, event_id
+        );
         if let Some(key) = sauth_events.remove(&state_key_id) {
+            println!(
+                "==========key: {:?} event_id:{}   {:?}",
+                key,
+                event_id,
+                events::table
+                    .find(&*event_id)
+                    .first::<crate::event::DbEvent>(&mut *db::connect()?)?
+            );
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
+            } else {
+                println!("==========pdu is none");
             }
         }
     }
+    println!("==========auth state_map: {:?}", state_map);
     Ok(state_map)
 }
 
@@ -808,6 +824,7 @@ pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<
 }
 
 pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) -> AppResult<bool> {
+    println!("IIIIIIIIIIIIIbe user_can_invite");
     let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
     let new_event = PduBuilder {
@@ -826,23 +843,13 @@ pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
     })
 }
 
-// #[tracing::instrument]
-// pub fn left_state(
-//     user_id: &UserId,
-//     room_id: &RoomId,
-//
-// ) -> AppResult<Option<Vec<AnyStrippedStateEvent>>> {
-// let mut key = user_id.as_bytes().to_vec();
-// key.push(0xff);
-// key.extend_from_slice(room_id.as_bytes());
-
-// self.userroomid_leftstate
-//     .get(&key)?
-//     .map(|state| {
-//         let state = serde_json::from_slice(&state)
-//             .map_err(|_| AppError::public("Invalid state in userroomid_leftstate."))?;
-
-//         Ok(state)
-//     })
-//     .transpose()
-// }
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
