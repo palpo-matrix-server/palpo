@@ -33,24 +33,22 @@ pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response
 async fn access_control(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
     let host = get_origin_host(req).unwrap_or_default();
     let headers = res.headers_mut();
-    if host.ends_with(".sonc.ai") || host == "sonc.ai" || host.ends_with(".agora.pub") || host.ends_with(".sonc.ai") {
-        headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
-        headers.insert(
-            "Access-Control-Allow-Methods",
-            "GET,POST,PUT,DELETE,PATCH,OPTIONS".parse().unwrap(),
-        );
-        headers.insert(
-            "Access-Control-Allow-Headers",
-            "Accept,Content-Type,Authorization,Range".parse().unwrap(),
-        );
-        headers.insert(
-            "Access-Control-Expose-Headers",
-            "Access-Token,Response-Status,Content-Length,Content-Range"
-                .parse()
-                .unwrap(),
-        );
-        headers.insert("Access-Control-Allow-Credentials", "true".parse().unwrap());
-    }
+    headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
+    headers.insert(
+        "Access-Control-Allow-Methods",
+        "GET,POST,PUT,DELETE,PATCH,OPTIONS".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        "Accept,Content-Type,Authorization,Range".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Expose-Headers",
+        "Access-Token,Response-Status,Content-Length,Content-Range"
+            .parse()
+            .unwrap(),
+    );
+    headers.insert("Access-Control-Allow-Credentials", "true".parse().unwrap());
     headers.insert("Content-Security-Policy", "frame-ancestors 'self'".parse().unwrap());
     ctrl.call_next(req, depot, res).await;
     // headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
