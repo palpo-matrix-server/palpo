@@ -296,7 +296,7 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-             diesel::insert_into(room_users::table)
+                diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
@@ -489,6 +489,13 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.eq(server));
     diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+}
+pub fn room_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    room_servers::table
+        .filter(room_servers::room_id.eq(room_id))
+        .select(room_servers::server_id)
+        .load::<OwnedServerName>(&mut *db::connect()?)
+        .map_err(Into::into)
 }
 
 pub fn joined_member_count(room_id: &RoomId) -> AppResult<u64> {

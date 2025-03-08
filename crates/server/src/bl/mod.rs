@@ -415,9 +415,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     Ok(())
 }
 
-pub fn is_local_server(server_name: &ServerName) -> bool {
-    server_name == crate::server_name()
-}
 pub fn server_name() -> &'static ServerName {
     config().server_name.as_ref()
 }

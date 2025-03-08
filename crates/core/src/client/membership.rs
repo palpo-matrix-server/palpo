@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::events::room::member::RoomMemberEvent;
 use crate::serde::{RawJson, StringEnum};
 use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
+    OwnedMxcUri, OwnedRoomId,  OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
     third_party::Medium,
 };
 

@@ -13,7 +13,7 @@ use crate::core::{
     },
 };
 use crate::event::PduBuilder;
-use crate::{AppResult, MatrixError};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError};
 
 pub async fn send_state_event_for_key(
     user_id: &UserId,
@@ -91,7 +91,7 @@ fn allowed_to_send_state_event(
                 }
 
                 for alias in aliases {
-                    if !crate::is_local_server(alias.server_name()) {
+                    if !alias.server_name().is_local() {
                         return Err(MatrixError::forbidden("canonical_alias must be for this server").into());
                     }
 

@@ -271,9 +271,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         #[derive(diesel::deserialize::FromSqlRow, diesel::expression::AsExpression)]
         #[diesel(sql_type = diesel::sql_types::Text)]
         pub struct #owned #impl_generics {
-            #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-            inner: Box<#id_ty>,
-            #[cfg(palpo_identifiers_storage = "Arc")]
+            // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+            // inner: Box<#id_ty>,
+            // #[cfg(palpo_identifiers_storage = "Arc")]
             inner: std::sync::Arc<#id_ty>,
         }
 
@@ -281,9 +281,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         impl #impl_generics #owned_ty {
             fn from_ref(v: &#id_ty) -> Self {
                 Self {
-                    #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                    inner: #id::from_box(v.as_str().into()),
-                    #[cfg(palpo_identifiers_storage = "Arc")]
+                    // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                    // inner: #id::from_box(v.as_str().into()),
+                    // #[cfg(palpo_identifiers_storage = "Arc")]
                     inner: #id::from_arc(v.as_str().into()),
                 }
             }
@@ -313,9 +313,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics From<#owned_ty> for String {
             fn from(id: #owned_ty) -> String {
-                #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                { id.inner.into() }
-                #[cfg(palpo_identifiers_storage = "Arc")]
+                // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                // { id.inner.into() }
+                // #[cfg(palpo_identifiers_storage = "Arc")]
                 { id.inner.as_ref().into() }
             }
         }
@@ -361,9 +361,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         impl #impl_generics From<std::sync::Arc<#id_ty>> for #owned_ty {
             fn from(a: std::sync::Arc<#id_ty>) -> #owned_ty {
                 Self {
-                    #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                    inner: a.as_ref().into(),
-                    #[cfg(palpo_identifiers_storage = "Arc")]
+                    // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                    // inner: a.as_ref().into(),
+                    // #[cfg(palpo_identifiers_storage = "Arc")]
                     inner: a,
                 }
             }
@@ -372,9 +372,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics From<#owned_ty> for Box<#id_ty> {
             fn from(a: #owned_ty) -> Box<#id_ty> {
-                #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                { a.inner }
-                #[cfg(palpo_identifiers_storage = "Arc")]
+                // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                // { a.inner }
+                // #[cfg(palpo_identifiers_storage = "Arc")]
                 { a.inner.as_ref().into() }
             }
         }
@@ -382,9 +382,9 @@ fn expand_owned_id(input: &ItemStruct) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics From<#owned_ty> for std::sync::Arc<#id_ty> {
             fn from(a: #owned_ty) -> std::sync::Arc<#id_ty> {
-                #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                { a.inner.into() }
-                #[cfg(palpo_identifiers_storage = "Arc")]
+                // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                // { a.inner.into() }
+                // #[cfg(palpo_identifiers_storage = "Arc")]
                 { a.inner }
             }
         }

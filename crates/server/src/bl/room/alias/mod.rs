@@ -13,6 +13,7 @@ use crate::room::StateEventType;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
 use crate::{GetUrlOrigin, schema::*};
+use crate::bl::exts::*;
 
 mod remote;
 use remote::remote_resolve;
@@ -50,7 +51,7 @@ pub async fn resolve_alias(
     servers: Option<Vec<OwnedServerName>>,
 ) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
     let server_name = room_alias.server_name();
-    let is_local_server = crate::is_local_server(server_name);
+    let is_local_server = server_name.is_local();
     let servers_contains_local = || {
         servers
             .as_ref()
@@ -128,11 +129,12 @@ pub fn set_alias(
     created_by: impl Into<OwnedUserId>,
 ) -> AppResult<()> {
     let alias_id = alias_id.into();
+    let room_id = room_id.into();
 
     diesel::insert_into(room_aliases::table)
         .values(DbRoomAlias {
             alias_id,
-            room_id: room_id.into(),
+            room_id,
             created_by: created_by.into(),
             created_at: UnixMillis::now(),
         })

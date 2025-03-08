@@ -97,7 +97,6 @@ impl Scribe for ThumbnailResBody {
     ///
     /// Returns a tuple containing the boundary used
     fn render(self, res: &mut Response) {
-        use std::io::Write as _;
 
         use rand::Rng as _;
 
@@ -167,7 +166,7 @@ impl Scribe for ThumbnailResBody {
 
         let content_type = format!("{MULTIPART_MIXED}; boundary={boundary}");
 
-        res.add_header(http::header::CONTENT_TYPE, content_type, true);
+        let _ = res.add_header(http::header::CONTENT_TYPE, content_type, true);
         if let Err(e) = res.write_body(body_writer) {
             res.render(StatusError::internal_server_error().brief("Failed to set response body"));
             tracing::error!("Failed to set response body: {}", e);

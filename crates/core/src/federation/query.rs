@@ -26,9 +26,8 @@ use crate::{OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId};
 // };
 
 pub fn directory_request(origin: &str, room_alias: &RoomAliasId) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/query/directory?room_alias={room_alias}"
-    ))?;
+    let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/query/directory"))?;
+    url.query_pairs_mut().append_pair("room_alias", room_alias.as_str());
     Ok(crate::sending::get(url))
 }
 
@@ -75,13 +74,11 @@ impl RoomInfoResBody {
 // };
 
 pub fn profile_request(origin: &str, args: ProfileReqArgs) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/query/profile?user_id={}{}",
-        args.user_id,
-        args.field
-            .map(|field| format!("&field={}", field.to_string()))
-            .unwrap_or_default()
-    ))?;
+    let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/query/profile"))?;
+    url.query_pairs_mut().append_pair("user_id", args.user_id.as_str());
+    if let Some(field) = &args.field {
+        url.query_pairs_mut().append_pair("field", &field.to_string());
+    }
     Ok(crate::sending::get(url))
 }
 
@@ -132,7 +129,7 @@ pub struct CustomReqBody {
 #[derive(ToSchema, Serialize, Debug)]
 #[salvo(schema(value_type = Object))]
 
-pub struct CustomResBody (
+pub struct CustomResBody(
     /// The body of the response.
     pub JsonValue,
 );
@@ -140,6 +137,6 @@ pub struct CustomResBody (
 impl CustomResBody {
     /// Creates a new response with the given body.
     pub fn new(body: JsonValue) -> Self {
-        Self (body)
+        Self(body)
     }
 }
