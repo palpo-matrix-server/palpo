@@ -30,21 +30,28 @@ impl DepotExt for Depot {
     }
 }
 
-pub trait IsRemote {
+pub trait IsRemoteOrLocal {
     fn is_remote(&self) -> bool;
+    fn is_local(&self) -> bool;
 }
-impl IsRemote for UserId {
+impl IsRemoteOrLocal for UserId {
     fn is_remote(&self) -> bool {
         self.server_name() != crate::server_name()
     }
+    fn is_local(&self) -> bool {
+        self.server_name() == crate::server_name()
+    }
 }
-impl IsRemote for OwnedUserId {
+impl IsRemoteOrLocal for OwnedUserId {
     fn is_remote(&self) -> bool {
         self.server_name() != crate::server_name()
+    }
+    fn is_local(&self) -> bool {
+        self.server_name() == crate::server_name()
     }
 }
 
-impl IsRemote for RoomId {
+impl IsRemoteOrLocal for RoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
             server_name != crate::server_name()
@@ -52,8 +59,15 @@ impl IsRemote for RoomId {
             false
         }
     }
+    fn is_local(&self) -> bool {
+        if let Ok(server_name) = self.server_name() {
+            server_name == crate::server_name()
+        } else {
+            false
+        }
+    }
 }
-impl IsRemote for OwnedRoomId {
+impl IsRemoteOrLocal for OwnedRoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
             server_name != crate::server_name()
@@ -61,22 +75,38 @@ impl IsRemote for OwnedRoomId {
             false
         }
     }
-}
-
-impl IsRemote for RoomAliasId {
-    fn is_remote(&self) -> bool {
-        self.server_name() != crate::server_name()
+    fn is_local(&self) -> bool {
+        if let Ok(server_name) = self.server_name() {
+            server_name == crate::server_name()
+        } else {
+            false
+        }
     }
 }
 
-impl IsRemote for OwnedRoomAliasId {
+impl IsRemoteOrLocal for RoomAliasId {
     fn is_remote(&self) -> bool {
         self.server_name() != crate::server_name()
     }
+    fn is_local(&self) -> bool {
+        self.server_name() == crate::server_name()
+    }
 }
 
-impl IsRemote for ServerName {
+impl IsRemoteOrLocal for OwnedRoomAliasId {
+    fn is_remote(&self) -> bool {
+        self.server_name() != crate::server_name()
+    }
+    fn is_local(&self) -> bool {
+        self.server_name() == crate::server_name()
+    }
+}
+
+impl IsRemoteOrLocal for ServerName {
     fn is_remote(&self) -> bool {
         self != crate::server_name()
+    }
+    fn is_local(&self) -> bool {
+        self == crate::server_name()
     }
 }
