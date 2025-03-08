@@ -22,7 +22,6 @@
 {"Action":"fail","Test":"TestCannotSendNonKnockViaSendKnock/regular_event"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
 {"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
-{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -61,7 +60,6 @@
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_shared_visibility"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_world_readable_visibility"}
 {"Action":"fail","Test":"TestIsDirectFlagFederation"}
-{"Action":"fail","Test":"TestJoinFederatedRoomFailOver"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser/join_remote_federated_room_as_application_service_user"}
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents"}
@@ -230,6 +228,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -289,6 +288,7 @@
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
 {"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
+{"Action":"pass","Test":"TestJoinFederatedRoomFailOver"}
 {"Action":"pass","Test":"TestJoinViaRoomIDAndServerName"}
 {"Action":"pass","Test":"TestJson/Parallel/Invalid_JSON_special_values"}
 {"Action":"pass","Test":"TestKeyChangesLocal"}
