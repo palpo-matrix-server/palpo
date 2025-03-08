@@ -23,6 +23,7 @@ use crate::push::{Action, PushCondition, PushRule, RuleKind, RuleScope, Ruleset}
 #[derive(ToSchema, Serialize, Debug)]
 pub struct RuleResBody {
     /// The specific push rule.
+    #[serde(flatten)]
     pub rule: PushRule,
 }
 impl RuleResBody {
@@ -296,6 +297,7 @@ impl RuleEnabledResBody {
 #[derive(ToSchema, Serialize, Debug)]
 pub struct DeleteRuleResBody {
     /// The global ruleset.
+    #[serde(flatten)]
     pub global: Ruleset,
 }
 

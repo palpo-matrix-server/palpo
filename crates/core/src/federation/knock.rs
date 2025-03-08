@@ -104,6 +104,7 @@ pub struct SendKnockReqBody {
     // pub event_id: OwnedEventId,
     /// The PDU.
     #[salvo(schema(value_type = Object, additional_properties = true))]
+    #[serde(flatten)]
     pub pdu: Box<RawJsonValue>,
 }
 

@@ -54,13 +54,13 @@ pub struct RoomAccountDataResBody(
 // };
 
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct SetGlobalAccountDataReqBody {
+#[salvo(schema(value_type = Object))]
+pub struct SetGlobalAccountDataReqBody (
     /// Arbitrary JSON to store as config data.
     ///
     /// To create a `RawJsonValue`, use `serde_json::value::to_raw_value`.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub data: RawJson<AnyGlobalAccountDataEventContent>,
-}
+    pub RawJson<AnyGlobalAccountDataEventContent>,
+);
 
 /// Request type for the `set_room_account_data` endpoint.
 

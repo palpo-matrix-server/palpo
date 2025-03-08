@@ -59,15 +59,15 @@ impl ForProtocolReqArgs {
 
 /// Response type for the `get_location_for_protocol` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct LocationsResBody {
+pub struct LocationsResBody(
     /// List of matched third party locations.
-    pub locations: Vec<Location>,
-}
+    pub Vec<Location>,
+);
 
 impl LocationsResBody {
     /// Creates a new `Response` with the given locations.
     pub fn new(locations: Vec<Location>) -> Self {
-        Self { locations }
+        Self ( locations )
     }
 }
 

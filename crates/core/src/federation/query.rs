@@ -130,16 +130,16 @@ pub struct CustomReqBody {
 
 /// Response type for the `get_custom_information` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
+#[salvo(schema(value_type = Object))]
 
-pub struct CustomResBody {
+pub struct CustomResBody (
     /// The body of the response.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub body: JsonValue,
-}
+    pub JsonValue,
+);
 
 impl CustomResBody {
     /// Creates a new response with the given body.
     pub fn new(body: JsonValue) -> Self {
-        Self { body }
+        Self (body)
     }
 }
