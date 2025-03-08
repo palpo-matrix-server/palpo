@@ -7,6 +7,7 @@ use std::time::Duration;
 use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
+use reqwest::Url;
 use salvo::fs::NamedFile;
 use salvo::http::header::CONTENT_TYPE;
 use salvo::http::{HeaderValue, ResBody};
@@ -329,19 +330,19 @@ pub async fn get_thumbnail(
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    if &*args.server_name != &crate::config().server_name && args.allow_remote {
-        let request = crate::core::federation::media::thumbnail_request(
-            &args.server_name.origin().await,
-            crate::core::federation::media::ThumbnailReqArgs {
-                height: args.height,
-                width: args.width,
-                method: args.method.clone(),
-                media_id: args.media_id.clone(),
-                timeout_ms: Duration::from_secs(20),
-                animated: None,
-            },
-        )?
-        .into_inner();
+    if args.server_name.is_remote() && args.allow_remote {
+        let origin = args.server_name.origin().await;
+        let mut url = Url::parse(&format!(
+            "{}/_matrix/media/v3/thumbnail/{}/{}",
+            origin, args.server_name, args.media_id
+        ))?;
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair("width", &args.width.to_string());
+            query.append_pair("height", &args.height.to_string());
+            query.append_pair("timeout_ms", &args.timeout_ms.as_millis().to_string());
+        }
+        let request = crate::sending::get(url).into_inner();
         let response = crate::sending::send_federation_request(&args.server_name, request).await?;
         *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
