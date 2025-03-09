@@ -85,7 +85,7 @@ pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(||
     ]
 });
 pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> =
-    LazyLock::new(|| vec![RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
+    LazyLock::new(|| vec![RoomVersionId::V2, RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
 pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
 pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> =
     LazyLock::new(Default::default);
