@@ -350,9 +350,10 @@ pub fn get_auth_events(
         return Ok(HashMap::new());
     };
 
-    let auth_events = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
-
-    let mut sauth_events = auth_events
+    println!("=ddddddddddddget_auth_events kind:{kind:?} state_key:{state_key:?} content:{content:?}");
+    let auth_types = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
+    println!("=ddddddddddddgauth_types:{auth_types:#?}");
+    let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
             get_field_id(&event_type.to_string().into(), &state_key)

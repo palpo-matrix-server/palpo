@@ -550,7 +550,7 @@ impl KeysForRoomResBody {
 
 /// Request type for the `update_backup_version` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct UpdateVersionReqBody (
+pub struct UpdateVersionReqBody(
     /// The algorithm used for storing backups.
     pub BackupAlgorithm,
 );

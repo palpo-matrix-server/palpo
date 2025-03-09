@@ -178,7 +178,9 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await.unwrap();
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id)
+        .await
+        .unwrap();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -313,15 +315,16 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
         }
 
+        println!("==========call auth check 2");
         if !state::event_auth::auth_check(
             &room_version,
             &incoming_pdu,
             None::<PduEvent>, // TODO: third party invite
             |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
         )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed outllier pdu"))?
+        .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
         {
-            return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
+            return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
         }
 
         debug!("Validation successful.");
@@ -394,6 +397,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
+    println!("==========call auth check 1");
     let auth_checked = state::event_auth::auth_check(
         &room_version,
         &incoming_pdu,
@@ -423,6 +427,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
+    println!("==========call auth check 3");
     let auch_checked = state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })

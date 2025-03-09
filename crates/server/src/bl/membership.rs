@@ -198,7 +198,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .collect();
 
     //     let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
-   
+
     //     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
     //         .as_ref()
     //         .map(|join_rules_event| {
@@ -318,13 +318,8 @@ pub async fn join_room(
         maybe_strip_event_id(&mut join_event_stub, &room_version_id);
 
         // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
-        crate::core::signatures::hash_and_sign_event(
-            crate::server_name().as_str(),
-            crate::keypair(),
-            &mut join_event_stub,
-            &room_version_id,
-        )
-        .expect("event is valid, we just created it");
+        crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
+            .expect("event is valid, we just created it");
 
         // Generate event id
         let event_id = crate::event::gen_event_id(&join_event_stub, &room_version_id)?;
@@ -688,22 +683,11 @@ pub async fn join_room(
             join_event_stub.remove("event_id");
 
             // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
-            crate::core::signatures::hash_and_sign_event(
-                crate::server_name().as_str(),
-                crate::keypair(),
-                &mut join_event_stub,
-                &room_version_id,
-            )
-            .expect("event is valid, we just created it");
+            crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
+                .expect("event is valid, we just created it");
 
             // Generate event id
-            let event_id = format!(
-                "${}",
-                crate::core::signatures::reference_hash(&join_event_stub, &room_version_id)
-                    .expect("palpo can calculate reference hashes")
-            );
-            let event_id =
-                <&EventId>::try_from(event_id.as_str()).expect("palpo's reference hashes are valid event ids");
+            let event_id = crate::event::gen_event_id(&join_event_stub, &room_version_id)?;
 
             // Add event_id back
             join_event_stub.insert(
@@ -886,6 +870,7 @@ pub(crate) async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     if invitee_id.server_name() != crate::server_name() {
+        println!("IIIIIIIIIIIIIIIIIIIInvite user 0");
         let (pdu, pdu_json, invite_room_state) = {
             let content = to_raw_json_value(&RoomMemberEventContent {
                 avatar_url: None,
@@ -974,10 +959,12 @@ pub(crate) async fn invite_user(
         return Ok(());
     }
 
+    println!("IIIIIIIIIIIIIIIIIIIInvite user local");
     if !crate::room::is_joined(inviter_id, room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
+    println!("IIIIIIIIIIIIIIIIIIIInvite user local 1");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,

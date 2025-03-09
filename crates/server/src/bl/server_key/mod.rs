@@ -270,9 +270,12 @@ pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
     sign_json(server_name, crate::keypair(), object).map_err(Into::into)
 }
 
-pub fn hash_and_sign_event(object: &mut CanonicalJsonObject, room_version: &RoomVersionId) -> AppResult<()> {
+pub fn hash_and_sign_event(
+    object: &mut CanonicalJsonObject,
+    room_version: &RoomVersionId,
+) -> Result<(), crate::core::signatures::Error> {
     use signatures::hash_and_sign_event;
 
     let server_name = crate::config().server_name.as_str();
-    hash_and_sign_event(server_name, crate::keypair(), object, room_version).map_err(Into::into)
+    hash_and_sign_event(server_name, crate::keypair(), object, room_version)
 }

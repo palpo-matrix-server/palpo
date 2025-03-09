@@ -67,7 +67,7 @@ pub struct LocationsResBody(
 impl LocationsResBody {
     /// Creates a new `Response` with the given locations.
     pub fn new(locations: Vec<Location>) -> Self {
-        Self ( locations )
+        Self(locations)
     }
 }
 

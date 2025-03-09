@@ -97,7 +97,6 @@ impl Scribe for ThumbnailResBody {
     ///
     /// Returns a tuple containing the boundary used
     fn render(self, res: &mut Response) {
-
         use rand::Rng as _;
 
         let boundary = rand::thread_rng()

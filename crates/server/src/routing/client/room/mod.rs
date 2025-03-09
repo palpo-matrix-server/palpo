@@ -745,7 +745,10 @@ pub(super) async fn create_room(
 
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
-        let _ = crate::membership::invite_user(authed.user_id(), user_id, &room_id, None, body.is_direct).await;
+        if let Err(e) = crate::membership::invite_user(authed.user_id(), user_id, &room_id, None, body.is_direct).await
+        {
+            tracing::error!("Failed to invite user {}: {:?}", user_id, e);
+        }
     }
 
     // Homeserver specific stuff

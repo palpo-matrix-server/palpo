@@ -27,7 +27,7 @@ use crate::{OwnedMxcUri, OwnedServerName};
 // };
 
 pub fn content_request(origin: &str, args: ContentReqArgs) -> SendResult<SendRequest> {
-    let  url = Url::parse(&format!(
+    let url = Url::parse(&format!(
         "{origin}/_matrix/client/v1/media/download/{}/{}?allow_remote={}&allow_redirect={}",
         args.server_name, args.media_id, args.allow_remote, args.allow_redirect
     ))?;

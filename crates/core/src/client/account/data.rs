@@ -55,7 +55,7 @@ pub struct RoomAccountDataResBody(
 
 #[derive(ToSchema, Deserialize, Debug)]
 #[salvo(schema(value_type = Object))]
-pub struct SetGlobalAccountDataReqBody (
+pub struct SetGlobalAccountDataReqBody(
     /// Arbitrary JSON to store as config data.
     ///
     /// To create a `RawJsonValue`, use `serde_json::value::to_raw_value`.

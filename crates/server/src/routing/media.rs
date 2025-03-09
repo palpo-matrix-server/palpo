@@ -23,15 +23,16 @@ pub fn router() -> Router {
                     ),
             )
             .push(
-                Router::with_path(v).push(
-                    Router::with_path("download/{server_name}/{media_id}")
-                        .get(get_content)
-                        .push(Router::with_path("{filename}").get(get_content_with_filename)),
-                )
-                .push(
-                    Router::with_hoop(hoops::limit_rate)
-                        .push(Router::with_path("thumbnail/{server_name}/{media_id}").get(get_thumbnail)),
-                ),
+                Router::with_path(v)
+                    .push(
+                        Router::with_path("download/{server_name}/{media_id}")
+                            .get(get_content)
+                            .push(Router::with_path("{filename}").get(get_content_with_filename)),
+                    )
+                    .push(
+                        Router::with_hoop(hoops::limit_rate)
+                            .push(Router::with_path("thumbnail/{server_name}/{media_id}").get(get_thumbnail)),
+                    ),
             )
     }
     media
