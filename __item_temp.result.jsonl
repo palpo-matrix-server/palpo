@@ -1,3 +1,0 @@
-{"Action":"pass","Test":"TestRoomCreate"}
-{"Action":"pass","Test":"TestRoomCreate/Parallel"}
-{"Action":"pass","Test":"TestRoomCreate/Parallel/POST_/createRoom_creates_a_room_with_the_given_version"}
