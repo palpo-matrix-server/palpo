@@ -253,7 +253,7 @@ async fn upgrade(
     }
 
     // Create a replacement room
-    let replacement_room = RoomId::new(&crate::config().server_name);
+    let replacement_room = RoomId::new(crate::server_name());
     crate::room::ensure_room(&replacement_room, authed.user_id())?;
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
@@ -476,8 +476,7 @@ pub(super) async fn create_room(
     depot: &mut Depot,
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
-
-    let room_id = RoomId::new(&crate::config().server_name);
+    let room_id = RoomId::new(crate::server_name());
     crate::room::ensure_room(&room_id, authed.user_id())?;
 
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
@@ -486,7 +485,7 @@ pub(super) async fn create_room(
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
-        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, &crate::config().server_name))
+        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, crate::server_name()))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
         if crate::room::resolve_local_alias(&alias)?.is_some() {

@@ -39,7 +39,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 
     crate::federation::access_check(origin, room_id, Some(&event_id))?;
     json_ok(EventResBody {
-        origin: crate::config().server_name.clone(),
+        origin: crate::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdu: PduEvent::convert_to_outgoing_federation_event(event),
     })

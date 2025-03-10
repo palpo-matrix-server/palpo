@@ -239,7 +239,7 @@ fn register(
 async fn available(username: QueryParam<String, true>) -> JsonResult<AvailableResBody> {
     let username = username.into_inner().to_lowercase();
     // Validate user id
-    let server_name = &crate::config().server_name;
+    let server_name = crate::server_name();
     let user_id = UserId::parse_with_server_name(username, server_name)
         .ok()
         .filter(|user_id| !user_id.is_historical() && user_id.server_name() == server_name)

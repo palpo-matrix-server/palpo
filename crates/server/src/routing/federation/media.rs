@@ -33,7 +33,7 @@ pub fn router() -> Router {
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    let server_name = &crate::config().server_name;
+    let server_name = crate::server_name();
     if let Some(metadata) = crate::media::get_metadata(server_name, &args.media_id)? {
         let content_type = metadata
             .content_type
@@ -71,7 +71,7 @@ pub async fn get_thumbnail(
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    let server_name = &crate::config().server_name;
+    let server_name = crate::server_name();
     if let Some(DbThumbnail { content_type, .. }) =
         crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
     {
@@ -185,7 +185,7 @@ pub async fn get_thumbnail(
             diesel::insert_into(media_thumbnails::table)
                 .values(&NewDbThumbnail {
                     media_id: args.media_id.clone(),
-                    origin_server: server_name.clone(),
+                    origin_server: server_name.to_owned(),
                     content_type: "mage/png".into(),
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,

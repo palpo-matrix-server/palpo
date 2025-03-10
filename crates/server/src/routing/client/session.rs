@@ -75,7 +75,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
                 warn!("Bad login type: {:?}", &body.login_info);
                 return Err(MatrixError::forbidden("Bad login type.").into());
             };
-            let user_id = UserId::parse_with_server_name(username, &crate::config().server_name)
+            let user_id = UserId::parse_with_server_name(username, crate::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             let Some(user) = crate::user::get_user(&user_id)? else {
                 return Err(MatrixError::forbidden("User not found.").into());
@@ -92,7 +92,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
                     jsonwebtoken::decode::<Claims>(token, jwt_decoding_key, &jsonwebtoken::Validation::default())
                         .map_err(|_| MatrixError::invalid_username("Token is invalid."))?;
                 let username = token.claims.sub.to_lowercase();
-                UserId::parse_with_server_name(username, &crate::config().server_name)
+                UserId::parse_with_server_name(username, crate::server_name())
                     .map_err(|_| MatrixError::invalid_username("Username is invalid."))?
             } else {
                 return Err(
@@ -106,7 +106,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             } else {
                 return Err(MatrixError::forbidden("Bad login type.").into());
             };
-            let user_id = UserId::parse_with_server_name(username, &crate::config().server_name)
+            let user_id = UserId::parse_with_server_name(username, crate::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             user_id
         }

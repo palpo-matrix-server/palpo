@@ -189,7 +189,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !crate::room::is_server_in_room(&crate::config().server_name, &args.room_id)? {
+    if !crate::room::is_server_in_room(crate::server_name(), &args.room_id)? {
         println!("FFFFFFFFFFederation invite_user update_membership invite");
         crate::room::update_membership(
             &pdu.event_id,
@@ -212,7 +212,8 @@ async fn invite_user(
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
     let origin = depot.origin()?;
-    if origin.is_remote() {
+    println!("========args.user_id: {:?}   {:?}", args.user_id, crate::server_name());
+    if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
     if !crate::room::is_room_exists(&args.room_id)? {

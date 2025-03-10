@@ -177,7 +177,7 @@ pub async fn create_content(
     // let media_id = checksum.to_base32_crockford();
 
     let media_id = utils::base32_crockford(Uuid::new_v4().as_bytes());
-    let mxc = format!("mxc://{}/{}", crate::config().server_name, media_id);
+    let mxc = format!("mxc://{}/{}", crate::server_name(), media_id);
 
     let conf = crate::config();
     let dest_path = crate::media_path(&conf.server_name, &media_id);

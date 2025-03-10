@@ -58,7 +58,7 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
     let Some(room_id) = room_id else {
         return Err(MatrixError::not_found("Room with alias not found.").into());
     };
-    json_ok(AliasResBody::new(room_id, vec![crate::config().server_name.to_owned()]))
+    json_ok(AliasResBody::new(room_id, vec![crate::server_name().to_owned()]))
 }
 
 /// #PUT /_matrix/client/r0/directory/room/{room_alias}
