@@ -7,7 +7,6 @@ use tracing::{debug, error, warn};
 use crate::PduEvent;
 use crate::core::client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk};
 use crate::core::events::room::{
-    avatar::RoomAvatarEventContent,
     canonical_alias::RoomCanonicalAliasEventContent,
     create::RoomCreateEventContent,
     guest_access::{GuestAccess, RoomGuestAccessEventContent},

@@ -2,7 +2,6 @@ use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
-use std::time::Duration;
 
 use diesel::prelude::*;
 use image::imageops::FilterType;
@@ -371,7 +370,7 @@ pub async fn get_thumbnail(
             );
 
             res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-            let mut file = NamedFile::builder(&thumb_path)
+            let  file = NamedFile::builder(&thumb_path)
                 .content_type(
                     Mime::from_str(&content_type)
                         .ok()
@@ -399,7 +398,7 @@ pub async fn get_thumbnail(
         crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
-        let mut file = NamedFile::builder(&thumb_path)
+        let  file = NamedFile::builder(&thumb_path)
             .content_type(
                 Mime::from_str(&content_type)
                     .ok()
@@ -425,7 +424,7 @@ pub async fn get_thumbnail(
             let original_width = image.width();
             let original_height = image.height();
             if width > original_width || height > original_height {
-                let mut file = NamedFile::builder(&thumb_path)
+                let file = NamedFile::builder(&thumb_path)
                     .content_type(
                         content_type
                             .as_deref()
@@ -497,7 +496,7 @@ pub async fn get_thumbnail(
             let mut f = File::create(&thumb_path).await?;
             f.write_all(&thumbnail_bytes).await?;
 
-            let mut file = NamedFile::builder(&thumb_path)
+            let file = NamedFile::builder(&thumb_path)
                 .content_type(
                     content_type
                         .as_deref()
@@ -514,7 +513,7 @@ pub async fn get_thumbnail(
             Ok(())
         } else {
             // Couldn't parse file to generate thumbnail, send original
-            let mut file = NamedFile::builder(&image_path)
+            let  file = NamedFile::builder(&image_path)
                 .content_type(
                     content_type
                         .as_deref()

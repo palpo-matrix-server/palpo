@@ -9,7 +9,7 @@ use crate::core::federation::device::{Device, DevicesResBody};
 use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBody, KeysResBody};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{AppError, CjsonResult,DepotExt, JsonResult, cjson_ok, db, json_ok};
+use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, db, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("user")

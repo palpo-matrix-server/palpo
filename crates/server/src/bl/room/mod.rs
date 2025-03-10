@@ -249,7 +249,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -301,7 +301,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -339,7 +339,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),

@@ -286,12 +286,6 @@ pub use self::functions::*;
 pub use self::types::*;
 
 mod tests {
-    use super::*;
-
-    use diesel::dsl::sql;
-    use diesel::pg::PgConnection;
-    use diesel::prelude::*;
-
     #[test]
     fn test_tsvector_from_sql_with_positions() {
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");

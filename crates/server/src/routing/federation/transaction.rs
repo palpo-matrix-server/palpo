@@ -14,7 +14,7 @@ use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::{RawJsonValue, UnixMillis};
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::user::NewDbPresence;
-use crate::{AppError, AppResult, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)

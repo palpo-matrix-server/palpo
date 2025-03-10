@@ -3,13 +3,11 @@ use rand::seq::SliceRandom;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
-use crate::core::UnixMillis;
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::exts::*;
-use crate::room::DbRoomAlias;
 use crate::schema::*;
 use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, db, diesel_exists, empty_ok, json_ok};
 

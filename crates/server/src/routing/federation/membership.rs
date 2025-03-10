@@ -1,23 +1,18 @@
-use diesel::prelude::*;
-use palpo_core::events::call::invite;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
 use crate::core::OwnedEventId;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{EventId, OwnedRoomId, OwnedUserId, RoomVersionId, UnixMillis};
+use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
-use crate::room::NewDbRoom;
-use crate::schema::*;
 use crate::{
-    AppError, DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, db, empty_ok,
+     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok,
     json_ok, utils,
 };
 
@@ -212,7 +207,7 @@ async fn invite_user(
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
     let origin = depot.origin()?;
-    println!("========args.user_id: {:?}   {:?}", args.user_id, crate::server_name());
+    println!("cccccreate_leave_event_template_route, user: {:?}", args.user_id);
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }

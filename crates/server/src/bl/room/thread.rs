@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use diesel::prelude::*;
 use serde_json::json;
 

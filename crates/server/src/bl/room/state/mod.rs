@@ -7,7 +7,7 @@ pub use frame::*;
 mod point;
 pub use point::*;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
@@ -22,6 +22,7 @@ use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventC
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
+use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{RawJson, to_raw_json_value};
@@ -352,7 +353,16 @@ pub fn get_auth_events(
 
     println!("=ddddddddddddget_auth_events kind:{kind:?} state_key:{state_key:?} content:{content:?}");
     let auth_types = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
-    println!("=ddddddddddddgauth_types:{auth_types:#?}");
+    println!(
+        "=ddddddddddddgauth_types:{auth_types:#?}  {:#?}",
+        room_state_fields::table
+            .select((
+                room_state_fields::id,
+                room_state_fields::event_ty,
+                room_state_fields::state_key,
+            ))
+            .load::<(i64, String, String)>(&mut *db::connect()?)?
+    );
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -362,6 +372,7 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
+    println!("==========sauth_events: {sauth_events:?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()
@@ -370,11 +381,18 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!("==========state_key_id: {state_key_id} event_id: {event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
+            }
+        } else {
+            if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+                println!("VVVVVVVVVVVVError  pdu: {pdu:?}");
+            } else {
+                println!("VVVVVVVVVVVVError");
             }
         }
     }
@@ -446,6 +464,13 @@ pub fn get_state_event_id(
 pub fn get_pdu(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     get_state_event_id(frame_id, event_type, state_key)?
         .map_or(Ok(None), |event_id| crate::room::timeline::get_pdu(&event_id))
+}
+
+pub fn get_room_pdu(room_id: &RoomId, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
+    let Some(frame_id) = get_room_frame_id(room_id, None)? else {
+        return Ok(None);
+    };
+    get_pdu(frame_id, event_type, state_key)
 }
 
 /// Get membership for given user in state
@@ -831,4 +856,32 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
         .select(room_users::user_id)
         .load::<OwnedUserId>(&mut *db::connect()?)
         .map_err(Into::into)
+}
+
+/// Gets up to five servers that are likely to be in the room in the
+/// distant future.
+///
+/// See <https://spec.matrix.org/latest/appendices/#routing>
+#[tracing::instrument(level = "trace")]
+pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    let Some(pdu) = crate::room::state::get_room_pdu(room_id, &StateEventType::RoomPowerLevels, "")? else {
+        return Ok(Vec::new());
+    };
+
+    let most_powerful_user_server = pdu
+        .get_content::<RoomPowerLevelsEventContent>()?
+        .users
+        .iter()
+        .max_by_key(|(_, power)| *power)
+        .and_then(|x| (*x.1 >= 50).then_some(x))
+        .map(|(user, _power)| user.server_name().to_owned());
+
+    let mut servers: Vec<OwnedServerName> = crate::room::room_servers(room_id)?.into_iter().take(5).collect();
+
+    if let Some(server) = most_powerful_user_server {
+        servers.insert(0, server);
+        servers.truncate(5);
+    }
+
+    Ok(servers)
 }

@@ -8,7 +8,6 @@ use image::imageops::FilterType;
 use mime::Mime;
 use palpo_core::http_headers::ContentDispositionType;
 use salvo::fs::NamedFile;
-use salvo::http::HeaderValue;
 use salvo::prelude::*;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -18,7 +17,7 @@ use crate::core::federation::media::*;
 use crate::media::*;
 use crate::schema::*;
 use crate::utils::content_disposition::make_content_disposition;
-use crate::{AppResult, AuthArgs, JsonResult, MatrixError, db, hoops, json_ok};
+use crate::{AppResult, AuthArgs,MatrixError, db, hoops, };
 
 pub fn router() -> Router {
     Router::with_path("media")

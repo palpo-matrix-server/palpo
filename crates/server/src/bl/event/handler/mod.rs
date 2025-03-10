@@ -21,7 +21,7 @@ use crate::core::federation::event::get_events_request;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::state::{self, RoomVersion, StateMap};
-use crate::event::{DbEvent, DbEventData, NewDbEvent, PduEvent};
+use crate::event::{DbEventData, NewDbEvent, PduEvent};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, db, exts::*, schema::*};
 

@@ -1,14 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use diesel::prelude::*;
-
 use crate::core::identifiers::*;
 use crate::core::state::{self, StateMap};
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
 use crate::schema::*;
-use crate::{AppError, AppResult, JsonValue, db};
+use crate::{AppError, AppResult};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,

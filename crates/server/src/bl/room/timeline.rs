@@ -1,4 +1,3 @@
-use core::panic;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::iter::once;

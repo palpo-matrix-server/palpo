@@ -7,7 +7,7 @@ use ulid::Ulid;
 use crate::core::device::DirectDeviceContent;
 use crate::core::federation::transaction::Edu;
 use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
-use crate::{empty_ok, AuthArgs,  DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError};
+use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, empty_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/{event_type}/{txn_id}").put(send_to_device)

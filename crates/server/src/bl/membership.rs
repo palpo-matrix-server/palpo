@@ -30,9 +30,11 @@ use crate::membership::federation::membership::{
     SendLeaveReqArgsV2, send_leave_request_v2,
 };
 use crate::membership::state::DeltaInfo;
-use crate::room::state::{self, CompressedEvent, CompressedState};
+use crate::room::state::{self, CompressedEvent};
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, SigningKeys, db, diesel_exists, schema::*};
+use crate::{
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists, schema::*,
+};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -869,10 +871,10 @@ pub(crate) async fn invite_user(
     reason: Option<String>,
     is_direct: bool,
 ) -> AppResult<()> {
-    if invitee_id.server_name() != crate::server_name() {
+    if invitee_id.server_name().is_remote() {
         println!("IIIIIIIIIIIIIIIIIIIInvite user 0");
         let (pdu, pdu_json, invite_room_state) = {
-            let content = to_raw_json_value(&RoomMemberEventContent {
+            let content = RoomMemberEventContent {
                 avatar_url: None,
                 display_name: None,
                 is_direct: Some(is_direct),
@@ -881,16 +883,10 @@ pub(crate) async fn invite_user(
                 blurhash: None,
                 reason,
                 join_authorized_via_users_server: None,
-            })
-            .expect("member event is valid value");
+            };
 
             let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
-                PduBuilder {
-                    event_type: TimelineEventType::RoomMember,
-                    content,
-                    state_key: Some(invitee_id.to_string()),
-                    ..Default::default()
-                },
+                PduBuilder::state(invitee_id.to_string(), &content),
                 inviter_id,
                 room_id,
             )?;
@@ -912,6 +908,7 @@ pub(crate) async fn invite_user(
                 room_version: room_version_id.clone(),
                 event: PduEvent::convert_to_outgoing_federation_event(pdu_json.clone()),
                 invite_room_state,
+                via: crate::room::state::servers_route_via(room_id).ok(),
             },
         )?
         .into_inner();
@@ -921,13 +918,11 @@ pub(crate) async fn invite_user(
             .await?;
 
         // We do not add the event_id field to the pdu here because of signature and hashes checks
-        let (event_id, value) = match gen_event_id_canonical_json(&send_join_response.event, &room_version_id) {
-            Ok(t) => t,
-            Err(_) => {
-                // Event could not be converted to canonical json
-                return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
-            }
-        };
+        let (event_id, value) =
+            gen_event_id_canonical_json(&send_join_response.event, &room_version_id).map_err(|e| {
+                tracing::error!("Could not convert event to canonical json: {e}");
+                MatrixError::invalid_param("Could not convert event to canonical json.")
+            })?;
 
         if *pdu.event_id != *event_id {
             warn!(
@@ -936,6 +931,11 @@ pub(crate) async fn invite_user(
                 pdu_json,
                 value
             );
+            return Err(MatrixError::bad_json(format!(
+                "Server `{}` sent event with wrong event ID",
+                invitee_id.server_name()
+            ))
+            .into());
         }
 
         let origin: OwnedServerName = serde_json::from_value(
@@ -946,22 +946,15 @@ pub(crate) async fn invite_user(
             )
             .expect("CanonicalJson is valid json value"),
         )
-        .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
+        .map_err(|e| MatrixError::invalid_param(format!("Origin field in event is not a valid server name: {e}")))?;
 
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
-
-        // Bind to variable because of lifetimes
-        let servers = crate::room::participating_servers(room_id)?
-            .into_iter()
-            .filter(|server| server != crate::server_name());
-
-        crate::sending::send_pdu_servers(servers, &event_id)?;
-        return Ok(());
+        return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
     println!("IIIIIIIIIIIIIIIIIIIInvite user local");
     if !crate::room::is_joined(inviter_id, room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden("You must be joined in the room you are trying to invite from.").into());
     }
 
     println!("IIIIIIIIIIIIIIIIIIIInvite user local 1");
