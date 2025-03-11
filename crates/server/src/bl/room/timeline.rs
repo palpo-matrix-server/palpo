@@ -571,7 +571,7 @@ pub fn create_hash_and_sign_event(
         contains_url: content_value.get("url").is_some(),
         worker_id: None,
         state_key: state_key.clone(),
-        is_outlier: false,
+        is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
     };
@@ -727,6 +727,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+    println!("AAAAAAAAAAAAAAAbuild_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(

@@ -175,7 +175,7 @@ pub(super) async fn join_room_by_id(
 
     let mut servers = Vec::new(); // There is no body.server_name for /roomId/join
     servers.extend(
-        state::get_invite_state(authed.user_id(), &room_id)?
+        state::get_user_state(authed.user_id(), &room_id)?
             .unwrap_or_default()
             .iter()
             .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
@@ -264,7 +264,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             // TODO
             // servers.extend(crate::room::state::servers_invite_via(&room_id)?);
 
-            let state_servers = crate::room::state::get_invite_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let state_servers = crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
             let state_servers = state_servers
                 .iter()
                 .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
@@ -299,7 +299,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             // TODO: NOW
             let addl_via_servers = servers.clone();
             let addl_state_servers =
-                crate::room::state::get_invite_state(authed.user_id(), &room_id)?.unwrap_or_default();
+                crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()

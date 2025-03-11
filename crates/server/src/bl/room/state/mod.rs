@@ -184,6 +184,7 @@ pub fn set_event_state(
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
+    println!("AAAAAAAAAAAAAAAaa  {} apend to state: {new_pdu:?}", crate::server_name());
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
     let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
@@ -813,7 +814,7 @@ pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMe
 }
 
 #[tracing::instrument]
-pub fn get_invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
+pub fn get_user_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))

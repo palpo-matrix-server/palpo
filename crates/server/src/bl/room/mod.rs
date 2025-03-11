@@ -415,6 +415,7 @@ pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
 pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq("join"))
         .select(room_users::user_id)
         .distinct()
         .load::<OwnedUserId>(&mut *db::connect()?)?

@@ -938,17 +938,20 @@ pub(crate) async fn invite_user(
             .into());
         }
 
+        println!("IIIIIIIIIIIIIIIIIIIInvite user remote value: {value:?}");
         let origin: OwnedServerName = serde_json::from_value(
             serde_json::to_value(
                 value
                     .get("origin")
-                    .ok_or(MatrixError::invalid_param("Event needs an origin field."))?,
+                    .ok_or(MatrixError::bad_json("Event needs an origin field."))?,
             )
             .expect("CanonicalJson is valid json value"),
         )
-        .map_err(|e| MatrixError::invalid_param(format!("Origin field in event is not a valid server name: {e}")))?;
+        .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
+        println!("IIIIIIIIIIIIIIIIIIIInvite user remote origin: {origin:?}");
 
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
+        println!("IIIIIIIIIIIIIIIIIIIInvite user remote event_id: {event_id:?}");
         return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
@@ -996,25 +999,34 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !crate::room::room_exists(room_id)? || room_id.server_name().map_err(AppError::public)? != crate::server_name() {
-        if let Err(e) = remote_leave_room(user_id, room_id).await {
-            warn!("Failed to leave room {} remotely: {}", user_id, e);
-            // Don't tell the client about this error
+    if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
+        println!(
+            "LLLLLLLLLLLLLLeave room remote {}   user: {user_id}",
+            crate::server_name()
+        );
+        match leave_remote_room(user_id, room_id).await {
+            Err(e) => {
+                warn!("Failed to leave room {} remotely: {}", user_id, e);
+            }
+            Ok(event_id) => {
+                let last_state = crate::room::state::get_user_state(user_id, room_id)?;
+
+                // We always drop the invite, we can't rely on other servers
+                crate::room::update_membership(
+                    &event_id,
+                    room_id,
+                    user_id,
+                    RoomMemberEventContent::new(MembershipState::Leave),
+                    user_id,
+                    last_state,
+                )?;
+            }
         }
-
-        // let last_state = crate::room::state::get_invite_state(user_id, room_id)?.map_or_else(
-        //     || crate::room::state::left_state(user_id, room_id),
-        //     |s| Ok(Some(s)),
-        // )?;
-
-        // We always drop the invite, we can't rely on other servers
-        diesel::delete(
-            room_users::table
-                .filter(room_users::room_id.eq(room_id))
-                .filter(room_users::user_id.eq(user_id)),
-        )
-        .execute(&mut *db::connect()?)?;
     } else {
+        println!(
+            "LLLLLLLLLLLLLLeave room local {}   user: {user_id}",
+            crate::server_name()
+        );
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms
@@ -1070,10 +1082,10 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
     Ok(())
 }
 
-async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<OwnedEventId> {
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
-    let invite_state = crate::room::state::get_invite_state(user_id, room_id)?
-        .ok_or(MatrixError::bad_state("User is not invited."))?;
+    let invite_state =
+        crate::room::state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
 
     let servers: HashSet<_> = invite_state
         .iter()
@@ -1136,12 +1148,7 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
     .expect("event is valid, we just created it");
 
     // Generate event id
-    let event_id = EventId::parse(format!(
-        "${}",
-        crate::core::signatures::reference_hash(&leave_event_stub, &room_version_id)
-            .expect("palpo can calculate reference hashes")
-    ))
-    .expect("palpo's reference hashes are valid event ids");
+    let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
     // Add event_id back
     leave_event_stub.insert(
@@ -1156,7 +1163,7 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         &remote_server.origin().await,
         SendLeaveReqArgsV2 {
             room_id: room_id.to_owned(),
-            event_id,
+            event_id: event_id.clone(),
         },
         SendLeaveReqBody(PduEvent::convert_to_outgoing_federation_event(leave_event.clone())),
     )?
@@ -1164,7 +1171,7 @@ async fn remote_leave_room(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
 
     crate::sending::send_federation_request(&remote_server, request).await?;
 
-    Ok(())
+    Ok(event_id)
 }
 
 /// Makes a user forget a room.
