@@ -205,6 +205,7 @@ where
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
+    println!("IIIIIIIIIIIIIIIIIII {}  5 {event_data:#?}", crate::server_name());
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -727,7 +728,6 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
-    println!("AAAAAAAAAAAAAAAbuild_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -747,7 +747,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     )?;
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
-    println!("IIIIIIIIIIIIIIIIIIIframe_id {frame_id}");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     crate::room::state::set_room_state(room_id, frame_id)?;
@@ -885,38 +884,38 @@ pub fn get_pdus(
                 }
             }
         }
-        let datas: Vec<(i64, JsonValue)> = if dir == Direction::Forward {
+        let datas: Vec<(OwnedEventId, Seqnum, JsonValue)> = if dir == Direction::Forward {
             event_datas::table
                 .filter(event_datas::event_id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.asc())
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
         } else {
             event_datas::table
                 .filter(event_datas::event_id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.desc())
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
         };
         if datas.is_empty() {
             break;
         }
-        start_sn = if let Some(&(sn, _)) = datas.last() {
+        start_sn = if let Some(&(_, sn, _)) = datas.last() {
             sn
         } else {
             break;
         };
-        for (sn, v) in datas {
-            let mut pdu = serde_json::from_value::<PduEvent>(v)?;
+        for (event_id, event_sn, value) in datas {
+            let mut pdu = PduEvent::from_json_value(&event_id, event_sn, value)?;
 
             if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
                 pdu.add_age()?;
-                list.push((sn, pdu));
+                list.push((event_sn, pdu));
                 if list.len() >= limit {
                     break;
                 }

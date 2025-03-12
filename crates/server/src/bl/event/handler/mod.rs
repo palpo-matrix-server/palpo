@@ -96,7 +96,6 @@ pub(crate) async fn handle_incoming_pdu(
 
     let room_version_id = &crate::room::room_version(room_id)?;
 
-    println!(" handle_outlier_pdu");
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
@@ -359,6 +358,7 @@ fn handle_outlier_pdu<'a>(
             json_data: serde_json::to_value(&val)?,
             format_version: None,
         };
+        println!("IIIIIIIIIIIIIIIIIII {} 4 {event_data:#?}", crate::server_name());
         diesel::insert_into(event_datas::table)
             .values(&event_data)
             .on_conflict((event_datas::event_id, event_datas::event_sn))

@@ -440,7 +440,7 @@ pub async fn join_room(
                 Err(_) => continue,
             };
 
-            let pdu = PduEvent::from_canonical_object(&event_id, crate::next_sn()?, value.clone()).map_err(|e| {
+            let pdu = PduEvent::from_canonical_object(&event_id, parsed_join_pdu.event_sn, value.clone()).map_err(|e| {
                 warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                 AppError::public("Invalid PDU in send_join response.")
             })?;
@@ -458,6 +458,7 @@ pub async fn join_room(
                 json_data: serde_json::to_value(&value)?,
                 format_version: None,
             };
+            println!("IIIIIIIIIIIIIIIIIII {}  0 {event_data:#?}", crate::server_name());
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
                 .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -500,6 +501,7 @@ pub async fn join_room(
                 json_data: serde_json::to_value(&value)?,
                 format_version: None,
             };
+            println!("IIIIIIIIIIIIIIIIIII {} 1 {event_data:#?}", crate::server_name());
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
                 .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -872,7 +874,6 @@ pub(crate) async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     if invitee_id.server_name().is_remote() {
-        println!("IIIIIIIIIIIIIIIIIIIInvite user 0");
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
                 avatar_url: None,
@@ -938,7 +939,6 @@ pub(crate) async fn invite_user(
             .into());
         }
 
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote value: {value:?}");
         let origin: OwnedServerName = serde_json::from_value(
             serde_json::to_value(
                 value
@@ -948,19 +948,15 @@ pub(crate) async fn invite_user(
             .expect("CanonicalJson is valid json value"),
         )
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote origin: {origin:?}");
-
+       
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote event_id: {event_id:?}");
         return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
-    println!("IIIIIIIIIIIIIIIIIIIInvite user local");
     if !crate::room::is_joined(inviter_id, room_id)? {
         return Err(MatrixError::forbidden("You must be joined in the room you are trying to invite from.").into());
     }
 
-    println!("IIIIIIIIIIIIIIIIIIIInvite user local 1");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -1182,6 +1178,7 @@ async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         json_data: serde_json::to_value(&leave_event_stub)?,
         format_version: None,
     };
+    println!("IIIIIIIIIIIIIIIIIII {} 3 {event_data:#?}", crate::server_name());
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict_do_nothing()
