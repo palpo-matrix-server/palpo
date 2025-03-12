@@ -321,7 +321,6 @@ where
                     &pdu.sender,
                     invite_state,
                 )?;
-                println!("==================update_membership {pdu:#?}");
             }
         }
         TimelineEventType::RoomMessage => {
@@ -607,7 +606,6 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
-    println!("==========call auth check 5  auth_events: {auth_events:#?}");
     let auth_checked = crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
@@ -727,7 +725,6 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
-    println!("AAAAAAAAAAAAAAAbuild_and_append_pdu");
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
     let admin_room = crate::room::resolve_local_alias(
@@ -747,7 +744,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     )?;
     let frame_id = crate::room::state::append_to_state(&pdu)?;
 
-    println!("IIIIIIIIIIIIIIIIIIIframe_id {frame_id}");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     crate::room::state::set_room_state(room_id, frame_id)?;

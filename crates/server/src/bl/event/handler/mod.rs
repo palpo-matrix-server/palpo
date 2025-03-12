@@ -57,7 +57,6 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
-    println!("1. Skip theroom_exists");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -67,7 +66,6 @@ pub(crate) async fn handle_incoming_pdu(
         return Err(MatrixError::forbidden("Federation of this room is currently disabled on this server.").into());
     }
 
-    println!("1.3.1 Check room ACL on origin field/server");
     // 1.3.1 Check room ACL on origin field/server
     crate::event::handler::acl_check(origin, &room_id)?;
 
@@ -81,52 +79,40 @@ pub(crate) async fn handle_incoming_pdu(
     )
     .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
 
-    println!("1.3.1 Che  0 sender:{sender:?} origin:{origin:?}");
     if sender.server_name().ne(origin) {
-        println!("1.3.1 Che  1");
         crate::event::handler::acl_check(sender.server_name(), room_id)?;
     }
 
-    println!(" Skip the PDU if we already have it as a timeline event");
     // 1. Skip the PDU if we already have it as a timeline event
     if let Some(_pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
-        println!("skipped");
         return Ok(());
     }
 
     let room_version_id = &crate::room::room_version(room_id)?;
 
-    println!(" handle_outlier_pdu");
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
-    println!(" check_room_id");
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
-        println!(" ==========================================!is_timeline_event");
         return Ok(());
     }
 
-    println!(" >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> skip old event");
     // Skip old events
     let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-        println!(" incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts");
         return Ok(());
     }
 
-    println!("fffffff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> -0");
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
 
-    println!("fffffff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1");
     let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
-        println!("fffffff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> prev id: {prev_id:?}");
         if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
             // Exponential backoff
             let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
@@ -185,8 +171,6 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // Done with prev events, now handling the incoming event
-
-    println!(" after handle incoming");
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -330,7 +314,6 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
         }
 
-        println!("==========call auth check 2");
         if !state::event_auth::auth_check(
             &room_version,
             &incoming_pdu,
@@ -379,20 +362,15 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("==========c???????????  --- 0   {:?}", incoming_pdu.state_key);
     // Skip the PDU if we already have it as a timeline event
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
-        println!("==========c???????????  --- 1");
         return Ok(());
     }
 
-    println!("==========c???????????  --- 2");
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
-        println!("==========c???????????  --- 3");
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
 
-    println!("==========c???????????  --- 4");
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let timer = Instant::now();
     let room_version_id = &crate::room::room_version(room_id)?;
@@ -407,7 +385,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     } else {
         state_at_incoming_resolved(incoming_pdu, room_id, room_version_id).await?
     };
-    println!("==========c???????????  --- 5");
 
     let state_at_incoming_event = match state_at_incoming_event {
         None => fetch_state(origin, room_id, &room_version_id, &incoming_pdu.event_id)
@@ -418,7 +395,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
-    println!("==========call auth check 1");
     let auth_checked = state::event_auth::auth_check(
         &room_version,
         &incoming_pdu,
@@ -432,9 +408,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     )
     .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
 
-    println!("==========c???????????  --- 16");
     if !auth_checked {
-        println!("==========c???????????  --- 7");
         return Err(AppError::internal(
             "Event has failed auth check with state at the event.",
         ));
@@ -450,7 +424,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
-    println!("==========call auth check 3");
     let auch_checked = state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
@@ -499,16 +472,11 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
-    println!("==========c???????????   {:?}", incoming_pdu.state_key);
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
-        println!(
-            "08=========get_or_create_shortstatekey short state key: {:?}",
-            incoming_pdu.state_key
-        );
 
         if let Some(state_key) = &incoming_pdu.state_key {
             let state_key_id =

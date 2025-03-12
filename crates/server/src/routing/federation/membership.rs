@@ -114,11 +114,9 @@ async fn invite_user(
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
     let body = body.into_inner();
-    println!("FFFFFFFFFFederation invite_user 0");
     let origin = depot.origin()?;
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
-    println!("FFFFFFFFFFederation invite_user 1");
     if !crate::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
             body.room_version.clone(),
@@ -146,12 +144,10 @@ async fn invite_user(
 
     crate::server_key::hash_and_sign_event(&mut signed_event, &body.room_version)
         .map_err(|e| MatrixError::invalid_param(format!("Failed to sign event: {e}.")))?;
-    println!("FFFFFFFFFFederation invite_user 2");
 
     // Generate event id
     let event_id = crate::event::gen_event_id(&signed_event, &body.room_version)?;
 
-    println!("FFFFFFFFFFederation invite_user 3");
     // Add event_id back
     signed_event.insert("event_id".to_owned(), CanonicalJsonValue::String(event_id.to_string()));
 
@@ -163,8 +159,6 @@ async fn invite_user(
             .into(),
     )
     .map_err(|_| MatrixError::invalid_param("sender is not a user id."))?;
-
-    println!("FFFFFFFFFFederation invite_user 4");
 
     let mut invite_state = body.invite_room_state.clone();
 
@@ -185,7 +179,6 @@ async fn invite_user(
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(crate::server_name(), &args.room_id)? {
-        println!("FFFFFFFFFFederation invite_user update_membership invite");
         crate::room::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -196,7 +189,6 @@ async fn invite_user(
             Some(invite_state),
         )?;
     }
-    println!("FFFFFFFFFFederation invite_user 5");
 
     json_ok(InviteUserResBodyV2 {
         event: PduEvent::convert_to_outgoing_federation_event(signed_event),
@@ -207,7 +199,6 @@ async fn invite_user(
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
     let origin = depot.origin()?;
-    println!("cccccreate_leave_event_template_route, user: {:?}", args.user_id);
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
@@ -276,7 +267,6 @@ async fn send_join_v1(
 /// Submits a signed leave event.
 #[endpoint]
 async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBody>) -> EmptyResult {
-    println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCsend leave");
     let origin = depot.origin()?;
     let body = body.into_inner();
 

@@ -539,14 +539,12 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
         .select((room_users::room_id, room_users::event_id))
         .load::<(OwnedRoomId, OwnedEventId)>(&mut *db::connect()?)
         .map(|rows| {
-            println!("================left event rows: {rows:?}");
             let mut map: HashMap<OwnedRoomId, Vec<OwnedEventId>> = HashMap::new();
             for (room_id, event_id) in rows {
                 map.entry(room_id).or_default().push(event_id);
             }
             map
         })?;
-    println!("================left event ids: {room_event_ids:?}");
     let mut room_events = HashMap::new();
     for (room_id, event_ids) in room_event_ids {
         let events = event_datas::table

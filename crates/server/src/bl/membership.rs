@@ -872,7 +872,6 @@ pub(crate) async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     if invitee_id.server_name().is_remote() {
-        println!("IIIIIIIIIIIIIIIIIIIInvite user 0");
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
                 avatar_url: None,
@@ -938,7 +937,6 @@ pub(crate) async fn invite_user(
             .into());
         }
 
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote value: {value:?}");
         let origin: OwnedServerName = serde_json::from_value(
             serde_json::to_value(
                 value
@@ -948,19 +946,15 @@ pub(crate) async fn invite_user(
             .expect("CanonicalJson is valid json value"),
         )
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote origin: {origin:?}");
 
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
-        println!("IIIIIIIIIIIIIIIIIIIInvite user remote event_id: {event_id:?}");
         return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
-    println!("IIIIIIIIIIIIIIIIIIIInvite user local");
     if !crate::room::is_joined(inviter_id, room_id)? {
         return Err(MatrixError::forbidden("You must be joined in the room you are trying to invite from.").into());
     }
 
-    println!("IIIIIIIIIIIIIIIIIIIInvite user local 1");
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -1000,10 +994,6 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
     if !crate::room::is_server_in_room(crate::server_name(), room_id)? {
-        println!(
-            "LLLLLLLLLLLLLLeave room remote {}   user: {user_id}",
-            crate::server_name()
-        );
         match leave_remote_room(user_id, room_id).await {
             Err(e) => {
                 warn!("Failed to leave room {} remotely: {}", user_id, e);
@@ -1024,10 +1014,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
-        println!(
-            "LLLLLLLLLLLLLLeave room local {}   user: {user_id}",
-            crate::server_name()
-        );
         let member_event = crate::room::state::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms
