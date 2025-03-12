@@ -33,7 +33,7 @@ use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::user::DbUser;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists, schema::*,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, Seqnum, SigningKeys, db, diesel_exists, schema::*,
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
@@ -1008,15 +1008,16 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             Err(e) => {
                 warn!("Failed to leave room {} remotely: {}", user_id, e);
             }
-            Ok(event_id) => {
+            Ok((event_id, event_sn)) => {
                 let last_state = crate::room::state::get_user_state(user_id, room_id)?;
 
                 // We always drop the invite, we can't rely on other servers
                 crate::room::update_membership(
                     &event_id,
+                    event_sn,
                     room_id,
                     user_id,
-                    RoomMemberEventContent::new(MembershipState::Leave),
+                    MembershipState::Leave,
                     user_id,
                     last_state,
                 )?;
@@ -1082,7 +1083,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
     Ok(())
 }
 
-async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<OwnedEventId> {
+async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<(OwnedEventId, Seqnum)> {
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
     let invite_state =
         crate::room::state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
@@ -1139,22 +1140,52 @@ async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<Owne
     leave_event_stub.remove("event_id");
 
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
-    crate::core::signatures::hash_and_sign_event(
-        crate::server_name().as_str(),
-        crate::keypair(),
-        &mut leave_event_stub,
-        &room_version_id,
-    )
-    .expect("event is valid, we just created it");
+    crate::server_key::hash_and_sign_event(&mut leave_event_stub, &room_version_id)
+        .expect("event is valid, we just created it");
 
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
+    let new_db_event = NewDbEvent {
+        id: event_id.to_owned(),
+        sn: None,
+        ty: MembershipState::Leave.to_string(),
+        room_id: room_id.to_owned(),
+        unrecognized_keys: None,
+        depth: 0,
+        origin_server_ts: Some(UnixMillis::now()),
+        received_at: None,
+        sender_id: Some(user_id.to_owned()),
+        contains_url: false,
+        worker_id: None,
+        state_key: Some(user_id.to_string()),
+        is_outlier: true,
+        soft_failed: false,
+        rejection_reason: None,
+    };
+    let event_sn = diesel::insert_into(events::table)
+        .values(&new_db_event)
+        .on_conflict_do_nothing()
+        .returning(events::sn)
+        .get_result::<Seqnum>(&mut *db::connect()?)?;
     // Add event_id back
     leave_event_stub.insert(
         "event_id".to_owned(),
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
+
+    let event_data = DbEventData {
+        event_id: event_id.clone(),
+        event_sn,
+        room_id: room_id.to_owned(),
+        internal_metadata: None,
+        json_data: serde_json::to_value(&leave_event_stub)?,
+        format_version: None,
+    };
+    diesel::insert_into(event_datas::table)
+        .values(&event_data)
+        .on_conflict_do_nothing()
+        .execute(&mut db::connect()?)?;
 
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
@@ -1171,7 +1202,7 @@ async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<Owne
 
     crate::sending::send_federation_request(&remote_server, request).await?;
 
-    Ok(event_id)
+    Ok((event_id, event_sn))
 }
 
 /// Makes a user forget a room.

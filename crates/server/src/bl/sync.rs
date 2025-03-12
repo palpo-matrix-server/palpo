@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use diesel::prelude::*;
 use tokio::sync::watch::Sender;
 
+use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
 use crate::core::client::sync_events::{
     EphemeralV3, FilterV3, GlobalAccountDataV3, InviteStateV3, InvitedRoomV3, JoinedRoomV3, LeftRoomV3, PresenceV3,
@@ -16,10 +17,10 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::event::PduEvent;
+use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
-use crate::{db, schema::*};
+use crate::schema::*;
+use crate::{AppError, AppResult, db};
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(
@@ -121,17 +122,57 @@ pub fn sync_events(
 
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
+        println!("aaaaaaaaaaaaaaaAll left rooms: {:?}", all_left_rooms);
 
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
 
-            let left_count = crate::room::get_left_sn(&room_id, &sender_id)?;
+            let left_sn = crate::room::get_left_sn(&room_id, &sender_id)?;
 
-            // // Left before last sync
-            // if Some(since_sn) >= left_count {
-            //     continue;
-            // }
+            // Left before last sync
+            println!("========since_sn: {:?}, left_sn: {:?}", since_sn, left_sn);
+            if Some(since_sn) > left_sn {
+                continue;
+            }
 
+            if !crate::room::room_exists(room_id)? {
+                println!("========room not exists");
+                let event = PduEvent {
+                    event_id: EventId::new(crate::server_name()).into(),
+                    event_sn: 0,
+                    sender: sender_id.to_owned(),
+                    origin_server_ts: UnixMillis::now(),
+                    event_ty: TimelineEventType::RoomMember,
+                    content: serde_json::from_str(r#"{"membership":"leave"}"#).expect("this is valid JSON"),
+                    state_key: Some(sender_id.to_string()),
+                    unsigned: None,
+                    // The following keys are dropped on conversion
+                    room_id: room_id.clone(),
+                    prev_events: vec![],
+                    depth: 1,
+                    auth_events: vec![],
+                    redacts: None,
+                    hashes: EventHash { sha256: String::new() },
+                    signatures: None,
+                };
+                left_rooms.insert(
+                    room_id.to_owned(),
+                    LeftRoomV3 {
+                        account_data: RoomAccountDataV3 { events: Vec::new() },
+                        timeline: TimelineV3 {
+                            limited: false,
+                            prev_batch: Some(next_batch.to_string()),
+                            events: Vec::new(),
+                        },
+                        state: StateV3 {
+                            events: vec![event.to_sync_state_event()],
+                        },
+                    },
+                );
+                continue;
+            }
+
+            println!("========room  exist");
             let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
 
             let since_state_ids = match since_frame_id {
@@ -140,21 +181,25 @@ pub fn sync_events(
             };
 
             let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id, None)? else {
+                println!("========continue 0");
                 continue;
             };
             let Some(left_event_id) =
                 crate::room::state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
             else {
                 error!("Left room but no left state event");
+                println!("========continue 1");
                 continue;
             };
 
             let Some(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id)? else {
                 error!("Leave event has no state");
+                println!("========continue 2");
                 continue;
             };
             if let Some(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
+                    println!("========continue 3");
                     continue;
                 }
             } else {
@@ -165,6 +210,7 @@ pub fn sync_events(
                     .first::<bool>(&mut *db::connect()?)
                     .optional()?;
                 if let Some(true) = forgotten {
+                    println!("========continue 4");
                     continue;
                 }
             }
@@ -174,6 +220,7 @@ pub fn sync_events(
                 crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
             left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
+            println!("========ccc 0");
             for (key, event_id) in left_state_ids {
                 if full_state || since_state_ids.get(&key) != Some(&event_id) {
                     let DbRoomStateField {
@@ -220,6 +267,7 @@ pub fn sync_events(
             );
         }
 
+        println!("aaaaaaaaaaaaaaa left rooms: {:?}", left_rooms);
         let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
             .into_iter()
             .map(|(room_id, invite_state_events)| {

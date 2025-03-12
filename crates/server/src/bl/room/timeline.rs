@@ -581,7 +581,7 @@ pub fn create_hash_and_sign_event(
         .do_update()
         .set(&new_db_event)
         .returning(events::sn)
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<Seqnum>(&mut *db::connect()?)?;
 
     let mut pdu = PduEvent {
         event_id: event_id.into(),

@@ -87,7 +87,7 @@ pub(crate) async fn handle_incoming_pdu(
         crate::event::handler::acl_check(sender.server_name(), room_id)?;
     }
 
-     println!(" Skip the PDU if we already have it as a timeline event");
+    println!(" Skip the PDU if we already have it as a timeline event");
     // 1. Skip the PDU if we already have it as a timeline event
     if let Some(_pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
         println!("skipped");
@@ -122,7 +122,7 @@ pub(crate) async fn handle_incoming_pdu(
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
 
-        println!("fffffff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1");
+    println!("fffffff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1");
     let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
@@ -263,8 +263,9 @@ fn handle_outlier_pdu<'a>(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
-        val.insert("event_sn".to_owned(), crate::next_sn()?.into());
-        let incoming_pdu = serde_json::from_value::<PduEvent>(
+        let incoming_pdu = PduEvent::from_json_value(
+            event_id,
+            crate::next_sn()?,
             serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
@@ -378,7 +379,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    
     println!("==========c???????????  --- 0   {:?}", incoming_pdu.state_key);
     // Skip the PDU if we already have it as a timeline event
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
@@ -505,10 +505,12 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
-        println!("08=========get_or_create_shortstatekey short state key: {:?}", incoming_pdu.state_key);
-			
+        println!(
+            "08=========get_or_create_shortstatekey short state key: {:?}",
+            incoming_pdu.state_key
+        );
+
         if let Some(state_key) = &incoming_pdu.state_key {
-            
             let state_key_id =
                 crate::room::state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
 
