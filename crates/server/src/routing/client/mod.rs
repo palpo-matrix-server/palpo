@@ -28,15 +28,12 @@ use std::time::Duration;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::PduEvent;
-use crate::core::serde::CanonicalJsonObject;
-
 use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
 use crate::core::client::search::{
-    EventContextResult, ResultCategories, ResultRoomEvents, SearchReqArgs, SearchReqBody, SearchResBody, SearchResult,
+    ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody,
 };
 use crate::core::client::sync_events::{
     AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
@@ -46,7 +43,7 @@ use crate::core::client::sync_events::{
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");

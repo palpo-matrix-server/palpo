@@ -85,7 +85,7 @@ fn allowed_to_send_state_event(
         StateEventType::RoomCanonicalAlias => {
             if let Ok(canonical_alias) = serde_json::from_str::<RoomCanonicalAliasEventContent>(json.inner().get()) {
                 let mut aliases = canonical_alias.alt_aliases.clone();
-                
+
                 if let Some(alias) = canonical_alias.alias {
                     aliases.push(alias);
                 }

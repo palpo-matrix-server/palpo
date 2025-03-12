@@ -1,19 +1,9 @@
-use diesel::prelude::*;
-use rand::seq::SliceRandom;
-use serde_json::value::to_raw_value;
 
-use crate::core::UnixMillis;
-use crate::core::client::room::AliasResBody;
-use crate::core::events::TimelineEventType;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::room::StateEventType;
-use crate::user::DbUser;
-use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
-use crate::{GetUrlOrigin, schema::*};
+use crate::{ AppResult, GetUrlOrigin, MatrixError};
 
 pub(super) async fn remote_resolve(
     room_alias: &RoomAliasId,

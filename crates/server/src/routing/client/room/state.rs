@@ -14,7 +14,7 @@ use crate::core::events::receipt::{
     Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::{RoomAccountDataEventType, StateEventType};
+use crate::core::events::{RoomAccountDataEventType, };
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::room::state::UserCanSeeEvent;

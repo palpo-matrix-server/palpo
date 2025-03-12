@@ -1,9 +1,9 @@
 use salvo::prelude::*;
 
-use crate::PduEvent;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{UnixMillis, user_id};
 use crate::{AuthArgs, JsonResult, MatrixError, json_ok};
+use crate::{DepotExt, PduEvent};
 
 pub fn router() -> Router {
     Router::with_path("backfill/{room_id}").get(history)
@@ -13,15 +13,9 @@ pub fn router() -> Router {
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]
-async fn history(_aa: AuthArgs, args: BackfillReqArgs) -> JsonResult<BackfillResBody> {
-    let server_name = &crate::config().server_name;
-    debug!("Got backfill request from: {}", server_name);
-
-    if !crate::room::is_server_in_room(server_name, &args.room_id)? {
-        return Err(MatrixError::forbidden("Server is not in room.").into());
-    }
-
-    crate::event::handler::acl_check(server_name, &args.room_id)?;
+async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> JsonResult<BackfillResBody> {
+    let origin = depot.origin()?;
+    debug!("Got backfill request from: {}", origin);
 
     let until = args
         .v
@@ -43,7 +37,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs) -> JsonResult<BackfillRes
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {
-        if crate::room::state::server_can_see_event(server_name, &args.room_id, &pdu.event_id)? {
+        if crate::room::state::server_can_see_event(origin, &args.room_id, &pdu.event_id)? {
             if let Some(pdu_json) = crate::room::timeline::get_pdu_json(&pdu.event_id)? {
                 events.push(PduEvent::convert_to_outgoing_federation_event(pdu_json));
             }
@@ -51,7 +45,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs) -> JsonResult<BackfillRes
     }
 
     json_ok(BackfillResBody {
-        origin: server_name.to_owned(),
+        origin: crate::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdus: events,
     })

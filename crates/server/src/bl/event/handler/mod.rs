@@ -21,7 +21,7 @@ use crate::core::federation::event::get_events_request;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::state::{self, RoomVersion, StateMap};
-use crate::event::{DbEvent, DbEventData, NewDbEvent, PduEvent};
+use crate::event::{DbEventData, NewDbEvent, PduEvent};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, db, exts::*, schema::*};
 
@@ -57,7 +57,6 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
-    // 1. Skip the PDU if we already have it as a timeline event
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -172,13 +171,14 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // Done with prev events, now handling the incoming event
-
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await.unwrap();
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id)
+        .await
+        .unwrap();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -247,8 +247,9 @@ fn handle_outlier_pdu<'a>(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
-        val.insert("event_sn".to_owned(), crate::next_sn()?.into());
-        let incoming_pdu = serde_json::from_value::<PduEvent>(
+        let incoming_pdu = PduEvent::from_json_value(
+            event_id,
+            crate::next_sn()?,
             serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
@@ -319,9 +320,9 @@ fn handle_outlier_pdu<'a>(
             None::<PduEvent>, // TODO: third party invite
             |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
         )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed outllier pdu"))?
+        .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
         {
-            return Err(MatrixError::invalid_param("Auth check failed outllier pdu").into());
+            return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
         }
 
         debug!("Validation successful.");
@@ -476,6 +477,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
+
         if let Some(state_key) = &incoming_pdu.state_key {
             let state_key_id =
                 crate::room::state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;

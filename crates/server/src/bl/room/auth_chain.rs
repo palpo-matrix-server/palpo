@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Instant;
@@ -7,9 +7,8 @@ use diesel::prelude::*;
 use lru_cache::LruCache;
 
 use crate::core::identifiers::*;
-use crate::event::DbEvent;
+use crate::schema::*;
 use crate::{AppResult, MatrixError, Seqnum, db};
-use crate::{event, schema::*};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]
@@ -43,7 +42,7 @@ where
     const BUCKET: Bucket<'_> = BTreeSet::new();
 
     let started = Instant::now();
-    let mut starting_events = events::table
+    let starting_events = events::table
         .filter(events::id.eq_any(starting_event_ids.clone()))
         .select((events::id, events::sn))
         .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?;

@@ -198,12 +198,8 @@ fn is_default_limit(val: &usize) -> bool {
 //     }
 // };
 pub fn room_state_ids_request(origin: &str, args: RoomStateAtEventReqArgs) -> SendResult<SendRequest> {
-    let mut url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/state_ids/{}",
-        args.room_id
-    ))?;
-    url.query_pairs_mut()
-        .append_pair("event_id", args.event_id.as_str());
+    let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/state_ids/{}", args.room_id))?;
+    url.query_pairs_mut().append_pair("event_id", args.event_id.as_str());
     Ok(crate::sending::get(url))
 }
 

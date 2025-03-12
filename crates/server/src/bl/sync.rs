@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use diesel::prelude::*;
 use tokio::sync::watch::Sender;
 
+use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
 use crate::core::client::sync_events::{
     EphemeralV3, FilterV3, GlobalAccountDataV3, InviteStateV3, InvitedRoomV3, JoinedRoomV3, LeftRoomV3, PresenceV3,
@@ -16,10 +17,10 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::event::PduEvent;
+use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
-use crate::{db, schema::*};
+use crate::schema::*;
+use crate::{AppError, AppResult, db};
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(
@@ -125,12 +126,48 @@ pub fn sync_events(
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
 
-            let left_count = crate::room::get_left_sn(&room_id, &sender_id)?;
+            let left_sn = crate::room::get_left_sn(&room_id, &sender_id)?;
 
-            // // Left before last sync
-            // if Some(since_sn) >= left_count {
-            //     continue;
-            // }
+            // Left before last sync
+            if Some(since_sn) > left_sn {
+                continue;
+            }
+
+            if !crate::room::room_exists(room_id)? {
+                let event = PduEvent {
+                    event_id: EventId::new(crate::server_name()).into(),
+                    event_sn: 0,
+                    sender: sender_id.to_owned(),
+                    origin_server_ts: UnixMillis::now(),
+                    event_ty: TimelineEventType::RoomMember,
+                    content: serde_json::from_str(r#"{"membership":"leave"}"#).expect("this is valid JSON"),
+                    state_key: Some(sender_id.to_string()),
+                    unsigned: None,
+                    // The following keys are dropped on conversion
+                    room_id: room_id.clone(),
+                    prev_events: vec![],
+                    depth: 1,
+                    auth_events: vec![],
+                    redacts: None,
+                    hashes: EventHash { sha256: String::new() },
+                    signatures: None,
+                };
+                left_rooms.insert(
+                    room_id.to_owned(),
+                    LeftRoomV3 {
+                        account_data: RoomAccountDataV3 { events: Vec::new() },
+                        timeline: TimelineV3 {
+                            limited: false,
+                            prev_batch: Some(next_batch.to_string()),
+                            events: Vec::new(),
+                        },
+                        state: StateV3 {
+                            events: vec![event.to_sync_state_event()],
+                        },
+                    },
+                );
+                continue;
+            }
 
             let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
 

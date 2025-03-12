@@ -249,7 +249,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -301,7 +301,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -339,7 +339,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public("bad room server name"))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -415,6 +415,7 @@ pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
 pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq("join"))
         .select(room_users::user_id)
         .distinct()
         .load::<OwnedUserId>(&mut *db::connect()?)?
@@ -483,6 +484,13 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
 
         Ok(in_room)
     }
+}
+pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
+    diesel_exists!(
+        rooms::table.filter(rooms::id.eq(room_id)).select(rooms::id),
+        &mut *db::connect()?
+    )
+    .map_err(Into::into)
 }
 pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     let query = room_servers::table

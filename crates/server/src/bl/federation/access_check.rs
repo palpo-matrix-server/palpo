@@ -1,5 +1,5 @@
 use crate::core::{EventId, MatrixError, RoomId, ServerName};
-use crate::{AppError, AppResult};
+use crate::{ AppResult};
 
 pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&EventId>) -> AppResult<()> {
     if !crate::room::is_server_in_room(origin, room_id)? {

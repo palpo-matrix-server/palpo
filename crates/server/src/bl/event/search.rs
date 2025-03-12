@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use itertools::Itertools;
-use salvo::http::StatusError;
-use tracing_subscriber::field::debug;
 
 use crate::core::canonical_json::CanonicalJsonValue;
 use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};

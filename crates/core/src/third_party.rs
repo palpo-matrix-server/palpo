@@ -319,7 +319,7 @@ impl From<ThirdPartyIdentifierInit> for ThirdPartyIdentifier {
 
 #[derive(ToSchema, Serialize, Default, Debug)]
 
-pub struct ProtocolsResBody (
+pub struct ProtocolsResBody(
     /// Metadata about protocols supported by the homeserver.
     BTreeMap<String, Protocol>,
 );
@@ -327,7 +327,7 @@ pub struct ProtocolsResBody (
 impl ProtocolsResBody {
     /// Creates a new `Response` with the given protocols.
     pub fn new(protocols: BTreeMap<String, Protocol>) -> Self {
-        Self (protocols) 
+        Self(protocols)
     }
 }
 

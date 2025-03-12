@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -20,8 +20,8 @@ pub fn router() -> Router {
 /// Gets information on a profile.
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileResBody> {
-    if args.user_id.server_name() != crate::config().server_name {
-        return Err(MatrixError::invalid_param("Tried to access user from other server.").into());
+    if args.user_id.server_name().is_remote() {
+        return Err(MatrixError::invalid_param("User does not belong to this server.").into());
     }
 
     let mut display_name = None;
@@ -61,10 +61,7 @@ async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, t
     let mut servers = crate::room::room_servers(&room_id)?;
     servers.insert(0, crate::server_name().to_owned());
     servers.dedup();
-    json_ok(RoomInfoResBody {
-        room_id,
-        servers,
-    })
+    json_ok(RoomInfoResBody { room_id, servers })
 }
 #[endpoint]
 async fn query_by_type(_aa: AuthArgs) -> EmptyResult {

@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use rand::seq::SliceRandom;
 use serde_json::value::to_raw_value;
 
+use crate::bl::exts::*;
 use crate::core::UnixMillis;
 use crate::core::client::room::AliasResBody;
 use crate::core::events::TimelineEventType;
@@ -13,7 +14,6 @@ use crate::room::StateEventType;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
 use crate::{GetUrlOrigin, schema::*};
-use crate::bl::exts::*;
 
 mod remote;
 use remote::remote_resolve;

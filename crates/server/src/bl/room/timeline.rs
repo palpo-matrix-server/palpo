@@ -1,4 +1,3 @@
-use core::panic;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::iter::once;
@@ -29,7 +28,7 @@ use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, UnixMillis, user_id};
 use crate::event::{DbEventData, NewDbEvent};
 use crate::event::{EventHash, PduBuilder, PduEvent};
-use crate::room::state::CompressedState;
+use crate::room::state::{CompressedState, get_room_version};
 use crate::{AppError, AppResult, MatrixError, db, utils};
 use crate::{GetUrlOrigin, schema::*};
 use crate::{JsonValue, Seqnum, diesel_exists};
@@ -46,9 +45,7 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .first::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)
         .optional()?
         .map(|(event_id, event_sn, json)| {
-            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|e| {
-                AppError::internal("Invalid PDU in db.")
-            })
+            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -80,11 +77,7 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .select(event_datas::json_data)
         .first::<JsonValue>(&mut *db::connect()?)
         .optional()?
-        .map(|json| {
-            serde_json::from_value(json).map_err(|e| {
-                AppError::internal("Invalid PDU in db.")
-            })
-        })
+        .map(|json| serde_json::from_value(json).map_err(|e| AppError::internal("Invalid PDU in db.")))
         .transpose()
 }
 
@@ -107,9 +100,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .first::<JsonValue>(&mut *db::connect()?)
         .optional()?
         .map(|json| {
-            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
-                AppError::internal("Invalid PDU in db.")
-            })
+            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -138,9 +129,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .first::<(Seqnum, JsonValue)>(&mut *db::connect()?)
         .optional()?
         .map(|(event_sn, json)| {
-            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| {
-                AppError::internal("Invalid PDU in db.")
-            })
+            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -512,33 +501,31 @@ pub fn create_hash_and_sign_event(
         ..
     } = pdu_builder;
 
-    let conf = crate::config();
     let prev_events: Vec<_> = crate::room::state::get_forward_extremities(room_id)?
         .into_iter()
         .take(20)
         .collect();
 
-    let create_event = crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?;
-
-    let create_event_content: Option<RoomCreateEventContent> = create_event
-        .as_ref()
-        .map(|create_event| {
-            serde_json::from_str(create_event.content.get()).map_err(|e| {
-                warn!("Invalid create event: {}", e);
-                AppError::internal("Invalid create event in database.")
-            })
-        })
-        .transpose()?;
-
+    let conf = crate::config();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
-    let room_version_id =
-        create_event_content.map_or(conf.room_version.clone(), |create_event| create_event.room_version);
+    let room_version_id = if let Ok(room_version_id) = crate::room::state::get_room_version(room_id) {
+        room_version_id
+    } else {
+        if event_type == TimelineEventType::RoomCreate {
+            let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
+            content.room_version
+        } else {
+            return Err(AppError::public(format!(
+                "non-create event for room `{}` of unknown version",
+                room_id
+            )));
+        }
+    };
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
     let auth_events =
         crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
-    
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
@@ -561,6 +548,10 @@ pub fn create_hash_and_sign_event(
                 "prev_sender".to_owned(),
                 serde_json::to_value(&prev_pdu.sender).expect("UserId::to_value always works"),
             );
+            unsigned.insert(
+                "replaces_state".to_owned(),
+                serde_json::to_value(&prev_pdu.event_id).expect("EventId is valid json"),
+            );
         }
     }
 
@@ -579,7 +570,7 @@ pub fn create_hash_and_sign_event(
         contains_url: content_value.get("url").is_some(),
         worker_id: None,
         state_key: state_key.clone(),
-        is_outlier: false,
+        is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
     };
@@ -589,7 +580,7 @@ pub fn create_hash_and_sign_event(
         .do_update()
         .set(&new_db_event)
         .returning(events::sn)
-        .get_result::<i64>(&mut *db::connect()?)?;
+        .get_result::<Seqnum>(&mut *db::connect()?)?;
 
     let mut pdu = PduEvent {
         event_id: event_id.into(),
@@ -626,10 +617,9 @@ pub fn create_hash_and_sign_event(
         AppError::internal("Auth check failed when hash and sign event")
     })?;
 
-    // TODO: NOW
-    // if !auth_checked {
-    //     return Err(MatrixError::forbidden("Event is not authorized.").into());
-    // }
+    if !auth_checked {
+        return Err(MatrixError::forbidden("Event is not authorized.").into());
+    }
 
     // Hash and sign
     let mut pdu_json = utils::to_canonical_object(&pdu).expect("event is valid, we just created it");
@@ -642,12 +632,7 @@ pub fn create_hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
-    match crate::core::signatures::hash_and_sign_event(
-        conf.server_name.as_str(),
-        crate::keypair(),
-        &mut pdu_json,
-        &room_version_id,
-    ) {
+    match crate::server_key::hash_and_sign_event(&mut pdu_json, &room_version_id) {
         Ok(_) => {}
         Err(e) => {
             return match e {
@@ -658,16 +643,11 @@ pub fn create_hash_and_sign_event(
     }
 
     // Generate event id
-    let event_id = EventId::parse_arc(format!(
-        "${}",
-        crate::core::signatures::reference_hash(&pdu_json, &room_version_id)
-            .expect("palpo can calculate reference hashes")
-    ))
-    .expect("palpo's reference hashes are valid event ids");
-    pdu.event_id = event_id.clone();
+    let event_id = crate::event::gen_event_id(&pdu_json, &room_version_id)?;
+    pdu.event_id = event_id.clone().into();
 
     diesel::update(events::table.filter(events::sn.eq(event_sn)))
-        .set(events::id.eq(&OwnedEventId::from(event_id)))
+        .set(events::id.eq(&event_id))
         .execute(&mut db::connect()?)?;
 
     pdu_json.insert(

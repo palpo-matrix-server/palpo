@@ -7,7 +7,7 @@ use ulid::Ulid;
 use crate::core::device::DirectDeviceContent;
 use crate::core::federation::transaction::Edu;
 use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
-use crate::{AuthArgs, DepotExt, EmptyResult, MatrixError, empty_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, empty_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/{event_type}/{txn_id}").put(send_to_device)
@@ -30,7 +30,7 @@ fn send_to_device(
 
     for (target_user_id, map) in &body.messages {
         for (target_device_id_maybe, event) in map {
-            if target_user_id.server_name() != &crate::config().server_name {
+            if target_user_id.server_name().is_remote() {
                 let mut map = BTreeMap::new();
                 map.insert(target_device_id_maybe.clone(), event.clone());
                 let mut messages = BTreeMap::new();

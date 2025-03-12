@@ -3,13 +3,11 @@ use rand::seq::SliceRandom;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
-use crate::core::UnixMillis;
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::exts::*;
-use crate::room::DbRoomAlias;
 use crate::schema::*;
 use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, db, diesel_exists, empty_ok, json_ok};
 
@@ -58,7 +56,7 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
     let Some(room_id) = room_id else {
         return Err(MatrixError::not_found("Room with alias not found.").into());
     };
-    json_ok(AliasResBody::new(room_id, vec![crate::config().server_name.to_owned()]))
+    json_ok(AliasResBody::new(room_id, vec![crate::server_name().to_owned()]))
 }
 
 /// #PUT /_matrix/client/r0/directory/room/{room_alias}

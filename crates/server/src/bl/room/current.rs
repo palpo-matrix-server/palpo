@@ -38,11 +38,23 @@ pub fn get_invite_count(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<
 }
 
 #[tracing::instrument]
-pub fn get_left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<u64>> {
+pub fn get_left_count(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<u64>> {
     let count = stats_room_currents::table
         .filter(stats_room_currents::room_id.eq(room_id))
         .select(stats_room_currents::left_members)
         .first::<i64>(&mut *db::connect()?)
         .optional()?;
     Ok(count.map(|c| c as u64))
+}
+
+#[tracing::instrument]
+pub fn get_left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<i64>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("leave"))
+        .select(room_users::event_sn)
+        .first::<i64>(&mut *db::connect()?)
+        .optional()
+        .map_err(Into::into)
 }

@@ -8,7 +8,7 @@ use salvo::prelude::*;
 use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, CanonicalJsonObject};
-use crate::core::{OwnedServerSigningKeyId, RawJson, UnixMillis};
+use crate::core::{OwnedServerSigningKeyId, UnixMillis};
 use crate::{AuthArgs, EmptyResult, JsonResult, empty_ok, json_ok};
 
 pub fn router() -> Router {
@@ -43,7 +43,7 @@ async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
 // Response type for this endpoint is Json because we need to calculate a signature for the response
 #[endpoint]
 async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
-    // BTreeMap<std::string::String, CanonicalJsonValue>
+    let conf = crate::config();
     let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
     verify_keys.insert(
         format!("ed25519:{}", crate::keypair().version())
@@ -54,7 +54,7 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
         },
     );
     let server_keys = ServerSigningKeys {
-        server_name: crate::config().server_name.clone(),
+        server_name: conf.server_name.clone(),
         verify_keys,
         old_verify_keys: BTreeMap::new(),
         signatures: BTreeMap::new(),
@@ -64,11 +64,7 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
     let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_keys)?;
     let mut server_keys: CanonicalJsonObject = serde_json::from_slice(&buf)?;
 
-    crate::core::signatures::sign_json(
-        &crate::config().server_name.as_str(),
-        crate::keypair(),
-        &mut server_keys,
-    )?;
+    crate::core::signatures::sign_json(&conf.server_name.as_str(), crate::keypair(), &mut server_keys)?;
     let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
 
     json_ok(ServerKeysResBody::new(server_keys))

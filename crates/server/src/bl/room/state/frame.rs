@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;

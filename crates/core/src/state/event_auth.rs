@@ -287,6 +287,10 @@ pub fn auth_check<E: Event>(
             .map(|mem| mem.membership)
             .unwrap_or(MembershipState::Leave);
 
+        println!(
+            "\n\n\n===========incoming event: {:?}  target_user:{target_user:?}  sender:{sender:?}",
+            incoming_event.content()
+        );
         if !valid_membership_change(
             room_version,
             target_user,
@@ -454,7 +458,10 @@ fn valid_membership_change(
     let third_party_invite = from_json_str::<GetThirdPartyInvite>(content.get())?.third_party_invite;
 
     let sender_membership = match &sender_membership_event {
-        Some(pdu) => from_json_str::<GetMembership>(pdu.content().get())?.membership,
+        Some(pdu) => {
+            println!("ssssssssssssssender_membership_event: {:#?}", pdu.content().get());
+            from_json_str::<GetMembership>(pdu.content().get())?.membership
+        }
         None => MembershipState::Leave,
     };
     let sender_is_joined = sender_membership == MembershipState::Join;
@@ -614,11 +621,20 @@ fn valid_membership_change(
             }
         }
         MembershipState::Leave => {
+            println!(
+                "==============sender: {}  target_user:{target_user} target_user_current_membership:{:?}",
+                sender, target_user_current_membership
+            );
             if sender == target_user {
                 let allow = target_user_current_membership == MembershipState::Join
-                    || target_user_current_membership == MembershipState::Invite;
+                    || target_user_current_membership == MembershipState::Invite
+                    || target_user_current_membership == MembershipState::Knock;
                 if !allow {
-                    warn!(?target_user_membership_event_id, "Can't leave if not invited or joined");
+                    warn!(
+                        ?target_user_membership_event_id,
+                        ?target_user_current_membership,
+                        "Can't leave if sender is not already invited, knocked, or joined"
+                    );
                 }
                 allow
             } else if !sender_is_joined

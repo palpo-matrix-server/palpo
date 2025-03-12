@@ -52,6 +52,13 @@ pub struct InviteUserReqBodyV2 {
 
     /// An optional list of simplified events to help the receiver of the invite identify the room.
     pub invite_room_state: Vec<RawJson<AnyStrippedStateEvent>>,
+
+    /// An optional list of servers the invited homeserver should attempt to join or leave via,
+    /// according to [MSC4125](https://github.com/matrix-org/matrix-spec-proposals/pull/4125).
+    ///
+    /// If present, it must not be empty.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "org.matrix.msc4125.via")]
+    pub via: Option<Vec<OwnedServerName>>,
 }
 crate::json_body_modifier!(InviteUserReqBodyV2);
 
