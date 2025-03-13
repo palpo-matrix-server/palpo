@@ -164,6 +164,7 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
+    println!(">>>>>>>>>>>>>>>>append_pdu, {} event_id: {}", crate::server_name(), pdu.event_id);
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily

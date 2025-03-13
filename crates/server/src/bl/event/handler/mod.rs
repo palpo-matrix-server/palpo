@@ -57,6 +57,7 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
+    println!(">>>>>>>>>>>>>>>>handle_incoming_pdu, {} event_id: {}", crate::server_name(), event_id);
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -201,6 +202,7 @@ fn handle_outlier_pdu<'a>(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
+    println!(">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}", crate::server_name(), pdu.event_id);
     Box::pin(async move {
         // 1.1. Remove unsigned field
         value.remove("unsigned");
@@ -638,6 +640,7 @@ pub(crate) async fn fetch_and_handle_outliers(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
+    println!(">>>>>>>>>>>>>>>>fetch_and_handle_outliers, {} events: {:?}", crate::server_name(), events);
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
             e.insert((Instant::now(), 1));
@@ -791,6 +794,7 @@ async fn fetch_missing_prev_events(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
+    println!(">>>>>>>>>>>>>>>>fetch_missing_prev_events, {} initial_set: {:?}", crate::server_name(), initial_set);
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut eventid_info = HashMap::new();
