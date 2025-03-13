@@ -184,7 +184,6 @@ pub fn set_event_state(
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
-    println!("AAAAAAAAAAAAAAAaa  {} apend to state: {new_pdu:?}", crate::server_name());
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
     let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
@@ -354,16 +353,6 @@ pub fn get_auth_events(
 
     println!("=ddddddddddddget_auth_events kind:{kind:?} state_key:{state_key:?} content:{content:?}");
     let auth_types = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
-    println!(
-        "=ddddddddddddgauth_types:{auth_types:#?}  {:#?}",
-        room_state_fields::table
-            .select((
-                room_state_fields::id,
-                room_state_fields::event_ty,
-                room_state_fields::state_key,
-            ))
-            .load::<(i64, String, String)>(&mut *db::connect()?)?
-    );
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -382,18 +371,11 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
-        println!("==========state_key_id: {state_key_id} event_id: {event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
             if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
                 state_map.insert(key, pdu);
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
-            }
-        } else {
-            if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
-                println!("VVVVVVVVVVVVError  pdu: {pdu:?}");
-            } else {
-                println!("VVVVVVVVVVVVError");
             }
         }
     }

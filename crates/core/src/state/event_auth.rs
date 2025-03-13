@@ -287,10 +287,6 @@ pub fn auth_check<E: Event>(
             .map(|mem| mem.membership)
             .unwrap_or(MembershipState::Leave);
 
-        println!(
-            "\n\n\n===========incoming event: {:?}  target_user:{target_user:?}  sender:{sender:?}",
-            incoming_event.content()
-        );
         if !valid_membership_change(
             room_version,
             target_user,

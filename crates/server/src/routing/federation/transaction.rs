@@ -59,7 +59,7 @@ async fn handle_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
-    println!("====================server {}   pdus: {:#?}", crate::server_name(), pdus);
+    println!("================handle_pdus====server {}   pdus: {:#?}", crate::server_name(), pdus);
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
@@ -79,6 +79,7 @@ async fn handle_pdus(
         let pdu_start_time = Instant::now();
         // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(&room_id).await;
 
+        println!("==ddd  handle_incoming_pdu 4  {event_id}");
         let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true)
             .await
             .map(|_| ());

@@ -322,7 +322,6 @@ where
                     &pdu.sender,
                     invite_state,
                 )?;
-                println!("==================update_membership {pdu:#?}");
             }
         }
         TimelineEventType::RoomMessage => {
@@ -584,6 +583,7 @@ pub fn create_hash_and_sign_event(
         .returning(events::sn)
         .get_result::<Seqnum>(&mut *db::connect()?)?;
 
+    println!("=================create event 0 {}  {}  {}", crate::server_name(), event_id, event_sn);
     let mut pdu = PduEvent {
         event_id: event_id.into(),
         event_sn,
@@ -608,7 +608,6 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
-    println!("==========call auth check 5  auth_events: {auth_events:#?}");
     let auth_checked = crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
@@ -1016,6 +1015,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
+    println!("==ddd  handle_incoming_pdu 3  {event_id}");
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");
