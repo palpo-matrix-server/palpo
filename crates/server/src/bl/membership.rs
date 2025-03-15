@@ -602,10 +602,11 @@ async fn remote_join_room(
 
     info!("Parsing join event");
     let parsed_join_pdu =
-        PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, join_event.clone()).map_err(|e| {
-            warn!("Invalid PDU in send_join response: {}", e);
-            AppError::public("Invalid join event PDU.")
-        })?;
+        PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, join_event.clone())
+            .map_err(|e| {
+                warn!("Invalid PDU in send_join response: {}", e);
+                AppError::public("Invalid join event PDU.")
+            })?;
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -639,10 +640,11 @@ async fn remote_join_room(
         let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             pdu
         } else {
-            let pdu = PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, value.clone()).map_err(|e| {
-                warn!("Invalid PDU in send_join response: {} {:?}", e, value);
-                AppError::public("Invalid PDU in send_join response.")
-            })?;
+            let pdu = PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, value.clone())
+                .map_err(|e| {
+                    warn!("Invalid PDU in send_join response: {} {:?}", e, value);
+                    AppError::public("Invalid PDU in send_join response.")
+                })?;
 
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
@@ -759,7 +761,10 @@ async fn remote_join_room(
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     let frame_id_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
-    println!("ccccccccccccccccc frame_id:{frame_id}  frame_id_after_join {frame_id_after_join} cframe_id: {:?}", crate::room::state::get_current_frame_id(room_id)?);
+    println!(
+        "ccccccccccccccccc frame_id:{frame_id}  frame_id_after_join {frame_id_after_join} cframe_id: {:?}",
+        crate::room::state::get_current_frame_id(room_id)?
+    );
 
     info!("Appending new room join event");
     crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow())).unwrap();
@@ -1045,7 +1050,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             "LLLLLLLLLLLLLLeave room local {}   user: {user_id}",
             crate::server_name()
         );
-        let member_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
+        let member_event =
+            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {

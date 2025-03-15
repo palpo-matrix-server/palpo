@@ -30,7 +30,7 @@ use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::event::{PduBuilder, PduEvent};
 use crate::schema::*;
-use crate::{AppError, Seqnum, AppResult, DieselResult, MatrixError, db, utils};
+use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]
@@ -375,8 +375,7 @@ pub fn get_auth_events(
                 tracing::warn!("pdu is not found: {}", event_id);
             }
         } else {
-            if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
-            }
+            if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {}
         }
     }
     Ok(state_map)
@@ -466,8 +465,12 @@ pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) ->
 //         Ok(None)
 //     }
 // }
-pub fn get_room_state(room_id: &RoomId, event_type: &StateEventType, state_key: &str,
-         until_sn: Option<Seqnum>,) -> AppResult<Option<PduEvent>> {
+pub fn get_room_state(
+    room_id: &RoomId,
+    event_type: &StateEventType,
+    state_key: &str,
+    until_sn: Option<Seqnum>,
+) -> AppResult<Option<PduEvent>> {
     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
         return Ok(None);
     };

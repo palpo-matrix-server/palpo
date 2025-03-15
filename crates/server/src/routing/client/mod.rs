@@ -449,9 +449,14 @@ pub async fn sync_events_v4(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
-                                .ok()?
-                                .is_some(),
+                            crate::room::state::get_room_state(
+                                &other_room_id,
+                                &StateEventType::RoomEncryption,
+                                "",
+                                None,
+                            )
+                            .ok()?
+                            .is_some(),
                         )
                     })
                     .all(|encrypted| !encrypted);

@@ -122,7 +122,7 @@ pub fn sync_events(
 
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
-        
+
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
 
@@ -281,7 +281,8 @@ pub fn sync_events(
                                 crate::room::state::get_room_state(
                                     &other_room_id,
                                     &StateEventType::RoomEncryption,
-                                    "", None,
+                                    "",
+                                    None,
                                 )
                                 .ok()?
                                 .is_some(),
@@ -301,9 +302,14 @@ pub fn sync_events(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
-                                .ok()?
-                                .is_some(),
+                            crate::room::state::get_room_state(
+                                &other_room_id,
+                                &StateEventType::RoomEncryption,
+                                "",
+                                None,
+                            )
+                            .ok()?
+                            .is_some(),
                         )
                     })
                     .all(|encrypted| !encrypted);
@@ -628,7 +634,8 @@ async fn load_joined_room(
                     if let Some(member_event) = crate::room::state::get_room_state(
                         &room_id,
                         &StateEventType::RoomMember,
-                        event.sender.as_str(), None,
+                        event.sender.as_str(),
+                        None,
                     )? {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);

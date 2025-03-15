@@ -152,7 +152,8 @@ async fn set_avatar_url(
                             crate::room::state::get_room_state(
                                 &room_id,
                                 &StateEventType::RoomMember,
-                                user_id.as_str(), None,
+                                user_id.as_str(),
+                                None,
                             )?
                             .ok_or_else(|| {
                                 AppError::internal("Tried to send avatar_url update for user not in the room.")
@@ -268,7 +269,8 @@ async fn set_display_name(
                             crate::room::state::get_room_state(
                                 &room_id,
                                 &StateEventType::RoomMember,
-                                user_id.as_str(), None,
+                                user_id.as_str(),
+                                None,
                             )?
                             .ok_or_else(|| {
                                 AppError::internal("Tried to send display_name update for user not in the room.")
