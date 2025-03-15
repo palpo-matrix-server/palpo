@@ -370,7 +370,7 @@ pub async fn get_thumbnail(
             );
 
             res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-            let  file = NamedFile::builder(&thumb_path)
+            let file = NamedFile::builder(&thumb_path)
                 .content_type(
                     Mime::from_str(&content_type)
                         .ok()
@@ -398,7 +398,7 @@ pub async fn get_thumbnail(
         crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
-        let  file = NamedFile::builder(&thumb_path)
+        let file = NamedFile::builder(&thumb_path)
             .content_type(
                 Mime::from_str(&content_type)
                     .ok()
@@ -513,7 +513,7 @@ pub async fn get_thumbnail(
             Ok(())
         } else {
             // Couldn't parse file to generate thumbnail, send original
-            let  file = NamedFile::builder(&image_path)
+            let file = NamedFile::builder(&image_path)
                 .content_type(
                     content_type
                         .as_deref()

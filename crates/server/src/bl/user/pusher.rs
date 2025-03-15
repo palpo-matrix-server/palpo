@@ -238,7 +238,7 @@ pub async fn send_push_notice(
     let mut tweaks = Vec::new();
 
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))

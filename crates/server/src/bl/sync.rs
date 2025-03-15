@@ -289,11 +289,10 @@ pub fn sync_events(
                         .into_iter()
                         .filter_map(|other_room_id| {
                             Some(
-                                crate::room::state::get_state(
+                                crate::room::state::get_room_state(
                                     &other_room_id,
                                     &StateEventType::RoomEncryption,
-                                    "",
-                                    None,
+                                    "", None,
                                 )
                                 .ok()?
                                 .is_some(),
@@ -313,7 +312,7 @@ pub fn sync_events(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
                                 .ok()?
                                 .is_some(),
                         )
@@ -637,11 +636,10 @@ async fn load_joined_room(
                     &event.sender,
                 )? || lazy_load_send_redundant
                 {
-                    if let Some(member_event) = crate::room::state::get_state(
+                    if let Some(member_event) = crate::room::state::get_room_state(
                         &room_id,
                         &StateEventType::RoomMember,
-                        event.sender.as_str(),
-                        None,
+                        event.sender.as_str(), None,
                     )? {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
@@ -658,9 +656,9 @@ async fn load_joined_room(
             );
 
             let encrypted_room =
-                crate::room::state::get_pdu(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
+                crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
 
-            let since_encryption = crate::room::state::get_pdu(since_frame_id, &StateEventType::RoomEncryption, "")?;
+            let since_encryption = crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
 
             // Calculations:
             let new_encrypted_room = encrypted_room && since_encryption.is_none();
@@ -845,7 +843,7 @@ pub(crate) fn share_encrypted_room(sender_id: &UserId, user_id: &UserId, ignore_
         .filter(|room_id| room_id != ignore_room)
         .filter_map(|other_room_id| {
             Some(
-                crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
                     .ok()?
                     .is_some(),
             )

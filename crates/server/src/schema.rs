@@ -288,6 +288,16 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_sns (id) {
+        id -> Text,
+        sn -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_txn_ids (event_id) {
         event_id -> Text,
         room_id -> Text,
@@ -534,7 +544,6 @@ diesel::table! {
         state_frame_id -> Nullable<Int8>,
         has_auth_chain_index -> Bool,
         disabled -> Bool,
-        created_by -> Text,
         created_at -> Int8,
     }
 }
@@ -922,6 +931,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_receipts,
     event_relations,
     event_searches,
+    event_sns,
     event_txn_ids,
     events,
     lazy_load_deliveries,

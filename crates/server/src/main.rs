@@ -55,6 +55,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use crate::config::ServerConfig;
 
 pub type AppResult<T> = Result<T, crate::AppError>;
+pub type DieselResult<T> = Result<T, diesel::result::Error>;
 pub type JsonResult<T> = Result<Json<T>, crate::AppError>;
 pub type CjsonResult<T> = Result<Cjson<T>, crate::AppError>;
 pub type EmptyResult = Result<Json<EmptyObject>, crate::AppError>;

@@ -30,7 +30,7 @@ use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::event::{PduBuilder, PduEvent};
 use crate::schema::*;
-use crate::{AppError, AppResult, MatrixError, db, utils};
+use crate::{AppError, Seqnum, AppResult, DieselResult, MatrixError, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]
@@ -125,6 +125,12 @@ pub fn force_state(
 
 #[tracing::instrument]
 pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
+    println!(
+        "set_room_state: {:?}",
+        rooms::table
+            .find(room_id)
+            .load::<crate::room::DbRoom>(&mut db::connect()?)?
+    );
     diesel::update(rooms::table.find(room_id))
         .set(rooms::state_frame_id.eq(frame_id))
         .execute(&mut db::connect()?)?;
@@ -235,31 +241,24 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     }
 }
 
-pub fn calculate_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+pub fn calc_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+    let cells: [(&StateEventType, &str); 8] = [
+        (&StateEventType::RoomCreate, ""),
+        (&StateEventType::RoomJoinRules, ""),
+        (&StateEventType::RoomCanonicalAlias, ""),
+        (&StateEventType::RoomName, ""),
+        (&StateEventType::RoomAvatar, ""),
+        (&StateEventType::RoomMember, invite_event.sender.as_str()), // Add recommended events
+        (&StateEventType::RoomEncryption, ""),
+        (&StateEventType::RoomTopic, ""),
+    ];
+
     let mut state = Vec::new();
     // Add recommended events
-    if let Some(e) = get_state(&invite_event.room_id, &StateEventType::RoomCreate, "", None)? {
-        state.push(e.to_stripped_state_event());
-    }
-    if let Some(e) = get_state(&invite_event.room_id, &StateEventType::RoomJoinRules, "", None)? {
-        state.push(e.to_stripped_state_event());
-    }
-    if let Some(e) = get_state(&invite_event.room_id, &StateEventType::RoomCanonicalAlias, "", None)? {
-        state.push(e.to_stripped_state_event());
-    }
-    if let Some(e) = get_state(&invite_event.room_id, &StateEventType::RoomAvatar, "", None)? {
-        state.push(e.to_stripped_state_event());
-    }
-    if let Some(e) = get_state(&invite_event.room_id, &StateEventType::RoomName, "", None)? {
-        state.push(e.to_stripped_state_event());
-    }
-    if let Some(e) = get_state(
-        &invite_event.room_id,
-        &StateEventType::RoomMember,
-        invite_event.sender.as_str(),
-        None,
-    )? {
-        state.push(e.to_stripped_state_event());
+    for (event_type, state_key) in cells {
+        if let Some(e) = get_room_state(&invite_event.room_id, &StateEventType::RoomCreate, "", None)? {
+            state.push(e.to_stripped_state_event());
+        }
     }
 
     state.push(invite_event.to_stripped_state_event());
@@ -278,6 +277,12 @@ pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
 
 /// Returns the room's version.
 pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    // let room_version = rooms::table
+    //     .find(room_id)
+    //     .select(rooms::version)
+    //     .first::<String>(&mut *db::connect()?)?;
+    // Ok(RoomVersionId::try_from(&*room_version)?)
+
     if let Some(room_version) = rooms::table
         .find(room_id)
         .select(rooms::version)
@@ -286,8 +291,7 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     {
         return Ok(RoomVersionId::try_from(&*room_version)?);
     }
-    let create_event = get_state(room_id, &StateEventType::RoomCreate, "", None)?;
-
+    let create_event = get_room_state(room_id, &StateEventType::RoomCreate, "", None)?;
     let create_event_content: RoomCreateEventContent = create_event
         .as_ref()
         .map(|create_event| {
@@ -351,7 +355,6 @@ pub fn get_auth_events(
         return Ok(HashMap::new());
     };
 
-    println!("=ddddddddddddget_auth_events kind:{kind:?} state_key:{state_key:?} content:{content:?}");
     let auth_types = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
     let mut sauth_events = auth_types
         .into_iter()
@@ -362,7 +365,6 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
-    println!("==========sauth_events: {sauth_events:?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()
@@ -444,21 +446,39 @@ pub fn get_state_event_id(
 }
 
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
-pub fn get_pdu(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
+pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     get_state_event_id(frame_id, event_type, state_key)?
         .map_or(Ok(None), |event_id| crate::room::timeline::get_pdu(&event_id))
 }
 
-pub fn get_room_pdu(room_id: &RoomId, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
-    let Some(frame_id) = get_room_frame_id(room_id, None)? else {
+// /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
+// pub fn get_state(
+//     room_id: &RoomId,
+//     event_type: &StateEventType,
+//     state_key: &str,
+//     until_sn: Option<i64>,
+// ) -> AppResult<Option<PduEvent>> {
+//     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+//         return Ok(None);
+//     };
+//     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
+//     if let Some(event_id) = event_id {
+//         crate::room::timeline::get_pdu(&event_id)
+//     } else {
+//         Ok(None)
+//     }
+// }
+pub fn get_room_state(room_id: &RoomId, event_type: &StateEventType, state_key: &str,
+         until_sn: Option<Seqnum>,) -> AppResult<Option<PduEvent>> {
+    let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
         return Ok(None);
     };
-    get_pdu(frame_id, event_type, state_key)
+    get_state(frame_id, event_type, state_key)
 }
 
 /// Get membership for given user in state
 fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
-    get_pdu(frame_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(MembershipState::Leave), |s| {
+    get_state(frame_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(MembershipState::Leave), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomMemberEventContent| c.membership)
             .map_err(|_| AppError::internal("Invalid room membership event in database."))
@@ -558,12 +578,14 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         return Ok(*visibility);
     }
 
-    let history_visibility =
-        get_pdu(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(Ok(HistoryVisibility::Shared), |s| {
+    let history_visibility = get_state(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(
+        Ok(HistoryVisibility::Shared),
+        |s| {
             serde_json::from_str(s.content.get())
                 .map(|c: RoomHistoryVisibilityEventContent| c.history_visibility)
                 .map_err(|_| AppError::internal("Invalid history visibility event in database."))
-        })?;
+        },
+    )?;
 
     let mut current_server_members = crate::room::get_joined_users(room_id, None)?
         .into_iter()
@@ -609,12 +631,14 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
         return Ok(*visibility);
     }
 
-    let history_visibility =
-        get_pdu(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(Ok(HistoryVisibility::Shared), |s| {
+    let history_visibility = get_state(frame_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(
+        Ok(HistoryVisibility::Shared),
+        |s| {
             serde_json::from_str(s.content.get())
                 .map(|c: RoomHistoryVisibilityEventContent| c.history_visibility)
                 .map_err(|_| AppError::internal("Invalid history visibility event in database."))
-        })?;
+        },
+    )?;
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,
@@ -664,7 +688,7 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
         return Ok(UserCanSeeEvent::Always);
     }
 
-    let history_visibility = get_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
+    let history_visibility = get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
         Ok(HistoryVisibility::Shared),
         |s| {
             serde_json::from_str(s.content.get())
@@ -751,26 +775,26 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
     })
 }
 
-/// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
-pub fn get_state(
-    room_id: &RoomId,
-    event_type: &StateEventType,
-    state_key: &str,
-    until_sn: Option<i64>,
-) -> AppResult<Option<PduEvent>> {
-    let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
-        return Ok(None);
-    };
-    let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    if let Some(event_id) = event_id {
-        crate::room::timeline::get_pdu(&event_id)
-    } else {
-        Ok(None)
-    }
-}
+// /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
+// pub fn get_state(
+//     room_id: &RoomId,
+//     event_type: &StateEventType,
+//     state_key: &str,
+//     until_sn: Option<i64>,
+// ) -> AppResult<Option<PduEvent>> {
+//     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+//         return Ok(None);
+//     };
+//     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
+//     if let Some(event_id) = event_id {
+//         crate::room::timeline::get_pdu(&event_id)
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<String>> {
-    get_state(&room_id, &StateEventType::RoomName, "", None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomName, "", None)?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomNameEventContent| Some(c.name))
             .map_err(|_| AppError::internal("Invalid room name event in database."))
@@ -778,7 +802,7 @@ pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<Str
 }
 
 pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
-    Ok(get_state(room_id, &StateEventType::RoomAvatar, "", None)?
+    Ok(get_room_state(room_id, &StateEventType::RoomAvatar, "", None)?
         .map(|s| {
             serde_json::from_str(s.content.get())
                 .map(|c: RoomAvatarEventContent| c.url)
@@ -790,7 +814,7 @@ pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
 }
 
 pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMemberEventContent>> {
-    get_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room member event in database."))
     })
 }
@@ -823,7 +847,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+    get_room_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
             .map_err(|_| AppError::internal("Invalid room guest access event in database."))
@@ -847,7 +871,7 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
 /// See <https://spec.matrix.org/latest/appendices/#routing>
 #[tracing::instrument(level = "trace")]
 pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Some(pdu) = crate::room::state::get_room_pdu(room_id, &StateEventType::RoomPowerLevels, "")? else {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
         return Ok(Vec::new());
     };
 

@@ -32,9 +32,7 @@ use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
-use crate::core::client::search::{
-    ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody,
-};
+use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{
     AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
     SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4, SyncListV4, SyncOpV4, ToDeviceV4, TypingV4,
@@ -351,7 +349,7 @@ pub async fn sync_events_v4(
 
             let since_sender_member: Option<RoomMemberEventContent> = since_frame_id
                 .and_then(|state_hash| {
-                    crate::room::state::get_pdu(state_hash, &StateEventType::RoomMember, authed.user_id().as_str())
+                    crate::room::state::get_state(state_hash, &StateEventType::RoomMember, authed.user_id().as_str())
                         .transpose()
                 })
                 .transpose()?
@@ -362,7 +360,7 @@ pub async fn sync_events_v4(
                 });
 
             let encrypted_room =
-                crate::room::state::get_pdu(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
+                crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
 
             if let Some(since_frame_id) = since_frame_id {
                 // Skip if there are only timeline changes
@@ -371,7 +369,7 @@ pub async fn sync_events_v4(
                 }
 
                 let since_encryption =
-                    crate::room::state::get_pdu(since_frame_id, &StateEventType::RoomEncryption, "")?;
+                    crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
                 let joined_since_last_sync =
                     crate::room::user::joined_sn(authed.user_id(), room_id)? >= global_since_sn;
 
@@ -451,7 +449,7 @@ pub async fn sync_events_v4(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
                                 .ok()?
                                 .is_some(),
                         )
@@ -590,7 +588,7 @@ pub async fn sync_events_v4(
 
         let required_state = required_state_request
             .iter()
-            .map(|state| crate::room::state::get_state(&room_id, &state.0, &state.1, None))
+            .map(|state| crate::room::state::get_room_state(&room_id, &state.0, &state.1, None))
             .into_iter()
             .flatten()
             .filter_map(|o| o)

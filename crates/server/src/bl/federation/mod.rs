@@ -127,7 +127,7 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+    let join_rules_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
 
     let Some(Ok(join_rules_event_content)) = join_rules_event.as_ref().map(|join_rules_event| {
         serde_json::from_str::<RoomJoinRulesEventContent>(join_rules_event.content.get()).map_err(|e| {

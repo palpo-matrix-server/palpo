@@ -12,8 +12,7 @@ use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
 use crate::{
-     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok,
-    json_ok, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok, utils,
 };
 
 pub fn router_v1() -> Router {
@@ -168,7 +167,7 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::next_sn()?, event.into()).map_err(|e| {
+    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::event::get_event_sn(&event_id)?, event.into()).map_err(|e| {
         warn!("Invalid invite event: {}", e);
         MatrixError::invalid_param("Invalid invite event.")
     })?;

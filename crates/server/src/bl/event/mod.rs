@@ -10,8 +10,8 @@ use serde::Deserialize;
 use crate::core::identifiers::*;
 use crate::core::serde::default_false;
 use crate::core::{JsonValue, RawJsonValue, UnixMillis};
-use crate::{AppError, AppResult, MatrixError, db};
-use crate::{Seqnum, schema::*};
+use crate::schema::*;
+use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]
@@ -49,7 +49,7 @@ pub struct DbEvent {
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {
     pub id: OwnedEventId,
-    pub sn: Option<i64>,
+    pub sn: i64,
     #[serde(rename = "type")]
     pub ty: String,
     pub room_id: OwnedRoomId,
@@ -70,15 +70,13 @@ pub struct NewDbEvent {
 }
 
 impl NewDbEvent {
-    pub fn from_canonical_json(id: &EventId, sn: Option<Seqnum>, value: &CanonicalJsonObject) -> AppResult<Self> {
+    pub fn from_canonical_json(id: &EventId, sn: Seqnum, value: &CanonicalJsonObject) -> AppResult<Self> {
         Self::from_json_value(id, sn, serde_json::to_value(value)?)
     }
-    pub fn from_json_value(id: &EventId, sn: Option<Seqnum>, mut value: JsonValue) -> AppResult<Self> {
+    pub fn from_json_value(id: &EventId, sn: Seqnum, mut value: JsonValue) -> AppResult<Self> {
         let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
-        if let Some(sn) = sn {
-            obj.insert("sn".into(), sn.into());
-        }
+        obj.insert("sn".into(), sn.into());
         Ok(serde_json::from_value(value)?)
     }
 }
@@ -104,12 +102,22 @@ pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId
     Ok(event_id)
 }
 
-pub fn get_event_sn(event_id: &EventId) -> AppResult<i64> {
-    events::table
+pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
+    if let Some(sn) = event_sns::table
         .find(event_id)
-        .select(events::sn)
-        .first::<i64>(&mut *db::connect()?)
-        .map_err(Into::into)
+        .select(event_sns::sn)
+        .first::<Seqnum>(&mut *db::connect()?)
+        .optional()?
+    {
+        Ok(sn)
+    } else {
+        diesel::insert_into(event_sns::table)
+            .values(event_sns::id.eq(event_id))
+            .on_conflict_do_nothing()
+            .returning(event_sns::sn)
+            .get_result::<Seqnum>(&mut *db::connect()?)
+            .map_err(Into::into)
+    }
 }
 
 pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(i64, String)> {

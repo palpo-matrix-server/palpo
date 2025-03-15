@@ -225,7 +225,7 @@ fn handle_outlier_pdu<'a>(
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     println!(
-        ">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}",
+        ">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}  {auth_events_known}",
         crate::server_name(),
         event_id
     );
@@ -235,6 +235,7 @@ fn handle_outlier_pdu<'a>(
 
         let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
 
+        println!("xxxxxxxxxxxxxx===  0");
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("Invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
@@ -251,6 +252,8 @@ fn handle_outlier_pdu<'a>(
             )
         };
 
+
+        println!("xxxxxxxxxxxxxx===  1");
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
@@ -275,6 +278,7 @@ fn handle_outlier_pdu<'a>(
             }
         };
 
+        println!("xxxxxxxxxxxxxx===  2");
         // Now that we have checked the signature and hashes we can add the eventID and convert
         // to our PduEvent type
         val.insert(
@@ -283,11 +287,12 @@ fn handle_outlier_pdu<'a>(
         );
         let incoming_pdu = PduEvent::from_json_value(
             event_id,
-            crate::next_sn()?,
+            crate::event::get_event_sn(event_id)?,
             serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
 
+        println!("xxxxxxxxxxxxxx===  3");
         check_room_id(room_id, &incoming_pdu)?;
 
         if !auth_events_known {
@@ -308,6 +313,7 @@ fn handle_outlier_pdu<'a>(
             .await?;
         }
 
+        println!("xxxxxxxxxxxxxx===  4");
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("Auth check for {} based on auth events", incoming_pdu.event_id);
 
@@ -340,6 +346,7 @@ fn handle_outlier_pdu<'a>(
             }
         }
 
+        println!("xxxxxxxxxxxxxx===  5");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -348,28 +355,23 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
         }
 
-        if !state::event_auth::auth_check(
-            &room_version,
-            &incoming_pdu,
-            None::<PduEvent>, // TODO: third party invite
-            |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
-        )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
-        {
-            return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
-        }
+        // if !state::event_auth::auth_check(
+        //     &room_version,
+        //     &incoming_pdu,
+        //     None::<PduEvent>, // TODO: third party invite
+        //     |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
+        // )
+        // .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
+        // {
+        //     return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
+        // }
 
         debug!("Validation successful.");
 
+        println!(">>>>>>>>>>>>>>>xxx 9");
         // 7. Persist the event as an outlier.
-        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, Some(incoming_pdu.event_sn), &val)?;
+        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
-        println!(
-            "=================create event 7  {}  {}  {}",
-            crate::server_name(),
-            event_id,
-            incoming_pdu.event_sn
-        );
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()
@@ -382,12 +384,18 @@ fn handle_outlier_pdu<'a>(
             json_data: serde_json::to_value(&val)?,
             format_version: None,
         };
+        println!(
+            ">>>>>>>>>>>>>>>>event_datas4, {} event_data: {:#?}",
+            crate::server_name(),
+            event_data
+        );
         diesel::insert_into(event_datas::table)
             .values(&event_data)
             .on_conflict((event_datas::event_id, event_datas::event_sn))
             .do_update()
             .set(&event_data)
-            .execute(&mut db::connect()?)?;
+            .execute(&mut db::connect()?)
+            .unwrap();
 
         debug!("Added pdu as outlier.");
 
@@ -695,7 +703,6 @@ pub(crate) async fn fetch_and_handle_outliers(
         let mut todo_auth_events: VecDeque<_> = [Arc::clone(id)].into();
         let mut events_in_reverse_order = Vec::new();
         let mut events_all = HashSet::new();
-        println!("ffffffffffffffor id: {id}");
         while let Some(next_id) = todo_auth_events.pop_front() {
             if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id) {
                 // Exponential backoff
@@ -714,7 +721,6 @@ pub(crate) async fn fetch_and_handle_outliers(
                 continue;
             }
 
-            println!("nnnnnnnnnnnnextid: {next_id}");
             if crate::room::timeline::has_pdu(&next_id).unwrap_or(false) {
                 trace!("Found {} in db", next_id);
                 continue;
@@ -772,7 +778,6 @@ pub(crate) async fn fetch_and_handle_outliers(
 
     let mut pdus = Vec::with_capacity(events_with_auth_events.len());
     for (id, local_pdu, events_in_reverse_order) in events_with_auth_events {
-        println!("===loop=======id: {id}");
         // a. Look in the main timeline (pduid_pdu tree)
         // b. Look at outlier pdu tree
         // (get_pdu_json checks both)
@@ -815,7 +820,7 @@ pub(crate) async fn fetch_and_handle_outliers(
     Ok(pdus)
 }
 
-async fn fetch_missing_prev_events(
+pub async fn fetch_missing_prev_events(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
@@ -825,7 +830,7 @@ async fn fetch_missing_prev_events(
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
     println!(
-        ">>>>>>>>>>>>>>>>fetch_missing_prev_events, {} initial_set: {:?}",
+        "\n\n\n\n\n>>>>>>>>>>>>>>>>fetch_missing_prev_events, {} initial_set: {:?}",
         crate::server_name(),
         initial_set
     );
@@ -900,7 +905,7 @@ async fn fetch_missing_prev_events(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
+    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
         Some(acl) => acl,
         None => return Ok(()),
     };

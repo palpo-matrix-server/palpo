@@ -297,7 +297,6 @@ CREATE TABLE rooms (
     state_frame_id bigint,
     has_auth_chain_index boolean not null default false,
     disabled boolean  not null default false,
-    created_by text NOT NULL,
     created_at bigint NOT NULL
 );
 
@@ -441,9 +440,17 @@ CREATE TABLE events (
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
     rejection_reason text,
-    CONSTRAINT events_ukey UNIQUE (sn)
+    CONSTRAINT events_sn_ukey UNIQUE (sn),
+    CONSTRAINT event_id_sn_ukey UNIQUE (id, sn)
 --     topological_ordering bigint NOT NULL,
 --     stream_ordering bigint
+);
+
+drop table if exists event_sns CASCADE;
+CREATE TABLE event_sns (
+    id text NOT NULL PRIMARY KEY,
+    sn bigint not null default nextval('occur_sn_seq'),
+    CONSTRAINT event_sns_ukey UNIQUE (id, sn)
 );
 
 drop table if exists threads CASCADE;
