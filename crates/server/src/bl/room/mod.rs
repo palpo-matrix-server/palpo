@@ -45,7 +45,6 @@ pub struct DbRoom {
     pub state_frame_id: Option<i64>,
     pub has_auth_chain_index: bool,
     pub disabled: bool,
-    pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -56,7 +55,6 @@ pub struct NewDbRoom {
     pub is_public: bool,
     pub min_depth: i64,
     pub has_auth_chain_index: bool,
-    pub created_by: OwnedUserId,
     pub created_at: UnixMillis,
 }
 
@@ -81,17 +79,16 @@ pub fn create_room(new_room: NewDbRoom) -> AppResult<OwnedRoomId> {
     Ok(new_room.id)
 }
 
-pub fn ensure_room(id: &RoomId, created_by: &UserId) -> AppResult<OwnedRoomId> {
+pub fn ensure_room(id: &RoomId, room_version_id: &RoomVersionId) -> AppResult<OwnedRoomId> {
     if room_exists(id)? {
         Ok(id.to_owned())
     } else {
         create_room(NewDbRoom {
             id: id.to_owned(),
-            version: default_room_version().to_string(),
+            version: room_version_id.to_string(),
             is_public: false,
             min_depth: 0,
             has_auth_chain_index: false,
-            created_by: created_by.to_owned(),
             created_at: UnixMillis::now(),
         })
         .map_err(Into::into)
@@ -120,7 +117,7 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 }
 
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    self::state::get_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+    self::state::get_room_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
             .map_err(|_| AppError::internal("Invalid room guest access event in database."))
@@ -160,7 +157,7 @@ pub fn update_membership(
 
                 // Check if the room has a predecessor
                 if let Some(predecessor) =
-                    crate::room::state::get_state(room_id, &StateEventType::RoomCreate, "", None)?
+                    crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)?
                         .and_then(|create| serde_json::from_str(create.content.get()).ok())
                         .and_then(|content: RoomCreateEventContent| content.predecessor)
                 {

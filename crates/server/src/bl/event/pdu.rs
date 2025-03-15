@@ -24,6 +24,7 @@ pub struct EventHash {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct PduEvent {
     pub event_id: Arc<EventId>,
+    #[serde(skip_serializing)]
     pub event_sn: i64,
     #[serde(rename = "type")]
     pub event_ty: TimelineEventType,
@@ -318,6 +319,7 @@ impl PduEvent {
         }
 
         pdu_json.remove("event_id");
+        pdu_json.remove("event_sn");
 
         // TODO: another option would be to convert it to a canonical string to validate size
         // and return a Result<RawJson<...>>

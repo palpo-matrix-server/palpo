@@ -84,8 +84,14 @@ pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(||
         RoomVersionId::V11,
     ]
 });
-pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> =
-    LazyLock::new(|| vec![RoomVersionId::V2, RoomVersionId::V3, RoomVersionId::V4, RoomVersionId::V5]);
+pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
+    vec![
+        RoomVersionId::V2,
+        RoomVersionId::V3,
+        RoomVersionId::V4,
+        RoomVersionId::V5,
+    ]
+});
 pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
 pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> =
     LazyLock::new(Default::default);
@@ -775,6 +781,7 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
         .ok_or(MatrixError::invalid_param("Invalid room id in pdu"))?;
 
     let room_version_id = crate::room::state::get_room_version(&room_id)?;
+    println!("RRRRRRRRRRRRRRRoom version id: {}", room_version_id);
 
     let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,

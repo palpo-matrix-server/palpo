@@ -11,4 +11,4 @@ uname -a
 sed -i "s/your.server.name/${SERVER_NAME}/g" /work/palpo.toml
 sed -i "s/your.server.name/${SERVER_NAME}/g" /work/caddy.json
 caddy start --config /work/caddy.json > /dev/null
-RUST_BACKTRACE=1 /work/palpo
+RUST_BACKTRACE=full /work/palpo

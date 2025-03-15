@@ -149,7 +149,7 @@ async fn set_avatar_url(
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
                         ..serde_json::from_str(
-                            crate::room::state::get_state(
+                            crate::room::state::get_room_state(
                                 &room_id,
                                 &StateEventType::RoomMember,
                                 user_id.as_str(),
@@ -266,7 +266,7 @@ async fn set_display_name(
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
                         ..serde_json::from_str(
-                            crate::room::state::get_state(
+                            crate::room::state::get_room_state(
                                 &room_id,
                                 &StateEventType::RoomMember,
                                 user_id.as_str(),

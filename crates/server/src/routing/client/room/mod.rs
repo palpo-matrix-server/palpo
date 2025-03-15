@@ -254,7 +254,7 @@ async fn upgrade(
 
     // Create a replacement room
     let replacement_room = RoomId::new(crate::server_name());
-    crate::room::ensure_room(&replacement_room, authed.user_id())?;
+    crate::room::ensure_room(&replacement_room, &crate::default_room_version())?;
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
@@ -275,7 +275,7 @@ async fn upgrade(
 
     // Get the old room creation event
     let mut create_event_content = serde_json::from_str::<CanonicalJsonObject>(
-        crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None)?
             .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
             .content
             .get(),
@@ -367,7 +367,7 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_state(&room_id, &event_ty, "", None)? {
+        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "", None)? {
             Some(v) => v.content.clone(),
             None => continue, // Skipping missing events.
         };
@@ -391,7 +391,7 @@ async fn upgrade(
 
     // Get the old room power levels
     let mut power_levels_event_content: RoomPowerLevelsEventContent = serde_json::from_str(
-        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
             .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
             .content
             .get(),
@@ -477,7 +477,7 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let room_id = RoomId::new(crate::server_name());
-    crate::room::ensure_room(&room_id, authed.user_id())?;
+    crate::room::ensure_room(&room_id, &crate::default_room_version())?;
 
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.").into());

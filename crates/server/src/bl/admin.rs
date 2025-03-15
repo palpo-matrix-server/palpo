@@ -12,6 +12,7 @@ use regex::Regex;
 use serde_json::value::to_raw_value;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
+use super::default_room_version;
 use super::event::PduBuilder;
 use crate::core::ServerName;
 use crate::core::appservice::Registration;
@@ -756,7 +757,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     if crate::room::room_exists(&room_id)? {
         return Ok(room_id);
     } else {
-        crate::room::ensure_room(&room_id, created_by)?;
+        crate::room::ensure_room(&room_id, &crate::default_room_version())?;
     }
 
     // Create a user for the server

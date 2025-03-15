@@ -12,8 +12,7 @@ use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
 use crate::{
-     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok,
-    json_ok, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok, utils,
 };
 
 pub fn router_v1() -> Router {
@@ -168,10 +167,11 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::next_sn()?, event.into()).map_err(|e| {
-        warn!("Invalid invite event: {}", e);
-        MatrixError::invalid_param("Invalid invite event.")
-    })?;
+    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::event::get_event_sn(&event_id)?, event.into())
+        .map_err(|e| {
+            warn!("Invalid invite event: {}", e);
+            MatrixError::invalid_param("Invalid invite event.")
+        })?;
     invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
@@ -199,6 +199,7 @@ async fn invite_user(
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
     let origin = depot.origin()?;
+    println!("cccccreate_leave_event_template_route, user: {:?}", args.user_id);
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
@@ -267,6 +268,7 @@ async fn send_join_v1(
 /// Submits a signed leave event.
 #[endpoint]
 async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<SendLeaveReqBody>) -> EmptyResult {
+    println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCsend leave");
     let origin = depot.origin()?;
     let body = body.into_inner();
 

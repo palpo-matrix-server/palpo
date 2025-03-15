@@ -70,7 +70,7 @@ fn get_local_public_rooms(
         .into_iter()
         .map(|room_id| {
             let chunk = PublicRoomsChunk {
-                canonical_alias: crate::room::state::get_state(
+                canonical_alias: crate::room::state::get_room_state(
                     &room_id,
                     &StateEventType::RoomCanonicalAlias,
                     "",
@@ -89,7 +89,7 @@ fn get_local_public_rooms(
                     })
                     .try_into()
                     .expect("user count should not be that big"),
-                topic: crate::room::state::get_state(&room_id, &StateEventType::RoomTopic, "", None)?.map_or(
+                topic: crate::room::state::get_room_state(&room_id, &StateEventType::RoomTopic, "", None)?.map_or(
                     Ok(None),
                     |s| {
                         serde_json::from_str(s.content.get())
@@ -100,7 +100,7 @@ fn get_local_public_rooms(
                             })
                     },
                 )?,
-                world_readable: crate::room::state::get_state(
+                world_readable: crate::room::state::get_room_state(
                     &room_id,
                     &StateEventType::RoomHistoryVisibility,
                     "",
@@ -115,7 +115,7 @@ fn get_local_public_rooms(
                 })?,
                 guest_can_join: crate::room::state::guest_can_join(&room_id)?,
                 avatar_url: crate::room::state::get_avatar_url(&room_id)?,
-                join_rule: crate::room::state::get_state(&room_id, &StateEventType::RoomJoinRules, "", None)?
+                join_rule: crate::room::state::get_room_state(&room_id, &StateEventType::RoomJoinRules, "", None)?
                     .map(|s| {
                         serde_json::from_str(s.content.get())
                             .map(|c: RoomJoinRulesEventContent| match c.join_rule {
@@ -131,7 +131,7 @@ fn get_local_public_rooms(
                     .transpose()?
                     .flatten()
                     .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
-                room_type: crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "", None)?
+                room_type: crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None)?
                     .map(|s| {
                         serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
                             error!("Invalid room create event in database: {}", e);

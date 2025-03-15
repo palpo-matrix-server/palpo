@@ -57,6 +57,11 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
+    println!(
+        ">>>>>>>>>>>>>>>>handle_incoming_pdu, {} event_id: {}",
+        crate::server_name(),
+        event_id
+    );
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -85,6 +90,7 @@ pub(crate) async fn handle_incoming_pdu(
 
     // 1. Skip the PDU if we already have it as a timeline event
     if let Some(_pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
+        println!("skipped");
         return Ok(());
     }
 
@@ -93,6 +99,7 @@ pub(crate) async fn handle_incoming_pdu(
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
+    println!(" check_room_id");
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
@@ -103,6 +110,7 @@ pub(crate) async fn handle_incoming_pdu(
     let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
+        println!(" incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts");
         return Ok(());
     }
 
@@ -110,67 +118,35 @@ pub(crate) async fn handle_incoming_pdu(
     let (sorted_prev_events, mut eventid_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
 
-    let mut errors = 0;
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
-        if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
-            // Exponential backoff
-            let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
-            if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-                min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-            }
-
-            if time.elapsed() < min_elapsed_duration {
-                info!("Backing off from {}", prev_id);
-                continue;
-            }
-        }
-
-        if errors >= 5 {
-            break;
-        }
-
-        if let Some((pdu, json)) = eventid_info.remove(&*prev_id) {
-            // Skip old events
-            if pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-                continue;
-            }
-
-            let start_time = Instant::now();
-            crate::ROOM_ID_FEDERATION_HANDLE_TIME
+        if let Err(e) = handle_prev_pdu(
+            origin,
+            event_id,
+            room_id,
+            &mut eventid_info,
+            &incoming_pdu,
+            first_pdu_in_room.origin_server_ts,
+            &prev_id,
+        )
+        .await
+        {
+            warn!("Prev event {prev_id} failed: {e}");
+            match crate::BAD_EVENT_RATE_LIMITER
                 .write()
                 .unwrap()
-                .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
-
-            if let Err(e) = upgrade_outlier_to_timeline_pdu(&pdu, json, origin, room_id).await {
-                errors += 1;
-                warn!("Prev event {} failed: {}", prev_id, e);
-                match crate::BAD_EVENT_RATE_LIMITER
-                    .write()
-                    .unwrap()
-                    .entry((*prev_id).to_owned())
-                {
-                    hash_map::Entry::Vacant(e) => {
-                        e.insert((Instant::now(), 1));
-                    }
-                    hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
+                .entry((*prev_id).to_owned())
+            {
+                hash_map::Entry::Vacant(e) => {
+                    e.insert((Instant::now(), 1));
                 }
+                hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
             }
-            let elapsed = start_time.elapsed();
-            crate::ROOM_ID_FEDERATION_HANDLE_TIME
-                .write()
-                .unwrap()
-                .remove(&room_id.to_owned());
-            debug!(
-                "Handling prev event {} took {}m{}s",
-                prev_id,
-                elapsed.as_secs() / 60,
-                elapsed.as_secs() % 60
-            );
         }
     }
 
     // Done with prev events, now handling the incoming event
+    println!(" after handle incoming");
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -186,6 +162,59 @@ pub(crate) async fn handle_incoming_pdu(
     Ok(())
 }
 
+async fn handle_prev_pdu(
+    origin: &ServerName,
+    event_id: &EventId,
+    room_id: &RoomId,
+    eventid_info: &mut HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
+    create_event: &PduEvent,
+    first_ts_in_room: UnixMillis,
+    prev_id: &EventId,
+) -> AppResult<()> {
+    println!("===============handle_prev_pdu {:?}", prev_id);
+    if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
+        // Exponential backoff
+        let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
+        if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
+            min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
+        }
+
+        if time.elapsed() < min_elapsed_duration {
+            info!("Backing off from {}", prev_id);
+            return Ok(());
+        }
+    }
+
+    if let Some((pdu, json)) = eventid_info.remove(&*prev_id) {
+        // Skip old events
+        if pdu.origin_server_ts < first_ts_in_room {
+            println!("skip old event {}", pdu.event_id);
+            return Ok(());
+        }
+
+        let start_time = Instant::now();
+        crate::ROOM_ID_FEDERATION_HANDLE_TIME
+            .write()
+            .unwrap()
+            .insert(room_id.to_owned(), ((*prev_id).to_owned(), start_time));
+
+        upgrade_outlier_to_timeline_pdu(&pdu, json, origin, room_id).await?;
+
+        let elapsed = start_time.elapsed();
+        crate::ROOM_ID_FEDERATION_HANDLE_TIME
+            .write()
+            .unwrap()
+            .remove(&room_id.to_owned());
+        debug!(
+            "Handling prev event {} took {}m{}s",
+            prev_id,
+            elapsed.as_secs() / 60,
+            elapsed.as_secs() % 60
+        );
+    }
+    Ok(())
+}
+
 #[tracing::instrument(skip_all)]
 fn handle_outlier_pdu<'a>(
     origin: &'a ServerName,
@@ -195,6 +224,11 @@ fn handle_outlier_pdu<'a>(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
+    println!(
+        ">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}  {auth_events_known}",
+        crate::server_name(),
+        event_id
+    );
     Box::pin(async move {
         // 1.1. Remove unsigned field
         value.remove("unsigned");
@@ -249,7 +283,7 @@ fn handle_outlier_pdu<'a>(
         );
         let incoming_pdu = PduEvent::from_json_value(
             event_id,
-            crate::next_sn()?,
+            crate::event::get_event_sn(event_id)?,
             serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
@@ -314,21 +348,21 @@ fn handle_outlier_pdu<'a>(
             return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
         }
 
-        if !state::event_auth::auth_check(
-            &room_version,
-            &incoming_pdu,
-            None::<PduEvent>, // TODO: third party invite
-            |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
-        )
-        .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
-        {
-            return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
-        }
+        // if !state::event_auth::auth_check(
+        //     &room_version,
+        //     &incoming_pdu,
+        //     None::<PduEvent>, // TODO: third party invite
+        //     |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
+        // )
+        // .map_err(|_e| MatrixError::invalid_param("Auth check failed outlier pdu"))?
+        // {
+        //     return Err(MatrixError::invalid_param("Auth check failed outlier pdu").into());
+        // }
 
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
-        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, Some(incoming_pdu.event_sn), &val)?;
+        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
         diesel::insert_into(events::table)
             .values(db_event)
@@ -347,7 +381,8 @@ fn handle_outlier_pdu<'a>(
             .on_conflict((event_datas::event_id, event_datas::event_sn))
             .do_update()
             .set(&event_data)
-            .execute(&mut db::connect()?)?;
+            .execute(&mut db::connect()?)
+            .unwrap();
 
         debug!("Added pdu as outlier.");
 
@@ -362,6 +397,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
+    println!("===========upgrade_outlier_to_timeline_pdu {:?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
@@ -626,6 +662,11 @@ pub(crate) async fn fetch_and_handle_outliers(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
+    println!(
+        ">>>>>>>>>>>>>>>>fetch_and_handle_outliers, {} events: {:?}",
+        crate::server_name(),
+        events
+    );
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
             e.insert((Instant::now(), 1));
@@ -746,6 +787,11 @@ pub(crate) async fn fetch_and_handle_outliers(
                 }
             }
 
+            println!("caaaaaaaaall handle_outlier_pdu 2 event_id:{next_id}");
+            if let Some(pdu) = crate::room::timeline::get_pdu(&next_id)? {
+                pdus.push((pdu, Some(value)));
+                continue;
+            }
             match handle_outlier_pdu(origin, &next_id, room_id, room_version_id, value.clone(), true).await {
                 Ok((pdu, json)) => {
                     if next_id == *id {
@@ -762,7 +808,7 @@ pub(crate) async fn fetch_and_handle_outliers(
     Ok(pdus)
 }
 
-async fn fetch_missing_prev_events(
+pub async fn fetch_missing_prev_events(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
@@ -771,6 +817,11 @@ async fn fetch_missing_prev_events(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
+    println!(
+        "\n\n\n\n\n>>>>>>>>>>>>>>>>fetch_missing_prev_events, {} initial_set: {:?}",
+        crate::server_name(),
+        initial_set
+    );
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut eventid_info = HashMap::new();
@@ -842,7 +893,7 @@ async fn fetch_missing_prev_events(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
+    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
         Some(acl) => acl,
         None => return Ok(()),
     };

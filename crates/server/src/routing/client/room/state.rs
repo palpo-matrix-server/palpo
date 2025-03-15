@@ -10,11 +10,11 @@ use crate::core::client::state::{
     StateEventsForKeyResBody, StateEventsResBody,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
+use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::{
     Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::{RoomAccountDataEventType, };
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
 use crate::room::state::UserCanSeeEvent;
@@ -120,7 +120,7 @@ pub(super) fn state_for_key(
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_state(
+    let event = crate::room::state::get_room_state(
         &args.room_id,
         &args.event_type,
         &args.state_key,
@@ -162,14 +162,14 @@ pub(super) async fn state_for_empty_key(
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_state(&args.room_id, &args.event_type, "", Some(can_see.as_until_sn()))?
+    let event = crate::room::state::get_room_state(&args.room_id, &args.event_type, "", Some(can_see.as_until_sn()))?
         .ok_or_else(|| {
-            warn!(
-                "State event {:?} not found in room {:?}",
-                &args.event_type, &args.room_id
-            );
-            MatrixError::not_found("State event not found.")
-        })?;
+        warn!(
+            "State event {:?} not found in room {:?}",
+            &args.event_type, &args.room_id
+        );
+        MatrixError::not_found("State event not found.")
+    })?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),

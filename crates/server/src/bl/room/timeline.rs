@@ -164,6 +164,11 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
+    println!(
+        ">>>>>>>>>>>>>>>>append_pdu, {} event_id: {}",
+        crate::server_name(),
+        pdu.event_id
+    );
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -173,16 +178,32 @@ where
             .entry("unsigned".to_owned())
             .or_insert_with(|| CanonicalJsonValue::Object(Default::default()))
         {
-            if let Some(state_hash) = crate::room::state::get_pdu_frame_id(&pdu.event_id).unwrap() {
+            if let Some(state_frame_id) = crate::room::state::get_pdu_frame_id(&pdu.event_id).unwrap() {
                 if let Some(prev_state) =
-                    crate::room::state::get_pdu(state_hash, &pdu.event_ty.to_string().into(), state_key).unwrap()
+                    crate::room::state::get_state(state_frame_id - 1, &pdu.event_ty.to_string().into(), state_key)
+                        .unwrap()
                 {
+                    println!(
+                        "iiiiiiiii {} insert prev content 2: {:?}  state_key:{:?}  {:?}",
+                        crate::server_name(),
+                        pdu.event_ty,
+                        state_key,
+                        prev_state.content
+                    );
                     unsigned.insert(
                         "prev_content".to_owned(),
                         CanonicalJsonValue::Object(
                             utils::to_canonical_object(prev_state.content.clone())
                                 .expect("event is valid, we just created it"),
                         ),
+                    );
+                    unsigned.insert(
+                        String::from("prev_sender"),
+                        CanonicalJsonValue::String(prev_state.sender.to_string()),
+                    );
+                    unsigned.insert(
+                        String::from("replaces_state"),
+                        CanonicalJsonValue::String(prev_state.event_id.to_string()),
                     );
                 }
             }
@@ -218,7 +239,7 @@ where
 
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
@@ -299,9 +320,9 @@ where
                 let content = serde_json::from_str::<ExtractMembership>(pdu.content.get())
                     .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
-                let invite_state = match content.membership {
-                    MembershipState::Invite => {
-                        let state = crate::room::state::calculate_invite_state(pdu)?;
+                let stripped_state = match content.membership {
+                    MembershipState::Invite | MembershipState::Knock => {
+                        let state = crate::room::state::calc_invite_state(pdu)?;
                         Some(state)
                     }
                     _ => None,
@@ -319,7 +340,7 @@ where
                     &target_user_id,
                     content.membership,
                     &pdu.sender,
-                    invite_state,
+                    stripped_state,
                 )?;
             }
         }
@@ -436,7 +457,7 @@ where
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(Some(pdu)) =
-                    crate::room::state::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
+                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
@@ -538,8 +559,15 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) = crate::room::state::get_state(room_id, &event_type.to_string().into(), state_key, None)?
+        if let Some(prev_pdu) =
+            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)?
         {
+            println!(
+                "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",
+                crate::server_name(),
+                prev_pdu.content.get(),
+                crate::room::state::get_current_frame_id(room_id)?
+            );
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -555,11 +583,12 @@ pub fn create_hash_and_sign_event(
         }
     }
 
-    let event_id = OwnedEventId::try_from(format!("$will_fill_{}", Ulid::new().to_string())).unwrap();
+    let event_id = OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
+    let event_sn = crate::event::get_event_sn(&event_id)?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
-        sn: None,
+        sn: event_sn,
         ty: event_type.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -574,7 +603,7 @@ pub fn create_hash_and_sign_event(
         soft_failed: false,
         rejection_reason: None,
     };
-    let event_sn = diesel::insert_into(events::table)
+    diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict(events::id)
         .do_update()
@@ -648,6 +677,9 @@ pub fn create_hash_and_sign_event(
 
     diesel::update(events::table.filter(events::sn.eq(event_sn)))
         .set(events::id.eq(&event_id))
+        .execute(&mut db::connect()?)?;
+    diesel::update(event_sns::table.filter(event_sns::sn.eq(event_sn)))
+        .set(event_sns::id.eq(&event_id))
         .execute(&mut db::connect()?)?;
 
     pdu_json.insert(
@@ -746,6 +778,8 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
+
+    println!("ccccccccccccccccc set room state 1");
     crate::room::state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
@@ -881,38 +915,38 @@ pub fn get_pdus(
                 }
             }
         }
-        let datas: Vec<(i64, JsonValue)> = if dir == Direction::Forward {
+        let datas: Vec<(OwnedEventId, Seqnum, JsonValue)> = if dir == Direction::Forward {
             event_datas::table
                 .filter(event_datas::event_id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.asc())
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
         } else {
             event_datas::table
                 .filter(event_datas::event_id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
                 .order(event_datas::event_sn.desc())
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_sn, event_datas::json_data))
-                .load::<(i64, JsonValue)>(&mut *db::connect()?)?
+                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
         };
         if datas.is_empty() {
             break;
         }
-        start_sn = if let Some(&(sn, _)) = datas.last() {
+        start_sn = if let Some(&(_, sn, _)) = datas.last() {
             sn
         } else {
             break;
         };
-        for (sn, v) in datas {
-            let mut pdu = serde_json::from_value::<PduEvent>(v)?;
+        for (event_id, event_sn, value) in datas {
+            let mut pdu = PduEvent::from_json_value(&event_id, event_sn, value)?;
 
             if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
                 pdu.add_age()?;
-                list.push((sn, pdu));
+                list.push((event_sn, pdu));
                 if list.len() >= limit {
                     break;
                 }
@@ -952,7 +986,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     }
 
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
@@ -1013,6 +1047,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
+    println!("==ddd  handle_incoming_pdu 3  {event_id}");
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");
