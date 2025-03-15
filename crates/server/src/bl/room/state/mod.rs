@@ -374,6 +374,9 @@ pub fn get_auth_events(
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
             }
+        } else {
+            if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+            }
         }
     }
     Ok(state_map)
