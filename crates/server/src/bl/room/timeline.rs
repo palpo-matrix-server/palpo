@@ -180,11 +180,11 @@ where
         {
             if let Some(state_frame_id) = crate::room::state::get_pdu_frame_id(&pdu.event_id).unwrap() {
                 if let Some(prev_state) =
-                    crate::room::state::get_state(state_frame_id, &pdu.event_ty.to_string().into(), state_key).unwrap()
+                    crate::room::state::get_state(state_frame_id-1, &pdu.event_ty.to_string().into(), state_key).unwrap()
                 {
                     println!(
-                        "iiiiiiiii {} insert prev content 2: {:?}",
-                        crate::server_name(),
+                        "iiiiiiiii {} insert prev content 2: {:?}  state_key:{:?}  {:?}",
+                        crate::server_name(),pdu.event_ty, state_key,
                         prev_state.content
                     );
                     unsigned.insert(
@@ -223,11 +223,6 @@ where
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
-    println!(
-        ">>>>>>>>>>>>>>>>event_datas0, {} event_data: {:#?}",
-        crate::server_name(),
-        event_data
-    );
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -564,9 +559,10 @@ pub fn create_hash_and_sign_event(
         if let Some(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)?
         {
             println!(
-                "iiiiiiiii {} insert prev content 1: {:?}",
+                "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",
                 crate::server_name(),
-                prev_pdu.content.get()
+                prev_pdu.content.get(),
+                crate::room::state::get_current_frame_id(room_id)?
             );
             unsigned.insert(
                 "prev_content".to_owned(),
@@ -778,6 +774,8 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
+    
+    println!("ccccccccccccccccc set room state 1");
     crate::room::state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();

@@ -614,10 +614,6 @@ async fn remote_join_room(
         )?)
         .on_conflict_do_nothing()
         .execute(&mut *db::connect()?)?;
-    println!(
-        "=================create event 3 {}  {}",
-        event_id, parsed_join_pdu.event_sn
-    );
 
     let mut state = HashMap::new();
     let pub_key_map = RwLock::new(BTreeMap::new());
@@ -639,7 +635,6 @@ async fn remote_join_room(
             Ok(t) => t,
             Err(_) => continue,
         };
-        println!("sssssssssend_join_response event_id: {event_id}");
 
         let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             pdu
@@ -662,11 +657,6 @@ async fn remote_join_room(
                 json_data: serde_json::to_value(&value)?,
                 format_version: None,
             };
-            println!(
-                ">>>>>>>>>>>>>>>>event_datas1, {} event_data: {:#?}",
-                crate::server_name(),
-                event_data
-            );
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
                 .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -676,14 +666,12 @@ async fn remote_join_room(
             pdu
         };
 
-        println!("IIIIIIIIIIIIIIII====1");
         if let Some(state_key) = &pdu.state_key {
             let state_key_id = crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
             state.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
 
-    println!("IIIIIIIIIIIIIIII====2");
     info!("Going through send_join response auth_chain");
     for result in send_join_response
         .0
@@ -712,11 +700,6 @@ async fn remote_join_room(
                 format_version: None,
             };
 
-            println!(
-                ">>>>>>>>>>>>>>>>event_datas2, {} event_data: {:#?}",
-                crate::server_name(),
-                event_data
-            );
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
                 .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -726,7 +709,6 @@ async fn remote_join_room(
         }
     }
 
-    println!("IIIIIIIIIIIIIIII====3");
     info!("Running send_join auth check");
     // TODO: Authcheck
     // if !event_auth::auth_check(
@@ -761,26 +743,23 @@ async fn remote_join_room(
             state
                 .into_iter()
                 .map(|(k, (event_id, event_sn))| {
-                    println!("IIIIIIIIIIIIIIII====3 inside 1");
                     let point_id = crate::room::state::ensure_point(room_id, &event_id, event_sn)?;
-                    println!("IIIIIIIIIIIIIIII====3 inside 2");
                     Ok(CompressedEvent::new(k, point_id))
                 })
                 .collect::<AppResult<_>>()?,
         ),
     )?;
 
-    println!("IIIIIIIIIIIIIIII====3 == 2");
     crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
 
-    println!("IIIIIIIIIIIIIIII====4");
-    info!("Updating joined counts for new room");
-    crate::room::update_room_servers(room_id)?;
-    crate::room::update_room_currents(room_id)?;
+    // info!("Updating joined counts for new room");
+    // crate::room::update_room_servers(room_id)?;
+    // crate::room::update_room_currents(room_id)?;
 
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     let frame_id_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
+    println!("ccccccccccccccccc frame_id:{frame_id}  frame_id_after_join {frame_id_after_join} cframe_id: {:?}", crate::room::state::get_current_frame_id(room_id)?);
 
     info!("Appending new room join event");
     crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow())).unwrap();
@@ -788,11 +767,8 @@ async fn remote_join_room(
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
+    println!("ccccccccccccccccc set room state 2");
     crate::room::state::set_room_state(room_id, frame_id_after_join)?;
-    println!(
-        "IIIIIIIIIIIIIIII====5 room_id: {room_id} frame_id_after_join:{frame_id_after_join:?}  room_frame_id: {:?}",
-        crate::room::state::get_room_frame_id(room_id, None)?
-    );
     Ok(())
 }
 
@@ -1230,11 +1206,6 @@ async fn leave_remote_room(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         json_data: serde_json::to_value(&leave_event_stub)?,
         format_version: None,
     };
-    println!(
-        ">>>>>>>>>>>>>>>>event_datas3, {} event_data: {:#?}",
-        crate::server_name(),
-        event_data
-    );
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict_do_nothing()

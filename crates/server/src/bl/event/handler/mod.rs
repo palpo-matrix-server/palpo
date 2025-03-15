@@ -96,7 +96,6 @@ pub(crate) async fn handle_incoming_pdu(
 
     let room_version_id = &crate::room::room_version(room_id)?;
 
-    println!("caaaaaaaaall handle_outlier_pdu 1 event_id:{event_id}");
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
@@ -172,6 +171,7 @@ async fn handle_prev_pdu(
     first_ts_in_room: UnixMillis,
     prev_id: &EventId,
 ) -> AppResult<()> {
+    println!("===============handle_prev_pdu {:?}", prev_id);
     if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
         // Exponential backoff
         let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
@@ -235,7 +235,6 @@ fn handle_outlier_pdu<'a>(
 
         let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
 
-        println!("xxxxxxxxxxxxxx===  0");
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("Invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
@@ -252,8 +251,6 @@ fn handle_outlier_pdu<'a>(
             )
         };
 
-
-        println!("xxxxxxxxxxxxxx===  1");
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
@@ -278,7 +275,6 @@ fn handle_outlier_pdu<'a>(
             }
         };
 
-        println!("xxxxxxxxxxxxxx===  2");
         // Now that we have checked the signature and hashes we can add the eventID and convert
         // to our PduEvent type
         val.insert(
@@ -292,7 +288,6 @@ fn handle_outlier_pdu<'a>(
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
 
-        println!("xxxxxxxxxxxxxx===  3");
         check_room_id(room_id, &incoming_pdu)?;
 
         if !auth_events_known {
@@ -313,7 +308,6 @@ fn handle_outlier_pdu<'a>(
             .await?;
         }
 
-        println!("xxxxxxxxxxxxxx===  4");
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("Auth check for {} based on auth events", incoming_pdu.event_id);
 
@@ -346,7 +340,6 @@ fn handle_outlier_pdu<'a>(
             }
         }
 
-        println!("xxxxxxxxxxxxxx===  5");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -368,7 +361,6 @@ fn handle_outlier_pdu<'a>(
 
         debug!("Validation successful.");
 
-        println!(">>>>>>>>>>>>>>>xxx 9");
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
@@ -384,11 +376,6 @@ fn handle_outlier_pdu<'a>(
             json_data: serde_json::to_value(&val)?,
             format_version: None,
         };
-        println!(
-            ">>>>>>>>>>>>>>>>event_datas4, {} event_data: {:#?}",
-            crate::server_name(),
-            event_data
-        );
         diesel::insert_into(event_datas::table)
             .values(&event_data)
             .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -410,6 +397,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
+    println!("===========upgrade_outlier_to_timeline_pdu {:?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());

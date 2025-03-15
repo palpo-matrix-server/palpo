@@ -118,6 +118,7 @@ pub fn force_state(
     crate::room::update_room_servers(room_id)?;
     crate::room::update_room_currents(room_id)?;
 
+    println!("ccccccccccccccccc set room state 0");
     set_room_state(room_id, frame_id)?;
 
     Ok(())
@@ -125,12 +126,6 @@ pub fn force_state(
 
 #[tracing::instrument]
 pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
-    println!(
-        "set_room_state: {:?}",
-        rooms::table
-            .find(room_id)
-            .load::<crate::room::DbRoom>(&mut db::connect()?)?
-    );
     diesel::update(rooms::table.find(room_id))
         .set(rooms::state_frame_id.eq(frame_id))
         .execute(&mut db::connect()?)?;
