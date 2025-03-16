@@ -123,6 +123,11 @@ pub fn sync_events(
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
 
+        println!(
+            "======={}  {sender_id}  left_rooms:{:#?}",
+            crate::server_name(),
+            all_left_rooms
+        );
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
 
@@ -130,9 +135,11 @@ pub fn sync_events(
 
             // Left before last sync
             if Some(since_sn) > left_sn {
+                println!("vvvvvvvvvvvv  0");
                 continue;
             }
 
+            println!("vvvvvvvvvvvv  1");
             if !crate::room::room_exists(room_id)? {
                 let event = PduEvent {
                     event_id: EventId::new(crate::server_name()).into(),
@@ -171,11 +178,13 @@ pub fn sync_events(
 
             let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
 
+            println!("vvvvvvvvvvvv  2");
             let since_state_ids = match since_frame_id {
                 Some(s) => crate::room::state::get_full_state_ids(s)?,
                 None => HashMap::new(),
             };
 
+            println!("vvvvvvvvvvvv  3");
             let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id, None)? else {
                 continue;
             };
@@ -186,10 +195,12 @@ pub fn sync_events(
                 continue;
             };
 
+            println!("vvvvvvvvvvvv  4");
             let Some(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id)? else {
                 error!("Leave event has no state");
                 continue;
             };
+            println!("vvvvvvvvvvvv  5");
             if let Some(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
                     continue;
@@ -206,6 +217,7 @@ pub fn sync_events(
                 }
             }
 
+            println!("vvvvvvvvvvvv  6");
             let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
             let leave_state_key_id =
                 crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
@@ -236,6 +248,7 @@ pub fn sync_events(
                 }
             }
 
+            println!("vvvvvvvvvvvv  7");
             let left_event = crate::room::timeline::get_pdu(&left_event_id)?.map(|pdu| pdu.to_sync_room_event());
             left_rooms.insert(
                 room_id.to_owned(),
@@ -255,6 +268,7 @@ pub fn sync_events(
                     },
                 },
             );
+            println!("vvvvvvvvvvvv  8  {:?}", left_rooms);
         }
 
         let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
