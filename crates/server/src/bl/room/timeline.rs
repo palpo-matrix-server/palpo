@@ -779,7 +779,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
 
-    println!("ccccccccccccccccc set room state 1");
     crate::room::state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();

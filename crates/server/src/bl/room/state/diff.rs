@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
 use crate::core::{EventId, RoomId};
 use crate::room::state::ensure_point;
-use crate::{AppResult, db, utils};
+use crate::{db, utils, AppResult, Seqnum};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,
@@ -58,6 +58,17 @@ impl Deref for CompressedEvent {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+
+pub fn compress_events(
+    room_id: &RoomId,
+    events: impl Iterator<Item = (&EventId, Seqnum)>,
+) -> AppResult<CompressedState> {
+    let mut compressed = BTreeSet::new();
+    for (event_id, event_sn) in events {
+        compressed.insert(compress_event(room_id, field_id, event_id, event_sn)?);
+    }
+    Ok(compressed)
 }
 
 pub fn compress_event(

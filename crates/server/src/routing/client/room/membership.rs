@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use futures_util::io::empty;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -20,6 +21,7 @@ use crate::core::user::ProfileResBody;
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::schema::*;
+use crate::membership::knock_room_by_id;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
@@ -235,13 +237,13 @@ pub(crate) async fn join_room_by_id_or_alias(
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
     via: QueryParam<Vec<OwnedServerName>, false>,
-    body: JsonBody<JoinRoomByIdOrAliasReqBody>,
+    body: JsonBody<Option<JoinRoomByIdOrAliasReqBody>>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     println!("\n\n\n ======================= join_room_by_id_or_alias");
     let authed = depot.authed_info()?;
     let room_id_or_alias = room_id_or_alias.into_inner();
-    let body = body.into_inner();
+    let body = body.into_inner().unwrap_or_default();
 
     // The servers to attempt to join the room through.
     //
@@ -512,35 +514,70 @@ pub(crate) async fn knock_room(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let room_id = match OwnedRoomId::try_from(args.room_id_or_alias) {
-        Ok(room_id) => room_id,
+    let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
+        Ok(room_id) => {
+            banned_room_check(sender_user, Some(&room_id), room_id.server_name(), client)?;
+
+            let mut servers = body.via.clone();
+            servers.extend(
+                crate::room::state::servers_invite_via(&room_id)
+                    .map(ToOwned::to_owned)
+                    .collect::<Vec<_>>()
+                    .await,
+            );
+
+            servers.extend(
+                crate::room::state::invite_state(sender_user, &room_id)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(|event| event.get_field("sender").ok().flatten())
+                    .filter_map(|sender: &str| UserId::parse(sender).ok())
+                    .map(|user| user.server_name().to_owned()),
+            );
+
+            if let Some(server) = room_id.server_name() {
+                servers.push(server.to_owned());
+            }
+
+            servers.dedup();
+
+            (room_id, servers)
+        }
         Err(room_alias) => {
-            let response = crate::room::get_alias_response(room_alias).await?;
-            response.room_id
+            let (room_id, mut servers) = services
+                .rooms
+                .alias
+                .resolve_alias(&room_alias, Some(body.via.clone()))
+                .await?;
+
+            banned_room_check(sender_user, Some(&room_id), Some(room_alias.server_name()), client).await?;
+
+            let addl_via_servers = services
+                .rooms
+                .state_cache
+                .servers_invite_via(&room_id)
+                .map(ToOwned::to_owned);
+
+            let addl_state_servers = crate::room::invite_state(sender_id, &room_id)
+                .unwrap_or_default();
+
+            let mut addl_servers: Vec<_> = addl_state_servers
+                .iter()
+                .map(|event| event.get_field("sender"))
+                .filter_map(FlatOk::flat_ok)
+                .map(|user: &UserId| user.server_name().to_owned())
+                .stream()
+                .chain(addl_via_servers)
+                .collect()
+                .await;
+
+            addl_servers.dedup();
+            servers.append(&mut addl_servers);
+
+            (room_id, servers)
         }
     };
 
-    let mut event: RoomMemberEventContent = RoomMemberEventContent::new(MembershipState::Knock);
-    event.reason = body.into_inner().reason;
-
-    let pdu = crate::room::timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomMember,
-            content: to_raw_value(&event).expect("event is valid, we just created it"),
-            state_key: Some(authed.user_id().to_string()),
-            ..Default::default()
-        },
-        authed.user_id(),
-        &room_id,
-    )?;
-    crate::room::update_membership(
-        &pdu.event_id,
-        pdu.event_sn,
-        &room_id,
-        authed.user_id(),
-        MembershipState::Knock,
-        authed.user_id(),
-        None,
-    )?;
+    knock_room_by_id(sender_user, &room_id, body.reason.clone(), &servers)?;
     empty_ok()
 }

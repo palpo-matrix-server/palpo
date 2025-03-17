@@ -544,6 +544,10 @@ pub fn supported_room_versions() -> Vec<RoomVersionId> {
     room_versions
 }
 
+pub fn supports_room_version(room_version: &RoomVersionId) -> bool {
+    supported_room_versions().contains(room_version)
+}
+
 pub fn add_signing_key_from_trusted_server(
     from_server: &ServerName,
     new_keys: ServerSigningKeys,

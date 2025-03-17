@@ -10,7 +10,7 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedRoomId;
+use crate::{OwnedEventId, EventId, RoomId, OwnedRoomId};
 use crate::events::AnyStrippedStateEvent;
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::{RawJson, RawJsonValue};
@@ -91,9 +91,28 @@ impl MakeKnockResBody {
 //     }
 // };
 
+pub fn send_knock_request(origin: &str, args: SendKnockReqArgs, body: SendKnockReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/send_knock/{}/{}",
+        args.room_id, args.event_id
+    ))?;
+    Ok(crate::sending::put(url).stuff(body)?)
+}
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct SendKnockReqArgs {
+    /// The room ID that should receive the knock.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The user ID the knock event will be for.
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+}
+
 /// Request type for the `send_knock` endpoint.
 
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct SendKnockReqBody {
     // /// The room ID that should receive the knock.
     // #[salvo(parameter(parameter_in = Path))]
@@ -107,6 +126,13 @@ pub struct SendKnockReqBody {
     #[serde(flatten)]
     pub pdu: Box<RawJsonValue>,
 }
+impl SendKnockReqBody {
+    /// Creates a new `Request` with the given PDU.
+    pub fn new(pdu: Box<RawJsonValue>) -> Self {
+        Self { pdu }
+    }
+}
+crate::json_body_modifier!(SendKnockReqBody);
 
 /// Response type for the `send_knock` endpoint.
 #[derive(ToSchema, Serialize, Debug)]

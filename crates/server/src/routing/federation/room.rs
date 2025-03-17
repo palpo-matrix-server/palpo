@@ -34,7 +34,9 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
     let pdus = crate::room::state::get_full_state_ids(state_hash)?
         .into_values()
         .map(|id| {
-            PduEvent::convert_to_outgoing_federation_event(crate::room::timeline::get_pdu_json(&id).unwrap().unwrap())
+            crate::sending::convert_to_outgoing_federation_event(
+                crate::room::timeline::get_pdu_json(&id).unwrap().unwrap(),
+            )
         })
         .collect();
 
@@ -44,7 +46,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
         auth_chain: auth_chain_ids
             .into_iter()
             .filter_map(|id| match crate::room::timeline::get_pdu_json(&id).ok()? {
-                Some(json) => Some(PduEvent::convert_to_outgoing_federation_event(json)),
+                Some(json) => Some(crate::sending::convert_to_outgoing_federation_event(json)),
                 None => {
                     error!("Could not find event json for {id} in db::");
                     None

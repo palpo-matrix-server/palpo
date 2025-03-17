@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
+use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
@@ -16,6 +17,7 @@ use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, Rece
 use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
+use crate::core::serd::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{UnixMillis, device_id, push};
 use crate::schema::*;
 use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
@@ -550,7 +552,7 @@ async fn handle_events(
                 match event {
                     SendingEventType::Pdu(pdu_id) => {
                         // TODO: check room version and remove event_id if needed
-                        let raw = PduEvent::convert_to_outgoing_federation_event(
+                        let raw = crate::sending::convert_to_outgoing_federation_event(
                             crate::room::timeline::get_pdu_json(pdu_id)
                                 .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?
                                 .ok_or_else(|| {
@@ -805,4 +807,24 @@ fn mark_as_active(events: &[(i64, SendingEventType)]) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+/// This does not return a full `Pdu` it is only to satisfy palpo's types.
+#[tracing::instrument]
+pub fn convert_to_outgoing_federation_event(mut pdu_json: CanonicalJsonObject) -> Box<RawJsonValue> {
+    if let Some(unsigned) = pdu_json.get_mut("unsigned").and_then(|val| val.as_object_mut()) {
+        unsigned.remove("transaction_id");
+    }
+
+    pdu_json.remove("event_id");
+    pdu_json.remove("event_sn");
+
+    // TODO: another option would be to convert it to a canonical string to validate size
+    // and return a Result<RawJson<...>>
+    // serde_json::from_str::<RawJson<_>>(
+    //     crate::core::serde::to_canonical_json_string(pdu_json).expect("CanonicalJson is valid serde_json::Value"),
+    // )
+    // .expect("RawJson::from_value always works")
+
+    to_raw_value(&pdu_json).expect("CanonicalJson is valid serde_json::Value")
 }

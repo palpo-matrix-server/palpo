@@ -118,7 +118,6 @@ pub fn force_state(
     crate::room::update_room_servers(room_id)?;
     crate::room::update_room_currents(room_id)?;
 
-    println!("ccccccccccccccccc set room state 0");
     set_room_state(room_id, frame_id)?;
 
     Ok(())

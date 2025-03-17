@@ -412,14 +412,14 @@ pub struct JoinRoomByIdReqBody {
 // };
 
 /// Request type for the `join_room_by_id_or_alias` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Default, Deserialize, Debug)]
 pub struct JoinRoomByIdOrAliasReqBody {
     /// The signature of a `m.third_party_invite` token to prove that this user owns a third
     /// party identity which has been invited to the room.
     pub third_party_signed: Option<ThirdPartySigned>,
 
     /// Optional reason for joining the room.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 

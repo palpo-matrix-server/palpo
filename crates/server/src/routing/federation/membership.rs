@@ -191,7 +191,7 @@ async fn invite_user(
     }
 
     json_ok(InviteUserResBodyV2 {
-        event: PduEvent::convert_to_outgoing_federation_event(signed_event),
+        event: crate::sending::convert_to_outgoing_federation_event(signed_event),
     })
 }
 
