@@ -563,52 +563,6 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
     Ok(room_events)
 }
 
-#[tracing::instrument]
-pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    let query = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::membership.eq(MembershipState::Join.to_string()));
-
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
-}
-
-#[tracing::instrument]
-pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    let joined = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .order_by(room_users::id.desc())
-        .select(room_users::membership)
-        .first::<String>(&mut *db::connect()?)
-        .map(|m| m == MembershipState::Join.to_string())
-        .optional()?
-        .unwrap_or(false);
-    Ok(joined)
-}
-
-#[tracing::instrument]
-pub fn is_invited(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    let query = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::membership.eq(MembershipState::Invite.to_string()));
-    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
-}
-
-#[tracing::instrument]
-pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    let left = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .order_by(room_users::id.desc())
-        .select(room_users::membership)
-        .first::<String>(&mut *db::connect()?)
-        .map(|m| m == MembershipState::Leave.to_string())
-        .optional()?
-        .unwrap_or(true);
-    Ok(left)
-}
 
 pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     if let Some(until_sn) = until_sn {

@@ -6,8 +6,7 @@ use std::sync::Arc;
 use diesel::prelude::*;
 
 use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
-use crate::core::{EventId, RoomId};
-use crate::room::state::ensure_point;
+use crate::core::{EventId,OwnedEventId, RoomId};
 use crate::{db, utils, AppResult, Seqnum};
 
 pub struct StateDiff {
@@ -36,14 +35,14 @@ impl CompressedEvent {
     pub fn field_id(&self) -> i64 {
         utils::i64_from_bytes(&self.0[0..size_of::<i64>()]).expect("bytes have right length")
     }
-    pub fn point_id(&self) -> i64 {
+    pub fn event_sn(&self) -> Seqnum {
         utils::i64_from_bytes(&self.0[size_of::<i64>()..]).expect("bytes have right length")
     }
     /// Returns state_key_id, event id
-    pub fn split(&self) -> AppResult<(i64, Arc<EventId>)> {
+    pub fn split(&self) -> AppResult<(i64, OwnedEventId)> {
         Ok((
             utils::i64_from_bytes(&self[0..size_of::<i64>()]).expect("bytes have right length"),
-            crate::room::state::get_point_event_id(
+            crate::event::get_event_id_by_sn(
                 utils::i64_from_bytes(&self[size_of::<i64>()..]).expect("bytes have right length"),
             )?,
         ))
@@ -62,11 +61,11 @@ impl Deref for CompressedEvent {
 
 pub fn compress_events(
     room_id: &RoomId,
-    events: impl Iterator<Item = (&EventId, Seqnum)>,
+    events: impl Iterator<Item = (i64, Seqnum)>,
 ) -> AppResult<CompressedState> {
     let mut compressed = BTreeSet::new();
-    for (event_id, event_sn) in events {
-        compressed.insert(compress_event(room_id, field_id, event_id, event_sn)?);
+    for (field_id, event_sn) in events {
+        compressed.insert(compress_event(room_id, field_id, event_sn)?);
     }
     Ok(compressed)
 }
@@ -74,11 +73,9 @@ pub fn compress_events(
 pub fn compress_event(
     room_id: &RoomId,
     field_id: i64,
-    event_id: &EventId,
-    event_sn: i64,
+    event_sn: Seqnum,
 ) -> AppResult<CompressedEvent> {
-    let point_id = ensure_point(room_id, event_id, event_sn)?;
-    Ok(CompressedEvent::new(field_id, point_id))
+    Ok(CompressedEvent::new(field_id, event_sn))
 }
 
 pub fn get_detla(frame_id: i64) -> AppResult<DbRoomStateDelta> {

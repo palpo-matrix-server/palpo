@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 use std::future::Future;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
@@ -195,12 +196,10 @@ pub fn sync_events(
                 continue;
             };
 
-            println!("vvvvvvvvvvvv  4");
             let Some(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id)? else {
                 error!("Leave event has no state");
                 continue;
             };
-            println!("vvvvvvvvvvvv  5");
             if let Some(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
                     continue;
@@ -217,11 +216,10 @@ pub fn sync_events(
                 }
             }
 
-            println!("vvvvvvvvvvvv  6");
             let mut left_state_ids = crate::room::state::get_full_state_ids(left_frame_id)?;
             let leave_state_key_id =
                 crate::room::state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
-            left_state_ids.insert(leave_state_key_id, left_event_id.clone());
+            left_state_ids.insert(leave_state_key_id, Arc::from(left_event_id.as_ref()));
 
             for (key, event_id) in left_state_ids {
                 if full_state || since_state_ids.get(&key) != Some(&event_id) {
@@ -248,7 +246,6 @@ pub fn sync_events(
                 }
             }
 
-            println!("vvvvvvvvvvvv  7");
             let left_event = crate::room::timeline::get_pdu(&left_event_id)?.map(|pdu| pdu.to_sync_room_event());
             left_rooms.insert(
                 room_id.to_owned(),

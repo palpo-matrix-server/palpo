@@ -602,7 +602,7 @@ async fn remote_join_room(
 
     info!("Parsing join event");
     let parsed_join_pdu =
-        PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, join_event.clone())
+        PduEvent::from_canonical_object(&event_id, crate::event::ensure_event_sn(room_id, &event_id)?, join_event.clone())
             .map_err(|e| {
                 warn!("Invalid PDU in send_join response: {}", e);
                 AppError::public("Invalid join event PDU.")
@@ -640,7 +640,7 @@ async fn remote_join_room(
         let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             pdu
         } else {
-            let pdu = PduEvent::from_canonical_object(&event_id, crate::event::get_event_sn(&event_id)?, value.clone())
+            let pdu = PduEvent::from_canonical_object(&event_id, crate::event::ensure_event_sn(room_id, &event_id)?, value.clone())
                 .map_err(|e| {
                     warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                     AppError::public("Invalid PDU in send_join response.")
@@ -687,7 +687,7 @@ async fn remote_join_room(
         };
 
         if !crate::room::timeline::has_pdu(&event_id)? {
-            let event_sn = crate::event::get_event_sn(&event_id)?;
+            let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
             let db_event = NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?;
             diesel::insert_into(events::table)
                 .values(&db_event)
@@ -745,8 +745,7 @@ async fn remote_join_room(
             state
                 .into_iter()
                 .map(|(k, (event_id, event_sn))| {
-                    let point_id = crate::room::state::ensure_point(room_id, &event_id, event_sn)?;
-                    Ok(CompressedEvent::new(k, point_id))
+                    Ok(CompressedEvent::new(k, event_sn))
                 })
                 .collect::<AppResult<_>>()?,
         ),

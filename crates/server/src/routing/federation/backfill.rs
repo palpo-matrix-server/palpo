@@ -20,8 +20,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     let until = args
         .v
         .iter()
-        .map(|event_id| crate::room::timeline::get_event_sn(event_id))
-        .filter_map(|r| r.ok().flatten())
+        .filter_map(|event_id| crate::event::get_event_sn(event_id).ok())
         .max()
         .ok_or(MatrixError::invalid_param("No known eventid in v"))?;
 

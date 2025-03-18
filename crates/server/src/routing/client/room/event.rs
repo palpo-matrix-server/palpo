@@ -114,8 +114,8 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     let mut lazy_loaded = HashSet::new();
 
-    let base_token = crate::room::timeline::get_event_sn(&args.event_id)?
-        .ok_or(MatrixError::not_found("Base event id not found."))?;
+    let base_token =
+        crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
 
     let base_event =
         crate::room::timeline::get_pdu(&args.event_id)?.ok_or(MatrixError::not_found("Base event not found."))?;

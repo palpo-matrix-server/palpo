@@ -41,11 +41,13 @@ mod invite;
 mod join;
 mod knock;
 mod leave;
+mod banned;
 pub use forget::*;
 pub use invite::*;
 pub use join::*;
 pub use knock::*;
 pub use leave::*;
+pub use banned::*;
 
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,

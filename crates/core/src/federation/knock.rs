@@ -54,7 +54,7 @@ pub struct MakeKnockReqArgs {
 }
 
 /// Response type for the `create_knock_event_template` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 
 pub struct MakeKnockResBody {
     /// The version of the room where the server is trying to knock.
@@ -135,7 +135,7 @@ impl SendKnockReqBody {
 crate::json_body_modifier!(SendKnockReqBody);
 
 /// Response type for the `send_knock` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 
 pub struct SendKnockResBody {
     /// State events providing public room metadata.

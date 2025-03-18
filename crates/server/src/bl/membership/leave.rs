@@ -198,7 +198,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
-    let event_sn = crate::event::get_event_sn(&event_id)?;
+    let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,

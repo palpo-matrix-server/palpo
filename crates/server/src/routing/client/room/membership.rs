@@ -18,10 +18,10 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
+use crate::membership::knock_room_by_id;
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::schema::*;
-use crate::membership::knock_room_by_id;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
@@ -44,13 +44,13 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
 
     let frame_id = if let Some(at_sn) = &args.at {
         if let Ok(at_sn) = at_sn.parse::<i64>() {
-            room_state_points::table
-                .filter(room_state_points::room_id.eq(&args.room_id))
-                .filter(room_state_points::event_sn.le(at_sn))
-                .filter(room_state_points::event_sn.le(can_see.as_until_sn()))
-                .filter(room_state_points::frame_id.is_not_null())
-                .order(room_state_points::frame_id.desc())
-                .select(room_state_points::frame_id)
+            event_points::table
+                .filter(event_points::room_id.eq(&args.room_id))
+                .filter(event_points::event_sn.le(at_sn))
+                .filter(event_points::event_sn.le(can_see.as_until_sn()))
+                .filter(event_points::frame_id.is_not_null())
+                .order(event_points::frame_id.desc())
+                .select(event_points::frame_id)
                 .first::<Option<i64>>(&mut db::connect()?)?
                 .unwrap_or_default()
         } else {
@@ -511,23 +511,25 @@ pub(crate) async fn knock_room(
     _aa: AuthArgs,
     args: KnockReqArgs,
     body: JsonBody<KnockReqBody>,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
         Ok(room_id) => {
-            banned_room_check(sender_user, Some(&room_id), room_id.server_name(), client)?;
+            crate::membership::banned_room_check(
+                authed.user_id(),
+                Some(&room_id),
+                room_id.server_name().ok(),
+                req.remote_addr(),
+            )?;
 
             let mut servers = body.via.clone();
-            servers.extend(
-                crate::room::state::servers_invite_via(&room_id)
-                    .map(ToOwned::to_owned)
-                    .collect::<Vec<_>>()
-                    .await,
-            );
+            servers.extend(crate::room::state::servers_invite_via(&room_id).unwrap_or_default());
 
             servers.extend(
-                crate::room::state::invite_state(sender_user, &room_id)
+                crate::room::state::get_user_state(authed.user_id(), &room_id)
+                    .unwrap_or_default()
                     .unwrap_or_default()
                     .iter()
                     .filter_map(|event| event.get_field("sender").ok().flatten())
@@ -535,42 +537,35 @@ pub(crate) async fn knock_room(
                     .map(|user| user.server_name().to_owned()),
             );
 
-            if let Some(server) = room_id.server_name() {
+            if let Ok(server) = room_id.server_name() {
                 servers.push(server.to_owned());
             }
-
             servers.dedup();
 
             (room_id, servers)
         }
         Err(room_alias) => {
-            let (room_id, mut servers) = services
-                .rooms
-                .alias
-                .resolve_alias(&room_alias, Some(body.via.clone()))
-                .await?;
+            let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(body.via.clone())).await?;
 
-            banned_room_check(sender_user, Some(&room_id), Some(room_alias.server_name()), client).await?;
+            // TODO: NOW
+            // banned_room_check(sender_user, Some(&room_id), Some(room_alias.server_name()), client).await?;
 
-            let addl_via_servers = services
-                .rooms
-                .state_cache
-                .servers_invite_via(&room_id)
-                .map(ToOwned::to_owned);
-
-            let addl_state_servers = crate::room::invite_state(sender_id, &room_id)
-                .unwrap_or_default();
+            // TODO: NOW
+            let addl_via_servers = servers.clone();
+            let addl_state_servers =
+                crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()
-                .map(|event| event.get_field("sender"))
-                .filter_map(FlatOk::flat_ok)
-                .map(|user: &UserId| user.server_name().to_owned())
-                .stream()
+                .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
+                .filter_map(|event: serde_json::Value| event.get("sender").cloned())
+                .filter_map(|sender| sender.as_str().map(|s| s.to_owned()))
+                .filter_map(|sender| UserId::parse(sender).ok())
+                .map(|user| user.server_name().to_owned())
                 .chain(addl_via_servers)
-                .collect()
-                .await;
+                .collect();
 
+            addl_servers.sort_unstable();
             addl_servers.dedup();
             servers.append(&mut addl_servers);
 
@@ -578,6 +573,6 @@ pub(crate) async fn knock_room(
         }
     };
 
-    knock_room_by_id(sender_user, &room_id, body.reason.clone(), &servers)?;
+    knock_room_by_id(authed.user_id(), &room_id, body.reason.clone(), &servers).await?;
     empty_ok()
 }

@@ -17,7 +17,7 @@ use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, Rece
 use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
-use crate::core::serd::{CanonicalJsonObject, RawJsonValue};
+use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{UnixMillis, device_id, push};
 use crate::schema::*;
 use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
@@ -264,7 +264,7 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
 
         // Look for read receipts in this room
         for (event_id, event_receipts) in crate::room::receipt::read_receipts(&room_id, since_sn)?.content {
-            let sn = crate::event::get_event_sn(&event_id)?;
+            let sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
             if sn > max_edu_sn {
                 max_edu_sn = sn;
             }

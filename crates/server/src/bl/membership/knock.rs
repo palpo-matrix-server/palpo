@@ -7,7 +7,9 @@ use std::time::Duration;
 use diesel::prelude::*;
 use palpo_core::appservice::{event, third_party};
 use palpo_core::events::key::verification::request;
-use palpo_core::federation::knock::{SendKnockReqArgs, SendKnockReqBody, send_knock_request};
+use palpo_core::federation::knock::{
+    MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
+};
 use palpo_core::federation::room;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
@@ -17,9 +19,10 @@ use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::federation::knock::MakeKnockReqArgs;
 use crate::core::federation::membership::{
-    InviteUserResBodyV2, MakeJoinReqArgs, MakeKnockResBody, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2,
-    SendLeaveReqBody, make_leave_request,
+    InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2, SendLeaveReqBody,
+    make_leave_request,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -27,7 +30,8 @@ use crate::core::serde::{
 };
 use crate::core::{UnixMillis, federation};
 use crate::event::{
-    DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id, gen_event_id_canonical_json, get_event_sn,
+    DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id, gen_event_id_canonical_json,
+    get_event_sn,
 };
 use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{
@@ -37,7 +41,6 @@ use crate::membership::federation::membership::{
 use crate::membership::state::{CompressedState, DeltaInfo};
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
-use crate::core::federation::knock::MakeKnockReqArgs;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, Seqnum, SigningKeys, db, diesel_exists};
 
@@ -128,11 +131,11 @@ async fn knock_room_local(
 
     warn!("We couldn't do the knock locally, maybe federation can help to satisfy the knock");
 
-    let (make_knock_response, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
+    let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
 
     info!("make_knock finished");
 
-    let room_version_id = make_knock_response.room_version;
+    let room_version_id = make_knock_responseponse.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
         return Err(
@@ -140,8 +143,8 @@ async fn knock_room_local(
         );
     }
 
-    let mut knock_event_stub =
-        serde_json::from_str::<CanonicalJsonObject>(make_knock_response.event.get()).map_err(|e| {
+    let mut knock_event_stub = serde_json::from_str::<CanonicalJsonObject>(make_knock_responseponse.event.get())
+        .map_err(|e| {
             StatusError::internal_server_error()
                 .brief(format!("Invalid make_knock event json received from server: {e:?}"))
         })?;
@@ -196,13 +199,16 @@ async fn knock_room_local(
     )?
     .into_inner();
 
-    let send_knock_response = crate::sending::send_federation_request(&remote_server, request).await?;
+    let send_knock_body = crate::sending::send_federation_request(&remote_server, request)
+        .await?
+        .json::<SendKnockResBody>()
+        .await?;
 
     info!("send_knock finished");
 
     info!("Parsing knock event");
 
-    let event_sn = crate::event::get_event_sn(&event_id)?;
+    let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
@@ -212,11 +218,9 @@ async fn knock_room_local(
         event_sn,
         room_id,
         sender_id,
-        parsed_knock_pdu
-            .get_content::<RoomMemberEventContent>()
-            .expect("we just created this"),
+        MembershipState::Knock,
         sender_id,
-        send_knock_response.knock_room_state,
+        Some(send_knock_body.knock_room_state),
     )?;
 
     info!("Appending room knock event locally");
@@ -233,11 +237,11 @@ async fn knock_room_remote(
 ) -> AppResult<()> {
     info!("Knocking {room_id} over federation.");
 
-    let (make_knock_response, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
+    let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
 
     info!("make_knock finished");
 
-    let room_version_id = make_knock_response.room_version;
+    let room_version_id = make_knock_responseponse.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
         return Err(StatusError::internal_server_error()
@@ -245,8 +249,8 @@ async fn knock_room_remote(
             .into());
     }
 
-    let mut knock_event_stub: CanonicalJsonObject =
-        serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
+    let mut knock_event_stub: CanonicalJsonObject = serde_json::from_str(make_knock_responseponse.event.get())
+        .map_err(|e| {
             StatusError::internal_server_error()
                 .brief(format!("Invalid make_knock event json received from server: {e:?}"))
         })?;
@@ -277,7 +281,7 @@ async fn knock_room_remote(
 
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version_id)?;
-    let event_sn = get_event_sn(&event_id)?;
+    let event_sn = ensure_event_sn(room_id, &event_id)?;
 
     // Add event_id
     knock_event_stub.insert(
@@ -290,33 +294,37 @@ async fn knock_room_remote(
 
     info!("Asking {remote_server} for send_knock in room {room_id}");
     let send_knock_request = send_knock_request(
-        remote_server.origin().await?,
+        &remote_server.origin().await,
         SendKnockReqArgs {
             room_id: room_id.to_owned(),
             event_id: event_id.to_owned(),
         },
         SendKnockReqBody::new(crate::sending::convert_to_outgoing_federation_event(
             knock_event.clone(),
-        )?),
+        )),
     )?
     .into_inner();
 
-    let send_knock_response = crate::sending::send_federation_request(&remote_server, send_knock_request).await?;
+    let send_knock_body = crate::sending::send_federation_request(&remote_server, send_knock_request)
+        .await?
+        .json::<SendKnockResBody>()
+        .await?;
 
     info!("send_knock finished");
 
     info!("Parsing knock event");
-    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, get_event_sn(&event_id)?, knock_event.clone())
-        .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
+    let parsed_knock_pdu =
+        PduEvent::from_canonical_object(&event_id, ensure_event_sn(&room_id, &event_id)?, knock_event.clone())
+            .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");
-    let state = send_knock_response
+    let state = send_knock_body
         .knock_room_state
         .iter()
-        .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_json().get()))
+        .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
         .filter_map(Result::ok);
 
-    let mut state_map: HashMap<OwnedEventId, Seqnum> = HashMap::new();
+    let mut state_map: HashMap<i64, Seqnum> = HashMap::new();
 
     for event in state {
         let Some(state_key) = event.get("state_key") else {
@@ -338,7 +346,7 @@ async fn knock_room_remote(
         };
 
         let event_id = gen_event_id(&event, &room_version_id)?;
-        let event_sn = get_event_sn(&event_id)?;
+        let event_sn = ensure_event_sn(room_id, &event_id)?;
         let new_db_event = NewDbEvent {
             id: event_id.clone(),
             sn: event_sn,
@@ -374,11 +382,12 @@ async fn knock_room_remote(
             .on_conflict_do_nothing()
             .execute(&mut db::connect()?)?;
 
-        state_map.insert(event_id, event_sn);
+        let field_id = crate::room::state::ensure_field_id(&event_type, &state_key)?;
+        state_map.insert(field_id, event_sn);
     }
 
     info!("Compressing state from send_knock");
-    let compressed =state::compress_events(state_map.iter().map(|(id, sn)| (id.borrow(), sn)))?;
+    let compressed = state::compress_events(room_id, state_map.into_iter())?;
 
     debug!("Saving compressed state");
     let delta = state::save_state(room_id, Arc::new(compressed))?;
@@ -389,11 +398,9 @@ async fn knock_room_remote(
         event_sn,
         room_id,
         sender_id,
-        parsed_knock_pdu
-            .get_content::<RoomMemberEventContent>()
-            .expsender_idect("we just created this"),
+        MembershipState::Knock,
         sender_id,
-        send_knock_response.knock_room_state,
+        Some(send_knock_body.knock_room_state),
     )?;
 
     info!("Appending room knock event locally");
@@ -412,8 +419,9 @@ async fn make_knock_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeKnockResBody, OwnedServerName)> {
-    let mut make_knock_response_and_server =
-        Err(StatusError::internal_server_error().brief("No server available to assist in knocking."));
+    let mut make_knock_response_and_server = Err(AppError::HttpStatus(
+        StatusError::internal_server_error().brief("No server available to assist in knocking."),
+    ));
 
     let mut make_knock_counter: usize = 0;
 
@@ -425,15 +433,19 @@ async fn make_knock_request(
         info!("Asking {remote_server} for make_knock ({make_knock_counter})");
 
         let request = crate::core::federation::knock::make_knock_request(
-            remote_server.origin().await?,
+            &remote_server.origin().await,
             MakeKnockReqArgs {
                 room_id: room_id.to_owned(),
                 user_id: sender_id.to_owned(),
                 ver: crate::supported_room_versions(),
             },
-        )?.into_inner();
+        )?
+        .into_inner();
 
-        let make_knock_response = crate::sending::send_federation_request(remote_server, request).await;
+        let make_knock_response = crate::sending::send_federation_request(remote_server, request)
+            .await?
+            .json::<MakeKnockResBody>()
+            .await.map_err(Into::into);
 
         trace!("make_knock response: {make_knock_response:?}");
         make_knock_counter = make_knock_counter.saturating_add(1);

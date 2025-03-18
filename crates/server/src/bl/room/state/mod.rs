@@ -4,8 +4,6 @@ mod field;
 pub use field::*;
 mod frame;
 pub use frame::*;
-mod point;
-pub use point::*;
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -28,8 +26,9 @@ use crate::core::identifiers::*;
 use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
+use crate::event::update_frame_id;
 use crate::event::{PduBuilder, PduEvent};
-use crate::schema::*;
+use crate::schema::*; use crate::event::update_frame_id_by_sn;
 use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
@@ -67,7 +66,7 @@ pub fn force_state(
         .iter()
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
-    for event_id in event_ids {
+    for event_id in &event_ids {
         let pdu = match crate::room::timeline::get_pdu(&event_id) {
             Ok(Some(pdu)) => pdu,
             _ => continue,
@@ -144,12 +143,11 @@ pub fn set_event_state(
 ) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
-    let point_id = ensure_point(room_id, event_id, event_sn)?;
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     let frame_id = get_frame_id(room_id, &hash_data)?;
 
     if let Some(frame_id) = frame_id {
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
         let frame_id = ensure_frame(room_id, hash_data)?;
@@ -172,7 +170,7 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(event_id, frame_id)?;
         calc_and_save_state_delta(room_id, frame_id, appended, disposed, 1_000_000, states_parents)?;
         Ok(frame_id)
     }
@@ -186,13 +184,12 @@ pub fn set_event_state(
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
-    let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
     if let Some(state_key) = &new_pdu.state_key {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
-        let new_compressed_event = CompressedEvent::new(field_id, point_id);
+        let new_compressed_event = CompressedEvent::new(field_id, new_pdu.event_sn);
 
         let replaces = states_parents
             .last()
@@ -218,7 +215,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
 
         let hash_data = utils::hash_keys([new_compressed_event.as_bytes()].into_iter());
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(&new_pdu.event_id, frame_id)?;
         calc_and_save_state_delta(
             &new_pdu.room_id,
             frame_id,
@@ -230,7 +227,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         Ok(frame_id)
     } else {
         let frame_id = prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(&new_pdu.event_id, frame_id)?;
         Ok(frame_id)
     }
 }
@@ -390,7 +387,7 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>
     let mut map = HashMap::new();
     for compressed in full_state.iter() {
         let splited = compressed.split()?;
-        map.insert(splited.0, splited.1);
+        map.insert(splited.0, Arc::from(&*splited.1));
     }
     Ok(map)
 }
@@ -426,7 +423,7 @@ pub fn get_state_event_id(
     frame_id: i64,
     event_type: &StateEventType,
     state_key: &str,
-) -> AppResult<Option<Arc<EventId>>> {
+) -> AppResult<Option<OwnedEventId>> {
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
         let full_state = load_frame_info(frame_id)?
             .pop()
@@ -735,7 +732,7 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
         });
     }
     for new_compressed_event in new_compressed_events.iter() {
-        update_point_frame_id(new_compressed_event.point_id(), new_frame_id)?;
+        update_frame_id_by_sn(new_compressed_event.event_sn(), new_frame_id)?;
     }
 
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
@@ -871,6 +868,32 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
 /// See <https://spec.matrix.org/latest/appendices/#routing>
 #[tracing::instrument(level = "trace")]
 pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
+        return Ok(Vec::new());
+    };
+
+    let most_powerful_user_server = pdu
+        .get_content::<RoomPowerLevelsEventContent>()?
+        .users
+        .iter()
+        .max_by_key(|(_, power)| *power)
+        .and_then(|x| (*x.1 >= 50).then_some(x))
+        .map(|(user, _power)| user.server_name().to_owned());
+
+    let mut servers: Vec<OwnedServerName> = crate::room::room_servers(room_id)?.into_iter().take(5).collect();
+
+    if let Some(server) = most_powerful_user_server {
+        servers.insert(0, server);
+        servers.truncate(5);
+    }
+
+    Ok(servers)
+}
+
+
+// TODO: Implement, current just copy servers_route_via
+#[tracing::instrument(level = "trace")]
+pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
         return Ok(Vec::new());
     };
