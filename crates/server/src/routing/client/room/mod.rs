@@ -5,6 +5,7 @@ mod relation;
 mod state;
 mod tag;
 mod thread;
+pub(crate) use membership::knock_room;
 
 use std::cmp::max;
 use std::collections::BTreeMap;

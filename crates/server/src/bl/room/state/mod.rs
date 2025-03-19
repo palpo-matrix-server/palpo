@@ -27,8 +27,9 @@ use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::event::update_frame_id;
+use crate::event::update_frame_id_by_sn;
 use crate::event::{PduBuilder, PduEvent};
-use crate::schema::*; use crate::event::update_frame_id_by_sn;
+use crate::schema::*;
 use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
@@ -232,14 +233,14 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     }
 }
 
-pub fn calc_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
     let cells: [(&StateEventType, &str); 8] = [
         (&StateEventType::RoomCreate, ""),
         (&StateEventType::RoomJoinRules, ""),
         (&StateEventType::RoomCanonicalAlias, ""),
         (&StateEventType::RoomName, ""),
         (&StateEventType::RoomAvatar, ""),
-        (&StateEventType::RoomMember, invite_event.sender.as_str()), // Add recommended events
+        (&StateEventType::RoomMember, event.sender.as_str()), // Add recommended events
         (&StateEventType::RoomEncryption, ""),
         (&StateEventType::RoomTopic, ""),
     ];
@@ -247,12 +248,12 @@ pub fn calc_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnySt
     let mut state = Vec::new();
     // Add recommended events
     for (event_type, state_key) in cells {
-        if let Some(e) = get_room_state(&invite_event.room_id, &StateEventType::RoomCreate, "", None)? {
+        if let Some(e) = get_room_state(&event.room_id, &StateEventType::RoomCreate, "", None)? {
             state.push(e.to_stripped_state_event());
         }
     }
 
-    state.push(invite_event.to_stripped_state_event());
+    state.push(event.to_stripped_state_event());
     Ok(state)
 }
 
@@ -424,7 +425,9 @@ pub fn get_state_event_id(
     event_type: &StateEventType,
     state_key: &str,
 ) -> AppResult<Option<OwnedEventId>> {
+    println!("===========get_state_event_id 0  event_type:{event_type:?} state_key:{state_key:?}");
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
+        println!("===========get_state_event_id 1");
         let full_state = load_frame_info(frame_id)?
             .pop()
             .expect("there is always one layer")
@@ -434,6 +437,7 @@ pub fn get_state_event_id(
             .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
             .and_then(|compressed| compressed.split().ok().map(|(_, id)| id)))
     } else {
+        println!("===========get_state_event_id 2");
         Ok(None)
     }
 }
@@ -441,7 +445,10 @@ pub fn get_state_event_id(
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
 pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     get_state_event_id(frame_id, event_type, state_key)?
-        .map_or(Ok(None), |event_id| crate::room::timeline::get_pdu(&event_id))
+        .map_or(Ok(None), |event_id|{
+            println!("===get state  {event_id}");
+            crate::room::timeline::get_pdu(&event_id)
+        })
 }
 
 // /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
@@ -467,9 +474,12 @@ pub fn get_room_state(
     state_key: &str,
     until_sn: Option<Seqnum>,
 ) -> AppResult<Option<PduEvent>> {
+    println!("=========get room state 1 until_sn:{until_sn:?}");
     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+        println!("=========get room state 2");
         return Ok(None);
     };
+    println!("=========get room state 3");
     get_state(frame_id, event_type, state_key)
 }
 
@@ -889,7 +899,6 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
 
     Ok(servers)
 }
-
 
 // TODO: Implement, current just copy servers_route_via
 #[tracing::instrument(level = "trace")]

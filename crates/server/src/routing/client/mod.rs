@@ -104,7 +104,7 @@ pub fn router() -> Router {
                     .hoop(hoops::auth_by_access_token)
                     .push(Router::with_path("search").post(search))
                     .push(Router::with_path("capabilities").get(get_capabilities))
-                    .push(Router::with_path("knock/{room_id_or_alias}").post(room::membership::knock_room)),
+                    .push(Router::with_path("knock/{room_id_or_alias}").post(room::knock_room)),
             )
     }
     client

@@ -62,7 +62,7 @@ pub(crate) async fn invite_user(
                 room_id,
             )?;
 
-            let invite_room_state = crate::room::state::calc_invite_state(&pdu)?;
+            let invite_room_state = crate::room::state::summary_stripped(&pdu)?;
 
             (pdu, pdu_json, invite_room_state)
         };

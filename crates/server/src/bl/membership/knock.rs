@@ -93,6 +93,7 @@ async fn knock_room_local(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     info!("We can knock locally");
+    println!("We can knock locally");
 
     let room_version_id = crate::room::state::get_room_version(room_id)?;
 
@@ -235,6 +236,7 @@ async fn knock_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
+    println!("Knocking {room_id} over federation.");
     info!("Knocking {room_id} over federation.");
 
     let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;

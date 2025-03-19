@@ -313,7 +313,7 @@ where
 
                 let stripped_state = match content.membership {
                     MembershipState::Invite | MembershipState::Knock => {
-                        let state = crate::room::state::calc_invite_state(pdu)?;
+                        let state = crate::room::state::summary_stripped(pdu)?;
                         Some(state)
                     }
                     _ => None,

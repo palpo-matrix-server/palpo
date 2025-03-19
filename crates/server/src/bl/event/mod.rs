@@ -112,7 +112,7 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum
         Ok(sn)
     } else {
         diesel::insert_into(event_points::table)
-            .values(event_points::event_id.eq(event_id))
+            .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
             .on_conflict_do_nothing()
             .returning(event_points::event_sn)
             .get_result::<Seqnum>(&mut *db::connect()?)
