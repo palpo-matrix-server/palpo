@@ -276,7 +276,7 @@ async fn upgrade(
 
     // Get the old room creation event
     let mut create_event_content = serde_json::from_str::<CanonicalJsonObject>(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "")?
             .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
             .content
             .get(),
@@ -368,7 +368,7 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "", None)? {
+        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "")? {
             Some(v) => v.content.clone(),
             None => continue, // Skipping missing events.
         };
@@ -392,7 +392,7 @@ async fn upgrade(
 
     // Get the old room power levels
     let mut power_levels_event_content: RoomPowerLevelsEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
             .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
             .content
             .get(),

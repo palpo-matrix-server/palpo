@@ -117,7 +117,7 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 }
 
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    self::state::get_room_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+    self::state::get_room_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(Ok(false), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
             .map_err(|_| AppError::internal("Invalid room guest access event in database."))
@@ -157,7 +157,7 @@ pub fn update_membership(
 
                 // Check if the room has a predecessor
                 if let Some(predecessor) =
-                    crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)?
+                    crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")?
                         .and_then(|create| serde_json::from_str(create.content.get()).ok())
                         .and_then(|content: RoomCreateEventContent| content.predecessor)
                 {

@@ -293,7 +293,6 @@ pub fn sync_events(
                                     &other_room_id,
                                     &StateEventType::RoomEncryption,
                                     "",
-                                    None,
                                 )
                                 .ok()?
                                 .is_some(),
@@ -317,7 +316,6 @@ pub fn sync_events(
                                 &other_room_id,
                                 &StateEventType::RoomEncryption,
                                 "",
-                                None,
                             )
                             .ok()?
                             .is_some(),
@@ -646,7 +644,6 @@ async fn load_joined_room(
                         &room_id,
                         &StateEventType::RoomMember,
                         event.sender.as_str(),
-                        None,
                     )? {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
@@ -850,7 +847,7 @@ pub(crate) fn share_encrypted_room(sender_id: &UserId, user_id: &UserId, ignore_
         .filter(|room_id| room_id != ignore_room)
         .filter_map(|other_room_id| {
             Some(
-                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
                     .ok()?
                     .is_some(),
             )

@@ -897,7 +897,7 @@ pub async fn fetch_missing_prev_events(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
+    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "")? {
         Some(acl) => acl,
         None => return Ok(()),
     };

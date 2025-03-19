@@ -349,7 +349,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?;
+    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?;
 
     let event = if let Some(room_state) = room_state {
         let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
@@ -437,7 +437,7 @@ pub(super) async fn unban_user(
     let room_id = room_id.into_inner();
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
             .ok_or(MatrixError::bad_state("Cannot unban a user who is not banned."))?
             .content
             .get(),
@@ -482,7 +482,7 @@ pub(super) async fn kick_user(
     }
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
             .ok_or(MatrixError::bad_state("Cannot kick member that's not in the room."))?
             .content
             .get(),

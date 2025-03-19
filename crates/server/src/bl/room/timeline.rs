@@ -230,7 +230,7 @@ where
 
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
@@ -448,7 +448,7 @@ where
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(Some(pdu)) =
-                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
+                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "")
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
@@ -551,7 +551,7 @@ pub fn create_hash_and_sign_event(
 
     if let Some(state_key) = &state_key {
         if let Some(prev_pdu) =
-            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)?
+            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key)?
         {
             println!(
                 "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",
@@ -971,7 +971,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     }
 
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))

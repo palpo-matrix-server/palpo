@@ -248,7 +248,7 @@ pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedSt
     let mut state = Vec::new();
     // Add recommended events
     for (event_type, state_key) in cells {
-        if let Some(e) = get_room_state(&event.room_id, &StateEventType::RoomCreate, "", None)? {
+        if let Some(e) = get_room_state(&event.room_id, &StateEventType::RoomCreate, "")? {
             state.push(e.to_stripped_state_event());
         }
     }
@@ -283,7 +283,7 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     {
         return Ok(RoomVersionId::try_from(&*room_version)?);
     }
-    let create_event = get_room_state(room_id, &StateEventType::RoomCreate, "", None)?;
+    let create_event = get_room_state(room_id, &StateEventType::RoomCreate, "")?;
     let create_event_content: RoomCreateEventContent = create_event
         .as_ref()
         .map(|create_event| {
@@ -472,10 +472,8 @@ pub fn get_room_state(
     room_id: &RoomId,
     event_type: &StateEventType,
     state_key: &str,
-    until_sn: Option<Seqnum>,
 ) -> AppResult<Option<PduEvent>> {
-    println!("=========get room state 1 until_sn:{until_sn:?}");
-    let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+    let Some(frame_id) = get_room_frame_id(room_id, None)? else {
         println!("=========get room state 2");
         return Ok(None);
     };
@@ -695,7 +693,7 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
         return Ok(UserCanSeeEvent::Always);
     }
 
-    let history_visibility = get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
+    let history_visibility = get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(
         Ok(HistoryVisibility::Shared),
         |s| {
             serde_json::from_str(s.content.get())
@@ -801,7 +799,7 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
 // }
 
 pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<String>> {
-    get_room_state(&room_id, &StateEventType::RoomName, "", None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomName, "")?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomNameEventContent| Some(c.name))
             .map_err(|_| AppError::internal("Invalid room name event in database."))
@@ -809,7 +807,7 @@ pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<Str
 }
 
 pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
-    Ok(get_room_state(room_id, &StateEventType::RoomAvatar, "", None)?
+    Ok(get_room_state(room_id, &StateEventType::RoomAvatar, "")?
         .map(|s| {
             serde_json::from_str(s.content.get())
                 .map(|c: RoomAvatarEventContent| c.url)
@@ -821,7 +819,7 @@ pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
 }
 
 pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMemberEventContent>> {
-    get_room_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room member event in database."))
     })
 }
@@ -854,7 +852,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    get_room_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+    get_room_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(Ok(false), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
             .map_err(|_| AppError::internal("Invalid room guest access event in database."))
@@ -878,7 +876,7 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
 /// See <https://spec.matrix.org/latest/appendices/#routing>
 #[tracing::instrument(level = "trace")]
 pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "")? else {
         return Ok(Vec::new());
     };
 
@@ -903,7 +901,7 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
 // TODO: Implement, current just copy servers_route_via
 #[tracing::instrument(level = "trace")]
 pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "")? else {
         return Ok(Vec::new());
     };
 

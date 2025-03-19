@@ -453,7 +453,6 @@ pub async fn sync_events_v4(
                                 &other_room_id,
                                 &StateEventType::RoomEncryption,
                                 "",
-                                None,
                             )
                             .ok()?
                             .is_some(),
@@ -593,7 +592,7 @@ pub async fn sync_events_v4(
 
         let required_state = required_state_request
             .iter()
-            .map(|state| crate::room::state::get_room_state(&room_id, &state.0, &state.1, None))
+            .map(|state| crate::room::state::get_room_state(&room_id, &state.0, &state.1))
             .into_iter()
             .flatten()
             .filter_map(|o| o)

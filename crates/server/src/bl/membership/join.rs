@@ -291,7 +291,7 @@ async fn local_join_room(
 ) -> AppResult<()> {
     println!("================join local");
     info!("We can join locally");
-    let join_rules_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+    let join_rules_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomJoinRules, "")?;
     // let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
