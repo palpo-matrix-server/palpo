@@ -124,7 +124,6 @@ pub(super) fn state_for_key(
         &args.room_id,
         &args.event_type,
         &args.state_key,
-        Some(can_see.as_until_sn()),
     )?
     .ok_or_else(|| {
         warn!(
@@ -162,7 +161,7 @@ pub(super) async fn state_for_empty_key(
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_room_state(&args.room_id, &args.event_type, "", Some(can_see.as_until_sn()))?
+    let event = crate::room::state::get_room_state(&args.room_id, &args.event_type, "")?
         .ok_or_else(|| {
         warn!(
             "State event {:?} not found in room {:?}",

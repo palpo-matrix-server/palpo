@@ -506,6 +506,8 @@ pub struct KnockReqBody {
     /// The reason for joining a room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    #[serde(default)]
+    pub via: Vec<OwnedServerName>,
 }
 
 /// Response type for the `knock_room` endpoint.

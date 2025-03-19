@@ -4,8 +4,6 @@ mod field;
 pub use field::*;
 mod frame;
 pub use frame::*;
-mod point;
-pub use point::*;
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -28,6 +26,8 @@ use crate::core::identifiers::*;
 use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
+use crate::event::update_frame_id;
+use crate::event::update_frame_id_by_sn;
 use crate::event::{PduBuilder, PduEvent};
 use crate::schema::*;
 use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
@@ -67,7 +67,7 @@ pub fn force_state(
         .iter()
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
-    for event_id in event_ids {
+    for event_id in &event_ids {
         let pdu = match crate::room::timeline::get_pdu(&event_id) {
             Ok(Some(pdu)) => pdu,
             _ => continue,
@@ -118,7 +118,6 @@ pub fn force_state(
     crate::room::update_room_servers(room_id)?;
     crate::room::update_room_currents(room_id)?;
 
-    println!("ccccccccccccccccc set room state 0");
     set_room_state(room_id, frame_id)?;
 
     Ok(())
@@ -145,12 +144,11 @@ pub fn set_event_state(
 ) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(room_id, None)?;
 
-    let point_id = ensure_point(room_id, event_id, event_sn)?;
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     let frame_id = get_frame_id(room_id, &hash_data)?;
 
     if let Some(frame_id) = frame_id {
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
         let frame_id = ensure_frame(room_id, hash_data)?;
@@ -173,7 +171,7 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(event_id, frame_id)?;
         calc_and_save_state_delta(room_id, frame_id, appended, disposed, 1_000_000, states_parents)?;
         Ok(frame_id)
     }
@@ -187,13 +185,12 @@ pub fn set_event_state(
 pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None)?;
 
-    let point_id = ensure_point(&new_pdu.room_id, &new_pdu.event_id, new_pdu.event_sn)?;
     if let Some(state_key) = &new_pdu.state_key {
         let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
-        let new_compressed_event = CompressedEvent::new(field_id, point_id);
+        let new_compressed_event = CompressedEvent::new(field_id, new_pdu.event_sn);
 
         let replaces = states_parents
             .last()
@@ -219,7 +216,7 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
 
         let hash_data = utils::hash_keys([new_compressed_event.as_bytes()].into_iter());
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(&new_pdu.event_id, frame_id)?;
         calc_and_save_state_delta(
             &new_pdu.room_id,
             frame_id,
@@ -231,19 +228,19 @@ pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
         Ok(frame_id)
     } else {
         let frame_id = prev_frame_id.ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
-        update_point_frame_id(point_id, frame_id)?;
+        update_frame_id(&new_pdu.event_id, frame_id)?;
         Ok(frame_id)
     }
 }
 
-pub fn calc_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
     let cells: [(&StateEventType, &str); 8] = [
         (&StateEventType::RoomCreate, ""),
         (&StateEventType::RoomJoinRules, ""),
         (&StateEventType::RoomCanonicalAlias, ""),
         (&StateEventType::RoomName, ""),
         (&StateEventType::RoomAvatar, ""),
-        (&StateEventType::RoomMember, invite_event.sender.as_str()), // Add recommended events
+        (&StateEventType::RoomMember, event.sender.as_str()), // Add recommended events
         (&StateEventType::RoomEncryption, ""),
         (&StateEventType::RoomTopic, ""),
     ];
@@ -251,12 +248,12 @@ pub fn calc_invite_state(invite_event: &PduEvent) -> AppResult<Vec<RawJson<AnySt
     let mut state = Vec::new();
     // Add recommended events
     for (event_type, state_key) in cells {
-        if let Some(e) = get_room_state(&invite_event.room_id, &StateEventType::RoomCreate, "", None)? {
+        if let Some(e) = get_room_state(&event.room_id, &StateEventType::RoomCreate, "")? {
             state.push(e.to_stripped_state_event());
         }
     }
 
-    state.push(invite_event.to_stripped_state_event());
+    state.push(event.to_stripped_state_event());
     Ok(state)
 }
 
@@ -286,7 +283,7 @@ pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     {
         return Ok(RoomVersionId::try_from(&*room_version)?);
     }
-    let create_event = get_room_state(room_id, &StateEventType::RoomCreate, "", None)?;
+    let create_event = get_room_state(room_id, &StateEventType::RoomCreate, "")?;
     let create_event_content: RoomCreateEventContent = create_event
         .as_ref()
         .map(|create_event| {
@@ -391,7 +388,7 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>
     let mut map = HashMap::new();
     for compressed in full_state.iter() {
         let splited = compressed.split()?;
-        map.insert(splited.0, splited.1);
+        map.insert(splited.0, Arc::from(&*splited.1));
     }
     Ok(map)
 }
@@ -427,8 +424,10 @@ pub fn get_state_event_id(
     frame_id: i64,
     event_type: &StateEventType,
     state_key: &str,
-) -> AppResult<Option<Arc<EventId>>> {
+) -> AppResult<Option<OwnedEventId>> {
+    println!("===========get_state_event_id 0  event_type:{event_type:?} state_key:{state_key:?}");
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
+        println!("===========get_state_event_id 1");
         let full_state = load_frame_info(frame_id)?
             .pop()
             .expect("there is always one layer")
@@ -438,6 +437,7 @@ pub fn get_state_event_id(
             .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
             .and_then(|compressed| compressed.split().ok().map(|(_, id)| id)))
     } else {
+        println!("===========get_state_event_id 2");
         Ok(None)
     }
 }
@@ -445,7 +445,10 @@ pub fn get_state_event_id(
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
 pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     get_state_event_id(frame_id, event_type, state_key)?
-        .map_or(Ok(None), |event_id| crate::room::timeline::get_pdu(&event_id))
+        .map_or(Ok(None), |event_id|{
+            println!("===get state  {event_id}");
+            crate::room::timeline::get_pdu(&event_id)
+        })
 }
 
 // /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
@@ -469,11 +472,12 @@ pub fn get_room_state(
     room_id: &RoomId,
     event_type: &StateEventType,
     state_key: &str,
-    until_sn: Option<Seqnum>,
 ) -> AppResult<Option<PduEvent>> {
-    let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
+    let Some(frame_id) = get_room_frame_id(room_id, None)? else {
+        println!("=========get room state 2");
         return Ok(None);
     };
+    println!("=========get room state 3");
     get_state(frame_id, event_type, state_key)
 }
 
@@ -689,7 +693,7 @@ pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResul
         return Ok(UserCanSeeEvent::Always);
     }
 
-    let history_visibility = get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "", None)?.map_or(
+    let history_visibility = get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "")?.map_or(
         Ok(HistoryVisibility::Shared),
         |s| {
             serde_json::from_str(s.content.get())
@@ -736,7 +740,7 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
         });
     }
     for new_compressed_event in new_compressed_events.iter() {
-        update_point_frame_id(new_compressed_event.point_id(), new_frame_id)?;
+        update_frame_id_by_sn(new_compressed_event.event_sn(), new_frame_id)?;
     }
 
     let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
@@ -795,7 +799,7 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
 // }
 
 pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<String>> {
-    get_room_state(&room_id, &StateEventType::RoomName, "", None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomName, "")?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomNameEventContent| Some(c.name))
             .map_err(|_| AppError::internal("Invalid room name event in database."))
@@ -803,7 +807,7 @@ pub fn get_name(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<Str
 }
 
 pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
-    Ok(get_room_state(room_id, &StateEventType::RoomAvatar, "", None)?
+    Ok(get_room_state(room_id, &StateEventType::RoomAvatar, "")?
         .map(|s| {
             serde_json::from_str(s.content.get())
                 .map(|c: RoomAvatarEventContent| c.url)
@@ -815,7 +819,7 @@ pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
 }
 
 pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<RoomMemberEventContent>> {
-    get_room_state(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)?.map_or(Ok(None), |s| {
+    get_room_state(&room_id, &StateEventType::RoomMember, user_id.as_str())?.map_or(Ok(None), |s| {
         serde_json::from_str(s.content.get()).map_err(|_| AppError::internal("Invalid room member event in database."))
     })
 }
@@ -848,7 +852,7 @@ pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) 
     Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 }
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    get_room_state(&room_id, &StateEventType::RoomGuestAccess, "", None)?.map_or(Ok(false), |s| {
+    get_room_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(Ok(false), |s| {
         serde_json::from_str(s.content.get())
             .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
             .map_err(|_| AppError::internal("Invalid room guest access event in database."))
@@ -872,7 +876,32 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
 /// See <https://spec.matrix.org/latest/appendices/#routing>
 #[tracing::instrument(level = "trace")]
 pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None)? else {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "")? else {
+        return Ok(Vec::new());
+    };
+
+    let most_powerful_user_server = pdu
+        .get_content::<RoomPowerLevelsEventContent>()?
+        .users
+        .iter()
+        .max_by_key(|(_, power)| *power)
+        .and_then(|x| (*x.1 >= 50).then_some(x))
+        .map(|(user, _power)| user.server_name().to_owned());
+
+    let mut servers: Vec<OwnedServerName> = crate::room::room_servers(room_id)?.into_iter().take(5).collect();
+
+    if let Some(server) = most_powerful_user_server {
+        servers.insert(0, server);
+        servers.truncate(5);
+    }
+
+    Ok(servers)
+}
+
+// TODO: Implement, current just copy servers_route_via
+#[tracing::instrument(level = "trace")]
+pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    let Some(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "")? else {
         return Ok(Vec::new());
     };
 

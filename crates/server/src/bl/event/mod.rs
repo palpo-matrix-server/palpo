@@ -102,29 +102,45 @@ pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId
     Ok(event_id)
 }
 
-pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
-    if let Some(sn) = event_sns::table
+pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum> {
+    if let Some(sn) = event_points::table
         .find(event_id)
-        .select(event_sns::sn)
+        .select(event_points::event_sn)
         .first::<Seqnum>(&mut *db::connect()?)
         .optional()?
     {
         Ok(sn)
     } else {
-        diesel::insert_into(event_sns::table)
-            .values(event_sns::id.eq(event_id))
+        diesel::insert_into(event_points::table)
+            .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
             .on_conflict_do_nothing()
-            .returning(event_sns::sn)
+            .returning(event_points::event_sn)
             .get_result::<Seqnum>(&mut *db::connect()?)
             .map_err(Into::into)
     }
 }
+/// Returns the `count` of this pdu's id.
+pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
+    event_points::table
+        .find(event_id)
+        .select(event_points::event_sn)
+        .first::<Seqnum>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
 
-pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(i64, String)> {
+pub fn get_event_id_by_sn(event_sn: Seqnum) -> AppResult<OwnedEventId> {
+    event_points::table
+        .filter(event_points::event_sn.eq(event_sn))
+        .select(event_points::event_id)
+        .first::<OwnedEventId>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(Seqnum, String)> {
     events::table
         .find(event_id)
         .select((events::sn, events::ty))
-        .first::<(i64, String)>(&mut *db::connect()?)
+        .first::<(Seqnum, String)>(&mut *db::connect()?)
         .map_err(Into::into)
 }
 
@@ -134,4 +150,18 @@ pub fn get_db_event(event_id: &EventId) -> AppResult<Option<DbEvent>> {
         .first::<DbEvent>(&mut *db::connect()?)
         .optional()
         .map_err(Into::into)
+}
+
+pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
+    diesel::update(event_points::table.find(event_id))
+        .set(event_points::frame_id.eq(frame_id))
+        .execute(&mut db::connect()?)?;
+    Ok(())
+}
+
+pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
+    diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
+        .set(event_points::frame_id.eq(frame_id))
+        .execute(&mut db::connect()?)?;
+    Ok(())
 }

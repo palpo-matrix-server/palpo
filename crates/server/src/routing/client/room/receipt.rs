@@ -58,8 +58,8 @@ pub(super) async fn create(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
             )?;
         }
         create_receipt::v3::ReceiptType::ReadPrivate => {
-            let event_sn = crate::room::timeline::get_event_sn(&body.event_id)?.ok_or(MatrixError::invalid_param("Event does not exist."))?;
-            crate::room::edus.read_receipt.set_private_read(&body.room_id, authed.user_id(), count)?;
+            let event_sn = crate::event::ensure_event_sn(&args.room_id, &body.event_id)?.ok_or(MatrixError::invalid_param("Event does not exist."))?;
+            crate::room::edus.read_receipt.set_private_read(&args.room_id, authed.user_id(), count)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }

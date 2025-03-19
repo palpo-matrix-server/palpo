@@ -459,7 +459,6 @@ fn valid_membership_change(
 
     let sender_membership = match &sender_membership_event {
         Some(pdu) => {
-            println!("ssssssssssssssender_membership_event: {:#?}", pdu.content().get());
             from_json_str::<GetMembership>(pdu.content().get())?.membership
         }
         None => MembershipState::Leave,

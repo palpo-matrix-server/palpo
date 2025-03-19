@@ -41,7 +41,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
     json_ok(EventResBody {
         origin: crate::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
-        pdu: PduEvent::convert_to_outgoing_federation_event(event),
+        pdu: crate::sending::convert_to_outgoing_federation_event(event),
     })
 }
 
@@ -73,7 +73,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonR
         auth_chain: auth_chain_ids
             .into_iter()
             .filter_map(|id| crate::room::timeline::get_pdu_json(&id).ok()?)
-            .map(PduEvent::convert_to_outgoing_federation_event)
+            .map(crate::sending::convert_to_outgoing_federation_event)
             .collect(),
     })
 }
@@ -141,7 +141,7 @@ fn missing_events(
                 )
                 .map_err(|_| AppError::internal("Invalid prev_events content in pdu in db::"))?,
             );
-            events.push(PduEvent::convert_to_outgoing_federation_event(pdu));
+            events.push(crate::sending::convert_to_outgoing_federation_event(pdu));
         }
         i += 1;
     }

@@ -311,26 +311,6 @@ impl PduEvent {
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
 
-    /// This does not return a full `Pdu` it is only to satisfy palpo's types.
-    #[tracing::instrument]
-    pub fn convert_to_outgoing_federation_event(mut pdu_json: CanonicalJsonObject) -> Box<RawJsonValue> {
-        if let Some(unsigned) = pdu_json.get_mut("unsigned").and_then(|val| val.as_object_mut()) {
-            unsigned.remove("transaction_id");
-        }
-
-        pdu_json.remove("event_id");
-        pdu_json.remove("event_sn");
-
-        // TODO: another option would be to convert it to a canonical string to validate size
-        // and return a Result<RawJson<...>>
-        // serde_json::from_str::<RawJson<_>>(
-        //     crate::core::serde::to_canonical_json_string(pdu_json).expect("CanonicalJson is valid serde_json::Value"),
-        // )
-        // .expect("RawJson::from_value always works")
-
-        to_raw_value(&pdu_json).expect("CanonicalJson is valid serde_json::Value")
-    }
-
     pub fn from_canonical_object(
         event_id: &EventId,
         event_sn: Seqnum,

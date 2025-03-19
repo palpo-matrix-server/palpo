@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use futures_util::io::empty;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -17,6 +18,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
+use crate::membership::knock_room_by_id;
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::schema::*;
@@ -42,13 +44,13 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
 
     let frame_id = if let Some(at_sn) = &args.at {
         if let Ok(at_sn) = at_sn.parse::<i64>() {
-            room_state_points::table
-                .filter(room_state_points::room_id.eq(&args.room_id))
-                .filter(room_state_points::event_sn.le(at_sn))
-                .filter(room_state_points::event_sn.le(can_see.as_until_sn()))
-                .filter(room_state_points::frame_id.is_not_null())
-                .order(room_state_points::frame_id.desc())
-                .select(room_state_points::frame_id)
+            event_points::table
+                .filter(event_points::room_id.eq(&args.room_id))
+                .filter(event_points::event_sn.le(at_sn))
+                .filter(event_points::event_sn.le(can_see.as_until_sn()))
+                .filter(event_points::frame_id.is_not_null())
+                .order(event_points::frame_id.desc())
+                .select(event_points::frame_id)
                 .first::<Option<i64>>(&mut db::connect()?)?
                 .unwrap_or_default()
         } else {
@@ -235,13 +237,13 @@ pub(crate) async fn join_room_by_id_or_alias(
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
     via: QueryParam<Vec<OwnedServerName>, false>,
-    body: JsonBody<JoinRoomByIdOrAliasReqBody>,
+    body: JsonBody<Option<JoinRoomByIdOrAliasReqBody>>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     println!("\n\n\n ======================= join_room_by_id_or_alias");
     let authed = depot.authed_info()?;
     let room_id_or_alias = room_id_or_alias.into_inner();
-    let body = body.into_inner();
+    let body = body.into_inner().unwrap_or_default();
 
     // The servers to attempt to join the room through.
     //
@@ -347,7 +349,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?;
+    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?;
 
     let event = if let Some(room_state) = room_state {
         let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
@@ -435,7 +437,7 @@ pub(super) async fn unban_user(
     let room_id = room_id.into_inner();
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
             .ok_or(MatrixError::bad_state("Cannot unban a user who is not banned."))?
             .content
             .get(),
@@ -480,7 +482,7 @@ pub(super) async fn kick_user(
     }
 
     let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
             .ok_or(MatrixError::bad_state("Cannot kick member that's not in the room."))?
             .content
             .get(),
@@ -509,38 +511,68 @@ pub(crate) async fn knock_room(
     _aa: AuthArgs,
     args: KnockReqArgs,
     body: JsonBody<KnockReqBody>,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let room_id = match OwnedRoomId::try_from(args.room_id_or_alias) {
-        Ok(room_id) => room_id,
+    let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
+        Ok(room_id) => {
+            crate::membership::banned_room_check(
+                authed.user_id(),
+                Some(&room_id),
+                room_id.server_name().ok(),
+                req.remote_addr(),
+            )?;
+
+            let mut servers = body.via.clone();
+            servers.extend(crate::room::state::servers_invite_via(&room_id).unwrap_or_default());
+
+            servers.extend(
+                crate::room::state::get_user_state(authed.user_id(), &room_id)
+                    .unwrap_or_default()
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(|event| event.get_field("sender").ok().flatten())
+                    .filter_map(|sender: &str| UserId::parse(sender).ok())
+                    .map(|user| user.server_name().to_owned()),
+            );
+
+            if let Ok(server) = room_id.server_name() {
+                servers.push(server.to_owned());
+            }
+            servers.dedup();
+
+            (room_id, servers)
+        }
         Err(room_alias) => {
-            let response = crate::room::get_alias_response(room_alias).await?;
-            response.room_id
+            let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(body.via.clone())).await?;
+
+            // TODO: NOW
+            // banned_room_check(sender_user, Some(&room_id), Some(room_alias.server_name()), client).await?;
+
+            // TODO: NOW
+            let addl_via_servers = servers.clone();
+            let addl_state_servers =
+                crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+
+            let mut addl_servers: Vec<_> = addl_state_servers
+                .iter()
+                .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
+                .filter_map(|event: serde_json::Value| event.get("sender").cloned())
+                .filter_map(|sender| sender.as_str().map(|s| s.to_owned()))
+                .filter_map(|sender| UserId::parse(sender).ok())
+                .map(|user| user.server_name().to_owned())
+                .chain(addl_via_servers)
+                .collect();
+
+            addl_servers.sort_unstable();
+            addl_servers.dedup();
+            servers.append(&mut addl_servers);
+
+            (room_id, servers)
         }
     };
 
-    let mut event: RoomMemberEventContent = RoomMemberEventContent::new(MembershipState::Knock);
-    event.reason = body.into_inner().reason;
-
-    let pdu = crate::room::timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomMember,
-            content: to_raw_value(&event).expect("event is valid, we just created it"),
-            state_key: Some(authed.user_id().to_string()),
-            ..Default::default()
-        },
-        authed.user_id(),
-        &room_id,
-    )?;
-    crate::room::update_membership(
-        &pdu.event_id,
-        pdu.event_sn,
-        &room_id,
-        authed.user_id(),
-        MembershipState::Knock,
-        authed.user_id(),
-        None,
-    )?;
+    knock_room_by_id(authed.user_id(), &room_id, body.reason.clone(), &servers).await?;
     empty_ok()
 }

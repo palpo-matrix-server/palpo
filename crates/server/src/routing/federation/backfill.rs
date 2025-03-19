@@ -20,8 +20,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     let until = args
         .v
         .iter()
-        .map(|event_id| crate::room::timeline::get_event_sn(event_id))
-        .filter_map(|r| r.ok().flatten())
+        .filter_map(|event_id| crate::event::get_event_sn(event_id).ok())
         .max()
         .ok_or(MatrixError::invalid_param("No known eventid in v"))?;
 
@@ -39,7 +38,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     for (_, pdu) in all_events {
         if crate::room::state::server_can_see_event(origin, &args.room_id, &pdu.event_id)? {
             if let Some(pdu_json) = crate::room::timeline::get_pdu_json(&pdu.event_id)? {
-                events.push(PduEvent::convert_to_outgoing_federation_event(pdu_json));
+                events.push(crate::sending::convert_to_outgoing_federation_event(pdu_json));
             }
         }
     }

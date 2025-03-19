@@ -283,7 +283,7 @@ fn handle_outlier_pdu<'a>(
         );
         let incoming_pdu = PduEvent::from_json_value(
             event_id,
-            crate::event::get_event_sn(event_id)?,
+            crate::event::ensure_event_sn(room_id, event_id)?,
             serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
         )
         .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
@@ -503,7 +503,11 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         state_at_incoming_event
             .iter()
             .map(|(field_id, event_id)| {
-                crate::room::state::compress_event(room_id, *field_id, event_id, crate::event::get_event_sn(event_id)?)
+                crate::room::state::compress_event(
+                    room_id,
+                    *field_id,
+                    crate::event::ensure_event_sn(room_id, event_id)?,
+                )
             })
             .collect::<AppResult<_>>()?,
     );
@@ -638,8 +642,8 @@ fn resolve_state(
         .into_iter()
         .map(|((event_type, state_key), event_id)| {
             let state_key_id = crate::room::state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-            let event_sn = crate::event::get_event_sn(&event_id)?;
-            crate::room::state::compress_event(room_id, state_key_id, &event_id, event_sn)
+            let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
+            crate::room::state::compress_event(room_id, state_key_id, event_sn)
         })
         .collect::<AppResult<_>>()?;
 
@@ -893,7 +897,7 @@ pub async fn fetch_missing_prev_events(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "", None)? {
+    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "")? {
         Some(acl) => acl,
         None => return Ok(()),
     };

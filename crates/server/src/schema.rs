@@ -222,6 +222,18 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_points (event_id) {
+        event_id -> Text,
+        event_sn -> Int8,
+        room_id -> Text,
+        frame_id -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_push_summaries (id) {
         id -> Int8,
         user_id -> Text,
@@ -281,16 +293,6 @@ diesel::table! {
         vector -> Tsvector,
         origin_server_ts -> Int8,
         stream_ordering -> Nullable<Int8>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    event_sns (id) {
-        id -> Text,
-        sn -> Int8,
     }
 }
 
@@ -479,19 +481,6 @@ diesel::table! {
         id -> Int8,
         room_id -> Text,
         hash_data -> Bytea,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    room_state_points (id) {
-        id -> Int8,
-        room_id -> Text,
-        event_id -> Text,
-        event_sn -> Int8,
-        frame_id -> Nullable<Int8>,
     }
 }
 
@@ -927,11 +916,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_datas,
     event_edges,
     event_forward_extremities,
+    event_points,
     event_push_summaries,
     event_receipts,
     event_relations,
     event_searches,
-    event_sns,
     event_txn_ids,
     events,
     lazy_load_deliveries,
@@ -944,7 +933,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     room_state_deltas,
     room_state_fields,
     room_state_frames,
-    room_state_points,
     room_tags,
     room_users,
     rooms,

@@ -446,11 +446,15 @@ CREATE TABLE events (
 --     stream_ordering bigint
 );
 
-drop table if exists event_sns CASCADE;
-CREATE TABLE event_sns (
-    id text NOT NULL PRIMARY KEY,
-    sn bigint not null default nextval('occur_sn_seq'),
-    CONSTRAINT event_sns_ukey UNIQUE (id, sn)
+
+DROP TABLE IF EXISTS event_points CASCADE;
+CREATE TABLE event_points
+(
+    event_id text NOT NULL PRIMARY KEY,
+    event_sn bigint NOT NULL default nextval('occur_sn_seq'),
+    room_id text NOT NULL,
+    frame_id bigint,
+    CONSTRAINT event_points_ukey UNIQUE (event_id, event_sn)
 );
 
 drop table if exists threads CASCADE;
@@ -490,17 +494,6 @@ CREATE TABLE event_datas
 -- };
 -- ALTER TABLE ONLY room_shorts
 --     ADD CONSTRAINT room_shorts_ukey UNIQUE (room_id);
-
-DROP TABLE IF EXISTS room_state_points CASCADE;
-CREATE TABLE room_state_points
-(
-    id bigserial NOT NULL PRIMARY KEY,
-    room_id text NOT NULL,
-    event_id text NOT NULL,
-    event_sn bigint NOT NULL,
-    frame_id bigint,
-    CONSTRAINT room_state_points_ukey UNIQUE (room_id, event_id, event_sn)
-);
 
 DROP TABLE IF EXISTS room_state_frames CASCADE;
 CREATE TABLE room_state_frames

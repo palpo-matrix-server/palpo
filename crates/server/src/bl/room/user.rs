@@ -4,8 +4,9 @@ use diesel::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
+use crate::core::events::room::member::MembershipState;
 use crate::schema::*;
-use crate::{AppResult, JsonValue, db};
+use crate::{AppResult, diesel_exists, JsonValue, db};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_users)]
@@ -92,10 +93,10 @@ pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<i
 }
 
 pub fn get_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
-    room_state_points::table
-        .filter(room_state_points::room_id.eq(room_id))
-        .filter(room_state_points::event_sn.eq(event_sn))
-        .select(room_state_points::frame_id)
+    event_points::table
+        .filter(event_points::room_id.eq(room_id))
+        .filter(event_points::event_sn.eq(event_sn))
+        .select(event_points::frame_id)
         .first::<Option<i64>>(&mut *db::connect()?)
         .optional()
         .map(|v| v.flatten())
@@ -103,11 +104,11 @@ pub fn get_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i
 }
 
 pub fn get_last_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
-    room_state_points::table
-        .filter(room_state_points::room_id.eq(room_id))
-        .filter(room_state_points::event_sn.le(event_sn))
-        .select(room_state_points::frame_id)
-        .order_by(room_state_points::event_sn.desc())
+    event_points::table
+        .filter(event_points::room_id.eq(room_id))
+        .filter(event_points::event_sn.le(event_sn))
+        .select(event_points::frame_id)
+        .order_by(event_points::event_sn.desc())
         .first::<Option<i64>>(&mut *db::connect()?)
         .optional()
         .map(|v| v.flatten())
@@ -175,4 +176,60 @@ pub fn joined_count(room_id: &RoomId) -> AppResult<i64> {
         .count()
         .get_result(&mut *db::connect()?)?;
     Ok(count)
+}
+
+#[tracing::instrument]
+pub fn is_invited(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let query = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq(MembershipState::Invite.to_string()));
+    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+}
+
+#[tracing::instrument]
+pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let left = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .order_by(room_users::id.desc())
+        .select(room_users::membership)
+        .first::<String>(&mut *db::connect()?)
+        .map(|m| m == MembershipState::Leave.to_string())
+        .optional()?
+        .unwrap_or(true);
+    Ok(left)
+}
+
+#[tracing::instrument]
+pub  fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let query = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq(MembershipState::Knock.to_string()));
+    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+}
+
+#[tracing::instrument]
+pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let query = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq(MembershipState::Join.to_string()));
+
+    diesel_exists!(query, &mut *db::connect()?).map_err(Into::into)
+}
+
+#[tracing::instrument]
+pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let joined = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .order_by(room_users::id.desc())
+        .select(room_users::membership)
+        .first::<String>(&mut *db::connect()?)
+        .map(|m| m == MembershipState::Join.to_string())
+        .optional()?
+        .unwrap_or(false);
+    Ok(joined)
 }

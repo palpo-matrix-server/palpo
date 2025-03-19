@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use diesel::prelude::*;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
+use palpo_core::federation::room;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -57,16 +58,6 @@ pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
         .select(events::sn)
         .order(events::sn.desc())
         .first::<i64>(&mut *db::connect()?)
-        .map_err(Into::into)
-}
-
-/// Returns the `count` of this pdu's id.
-pub fn get_event_sn(event_id: &EventId) -> AppResult<Option<i64>> {
-    events::table
-        .find(event_id)
-        .select(events::sn)
-        .first::<i64>(&mut *db::connect()?)
-        .optional()
         .map_err(Into::into)
 }
 
@@ -239,7 +230,7 @@ where
 
     // See if the event matches any known pushers
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
@@ -322,7 +313,7 @@ where
 
                 let stripped_state = match content.membership {
                     MembershipState::Invite | MembershipState::Knock => {
-                        let state = crate::room::state::calc_invite_state(pdu)?;
+                        let state = crate::room::state::summary_stripped(pdu)?;
                         Some(state)
                     }
                     _ => None,
@@ -457,7 +448,7 @@ where
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(Some(pdu)) =
-                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
+                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "")
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
@@ -560,7 +551,7 @@ pub fn create_hash_and_sign_event(
 
     if let Some(state_key) = &state_key {
         if let Some(prev_pdu) =
-            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)?
+            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key)?
         {
             println!(
                 "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",
@@ -585,7 +576,7 @@ pub fn create_hash_and_sign_event(
 
     let event_id = OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
-    let event_sn = crate::event::get_event_sn(&event_id)?;
+    let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -678,17 +669,14 @@ pub fn create_hash_and_sign_event(
     diesel::update(events::table.filter(events::sn.eq(event_sn)))
         .set(events::id.eq(&event_id))
         .execute(&mut db::connect()?)?;
-    diesel::update(event_sns::table.filter(event_sns::sn.eq(event_sn)))
-        .set(event_sns::id.eq(&event_id))
+    diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
+        .set(event_points::event_id.eq(&event_id))
         .execute(&mut db::connect()?)?;
 
     pdu_json.insert(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
-
-    // Generate short event id
-    let _point_id = crate::room::state::ensure_point(room_id, &pdu.event_id, pdu.event_sn)?;
 
     Ok((pdu, pdu_json))
 }
@@ -779,7 +767,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
 
-    println!("ccccccccccccccccc set room state 1");
     crate::room::state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
@@ -815,8 +802,6 @@ pub fn append_incoming_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    let event_sn = crate::event::get_event_sn(&pdu.event_id)?;
-    crate::room::state::ensure_point(&pdu.room_id, &pdu.event_id, event_sn)?;
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
@@ -986,7 +971,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     }
 
     let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "", None)?
+        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
             .map(|ev| {
                 serde_json::from_str(ev.content.get())
                     .map_err(|_| AppError::internal("invalid m.room.power_levels event"))

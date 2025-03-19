@@ -104,6 +104,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     json_ok(body)
 }
 
+// TODO: NOW
 /// #PUT /_matrix/federation/v2/invite/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]
@@ -167,7 +168,7 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::event::get_event_sn(&event_id)?, event.into())
+    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::event::ensure_event_sn(&args.room_id, &event_id)?, event.into())
         .map_err(|e| {
             warn!("Invalid invite event: {}", e);
             MatrixError::invalid_param("Invalid invite event.")
@@ -191,7 +192,7 @@ async fn invite_user(
     }
 
     json_ok(InviteUserResBodyV2 {
-        event: PduEvent::convert_to_outgoing_federation_event(signed_event),
+        event: crate::sending::convert_to_outgoing_federation_event(signed_event),
     })
 }
 
