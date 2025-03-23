@@ -124,11 +124,6 @@ pub fn sync_events(
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
 
-        println!(
-            "======={}  {sender_id}  left_rooms:{:#?}",
-            crate::server_name(),
-            all_left_rooms
-        );
         for room_id in all_left_rooms.keys() {
             let mut left_state_events = Vec::new();
 
@@ -136,11 +131,9 @@ pub fn sync_events(
 
             // Left before last sync
             if Some(since_sn) > left_sn {
-                println!("vvvvvvvvvvvv  0");
                 continue;
             }
 
-            println!("vvvvvvvvvvvv  1");
             if !crate::room::room_exists(room_id)? {
                 let event = PduEvent {
                     event_id: EventId::new(crate::server_name()).into(),
@@ -179,13 +172,11 @@ pub fn sync_events(
 
             let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
 
-            println!("vvvvvvvvvvvv  2");
             let since_state_ids = match since_frame_id {
                 Some(s) => crate::room::state::get_full_state_ids(s)?,
                 None => HashMap::new(),
             };
 
-            println!("vvvvvvvvvvvv  3");
             let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id, None)? else {
                 continue;
             };
@@ -265,7 +256,6 @@ pub fn sync_events(
                     },
                 },
             );
-            println!("vvvvvvvvvvvv  8  {:?}", left_rooms);
         }
 
         let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(&sender_id, since_sn)?
@@ -289,13 +279,9 @@ pub fn sync_events(
                         .into_iter()
                         .filter_map(|other_room_id| {
                             Some(
-                                crate::room::state::get_room_state(
-                                    &other_room_id,
-                                    &StateEventType::RoomEncryption,
-                                    "",
-                                )
-                                .ok()?
-                                .is_some(),
+                                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                                    .ok()?
+                                    .is_some(),
                             )
                         })
                         .all(|encrypted| !encrypted);
@@ -312,13 +298,9 @@ pub fn sync_events(
                     .into_iter()
                     .filter_map(|other_room_id| {
                         Some(
-                            crate::room::state::get_room_state(
-                                &other_room_id,
-                                &StateEventType::RoomEncryption,
-                                "",
-                            )
-                            .ok()?
-                            .is_some(),
+                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                                .ok()?
+                                .is_some(),
                         )
                     })
                     .all(|encrypted| !encrypted);

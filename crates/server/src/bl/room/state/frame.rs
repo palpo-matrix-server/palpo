@@ -68,7 +68,7 @@ pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<O
             .filter(event_points::event_sn.le(until_sn))
             .select(event_points::frame_id)
             .order(event_points::event_sn.desc())
-            .first::<Option<i64>>(&mut *db::connect()?) 
+            .first::<Option<i64>>(&mut *db::connect()?)
             .optional()
             .map(|v| v.flatten())
             .map_err(Into::into)

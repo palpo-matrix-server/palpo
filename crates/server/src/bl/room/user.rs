@@ -3,10 +3,10 @@ use std::collections::HashSet;
 use diesel::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::identifiers::*;
 use crate::core::events::room::member::MembershipState;
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{AppResult, diesel_exists, JsonValue, db};
+use crate::{AppResult, JsonValue, db, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_users)]
@@ -202,7 +202,7 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 }
 
 #[tracing::instrument]
-pub  fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))

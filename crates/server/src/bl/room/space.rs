@@ -130,18 +130,17 @@ pub async fn get_hierarchy(
                 } else {
                     results.push(chunk.clone());
                 }
-                let join_rule =
-                    crate::room::state::get_room_state(&current_room, &StateEventType::RoomJoinRules, "")?
-                        .map(|s| {
-                            serde_json::from_str(s.content.get())
-                                .map(|c: RoomJoinRulesEventContent| c.join_rule)
-                                .map_err(|e| {
-                                    error!("Invalid room join rule event in database: {}", e);
-                                    AppError::public("Invalid room join rule event in database.")
-                                })
-                        })
-                        .transpose()?
-                        .unwrap_or(JoinRule::Invite);
+                let join_rule = crate::room::state::get_room_state(&current_room, &StateEventType::RoomJoinRules, "")?
+                    .map(|s| {
+                        serde_json::from_str(s.content.get())
+                            .map(|c: RoomJoinRulesEventContent| c.join_rule)
+                            .map_err(|e| {
+                                error!("Invalid room join rule event in database: {}", e);
+                                AppError::public("Invalid room join rule event in database.")
+                            })
+                    })
+                    .transpose()?
+                    .unwrap_or(JoinRule::Invite);
 
                 ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
                     current_room.clone(),
@@ -272,26 +271,23 @@ fn get_room_chunk(user_id: &UserId, room_id: &RoomId, children: Vec<PduEvent>) -
     Ok(SpaceHierarchyRoomsChunk {
         canonical_alias: crate::room::state::get_room_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?
             .map_or(Ok(None), |s| {
-            serde_json::from_str(s.content.get())
-                .map(|c: RoomCanonicalAliasEventContent| c.alias)
-                .map_err(|_| AppError::internal("Invalid canonical alias event in database."))
-        })?,
+                serde_json::from_str(s.content.get())
+                    .map(|c: RoomCanonicalAliasEventContent| c.alias)
+                    .map_err(|_| AppError::internal("Invalid canonical alias event in database."))
+            })?,
         name: crate::room::state::get_name(&room_id, None)?,
         num_joined_members: crate::room::joined_member_count(&room_id)?
             .try_into()
             .expect("user count should not be that big"),
         room_id: room_id.to_owned(),
-        topic: crate::room::state::get_room_state(&room_id, &StateEventType::RoomTopic, "")?.map_or(
-            Ok(None),
-            |s| {
-                serde_json::from_str(s.content.get())
-                    .map(|c: RoomTopicEventContent| Some(c.topic))
-                    .map_err(|_| {
-                        error!("Invalid room topic event in database for room {}", room_id);
-                        AppError::internal("Invalid room topic event in database.")
-                    })
-            },
-        )?,
+        topic: crate::room::state::get_room_state(&room_id, &StateEventType::RoomTopic, "")?.map_or(Ok(None), |s| {
+            serde_json::from_str(s.content.get())
+                .map(|c: RoomTopicEventContent| Some(c.topic))
+                .map_err(|_| {
+                    error!("Invalid room topic event in database for room {}", room_id);
+                    AppError::internal("Invalid room topic event in database.")
+                })
+        })?,
         world_readable: crate::room::state::get_room_state(&room_id, &StateEventType::RoomHistoryVisibility, "")?
             .map_or(Ok(false), |s| {
                 serde_json::from_str(s.content.get())

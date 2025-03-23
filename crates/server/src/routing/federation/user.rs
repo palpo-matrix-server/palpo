@@ -6,7 +6,7 @@ use salvo::prelude::*;
 
 use crate::AuthArgs;
 use crate::core::federation::device::{Device, DevicesResBody};
-use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, KeysReqBody, KeysResBody};
+use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeysReqBody, QueryKeysResBody};
 use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, db, json_ok};
@@ -34,11 +34,15 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonRes
 /// #POST /_matrix/federation/v1/user/keys/query
 /// Gets devices and identity keys for the given users.
 #[endpoint]
-async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
+async fn query_keys(
+    _aa: AuthArgs,
+    body: JsonBody<QueryKeysReqBody>,
+    depot: &mut Depot,
+) -> CjsonResult<QueryKeysResBody> {
     let origin = depot.origin()?;
-    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == origin).await?;
+    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == origin, false).await?;
 
-    cjson_ok(KeysResBody {
+    cjson_ok(QueryKeysResBody {
         device_keys: result.device_keys,
         master_keys: result.master_keys,
         self_signing_keys: result.self_signing_keys,

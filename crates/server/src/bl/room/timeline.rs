@@ -550,8 +550,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) =
-            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key)?
+        if let Some(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key)?
         {
             println!(
                 "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",

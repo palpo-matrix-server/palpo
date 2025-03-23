@@ -114,21 +114,26 @@ impl KeyObject {
 //     }
 // };
 
+pub fn query_keys_request(origin: &str, body: QueryKeysReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/user/keys/query"))?;
+    crate::sending::post(url).stuff(body)
+}
+
 /// Request type for the `get_keys` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct KeysReqBody {
+pub struct QueryKeysReqBody {
     /// The keys to be downloaded.
     ///
     /// Gives all keys for a given user if the list of device ids is empty.
     pub device_keys: BTreeMap<OwnedUserId, Vec<OwnedDeviceId>>,
 }
-crate::json_body_modifier!(KeysReqBody);
+crate::json_body_modifier!(QueryKeysReqBody);
 
 /// Response type for the `get_keys` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Default, Debug)]
 
-pub struct KeysResBody {
+pub struct QueryKeysResBody {
     /// Keys from the queried devices.
     pub device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeys>>,
 
@@ -140,7 +145,7 @@ pub struct KeysResBody {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub self_signing_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 }
-impl KeysResBody {
+impl QueryKeysResBody {
     /// Creates a new `Response` with the given device keys.
     pub fn new(device_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeys>>) -> Self {
         Self {

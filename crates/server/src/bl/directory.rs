@@ -70,16 +70,12 @@ fn get_local_public_rooms(
         .into_iter()
         .map(|room_id| {
             let chunk = PublicRoomsChunk {
-                canonical_alias: crate::room::state::get_room_state(
-                    &room_id,
-                    &StateEventType::RoomCanonicalAlias,
-                    "",
-                )?
-                .map_or(Ok(None), |s| {
-                    serde_json::from_str(s.content.get())
-                        .map(|c: RoomCanonicalAliasEventContent| c.alias)
-                        .map_err(|_| AppError::public("Invalid canonical alias event in database."))
-                })?,
+                canonical_alias: crate::room::state::get_room_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?
+                    .map_or(Ok(None), |s| {
+                        serde_json::from_str(s.content.get())
+                            .map(|c: RoomCanonicalAliasEventContent| c.alias)
+                            .map_err(|_| AppError::public("Invalid canonical alias event in database."))
+                    })?,
                 name: crate::room::state::get_name(&room_id, None)?,
                 num_joined_members: crate::room::joined_member_count(&room_id)
                     .unwrap_or_else(|_| {

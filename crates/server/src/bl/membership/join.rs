@@ -278,7 +278,6 @@ pub async fn join_room(
         remote_join_room(&user.id, room_id, reason, servers, third_party_signed).await?;
     }
 
-    println!("IIIIIIIIIIIIIIII====7");
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 
@@ -601,12 +600,15 @@ async fn remote_join_room(
     crate::room::ensure_room(room_id, &room_version_id)?;
 
     info!("Parsing join event");
-    let parsed_join_pdu =
-        PduEvent::from_canonical_object(&event_id, crate::event::ensure_event_sn(room_id, &event_id)?, join_event.clone())
-            .map_err(|e| {
-                warn!("Invalid PDU in send_join response: {}", e);
-                AppError::public("Invalid join event PDU.")
-            })?;
+    let parsed_join_pdu = PduEvent::from_canonical_object(
+        &event_id,
+        crate::event::ensure_event_sn(room_id, &event_id)?,
+        join_event.clone(),
+    )
+    .map_err(|e| {
+        warn!("Invalid PDU in send_join response: {}", e);
+        AppError::public("Invalid join event PDU.")
+    })?;
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -640,11 +642,15 @@ async fn remote_join_room(
         let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
             pdu
         } else {
-            let pdu = PduEvent::from_canonical_object(&event_id, crate::event::ensure_event_sn(room_id, &event_id)?, value.clone())
-                .map_err(|e| {
-                    warn!("Invalid PDU in send_join response: {} {:?}", e, value);
-                    AppError::public("Invalid PDU in send_join response.")
-                })?;
+            let pdu = PduEvent::from_canonical_object(
+                &event_id,
+                crate::event::ensure_event_sn(room_id, &event_id)?,
+                value.clone(),
+            )
+            .map_err(|e| {
+                warn!("Invalid PDU in send_join response: {} {:?}", e, value);
+                AppError::public("Invalid PDU in send_join response.")
+            })?;
 
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
@@ -744,9 +750,7 @@ async fn remote_join_room(
         Arc::new(
             state
                 .into_iter()
-                .map(|(k, (event_id, event_sn))| {
-                    Ok(CompressedEvent::new(k, event_sn))
-                })
+                .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
                 .collect::<AppResult<_>>()?,
         ),
     )?;

@@ -40,7 +40,15 @@ async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonRes
 #[endpoint]
 async fn query_keys(_aa: AuthArgs, body: JsonBody<KeysReqBody>, depot: &mut Depot) -> CjsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
-    cjson_ok(key::query_keys(Some(authed.user_id()), &body.device_keys, |u| u == authed.user_id()).await?)
+    cjson_ok(
+        key::query_keys(
+            Some(authed.user_id()),
+            &body.device_keys,
+            |u| u == authed.user_id(),
+            false,
+        )
+        .await?,
+    )
 }
 
 /// #POST /_matrix/client/r0/keys/upload
@@ -54,6 +62,7 @@ async fn upload_keys(
     body: JsonBody<UploadKeysReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<UploadKeysResBody> {
+    println!(">>>>>>>>>>>>>upload keys body: {:#?}", body);
     let authed = depot.authed_info()?;
 
     for (key_id, one_time_key) in &body.one_time_keys {
@@ -61,6 +70,7 @@ async fn upload_keys(
     }
 
     if let Some(device_keys) = &body.device_keys {
+        println!("ADDDDDDD device keys");
         crate::user::add_device_keys(authed.user_id(), authed.device_id(), device_keys)?;
     }
 

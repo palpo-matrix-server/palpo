@@ -458,9 +458,7 @@ fn valid_membership_change(
     let third_party_invite = from_json_str::<GetThirdPartyInvite>(content.get())?.third_party_invite;
 
     let sender_membership = match &sender_membership_event {
-        Some(pdu) => {
-            from_json_str::<GetMembership>(pdu.content().get())?.membership
-        }
+        Some(pdu) => from_json_str::<GetMembership>(pdu.content().get())?.membership,
         None => MembershipState::Leave,
     };
     let sender_is_joined = sender_membership == MembershipState::Join;

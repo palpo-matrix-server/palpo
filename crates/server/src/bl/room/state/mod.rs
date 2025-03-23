@@ -425,9 +425,7 @@ pub fn get_state_event_id(
     event_type: &StateEventType,
     state_key: &str,
 ) -> AppResult<Option<OwnedEventId>> {
-    println!("===========get_state_event_id 0  event_type:{event_type:?} state_key:{state_key:?}");
     if let Some(state_key_id) = get_field_id(event_type, state_key)? {
-        println!("===========get_state_event_id 1");
         let full_state = load_frame_info(frame_id)?
             .pop()
             .expect("there is always one layer")
@@ -437,7 +435,6 @@ pub fn get_state_event_id(
             .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
             .and_then(|compressed| compressed.split().ok().map(|(_, id)| id)))
     } else {
-        println!("===========get_state_event_id 2");
         Ok(None)
     }
 }
@@ -445,10 +442,7 @@ pub fn get_state_event_id(
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
 pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     get_state_event_id(frame_id, event_type, state_key)?
-        .map_or(Ok(None), |event_id|{
-            println!("===get state  {event_id}");
-            crate::room::timeline::get_pdu(&event_id)
-        })
+        .map_or(Ok(None), |event_id| crate::room::timeline::get_pdu(&event_id))
 }
 
 // /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
@@ -468,16 +462,10 @@ pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) ->
 //         Ok(None)
 //     }
 // }
-pub fn get_room_state(
-    room_id: &RoomId,
-    event_type: &StateEventType,
-    state_key: &str,
-) -> AppResult<Option<PduEvent>> {
+pub fn get_room_state(room_id: &RoomId, event_type: &StateEventType, state_key: &str) -> AppResult<Option<PduEvent>> {
     let Some(frame_id) = get_room_frame_id(room_id, None)? else {
-        println!("=========get room state 2");
         return Ok(None);
     };
-    println!("=========get room state 3");
     get_state(frame_id, event_type, state_key)
 }
 
