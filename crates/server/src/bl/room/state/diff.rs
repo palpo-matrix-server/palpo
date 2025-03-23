@@ -6,8 +6,8 @@ use std::sync::Arc;
 use diesel::prelude::*;
 
 use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
-use crate::core::{EventId,OwnedEventId, RoomId};
-use crate::{db, utils, AppResult, Seqnum};
+use crate::core::{EventId, OwnedEventId, RoomId};
+use crate::{AppResult, Seqnum, db, utils};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,
@@ -59,10 +59,7 @@ impl Deref for CompressedEvent {
     }
 }
 
-pub fn compress_events(
-    room_id: &RoomId,
-    events: impl Iterator<Item = (i64, Seqnum)>,
-) -> AppResult<CompressedState> {
+pub fn compress_events(room_id: &RoomId, events: impl Iterator<Item = (i64, Seqnum)>) -> AppResult<CompressedState> {
     let mut compressed = BTreeSet::new();
     for (field_id, event_sn) in events {
         compressed.insert(compress_event(room_id, field_id, event_sn)?);
@@ -70,11 +67,7 @@ pub fn compress_events(
     Ok(compressed)
 }
 
-pub fn compress_event(
-    room_id: &RoomId,
-    field_id: i64,
-    event_sn: Seqnum,
-) -> AppResult<CompressedEvent> {
+pub fn compress_event(room_id: &RoomId, field_id: i64, event_sn: Seqnum) -> AppResult<CompressedEvent> {
     Ok(CompressedEvent::new(field_id, event_sn))
 }
 

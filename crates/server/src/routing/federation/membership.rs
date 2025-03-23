@@ -168,11 +168,15 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(&event_id, crate::event::ensure_event_sn(&args.room_id, &event_id)?, event.into())
-        .map_err(|e| {
-            warn!("Invalid invite event: {}", e);
-            MatrixError::invalid_param("Invalid invite event.")
-        })?;
+    let pdu: PduEvent = PduEvent::from_json_value(
+        &event_id,
+        crate::event::ensure_event_sn(&args.room_id, &event_id)?,
+        event.into(),
+    )
+    .map_err(|e| {
+        warn!("Invalid invite event: {}", e);
+        MatrixError::invalid_param("Invalid invite event.")
+    })?;
     invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.

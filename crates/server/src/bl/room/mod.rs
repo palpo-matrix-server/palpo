@@ -156,10 +156,9 @@ pub fn update_membership(
                 // db::mark_as_once_joined(user_id, room_id)?;
 
                 // Check if the room has a predecessor
-                if let Some(predecessor) =
-                    crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")?
-                        .and_then(|create| serde_json::from_str(create.content.get()).ok())
-                        .and_then(|content: RoomCreateEventContent| content.predecessor)
+                if let Some(predecessor) = crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")?
+                    .and_then(|create| serde_json::from_str(create.content.get()).ok())
+                    .and_then(|content: RoomCreateEventContent| content.predecessor)
                 {
                     // Copy user settings from predecessor to the current room:
                     // - Push rules
@@ -562,7 +561,6 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
     }
     Ok(room_events)
 }
-
 
 pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     if let Some(until_sn) = until_sn {

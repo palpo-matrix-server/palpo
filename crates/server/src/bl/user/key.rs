@@ -7,7 +7,7 @@ use serde_json::json;
 
 use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::core::federation::key::claim_keys_request;
+use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::identifiers::*;
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
 use crate::core::{UnixMillis, client, federation};
@@ -149,6 +149,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     sender_id: Option<&UserId>,
     device_keys_input: &BTreeMap<OwnedUserId, Vec<OwnedDeviceId>>,
     allowed_signatures: F,
+    include_display_names: bool,
 ) -> AppResult<client::key::KeysResBody> {
     let mut master_keys = BTreeMap::new();
     let mut self_signing_keys = BTreeMap::new();
@@ -231,27 +232,26 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
                 device_keys_input_fed.insert(user_id.to_owned(), keys.clone());
             }
 
-            let target_url = reqwest::Url::parse(&server.to_string()).unwrap();
-            (
-                server,
-                tokio::time::timeout(
-                    Duration::from_secs(25),
-                    crate::sending::post(target_url)
-                        .stuff(federation::key::KeysReqBody {
-                            device_keys: device_keys_input_fed,
-                        })
-                        .unwrap()
-                        .send::<federation::key::KeysResBody>(),
-                )
+            let request = query_keys_request(
+                &server.origin().await,
+                QueryKeysReqBody {
+                    device_keys: device_keys_input_fed,
+                },
+            )?
+            .into_inner();
+
+            let response_body = crate::sending::send_federation_request(server, request)
+                .await?
+                .json::<QueryKeysResBody>()
                 .await
-                .map_err(|_e| AppError::public("Query took too long")),
-            )
+                .map_err(|_e| AppError::public("Query took too long"));
+            Ok::<(&ServerName, AppResult<QueryKeysResBody>), AppError>((server, response_body))
         })
         .collect();
 
-    while let Some((server, response)) = futures.next().await {
+    while let Some(Ok((server, response))) = futures.next().await {
         match response {
-            Ok(Ok(response)) => {
+            Ok(response) => {
                 for (user_id, mut master_key) in response.master_keys {
                     if let Some(our_master_key) = crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
                     {
@@ -263,7 +263,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
                         &user_id, &raw, &None, &None,
                         false, // Dont notify. A notification would trigger another key request resulting in an endless loop
                     )?;
-                    master_keys.insert(user_id, raw);
+                    master_keys.insert(user_id.to_owned(), raw);
                 }
 
                 self_signing_keys.extend(response.self_signing_keys);
@@ -464,6 +464,10 @@ pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<
 }
 
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
+    println!(
+        ">>>>>>>>>>>>>>>>>>add add_device_keys user_id: {:?} device_id: {device_id} device_keys:{device_keys:?}",
+        user_id
+    );
     let new_device_key = NewDbDeviceKey {
         user_id: user_id.to_owned(),
         device_id: device_id.to_owned(),
@@ -580,6 +584,7 @@ pub fn sign_key(
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
+    println!(">>>>>>>>>>>>>>mark_device_key_update, user_id: {:?}", user_id);
     let changed_at = UnixMillis::now();
     for room_id in crate::user::joined_rooms(user_id, 0)? {
         // comment for testing

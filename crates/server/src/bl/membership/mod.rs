@@ -36,18 +36,18 @@ use crate::schema::*;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, Seqnum, SigningKeys, db, diesel_exists};
 
+mod banned;
 mod forget;
 mod invite;
 mod join;
 mod knock;
 mod leave;
-mod banned;
+pub use banned::*;
 pub use forget::*;
 pub use invite::*;
 pub use join::*;
 pub use knock::*;
 pub use leave::*;
-pub use banned::*;
 
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,

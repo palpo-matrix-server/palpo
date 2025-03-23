@@ -240,9 +240,7 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
-    } else if let Some(event) =
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
-    {
+    } else if let Some(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")? {
         serde_json::from_str(event.content.get())
             .map_err(|_| AppError::public("Invalid event content for m.room.power_levels"))
             .map(|content: RoomPowerLevelsEventContent| {

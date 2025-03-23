@@ -10,10 +10,14 @@ use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
+use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
-use crate::core::serde::JsonObject;use crate::core::federation::knock::MakeKnockResBody;
-use crate::event::gen_event_id_canonical_json; use serde_json::value::to_raw_value;
-use crate::{AuthArgs, DepotExt,PduBuilder, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
+use crate::core::serde::JsonObject;
+use crate::event::gen_event_id_canonical_json;
+use crate::{
+    AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok,
+};
+use serde_json::value::to_raw_value;
 
 pub fn router() -> Router {
     Router::new()
@@ -235,9 +239,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     }
 
     if args.user_id.server_name() != origin {
-        return Err(MatrixError::bad_json(
-            "Not allowed to knock on behalf of another server/user."
-        ).into());
+        return Err(MatrixError::bad_json("Not allowed to knock on behalf of another server/user.").into());
     }
 
     // ACL check origin server
@@ -246,10 +248,9 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(MatrixError::incompatible_room_version(
-            room_version_id,
-            "Room version does not support knocking.",
-        ).into());
+        return Err(
+            MatrixError::incompatible_room_version(room_version_id, "Room version does not support knocking.").into(),
+        );
     }
 
     // if !args.ver.contains(&room_version_id) {
@@ -265,24 +266,21 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         if member.membership == MembershipState::Ban {
             warn!(
                 "Remote user {} is banned from {} but attempted to knock",
-                &args.user_id,
-                &args.room_id
+                &args.user_id, &args.room_id
             );
-            return Err(MatrixError::forbidden(
-                "You cannot knock on a room you are banned from.",
-            ).into());
+            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.").into());
         }
     }
 
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
-            PduBuilder::state(
-                args.user_id.to_string(),
-                &RoomMemberEventContent::new(MembershipState::Knock),
-            ),
-            &args.user_id,
-            &args.room_id,
-            // &state_lock,
-        )?;
+        PduBuilder::state(
+            args.user_id.to_string(),
+            &RoomMemberEventContent::new(MembershipState::Knock),
+        ),
+        &args.user_id,
+        &args.room_id,
+        // &state_lock,
+    )?;
 
     // drop(state_lock);
 

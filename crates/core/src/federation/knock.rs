@@ -10,10 +10,10 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{OwnedEventId, EventId, RoomId, OwnedRoomId};
 use crate::events::AnyStrippedStateEvent;
 use crate::sending::{SendRequest, SendResult};
 use crate::serde::{RawJson, RawJsonValue};
+use crate::{EventId, OwnedEventId, OwnedRoomId, RoomId};
 use crate::{OwnedUserId, RoomVersionId};
 // const METADATA: Metadata = metadata! {
 //     method: GET,

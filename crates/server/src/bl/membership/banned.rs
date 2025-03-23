@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use diesel::prelude::*;
 use palpo_core::appservice::third_party;
-use salvo::http::StatusError;
 use salvo::conn::SocketAddr;
+use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
