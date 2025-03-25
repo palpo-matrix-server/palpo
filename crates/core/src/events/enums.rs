@@ -4,6 +4,7 @@ use serde::{Deserialize, de};
 
 use super::room::encrypted;
 use crate::RawJsonValue;
+use crate::events::beacon::BeaconEventContent;
 use crate::identifiers::*;
 use crate::{UnixMillis, serde::from_raw_json_value};
 
@@ -81,6 +82,8 @@ event_enum! {
         // #[cfg(feature = "unstable-msc3381")]
         #[palpo_enum(ident = UnstablePollEnd)]
         "org.matrix.msc3381.poll.end" => super::poll::unstable_end,
+        #[palpo_enum(alias = "m.beacon")]
+        "org.matrix.msc3672.beacon" => super::beacon,
         "m.reaction" => super::reaction,
         "m.room.encrypted" => super::room::encrypted,
         "m.room.message" => super::room::message,
@@ -349,6 +352,9 @@ impl AnyMessageLikeEventContent {
             | Self::UnstablePollResponse(UnstablePollResponseEventContent { relates_to, .. })
             | Self::PollEnd(PollEndEventContent { relates_to, .. })
             | Self::UnstablePollEnd(UnstablePollEndEventContent { relates_to, .. }) => {
+                Some(encrypted::Relation::Reference(relates_to.clone()))
+            }
+            Self::Beacon(BeaconEventContent { relates_to, .. }) => {
                 Some(encrypted::Relation::Reference(relates_to.clone()))
             }
             // #[cfg(feature = "unstable-msc3381")]

@@ -8,7 +8,7 @@ use crate::core::{
     UnixMillis,
     events::{AnyEphemeralRoomEvent, AnyEphemeralRoomEventContent, RoomAccountDataEventType},
     serde::RawJson,
-};
+}; use crate::core::events::AnyRawAccountDataEvent;
 use crate::schema::*;
 use crate::{AppError, AppResult, JsonValue, db};
 
@@ -82,7 +82,7 @@ pub fn get_data_changes(
     room_id: Option<&RoomId>,
     user_id: &UserId,
     since_sn: i64,
-) -> AppResult<HashMap<RoomAccountDataEventType, RawJson<AnyEphemeralRoomEvent>>> {
+) -> AppResult<Vec<AnyRawAccountDataEvent>> {
     let mut user_datas = HashMap::new();
 
     let db_datas = user_datas::table
@@ -93,15 +93,13 @@ pub fn get_data_changes(
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);
-        let event_content: RawJson<AnyEphemeralRoomEventContent> = RawJson::from_value(&db_data.json_data)
+        let event_content: RawJson<AnyGlobalAccountDataEvent> = RawJson::from_value(&db_data.json_data)
             .map_err(|_| AppError::public("Database contains invalid account data."))?;
-        user_datas.insert(
-            kind.clone(),
-            RawJson::from_value(&serde_json::json!({
-                "type": kind,
-                "content": event_content,
-            }))?,
-        );
+        if db_data.room_id.is_none() {
+            user_data.push(AnyRawAccountDataEvent::Global(event_content));
+        } else {
+            user_data.push(AnyRawAccountDataEvent::Room(event_content));
+        }
     }
 
     Ok(user_datas)

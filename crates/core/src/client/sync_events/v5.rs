@@ -108,7 +108,7 @@ pub struct SyncEventsResBody {
 
     /// The updates on rooms.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub rooms: BTreeMap<OwnedRoomId, Room>,
+    pub rooms: BTreeMap<OwnedRoomId, SyncRoom>,
 
     /// Extensions API.
     #[serde(default, skip_serializing_if = "Extensions::is_empty")]
@@ -135,7 +135,7 @@ pub struct SyncList {
 /// A slising sync response updated room (see [`super::Response::rooms`]).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[cfg_attr(not(feature = "unstable-exhaustive-types"), non_exhaustive)]
-pub struct Room {
+pub struct SyncRoom {
     /// The name as calculated by the server.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -207,7 +207,7 @@ pub struct Room {
     pub heroes: Option<Vec<Hero>>,
 }
 
-impl Room {
+impl SyncRoom {
     /// Creates an empty `Room`.
     pub fn new() -> Self {
         Default::default()
@@ -216,7 +216,6 @@ impl Room {
 
 /// A sliding sync response room hero (see [`Room::heroes`]).
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[cfg_attr(not(feature = "unstable-exhaustive-types"), non_exhaustive)]
 pub struct Hero {
     /// The user ID.
     pub user_id: OwnedUserId,
@@ -464,80 +463,6 @@ pub struct SyncOp {
 
     /// On insert and delete we are only receiving exactly one room_id.
     pub room_id: Option<OwnedRoomId>,
-}
-
-/// Updates to joined rooms.
-#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct SlidingSyncRoom {
-    /// The name of the room as calculated by the server.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-
-    /// The avatar of the room.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub avatar: Option<OwnedMxcUri>,
-
-    /// Was this an initial response.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub initial: Option<bool>,
-
-    /// This is a direct message.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub is_dm: Option<bool>,
-
-    /// If this is `Some(_)`, this is a not-yet-accepted invite containing the given stripped state
-    /// events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub invite_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
-
-    /// Counts of unread notifications for this room.
-    #[serde(flatten, default, skip_serializing_if = "UnreadNotificationsCount::is_empty")]
-    pub unread_notifications: UnreadNotificationsCount,
-
-    /// The timeline of messages and state changes in the room.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub timeline: Vec<RawJson<AnySyncTimelineEvent>>,
-
-    /// Updates to the state at the beginning of the `timeline`.
-    /// A list of state events.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub required_state: Vec<RawJson<AnySyncStateEvent>>,
-
-    /// The prev_batch allowing you to paginate through the messages before the given ones.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prev_batch: Option<String>,
-
-    /// True if the number of events returned was limited by the limit on the filter.
-    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
-    pub limited: bool,
-
-    /// The number of users with membership of `join`, including the client’s own user ID.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub joined_count: Option<u64>,
-
-    /// The number of users with membership of `invite`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub invited_count: Option<u64>,
-
-    /// The number of timeline events which have just occurred and are not historical.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub num_live: Option<u64>,
-
-    /// The timestamp of the room.
-    ///
-    /// It's not to be confused with `origin_server_ts` of the latest event in the
-    /// timeline. `bump_event_types` might "ignore” some events when computing the
-    /// timestamp of the room. Thus, using this `timestamp` value is more accurate than
-    /// relying on the latest event.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<UnixMillis>,
-}
-
-impl SlidingSyncRoom {
-    /// Creates an empty `Room`.
-    pub fn new() -> Self {
-        Default::default()
-    }
 }
 
 /// Single entry for a room-related read receipt configuration in

@@ -37,7 +37,7 @@ pub struct PollEndEventContent {
     pub poll_results: Option<PollResultsContentBlock>,
 
     /// Whether this message is automated.
-    #[cfg(feature = "unstable-msc3955")]
+    // #[cfg(feature = "unstable-msc3955")]
     #[serde(
         default,
         skip_serializing_if = "palpo_core::serde::is_default",
@@ -57,7 +57,7 @@ impl PollEndEventContent {
         Self {
             text,
             poll_results: None,
-            #[cfg(feature = "unstable-msc3955")]
+            // #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: Reference::new(poll_start_id),
         }
@@ -69,7 +69,7 @@ impl PollEndEventContent {
         Self {
             text: TextContentBlock::plain(plain_text),
             poll_results: None,
-            #[cfg(feature = "unstable-msc3955")]
+            // #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: Reference::new(poll_start_id),
         }

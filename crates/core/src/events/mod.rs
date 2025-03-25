@@ -143,6 +143,8 @@ pub mod tag;
 pub mod typing;
 pub mod video;
 pub mod voice;
+pub mod beacon;
+pub mod beacon_info;
 
 use std::collections::BTreeSet;
 

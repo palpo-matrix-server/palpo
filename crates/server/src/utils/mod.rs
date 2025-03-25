@@ -15,6 +15,17 @@ pub mod stream;
 pub use stream::*;
 pub mod content_disposition;
 
+#[macro_export]
+macro_rules! extract_variant {
+	($e:expr, $variant:path) => {
+		match $e {
+			| $variant(value) => Some(value),
+			| _ => None,
+		}
+	};
+}
+
+
 pub fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
     let number = match old.map(|bytes| bytes.try_into()) {
         Some(Ok(bytes)) => {

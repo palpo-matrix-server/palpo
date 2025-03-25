@@ -123,7 +123,7 @@ pub struct SyncEventsResBody {
 
     /// The updates on rooms.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub rooms: BTreeMap<OwnedRoomId, SlidingSyncRoom>,
+    pub rooms: BTreeMap<OwnedRoomId, SyncRoom>,
 
     /// Extensions API.
     #[serde(default, skip_serializing_if = "Extensions::is_empty")]
@@ -394,7 +394,7 @@ pub struct SyncOp {
 
 /// Updates to joined rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct SlidingSyncRoom {
+pub struct SyncRoom {
     /// The name of the room as calculated by the server.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -459,7 +459,7 @@ pub struct SlidingSyncRoom {
     pub timestamp: Option<UnixMillis>,
 }
 
-impl SlidingSyncRoom {
+impl SyncRoom {
     /// Creates an empty `Room`.
     pub fn new() -> Self {
         Default::default()

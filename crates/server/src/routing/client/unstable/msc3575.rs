@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
-};
+};use crate::core::events::RoomAccountDataEventType;
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
@@ -304,8 +304,14 @@ pub(super) async fn sync_events_v4(
 
     let mut rooms = BTreeMap::new();
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in &todo_rooms {
-        let (timeline_pdus, limited) =
-            crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit, None)?;
+        let mut invite_state = None;
+
+        let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
+            invite_state = crate::room::state::invite_state(sender_id, room_id).ok();
+            (Vec::new(), true)
+        } else {
+            crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit, None)?
+        };
 
         if room_since_sn != &0 && timeline_pdus.is_empty() {
             continue;
@@ -355,12 +361,12 @@ pub(super) async fn sync_events_v4(
 
         rooms.insert(
             room_id.clone(),
-            SlidingSyncRoom {
+            SyncRoom {
                 name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
                 avatar: crate::room::state::get_avatar_url(&room_id)?,
                 initial: Some(room_since_sn == &0),
                 is_dm: None,
-                invite_state: None,
+                invite_state,
                 unread_notifications: sync_events::UnreadNotificationsCount {
                     highlight_count: Some(
                         crate::room::user::highlight_count(&authed.user_id(), &room_id)?
@@ -407,7 +413,12 @@ pub(super) async fn sync_events_v4(
         extensions: Extensions {
             to_device: if body.extensions.to_device.enabled.unwrap_or(false) {
                 Some(ToDevice {
-                    events: crate::user::get_to_device_events(authed.user_id(), authed.device_id(), Some(global_since_sn), Some(next_batch))?,
+                    events: crate::user::get_to_device_events(
+                        authed.user_id(),
+                        authed.device_id(),
+                        Some(global_since_sn),
+                        Some(next_batch),
+                    )?,
                     next_batch: next_batch.to_string(),
                 })
             } else {
@@ -426,10 +437,14 @@ pub(super) async fn sync_events_v4(
                 global: if body.extensions.account_data.enabled.unwrap_or(false) {
                     crate::user::get_data_changes(None, &authed.user_id(), global_since_sn)?
                         .into_iter()
-                        .filter_map(|(_, v)| {
-                            serde_json::from_str(v.inner().get())
-                                .map_err(|_| AppError::public("Invalid account event in database."))
-                                .ok()
+                        .filter_map(|(ty, v)| {
+                            if ty == RoomAccountDataEventType::Global {
+                                serde_json::from_str(v.inner().get())
+                                    .map_err(|_| AppError::public("Invalid account event in database."))
+                                    .ok()
+                            } else {
+                                None
+                            }
                         })
                         .collect()
                 } else {
