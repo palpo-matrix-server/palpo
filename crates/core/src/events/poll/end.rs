@@ -7,6 +7,7 @@ use std::{
 
 use crate::OwnedEventId;
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::events::{message::TextContentBlock, relation::Reference};
@@ -24,7 +25,7 @@ use crate::events::{message::TextContentBlock, relation::Reference};
 ///
 /// [`OriginalSyncPollStartEvent::compile_results()`]: super::start::OriginalSyncPollStartEvent::compile_results
 /// [`UnstablePollEndEventContent`]: super::unstable_end::UnstablePollEndEventContent
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[palpo_event(type = "m.poll.end", kind = MessageLike)]
 pub struct PollEndEventContent {
     /// The text representation of the results.
@@ -78,7 +79,7 @@ impl PollEndEventContent {
 /// A block for the results of a poll.
 ///
 /// This is a map of answer ID to number of votes.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PollResultsContentBlock(BTreeMap<String, u64>);
 
 impl PollResultsContentBlock {

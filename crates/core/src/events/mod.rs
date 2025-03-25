@@ -158,6 +158,10 @@ pub use self::{
     unsigned::{MessageLikeUnsigned, RedactedUnsigned, StateUnsigned, UnsignedRoomRedactionEvent},
 };
 use crate::{EventEncryptionAlgorithm, OwnedUserId, RoomVersionId};
+use smallstr::SmallString;
+
+pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
+const INLINE_SIZE: usize = 48;
 
 /// Trait to define the behavior of redact an event's content object.
 pub trait RedactContent {

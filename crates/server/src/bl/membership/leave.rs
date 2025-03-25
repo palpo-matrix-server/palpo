@@ -21,7 +21,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{UnixMillis, federation};
+use crate::core::{UnixMillis, Seqnum, federation};
 
 use crate::appservice::RegistrationInfo;
 use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
@@ -34,7 +34,7 @@ use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, Seqnum, SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {

@@ -6,8 +6,8 @@ use std::sync::Arc;
 use diesel::prelude::*;
 
 use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
-use crate::core::{EventId, OwnedEventId, RoomId};
-use crate::{AppResult, Seqnum, db, utils};
+use crate::core::{EventId, Seqnum, OwnedEventId, RoomId};
+use crate::{AppResult, db, utils};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,

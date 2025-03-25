@@ -1,4 +1,3 @@
-
 use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
 use std::time::Duration;
 
@@ -10,11 +9,7 @@ use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
-use crate::core::client::sync_events::{
-    AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
-    SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4, SyncListV4, SyncOpV4, ToDeviceV4, TypingV4,
-    UnreadNotificationsCount,
-};
+use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -26,10 +21,10 @@ use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoo
 #[handler]
 pub(super) async fn sync_events_v4(
     _aa: AuthArgs,
-    args: SyncEventsReqArgsV4,
-    mut body: JsonBody<SyncEventsReqBodyV4>,
+    args: SyncEventsReqArgs,
+    mut body: JsonBody<SyncEventsReqBody>,
     depot: &mut Depot,
-) -> JsonResult<SyncEventsResBodyV4> {
+) -> JsonResult<SyncEventsResBody> {
     let authed = depot.authed_info()?;
     // Setup watchers, so if there's no response, we can wait for them
     let watcher = crate::watch(&authed.user_id(), authed.device_id());
@@ -142,9 +137,9 @@ pub(super) async fn sync_events_v4(
                                         MembershipState::Join => {
                                             // A new user joined an encrypted room
                                             if !crate::sync::share_encrypted_room(
-                                                &authed.user_id(),
+                                                authed.user_id(),
                                                 &user_id,
-                                                &room_id,
+                                                Some(room_id),
                                             )? {
                                                 device_list_changes.insert(user_id);
                                             }
@@ -170,7 +165,7 @@ pub(super) async fn sync_events_v4(
                                 })
                                 .filter(|user_id| {
                                     // Only send keys if the sender doesn't share an encrypted room with the target already
-                                    !crate::bl::sync::share_encrypted_room(&authed.user_id(), user_id, &room_id)
+                                    !crate::bl::sync::share_encrypted_room(&authed.user_id(), user_id, Some(room_id))
                                         .unwrap_or(false)
                                 }),
                         );
@@ -212,7 +207,7 @@ pub(super) async fn sync_events_v4(
 
         lists.insert(
             list_id.clone(),
-            SyncListV4 {
+            SyncList {
                 ops: list
                     .ranges
                     .clone()
@@ -238,8 +233,8 @@ pub(super) async fn sync_events_v4(
                                     .unwrap_or_default(),
                             );
                         }
-                        SyncOpV4 {
-                            op: SlidingOpV4::Sync,
+                        SyncOp {
+                            op: SlidingOp::Sync,
                             range: Some(r.clone()),
                             index: None,
                             room_ids,
@@ -360,13 +355,13 @@ pub(super) async fn sync_events_v4(
 
         rooms.insert(
             room_id.clone(),
-            palpo_core::client::sync_events::SlidingSyncRoomV4 {
+            SlidingSyncRoom {
                 name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
                 avatar: crate::room::state::get_avatar_url(&room_id)?,
                 initial: Some(room_since_sn == &0),
                 is_dm: None,
                 invite_state: None,
-                unread_notifications: UnreadNotificationsCount {
+                unread_notifications: sync_events::UnreadNotificationsCount {
                     highlight_count: Some(
                         crate::room::user::highlight_count(&authed.user_id(), &room_id)?
                             .try_into()
@@ -403,22 +398,22 @@ pub(super) async fn sync_events_v4(
         let _ = tokio::time::timeout(duration, watcher).await;
     }
 
-    json_ok(SyncEventsResBodyV4 {
+    json_ok(SyncEventsResBody {
         initial: global_since_sn == 0,
         txn_id: body.txn_id.clone(),
         pos: next_batch.to_string(),
         lists,
         rooms,
-        extensions: ExtensionsV4 {
+        extensions: Extensions {
             to_device: if body.extensions.to_device.enabled.unwrap_or(false) {
-                Some(ToDeviceV4 {
-                    events: crate::user::get_to_device_events(authed.user_id(), authed.device_id())?,
+                Some(ToDevice {
+                    events: crate::user::get_to_device_events(authed.user_id(), authed.device_id(), Some(global_since_sn), Some(next_batch))?,
                     next_batch: next_batch.to_string(),
                 })
             } else {
                 None
             },
-            e2ee: E2eeV4 {
+            e2ee: E2ee {
                 device_lists: DeviceLists {
                     changed: device_list_changes.into_iter().collect(),
                     left: device_list_left.into_iter().collect(),
@@ -427,7 +422,7 @@ pub(super) async fn sync_events_v4(
                 // Fallback keys are not yet supported
                 device_unused_fallback_key_types: None,
             },
-            account_data: AccountDataV4 {
+            account_data: AccountData {
                 global: if body.extensions.account_data.enabled.unwrap_or(false) {
                     crate::user::get_data_changes(None, &authed.user_id(), global_since_sn)?
                         .into_iter()
@@ -442,8 +437,8 @@ pub(super) async fn sync_events_v4(
                 },
                 rooms: BTreeMap::new(),
             },
-            receipts: ReceiptsV4 { rooms: BTreeMap::new() },
-            typing: TypingV4 { rooms: BTreeMap::new() },
+            receipts: Receipts { rooms: BTreeMap::new() },
+            typing: Typing { rooms: BTreeMap::new() },
         },
         delta_token: None,
     })

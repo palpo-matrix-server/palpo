@@ -11,8 +11,8 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
-use crate::core::{UnixMillis, UserId};
-use crate::{AppError, AppResult, JsonValue, Seqnum};
+use crate::core::{UnixMillis, Seqnum, UserId};
+use crate::{AppError, AppResult, JsonValue};
 
 /// Content hashes of a PDU.
 #[derive(Clone, Debug, Deserialize, Serialize)]

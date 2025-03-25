@@ -3,6 +3,7 @@
 //! [MSC3956]: https://github.com/matrix-org/matrix-spec-proposals/pull/3956
 
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::room::encrypted::{EncryptedEventScheme, Relation};
@@ -14,7 +15,7 @@ use super::room::encrypted::{EncryptedEventScheme, Relation};
 ///
 /// [MSC3956]: https://github.com/matrix-org/matrix-spec-proposals/pull/3956
 /// [`message`]: super::message
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "org.matrix.msc1767.encrypted", kind = MessageLike)]
 pub struct EncryptedEventContent {
     /// The encrypted content.
@@ -46,7 +47,7 @@ impl From<EncryptedEventScheme> for EncryptedEventContent {
 }
 
 /// A block for encrypted content.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub struct EncryptedContentBlock {
     /// Algorithm-specific fields.
     #[serde(flatten)]

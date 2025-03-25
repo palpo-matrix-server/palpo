@@ -33,9 +33,7 @@ use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 use palpo_core::JsonValue;
 
-use crate::core::client::sync_events::{
-    ExtensionsConfigV4, RoomSubscriptionV4, SyncEventsReqBodyV4, SyncRequestListV4,
-};
+use crate::core::client::sync_events;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
@@ -82,10 +80,10 @@ impl DbUser {
 }
 
 pub struct SlidingSyncCache {
-    lists: BTreeMap<String, SyncRequestListV4>,
-    subscriptions: BTreeMap<OwnedRoomId, RoomSubscriptionV4>,
+    lists: BTreeMap<String, sync_events::v4::RequestList>,
+    subscriptions: BTreeMap<OwnedRoomId, sync_events::v4::RoomSubscription>,
     known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
-    extensions: ExtensionsConfigV4,
+    extensions: sync_events::v4::ExtensionsConfig,
 }
 
 pub fn is_local(user_id: &UserId) -> bool {
@@ -192,7 +190,7 @@ pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDevi
 pub fn update_sync_request_with_cache(
     user_id: OwnedUserId,
     device_id: OwnedDeviceId,
-    req_body: &mut SyncEventsReqBodyV4,
+    req_body: &mut sync_events::v4::SyncEventsReqBody,
 ) -> BTreeMap<String, BTreeMap<OwnedRoomId, i64>> {
     let Some(conn_id) = req_body.conn_id.clone() else {
         return BTreeMap::new();
@@ -205,7 +203,7 @@ pub fn update_sync_request_with_cache(
             lists: BTreeMap::new(),
             subscriptions: BTreeMap::new(),
             known_rooms: BTreeMap::new(),
-            extensions: ExtensionsConfigV4::default(),
+            extensions: sync_events::v4::ExtensionsConfig::default(),
         }))
     }));
     let cached = &mut cached.lock().unwrap();
@@ -296,7 +294,7 @@ pub fn update_sync_subscriptions(
     user_id: OwnedUserId,
     device_id: OwnedDeviceId,
     conn_id: String,
-    subscriptions: BTreeMap<OwnedRoomId, RoomSubscriptionV4>,
+    subscriptions: BTreeMap<OwnedRoomId, sync_events::v4::RoomSubscription>,
 ) {
     let connections = CONNECTIONS;
 
@@ -306,7 +304,7 @@ pub fn update_sync_subscriptions(
             lists: BTreeMap::new(),
             subscriptions: BTreeMap::new(),
             known_rooms: BTreeMap::new(),
-            extensions: ExtensionsConfigV4::default(),
+            extensions: sync_events::v4::ExtensionsConfig::default(),
         }))
     }));
     let cached = &mut cached.lock().unwrap();
@@ -331,7 +329,7 @@ pub fn update_sync_known_rooms(
             lists: BTreeMap::new(),
             subscriptions: BTreeMap::new(),
             known_rooms: BTreeMap::new(),
-            extensions: ExtensionsConfigV4::default(),
+            extensions: sync_events::v4::ExtensionsConfig::default(),
         }))
     }));
     let cached = &mut cached.lock().unwrap();

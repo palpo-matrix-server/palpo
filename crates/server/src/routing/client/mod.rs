@@ -33,11 +33,7 @@ use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
-use crate::core::client::sync_events::{
-    AccountDataV4, E2eeV4, ExtensionsV4, ReceiptsV4, SlidingOpV4, SyncEventsReqArgsV3, SyncEventsReqArgsV4,
-    SyncEventsReqBodyV4, SyncEventsResBodyV3, SyncEventsResBodyV4, SyncListV4, SyncOpV4, ToDeviceV4, TypingV4,
-    UnreadNotificationsCount,
-};
+use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -221,9 +217,9 @@ async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 #[endpoint]
 async fn sync_events_v3(
     _aa: AuthArgs,
-    args: SyncEventsReqArgsV3,
+    args: sync_events::v3::SyncEventsReqArgs,
     depot: &mut Depot,
-) -> JsonResult<SyncEventsResBodyV3> {
+) -> JsonResult<sync_events::v3::SyncEventsResBody> {
     let authed = depot.authed_info()?.clone();
     let mut rx = match crate::SYNC_RECEIVERS
         .write()

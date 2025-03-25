@@ -29,11 +29,11 @@ use crate::device::DeviceLists;
 
 /// Request type for the `sync` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct SyncEventsReqArgsV3 {
+pub struct SyncEventsReqArgs {
     /// A filter represented either as its full JSON definition or the ID of a saved filter.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub filter: Option<FilterV3>,
+    pub filter: Option<Filter>,
 
     /// A point in time to continue a sync from.
     ///
@@ -65,25 +65,25 @@ pub struct SyncEventsReqArgsV3 {
 
 /// Response type for the `sync` endpoint.
 #[derive(ToSchema, Serialize, Clone, Debug)]
-pub struct SyncEventsResBodyV3 {
+pub struct SyncEventsResBody {
     /// The batch token to supply in the `since` param of the next `/sync` request.
     pub next_batch: String,
 
     /// Updates to rooms.
-    #[serde(default, skip_serializing_if = "RoomsV3::is_empty")]
-    pub rooms: RoomsV3,
+    #[serde(default, skip_serializing_if = "Rooms::is_empty")]
+    pub rooms: Rooms,
 
     /// Updates to the presence status of other users.
-    #[serde(default, skip_serializing_if = "PresenceV3::is_empty")]
-    pub presence: PresenceV3,
+    #[serde(default, skip_serializing_if = "Presence::is_empty")]
+    pub presence: Presence,
 
     /// The global private data created by this user.
-    #[serde(default, skip_serializing_if = "GlobalAccountDataV3::is_empty")]
-    pub account_data: GlobalAccountDataV3,
+    #[serde(default, skip_serializing_if = "GlobalAccountData::is_empty")]
+    pub account_data: GlobalAccountData,
 
     /// Messages sent directly between devices.
-    #[serde(default, skip_serializing_if = "ToDeviceV3::is_empty")]
-    pub to_device: ToDeviceV3,
+    #[serde(default, skip_serializing_if = "ToDevice::is_empty")]
+    pub to_device: ToDevice,
 
     /// Information on E2E device updates.
     ///
@@ -104,7 +104,7 @@ pub struct SyncEventsResBodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_unused_fallback_key_types: Option<Vec<DeviceKeyAlgorithm>>,
 }
-impl SyncEventsResBodyV3 {
+impl SyncEventsResBody {
     /// Creates a new `Response` with the given batch token.
     pub fn new(next_batch: String) -> Self {
         Self {
@@ -124,7 +124,7 @@ impl SyncEventsResBodyV3 {
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 #[serde(untagged)]
-pub enum FilterV3 {
+pub enum Filter {
     // The filter definition needs to be (de)serialized twice because it is a URL-encoded JSON
     // string. Since only does the latter and this is a very uncommon
     // setup, we implement it through custom serde logic for this specific enum variant rather
@@ -143,13 +143,13 @@ pub enum FilterV3 {
     FilterId(String),
 }
 
-impl From<FilterDefinition> for FilterV3 {
+impl From<FilterDefinition> for Filter {
     fn from(def: FilterDefinition) -> Self {
         Self::FilterDefinition(def)
     }
 }
 
-impl From<String> for FilterV3 {
+impl From<String> for Filter {
     fn from(id: String) -> Self {
         Self::FilterId(id)
     }
@@ -157,25 +157,25 @@ impl From<String> for FilterV3 {
 
 /// Updates to rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct RoomsV3 {
+pub struct Rooms {
     /// The rooms that the user has left or been banned from.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub leave: BTreeMap<OwnedRoomId, LeftRoomV3>,
+    pub leave: BTreeMap<OwnedRoomId, LeftRoom>,
 
     /// The rooms that the user has joined.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub join: BTreeMap<OwnedRoomId, JoinedRoomV3>,
+    pub join: BTreeMap<OwnedRoomId, JoinedRoom>,
 
     /// The rooms that the user has been invited to.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub invite: BTreeMap<OwnedRoomId, InvitedRoomV3>,
+    pub invite: BTreeMap<OwnedRoomId, InvitedRoom>,
 
     /// The rooms that the user has knocked on.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub knock: BTreeMap<OwnedRoomId, KnockedRoomV3>,
+    pub knock: BTreeMap<OwnedRoomId, KnockedRoom>,
 }
 
-impl RoomsV3 {
+impl Rooms {
     /// Creates an empty `Rooms`.
     pub fn new() -> Self {
         Default::default()
@@ -189,22 +189,22 @@ impl RoomsV3 {
 
 /// Historical updates to left rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct LeftRoomV3 {
+pub struct LeftRoom {
     /// The timeline of messages and state changes in the room up to the point when the user
     /// left.
     #[serde(default)]
-    pub timeline: TimelineV3,
+    pub timeline: Timeline,
 
     /// The state updates for the room up to the start of the timeline.
-    #[serde(default, skip_serializing_if = "StateV3::is_empty")]
-    pub state: StateV3,
+    #[serde(default, skip_serializing_if = "State::is_empty")]
+    pub state: State,
 
     /// The private data that this user has attached to this room.
-    #[serde(default, skip_serializing_if = "RoomAccountDataV3::is_empty")]
-    pub account_data: RoomAccountDataV3,
+    #[serde(default, skip_serializing_if = "RoomAccountData::is_empty")]
+    pub account_data: RoomAccountData,
 }
 
-impl LeftRoomV3 {
+impl LeftRoom {
     /// Creates an empty `LeftRoom`.
     pub fn new() -> Self {
         Default::default()
@@ -218,11 +218,11 @@ impl LeftRoomV3 {
 
 /// Updates to joined rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct JoinedRoomV3 {
+pub struct JoinedRoom {
     /// Information about the room which clients may need to correctly render it
     /// to users.
-    #[serde(default, skip_serializing_if = "RoomSummaryV3::is_empty")]
-    pub summary: RoomSummaryV3,
+    #[serde(default, skip_serializing_if = "RoomSummary::is_empty")]
+    pub summary: RoomSummary,
 
     /// Counts of [unread notifications] for this room.
     ///
@@ -246,23 +246,23 @@ pub struct JoinedRoomV3 {
     pub unread_thread_notifications: BTreeMap<OwnedEventId, UnreadNotificationsCount>,
 
     /// The timeline of messages and state changes in the room.
-    #[serde(default, skip_serializing_if = "TimelineV3::is_empty")]
-    pub timeline: TimelineV3,
+    #[serde(default, skip_serializing_if = "Timeline::is_empty")]
+    pub timeline: Timeline,
 
     /// Updates to the state, between the time indicated by the `since` parameter, and the
     /// start of the `timeline` (or all state up to the start of the `timeline`, if
     /// `since` is not given, or `full_state` is true).
-    #[serde(default, skip_serializing_if = "StateV3::is_empty")]
-    pub state: StateV3,
+    #[serde(default, skip_serializing_if = "State::is_empty")]
+    pub state: State,
 
     /// The private data that this user has attached to this room.
-    #[serde(default, skip_serializing_if = "RoomAccountDataV3::is_empty")]
-    pub account_data: RoomAccountDataV3,
+    #[serde(default, skip_serializing_if = "RoomAccountData::is_empty")]
+    pub account_data: RoomAccountData,
 
     /// The ephemeral events in the room that aren't recorded in the timeline or state of the
     /// room.
-    #[serde(default, skip_serializing_if = "EphemeralV3::is_empty")]
-    pub ephemeral: EphemeralV3,
+    #[serde(default, skip_serializing_if = "Ephemeral::is_empty")]
+    pub ephemeral: Ephemeral,
 
     /// The number of unread events since the latest read receipt.
     ///
@@ -273,7 +273,7 @@ pub struct JoinedRoomV3 {
     pub unread_count: Option<u64>,
 }
 
-impl JoinedRoomV3 {
+impl JoinedRoom {
     /// Creates an empty `JoinedRoom`.
     pub fn new() -> Self {
         Default::default()
@@ -299,21 +299,21 @@ impl JoinedRoomV3 {
 
 /// Updates to knocked rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct KnockedRoomV3 {
+pub struct KnockedRoom {
     /// The knock state.
-    pub knock_state: KnockStateV3,
+    pub knock_state: KnockState,
 }
 
 /// A mapping from a key `events` to a list of `StrippedStateEvent`.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct KnockStateV3 {
+pub struct KnockState {
     /// The list of events.
     pub events: Vec<RawJson<AnyStrippedStateEvent>>,
 }
 
 /// Events in the room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct TimelineV3 {
+pub struct Timeline {
     /// True if the number of events returned was limited by the `limit` on the filter.
     ///
     /// Default to `false`.
@@ -330,7 +330,7 @@ pub struct TimelineV3 {
     pub events: Vec<RawJson<AnySyncTimelineEvent>>,
 }
 
-impl TimelineV3 {
+impl Timeline {
     /// Creates an empty `Timeline`.
     pub fn new() -> Self {
         Default::default()
@@ -344,13 +344,13 @@ impl TimelineV3 {
 
 /// State events in the room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct StateV3 {
+pub struct State {
     /// A list of state events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnySyncStateEvent>>,
 }
 
-impl StateV3 {
+impl State {
     /// Creates an empty `State`.
     pub fn new() -> Self {
         Default::default()
@@ -370,7 +370,7 @@ impl StateV3 {
     }
 }
 
-impl From<Vec<RawJson<AnySyncStateEvent>>> for StateV3 {
+impl From<Vec<RawJson<AnySyncStateEvent>>> for State {
     fn from(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
         Self::with_events(events)
     }
@@ -378,13 +378,13 @@ impl From<Vec<RawJson<AnySyncStateEvent>>> for StateV3 {
 
 /// The global private data created by this user.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct GlobalAccountDataV3 {
+pub struct GlobalAccountData {
     /// A list of events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnyGlobalAccountDataEvent>>,
 }
 
-impl GlobalAccountDataV3 {
+impl GlobalAccountData {
     /// Creates an empty `GlobalAccountData`.
     pub fn new() -> Self {
         Default::default()
@@ -398,13 +398,13 @@ impl GlobalAccountDataV3 {
 
 /// The private data that this user has attached to this room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct RoomAccountDataV3 {
+pub struct RoomAccountData {
     /// A list of events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnyRoomAccountDataEvent>>,
 }
 
-impl RoomAccountDataV3 {
+impl RoomAccountData {
     /// Creates an empty `RoomAccountData`.
     pub fn new() -> Self {
         Default::default()
@@ -418,13 +418,13 @@ impl RoomAccountDataV3 {
 
 /// Ephemeral events not recorded in the timeline or state of the room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct EphemeralV3 {
+pub struct Ephemeral {
     /// A list of events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnySyncEphemeralRoomEvent>>,
 }
 
-impl EphemeralV3 {
+impl Ephemeral {
     /// Creates an empty `Ephemeral`.
     pub fn new() -> Self {
         Default::default()
@@ -438,7 +438,7 @@ impl EphemeralV3 {
 
 /// Information about room for rendering to clients.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct RoomSummaryV3 {
+pub struct RoomSummary {
     /// Users which can be used to generate a room name if the room does not have one.
     ///
     /// Required if room name or canonical aliases are not set or empty.
@@ -458,7 +458,7 @@ pub struct RoomSummaryV3 {
     pub invited_member_count: Option<u64>,
 }
 
-impl RoomSummaryV3 {
+impl RoomSummary {
     /// Creates an empty `RoomSummary`.
     pub fn new() -> Self {
         Default::default()
@@ -472,13 +472,13 @@ impl RoomSummaryV3 {
 
 /// Updates to the rooms that the user has been invited to.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct InvitedRoomV3 {
+pub struct InvitedRoom {
     /// The state of a room that the user has been invited to.
-    #[serde(default, skip_serializing_if = "InviteStateV3::is_empty")]
-    pub invite_state: InviteStateV3,
+    #[serde(default, skip_serializing_if = "InviteState::is_empty")]
+    pub invite_state: InviteState,
 }
 
-impl InvitedRoomV3 {
+impl InvitedRoom {
     /// Creates an empty `InvitedRoom`.
     pub fn new() -> Self {
         Default::default()
@@ -490,9 +490,9 @@ impl InvitedRoomV3 {
     }
 }
 
-impl From<InviteStateV3> for InvitedRoomV3 {
-    fn from(invite_state: InviteStateV3) -> Self {
-        InvitedRoomV3 {
+impl From<InviteState> for InvitedRoom {
+    fn from(invite_state: InviteState) -> Self {
+        InvitedRoom {
             invite_state,
             ..Default::default()
         }
@@ -501,13 +501,13 @@ impl From<InviteStateV3> for InvitedRoomV3 {
 
 /// The state of a room that the user has been invited to.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct InviteStateV3 {
+pub struct InviteState {
     /// A list of state events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnyStrippedStateEvent>>,
 }
 
-impl InviteStateV3 {
+impl InviteState {
     /// Creates an empty `InviteState`.
     pub fn new() -> Self {
         Default::default()
@@ -519,7 +519,7 @@ impl InviteStateV3 {
     }
 }
 
-impl From<Vec<RawJson<AnyStrippedStateEvent>>> for InviteStateV3 {
+impl From<Vec<RawJson<AnyStrippedStateEvent>>> for InviteState {
     fn from(events: Vec<RawJson<AnyStrippedStateEvent>>) -> Self {
         Self {
             events,
@@ -530,13 +530,13 @@ impl From<Vec<RawJson<AnyStrippedStateEvent>>> for InviteStateV3 {
 
 /// Updates to the presence status of other users.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct PresenceV3 {
+pub struct Presence {
     /// A list of events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<PresenceEvent>>,
 }
 
-impl PresenceV3 {
+impl Presence {
     /// Creates an empty `Presence`.
     pub fn new() -> Self {
         Default::default()
@@ -550,13 +550,13 @@ impl PresenceV3 {
 
 /// Messages sent directly between devices.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct ToDeviceV3 {
+pub struct ToDevice {
     /// A list of to-device events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnyToDeviceEvent>>,
 }
 
-impl ToDeviceV3 {
+impl ToDevice {
     /// Creates an empty `ToDevice`.
     pub fn new() -> Self {
         Default::default()

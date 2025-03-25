@@ -25,12 +25,12 @@ use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventTy
 use crate::core::identifiers::*;
 use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
-use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
+use crate::core::{EventId, Seqnum, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::event::update_frame_id;
 use crate::event::update_frame_id_by_sn;
 use crate::event::{PduBuilder, PduEvent};
 use crate::schema::*;
-use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
+use crate::{AppError, AppResult, DieselResult, MatrixError,  db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]
@@ -503,7 +503,7 @@ fn user_was_invited(frame_id: i64, user_id: &UserId) -> bool {
     //     room_id: &RoomId,
     //     federation: bool,
     // ) -> AppResult<bool> {
-    //     let redacting_event = crate::romm::timeline.get_pdu(redacts)?;
+    //     let redacting_event = crate::room::timeline.get_pdu(redacts)?;
 
     //     if redacting_event
     //         .as_ref()
@@ -851,6 +851,17 @@ pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
 /// deactivated/guests
 #[tracing::instrument(level = "debug")]
 pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .select(room_users::user_id)

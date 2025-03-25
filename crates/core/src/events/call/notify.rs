@@ -4,12 +4,13 @@
 
 use palpo_macros::EventContent;
 use serde::{Deserialize, Serialize};
+use salvo::oapi::ToSchema;
 
 use super::member::Application;
 use crate::events::Mentions;
 
 /// The content of an `m.call.notify` event.
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "m.call.notify", kind = MessageLike)]
 pub struct CallNotifyEventContent {
     /// A unique identifier for the call.
@@ -41,7 +42,7 @@ impl CallNotifyEventContent {
 }
 
 /// How this notify event should notify the receiver.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub enum NotifyType {
     /// The receiving client should ring with an audible sound.
     #[serde(rename = "ring")]
@@ -58,7 +59,7 @@ pub enum NotifyType {
 /// `m.call.member` event.
 ///
 /// An `Application` can be converted into an `ApplicationType` using `.into()`.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub enum ApplicationType {
     /// A VoIP call.
     #[serde(rename = "m.call")]

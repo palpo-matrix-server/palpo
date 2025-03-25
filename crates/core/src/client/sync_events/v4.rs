@@ -6,19 +6,18 @@
 
 use std::{collections::BTreeMap, time::Duration};
 
+use salvo::prelude::*;
+use serde::{Deserialize, Serialize, de::Error as _};
+
+use crate::device::DeviceLists;
 use crate::events::receipt::SyncReceiptEvent;
-use crate::events::typing::SyncTypingEvent;
+use crate::events::typing::{SyncTypingEvent, };
 use crate::events::{
     AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent,
     AnyToDeviceEvent, StateEventType, TimelineEventType,
 };
-use crate::{
-    DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, RoomId, UnixMillis,
-    device::DeviceLists,
-    serde::{RawJson, deserialize_cow_str, duration::opt_ms},
-};
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize, de::Error as _};
+use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
+use crate::{DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, RoomId, UnixMillis};
 
 use super::UnreadNotificationsCount;
 
@@ -33,7 +32,7 @@ use super::UnreadNotificationsCount;
 // };
 
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct SyncEventsReqArgsV4 {
+pub struct SyncEventsReqArgs {
     /// A point in time to continue a sync from.
     ///
     /// Should be a token from the `pos` field of a previous `/sync`
@@ -49,7 +48,7 @@ pub struct SyncEventsReqArgsV4 {
 }
 /// Request type for the `sync` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
-pub struct SyncEventsReqBodyV4 {
+pub struct SyncEventsReqBody {
     /// The delta token to store for session recovery.
     ///
     /// The delta token is a future bandwidth optimisation to resume from an
@@ -88,11 +87,11 @@ pub struct SyncEventsReqBodyV4 {
     /// The list configurations of rooms we are interested in mapped by
     /// name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub lists: BTreeMap<String, SyncRequestListV4>,
+    pub lists: BTreeMap<String, RequestList>,
 
     /// Specific rooms and event types that we want to receive events from.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub room_subscriptions: BTreeMap<OwnedRoomId, RoomSubscriptionV4>,
+    pub room_subscriptions: BTreeMap<OwnedRoomId, RoomSubscription>,
 
     /// Specific rooms we no longer want to receive events from.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
@@ -100,12 +99,12 @@ pub struct SyncEventsReqBodyV4 {
 
     /// Extensions API.
     #[serde(default, skip_serializing_if = "ExtensionsConfig::is_empty")]
-    pub extensions: ExtensionsConfigV4,
+    pub extensions: ExtensionsConfig,
 }
 
 /// Response type for the `sync` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-pub struct SyncEventsResBodyV4 {
+#[derive(ToSchema, Serialize, Default, Debug)]
+pub struct SyncEventsResBody {
     /// Whether this response describes an initial sync (i.e. after the `pos` token has been
     /// discard by the server?).
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
@@ -120,15 +119,15 @@ pub struct SyncEventsResBodyV4 {
 
     /// Updates on the order of rooms, mapped by the names we asked for.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub lists: BTreeMap<String, SyncListV4>,
+    pub lists: BTreeMap<String, SyncList>,
 
     /// The updates on rooms.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub rooms: BTreeMap<OwnedRoomId, SlidingSyncRoomV4>,
+    pub rooms: BTreeMap<OwnedRoomId, SlidingSyncRoom>,
 
     /// Extensions API.
-    #[serde(default, skip_serializing_if = "ExtensionsV4::is_empty")]
-    pub extensions: ExtensionsV4,
+    #[serde(default, skip_serializing_if = "Extensions::is_empty")]
+    pub extensions: Extensions,
 
     /// The delta token to store for session recovery.
     ///
@@ -147,17 +146,12 @@ pub struct SyncEventsResBodyV4 {
     /// [MSC]: https://github.com/matrix-org/matrix-spec-proposals/blob/kegan/sync-v3/proposals/3575-sync.md#bandwidth-optimisations-for-persistent-clients
     pub delta_token: Option<String>,
 }
-impl SyncEventsResBodyV4 {
+impl SyncEventsResBody {
     /// Creates a new `Response` with the given pos.
     pub fn new(pos: String) -> Self {
         Self {
-            initial: Default::default(),
-            txn_id: None,
             pos,
-            delta_token: Default::default(),
-            lists: Default::default(),
-            rooms: Default::default(),
-            extensions: Default::default(),
+            ..Default::default()
         }
     }
 }
@@ -171,7 +165,7 @@ impl SyncEventsResBodyV4 {
 /// Filters are considered _sticky_, meaning that the filter only has to be provided once and their
 /// parameters 'sticks' for future requests until a new filter overwrites them.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct SyncRequestListFiltersV4 {
+pub struct RequestListFilters {
     /// Whether to return DMs, non-DM rooms or both.
     ///
     /// Flag which only returns rooms present (or not) in the DM section of account data.
@@ -261,7 +255,7 @@ pub struct SyncRequestListFiltersV4 {
 
 /// Sliding Sync Request for each list.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct SyncRequestListV4 {
+pub struct RequestList {
     /// Put this list into the all-rooms-mode.
     ///
     /// Settings this to true will inform the server that, no matter how slow
@@ -283,15 +277,15 @@ pub struct SyncRequestListV4 {
 
     /// The details to be included per room
     #[serde(flatten)]
-    pub room_details: RoomDetailsConfigV4,
+    pub room_details: RoomDetailsConfig,
 
     /// If tombstoned rooms should be returned and if so, with what information attached
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub include_old_rooms: Option<IncludeOldRoomsV4>,
+    pub include_old_rooms: Option<IncludeOldRooms>,
 
     /// Filters to apply to the list before sorting. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub filters: Option<SyncRequestListFiltersV4>,
+    pub filters: Option<RequestListFilters>,
 
     /// An allow-list of event types which should be considered recent activity when sorting
     /// `by_recency`. By omitting event types from this field, clients can ensure that
@@ -309,7 +303,7 @@ pub struct SyncRequestListV4 {
 
 /// Configuration for requesting room details.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RoomDetailsConfigV4 {
+pub struct RoomDetailsConfig {
     /// Required state for each room returned. An array of event type and state key tuples.
     ///
     /// Note that elements of this array are NOT sticky so they must be specified in full when they
@@ -324,7 +318,7 @@ pub struct RoomDetailsConfigV4 {
 
 /// Configuration for old rooms to include
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct IncludeOldRoomsV4 {
+pub struct IncludeOldRooms {
     /// Required state for each room returned. An array of event type and state key tuples.
     ///
     /// Note that elements of this array are NOT sticky so they must be specified in full when they
@@ -339,7 +333,7 @@ pub struct IncludeOldRoomsV4 {
 
 /// Configuration for room subscription
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RoomSubscriptionV4 {
+pub struct RoomSubscription {
     /// Required state for each room returned. An array of event type and state key tuples.
     ///
     /// Note that elements of this array are NOT sticky so they must be specified in full when they
@@ -355,7 +349,7 @@ pub struct RoomSubscriptionV4 {
 /// Operation applied to the specific SlidingSyncList
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")]
-pub enum SlidingOpV4 {
+pub enum SlidingOp {
     /// Full reset of the given window.
     Sync,
     /// Insert an item at the given point, moves all following entry by
@@ -369,10 +363,10 @@ pub enum SlidingOpV4 {
 
 /// Updates to joined rooms.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
-pub struct SyncListV4 {
+pub struct SyncList {
     /// The sync operation to apply, if any.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub ops: Vec<SyncOpV4>,
+    pub ops: Vec<SyncOp>,
 
     /// The total number of rooms found for this filter.
     pub count: u64,
@@ -380,9 +374,9 @@ pub struct SyncListV4 {
 
 /// Updates to joined rooms.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
-pub struct SyncOpV4 {
+pub struct SyncOp {
     /// The sync operation to apply.
-    pub op: SlidingOpV4,
+    pub op: SlidingOp,
 
     /// The range this list update applies to.
     pub range: Option<(u64, u64)>,
@@ -400,7 +394,7 @@ pub struct SyncOpV4 {
 
 /// Updates to joined rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct SlidingSyncRoomV4 {
+pub struct SlidingSyncRoom {
     /// The name of the room as calculated by the server.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -465,7 +459,7 @@ pub struct SlidingSyncRoomV4 {
     pub timestamp: Option<UnixMillis>,
 }
 
-impl SlidingSyncRoomV4 {
+impl SlidingSyncRoom {
     /// Creates an empty `Room`.
     pub fn new() -> Self {
         Default::default()
@@ -474,26 +468,26 @@ impl SlidingSyncRoomV4 {
 
 /// Sliding-Sync extension configuration.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct ExtensionsConfigV4 {
+pub struct ExtensionsConfig {
     /// Request to devices messages with the given config.
-    #[serde(default, skip_serializing_if = "ToDeviceConfigV4::is_empty")]
-    pub to_device: ToDeviceConfigV4,
+    #[serde(default, skip_serializing_if = "ToDeviceConfig::is_empty")]
+    pub to_device: ToDeviceConfig,
 
     /// Configure the end-to-end-encryption extension.
-    #[serde(default, skip_serializing_if = "E2eeConfigV4::is_empty")]
-    pub e2ee: E2eeConfigV4,
+    #[serde(default, skip_serializing_if = "E2eeConfig::is_empty")]
+    pub e2ee: E2eeConfig,
 
     /// Configure the account data extension.
-    #[serde(default, skip_serializing_if = "AccountDataConfigV4::is_empty")]
-    pub account_data: AccountDataConfigV4,
+    #[serde(default, skip_serializing_if = "AccountDataConfig::is_empty")]
+    pub account_data: AccountDataConfig,
 
     /// Request to receipt information with the given config.
-    #[serde(default, skip_serializing_if = "ReceiptsConfigV4::is_empty")]
-    pub receipts: ReceiptsConfigV4,
+    #[serde(default, skip_serializing_if = "ReceiptsConfig::is_empty")]
+    pub receipts: ReceiptsConfig,
 
     /// Request to typing information with the given config.
-    #[serde(default, skip_serializing_if = "TypingConfigV4::is_empty")]
-    pub typing: TypingConfigV4,
+    #[serde(default, skip_serializing_if = "TypingConfig::is_empty")]
+    pub typing: TypingConfig,
 
     /// Extensions may add further fields to the list.
     #[serde(flatten)]
@@ -501,7 +495,7 @@ pub struct ExtensionsConfigV4 {
     other: BTreeMap<String, serde_json::Value>,
 }
 
-impl ExtensionsConfigV4 {
+impl ExtensionsConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.to_device.is_empty()
@@ -515,29 +509,29 @@ impl ExtensionsConfigV4 {
 
 /// Extensions specific response data.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct ExtensionsV4 {
+pub struct Extensions {
     /// To-device extension in response.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to_device: Option<ToDeviceV4>,
+    pub to_device: Option<ToDevice>,
 
     /// E2ee extension in response.
-    #[serde(default, skip_serializing_if = "E2eeV4::is_empty")]
-    pub e2ee: E2eeV4,
+    #[serde(default, skip_serializing_if = "E2ee::is_empty")]
+    pub e2ee: E2ee,
 
     /// Account data extension in response.
-    #[serde(default, skip_serializing_if = "AccountDataV4::is_empty")]
-    pub account_data: AccountDataV4,
+    #[serde(default, skip_serializing_if = "AccountData::is_empty")]
+    pub account_data: AccountData,
 
     /// Receipt data extension in response.
-    #[serde(default, skip_serializing_if = "ReceiptsV4::is_empty")]
-    pub receipts: ReceiptsV4,
+    #[serde(default, skip_serializing_if = "Receipts::is_empty")]
+    pub receipts: Receipts,
 
     /// Typing data extension in response.
-    #[serde(default, skip_serializing_if = "TypingV4::is_empty")]
-    pub typing: TypingV4,
+    #[serde(default, skip_serializing_if = "Typing::is_empty")]
+    pub typing: Typing,
 }
 
-impl ExtensionsV4 {
+impl Extensions {
     /// Whether the extension data is empty.
     ///
     /// True if neither to-device, e2ee nor account data are to be found.
@@ -554,7 +548,7 @@ impl ExtensionsV4 {
 ///
 /// According to [MSC3885](https://github.com/matrix-org/matrix-spec-proposals/pull/3885).
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct ToDeviceConfigV4 {
+pub struct ToDeviceConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -586,7 +580,7 @@ pub struct ToDeviceConfigV4 {
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
-impl ToDeviceConfigV4 {
+impl ToDeviceConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.enabled.is_none() && self.limit.is_none() && self.since.is_none()
@@ -597,7 +591,7 @@ impl ToDeviceConfigV4 {
 ///
 /// According to [MSC3885](https://github.com/matrix-org/matrix-spec-proposals/pull/3885).
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct ToDeviceV4 {
+pub struct ToDevice {
     /// Fetch the next batch from this entry.
     pub next_batch: String,
 
@@ -610,13 +604,13 @@ pub struct ToDeviceV4 {
 ///
 /// According to [MSC3884](https://github.com/matrix-org/matrix-spec-proposals/pull/3884).
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct E2eeConfigV4 {
+pub struct E2eeConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 }
 
-impl E2eeConfigV4 {
+impl E2eeConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.enabled.is_none()
@@ -627,7 +621,7 @@ impl E2eeConfigV4 {
 ///
 /// According to [MSC3884](https://github.com/matrix-org/matrix-spec-proposals/pull/3884).
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct E2eeV4 {
+pub struct E2ee {
     /// Information on E2ee device updates.
     ///
     /// Only present on an incremental sync.
@@ -648,7 +642,7 @@ pub struct E2eeV4 {
     pub device_unused_fallback_key_types: Option<Vec<DeviceKeyAlgorithm>>,
 }
 
-impl E2eeV4 {
+impl E2ee {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.device_lists.is_empty()
@@ -662,7 +656,7 @@ impl E2eeV4 {
 /// Not yet part of the spec proposal. Taken from the reference implementation
 /// <https://github.com/matrix-org/sliding-sync/blob/main/sync3/extensions/account_data.go>
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct AccountDataConfigV4 {
+pub struct AccountDataConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -690,7 +684,7 @@ pub struct AccountDataConfigV4 {
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
-impl AccountDataConfigV4 {
+impl AccountDataConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.enabled.is_none()
@@ -702,7 +696,7 @@ impl AccountDataConfigV4 {
 /// Not yet part of the spec proposal. Taken from the reference implementation
 /// <https://github.com/matrix-org/sliding-sync/blob/main/sync3/extensions/account_data.go>
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct AccountDataV4 {
+pub struct AccountData {
     /// The global private data created by this user.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub global: Vec<RawJson<AnyGlobalAccountDataEvent>>,
@@ -712,7 +706,7 @@ pub struct AccountDataV4 {
     pub rooms: BTreeMap<OwnedRoomId, Vec<RawJson<AnyRoomAccountDataEvent>>>,
 }
 
-impl AccountDataV4 {
+impl AccountData {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.global.is_empty() && self.rooms.is_empty()
@@ -721,33 +715,33 @@ impl AccountDataV4 {
 
 /// Single entry for a room-related read receipt configuration in `ReceiptsConfig`.
 #[derive(ToSchema, Clone, Debug, PartialEq)]
-pub enum RoomReceiptConfigV4 {
+pub enum RoomReceiptConfig {
     /// Get read receipts for all the subscribed rooms.
     AllSubscribed,
     /// Get read receipts for this particular room.
     Room(OwnedRoomId),
 }
 
-impl Serialize for RoomReceiptConfigV4 {
+impl Serialize for RoomReceiptConfig {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         match self {
-            RoomReceiptConfigV4::AllSubscribed => serializer.serialize_str("*"),
-            RoomReceiptConfigV4::Room(r) => r.serialize(serializer),
+            RoomReceiptConfig::AllSubscribed => serializer.serialize_str("*"),
+            RoomReceiptConfig::Room(r) => r.serialize(serializer),
         }
     }
 }
 
-impl<'de> Deserialize<'de> for RoomReceiptConfigV4 {
+impl<'de> Deserialize<'de> for RoomReceiptConfig {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::de::Deserializer<'de>,
     {
         match deserialize_cow_str(deserializer)?.as_ref() {
-            "*" => Ok(RoomReceiptConfigV4::AllSubscribed),
-            other => Ok(RoomReceiptConfigV4::Room(
+            "*" => Ok(RoomReceiptConfig::AllSubscribed),
+            other => Ok(RoomReceiptConfig::Room(
                 RoomId::parse(other).map_err(D::Error::custom)?.to_owned(),
             )),
         }
@@ -758,7 +752,7 @@ impl<'de> Deserialize<'de> for RoomReceiptConfigV4 {
 ///
 /// According to [MSC3960](https://github.com/matrix-org/matrix-spec-proposals/pull/3960)
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct ReceiptsConfigV4 {
+pub struct ReceiptsConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -779,10 +773,10 @@ pub struct ReceiptsConfigV4 {
     ///
     /// Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rooms: Option<Vec<RoomReceiptConfigV4>>,
+    pub rooms: Option<Vec<RoomReceiptConfig>>,
 }
 
-impl ReceiptsConfigV4 {
+impl ReceiptsConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.enabled.is_none()
@@ -793,14 +787,14 @@ impl ReceiptsConfigV4 {
 ///
 /// According to [MSC3960](https://github.com/matrix-org/matrix-spec-proposals/pull/3960)
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct ReceiptsV4 {
+pub struct Receipts {
     /// The ephemeral receipt room event for each room
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub rooms: BTreeMap<OwnedRoomId, RawJson<SyncReceiptEvent>>,
 }
 
-impl ReceiptsV4 {
+impl Receipts {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.rooms.is_empty()
@@ -812,7 +806,7 @@ impl ReceiptsV4 {
 /// Not yet part of the spec proposal. Taken from the reference implementation
 /// <https://github.com/matrix-org/sliding-sync/blob/main/sync3/extensions/typing.go>
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct TypingConfigV4 {
+pub struct TypingConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -836,7 +830,7 @@ pub struct TypingConfigV4 {
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
 
-impl TypingConfigV4 {
+impl TypingConfig {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.enabled.is_none()
@@ -848,14 +842,14 @@ impl TypingConfigV4 {
 /// Not yet part of the spec proposal. Taken from the reference implementation
 /// <https://github.com/matrix-org/sliding-sync/blob/main/sync3/extensions/typing.go>
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct TypingV4 {
+pub struct Typing {
     /// The ephemeral typing event for each room
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub rooms: BTreeMap<OwnedRoomId, RawJson<SyncTypingEvent>>,
 }
 
-impl TypingV4 {
+impl Typing {
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.rooms.is_empty()

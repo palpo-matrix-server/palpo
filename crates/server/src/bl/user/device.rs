@@ -3,10 +3,10 @@ use palpo_core::MatrixError;
 
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
-use crate::core::{RawJson, UnixMillis, client::device::Device};
-use crate::schema::*;
+use crate::core::{RawJson, Seqnum, UnixMillis, client::device::Device};
 use crate::user::NewDbAccessToken;
 use crate::{AppError, AppResult, JsonValue, db, diesel_exists};
+use crate::{ schema::*};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]
@@ -207,7 +207,12 @@ pub fn set_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> AppResu
     Ok(())
 }
 
-pub fn get_to_device_events(user_id: &UserId, device_id: &DeviceId) -> AppResult<Vec<RawJson<AnyToDeviceEvent>>> {
+pub fn get_to_device_events(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    since_sn: Option<Seqnum>,
+    until_sn: Option<Seqnum>,
+) -> AppResult<Vec<RawJson<AnyToDeviceEvent>>> {
     device_inboxes::table
         .filter(device_inboxes::user_id.eq(user_id))
         .filter(device_inboxes::device_id.eq(device_id))
@@ -246,12 +251,12 @@ pub fn add_to_device_event(
     Ok(())
 }
 
-pub fn remove_to_device_events(user_id: &UserId, device_id: &DeviceId, until: i64) -> AppResult<()> {
+pub fn remove_to_device_events(user_id: &UserId, device_id: &DeviceId, until_sn: Seqnum) -> AppResult<()> {
     diesel::delete(
         device_inboxes::table
             .filter(device_inboxes::user_id.eq(user_id))
             .filter(device_inboxes::device_id.eq(device_id))
-            .filter(device_inboxes::occur_sn.le(until as i64)),
+            .filter(device_inboxes::occur_sn.le(until_sn)),
     )
     .execute(&mut db::connect()?)?;
     Ok(())

@@ -46,7 +46,7 @@ use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 use tower_service::Service as TowerService;
 
 use crate::core::UnixMillis;
-use crate::core::client::sync_events::SyncEventsResBodyV3;
+use crate::core::client::sync_events;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, RawJsonValue};
@@ -62,8 +62,8 @@ pub const AUTO_GEN_PASSWORD_LENGTH: usize = 15;
 pub const RANDOM_USER_ID_LENGTH: usize = 10;
 
 type SyncHandle = (
-    Option<String>,                                   // since
-    Receiver<Option<AppResult<SyncEventsResBodyV3>>>, // rx
+    Option<String>,                                                  // since
+    Receiver<Option<AppResult<sync_events::v3::SyncEventsResBody>>>, // rx
 );
 type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries

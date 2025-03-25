@@ -9,6 +9,7 @@ use itertools::Itertools;
 use serde_json::from_str as from_json_str;
 use tracing::{debug, info, trace, warn};
 
+use crate::events::StateKey;
 use crate::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::events::{StateEventType, TimelineEventType};
 use crate::{EventId, RoomVersionId, UnixMillis};
@@ -29,6 +30,8 @@ pub use state_event::Event;
 
 /// A mapping of event type and state_key to some value `T`, usually an `EventId`.
 pub type StateMap<T> = HashMap<(StateEventType, String), T>;
+pub type StateMapItem<T> = (TypeStateKey, T);
+pub type TypeStateKey = (StateEventType, StateKey);
 
 /// Resolve sets of state events as they come in.
 ///

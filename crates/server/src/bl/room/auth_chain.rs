@@ -8,7 +8,8 @@ use lru_cache::LruCache;
 
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{AppResult, MatrixError, Seqnum, db};
+use crate::core::Seqnum;
+use crate::{AppResult, MatrixError,  db};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]

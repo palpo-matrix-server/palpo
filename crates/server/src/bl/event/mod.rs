@@ -9,9 +9,9 @@ use serde::Deserialize;
 
 use crate::core::identifiers::*;
 use crate::core::serde::default_false;
-use crate::core::{JsonValue, RawJsonValue, UnixMillis};
+use crate::core::{JsonValue, RawJsonValue, Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db};
+use crate::{AppError, AppResult, DieselResult, MatrixError, db};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]

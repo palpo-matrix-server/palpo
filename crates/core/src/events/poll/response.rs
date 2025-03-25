@@ -27,10 +27,10 @@ pub struct PollResponseEventContent {
     pub selections: SelectionsContentBlock,
 
     /// Whether this message is automated.
-    #[cfg(feature = "unstable-msc3955")]
+    // #[cfg(feature = "unstable-msc3955")]
     #[serde(
         default,
-        skip_serializing_if = "palpo_core::serde::is_default",
+        skip_serializing_if = "crate::serde::is_default",
         rename = "org.matrix.msc1767.automated"
     )]
     pub automated: bool,
@@ -46,7 +46,7 @@ impl PollResponseEventContent {
     pub fn new(selections: SelectionsContentBlock, poll_start_id: OwnedEventId) -> Self {
         Self {
             selections,
-            #[cfg(feature = "unstable-msc3955")]
+            // #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: Reference::new(poll_start_id),
         }
