@@ -23,6 +23,7 @@ use diesel::prelude::*;
 
 use crate::appservice::RegistrationInfo;
 use crate::config::default_room_version;
+use crate::core::directory::RoomTypeFilter;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
@@ -603,4 +604,27 @@ pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         .select(rooms::version)
         .first::<String>(&mut *db::connect()?)?;
     Ok(RoomVersionId::try_from(room_version)?)
+}
+
+pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
+    rooms
+        .iter()
+        .filter_map(|r| {
+            let room_type = state::get_room_type(r);
+
+            if room_type.as_ref().is_err_and(|e| !e.is_not_found()) {
+                return None;
+            }
+
+            let room_type_filter = RoomTypeFilter::from(room_type.ok());
+
+            let include = if negate {
+                !filter.contains(&room_type_filter)
+            } else {
+                filter.is_empty() || filter.contains(&room_type_filter)
+            };
+
+            include.then_some(r)
+        })
+        .collect()
 }

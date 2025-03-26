@@ -160,7 +160,7 @@ where
     }
     let content = ReceiptEventContent::from_iter(json);
 
-    RawJson::from_json(
+    RawJson::from_raw_value(
         serde_json::value::to_raw_value(&SyncEphemeralRoomEvent { content }).expect("received valid json"),
     )
 }

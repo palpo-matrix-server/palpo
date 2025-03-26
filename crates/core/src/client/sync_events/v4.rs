@@ -10,8 +10,9 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de::Error as _};
 
 use crate::device::DeviceLists;
+use crate::directory::RoomTypeFilter;
 use crate::events::receipt::SyncReceiptEvent;
-use crate::events::typing::{SyncTypingEvent, };
+use crate::events::typing::SyncTypingEvent;
 use crate::events::{
     AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent,
     AnyToDeviceEvent, StateEventType, TimelineEventType,
@@ -87,7 +88,7 @@ pub struct SyncEventsReqBody {
     /// The list configurations of rooms we are interested in mapped by
     /// name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub lists: BTreeMap<String, RequestList>,
+    pub lists: BTreeMap<String, ReqList>,
 
     /// Specific rooms and event types that we want to receive events from.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -165,7 +166,7 @@ impl SyncEventsResBody {
 /// Filters are considered _sticky_, meaning that the filter only has to be provided once and their
 /// parameters 'sticks' for future requests until a new filter overwrites them.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RequestListFilters {
+pub struct ReqListFilters {
     /// Whether to return DMs, non-DM rooms or both.
     ///
     /// Flag which only returns rooms present (or not) in the DM section of account data.
@@ -215,14 +216,14 @@ pub struct RequestListFilters {
     /// returned regardless of type. This can be used to get the initial set of spaces for an
     /// account.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub room_types: Vec<String>,
+    pub room_types: Vec<RoomTypeFilter>,
 
     /// Only list rooms that are not of these create-types, or all.
     ///
     /// Same as "room_types" but inverted. This can be used to filter out spaces from the room
     /// list.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
-    pub not_room_types: Vec<String>,
+    pub not_room_types: Vec<RoomTypeFilter>,
 
     /// Only list rooms matching the given string, or all.
     ///
@@ -255,7 +256,7 @@ pub struct RequestListFilters {
 
 /// Sliding Sync Request for each list.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RequestList {
+pub struct ReqList {
     /// Put this list into the all-rooms-mode.
     ///
     /// Settings this to true will inform the server that, no matter how slow
@@ -285,7 +286,7 @@ pub struct RequestList {
 
     /// Filters to apply to the list before sorting. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub filters: Option<RequestListFilters>,
+    pub filters: Option<ReqListFilters>,
 
     /// An allow-list of event types which should be considered recent activity when sorting
     /// `by_recency`. By omitting event types from this field, clients can ensure that
@@ -488,10 +489,13 @@ pub struct SyncRoomHero {
 impl SyncRoomHero {
     /// Creates a new `SyncRoomHero` with the given user id.
     pub fn new(user_id: OwnedUserId) -> Self {
-        Self { user_id, name: None, avatar: None }
+        Self {
+            user_id,
+            name: None,
+            avatar: None,
+        }
     }
 }
-
 
 /// Sliding-Sync extension configuration.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]

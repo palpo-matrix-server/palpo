@@ -54,6 +54,9 @@ use crate::core::signatures::Ed25519KeyPair;
 use crate::schema::*;
 use crate::{AppResult, JsonValue, MatrixError, ServerConfig, db};
 
+pub mod sync_v4;
+pub mod sync_v5;
+
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
 pub const TOKEN_LENGTH: usize = 32;

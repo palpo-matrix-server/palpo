@@ -137,7 +137,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
-        if !crate::user::is_local(&authorising_user) {
+        if !authorising_user.is_local() {
             return Err(MatrixError::invalid_param(
                 "Cannot authorise membership event through {authorising_user} as they do not \
 				 belong to this homeserver",

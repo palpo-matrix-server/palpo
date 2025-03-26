@@ -6,6 +6,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::MatrixError;
+use crate::core::RawJson;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -16,6 +17,7 @@ use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::room::filter_rooms;
 use crate::room::receipt::pack_receipts;
 use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok};
@@ -54,19 +56,28 @@ pub(super) async fn sync_events_v4(
 
     if global_since_sn != 0 && !crate::sync_events::remembered(sender_id, authed.device_id(), &conn_id) {
         debug!("Restarting sync stream because it was gone from the database");
-        return Err(MatrixError::unknown_pos("Connection data lost since last time".into()));
+        return Err(MatrixError::unknown_pos("Connection data lost since last time").into());
     }
 
     if global_since_sn == 0 {
-        crate::user::forget_sync_request_connection(sender_id, authed.device_id(), &conn_id)
+        crate::sync_v4::forget_sync_request_connection(sender_id, authed.device_id(), &conn_id)
     }
 
     // Get sticky parameters from cache
-    let known_rooms = crate::user::update_sync_request_with_cache(sender_id, authed.device_id(), &mut body);
+    let known_rooms = crate::sync_v4::update_sync_request_with_cache(sender_id, authed.device_id(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
-    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?;
-    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?;
+    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?
+        .into_iter()
+        .map(|r| r.0)
+        .collect::<Vec<_>>();
+    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?
+        .into_iter()
+        .map(|r| r.0)
+        .collect::<Vec<_>>();
+    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?
+        .into_iter()
+        .map(|r| r.0)
+        .collect::<Vec<_>>();
 
     let mut all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
@@ -91,10 +102,10 @@ pub(super) async fn sync_events_v4(
     };
 
     if body.extensions.account_data.enabled.unwrap_or(false) {
-        account_data.global = services
-            .account_data
-            .data_changes(None, sender_id, global_since_sn, Some(next_batch))
-            .ready_filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
+        account_data.global = crate::user::data_changes(None, sender_id, global_since_sn, Some(next_batch))
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
             .collect()
             .await;
 
@@ -103,7 +114,9 @@ pub(super) async fn sync_events_v4(
                 account_data.rooms.insert(
                     room.clone(),
                     crate::user::data_changes(Some(&room), sender_id, global_since_sn, Some(next_batch))
-                        .ready_filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                         .collect()
                         .await,
                 );
@@ -113,7 +126,7 @@ pub(super) async fn sync_events_v4(
 
     if body.extensions.e2ee.enabled.unwrap_or(false) {
         // Look for device list updates of this account
-        device_list_changes.extend(crate::user::keys_changed_users(asender_id, global_since_sn, None)?);
+        device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
         for room_id in &all_joined_rooms {
             let Some(current_frame_id) = crate::room::state::get_room_frame_id(&room_id, None)? else {
@@ -144,7 +157,7 @@ pub(super) async fn sync_events_v4(
                                 .ok()
                         });
 
-                let joined_since_last_sync = crate::room::user::joined_sn(sender_id, room_id)? >= since_sn;
+                let joined_since_last_sync = crate::room::user::joined_sn(sender_id, &room_id)? >= global_since_sn;
 
                 let new_encrypted_room = encrypted_room && since_encryption.is_none();
 
@@ -162,8 +175,8 @@ pub(super) async fn sync_events_v4(
                                 }
                             };
                             if pdu.event_ty == TimelineEventType::RoomMember {
-                                if let Some(state_key) = &pdu.state_key.as_deref().map(UserId::parse) {
-                                    let Ok(user_id) = UserId::parse(state_key.clone()) else {
+                                if let Some(state_key) = &pdu.state_key {
+                                    let Ok(user_id) = UserId::parse(state_key) else {
                                         tracing::error!("Invalid UserId in member PDU.");
                                         continue;
                                     };
@@ -183,7 +196,7 @@ pub(super) async fn sync_events_v4(
                                             if !crate::sync::share_encrypted_room(
                                                 authed.user_id(),
                                                 &user_id,
-                                                Some(room_id),
+                                                Some(&room_id),
                                             )? {
                                                 device_list_changes.insert(user_id);
                                             }
@@ -205,11 +218,11 @@ pub(super) async fn sync_events_v4(
                                 .into_iter()
                                 .filter(|user_id| {
                                     // Don't send key updates from the sender to the sender
-                                    sender_id != &user_id
+                                    sender_id != user_id
                                 })
                                 .filter(|user_id| {
                                     // Only send keys if the sender doesn't share an encrypted room with the target already
-                                    !crate::bl::sync::share_encrypted_room(sender_id, user_id, Some(room_id))
+                                    !crate::bl::sync::share_encrypted_room(sender_id, user_id, Some(&room_id))
                                         .unwrap_or(false)
                                 }),
                         );
@@ -217,10 +230,10 @@ pub(super) async fn sync_events_v4(
                 }
             }
             // Look for device list updates in this room
-            device_list_changes.extend(crate::room::keys_changed_users(room_id, since_sn, None)?.into_iter());
+            device_list_changes.extend(crate::room::keys_changed_users(&room_id, global_since_sn, None)?.into_iter());
         }
         for user_id in left_encrypted_users {
-            let dont_share_encrypted_room = !share_encrypted_room(sender_id, &user_id, None);
+            let dont_share_encrypted_room = !share_encrypted_room(sender_id, &user_id, None)?;
             // If the user doesn't share an encrypted room with the target anymore, we need to tell
             // them
             if dont_share_encrypted_room {
@@ -230,7 +243,7 @@ pub(super) async fn sync_events_v4(
     }
 
     let mut lists = BTreeMap::new();
-    let mut todo_rooms = BTreeMap::new(); // and required state
+    let mut todo_rooms: BTreeMap<OwnedRoomId, (BTreeSet<_>, _, _)> = BTreeMap::new(); // and required state
 
     for (list_id, list) in &body.lists {
         let active_rooms = match list.filters.clone().and_then(|f| f.is_invite) {
@@ -241,13 +254,13 @@ pub(super) async fn sync_events_v4(
 
         let active_rooms = match list.filters.clone().map(|f| f.not_room_types) {
             Some(filter) if filter.is_empty() => active_rooms.clone(),
-            Some(value) => filter_rooms(active_rooms, &value, true).await,
+            Some(value) => filter_rooms(active_rooms, &value, true),
             None => active_rooms.clone(),
         };
 
         let active_rooms = match list.filters.clone().map(|f| f.room_types) {
             Some(filter) if filter.is_empty() => active_rooms.clone(),
-            Some(value) => filter_rooms(&active_rooms, &value, false).await,
+            Some(value) => filter_rooms(&active_rooms, &value, false),
             None => active_rooms,
         };
 
@@ -299,7 +312,7 @@ pub(super) async fn sync_events_v4(
         );
 
         if let Some(conn_id) = &body.conn_id {
-            crate::user::update_sync_known_rooms(
+            crate::sync_v4::update_sync_known_rooms(
                 sender_id.clone(),
                 authed.device_id().clone(),
                 conn_id.clone(),
@@ -339,18 +352,18 @@ pub(super) async fn sync_events_v4(
     }
 
     if let Some(conn_id) = &body.conn_id {
-        crate::user::update_sync_known_rooms(
+        crate::sync_v4::update_sync_known_rooms(
             sender_id.clone(),
             authed.device_id().clone(),
             conn_id.clone(),
             "subscriptions".to_owned(),
             known_subscription_rooms,
-            since_sn,
+            global_since_sn,
         );
     }
 
     if let Some(conn_id) = &body.conn_id {
-        crate::user::update_sync_subscriptions(
+        crate::sync_v4::update_sync_subscriptions(
             sender_id.clone(),
             authed.device_id().clone(),
             conn_id.clone(),
@@ -378,16 +391,13 @@ pub(super) async fn sync_events_v4(
         account_data.rooms.insert(
             room_id.to_owned(),
             crate::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
+                .into_iter()
                 .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                 .collect(),
         );
 
-        let last_privateread_update = services
-            .rooms
-            .read_receipt
-            .last_privateread_update(sender_id, room_id)
-            .await
-            > *room_since_sn;
+        let last_privateread_update =
+            crate::room::receipt::last_private_read_update(sender_id, room_id).await > *room_since_sn;
 
         let private_read_event = if last_privateread_update {
             crate::room::receipt::get_private_read(room_id, sender_id).ok()
@@ -395,9 +405,16 @@ pub(super) async fn sync_events_v4(
             None
         };
 
-        let mut vector: Vec<Raw<AnySyncEphemeralRoomEvent>> =
-            crate::room::receipt::read_receipts(room_id, *room_since_sn)
-                .filter_map(|(read_user, _ts, v)| crate::user::user_is_ignored(read_user, sender_id).or_some(v))
+        let mut vector: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
+            crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+                .into_iter()
+                .filter_map(|(read_user, _ts, v)| {
+                    if crate::user::user_is_ignored(read_user, sender_id) {
+                        Some(v)
+                    } else {
+                        None
+                    }
+                })
                 .collect();
 
         if let Some(private_read_event) = private_read_event {
@@ -421,7 +438,7 @@ pub(super) async fn sync_events_v4(
         let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
 
         for (_, pdu) in timeline_pdus {
-            let ts = MilliSecondsSinceUnixEpoch(pdu.origin_server_ts);
+            let ts = pdu.origin_server_ts;
             if DEFAULT_BUMP_TYPES.binary_search(&pdu.kind).is_ok() && timestamp.is_none_or(|time| time <= ts) {
                 timestamp = Some(ts);
             }
@@ -442,9 +459,9 @@ pub(super) async fn sync_events_v4(
             .filter(|user_id| user_id != sender_id)
             .flat_map(|user_id| {
                 Ok::<_, AppError>(
-                    crate::room::state::get_member(&room_id, &user_id)?.map(|member| RoomHero {
+                    crate::room::state::get_member(&room_id, &user_id)?.map(|member| SyncRoomHero {
                         user_id: user_id.into(),
-                        name: member.display_name.unwrap_or_else(|| member.to_string()),
+                        name: member.display_name,
                         avatar: member.avatar_url,
                     }),
                 )
@@ -477,7 +494,7 @@ pub(super) async fn sync_events_v4(
                 name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
                 avatar: match hero_avatar {
                     Some(hero_avatar) => Some(hero_avatar),
-                    _ => crate::room::state::get_avatar(room_id).ok().flatten(),
+                    _ => crate::room::state::get_avatar_url(room_id).ok().flatten(),
                 },
                 initial: Some(room_since_sn == &0),
                 is_dm: None,
@@ -521,7 +538,7 @@ pub(super) async fn sync_events_v4(
     }
 
     json_ok(SyncEventsResBody {
-        initial: since_sn == 0,
+        initial: global_since_sn == 0,
         txn_id: body.txn_id.clone(),
         pos: next_batch.to_string(),
         lists,
@@ -532,7 +549,7 @@ pub(super) async fn sync_events_v4(
                     events: crate::user::get_to_device_events(
                         sender_id,
                         authed.device_id(),
-                        Some(since_sn),
+                        Some(global_since_sn),
                         Some(next_batch),
                     )?,
                     next_batch: next_batch.to_string(),
@@ -551,7 +568,7 @@ pub(super) async fn sync_events_v4(
             },
             account_data: AccountData {
                 global: if body.extensions.account_data.enabled.unwrap_or(false) {
-                    crate::user::data_changes(None, sender_id, since_sn, None)?
+                    crate::user::data_changes(None, sender_id, global_since_sn, None)?
                         .into_iter()
                         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                         .collect()

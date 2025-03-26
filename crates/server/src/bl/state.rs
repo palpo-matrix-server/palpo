@@ -136,7 +136,7 @@ fn allowed_to_send_state_event(
                     .into());
                 }
 
-                if !crate::user::is_local(&authorising_user) {
+                if !&authorising_user.is_local() {
                     return Err(MatrixError::invalid_param(
                         "Authorising user {authorising_user} does not belong to this homeserver",
                     )
