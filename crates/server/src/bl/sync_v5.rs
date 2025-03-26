@@ -30,8 +30,8 @@ pub struct SlidingSyncCache {
 pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
     LazyLock::new(|| Default::default());
 
-pub fn forget_sync_request_connection(user_id: &UserId, device_id: &DeviceId, conn_id: &str) {
-    CONNECTIONS.lock().unwrap().remove(&(user_id.to_owned(), device_id.to_owned(), conn_id.to_owned()));
+pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDeviceId, conn_id: String) {
+    CONNECTIONS.lock().unwrap().remove(&(user_id, device_id, conn_id));
 }
 /// load params from cache if body doesn't contain it, as long as it's allowed
 /// in some cases we may need to allow an empty list as an actual value
@@ -46,8 +46,8 @@ fn some_or_sticky<T>(target: &mut Option<T>, cached: Option<T>) {
 	}
 }
 pub fn update_sync_request_with_cache(
-    user_id: &UserId,
-    device_id: &DeviceId,
+    user_id: OwnedUserId,
+    device_id: OwnedDeviceId,
     req_body: &mut sync_events::v5::SyncEventsReqBody,
 ) -> BTreeMap<String, BTreeMap<OwnedRoomId, i64>> {
     let Some(conn_id) = req_body.conn_id.clone() else {
@@ -58,7 +58,7 @@ pub fn update_sync_request_with_cache(
     let mut cache = connections.lock().unwrap();
     let cached = Arc::clone(
         cache
-            .entry((user_id.to_owned(), device_id.to_owned(), conn_id))
+            .entry((user_id, device_id, conn_id))
             .or_insert_with(|| {
                 Arc::new(Mutex::new(SlidingSyncCache {
                     lists: BTreeMap::new(),

@@ -45,7 +45,7 @@ pub(super) async fn sync_events_v5(
 ) -> JsonResult<SyncEventsResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let body = body.into_inner();
+    let mut body = body.into_inner();
     // Setup watchers, so if there's no response, we can wait for them
     let watcher = crate::watch(sender_id, authed.device_id());
 
@@ -61,23 +61,24 @@ pub(super) async fn sync_events_v5(
 
     if global_since_sn == 0 {
         if let Some(conn_id) = &body.conn_id {
-            crate::sync_v5::forget_sync_request_connection(sender_id, authed.device_id(), conn_id)
+            crate::sync_v5::forget_sync_request_connection(
+                sender_id.to_owned(),
+                authed.device_id().to_owned(),
+                conn_id.to_owned(),
+            )
         }
     }
 
     // Get sticky parameters from cache
-    let known_rooms = crate::sync_v5::update_sync_request_with_cache(sender_id, authed.device_id(), &mut body);
+    let known_rooms =
+        crate::sync_v5::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0)
-        .collect::<Vec<_>>();
+    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
 
     let all_invited_rooms: Vec<_> = crate::user::invited_rooms(sender_id, 0)?
         .into_iter()
         .map(|r| r.0)
-        .collect()
-        .await;
+        .collect();
 
     let all_knocked_rooms: Vec<_> = crate::user::knocked_rooms(sender_id, 0)?
         .into_iter()
@@ -327,18 +328,27 @@ async fn process_rooms(
         }
 
         let last_privateread_update =
-            crate::room::receipt::last_private_read_update(sender_id, room_id).await > *room_since_sn;
+            crate::room::receipt::last_private_read_update(sender_id.to_owned(), room_id.to_owned()).await
+                > *room_since_sn;
 
         let private_read_event = if last_privateread_update {
-            crate::room::receipt::get_private_read(room_id, sender_id).ok()
+            crate::room::receipt::latest_private_read(room_id, sender_id).ok()
         } else {
             None
         };
 
         let mut receipts: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
             crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+                .content
+                .0
                 .into_iter()
-                .filter_map(|(read_user, _ts, v)| crate::user::user_is_ignored(read_user, sender_id))
+                .filter_map(|(read_user, value)| {
+                    if !crate::user::user_is_ignored(&read_user, sender_id) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
                 .collect();
 
         if let Some(private_read_event) = private_read_event {

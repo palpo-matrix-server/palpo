@@ -2,12 +2,13 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use palpo_core::JsonValue;
+use palpo_core::MatrixError;
 
 use crate::core::Seqnum;
 use crate::core::UnixMillis;
+use crate::core::events::receipt::{Receipt, Receipts,ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::events::{AnySyncEphemeralRoomEvent, SyncEphemeralRoomEvent};
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
-use crate::core::identifiers::*;
+use crate::core::identifiers::*; 
 use crate::core::serde::RawJson;
 use crate::schema::*;
 use crate::{AppResult, db};
@@ -111,15 +112,44 @@ pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, 
     Ok(())
 }
 
-/// Returns the private read marker.
-pub fn get_private_read(room_id: &RoomId, user_id: &UserId) -> AppResult<u64> {
-    let count: i64 = event_receipts::table
+/// Gets the latest private read receipt from the user in the room
+pub fn latest_private_read(room_id: &RoomId, user_id: &UserId) -> AppResult<RawJson<AnySyncEphemeralRoomEvent>> {
+    let event_id = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
-        .count()
-        .get_result(&mut *db::connect()?)?;
-    Ok(count as u64)
+        .order_by(event_receipts::id.desc())
+        .select(event_receipts::event_id)
+        .first::<OwnedEventId>(&mut *db::connect()?)?;
+
+    // let room_sn = crate::room::get_room_sn(room_id)
+    //     .map_err(|e| MatrixError::bad_state(format!("room does not exist in database for {room_id}: {e}")))?;
+
+    let pdu = crate::room::timeline.get_pdu(&event_id)?;
+
+    let event_id: OwnedEventId = pdu.event_id;
+    let user_id: OwnedUserId = user_id.to_owned();
+    let content: BTreeMap<OwnedEventId, Receipts> = BTreeMap::from_iter([(
+        event_id,
+        BTreeMap::from_iter([(
+            crate::core::events::receipt::ReceiptType::ReadPrivate,
+            BTreeMap::from_iter([(
+                user_id,
+                crate::core::events::receipt::Receipt {
+                    ts: None, // TODO: start storing the timestamp so we can return one
+                    thread: crate::core::events::receipt::ReceiptThread::Unthreaded,
+                },
+            )]),
+        )]),
+    )]);
+    let receipt_event_content = ReceiptEventContent(content);
+    let receipt_sync_event = SyncEphemeralRoomEvent {
+        content: receipt_event_content,
+    };
+
+    let event = serde_json::value::to_raw_value(&receipt_sync_event).expect("receipt created manually");
+
+    Ok(RawJson::from_json(event))
 }
 
 // /// Returns the count of the last typing update in this room.

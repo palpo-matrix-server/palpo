@@ -235,49 +235,21 @@ pub struct ReqListFilters {
 /// Sliding Sync Request for each list.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReqList {
-    /// Put this list into the all-rooms-mode.
-    ///
-    /// Settings this to true will inform the server that, no matter how slow
-    /// that might be, the clients wants all rooms the filters apply to. When operating
-    /// in this mode, `ranges` and  `sort` will be ignored  there will be no movement operations
-    /// (`DELETE` followed by `INSERT`) as the client has the entire list and can work out whatever
-    /// sort order they wish. There will still be `DELETE` and `INSERT` operations when rooms are
-    /// left or joined respectively. In addition, there will be an initial `SYNC` operation to let
-    /// the client know which rooms in the rooms object were from this list.
-    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
-    pub slow_get_all_rooms: bool,
-
     /// The ranges of rooms we're interested in.
     pub ranges: Vec<(u64, u64)>,
-
-    /// The sort ordering applied to this list of rooms. Sticky.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sort: Vec<String>,
 
     /// The details to be included per room
     #[serde(flatten)]
     pub room_details: RoomDetailsConfig,
 
-    /// If tombstoned rooms should be returned and if so, with what information attached
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub include_old_rooms: Option<IncludeOldRooms>,
+    /// Request a stripped variant of membership events for the users used
+    /// to calculate the room name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_heroes: Option<bool>,
 
-    /// Filters to apply to the list before sorting. Sticky.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Filters to apply to the list before sorting.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub filters: Option<ReqListFilters>,
-
-    /// An allow-list of event types which should be considered recent activity when sorting
-    /// `by_recency`. By omitting event types from this field, clients can ensure that
-    /// uninteresting events (e.g. a profil rename) do not cause a room to jump to the top of its
-    /// list(s). Empty or omitted `bump_event_types` have no effect; all events in a room will be
-    /// considered recent activity.
-    ///
-    /// NB. Changes to bump_event_types will NOT cause the room list to be reordered;
-    /// it will only affect the ordering of rooms due to future updates.
-    ///
-    /// Sticky.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub bump_event_types: Vec<TimelineEventType>,
 }
 
 /// Configuration for requesting room details.

@@ -32,7 +32,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{OwnedServerName, UnixMillis};
+use crate::core::{OwnedServerName,Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
@@ -605,6 +605,13 @@ pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         .first::<String>(&mut *db::connect()?)?;
     Ok(RoomVersionId::try_from(room_version)?)
 }
+// pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
+//     let room_sn = rooms::table
+//         .filter(rooms::id.eq(room_id))
+//         .select(rooms::sn)
+//         .first::<Seqnum>(&mut *db::connect()?)?;
+//     Ok(room_sn)
+// }
 
 pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
     rooms
@@ -612,7 +619,7 @@ pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate:
         .filter_map(|r| {
             let room_type = state::get_room_type(r);
 
-            if room_type.as_ref().is_err_and(|e| !e.is_not_found()) {
+            if room_type.as_ref().is_err() {
                 return None;
             }
 

@@ -60,24 +60,22 @@ pub(super) async fn sync_events_v4(
     }
 
     if global_since_sn == 0 {
-        crate::sync_v4::forget_sync_request_connection(sender_id, authed.device_id(), &conn_id)
+        crate::sync_v4::forget_sync_request_connection(sender_id.to_owned(), authed.device_id().to_owned(), conn_id)
     }
 
     // Get sticky parameters from cache
-    let known_rooms = crate::sync_v4::update_sync_request_with_cache(sender_id, authed.device_id(), &mut body);
+    let known_rooms =
+        crate::sync_v4::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?
+    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?.iter().collect();
+    let all_invited_rooms: Vec<&RoomId> = crate::user::invited_rooms(sender_id, 0)?
         .into_iter()
-        .map(|r| r.0)
-        .collect::<Vec<_>>();
-    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?
+        .map(|r| r.0.as_ref())
+        .collect();
+    let all_knocked_rooms: Vec<&RoomId> = crate::user::knocked_rooms(sender_id, 0)?
         .into_iter()
-        .map(|r| r.0)
-        .collect::<Vec<_>>();
-    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0)
-        .collect::<Vec<_>>();
+        .map(|r| r.0.as_ref())
+        .collect();
 
     let mut all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
@@ -154,8 +152,8 @@ pub(super) async fn sync_events_v4(
                         .and_then(|pdu| {
                             serde_json::from_str(pdu.content.get())
                                 .map_err(|_| AppError::public("Invalid PDU in database."))
-                                .ok()
-                        });
+                        })
+                        .transpose()?;
 
                 let joined_since_last_sync = crate::room::user::joined_sn(sender_id, &room_id)? >= global_since_sn;
 
@@ -377,7 +375,7 @@ pub(super) async fn sync_events_v4(
 
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;
-        let (timeline_pdus, limited) = if all_invited_rooms.contains(room_id) {
+        let (timeline_pdus, limited) = if all_invited_rooms.contains(&&**room_id) {
             invite_state = crate::room::state::invite_state(sender_id, room_id).ok();
             (Vec::new(), true)
         } else {
@@ -400,17 +398,18 @@ pub(super) async fn sync_events_v4(
             crate::room::receipt::last_private_read_update(sender_id, room_id).await > *room_since_sn;
 
         let private_read_event = if last_privateread_update {
-            crate::room::receipt::get_private_read(room_id, sender_id).ok()
+            crate::room::receipt::latest_private_read(room_id, sender_id).ok()
         } else {
             None
         };
 
         let mut vector: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
             crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+                .content
                 .into_iter()
-                .filter_map(|(read_user, _ts, v)| {
+                .filter_map(|(read_user, value)| {
                     if crate::user::user_is_ignored(read_user, sender_id) {
-                        Some(v)
+                        Some(value)
                     } else {
                         None
                     }
@@ -439,7 +438,7 @@ pub(super) async fn sync_events_v4(
 
         for (_, pdu) in timeline_pdus {
             let ts = pdu.origin_server_ts;
-            if DEFAULT_BUMP_TYPES.binary_search(&pdu.kind).is_ok() && timestamp.is_none_or(|time| time <= ts) {
+            if DEFAULT_BUMP_TYPES.binary_search(&pdu.event_ty).is_ok() && timestamp.is_none_or(|time| time <= ts) {
                 timestamp = Some(ts);
             }
         }
@@ -491,7 +490,7 @@ pub(super) async fn sync_events_v4(
         rooms.insert(
             room_id.clone(),
             SyncRoom {
-                name: crate::room::state::get_name(&room_id, None)?.or_else(|| name),
+                name: crate::room::state::get_name(&room_id, None)?.or_else(|| hero_name),
                 avatar: match hero_avatar {
                     Some(hero_avatar) => Some(hero_avatar),
                     _ => crate::room::state::get_avatar_url(room_id).ok().flatten(),
