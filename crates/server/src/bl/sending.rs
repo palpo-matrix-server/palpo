@@ -518,9 +518,8 @@ async fn handle_events(
                     None => continue,
                 };
 
-                let rules_for_user = crate::user::get_data::<PushRulesEventContent>(
+                let rules_for_user = crate::user::get_global_data::<PushRulesEventContent>(
                     user_id,
-                    None,
                     &GlobalAccountDataEventType::PushRules.to_string(),
                 )
                 .unwrap_or_default()

@@ -132,7 +132,7 @@ pub fn update_membership(
     room_id: &RoomId,
     user_id: &UserId,
     membership: MembershipState,
-    sender: &UserId,
+    sender_id: &UserId,
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config();
@@ -186,9 +186,9 @@ pub fn update_membership(
                     //     .ok();
 
                     // Copy old tags to new room
-                    if let Some(tag_event_content) = crate::user::get_data::<JsonValue>(
+                    if let Some(tag_event_content) = crate::user::get_room_data::<JsonValue>(
                         user_id,
-                        Some(&predecessor.room_id),
+                        &predecessor.room_id,
                         &RoomAccountDataEventType::Tag.to_string(),
                     )? {
                         crate::user::set_data(
@@ -251,7 +251,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,
@@ -265,16 +265,7 @@ pub fn update_membership(
         }
         MembershipState::Invite => {
             // We want to know if the sender is ignored by the receiver
-            let is_ignored = crate::user::get_data::<IgnoredUserListEventContent>(
-                user_id, // Receiver
-                None,    // Ignored users are in global account data
-                &GlobalAccountDataEventType::IgnoredUserList.to_string(),
-            )?
-            .map_or(false, |ignored| {
-                ignored.ignored_users.iter().any(|(user, _details)| user == sender)
-            });
-
-            if is_ignored {
+            if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());
             }
 
@@ -303,7 +294,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,
@@ -341,7 +332,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,

@@ -657,7 +657,7 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
     Ok(Some(device_keys))
 }
 
-pub fn get_keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
     if let Some(to_sn) = to_sn {
         e2e_key_changes::table

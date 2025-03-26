@@ -10,19 +10,19 @@ use std::time::Duration;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de::Error as _};
 
-use crate::events::{ AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent,
-    StateEventType, TimelineEventType,
+use crate::events::{
+    AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType, TimelineEventType,
 };
+use crate::identifiers::*;
 use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
 use crate::state::TypeStateKey;
-use crate::identifiers::*;
-use crate::{OwnedMxcUri, Seqnum, UnixMillis };
+use crate::{OwnedMxcUri, Seqnum, UnixMillis};
 
-use super::UnreadNotificationsCount;
 pub use super::v4::{
-    AccountData, AccountDataConfig, E2ee, E2eeConfig, Extensions, ExtensionsConfig, Receipts, ReceiptsConfig, ToDevice,
-    ToDeviceConfig, Typing, TypingConfig,
+    AccountData, AccountDataConfig, E2ee, E2eeConfig, Extensions, ExtensionsConfig, Receipts, ReceiptsConfig,
+    SyncRoomHero, ToDevice, ToDeviceConfig, Typing, TypingConfig,
 };
+use super::{UnreadNotificationsCount, v4};
 
 pub type SyncInfo<'a> = (&'a UserId, &'a DeviceId, Seqnum, &'a SyncEventsReqBody);
 
@@ -126,7 +126,6 @@ impl SyncEventsResBody {
 /// A sliding sync response updates to joiend rooms (see
 /// [`super::Response::lists`]).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[cfg_attr(not(feature = "unstable-exhaustive-types"), non_exhaustive)]
 pub struct SyncList {
     /// The total number of rooms found for this list.
     pub count: usize,
@@ -203,40 +202,7 @@ pub struct SyncRoom {
 
     /// Heroes of the room, if requested.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub heroes: Option<Vec<Hero>>,
-}
-
-impl SyncRoom {
-    /// Creates an empty `Room`.
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-/// A sliding sync response room hero (see [`Room::heroes`]).
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Hero {
-    /// The user ID.
-    pub user_id: OwnedUserId,
-
-    /// The name.
-    #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-
-    /// The avatar.
-    #[serde(rename = "avatar_url", skip_serializing_if = "Option::is_none")]
-    pub avatar: Option<OwnedMxcUri>,
-}
-
-impl Hero {
-    /// Creates a new `Hero` with the given user ID.
-    pub fn new(user_id: OwnedUserId) -> Self {
-        Self {
-            user_id,
-            name: None,
-            avatar: None,
-        }
-    }
+    pub heroes: Option<Vec<SyncRoomHero>>,
 }
 
 /// Filter for a sliding sync list, set at request.

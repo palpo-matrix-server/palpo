@@ -43,9 +43,10 @@ pub(super) async fn sync_events_v5(
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBody> {
     let authed = depot.authed_info()?;
+	let sender_id = authed.user_id();
     let body = body.into_inner();
     // Setup watchers, so if there's no response, we can wait for them
-    let watcher = crate::watch(authed.user_id(), authed.device_id());
+    let watcher = crate::watch(sender_id, authed.device_id());
 
     let next_batch = crate::curr_sn()? + 1;
 
@@ -60,7 +61,7 @@ pub(super) async fn sync_events_v5(
     if global_since_sn == 0 {
         if let Some(conn_id) = &body.conn_id {
             crate::user::forget_sync_request_connection(
-                authed.user_id().clone(),
+                sender_id.clone(),
                 authed.device_id().clone(),
                 conn_id.clone(),
             )
@@ -69,17 +70,17 @@ pub(super) async fn sync_events_v5(
 
     // Get sticky parameters from cache
     let known_rooms =
-        crate::user::update_sync_request_with_cache(authed.user_id().to_owned(), authed.device_id().clone(), &mut body);
+        crate::user::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().clone(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(&authed.user_id(), 0)?;
+    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
 
-    let all_invited_rooms: Vec<_> = crate::user::invited_rooms(authed.user_id(), 0)?
+    let all_invited_rooms: Vec<_> = crate::user::invited_rooms(sender_id, 0)?
         .into_iter()
         .map(|r| r.0)
         .collect()
         .await;
 
-    let all_knocked_rooms: Vec<_> = crate::room::state::knocked_rooms(authed.user_id())?;
+    let all_knocked_rooms: Vec<_> = crate::user::knocked_rooms(sender_id)?;
 
     let all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
@@ -95,7 +96,7 @@ pub(super) async fn sync_events_v5(
 
     let mut todo_rooms: TodoRooms = BTreeMap::new();
 
-    let sync_info: SyncInfo<'_> = (authed.user_id(), authed.device_id(), global_since_sn, &body);
+    let sync_info: SyncInfo<'_> = (sender_id, authed.device_id(), global_since_sn, &body);
     let mut res_body = SyncEventsResBody {
         txn_id: body.txn_id.clone(),
         pos,
@@ -315,7 +316,7 @@ async fn process_rooms(
         if body.extensions.account_data.enabled == Some(true) {
             response.extensions.account_data.rooms.insert(
                 room_id.to_owned(),
-                crate::user::get_data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
+                crate::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                     .collect()
@@ -494,7 +495,7 @@ fn collect_account_data(
         return Ok(sync_events::v5::AccountData::default());
     }
 
-    account_data.global = crate::user::get_data_changes(None, sender_id, global_since_sn, None)?
+    account_data.global = crate::user::data_changes(None, sender_id, global_since_sn, None)?
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
         .collect();
@@ -503,7 +504,7 @@ fn collect_account_data(
         for room in rooms {
             account_data.rooms.insert(
                 room.clone(),
-                crate::user::get_data_changes(Some(room), sender_id, global_since_sn, None)?
+                crate::user::data_changes(Some(room), sender_id, global_since_sn, None)?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                     .collect(),
@@ -525,7 +526,7 @@ fn collect_e2ee<'a>(
     let mut device_list_changes = HashSet::new();
     let mut device_list_left = HashSet::new();
     // Look for device list updates of this account
-    device_list_changes.extend(crate::user::get_keys_changed_users(sender_id, global_since_sn, None)?);
+    device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
     for room_id in all_joined_rooms {
         let Ok(Some(current_frame_id)) = crate::room::state::get_room_frame_id(room_id, None) else {

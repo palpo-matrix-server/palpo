@@ -17,7 +17,7 @@ use crate::events::{
     AnyToDeviceEvent, StateEventType, TimelineEventType,
 };
 use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
-use crate::{DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, RoomId, UnixMillis};
+use crate::{DeviceKeyAlgorithm, OwnedMxcUri, OwnedRoomId, OwnedUserId, RoomId, UnixMillis};
 
 use super::UnreadNotificationsCount;
 
@@ -457,6 +457,10 @@ pub struct SyncRoom {
     /// relying on the latest event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<UnixMillis>,
+
+    /// Heroes of the room, if requested by a room subscription.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heroes: Option<Vec<SyncRoomHero>>,
 }
 
 impl SyncRoom {
@@ -465,6 +469,29 @@ impl SyncRoom {
         Default::default()
     }
 }
+
+/// A sliding sync room hero.
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
+pub struct SyncRoomHero {
+    /// The user ID of the hero.
+    pub user_id: OwnedUserId,
+
+    /// The name of the hero.
+    #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+
+    /// The avatar of the hero.
+    #[serde(rename = "avatar_url", skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<OwnedMxcUri>,
+}
+
+impl SyncRoomHero {
+    /// Creates a new `SyncRoomHero` with the given user id.
+    pub fn new(user_id: OwnedUserId) -> Self {
+        Self { user_id, name: None, avatar: None }
+    }
+}
+
 
 /// Sliding-Sync extension configuration.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]

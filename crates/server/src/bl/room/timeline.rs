@@ -248,9 +248,8 @@ where
             continue;
         }
 
-        let rules_for_user = crate::user::get_data::<PushRulesEventContent>(
+        let rules_for_user = crate::user::get_global_data::<PushRulesEventContent>(
             user,
-            None,
             &GlobalAccountDataEventType::PushRules.to_string(),
         )?
         .map(|content: PushRulesEventContent| content.global)

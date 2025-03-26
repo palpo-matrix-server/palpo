@@ -68,7 +68,7 @@ pub fn sync_events(
         let mut device_list_left = HashSet::new();
 
         // Look for device list updates of this account
-        device_list_updates.extend(crate::user::get_keys_changed_users(&sender_id, since_sn, None)?);
+        device_list_updates.extend(crate::user::keys_changed_users(&sender_id, since_sn, None)?);
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
         for room_id in &all_joined_rooms {
@@ -334,7 +334,7 @@ pub fn sync_events(
                     .collect(),
             },
             account_data: sync_events::v3::GlobalAccountData {
-                events: crate::user::get_data_changes(None, &sender_id, since_sn, None)?
+                events: crate::user::data_changes(None, &sender_id, since_sn, None)?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                     .collect(),
@@ -774,7 +774,7 @@ async fn load_joined_room(
         );
     }
 
-    let account_events = crate::user::get_data_changes(Some(&room_id), sender_id, since_sn)?
+    let account_events = crate::user::data_changes(Some(&room_id), sender_id, since_sn, None)?
         .into_iter()
         .filter_map(|e| match serde_json::from_str(e.inner().get()) {
             Ok(event) => Some(event),

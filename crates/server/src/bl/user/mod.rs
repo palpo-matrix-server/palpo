@@ -139,7 +139,6 @@ pub fn invited_rooms(
     Ok(list)
 }
 
-
 pub fn knocked_rooms(
     user_id: &UserId,
     since_sn: i64,
@@ -212,7 +211,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
 }
 
 pub fn forget_sync_request_connection(user_id: &UserId, device_id: &DeviceId, conn_id: &str) {
-    CONNECTIONS.lock().unwrap().remove(&(user_id, device_id, conn_id));
+    CONNECTIONS.lock().unwrap().remove(&(user_id, device_id.to_owned(), conn_id.to_owned()));
 }
 
 pub fn update_sync_request_with_cache(
@@ -226,14 +225,18 @@ pub fn update_sync_request_with_cache(
     let connections = CONNECTIONS;
 
     let mut cache = connections.lock().unwrap();
-    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
-        Arc::new(Mutex::new(SlidingSyncCache {
-            lists: BTreeMap::new(),
-            subscriptions: BTreeMap::new(),
-            known_rooms: BTreeMap::new(),
-            extensions: sync_events::v4::ExtensionsConfig::default(),
-        }))
-    }));
+    let cached = Arc::clone(
+        cache
+            .entry((user_id.to_owned(), device_id.to_owned(), conn_id))
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(SlidingSyncCache {
+                    lists: BTreeMap::new(),
+                    subscriptions: BTreeMap::new(),
+                    known_rooms: BTreeMap::new(),
+                    extensions: sync_events::v4::ExtensionsConfig::default(),
+                }))
+            }),
+    );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -481,13 +484,13 @@ pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> AppResult<()> {
 /// Returns true/false based on whether the recipient/receiving user has
 /// blocked the sender
 pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
-    crate::user::data::get_data(recipient_id, None, GlobalAccountDataEventType::IgnoredUserList).is_ok_and(
+    crate::user::data::get_global_data(recipient_id, &GlobalAccountDataEventType::IgnoredUserList.to_string()).is_ok_and(
         |ignored: IgnoredUserListEvent| {
             ignored
                 .content
                 .ignored_users
                 .keys()
-                .any(|blocked_user| blocked_user == sender_user)
+                .any(|blocked_user| blocked_user == sender_id)
         },
     )
 }
