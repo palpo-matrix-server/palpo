@@ -3,10 +3,12 @@ use std::collections::BTreeMap;
 use diesel::prelude::*;
 use palpo_core::JsonValue;
 
+use crate::core::Seqnum;
 use crate::core::UnixMillis;
-use crate::core::events::SyncEphemeralRoomEvent;
+use crate::core::events::{AnySyncEphemeralRoomEvent, SyncEphemeralRoomEvent};
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
+use crate::core::serde::RawJson;
 use crate::schema::*;
 use crate::{AppResult, db};
 
@@ -66,12 +68,12 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
 }
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-pub fn read_receipts(room_id: &RoomId, event_sn: i64) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
+pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
     let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
         BTreeMap::new();
     let receipts = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
-        .filter(event_receipts::event_sn.ge(event_sn))
+        .filter(event_receipts::event_sn.ge(since_sn))
         .load::<DbReceipt>(&mut *db::connect()?)?;
     for receipt in receipts {
         let DbReceipt {
@@ -137,3 +139,28 @@ pub fn get_private_read(room_id: &RoomId, user_id: &UserId) -> AppResult<u64> {
 //         .transpose()?
 //         .unwrap_or(0))
 // }
+
+pub fn pack_receipts<I>(receipts: I) -> RawJson<SyncEphemeralRoomEvent<ReceiptEventContent>>
+where
+    I: Iterator<Item = RawJson<AnySyncEphemeralRoomEvent>>,
+{
+    let mut json = BTreeMap::new();
+    for value in receipts {
+        let receipt = serde_json::from_str::<SyncEphemeralRoomEvent<ReceiptEventContent>>(value.inner().get());
+        match receipt {
+            Ok(value) => {
+                for (event, receipt) in value.content {
+                    json.insert(event, receipt);
+                }
+            }
+            _ => {
+                debug!("failed to parse receipt: {:?}", receipt);
+            }
+        }
+    }
+    let content = ReceiptEventContent::from_iter(json);
+
+    RawJson::from_json(
+        serde_json::value::to_raw_value(&SyncEphemeralRoomEvent { content }).expect("received valid json"),
+    )
+}

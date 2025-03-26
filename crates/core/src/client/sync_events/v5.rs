@@ -129,12 +129,11 @@ impl SyncEventsResBody {
 #[cfg_attr(not(feature = "unstable-exhaustive-types"), non_exhaustive)]
 pub struct SyncList {
     /// The total number of rooms found for this list.
-    pub count: i64,
+    pub count: usize,
 }
 
 /// A slising sync response updated room (see [`super::Response::rooms`]).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[cfg_attr(not(feature = "unstable-exhaustive-types"), non_exhaustive)]
 pub struct SyncRoom {
     /// The name as calculated by the server.
     #[serde(skip_serializing_if = "Option::is_none")]

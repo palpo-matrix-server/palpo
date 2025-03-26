@@ -1,19 +1,23 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
 use std::time::Duration;
 
+use palpo_core::MatrixError;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
-};use crate::core::events::RoomAccountDataEventType;
+};
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
+use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
+use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok};
+
+pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
 
 /// POST `/_matrix/client/unstable/org.matrix.msc3575/sync`
 ///
@@ -30,28 +34,42 @@ pub(super) async fn sync_events_v4(
     let watcher = crate::watch(&authed.user_id(), authed.device_id());
 
     let next_batch = crate::curr_sn()? + 1;
+    let body = body.into_inner();
 
-    let global_since_sn: i64 = args
+    let conn_id = body
+        .conn_id
+        .clone()
+        .unwrap_or_else(|| SINGLE_CONNECTION_SYNC.to_owned());
+
+    let since_sn: i64 = args
         .pos
         .as_ref()
         .and_then(|string| string.parse().ok())
         .unwrap_or_default();
 
-    if global_since_sn == 0 {
-        if let Some(conn_id) = &body.conn_id {
-            crate::user::forget_sync_request_connection(
-                authed.user_id().clone(),
-                authed.device_id().clone(),
-                conn_id.clone(),
-            )
-        }
+    if since_sn != 0 && !crate::sync_events::remembered(authed.user_id(), authed.device_id(), &conn_id) {
+        debug!("Restarting sync stream because it was gone from the database");
+        return Err(MatrixError::unknown_pos("Connection data lost since last time".into()));
+    }
+
+    if since_sn == 0 {
+        crate::user::forget_sync_request_connection(authed.user_id(), authed.device_id(), &conn_id)
     }
 
     // Get sticky parameters from cache
-    let known_rooms =
-        crate::user::update_sync_request_with_cache(authed.user_id().clone(), authed.device_id().clone(), &mut body);
+    let known_rooms = crate::user::update_sync_request_with_cache(authed.user_id(), authed.device_id(), &mut body);
 
     let all_joined_rooms = crate::user::joined_rooms(&authed.user_id(), 0)?;
+    let all_invited_rooms = crate::user::invited_rooms(&authed.user_id(), 0)?;
+    let all_knocked_rooms = crate::user::knocked_rooms(&authed.user_id(), 0)?;
+
+    let mut all_rooms: Vec<&RoomId> = all_joined_rooms
+		.iter()
+		.map(AsRef::as_ref)
+		.chain(all_invited_rooms.iter().map(AsRef::as_ref))
+		.chain(all_knocked_rooms.iter().map(AsRef::as_ref))
+		.collect();
+    all_rooms.dedup();
 
     if body.extensions.to_device.enabled.unwrap_or(false) {
         crate::user::remove_to_device_events(authed.user_id(), authed.device_id(), global_since_sn - 1)?;
@@ -61,6 +79,12 @@ pub(super) async fn sync_events_v4(
     let mut device_list_changes = HashSet::new();
     let mut device_list_left = HashSet::new();
 
+	let mut receipts = sync_events::v4::Receipts { rooms: BTreeMap::new() };
+    let mut account_data = sync_events::v4::AccountData {
+		global: Vec::new(),
+		rooms: BTreeMap::new(),
+	};
+    
     if body.extensions.e2ee.enabled.unwrap_or(false) {
         // Look for device list updates of this account
         device_list_changes.extend(crate::user::get_keys_changed_users(
@@ -306,8 +330,8 @@ pub(super) async fn sync_events_v4(
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in &todo_rooms {
         let mut invite_state = None;
 
-        let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
-            invite_state = crate::room::state::invite_state(sender_id, room_id).ok();
+        let (timeline_pdus, limited) = if all_invited_rooms.contains(room_id) {
+            invite_state = crate::room::state::invite_state(authed.user_id(), room_id).ok();
             (Vec::new(), true)
         } else {
             crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit, None)?
@@ -435,17 +459,9 @@ pub(super) async fn sync_events_v4(
             },
             account_data: AccountData {
                 global: if body.extensions.account_data.enabled.unwrap_or(false) {
-                    crate::user::get_data_changes(None, &authed.user_id(), global_since_sn)?
+                    crate::user::get_data_changes(None, &authed.user_id(), global_since_sn, None)?
                         .into_iter()
-                        .filter_map(|(ty, v)| {
-                            if ty == RoomAccountDataEventType::Global {
-                                serde_json::from_str(v.inner().get())
-                                    .map_err(|_| AppError::public("Invalid account event in database."))
-                                    .ok()
-                            } else {
-                                None
-                            }
-                        })
+                        .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                         .collect()
                 } else {
                     Vec::new()

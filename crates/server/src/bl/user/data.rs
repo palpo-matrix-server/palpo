@@ -3,12 +3,13 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
+use crate::core::events::AnyRawAccountDataEvent;
 use crate::core::identifiers::*;
 use crate::core::{
     UnixMillis,
     events::{AnyEphemeralRoomEvent, AnyEphemeralRoomEventContent, RoomAccountDataEventType},
     serde::RawJson,
-}; use crate::core::events::AnyRawAccountDataEvent;
+};
 use crate::schema::*;
 use crate::{AppError, AppResult, JsonValue, db};
 
@@ -82,23 +83,29 @@ pub fn get_data_changes(
     room_id: Option<&RoomId>,
     user_id: &UserId,
     since_sn: i64,
+    final_sn: Option<i64>,
 ) -> AppResult<Vec<AnyRawAccountDataEvent>> {
-    let mut user_datas = HashMap::new();
+    let mut user_datas = Vec::new();
 
-    let db_datas = user_datas::table
+    let query = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
         .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
         .filter(user_datas::occur_sn.ge(since_sn))
-        .load::<DbUserData>(&mut *db::connect()?)?;
+        .into_boxed();
+    let db_datas = if let Some(final_sn) = final_sn {
+        query
+            .filter(user_datas::occur_sn.le(final_sn))
+            .load::<DbUserData>(&mut *db::connect()?)?
+    } else {
+        query.load::<DbUserData>(&mut *db::connect()?)?
+    };
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);
-        let event_content: RawJson<AnyGlobalAccountDataEvent> = RawJson::from_value(&db_data.json_data)
-            .map_err(|_| AppError::public("Database contains invalid account data."))?;
         if db_data.room_id.is_none() {
-            user_data.push(AnyRawAccountDataEvent::Global(event_content));
+            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&db_data.json_data)?));
         } else {
-            user_data.push(AnyRawAccountDataEvent::Room(event_content));
+            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&db_data.json_data)?));
         }
     }
 

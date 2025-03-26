@@ -19,6 +19,7 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum};
 use crate::event::ignored_filter;
+use crate::room::receipt::pack_receipts;
 use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{
     AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok,
@@ -72,7 +73,8 @@ pub(super) async fn sync_events_v5(
 
     let all_joined_rooms = crate::user::joined_rooms(&authed.user_id(), 0)?;
 
-    let all_invited_rooms: Vec<_> = crate::user::invited_rooms(authed.user_id())
+    let all_invited_rooms: Vec<_> = crate::user::invited_rooms(authed.user_id(), 0)?
+        .into_iter()
         .map(|r| r.0)
         .collect()
         .await;
@@ -142,7 +144,7 @@ pub(super) async fn sync_events_v5(
         // Hang a few seconds so requests are not spammed
         // Stop hanging if new info arrives
         let default = Duration::from_secs(30);
-        let duration = cmp::min(body.timeout.unwrap_or(default), default);
+        let duration = cmp::min(args.timeout.unwrap_or(default), default);
         _ = tokio::time::timeout(duration, watcher).await;
     }
 
@@ -184,7 +186,7 @@ async fn handle_lists<'a>(
 
         for mut range in ranges {
             range.0 = 0;
-            range.1 = range.1.clamp(range.0, active_rooms.len());
+            range.1 = range.1.clamp(range.0, active_rooms.len() as u64);
 
             let room_ids = active_rooms[range.0..range.1].to_vec();
 
@@ -258,7 +260,7 @@ fn fetch_subscriptions(
                 .iter()
                 .map(|(ty, sk)| (ty.clone(), sk.as_str().into())),
         );
-        todo_room.1 = todo_room.1.max(limit);
+        todo_room.1 = todo_room.1.max(limit as usize);
         // 0 means unknown because it got out of date
         todo_room.2 = todo_room.2.min(
             known_rooms
@@ -295,7 +297,7 @@ async fn process_rooms(
     todo_rooms: &TodoRooms,
     response: &mut SyncEventsResBody,
     body: &SyncEventsReqBody,
-) -> AppResult<BTreeMap<OwnedRoomId, sync_events::v5::Room>> {
+) -> AppResult<BTreeMap<OwnedRoomId, sync_events::v5::SyncRoom>> {
     let mut rooms = BTreeMap::new();
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in todo_rooms {
         let mut timestamp: Option<_> = None;
@@ -307,7 +309,7 @@ async fn process_rooms(
 
             (Vec::new(), true)
         } else {
-            crate::sync::load_timeline(&authed.user_id(), &room_id, *room_since_sn, *timeline_limit, None)?
+            crate::sync::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
         };
 
         if body.extensions.account_data.enabled == Some(true) {
@@ -322,23 +324,19 @@ async fn process_rooms(
         }
 
         let last_privateread_update =
-            crate::room::read_receipt::last_privateread_update(sender_id, room_id).await > *room_since_sn;
+            crate::room::receipt::last_privateread_update(sender_id, room_id).await > *room_since_sn;
 
         let private_read_event = if last_privateread_update {
-            crate::room::read_receipt::private_read_get(room_id, sender_id)
-                .await
-                .ok()
+            crate::room::receipt::get_private_read(room_id, sender_id).ok()
         } else {
             None
         };
 
         let mut receipts: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
-            crate::room::read_receipt::readreceipts_since(room_id, *room_since_sn)
-                .filter_map(|(read_user, _ts, v)| async move {
-                    crate::user::user_is_ignored(read_user, sender_id).await.or_some(v)
-                })
-                .collect()
-                .await;
+            crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+                .into_iter()
+                .filter_map(|(read_user, _ts, v)| crate::user::user_is_ignored(read_user, sender_id).ok())
+                .collect();
 
         if let Some(private_read_event) = private_read_event {
             receipts.push(private_read_event);
@@ -381,17 +379,18 @@ async fn process_rooms(
 
         for (_, pdu) in timeline_pdus {
             let ts = pdu.origin_server_ts;
-            if DEFAULT_BUMP_TYPES.binary_search(&pdu.kind).is_ok() && timestamp.is_none_or(|time| time <= ts) {
+            if DEFAULT_BUMP_TYPES.binary_search(&pdu.event_ty).is_ok() && timestamp.is_none_or(|time| time <= ts) {
                 timestamp = Some(ts);
             }
         }
 
         let required_state = required_state_request
             .iter()
-            .filter_map(|state| async move {
-                crate::room::state::get_room_state(room_id, &state.0, &state.1)?
-                    .map(|s| s.to_sync_state_event())
+            .filter_map(|state| {
+                crate::room::state::get_room_state(room_id, &state.0, &state.1)
                     .ok()
+                    .flatten()
+                    .map(|s| s.to_sync_state_event())
             })
             .collect()
             .await;
@@ -402,12 +401,13 @@ async fn process_rooms(
             .filter(|member| *member != sender_id)
             .filter_map(|user_id| {
                 crate::room::state::get_member(room_id, &user_id)
-                    .map_ok(|member| sync_events::v5::Hero {
+                    .ok()
+                    .flatten()
+                    .map(|member| sync_events::v5::Hero {
                         user_id: user_id.into(),
-                        name: member.displayname,
+                        name: member.display_name,
                         avatar: member.avatar_url,
                     })
-                    .ok()
             })
             .take(5)
             .collect()
@@ -491,10 +491,10 @@ fn collect_account_data(
     };
 
     if !body.extensions.account_data.enabled.unwrap_or(false) {
-        return sync_events::v5::AccountData::default();
+        return Ok(sync_events::v5::AccountData::default());
     }
 
-    account_data.global = crate::user::get_data_changes(None, sender_id, global_since_sn)?
+    account_data.global = crate::user::get_data_changes(None, sender_id, global_since_sn, None)?
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
         .collect();
@@ -503,7 +503,7 @@ fn collect_account_data(
         for room in rooms {
             account_data.rooms.insert(
                 room.clone(),
-                crate::user::get_data_changes(Some(room), sender_id, global_since_sn)?
+                crate::user::get_data_changes(Some(room), sender_id, global_since_sn, None)?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                     .collect(),

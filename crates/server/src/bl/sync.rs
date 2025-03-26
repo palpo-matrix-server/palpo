@@ -11,17 +11,22 @@ use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
 use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
+use crate::core::events::{AnySyncEphemeralRoomEvent, AnyRawAccountDataEvent,StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
 use crate::schema::*;
-use crate::{AppError, AppResult, db};
+use crate::{AppError,extract_variant, AppResult, db};
 
-pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] =
-	&[TimelineEventType::CallInvite, TimelineEventType::PollStart, TimelineEventType::Beacon,
-    TimelineEventType::RoomEncrypted, TimelineEventType::RoomMessage, TimelineEventType::Sticker];
+pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
+    TimelineEventType::CallInvite,
+    TimelineEventType::PollStart,
+    TimelineEventType::Beacon,
+    TimelineEventType::RoomEncrypted,
+    TimelineEventType::RoomMessage,
+    TimelineEventType::Sticker,
+];
 
 #[tracing::instrument(skip_all)]
 pub fn sync_events(
@@ -329,13 +334,9 @@ pub fn sync_events(
                     .collect(),
             },
             account_data: sync_events::v3::GlobalAccountData {
-                events: crate::user::get_data_changes(None, &sender_id, since_sn)?
+                events: crate::user::get_data_changes(None, &sender_id, since_sn, None)?
                     .into_iter()
-                    .filter_map(|(_, v)| {
-                        serde_json::from_str(v.inner().get())
-                            .map_err(|_| AppError::public("Invalid account event in database."))
-                            .ok()
-                    })
+                    .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                     .collect(),
             },
             device_lists: DeviceLists {
@@ -344,7 +345,12 @@ pub fn sync_events(
             },
             device_one_time_keys_count: { crate::user::count_one_time_keys(&sender_id, &sender_device_id)? },
             to_device: sync_events::v3::ToDevice {
-                events: crate::user::get_to_device_events(&sender_id, &sender_device_id, Some(since_sn), Some(next_batch))?,
+                events: crate::user::get_to_device_events(
+                    &sender_id,
+                    &sender_device_id,
+                    Some(since_sn),
+                    Some(next_batch),
+                )?,
             },
             // Fallback keys are not yet supported
             device_unused_fallback_key_types: None,
@@ -770,7 +776,7 @@ async fn load_joined_room(
 
     let account_events = crate::user::get_data_changes(Some(&room_id), sender_id, since_sn)?
         .into_iter()
-        .filter_map(|(_, v)| match serde_json::from_str(v.inner().get()) {
+        .filter_map(|e| match serde_json::from_str(e.inner().get()) {
             Ok(event) => Some(event),
             Err(e) => {
                 tracing::error!(error = ?e, "Invalid account event in database.");
@@ -823,7 +829,11 @@ pub(crate) fn load_timeline(
 }
 
 #[tracing::instrument]
-pub(crate) fn share_encrypted_room(sender_id: &UserId, user_id: &UserId, ignore_room: Option<&RoomId>) -> AppResult<bool> {
+pub(crate) fn share_encrypted_room(
+    sender_id: &UserId,
+    user_id: &UserId,
+    ignore_room: Option<&RoomId>,
+) -> AppResult<bool> {
     let shared_rooms = crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)

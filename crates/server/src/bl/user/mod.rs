@@ -35,11 +35,13 @@ use palpo_core::JsonValue;
 
 use crate::core::client::sync_events;
 use crate::core::events::AnyStrippedStateEvent;
+use crate::core::events::GlobalAccountDataEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{OwnedMxcUri, OwnedRoomId, UnixMillis};
 use crate::schema::*;
 use crate::{AppError, AppResult, db, diesel_exists};
+use palpo_core::events::ignored_user_list::IgnoredUserListEvent;
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]
@@ -137,6 +139,32 @@ pub fn invited_rooms(
     Ok(list)
 }
 
+
+pub fn knocked_rooms(
+    user_id: &UserId,
+    since_sn: i64,
+) -> AppResult<Vec<(OwnedRoomId, Vec<RawJson<AnyStrippedStateEvent>>)>> {
+    let list = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("knock"))
+        .filter(room_users::event_sn.ge(since_sn))
+        .select((room_users::room_id, room_users::state_data))
+        .load::<(OwnedRoomId, Option<JsonValue>)>(&mut *db::connect()?)?
+        .into_iter()
+        .filter_map(|(room_id, state_data)| {
+            if let Some(state_data) = state_data
+                .map(|state_data| serde_json::from_value(state_data).ok())
+                .flatten()
+            {
+                Some((room_id, state_data))
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(list)
+}
+
 pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
     LazyLock::new(|| Default::default());
 
@@ -183,13 +211,13 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
     Ok(user)
 }
 
-pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDeviceId, conn_id: String) {
+pub fn forget_sync_request_connection(user_id: &UserId, device_id: &DeviceId, conn_id: &str) {
     CONNECTIONS.lock().unwrap().remove(&(user_id, device_id, conn_id));
 }
 
 pub fn update_sync_request_with_cache(
-    user_id: OwnedUserId,
-    device_id: OwnedDeviceId,
+    user_id: &UserId,
+    device_id: &DeviceId,
     req_body: &mut sync_events::v4::SyncEventsReqBody,
 ) -> BTreeMap<String, BTreeMap<OwnedRoomId, i64>> {
     let Some(conn_id) = req_body.conn_id.clone() else {
@@ -448,4 +476,18 @@ pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> AppResult<()> {
         .execute(&mut db::connect()?)?;
 
     Ok(())
+}
+
+/// Returns true/false based on whether the recipient/receiving user has
+/// blocked the sender
+pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
+    crate::user::data::get_data(recipient_id, None, GlobalAccountDataEventType::IgnoredUserList).is_ok_and(
+        |ignored: IgnoredUserListEvent| {
+            ignored
+                .content
+                .ignored_users
+                .keys()
+                .any(|blocked_user| blocked_user == sender_user)
+        },
+    )
 }

@@ -168,17 +168,17 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
 
 pub type PdusIterItem = (Seqnum, PduEvent);
 #[inline]
-pub async fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
+pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
     let (_, ref pdu) = item;
 
-    is_ignored_pdu(pdu, user_id).await.eq(&false).then_some(item)
+    is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
 }
 
 #[inline]
-pub async fn is_ignored_pdu(pdu: &PduEvent, user_id: &UserId) -> bool {
+pub fn is_ignored_pdu(pdu: &PduEvent, user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
-    if pdu.kind.to_cow_str() == "org.matrix.dummy_event" {
+    if pdu.event_ty.to_string() == "org.matrix.dummy_event" {
         return true;
     }
 
