@@ -12,8 +12,8 @@ use super::{
     RedactedUnsigned, RedactionDeHelper, RoomAccountDataEventContent, StateEventContent, StateEventType,
     StaticStateEventContent, ToDeviceEventContent,
 };
-use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent};
 use crate::events::receipt::ReceiptEventContent;
+use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent};
 use crate::serde::{RawJson, RawJsonValue, from_raw_json_value};
 use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId};
 

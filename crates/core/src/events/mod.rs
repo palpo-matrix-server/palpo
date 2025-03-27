@@ -125,6 +125,8 @@ pub mod key;
 pub mod location;
 pub mod message;
 // pub mod pdu;
+pub mod beacon;
+pub mod beacon_info;
 pub mod policy;
 pub mod poll;
 pub mod presence;
@@ -143,8 +145,6 @@ pub mod tag;
 pub mod typing;
 pub mod video;
 pub mod voice;
-pub mod beacon;
-pub mod beacon_info;
 
 use std::collections::BTreeSet;
 

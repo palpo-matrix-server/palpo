@@ -1,5 +1,3 @@
-
-
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
@@ -36,14 +34,14 @@ pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDevi
 /// load params from cache if body doesn't contain it, as long as it's allowed
 /// in some cases we may need to allow an empty list as an actual value
 fn list_or_sticky<T: Clone>(target: &mut Vec<T>, cached: &Vec<T>) {
-	if target.is_empty() {
-		target.clone_from(cached);
-	}
+    if target.is_empty() {
+        target.clone_from(cached);
+    }
 }
 fn some_or_sticky<T>(target: &mut Option<T>, cached: Option<T>) {
-	if target.is_none() {
-		*target = cached;
-	}
+    if target.is_none() {
+        *target = cached;
+    }
 }
 pub fn update_sync_request_with_cache(
     user_id: OwnedUserId,
@@ -56,18 +54,14 @@ pub fn update_sync_request_with_cache(
     let connections = CONNECTIONS;
 
     let mut cache = connections.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(SlidingSyncCache {
-                    lists: BTreeMap::new(),
-                    subscriptions: BTreeMap::new(),
-                    known_rooms: BTreeMap::new(),
-                    extensions: sync_events::v5::ExtensionsConfig::default(),
-                }))
-            }),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
+        Arc::new(Mutex::new(SlidingSyncCache {
+            lists: BTreeMap::new(),
+            subscriptions: BTreeMap::new(),
+            known_rooms: BTreeMap::new(),
+            extensions: sync_events::v5::ExtensionsConfig::default(),
+        }))
+    }));
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -80,18 +74,15 @@ pub fn update_sync_request_with_cache(
             some_or_sticky(&mut list.include_heroes, cached_list.include_heroes);
 
             match (&mut list.filters, cached_list.filters.clone()) {
-                | (Some(filters), Some(cached_filters)) => {
+                (Some(filters), Some(cached_filters)) => {
                     some_or_sticky(&mut filters.is_invite, cached_filters.is_invite);
                     // TODO (morguldir): Find out how a client can unset this, probably need
                     // to change into an option inside ruma
-                    list_or_sticky(
-                        &mut filters.not_room_types,
-                        &cached_filters.not_room_types,
-                    );
-                },
-                | (_, Some(cached_filters)) => list.filters = Some(cached_filters),
-                | (Some(list_filters), _) => list.filters = Some(list_filters.clone()),
-                | (..) => {},
+                    list_or_sticky(&mut filters.not_room_types, &cached_filters.not_room_types);
+                }
+                (_, Some(cached_filters)) => list.filters = Some(cached_filters),
+                (Some(list_filters), _) => list.filters = Some(list_filters.clone()),
+                (..) => {}
             }
         }
         cached.lists.insert(list_id.clone(), list.clone());
@@ -128,7 +119,10 @@ pub fn update_sync_request_with_cache(
         .rooms
         .clone());
 
-    some_or_sticky(&mut req_body.extensions.typing.enabled, cached.extensions.typing.enabled);
+    some_or_sticky(
+        &mut req_body.extensions.typing.enabled,
+        cached.extensions.typing.enabled,
+    );
     some_or_sticky(
         &mut req_body.extensions.typing.rooms,
         cached.extensions.typing.rooms.clone(),

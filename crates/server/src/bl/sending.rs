@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -7,22 +8,37 @@ use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::value::to_raw_value;
+use std::sync::atomic::AtomicUsize;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
+use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
 use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
 use crate::core::identifiers::*;
+use crate::core::presence::{PresenceContent, PresenceUpdate};
 pub use crate::core::sending::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::{UnixMillis, device_id, push};
+use crate::core::{UnixMillis, Seqnum, device_id, push};
 use crate::schema::*;
 use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
+use std::sync::atomic::AtomicU64;
+
+const SELECT_PRESENCE_LIMIT: usize = 256;
+const SELECT_RECEIPT_LIMIT: usize = 256;
+const SELECT_EDU_LIMIT: usize = EDU_LIMIT - 2;
+const DEQUEUE_LIMIT: usize = 48;
+
+const EDU_BUF_CAP: usize = 128;
+const EDU_VEC_CAP: usize = 1;
+
+pub type EduBuf = Vec<[u8; EDU_BUF_CAP]>;
+pub type EduVec = Vec<[EduBuf; EDU_VEC_CAP]>;
 
 pub const PDU_LIMIT: usize = 50;
 pub const EDU_LIMIT: usize = 100;
@@ -244,116 +260,225 @@ fn select_events(
     Ok(Some(events))
 }
 
-#[tracing::instrument(skip(server_name))]
-pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
-    let mut events = Vec::new();
-    let mut max_edu_sn = curr_sn()?;
-    let mut device_list_changes = HashSet::new();
-    let conf = crate::config();
+/// Look for device changes
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_count))]
+fn select_edus_device_changes(
+    server_name: &ServerName,
+    since_sn: Seqnum,
+    max_edu_count: &AtomicU64,
+    events_len: &AtomicUsize,
+) -> AppResult<EduVec> {
+    let mut events = EduVec::new();
+    let server_rooms = crate::room::server_rooms(server_name)?;
 
-    // u64: count of last
-    let since_sn = curr_sn()?;
+    let mut device_list_changes = HashSet::<OwnedUserId>::new();
+    while let Some(room_id) = server_rooms.next() {
+        let keys_changed = crate::user::room_keys_changed(room_id, since_sn, None)?
+            .into_iter()
+            .filter(|user_id| user_id.is_local());
 
-    'outer: for room_id in crate::room::server_rooms(server_name)? {
-        // Look for device list updates in this room
-        device_list_changes.extend(
-            crate::room::keys_changed_users(&room_id, since_sn, None)?
-                .into_iter()
-                .filter(|user_id| user_id.server_name() == &conf.server_name),
-        );
-
-        // Look for read receipts in this room
-        for (user_id,event_sn, event_receipts) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
-            if event_sn > max_edu_sn {
-                max_edu_sn = event_sn;
+        while let Some((user_id, event_sn)) = keys_changed.next() {
+            max_edu_count.fetch_max(event_sn, Ordering::Relaxed);
+            if !device_list_changes.insert(user_id.into()) {
+                continue;
             }
 
-            for (receipt_type, type_receipts) in event_receipts {
-                if receipt_type != ReceiptType::Read {
-                    continue;
-                }
-                for (user_id, receipt) in type_receipts {
-                    if user_id.server_name() != &conf.server_name {
-                        continue;
-                    }
-                    let mut receipts: BTreeMap<OwnedRoomId, ReceiptMap> = BTreeMap::new();
-                    let mut read = BTreeMap::new();
-                    read.insert(
-                        user_id,
-                        ReceiptData {
-                            data: receipt.clone(),
-                            event_ids: vec![event_id.to_owned()],
-                        },
-                    );
+            // Empty prev id forces synapse to resync; because synapse resyncs,
+            // we can just insert placeholder data
+            let edu = Edu::DeviceListUpdate(DeviceListUpdateContent {
+                user_id: user_id.into(),
+                device_id: device_id!("placeholder").to_owned(),
+                device_display_name: Some("Placeholder".to_owned()),
+                stream_id: 1,
+                prev_id: Vec::new(),
+                deleted: None,
+                keys: None,
+            });
 
-                    let receipt_map = ReceiptMap { read };
-                    receipts.insert(room_id.to_owned(), receipt_map);
-                    let federation_event = Edu::Receipt(ReceiptContent(receipts));
-                    events.push(serde_json::to_vec(&federation_event).expect("json can be serialized"));
-                }
-            }
+            let mut buf = Vec::new();
+            serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
 
-            // let event: AnySyncEphemeralRoomEvent = serde_json::from_str(read_receipt.inner().get())
-            //     .map_err(|_| AppError::internal("Invalid edu event in read_receipts."))?;
-            // let federation_event = match event {
-            //     AnySyncEphemeralRoomEvent::Receipt(r) => {
-            //         let mut read = BTreeMap::new();
-
-            //         let (event_id, mut receipt) = r
-            //             .content
-            //             .0
-            //             .into_iter()
-            //             .next()
-            //             .expect("we only use one event per read receipt");
-            //         let receipt = receipt
-            //             .remove(&ReceiptType::Read)
-            //             .expect("our read receipts always set this")
-            //             .remove(&user_id)
-            //             .expect("our read receipts always have the user here");
-
-            //         read.insert(
-            //             user_id,
-            //             ReceiptData {
-            //                 data: receipt.clone(),
-            //                 event_ids: vec![event_id.to_owned()],
-            //             },
-            //         );
-
-            //         let receipt_map = ReceiptMap { read };
-
-            //         receipts.insert(room_id.to_owned(), receipt_map);
-
-            //         Edu::Receipt(ReceiptContent(receipts))
-            //     }
-            //     _ => {
-            //         AppError::internal("Invalid event type in read_receipts");
-            //         continue;
-            //     }
-            // };
-
-            // events.push(serde_json::to_vec(&federation_event).expect("json can be serialized"));
-
-            if events.len() >= 20 {
-                break 'outer;
+            events.push(buf);
+            if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
+                return Ok(events);
             }
         }
     }
 
-    for user_id in device_list_changes {
-        // Empty prev id forces synapse to resync: https://github.com/matrix-org/synapse/blob/98aec1cc9da2bd6b8e34ffb282c85abf9b8b42ca/synapse/handlers/device.py#L767
-        // Because synapse resyncs, we can just insert dummy data
-        let edu = Edu::DeviceListUpdate(DeviceListUpdateContent {
-            user_id,
-            device_id: device_id!("dummy").to_owned(),
-            device_display_name: Some("Dummy".to_owned()),
-            stream_id: 1,
-            prev_id: Vec::new(),
-            deleted: None,
-            keys: None,
-        });
+    Ok(events)
+}
 
-        events.push(serde_json::to_vec(&edu).expect("json can be serialized"));
+/// Look for read receipts in this room
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_count))]
+fn select_edus_receipts(
+    server_name: &ServerName,
+    since: (u64, u64),
+    max_edu_count: &AtomicU64,
+) -> AppResult<Option<EduBuf>> {
+    let mut num = 0;
+    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_rooms(server_name)?
+        .into_iter()
+        .filter_map(|room_id| {
+            let receipt_map = select_edus_receipts_room(&room_id, since, max_edu_count, &mut num);
+
+            receipt_map.read.is_empty().eq(&false).then_some((room_id, receipt_map))
+        })
+        .collect();
+
+    if receipts.is_empty() {
+        return Ok(None);
     }
+
+    let receipt_content = Edu::Receipt(ReceiptContent { receipts });
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &receipt_content).expect("Failed to serialize Receipt EDU to JSON vec");
+
+    Ok(Some(buf))
+}
+/// Look for read receipts in this room
+#[tracing::instrument(level = "trace", skip(since, max_edu_count))]
+fn select_edus_receipts_room(
+    room_id: &RoomId,
+    since: (u64, u64),
+    max_edu_count: &AtomicU64,
+    num: &mut usize,
+) -> AppResult<ReceiptMap> {
+    let receipts = crate::room::receipt::read_receipts(room_id, since.0)?;
+
+    let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
+    while let Some((user_id, count, read_receipt)) = receipts.next() {
+        if count > since.1 {
+            break;
+        }
+
+        max_edu_count.fetch_max(count, Ordering::Relaxed);
+        if !user_id.is_local() {
+            continue;
+        }
+
+        let Ok(event) = serde_json::from_str(read_receipt.json().get()) else {
+            error!(?user_id, ?count, ?read_receipt, "Invalid edu event in read_receipts.");
+            continue;
+        };
+
+        let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
+            error!(?user_id, ?count, ?event, "Invalid event type in read_receipts");
+            continue;
+        };
+
+        let (event_id, mut receipt) = r
+            .content
+            .0
+            .into_iter()
+            .next()
+            .expect("we only use one event per read receipt");
+
+        let receipt = receipt
+            .remove(&ReceiptType::Read)
+            .expect("our read receipts always set this")
+            .remove(user_id)
+            .expect("our read receipts always have the user here");
+
+        let receipt_data = ReceiptData {
+            data: receipt,
+            event_ids: vec![event_id.clone()],
+        };
+
+        if read.insert(user_id.to_owned(), receipt_data).is_none() {
+            *num = num.saturating_add(1);
+            if *num >= SELECT_RECEIPT_LIMIT {
+                break;
+            }
+        }
+    }
+
+    Ok(ReceiptMap { read })
+}
+
+/// Look for presence
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_count))]
+fn select_edus_presence(
+    server_name: &ServerName,
+    since: (u64, u64),
+    max_edu_count: &AtomicU64,
+) -> AppResult<Option<EduBuf>> {
+    let presence_since = crate::user::presence_since(since.0);
+
+    let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();
+    while let Some((user_id, count, presence_bytes)) = presence_since.next() {
+        if count > since.1 {
+            break;
+        }
+
+        max_edu_count.fetch_max(count, Ordering::Relaxed);
+        if !user_id.is_local() {
+            continue;
+        }
+
+        if !crate::room::state::server_can_see_event(server_name, user_id)? {
+            continue;
+        }
+
+        let Ok(presence_event) = crate::user::presence::from_json_bytes_to_event(presence_bytes, user_id).log_err()
+        else {
+            continue;
+        };
+
+        let update = PresenceUpdate {
+            user_id: user_id.into(),
+            presence: presence_event.content.presence,
+            currently_active: presence_event.content.currently_active.unwrap_or(false),
+            status_msg: presence_event.content.status_msg,
+            last_active_ago: presence_event.content.last_active_ago.unwrap_or_else(|| uint!(0)),
+        };
+
+        presence_updates.insert(user_id.into(), update);
+        if presence_updates.len() >= SELECT_PRESENCE_LIMIT {
+            break;
+        }
+    }
+
+    if presence_updates.is_empty() {
+        return Ok(None);
+    }
+
+    let presence_content = Edu::Presence(PresenceContent {
+        push: presence_updates.into_values().collect(),
+    });
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &presence_content).expect("failed to serialize Presence EDU to JSON");
+
+    Ok(Some(buf))
+}
+
+#[tracing::instrument(skip(server_name))]
+pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
+    let mut max_edu_sn = curr_sn()?;
+    let mut device_list_changes = HashSet::new();
+    let conf = crate::config();
+
+    let since_sn = crate::curr_sn()?;
+
+    let events_len = AtomicUsize::default();
+    let device_changes = select_edus_device_changes(server_name, since_sn, &max_edu_sn, &events_len)?;
+
+    let receipts = if conf.allow_outgoing_read_receipts {
+        select_edus_receipts(server_name, since_sn, &max_edu_sn)?
+    } else {
+        None
+    };
+
+    let presence = if conf.allow_outgoing_presence {
+        select_edus_presence(server_name, batch, &max_edu_sn)?
+    } else {
+        None
+    };
+
+    let mut events = device_changes;
+    events.extend(presence.into_iter().flatten());
+    events.extend(receipts.into_iter().flatten());
 
     Ok((events, max_edu_sn))
 }

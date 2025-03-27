@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 
-use crate::core::{RawJson, UnixMillis};
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
+use crate::core::{RawJson, UnixMillis};
 use crate::schema::*;
 use crate::{AppResult, JsonValue, db, diesel_exists};
 
@@ -236,7 +236,7 @@ pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 }
 
 #[tracing::instrument(level = "trace")]
-pub  fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))

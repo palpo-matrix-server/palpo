@@ -232,7 +232,6 @@ impl From<Option<RoomType>> for RoomTypeFilter {
     }
 }
 
-
 /// The query criteria.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct QueryCriteria {

@@ -9,9 +9,8 @@ use crate::core::events::{
     TimelineEventType, room::member::RoomMemberEventContent, space::child::HierarchySpaceChildEvent,
 };
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
-use crate::core::{UnixMillis, Seqnum, UserId};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJson, RawJsonValue};
+use crate::core::{Seqnum, UnixMillis, UserId};
 use crate::{AppError, AppResult, JsonValue};
 
 /// Content hashes of a PDU.

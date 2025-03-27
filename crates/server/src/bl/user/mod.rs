@@ -313,9 +313,10 @@ pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> AppResult<()> {
 /// Returns true/false based on whether the recipient/receiving user has
 /// blocked the sender
 pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
-    if let Ok(Some(ignored)) =
-        crate::user::data::get_global_data::<IgnoredUserListEvent>(recipient_id, &GlobalAccountDataEventType::IgnoredUserList.to_string())
-    {
+    if let Ok(Some(ignored)) = crate::user::data::get_global_data::<IgnoredUserListEvent>(
+        recipient_id,
+        &GlobalAccountDataEventType::IgnoredUserList.to_string(),
+    ) {
         ignored
             .content
             .ignored_users

@@ -23,12 +23,12 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::core::room::RoomType;
 use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, Seqnum, UserId};
-use crate::core::room::RoomType;
-use crate::event::{update_frame_id, update_frame_id_by_sn};
 use crate::event::{PduBuilder, PduEvent};
+use crate::event::{update_frame_id, update_frame_id_by_sn};
 use crate::schema::*;
 use crate::{AppError, AppResult, DieselResult, MatrixError, db, utils};
 
@@ -922,7 +922,7 @@ pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     Ok(servers)
 }
 
-pub fn get_room_type( room_id: &RoomId) -> AppResult<RoomType> {
+pub fn get_room_type(room_id: &RoomId) -> AppResult<RoomType> {
     get_room_state(room_id, &StateEventType::RoomCreate, "")?
         .map(|s| {
             serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
@@ -932,5 +932,5 @@ pub fn get_room_type( room_id: &RoomId) -> AppResult<RoomType> {
         })
         .transpose()?
         .and_then(|e| e.room_type)
-        .ok_or_else(||AppError::public("No room create event found."))
+        .ok_or_else(|| AppError::public("No room create event found."))
 }

@@ -3,24 +3,25 @@
 use std::ops::Deref;
 
 use palpo_macros::EventContent;
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 mod content_serde;
 mod unstable_poll_answers_serde;
 mod unstable_poll_kind_serde;
 
-use crate::{OwnedEventId,RawJsonValue, UnixMillis};
 use self::unstable_poll_answers_serde::UnstablePollAnswersDeHelper;
 use super::{
     PollResponseData, compile_unstable_poll_results, generate_poll_end_fallback_text,
     start::{PollAnswers, PollAnswersError, PollContentBlock, PollKind},
     unstable_end::UnstablePollEndEventContent,
 };
-use crate::events::{EventContentFromType,
-    EventContent, MessageLikeEventContent, MessageLikeEventType, RedactContent, RedactedMessageLikeEventContent,
-    StaticEventContent, relation::Replacement, room::message::RelationWithoutReplacement,
+use crate::events::{
+    EventContent, EventContentFromType, MessageLikeEventContent, MessageLikeEventType, RedactContent,
+    RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
+    room::message::RelationWithoutReplacement,
 };
+use crate::{OwnedEventId, RawJsonValue, UnixMillis};
 
 /// The payload for an unstable poll start event.
 ///

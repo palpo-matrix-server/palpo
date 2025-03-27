@@ -328,8 +328,7 @@ async fn process_rooms(
         }
 
         let last_private_read_update =
-            crate::room::receipt::last_private_read_update_sn(sender_id.to_owned(), room_id.to_owned()).await
-                > *room_since_sn;
+            crate::room::receipt::last_private_read_update_sn(sender_id, room_id)? > *room_since_sn;
 
         let private_read_event = if last_private_read_update {
             crate::room::receipt::last_private_read(sender_id, room_id).ok()

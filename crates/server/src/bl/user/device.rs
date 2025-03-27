@@ -4,9 +4,9 @@ use palpo_core::MatrixError;
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum, UnixMillis, client::device::Device};
+use crate::schema::*;
 use crate::user::NewDbAccessToken;
 use crate::{AppError, AppResult, JsonValue, db, diesel_exists};
-use crate::{ schema::*};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]

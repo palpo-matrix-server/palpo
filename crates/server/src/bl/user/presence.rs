@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
+
 use crate::core::{
     OwnedUserId, RoomId, UserId,
     events::presence::{PresenceEvent, PresenceEventContent},
     presence::PresenceState,
 };
 
-use diesel::prelude::*;
-
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{AppResult, db};
+use crate::{AppError, AppResult, db};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -155,4 +156,61 @@ pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<Own
                 .map(|event| (presence.user_id, event))
         })
         .collect()
+}
+
+#[inline]
+pub fn from_json_bytes_to_event(bytes: &[u8], user_id: &UserId) -> AppResult<PresenceEvent> {
+    let presence = Presence::from_json_bytes(bytes)?;
+    let event = presence.to_presence_event(user_id);
+
+    Ok(event)
+}
+
+/// Represents data required to be kept in order to implement the presence
+/// specification.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(super) struct Presence {
+    state: PresenceState,
+    currently_active: bool,
+    last_active_ts: u64,
+    status_msg: Option<String>,
+}
+
+impl Presence {
+    #[must_use]
+    pub(super) fn new(
+        state: PresenceState,
+        currently_active: bool,
+        last_active_ts: u64,
+        status_msg: Option<String>,
+    ) -> Self {
+        Self {
+            state,
+            currently_active,
+            last_active_ts,
+            status_msg,
+        }
+    }
+
+    pub(super) fn from_json_bytes(bytes: &[u8]) -> AppResult<Self> {
+        serde_json::from_slice(bytes).map_err(|_| AppError::public("Invalid presence data in database"))
+    }
+
+    /// Creates a PresenceEvent from available data.
+    pub(super) fn to_presence_event(&self, user_id: &UserId) -> PresenceEvent {
+        let now = UnixMillis::now();
+        let last_active_ago = Some(now.0.saturating_sub(self.last_active_ts));
+
+        PresenceEvent {
+            sender: user_id.to_owned(),
+            content: PresenceEventContent {
+                presence: self.state.clone(),
+                status_msg: self.status_msg.clone(),
+                currently_active: Some(self.currently_active),
+                last_active_ago,
+                display_name: crate::user::display_name(user_id).ok().flatten(),
+                avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
+            },
+        }
+    }
 }

@@ -54,7 +54,8 @@ pub(super) async fn sync_events_v4(
         .and_then(|string| string.parse().ok())
         .unwrap_or_default();
 
-    if global_since_sn != 0 && !crate::sync_v4::remembered(sender_id.to_owned(), authed.device_id().to_owned(), conn_id) {
+    if global_since_sn != 0 && !crate::sync_v4::remembered(sender_id.to_owned(), authed.device_id().to_owned(), conn_id)
+    {
         debug!("Restarting sync stream because it was gone from the database");
         return Err(MatrixError::unknown_pos("Connection data lost since last time").into());
     }
@@ -67,7 +68,10 @@ pub(super) async fn sync_events_v4(
     let known_rooms =
         crate::sync_v4::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms: Vec<&RoomId> = crate::user::joined_rooms(sender_id, 0)?.iter().map(|r|r.as_ref()).collect();
+    let all_joined_rooms: Vec<&RoomId> = crate::user::joined_rooms(sender_id, 0)?
+        .iter()
+        .map(|r| r.as_ref())
+        .collect();
     let all_invited_rooms: Vec<&RoomId> = crate::user::invited_rooms(sender_id, 0)?
         .into_iter()
         .map(|r| r.0.as_ref())
@@ -273,16 +277,20 @@ pub(super) async fn sync_events_v4(
                         r.1 = r.1.clamp(r.0, active_rooms.len() as u64 - 1);
 
                         let room_ids = if !active_rooms.is_empty() {
-                            active_rooms[(u64::from(r.0) as usize)..=(u64::from(r.1) as usize)].iter().map(|r|(*r).to_owned()).collect::<Vec<OwnedRoomId>>()
+                            active_rooms[(u64::from(r.0) as usize)..=(u64::from(r.1) as usize)]
+                                .iter()
+                                .map(|r| (*r).to_owned())
+                                .collect::<Vec<OwnedRoomId>>()
                         } else {
                             Vec::new()
                         };
-                        new_known_rooms.extend(room_ids.iter().map(|r|r.to_owned()));
+                        new_known_rooms.extend(room_ids.iter().map(|r| r.to_owned()));
 
                         for room_id in &room_ids {
-                            let todo_room = todo_rooms
-                                .entry(room_id.to_owned())
-                                .or_insert((BTreeSet::new(), 0, i64::MAX));
+                            let todo_room =
+                                todo_rooms
+                                    .entry(room_id.to_owned())
+                                    .or_insert((BTreeSet::new(), 0, i64::MAX));
                             let limit = list.room_details.timeline_limit.map_or(10, usize::from).min(100);
                             todo_room.0.extend(list.room_details.required_state.iter().cloned());
                             todo_room.1 = todo_room.1.max(limit);

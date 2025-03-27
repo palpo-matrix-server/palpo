@@ -2,13 +2,13 @@
 //! `m.poll.response`.
 
 use palpo_macros::EventContent;
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use super::unstable_start::UnstablePollStartContentBlock;
 use super::{PollResponseData, validate_selections};
-use crate::events::relation::Reference;
 use crate::OwnedEventId;
+use crate::events::relation::Reference;
 
 /// The payload for an unstable poll response event.
 ///

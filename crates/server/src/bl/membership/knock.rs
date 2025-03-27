@@ -28,7 +28,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{UnixMillis, Seqnum, federation};
+use crate::core::{Seqnum, UnixMillis, federation};
 use crate::event::{
     DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id, gen_event_id_canonical_json,
     get_event_sn,
@@ -42,7 +42,7 @@ use crate::membership::state::{CompressedState, DeltaInfo};
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError,  SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,

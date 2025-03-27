@@ -3,8 +3,8 @@
 //! [MSC4075]: https://github.com/matrix-org/matrix-spec-proposals/pull/4075
 
 use palpo_macros::EventContent;
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use super::member::Application;
 use crate::events::Mentions;

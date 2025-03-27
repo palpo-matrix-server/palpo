@@ -60,7 +60,6 @@ pub fn set_data(
         .map_err(Into::into)
 }
 
-
 #[tracing::instrument]
 pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>, kind: &str) -> AppResult<Option<E>> {
     let row = user_datas::table

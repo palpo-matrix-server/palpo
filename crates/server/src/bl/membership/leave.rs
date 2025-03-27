@@ -21,7 +21,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{UnixMillis, Seqnum, federation};
+use crate::core::{Seqnum, UnixMillis, federation};
 
 use crate::appservice::RegistrationInfo;
 use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};

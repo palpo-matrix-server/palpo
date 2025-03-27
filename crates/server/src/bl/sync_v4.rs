@@ -29,10 +29,7 @@ pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, Stri
     LazyLock::new(|| Default::default());
 
 pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDeviceId, conn_id: String) {
-    CONNECTIONS
-        .lock()
-        .unwrap()
-        .remove(&(user_id, device_id, conn_id));
+    CONNECTIONS.lock().unwrap().remove(&(user_id, device_id, conn_id));
 }
 
 pub fn remembered(user_id: OwnedUserId, device_id: OwnedDeviceId, conn_id: String) -> bool {
@@ -50,18 +47,14 @@ pub fn update_sync_request_with_cache(
     let connections = CONNECTIONS;
 
     let mut cache = connections.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(SlidingSyncCache {
-                    lists: BTreeMap::new(),
-                    subscriptions: BTreeMap::new(),
-                    known_rooms: BTreeMap::new(),
-                    extensions: sync_events::v4::ExtensionsConfig::default(),
-                }))
-            }),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
+        Arc::new(Mutex::new(SlidingSyncCache {
+            lists: BTreeMap::new(),
+            subscriptions: BTreeMap::new(),
+            known_rooms: BTreeMap::new(),
+            extensions: sync_events::v4::ExtensionsConfig::default(),
+        }))
+    }));
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 

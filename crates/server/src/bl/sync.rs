@@ -11,13 +11,13 @@ use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
 use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnySyncEphemeralRoomEvent, AnyRawAccountDataEvent,StateEventType, TimelineEventType};
+use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
 use crate::schema::*;
-use crate::{AppError,extract_variant, AppResult, db};
+use crate::{AppError, AppResult, db, extract_variant};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
     TimelineEventType::CallInvite,
@@ -777,7 +777,7 @@ async fn load_joined_room(
     let account_events = crate::user::data_changes(Some(&room_id), sender_id, since_sn, None)?
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-		.collect();
+        .collect();
     Ok(sync_events::v3::JoinedRoom {
         account_data: sync_events::v3::RoomAccountData { events: account_events },
         summary: sync_events::v3::RoomSummary {

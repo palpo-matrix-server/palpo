@@ -10,7 +10,7 @@ use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::identifiers::*;
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
-use crate::core::{UnixMillis, client, federation};
+use crate::core::{UnixMillis, client, Seqnum, federation};
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::clean_signatures;
@@ -673,6 +673,25 @@ pub fn keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) ->
             .filter(e2e_key_changes::occur_sn.ge(from_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut db::connect()?)
+            .map_err(Into::into)
+    }
+}
+
+pub fn room_keys_changed(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<(OwnedUserId, Seqnum)>> {
+    if let Some(to_sn) = to_sn {
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq(room_id))
+            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .filter(e2e_key_changes::occur_sn.le(to_sn))
+            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
+            .load::<(OwnedUserId, i64)>(&mut db::connect()?)
+            .map_err(Into::into)
+    } else {
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq(room_id))
+            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
+            .load::<(OwnedUserId, i64)>(&mut db::connect()?)
             .map_err(Into::into)
     }
 }
