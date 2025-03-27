@@ -608,6 +608,17 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
     Ok(visibility)
 }
 
+#[tracing::instrument(skip(origin, user_id))]
+pub fn server_can_see_user(origin: &ServerName, user_id: &UserId) -> AppResult<bool> {
+    Ok(super::server_rooms(origin)?
+        .iter()
+        .any(|room_id| super::user::is_joined(user_id, room_id).unwrap_or(false)))
+}
+#[tracing::instrument(skip(sender_id, user_id))]
+pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool> {
+    super::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()]).map(|rooms| !rooms.is_empty())
+}
+
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id, event_id))]

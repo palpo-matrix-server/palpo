@@ -8,6 +8,7 @@ use tokio::sync::watch::Sender;
 
 use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
+use crate::core::client::sync_events::v3::{KnockState, KnockedRoom};
 use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -95,34 +96,6 @@ pub fn sync_events(
             };
             if !joined_room.is_empty() {
                 joined_rooms.insert(room_id.to_owned(), joined_room);
-            }
-
-            if crate::allow_local_presence() {
-                // Take presence updates from this room
-                for (user_id, presence_event) in crate::user::presences_since(&room_id, since_sn)? {
-                    if user_id == sender_id {
-                        continue;
-                    }
-                    match presence_updates.entry(user_id) {
-                        Entry::Vacant(slot) => {
-                            slot.insert(presence_event);
-                        }
-                        Entry::Occupied(mut slot) => {
-                            let curr_event = slot.get_mut();
-                            let curr_content = &mut curr_event.content;
-                            let new_content = presence_event.content;
-
-                            // Update existing presence event with more info
-                            curr_content.presence = new_content.presence;
-                            curr_content.status_msg = new_content.status_msg.or(curr_content.status_msg.take());
-                            curr_content.last_active_ago = new_content.last_active_ago.or(curr_content.last_active_ago);
-                            curr_content.display_name = new_content.display_name.or(curr_content.display_name.take());
-                            curr_content.avatar_url = new_content.avatar_url.or(curr_content.avatar_url.take());
-                            curr_content.currently_active =
-                                new_content.currently_active.or(curr_content.currently_active);
-                        }
-                    }
-                }
             }
         }
 
@@ -313,6 +286,52 @@ pub fn sync_events(
             // them
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
+            }
+        }
+
+        let knocked_rooms = crate::room::state::knocked_rooms(sender_id).fold_default(
+            |mut knocked_rooms: BTreeMap<_, _>, (room_id, knock_state)| async move {
+                let knock_sn = crate::room::state::get_knock_sn(&room_id, sender_id).ok();
+
+                // Knocked before last sync
+                if Some(since_sn) >= knock_sn {
+                    return knocked_rooms;
+                }
+
+                let knocked_room = KnockedRoom {
+                    knock_state: KnockState { events: knock_state },
+                };
+
+                knocked_rooms.insert(room_id, knocked_room);
+                knocked_rooms
+            },
+        );
+
+        if crate::allow_local_presence() {
+            // Take presence updates from this room
+            for (user_id, presence_event) in crate::user::presences_since(since_sn)? {
+                if user_id == sender_id || !crate::room::state::user_can_see_user(&sender_id, &user_id)? {
+                    continue;
+                }
+
+                match presence_updates.entry(user_id) {
+                    Entry::Vacant(slot) => {
+                        slot.insert(presence_event);
+                    }
+                    Entry::Occupied(mut slot) => {
+                        let curr_event = slot.get_mut();
+                        let curr_content = &mut curr_event.content;
+                        let new_content = presence_event.content;
+
+                        // Update existing presence event with more info
+                        curr_content.presence = new_content.presence;
+                        curr_content.status_msg = new_content.status_msg.or(curr_content.status_msg.take());
+                        curr_content.last_active_ago = new_content.last_active_ago.or(curr_content.last_active_ago);
+                        curr_content.display_name = new_content.display_name.or(curr_content.display_name.take());
+                        curr_content.avatar_url = new_content.avatar_url.or(curr_content.avatar_url.take());
+                        curr_content.currently_active = new_content.currently_active.or(curr_content.currently_active);
+                    }
+                }
             }
         }
 

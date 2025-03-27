@@ -20,7 +20,7 @@ pub mod key_backup;
 pub mod session;
 pub use key_backup::*;
 pub use session::*;
-mod presence;
+pub mod presence;
 pub use presence::*;
 
 use std::{

@@ -45,7 +45,7 @@ pub struct NewDbPresence {
 
 impl DbPresence {
     /// Creates a PresenceEvent from available data.
-    pub fn to_presence_event(&self, user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<PresenceEvent> {
+    pub fn to_presence_event(&self, user_id: &UserId) -> AppResult<PresenceEvent> {
         let now = UnixMillis::now();
         let state = self.state.as_deref().map(PresenceState::from).unwrap_or_default();
         let last_active_ago = if state == PresenceState::Online {
@@ -55,10 +55,7 @@ impl DbPresence {
                 .map(|last_active_at| now.0.saturating_sub(last_active_at.0))
         };
 
-        let mut profile = crate::user::get_profile(user_id, room_id)?;
-        if profile.is_none() && room_id.is_some() {
-            profile = crate::user::get_profile(user_id, None)?;
-        }
+        let profile = crate::user::get_profile(user_id, None)?;
         Ok(PresenceEvent {
             sender: user_id.to_owned(),
             content: PresenceEventContent {
@@ -144,7 +141,7 @@ pub fn remove_presence(user_id: &UserId) -> AppResult<()> {
 }
 
 /// Returns the most recent presence updates that happened after the event with id `since`.
-pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
+pub fn presences_since(since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
     let presences = user_presences::table
         .filter(user_presences::occur_sn.ge(since_sn))
         .load::<DbPresence>(&mut *db::connect()?)?;
@@ -152,7 +149,7 @@ pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<Own
         .into_iter()
         .map(|presence| {
             presence
-                .to_presence_event(&presence.user_id, Some(room_id))
+                .to_presence_event(&presence.user_id)
                 .map(|event| (presence.user_id, event))
         })
         .collect()
