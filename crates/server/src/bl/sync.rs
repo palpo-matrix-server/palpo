@@ -776,14 +776,8 @@ async fn load_joined_room(
 
     let account_events = crate::user::data_changes(Some(&room_id), sender_id, since_sn, None)?
         .into_iter()
-        .filter_map(|e| match serde_json::from_str(e.inner().get()) {
-            Ok(event) => Some(event),
-            Err(e) => {
-                tracing::error!(error = ?e, "Invalid account event in database.");
-                None
-            }
-        })
-        .collect();
+        .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
+		.collect();
     Ok(sync_events::v3::JoinedRoom {
         account_data: sync_events::v3::RoomAccountData { events: account_events },
         summary: sync_events::v3::RoomSummary {

@@ -54,7 +54,7 @@ pub(super) async fn sync_events_v4(
         .and_then(|string| string.parse().ok())
         .unwrap_or_default();
 
-    if global_since_sn != 0 && !crate::sync_events::remembered(sender_id, authed.device_id(), &conn_id) {
+    if global_since_sn != 0 && !crate::sync_v4::remembered(sender_id.to_owned(), authed.device_id().to_owned(), conn_id) {
         debug!("Restarting sync stream because it was gone from the database");
         return Err(MatrixError::unknown_pos("Connection data lost since last time").into());
     }
@@ -67,7 +67,7 @@ pub(super) async fn sync_events_v4(
     let known_rooms =
         crate::sync_v4::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?.iter().collect();
+    let all_joined_rooms: Vec<&RoomId> = crate::user::joined_rooms(sender_id, 0)?.iter().map(|r|r.as_ref()).collect();
     let all_invited_rooms: Vec<&RoomId> = crate::user::invited_rooms(sender_id, 0)?
         .into_iter()
         .map(|r| r.0.as_ref())
@@ -147,9 +147,8 @@ pub(super) async fn sync_events_v4(
                     crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
 
                 let since_sender_member: Option<RoomMemberEventContent> =
-                    crate::room::state::get_state(since_frame_id, &StateEventType::RoomMember, sender_id.as_str())
-                        .transpose()?
-                        .and_then(|pdu| {
+                    crate::room::state::get_state(since_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
+                        .map(|pdu| {
                             serde_json::from_str(pdu.content.get())
                                 .map_err(|_| AppError::public("Invalid PDU in database."))
                         })
@@ -274,15 +273,15 @@ pub(super) async fn sync_events_v4(
                         r.1 = r.1.clamp(r.0, active_rooms.len() as u64 - 1);
 
                         let room_ids = if !active_rooms.is_empty() {
-                            active_rooms[(u64::from(r.0) as usize)..=(u64::from(r.1) as usize)].to_vec()
+                            active_rooms[(u64::from(r.0) as usize)..=(u64::from(r.1) as usize)].iter().map(|r|(*r).to_owned()).collect::<Vec<OwnedRoomId>>()
                         } else {
                             Vec::new()
                         };
-                        new_known_rooms.extend(room_ids.iter().cloned());
+                        new_known_rooms.extend(room_ids.iter().map(|r|r.to_owned()));
 
                         for room_id in &room_ids {
                             let todo_room = todo_rooms
-                                .entry(room_id.clone())
+                                .entry(room_id.to_owned())
                                 .or_insert((BTreeSet::new(), 0, i64::MAX));
                             let limit = list.room_details.timeline_limit.map_or(10, usize::from).min(100);
                             todo_room.0.extend(list.room_details.required_state.iter().cloned());
@@ -376,7 +375,7 @@ pub(super) async fn sync_events_v4(
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;
         let (timeline_pdus, limited) = if all_invited_rooms.contains(&&**room_id) {
-            invite_state = crate::room::state::invite_state(sender_id, room_id).ok();
+            invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
             (Vec::new(), true)
         } else {
             crate::sync::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
@@ -394,21 +393,20 @@ pub(super) async fn sync_events_v4(
                 .collect(),
         );
 
-        let last_privateread_update =
-            crate::room::receipt::last_private_read_update(sender_id, room_id).await > *room_since_sn;
+        let last_private_read_update =
+            crate::room::receipt::last_private_read_update_sn(sender_id, room_id)? > *room_since_sn;
 
-        let private_read_event = if last_privateread_update {
-            crate::room::receipt::latest_private_read(room_id, sender_id).ok()
+        let private_read_event = if last_private_read_update {
+            crate::room::receipt::last_private_read(sender_id, room_id).ok()
         } else {
             None
         };
 
         let mut vector: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
             crate::room::receipt::read_receipts(room_id, *room_since_sn)?
-                .content
                 .into_iter()
-                .filter_map(|(read_user, value)| {
-                    if crate::user::user_is_ignored(read_user, sender_id) {
+                .filter_map(|(read_user, event_sn, value)| {
+                    if crate::user::user_is_ignored(&read_user, sender_id) {
                         Some(value)
                     } else {
                         None

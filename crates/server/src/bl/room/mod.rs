@@ -617,6 +617,7 @@ pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate:
     rooms
         .iter()
         .filter_map(|r| {
+            let r = *r;
             let room_type = state::get_room_type(r);
 
             if room_type.as_ref().is_err() {

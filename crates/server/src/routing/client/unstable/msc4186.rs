@@ -309,7 +309,7 @@ async fn process_rooms(
         let new_room_id: &RoomId = (*room_id).as_ref();
         let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
             // TODO: figure out a timestamp we can use for remote invites
-            invite_state = crate::room::state::invite_state(sender_id, room_id).await.ok();
+            invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
 
             (Vec::new(), true)
         } else {
@@ -327,22 +327,20 @@ async fn process_rooms(
             );
         }
 
-        let last_privateread_update =
-            crate::room::receipt::last_private_read_update(sender_id.to_owned(), room_id.to_owned()).await
+        let last_private_read_update =
+            crate::room::receipt::last_private_read_update_sn(sender_id.to_owned(), room_id.to_owned()).await
                 > *room_since_sn;
 
-        let private_read_event = if last_privateread_update {
-            crate::room::receipt::latest_private_read(room_id, sender_id).ok()
+        let private_read_event = if last_private_read_update {
+            crate::room::receipt::last_private_read(sender_id, room_id).ok()
         } else {
             None
         };
 
         let mut receipts: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
             crate::room::receipt::read_receipts(room_id, *room_since_sn)?
-                .content
-                .0
                 .into_iter()
-                .filter_map(|(read_user, value)| {
+                .filter_map(|(read_user, event_sn, value)| {
                     if !crate::user::user_is_ignored(&read_user, sender_id) {
                         Some(value)
                     } else {

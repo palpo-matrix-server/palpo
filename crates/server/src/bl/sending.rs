@@ -263,10 +263,9 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(Vec<Vec<u8>>, i64)> {
         );
 
         // Look for read receipts in this room
-        for (event_id, event_receipts) in crate::room::receipt::read_receipts(&room_id, since_sn)?.content {
-            let sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
-            if sn > max_edu_sn {
-                max_edu_sn = sn;
+        for (user_id,event_sn, event_receipts) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
+            if event_sn > max_edu_sn {
+                max_edu_sn = event_sn;
             }
 
             for (receipt_type, type_receipts) in event_receipts {
