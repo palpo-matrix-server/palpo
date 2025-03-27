@@ -23,14 +23,14 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::core::room::RoomType;
 use crate::core::serde::{RawJson, to_raw_json_value};
 use crate::core::state::StateMap;
-use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
-use crate::event::update_frame_id;
-use crate::event::update_frame_id_by_sn;
+use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, Seqnum, UserId};
 use crate::event::{PduBuilder, PduEvent};
+use crate::event::{update_frame_id, update_frame_id_by_sn};
 use crate::schema::*;
-use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db, utils};
+use crate::{AppError, AppResult, DieselResult, MatrixError, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]
@@ -503,7 +503,7 @@ fn user_was_invited(frame_id: i64, user_id: &UserId) -> bool {
     //     room_id: &RoomId,
     //     federation: bool,
     // ) -> AppResult<bool> {
-    //     let redacting_event = crate::romm::timeline.get_pdu(redacts)?;
+    //     let redacting_event = crate::room::timeline.get_pdu(redacts)?;
 
     //     if redacting_event
     //         .as_ref()
@@ -606,6 +606,17 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         .insert((origin.to_owned(), frame_id), visibility);
 
     Ok(visibility)
+}
+
+#[tracing::instrument(skip(origin, user_id))]
+pub fn server_can_see_user(origin: &ServerName, user_id: &UserId) -> AppResult<bool> {
+    Ok(super::server_rooms(origin)?
+        .iter()
+        .any(|room_id| super::user::is_joined(user_id, room_id).unwrap_or(false)))
+}
+#[tracing::instrument(skip(sender_id, user_id))]
+pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool> {
+    super::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()]).map(|rooms| !rooms.is_empty())
 }
 
 /// Whether a user is allowed to see an event, based on
@@ -858,6 +869,17 @@ pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId
         .map_err(Into::into)
 }
 
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+
 /// Gets up to five servers that are likely to be in the room in the
 /// distant future.
 ///
@@ -909,4 +931,17 @@ pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     }
 
     Ok(servers)
+}
+
+pub fn get_room_type(room_id: &RoomId) -> AppResult<RoomType> {
+    get_room_state(room_id, &StateEventType::RoomCreate, "")?
+        .map(|s| {
+            serde_json::from_str::<RoomCreateEventContent>(s.content.get()).map_err(|e| {
+                error!("Invalid room create event in database: {}", e);
+                AppError::public("Invalid room create event in database.")
+            })
+        })
+        .transpose()?
+        .and_then(|e| e.room_type)
+        .ok_or_else(|| AppError::public("No room create event found."))
 }

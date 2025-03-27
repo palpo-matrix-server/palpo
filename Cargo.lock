@@ -2761,6 +2761,7 @@ dependencies = [
  "serde_with",
  "serde_yaml",
  "sha1",
+ "smallvec",
  "strum",
  "strum_macros",
  "tempfile",
@@ -2822,6 +2823,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2",
+ "smallstr",
  "strum",
  "strum_macros",
  "tempfile",
@@ -4331,10 +4333,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "smallvec"
-version = "1.13.2"
+name = "smallstr"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+checksum = "63b1aefdf380735ff8ded0b15f31aab05daf1f70216c01c02a12926badd1df9d"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
+name = "smallvec"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
 
 [[package]]
 name = "socket2"

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
+use crate::core::events::AnyRawAccountDataEvent;
 use crate::core::identifiers::*;
 use crate::core::{
     UnixMillis,
@@ -59,8 +60,7 @@ pub fn set_data(
         .map_err(Into::into)
 }
 
-/// Searches the account data for a specific kind.
-#[tracing::instrument(skip(room_id, user_id, kind))]
+#[tracing::instrument]
 pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>, kind: &str) -> AppResult<Option<E>> {
     let row = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
@@ -76,32 +76,69 @@ pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>,
     }
 }
 
+/// Searches the account data for a specific kind.
+#[tracing::instrument]
+pub fn get_room_data<E: DeserializeOwned>(user_id: &UserId, room_id: &RoomId, kind: &str) -> AppResult<Option<E>> {
+    let row = user_datas::table
+        .filter(user_datas::user_id.eq(user_id))
+        .filter(user_datas::room_id.eq(room_id))
+        .filter(user_datas::data_type.eq(kind))
+        .order_by(user_datas::id.desc())
+        .first::<DbUserData>(&mut *db::connect()?)
+        .optional()?;
+    if let Some(row) = row {
+        Ok(Some(serde_json::from_value(row.json_data)?))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tracing::instrument]
+pub fn get_global_data<E: DeserializeOwned>(user_id: &UserId, kind: &str) -> AppResult<Option<E>> {
+    let row = user_datas::table
+        .filter(user_datas::user_id.eq(user_id))
+        .filter(user_datas::room_id.is_null())
+        .filter(user_datas::data_type.eq(kind))
+        .order_by(user_datas::id.desc())
+        .first::<DbUserData>(&mut *db::connect()?)
+        .optional()?;
+    if let Some(row) = row {
+        Ok(Some(serde_json::from_value(row.json_data)?))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Returns all changes to the account data that happened after `since`.
 #[tracing::instrument(skip(room_id, user_id, since_sn))]
-pub fn get_data_changes(
+pub fn data_changes(
     room_id: Option<&RoomId>,
     user_id: &UserId,
     since_sn: i64,
-) -> AppResult<HashMap<RoomAccountDataEventType, RawJson<AnyEphemeralRoomEvent>>> {
-    let mut user_datas = HashMap::new();
+    final_sn: Option<i64>,
+) -> AppResult<Vec<AnyRawAccountDataEvent>> {
+    let mut user_datas = Vec::new();
 
-    let db_datas = user_datas::table
+    let query = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
         .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
         .filter(user_datas::occur_sn.ge(since_sn))
-        .load::<DbUserData>(&mut *db::connect()?)?;
+        .into_boxed();
+    let db_datas = if let Some(final_sn) = final_sn {
+        query
+            .filter(user_datas::occur_sn.le(final_sn))
+            .load::<DbUserData>(&mut *db::connect()?)?
+    } else {
+        query.load::<DbUserData>(&mut *db::connect()?)?
+    };
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);
-        let event_content: RawJson<AnyEphemeralRoomEventContent> = RawJson::from_value(&db_data.json_data)
-            .map_err(|_| AppError::public("Database contains invalid account data."))?;
-        user_datas.insert(
-            kind.clone(),
-            RawJson::from_value(&serde_json::json!({
-                "type": kind,
-                "content": event_content,
-            }))?,
-        );
+        if db_data.room_id.is_none() {
+            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&db_data.json_data)?));
+        } else {
+            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&db_data.json_data)?));
+        }
     }
 
     Ok(user_datas)

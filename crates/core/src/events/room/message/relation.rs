@@ -64,7 +64,7 @@ where
 }
 
 /// Message event relationship, except a replacement.
-#[derive(Clone, Debug)]
+#[derive(ToSchema, Clone, Debug)]
 #[allow(clippy::manual_non_exhaustive)]
 pub enum RelationWithoutReplacement {
     /// An `m.in_reply_to` relation indicating that the event is a reply to another event.

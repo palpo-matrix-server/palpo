@@ -5,11 +5,11 @@
 use salvo::prelude::*;
 use serde::{self, Deserialize, Serialize};
 
-mod v3;
-pub use v3::*;
+pub mod v3;
 
-mod v4;
-pub use v4::*;
+pub mod v4;
+
+pub mod v5;
 
 /// Unread notifications count.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]

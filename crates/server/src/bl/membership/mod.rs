@@ -1,16 +1,11 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::iter::once;
-use std::sync::Arc;
 use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_core::appservice::third_party;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
-use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
@@ -21,7 +16,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{UnixMillis, federation};
+use crate::core::{Seqnum, UnixMillis, federation};
 
 use crate::appservice::RegistrationInfo;
 use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
@@ -34,7 +29,7 @@ use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, Seqnum, SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
 
 mod banned;
 mod forget;

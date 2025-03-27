@@ -13,8 +13,29 @@ use super::{
     StaticStateEventContent, ToDeviceEventContent,
 };
 use crate::events::receipt::ReceiptEventContent;
+use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent};
 use crate::serde::{RawJson, RawJsonValue, from_raw_json_value};
 use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId};
+
+/// Enum allowing to use the same structures for global and room account data
+#[derive(Debug)]
+#[allow(clippy::exhaustive_enums)]
+pub enum AnyAccountDataEvent {
+    /// An event for a specific room
+    Room(AnyRoomAccountDataEvent),
+    /// An event for the whole account
+    Global(AnyGlobalAccountDataEvent),
+}
+
+/// Enum allowing to use the same structures for global and room account data
+#[derive(Debug)]
+#[allow(clippy::exhaustive_enums)]
+pub enum AnyRawAccountDataEvent {
+    /// An event for a specific room
+    Room(RawJson<AnyRoomAccountDataEvent>),
+    /// An event for the whole account
+    Global(RawJson<AnyGlobalAccountDataEvent>),
+}
 
 /// A global account data event.
 #[derive(ToSchema, Clone, Debug, Event)]

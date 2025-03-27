@@ -125,6 +125,8 @@ pub mod key;
 pub mod location;
 pub mod message;
 // pub mod pdu;
+pub mod beacon;
+pub mod beacon_info;
 pub mod policy;
 pub mod poll;
 pub mod presence;
@@ -158,6 +160,10 @@ pub use self::{
     unsigned::{MessageLikeUnsigned, RedactedUnsigned, StateUnsigned, UnsignedRoomRedactionEvent},
 };
 use crate::{EventEncryptionAlgorithm, OwnedUserId, RoomVersionId};
+use smallstr::SmallString;
+
+pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
+const INLINE_SIZE: usize = 48;
 
 /// Trait to define the behavior of redact an event's content object.
 pub trait RedactContent {

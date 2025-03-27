@@ -1,7 +1,6 @@
 use crate::core::ServerName;
 use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsChunk, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::StateEventType;
-use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};

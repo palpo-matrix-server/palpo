@@ -1,12 +1,13 @@
 //! Types for the `org.matrix.msc3381.poll.response` event, the unstable version of
 //! `m.poll.response`.
 
-use crate::OwnedEventId;
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::unstable_start::UnstablePollStartContentBlock;
 use super::{PollResponseData, validate_selections};
+use crate::OwnedEventId;
 use crate::events::relation::Reference;
 
 /// The payload for an unstable poll response event.
@@ -19,7 +20,7 @@ use crate::events::relation::Reference;
 /// [`PollResponseEventContent`].
 ///
 /// [`PollResponseEventContent`]: super::response::PollResponseEventContent
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[palpo_event(type = "org.matrix.msc3381.poll.response", kind = MessageLike)]
 pub struct UnstablePollResponseEventContent {
     /// The response's content.
@@ -65,7 +66,7 @@ impl OriginalUnstablePollResponseEvent {
 }
 
 /// An unstable block for poll response content.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct UnstablePollResponseContentBlock {
     /// The selected answers for the response.
     pub answers: Vec<String>,

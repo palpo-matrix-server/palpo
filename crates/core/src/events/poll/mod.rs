@@ -13,16 +13,16 @@ use crate::{UnixMillis, UserId};
 use indexmap::IndexMap;
 
 use self::start::PollContentBlock;
-#[cfg(feature = "unstable-msc3381")]
+// #[cfg(feature = "unstable-msc3381")]
 use self::unstable_start::UnstablePollStartContentBlock;
 
 pub mod end;
 pub mod response;
 pub mod start;
 pub mod unstable_end;
-#[cfg(feature = "unstable-msc3381")]
+// #[cfg(feature = "unstable-msc3381")]
 pub mod unstable_response;
-#[cfg(feature = "unstable-msc3381")]
+// #[cfg(feature = "unstable-msc3381")]
 pub mod unstable_start;
 
 /// The data from a poll response necessary to compile poll results.
@@ -72,7 +72,7 @@ pub fn compile_poll_results<'a>(
 /// Returns a map of answer ID to a set of user IDs that voted for them. When using `.iter()` or
 /// `.into_iter()` on the map, the results are sorted from the highest number of votes to the
 /// lowest.
-#[cfg(feature = "unstable-msc3381")]
+// #[cfg(feature = "unstable-msc3381")]
 pub fn compile_unstable_poll_results<'a>(
     poll: &'a UnstablePollStartContentBlock,
     responses: impl IntoIterator<Item = PollResponseData<'a>>,

@@ -3,6 +3,7 @@
 //! [MSC3954]: https://github.com/matrix-org/matrix-spec-proposals/pull/3954
 
 use palpo_macros::EventContent;
+use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{message::TextContentBlock, room::message::Relation};
@@ -17,7 +18,7 @@ use super::{message::TextContentBlock, room::message::Relation};
 ///
 /// [MSC3954]: https://github.com/matrix-org/matrix-spec-proposals/pull/3954
 /// [`message`]: super::message
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[palpo_event(type = "org.matrix.msc1767.emote", kind = MessageLike, without_relation)]
 pub struct EmoteEventContent {
     /// The message's text content.

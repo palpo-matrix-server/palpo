@@ -7,6 +7,7 @@ use std::{
 
 use crate::OwnedEventId;
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::events::{message::TextContentBlock, relation::Reference};
@@ -24,7 +25,7 @@ use crate::events::{message::TextContentBlock, relation::Reference};
 ///
 /// [`OriginalSyncPollStartEvent::compile_results()`]: super::start::OriginalSyncPollStartEvent::compile_results
 /// [`UnstablePollEndEventContent`]: super::unstable_end::UnstablePollEndEventContent
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[palpo_event(type = "m.poll.end", kind = MessageLike)]
 pub struct PollEndEventContent {
     /// The text representation of the results.
@@ -36,7 +37,7 @@ pub struct PollEndEventContent {
     pub poll_results: Option<PollResultsContentBlock>,
 
     /// Whether this message is automated.
-    #[cfg(feature = "unstable-msc3955")]
+    // #[cfg(feature = "unstable-msc3955")]
     #[serde(
         default,
         skip_serializing_if = "palpo_core::serde::is_default",
@@ -56,7 +57,7 @@ impl PollEndEventContent {
         Self {
             text,
             poll_results: None,
-            #[cfg(feature = "unstable-msc3955")]
+            // #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: Reference::new(poll_start_id),
         }
@@ -68,7 +69,7 @@ impl PollEndEventContent {
         Self {
             text: TextContentBlock::plain(plain_text),
             poll_results: None,
-            #[cfg(feature = "unstable-msc3955")]
+            // #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: Reference::new(poll_start_id),
         }
@@ -78,7 +79,7 @@ impl PollEndEventContent {
 /// A block for the results of a poll.
 ///
 /// This is a map of answer ID to number of votes.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PollResultsContentBlock(BTreeMap<String, u64>);
 
 impl PollResultsContentBlock {

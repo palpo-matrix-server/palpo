@@ -2,9 +2,10 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 
-use crate::core::UnixMillis;
+use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
+use crate::core::{RawJson, UnixMillis};
 use crate::schema::*;
 use crate::{AppResult, JsonValue, db, diesel_exists};
 
@@ -159,7 +160,7 @@ pub fn keys_changed_users(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) ->
     }
 }
 
-pub fn joined_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::user_id.eq(user_id))
@@ -168,10 +169,29 @@ pub fn joined_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
         .first::<i64>(&mut *db::connect()?)
         .map_err(Into::into)
 }
-pub fn joined_count(room_id: &RoomId) -> AppResult<i64> {
+pub fn join_count(room_id: &RoomId) -> AppResult<i64> {
     let count = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
+        .select(room_users::user_id)
+        .count()
+        .get_result(&mut *db::connect()?)?;
+    Ok(count)
+}
+
+pub fn knock_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("knock"))
+        .select(room_users::event_sn)
+        .first::<i64>(&mut *db::connect()?)
+        .map_err(Into::into)
+}
+pub fn knock_count(room_id: &RoomId) -> AppResult<i64> {
+    let count = room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq("knock"))
         .select(room_users::user_id)
         .count()
         .get_result(&mut *db::connect()?)?;
@@ -232,4 +252,21 @@ pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .optional()?
         .unwrap_or(false);
     Ok(joined)
+}
+
+#[tracing::instrument(level = "trace")]
+pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+    if let Some(state) = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq(MembershipState::Invite.to_string()))
+        .select(room_users::state_data)
+        .first::<Option<JsonValue>>(&mut *db::connect()?)
+        .optional()?
+        .flatten()
+    {
+        Ok(serde_json::from_value(state)?)
+    } else {
+        Ok(vec![])
+    }
 }

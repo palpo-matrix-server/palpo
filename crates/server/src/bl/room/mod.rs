@@ -23,6 +23,7 @@ use diesel::prelude::*;
 
 use crate::appservice::RegistrationInfo;
 use crate::config::default_room_version;
+use crate::core::directory::RoomTypeFilter;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
@@ -31,7 +32,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{OwnedServerName, UnixMillis};
+use crate::core::{OwnedServerName, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
@@ -132,7 +133,7 @@ pub fn update_membership(
     room_id: &RoomId,
     user_id: &UserId,
     membership: MembershipState,
-    sender: &UserId,
+    sender_id: &UserId,
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config();
@@ -186,9 +187,9 @@ pub fn update_membership(
                     //     .ok();
 
                     // Copy old tags to new room
-                    if let Some(tag_event_content) = crate::user::get_data::<JsonValue>(
+                    if let Some(tag_event_content) = crate::user::get_room_data::<JsonValue>(
                         user_id,
-                        Some(&predecessor.room_id),
+                        &predecessor.room_id,
                         &RoomAccountDataEventType::Tag.to_string(),
                     )? {
                         crate::user::set_data(
@@ -251,7 +252,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,
@@ -265,16 +266,7 @@ pub fn update_membership(
         }
         MembershipState::Invite => {
             // We want to know if the sender is ignored by the receiver
-            let is_ignored = crate::user::get_data::<IgnoredUserListEventContent>(
-                user_id, // Receiver
-                None,    // Ignored users are in global account data
-                &GlobalAccountDataEventType::IgnoredUserList.to_string(),
-            )?
-            .map_or(false, |ignored| {
-                ignored.ignored_users.iter().any(|(user, _details)| user == sender)
-            });
-
-            if is_ignored {
+            if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());
             }
 
@@ -303,7 +295,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,
@@ -341,7 +333,7 @@ pub fn update_membership(
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
                         event_sn,
-                        sender_id: sender.to_owned(),
+                        sender_id: sender_id.to_owned(),
                         membership: membership.to_string(),
                         forgotten: false,
                         display_name: None,
@@ -612,4 +604,35 @@ pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         .select(rooms::version)
         .first::<String>(&mut *db::connect()?)?;
     Ok(RoomVersionId::try_from(room_version)?)
+}
+// pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
+//     let room_sn = rooms::table
+//         .filter(rooms::id.eq(room_id))
+//         .select(rooms::sn)
+//         .first::<Seqnum>(&mut *db::connect()?)?;
+//     Ok(room_sn)
+// }
+
+pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
+    rooms
+        .iter()
+        .filter_map(|r| {
+            let r = *r;
+            let room_type = state::get_room_type(r);
+
+            if room_type.as_ref().is_err() {
+                return None;
+            }
+
+            let room_type_filter = RoomTypeFilter::from(room_type.ok());
+
+            let include = if negate {
+                !filter.contains(&room_type_filter)
+            } else {
+                filter.is_empty() || filter.contains(&room_type_filter)
+            };
+
+            include.then_some(r)
+        })
+        .collect()
 }

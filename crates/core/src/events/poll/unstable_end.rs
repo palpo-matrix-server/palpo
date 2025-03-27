@@ -1,6 +1,7 @@
 //! Types for the `org.matrix.msc3381.poll.end` event, the unstable version of `m.poll.end`.
 
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::OwnedEventId;
@@ -20,7 +21,7 @@ use crate::events::relation::Reference;
 ///
 /// [`OriginalSyncUnstablePollStartEvent::compile_results()`]: super::unstable_start::OriginalSyncUnstablePollStartEvent::compile_results
 /// [`PollEndEventContent`]: super::end::PollEndEventContent
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[palpo_event(type = "org.matrix.msc3381.poll.end", kind = MessageLike)]
 pub struct UnstablePollEndEventContent {
     /// The text representation of the results.
@@ -51,5 +52,5 @@ impl UnstablePollEndEventContent {
 /// A block for the results of a poll.
 ///
 /// This is currently an empty struct.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct UnstablePollEndContentBlock {}

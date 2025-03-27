@@ -9,9 +9,9 @@ use serde::Deserialize;
 
 use crate::core::identifiers::*;
 use crate::core::serde::default_false;
-use crate::core::{JsonValue, RawJsonValue, UnixMillis};
+use crate::core::{JsonValue, RawJsonValue, Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::{AppError, AppResult, DieselResult, MatrixError, Seqnum, db};
+use crate::{AppError, AppResult, MatrixError, db};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]
@@ -164,4 +164,34 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut db::connect()?)?;
     Ok(())
+}
+
+pub type PdusIterItem = (Seqnum, PduEvent);
+#[inline]
+pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
+    let (_, ref pdu) = item;
+
+    is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
+}
+
+#[inline]
+pub fn is_ignored_pdu(pdu: &PduEvent, user_id: &UserId) -> bool {
+    // exclude Synapse's dummy events from bloating up response bodies. clients
+    // don't need to see this.
+    if pdu.event_ty.to_string() == "org.matrix.dummy_event" {
+        return true;
+    }
+
+    // TODO: fixme
+    // let ignored_type = IGNORED_MESSAGE_TYPES.binary_search(&pdu.kind).is_ok();
+
+    // let ignored_server = crate::config()
+    //     .forbidden_remote_server_names
+    //     .contains(pdu.sender().server_name());
+
+    // if ignored_type && (crate::user::user_is_ignored(&pdu.sender, user_id).await) {
+    //     return true;
+    // }
+
+    false
 }

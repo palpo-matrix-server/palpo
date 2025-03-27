@@ -5,7 +5,6 @@ use crate::core::identifiers::*;
 use crate::core::state::{self, StateMap};
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::schema::*;
 use crate::{AppError, AppResult};
 
 pub(super) async fn state_at_incoming_degree_one(

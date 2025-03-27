@@ -3,13 +3,12 @@
 use std::ops::Deref;
 
 use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 mod content_serde;
 mod unstable_poll_answers_serde;
 mod unstable_poll_kind_serde;
-
-use crate::{OwnedEventId, UnixMillis};
 
 use self::unstable_poll_answers_serde::UnstablePollAnswersDeHelper;
 use super::{
@@ -18,9 +17,11 @@ use super::{
     unstable_end::UnstablePollEndEventContent,
 };
 use crate::events::{
-    EventContent, MessageLikeEventContent, MessageLikeEventType, RedactContent, RedactedMessageLikeEventContent,
-    StaticEventContent, relation::Replacement, room::message::RelationWithoutReplacement,
+    EventContent, EventContentFromType, MessageLikeEventContent, MessageLikeEventType, RedactContent,
+    RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
+    room::message::RelationWithoutReplacement,
 };
+use crate::{OwnedEventId, RawJsonValue, UnixMillis};
 
 /// The payload for an unstable poll start event.
 ///
@@ -32,7 +33,7 @@ use crate::events::{
 /// [`PollStartEventContent`].
 ///
 /// [`PollStartEventContent`]: super::start::PollStartEventContent
-#[derive(Clone, Debug, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, EventContent)]
 #[palpo_event(type = "org.matrix.msc3381.poll.start", kind = MessageLike, custom_redacted)]
 #[serde(untagged)]
 #[allow(clippy::large_enum_variant)]
@@ -106,7 +107,7 @@ impl OriginalSyncUnstablePollStartEvent {
 }
 
 /// A new unstable poll start event.
-#[derive(Clone, Debug, Serialize)]
+#[derive(ToSchema, Clone, Debug, Serialize)]
 pub struct NewUnstablePollStartEventContent {
     /// The poll content of the message.
     #[serde(rename = "org.matrix.msc3381.poll.start")]
@@ -160,7 +161,7 @@ impl MessageLikeEventContent for NewUnstablePollStartEventContent {}
 ///
 /// To construct this type, construct a [`NewUnstablePollStartEventContent`] and then use one of its
 /// `::from()` / `.into()` methods.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct NewUnstablePollStartEventContentWithoutRelation {
     /// The poll content of the message.
     #[serde(rename = "org.matrix.msc3381.poll.start")]
@@ -179,7 +180,7 @@ impl From<NewUnstablePollStartEventContent> for NewUnstablePollStartEventContent
 }
 
 /// A replacement unstable poll start event.
-#[derive(Clone, Debug)]
+#[derive(ToSchema, Clone, Debug)]
 pub struct ReplacementUnstablePollStartEventContent {
     /// The poll content of the message.
     pub poll_start: Option<UnstablePollStartContentBlock>,
@@ -242,7 +243,7 @@ impl StaticEventContent for ReplacementUnstablePollStartEventContent {
 impl MessageLikeEventContent for ReplacementUnstablePollStartEventContent {}
 
 /// Redacted form of UnstablePollStartEventContent
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RedactedUnstablePollStartEventContent {}
 
 impl RedactedUnstablePollStartEventContent {
@@ -266,8 +267,14 @@ impl StaticEventContent for RedactedUnstablePollStartEventContent {
 
 impl RedactedMessageLikeEventContent for RedactedUnstablePollStartEventContent {}
 
+impl EventContentFromType for RedactedUnstablePollStartEventContent {
+    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
+        serde_json::from_str(content.get())
+    }
+}
+
 /// An unstable block for poll start content.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(ToSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct UnstablePollStartContentBlock {
     /// The question of the poll.
     pub question: UnstablePollQuestion,
@@ -301,7 +308,7 @@ impl UnstablePollStartContentBlock {
 }
 
 /// An unstable poll question.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(ToSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct UnstablePollQuestion {
     /// The text representation of the question.
     #[serde(rename = "org.matrix.msc1767.text")]
@@ -320,7 +327,7 @@ impl UnstablePollQuestion {
 /// Must include between 1 and 20 `UnstablePollAnswer`s.
 ///
 /// To build this, use one of the `TryFrom` implementations.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 #[serde(try_from = "UnstablePollAnswersDeHelper")]
 pub struct UnstablePollAnswers(Vec<UnstablePollAnswer>);
 
@@ -355,7 +362,7 @@ impl Deref for UnstablePollAnswers {
 }
 
 /// Unstable poll answer.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct UnstablePollAnswer {
     /// The ID of the answer.
     ///

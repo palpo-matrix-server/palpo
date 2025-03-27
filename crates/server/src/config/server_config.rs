@@ -42,6 +42,8 @@ pub struct ServerConfig {
     pub max_fetch_prev_events: u16,
     #[serde(default = "false_value")]
     pub allow_registration: bool,
+    #[serde(default = "false_value")]
+    pub allow_outgoing_read_receipts: bool,
     pub registration_token: Option<String>,
     #[serde(default = "true_value")]
     pub allow_encryption: bool,

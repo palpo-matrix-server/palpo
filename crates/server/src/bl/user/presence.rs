@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
+
 use crate::core::{
     OwnedUserId, RoomId, UserId,
     events::presence::{PresenceEvent, PresenceEventContent},
     presence::PresenceState,
 };
 
-use diesel::prelude::*;
-
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{AppResult, db};
+use crate::{AppError, AppResult, db};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -44,7 +45,7 @@ pub struct NewDbPresence {
 
 impl DbPresence {
     /// Creates a PresenceEvent from available data.
-    pub fn to_presence_event(&self, user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<PresenceEvent> {
+    pub fn to_presence_event(&self, user_id: &UserId) -> AppResult<PresenceEvent> {
         let now = UnixMillis::now();
         let state = self.state.as_deref().map(PresenceState::from).unwrap_or_default();
         let last_active_ago = if state == PresenceState::Online {
@@ -54,10 +55,7 @@ impl DbPresence {
                 .map(|last_active_at| now.0.saturating_sub(last_active_at.0))
         };
 
-        let mut profile = crate::user::get_profile(user_id, room_id)?;
-        if profile.is_none() && room_id.is_some() {
-            profile = crate::user::get_profile(user_id, None)?;
-        }
+        let profile = crate::user::get_profile(user_id, None)?;
         Ok(PresenceEvent {
             sender: user_id.to_owned(),
             content: PresenceEventContent {
@@ -143,7 +141,7 @@ pub fn remove_presence(user_id: &UserId) -> AppResult<()> {
 }
 
 /// Returns the most recent presence updates that happened after the event with id `since`.
-pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
+pub fn presences_since(since_sn: i64) -> AppResult<HashMap<OwnedUserId, PresenceEvent>> {
     let presences = user_presences::table
         .filter(user_presences::occur_sn.ge(since_sn))
         .load::<DbPresence>(&mut *db::connect()?)?;
@@ -151,8 +149,65 @@ pub fn presences_since(room_id: &RoomId, since_sn: i64) -> AppResult<HashMap<Own
         .into_iter()
         .map(|presence| {
             presence
-                .to_presence_event(&presence.user_id, Some(room_id))
+                .to_presence_event(&presence.user_id)
                 .map(|event| (presence.user_id, event))
         })
         .collect()
+}
+
+#[inline]
+pub fn from_json_bytes_to_event(bytes: &[u8], user_id: &UserId) -> AppResult<PresenceEvent> {
+    let presence = Presence::from_json_bytes(bytes)?;
+    let event = presence.to_presence_event(user_id);
+
+    Ok(event)
+}
+
+/// Represents data required to be kept in order to implement the presence
+/// specification.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(super) struct Presence {
+    state: PresenceState,
+    currently_active: bool,
+    last_active_ts: u64,
+    status_msg: Option<String>,
+}
+
+impl Presence {
+    #[must_use]
+    pub(super) fn new(
+        state: PresenceState,
+        currently_active: bool,
+        last_active_ts: u64,
+        status_msg: Option<String>,
+    ) -> Self {
+        Self {
+            state,
+            currently_active,
+            last_active_ts,
+            status_msg,
+        }
+    }
+
+    pub(super) fn from_json_bytes(bytes: &[u8]) -> AppResult<Self> {
+        serde_json::from_slice(bytes).map_err(|_| AppError::public("Invalid presence data in database"))
+    }
+
+    /// Creates a PresenceEvent from available data.
+    pub(super) fn to_presence_event(&self, user_id: &UserId) -> PresenceEvent {
+        let now = UnixMillis::now();
+        let last_active_ago = Some(now.0.saturating_sub(self.last_active_ts));
+
+        PresenceEvent {
+            sender: user_id.to_owned(),
+            content: PresenceEventContent {
+                presence: self.state.clone(),
+                status_msg: self.status_msg.clone(),
+                currently_active: Some(self.currently_active),
+                last_active_ago,
+                display_name: crate::user::display_name(user_id).ok().flatten(),
+                avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
+            },
+        }
+    }
 }

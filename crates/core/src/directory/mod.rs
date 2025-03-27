@@ -220,6 +220,18 @@ where
     }
 }
 
+impl From<Option<RoomType>> for RoomTypeFilter {
+    fn from(t: Option<RoomType>) -> Self {
+        match t {
+            None => Self::Default,
+            Some(s) => match s {
+                RoomType::Space => Self::Space,
+                _ => Self::from(Some(s.as_str())),
+            },
+        }
+    }
+}
+
 /// The query criteria.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct QueryCriteria {
