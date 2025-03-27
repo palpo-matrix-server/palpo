@@ -1,16 +1,9 @@
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::iter::once;
-use std::sync::Arc;
+
+use std::collections::{HashSet};
 use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_core::appservice::third_party;
-use salvo::http::StatusError;
-use tokio::sync::RwLock;
 
-use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
@@ -33,7 +26,6 @@ use crate::membership::federation::membership::{
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
-use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
 
 // Make a user leave all their joined rooms

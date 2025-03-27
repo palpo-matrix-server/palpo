@@ -1,45 +1,29 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_core::appservice::{event, third_party};
-use palpo_core::events::key::verification::request;
 use palpo_core::federation::knock::{
     MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
 };
-use palpo_core::federation::room;
 use salvo::http::StatusError;
-use tokio::sync::RwLock;
 
-use crate::appservice::RegistrationInfo;
-use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::StateEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::knock::MakeKnockReqArgs;
-use crate::core::federation::membership::{
-    InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2, SendLeaveReqBody,
-    make_leave_request,
-};
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
-};
-use crate::core::{Seqnum, UnixMillis, federation};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
+use crate::core::{Seqnum, UnixMillis};
 use crate::event::{
     DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id, gen_event_id_canonical_json,
-    get_event_sn,
 };
-use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{
     InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody,
     SendLeaveReqArgsV2, send_leave_request_v2,
 };
-use crate::membership::state::{CompressedState, DeltaInfo};
-use crate::room::state::{self, CompressedEvent};
+use crate::room::state;
 use crate::schema::*;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};

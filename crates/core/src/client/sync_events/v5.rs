@@ -11,18 +11,18 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de::Error as _};
 
 use crate::events::{
-    AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType, TimelineEventType,
+    AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType,
 };
 use crate::identifiers::*;
 use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
 use crate::state::TypeStateKey;
-use crate::{OwnedMxcUri, Seqnum, UnixMillis};
+use crate::{OwnedMxcUri, Seqnum, };
 
+use super::UnreadNotificationsCount;
 pub use super::v4::{
     AccountData, AccountDataConfig, E2ee, E2eeConfig, Extensions, ExtensionsConfig, Receipts, ReceiptsConfig,
     SyncRoomHero, ToDevice, ToDeviceConfig, Typing, TypingConfig,
 };
-use super::{UnreadNotificationsCount, v4};
 use crate::directory::RoomTypeFilter;
 
 pub type SyncInfo<'a> = (&'a UserId, &'a DeviceId, Seqnum, &'a SyncEventsReqBody);

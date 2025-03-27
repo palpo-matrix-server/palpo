@@ -9,6 +9,7 @@ use palpo_core::appservice::third_party;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
+use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -21,20 +22,16 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-use crate::core::{Seqnum, UnixMillis, federation};
 
 use crate::appservice::RegistrationInfo;
 use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
-use crate::membership::federation::membership::{
-    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody,
-    SendLeaveReqArgsV2, send_leave_request_v2,
-};
+use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::schema::*;
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, db};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -91,7 +88,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json("Event content is empty or invalid: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("Event content is empty or invalid: {e}")))?;
 
     if content.membership != MembershipState::Join {
         return Err(MatrixError::bad_json("Not allowed to send a non-join membership event to join endpoint.").into());

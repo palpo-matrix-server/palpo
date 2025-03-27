@@ -12,7 +12,6 @@ use regex::Regex;
 use serde_json::value::to_raw_value;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
-use super::default_room_version;
 use super::event::PduBuilder;
 use crate::core::ServerName;
 use crate::core::appservice::Registration;
