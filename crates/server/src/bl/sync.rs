@@ -289,9 +289,10 @@ pub fn sync_events(
             }
         }
 
-        let knocked_rooms = crate::room::state::knocked_rooms(sender_id).fold_default(
-            |mut knocked_rooms: BTreeMap<_, _>, (room_id, knock_state)| async move {
-                let knock_sn = crate::room::state::get_knock_sn(&room_id, sender_id).ok();
+        let knocked_rooms = crate::user::knocked_rooms(&sender_id, 0)?.into_iter().fold(
+            BTreeMap::default(),
+            |mut knocked_rooms: BTreeMap<_, _>, (room_id, knock_state)| {
+                let knock_sn = crate::room::user::knock_sn(&sender_id, &room_id).ok();
 
                 // Knocked before last sync
                 if Some(since_sn) >= knock_sn {
@@ -526,7 +527,7 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        let joined_since_last_sync = crate::room::user::joined_sn(sender_id, room_id)? >= since_sn;
+        let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
 
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync

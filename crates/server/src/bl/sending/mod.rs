@@ -413,29 +413,25 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
     let presences_since = crate::user::presences_since(since_sn)?;
 
     let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();
-    for (user_id, occur_sn, presence_bytes) in presences_since {
+    for (user_id, presence_event) in presences_since {
         // max_edu_sn.fetch_max(occur_sn, Ordering::Relaxed);
         if !user_id.is_local() {
             continue;
         }
 
-        if !crate::room::state::server_can_see_user(server_name, user_id)? {
+        if !crate::room::state::server_can_see_user(server_name, &user_id)? {
             continue;
         }
 
-        let Ok(presence_event) = crate::user::presence::from_json_bytes_to_event(presence_bytes, user_id) else {
-            continue;
-        };
-
         let update = PresenceUpdate {
-            user_id: user_id.into(),
+            user_id: user_id.clone(),
             presence: presence_event.content.presence,
             currently_active: presence_event.content.currently_active.unwrap_or(false),
             status_msg: presence_event.content.status_msg,
-            last_active_ago: presence_event.content.last_active_ago.unwrap_or_else(|| uint!(0)),
+            last_active_ago: presence_event.content.last_active_ago.unwrap_or(0),
         };
 
-        presence_updates.insert(user_id.into(), update);
+        presence_updates.insert(user_id, update);
         if presence_updates.len() >= SELECT_PRESENCE_LIMIT {
             break;
         }
@@ -458,7 +454,6 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
 #[tracing::instrument(skip(server_name))]
 pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
     let mut max_edu_sn = curr_sn()?;
-    let mut device_list_changes = HashSet::new();
     let conf = crate::config();
 
     let since_sn = crate::curr_sn()?;
@@ -569,6 +564,7 @@ async fn handle_events(
                     SendingEventType::Edu(_) => {
                         // Appservices don't need EDUs (?)
                     }
+                    SendingEventType::Flush => {}
                 }
             }
 
@@ -585,9 +581,10 @@ async fn handle_events(
                 })?;
             let req_body = PushEventsReqBody { events: pdu_jsons };
 
-            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().map(|e| match e {
-                SendingEventType::Edu(b) => b,
-                SendingEventType::Pdu(b) => b.as_bytes(),
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
+                SendingEventType::Edu(b) => Some(&**b),
+                SendingEventType::Pdu(b) => Some(b.as_bytes()),
+                SendingEventType::Flush => None,
             })));
             let request = push_events_request(registration.url.as_deref().unwrap_or_default(), txn_id, req_body)
                 .map_err(|e| (kind.clone(), e.into()))?
@@ -622,6 +619,7 @@ async fn handle_events(
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)
                     }
+                    SendingEventType::Flush => {}
                 }
             }
 
@@ -694,17 +692,19 @@ async fn handle_events(
                             edu_jsons.push(raw);
                         }
                     }
-                    SendingEvent::Flush => {} // flush only; no new content
+                    SendingEventType::Flush => {} // flush only; no new content
                 }
             }
 
             let max_request = crate::sending::max_request();
             let permit = max_request.acquire().await;
 
-            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().map(|e| match e {
-                SendingEventType::Edu(b) => b,
-                SendingEventType::Pdu(b) => b.as_bytes(),
-            })));
+            let txn_id =
+                &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
+                    SendingEventType::Edu(b) => Some(&**b),
+                    SendingEventType::Pdu(b) => Some(b.as_bytes()),
+                    SendingEventType::Flush => None,
+                })));
             let request = send_messages_request(
                 &server.origin().await,
                 txn_id,

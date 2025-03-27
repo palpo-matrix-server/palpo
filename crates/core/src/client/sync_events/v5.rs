@@ -236,7 +236,7 @@ pub struct ReqListFilters {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReqList {
     /// The ranges of rooms we're interested in.
-    pub ranges: Vec<(u64, u64)>,
+    pub ranges: Vec<(usize, usize)>,
 
     /// The details to be included per room
     #[serde(flatten)]

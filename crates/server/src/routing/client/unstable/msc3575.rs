@@ -41,7 +41,7 @@ pub(super) async fn sync_events_v4(
     let watcher = crate::watch(sender_id, authed.device_id());
 
     let next_batch = crate::curr_sn()? + 1;
-    let body = body.into_inner();
+    let mut body = body.into_inner();
 
     let conn_id = body
         .conn_id
@@ -54,7 +54,8 @@ pub(super) async fn sync_events_v4(
         .and_then(|string| string.parse().ok())
         .unwrap_or_default();
 
-    if global_since_sn != 0 && !crate::sync_v4::remembered(sender_id.to_owned(), authed.device_id().to_owned(), conn_id)
+    if global_since_sn != 0
+        && !crate::sync_v4::remembered(sender_id.to_owned(), authed.device_id().to_owned(), conn_id.clone())
     {
         debug!("Restarting sync stream because it was gone from the database");
         return Err(MatrixError::unknown_pos("Connection data lost since last time").into());
@@ -68,18 +69,12 @@ pub(super) async fn sync_events_v4(
     let known_rooms =
         crate::sync_v4::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms: Vec<&RoomId> = crate::user::joined_rooms(sender_id, 0)?
-        .iter()
-        .map(|r| r.as_ref())
-        .collect();
-    let all_invited_rooms: Vec<&RoomId> = crate::user::invited_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0.as_ref())
-        .collect();
-    let all_knocked_rooms: Vec<&RoomId> = crate::user::knocked_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0.as_ref())
-        .collect();
+    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
+    let all_joined_rooms: Vec<&RoomId> = all_joined_rooms.iter().map(|r| r.as_ref()).collect();
+    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?;
+    let all_invited_rooms: Vec<&RoomId> = all_invited_rooms.iter().map(|r| r.0.as_ref()).collect();
+    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?;
+    let all_knocked_rooms: Vec<&RoomId> = all_knocked_rooms.iter().map(|r| r.0.as_ref()).collect();
 
     let mut all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
@@ -108,8 +103,7 @@ pub(super) async fn sync_events_v4(
             .unwrap_or_default()
             .into_iter()
             .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
-            .collect()
-            .await;
+            .collect();
 
         if let Some(rooms) = body.extensions.account_data.rooms {
             for room in rooms {
@@ -119,8 +113,7 @@ pub(super) async fn sync_events_v4(
                         .unwrap_or_default()
                         .into_iter()
                         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-                        .collect()
-                        .await,
+                        .collect(),
                 );
             }
         }
@@ -158,7 +151,7 @@ pub(super) async fn sync_events_v4(
                         })
                         .transpose()?;
 
-                let joined_since_last_sync = crate::room::user::joined_sn(sender_id, &room_id)? >= global_since_sn;
+                let joined_since_last_sync = crate::room::user::join_sn(sender_id, &room_id)? >= global_since_sn;
 
                 let new_encrypted_room = encrypted_room && since_encryption.is_none();
 
@@ -378,8 +371,6 @@ pub(super) async fn sync_events_v4(
 
     let mut rooms = BTreeMap::new();
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in &todo_rooms {
-        let mut invite_state = None;
-
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;
         let (timeline_pdus, limited) = if all_invited_rooms.contains(&&**room_id) {
@@ -491,7 +482,11 @@ pub(super) async fn sync_events_v4(
             Ordering::Less => None,
         };
 
-        let hero_avatar = if heroes.len() == 1 { heroes[0].1.clone() } else { None };
+        let hero_avatar = if heroes.len() == 1 {
+            heroes[0].avatar.clone()
+        } else {
+            None
+        };
 
         rooms.insert(
             room_id.clone(),

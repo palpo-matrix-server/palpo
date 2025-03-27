@@ -75,15 +75,11 @@ pub(super) async fn sync_events_v5(
 
     let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
 
-    let all_invited_rooms: Vec<_> = crate::user::invited_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0)
-        .collect();
+    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?;
+    let all_invited_rooms: Vec<&RoomId> = all_invited_rooms.iter().map(|r| r.0.as_ref()).collect();
 
-    let all_knocked_rooms: Vec<_> = crate::user::knocked_rooms(sender_id, 0)?
-        .into_iter()
-        .map(|r| r.0)
-        .collect::<Vec<_>>();
+    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?;
+    let all_knocked_rooms: Vec<&RoomId> = all_knocked_rooms.iter().map(|r| r.0.as_ref()).collect();
 
     let all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
@@ -190,7 +186,7 @@ async fn handle_lists<'a>(
 
         for mut range in ranges {
             range.0 = 0;
-            range.1 = range.1.clamp(range.0, active_rooms.len() as u64);
+            range.1 = range.1.clamp(range.0, active_rooms.len());
 
             let room_ids = active_rooms[range.0..range.1].to_vec();
 
@@ -322,8 +318,7 @@ async fn process_rooms(
                 crate::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-                    .collect()
-                    .await,
+                    .collect::<Vec<_>>(),
             );
         }
 
@@ -384,8 +379,7 @@ async fn process_rooms(
             .iter()
             .filter_map(|item| ignored_filter(item.clone(), sender_id))
             .map(|(_, pdu)| pdu.to_sync_room_event())
-            .collect()
-            .await;
+            .collect();
 
         for (_, pdu) in timeline_pdus {
             let ts = pdu.origin_server_ts;
@@ -402,8 +396,7 @@ async fn process_rooms(
                     .flatten()
                     .map(|s| s.to_sync_state_event())
             })
-            .collect()
-            .await;
+            .collect::<Vec<_>>();
 
         // Heroes
         let heroes: Vec<_> = crate::room::state::get_members(room_id)?
@@ -420,14 +413,13 @@ async fn process_rooms(
                     })
             })
             .take(5)
-            .collect()
-            .await;
+            .collect();
 
         let name = match heroes.len().cmp(&(1_usize)) {
             Ordering::Greater => {
                 let firsts = heroes[1..]
                     .iter()
-                    .map(|h| h.name.clone().unwrap_or_else(|| h.user_id.to_string()))
+                    .map(|h: &SyncRoomHero| h.name.clone().unwrap_or_else(|| h.user_id.to_string()))
                     .collect::<Vec<_>>()
                     .join(", ");
 
