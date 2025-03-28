@@ -55,6 +55,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
                         json_data: serde_json::to_value(receipt)?,
                         receipt_at,
                     };
+                    println!("iiiiiiiiiiiiiinsert receipt: {:?}", receipt);
                     diesel::insert_into(event_receipts::table)
                         .values(&receipt)
                         .on_conflict((event_receipts::ty, event_receipts::room_id, event_receipts::user_id))
@@ -105,6 +106,7 @@ pub fn read_receipts(
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::event_sn.ge(since_sn))
         .load::<DbReceipt>(&mut *db::connect()?)?;
+    println!("RRRRRRRRRRRRRead receipts: {:?}", receipts);
     for receipt in receipts {
         let DbReceipt {
             ty,

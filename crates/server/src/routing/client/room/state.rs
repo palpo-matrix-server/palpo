@@ -241,6 +241,12 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
         crate::room::user::reset_notification_counts(authed.user_id(), &args.room_id)?;
     }
+
+    // ping presence
+    if crate::config().allow_local_presence {
+        crate::user::ping_presence(authed.user_id(), &crate::core::presence::PresenceState::Online)?;
+    }
+
     match args.receipt_type {
         ReceiptType::FullyRead => {
             let fully_read_event = crate::core::events::fully_read::FullyReadEvent {
@@ -256,6 +262,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
             )?;
         }
         ReceiptType::Read => {
+            println!("MMMMMMMMMMMMMMMMMMM read 1");
             let mut user_receipts = BTreeMap::new();
             user_receipts.insert(
                 authed.user_id().clone(),
@@ -270,6 +277,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
             let mut receipt_content = BTreeMap::new();
             receipt_content.insert(args.event_id.to_owned(), receipts);
 
+            println!("MMMMMMMMMMMMMMMMMMM read 2");
             crate::room::receipt::update_read(
                 authed.user_id(),
                 &args.room_id,
