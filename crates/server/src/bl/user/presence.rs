@@ -73,6 +73,7 @@ impl DbPresence {
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {
+    println!("==================pin presence");
     const REFRESH_TIMEOUT: u64 = 60 * 1000;
 
     let last_presence = last_presence(user_id);
@@ -97,6 +98,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
 
     let currently_active = *new_state == PresenceState::Online;
 
+    println!("==================pin presence 2");
     set_presence(
         NewDbPresence {
             user_id: user_id.to_owned(),

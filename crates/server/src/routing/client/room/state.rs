@@ -236,6 +236,7 @@ pub(super) async fn send_state_for_empty_key(
 /// Sets private read marker and public read receipt EDU.
 #[endpoint]
 pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut Depot) -> EmptyResult {
+    println!("=========send receipt");
     let authed = depot.authed_info()?;
 
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
