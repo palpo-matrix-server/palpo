@@ -23,12 +23,10 @@ mod voip;
 pub(crate) mod media;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
-use std::time::Duration;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::UserId;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -36,7 +34,6 @@ use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody
 use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
 
 pub fn router() -> Router {

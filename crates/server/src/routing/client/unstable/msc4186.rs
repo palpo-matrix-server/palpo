@@ -23,7 +23,7 @@ use crate::room::filter_rooms;
 use crate::room::receipt::pack_receipts;
 use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{
-    AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok,
+    AppError, AppResult, AuthArgs, DepotExt,  JsonResult,  extract_variant, json_ok,
 };
 
 /// `POST /_matrix/client/unstable/org.matrix.simplified_msc3575/sync`

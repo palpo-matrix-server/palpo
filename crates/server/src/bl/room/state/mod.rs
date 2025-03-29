@@ -30,7 +30,7 @@ use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, Seqnum, UserId};
 use crate::event::{PduBuilder, PduEvent};
 use crate::event::{update_frame_id, update_frame_id_by_sn};
 use crate::schema::*;
-use crate::{AppError, AppResult, DieselResult, MatrixError, db, utils};
+use crate::{AppError, AppResult, MatrixError, db, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]

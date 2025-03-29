@@ -1,13 +1,9 @@
 use diesel::prelude::*;
 use palpo_core::appservice::third_party;
-use salvo::http::StatusError;
-use tokio::sync::RwLock;
 
-use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
-use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{ AppResult, MatrixError, db, diesel_exists};
+use crate::{AppResult, MatrixError, db, diesel_exists};
 
 /// Makes a user forget a room.
 #[tracing::instrument]

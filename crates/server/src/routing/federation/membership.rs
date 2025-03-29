@@ -298,7 +298,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         )
         .expect("CanonicalJson is valid json value"),
     )
-    .map_err(|e| MatrixError::bad_json("room_id field is not a valid room ID: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
     if event_room_id != args.room_id {
         return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());

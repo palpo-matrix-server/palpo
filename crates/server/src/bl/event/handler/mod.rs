@@ -834,7 +834,6 @@ pub async fn fetch_missing_prev_events(
     // let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
     //     .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
-
     let mut amount = 0;
     let room_version_id = &crate::room::room_version(room_id)?;
     while let Some(prev_event_id) = todo_outlier_stack.pop_front() {

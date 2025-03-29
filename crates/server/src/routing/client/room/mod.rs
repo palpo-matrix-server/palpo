@@ -476,14 +476,17 @@ pub(super) async fn create_room(
     body: JsonBody<CreateRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<CreateRoomResBody> {
+    println!("ccccccccccccccccc 0");
     let authed = depot.authed_info()?;
     let room_id = RoomId::new(crate::server_name());
     crate::room::ensure_room(&room_id, &crate::default_room_version())?;
 
+    println!("ccccccccccccccccc 1");
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.").into());
     }
 
+    println!("ccccccccccccccccc 2");
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
         let alias = RoomAliasId::parse(format!("#{}:{}", localpart, crate::server_name()))

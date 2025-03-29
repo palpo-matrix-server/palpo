@@ -10,7 +10,6 @@ use crate::core::RawJson;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
-use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::RoomAccountDataEventType;
@@ -20,7 +19,7 @@ use crate::core::identifiers::*;
 use crate::room::filter_rooms;
 use crate::room::receipt::pack_receipts;
 use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok};
+use crate::{AppError, AuthArgs, DepotExt,JsonResult, extract_variant, hoops, json_ok};
 
 pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
 

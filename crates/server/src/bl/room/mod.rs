@@ -22,7 +22,6 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 
 use crate::appservice::RegistrationInfo;
-use crate::config::default_room_version;
 use crate::core::directory::RoomTypeFilter;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
@@ -32,7 +31,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{OwnedServerName, Seqnum, UnixMillis};
+use crate::core::{OwnedServerName,UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 

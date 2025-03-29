@@ -10,7 +10,7 @@ use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::identifiers::*;
 use crate::core::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedUserId, UserId};
-use crate::core::{UnixMillis, client, Seqnum, federation};
+use crate::core::{Seqnum, UnixMillis, client, federation};
 use crate::exts::*;
 use crate::schema::*;
 use crate::user::clean_signatures;

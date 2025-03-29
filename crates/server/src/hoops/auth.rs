@@ -15,6 +15,7 @@ use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, db};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+    println!("=========auth_by_access_token_or_signatures");
     if let Some(authorization) = &aa.authorization {
         if authorization.starts_with("Bearer ") {
             auth_by_access_token_inner(aa, depot).await
@@ -28,29 +29,32 @@ pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request,
 
 #[handler]
 pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
+    println!("=========auth_by_access_token");
     auth_by_access_token_inner(aa, depot).await
 }
 #[handler]
 pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+    println!("=========auth_by_signatures");
     auth_by_signatures_inner(req, depot).await
 }
 
 async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
     let token = aa.require_access_token()?;
 
+    let conn = &mut db::connect()?;
     let access_token = user_access_tokens::table
         .filter(user_access_tokens::token.eq(token))
-        .first::<DbAccessToken>(&mut *db::connect()?)
+        .first::<DbAccessToken>(conn)
         .ok();
     if let Some(access_token) = access_token {
         let user = users::table
             .find(&access_token.user_id)
-            .first::<DbUser>(&mut *db::connect()?)
+            .first::<DbUser>(conn)
             .map_err(|_| MatrixError::unknown_token(true, "User not found"))?;
         let user_device = user_devices::table
             .filter(user_devices::device_id.eq(&access_token.device_id))
             .filter(user_devices::user_id.eq(&user.id))
-            .first::<DbUserDevice>(&mut *db::connect()?)
+            .first::<DbUserDevice>(conn)
             .map_err(|_| MatrixError::unknown_token(true, "User device not found"))?;
 
         depot.inject(AuthedInfo {

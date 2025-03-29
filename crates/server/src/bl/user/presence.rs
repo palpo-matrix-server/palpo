@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use diesel::prelude::*;
-use palpo_core::Seqnum;
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
-    OwnedUserId, RoomId, UserId,
+    OwnedUserId, UserId,
     events::presence::{PresenceEvent, PresenceEventContent},
     presence::PresenceState,
 };
@@ -73,7 +72,6 @@ impl DbPresence {
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {
-    println!("==================pin presence");
     const REFRESH_TIMEOUT: u64 = 60 * 1000;
 
     let last_presence = last_presence(user_id);
@@ -98,7 +96,6 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
 
     let currently_active = *new_state == PresenceState::Online;
 
-    println!("==================pin presence 2");
     set_presence(
         NewDbPresence {
             user_id: user_id.to_owned(),
@@ -115,13 +112,15 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
     )
 }
 pub fn last_presence(user_id: &UserId) -> AppResult<PresenceEvent> {
-    if let Some(data) = user_presences::table
-        .filter(user_presences::user_id.eq(user_id))
-        .first::<DbPresence>(&mut *db::connect()?)
-        .optional()?
+    let presence = user_presences::table
+    .filter(user_presences::user_id.eq(user_id))
+    .first::<DbPresence>(&mut *db::connect()?)
+    .optional()?;
+    if let Some(data) = presence
     {
         Ok(data.to_presence_event(user_id)?)
     } else {
+        println!("==================pin presence   x3");
         Err(MatrixError::not_found("No presence data found for user").into())
     }
 }

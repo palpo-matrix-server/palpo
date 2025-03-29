@@ -1,19 +1,11 @@
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::federation::membership::{InviteUserResBodyV2, SendLeaveReqBody, make_leave_request};
+use crate::core::federation::membership::{InviteUserResBodyV2};
 use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
-use crate::core::{Seqnum, UnixMillis, federation};
-
 use crate::event::{PduBuilder, gen_event_id_canonical_json};
-use crate::membership::federation::membership::{
-    InviteUserReqArgs, InviteUserReqBodyV2, SendLeaveReqArgsV2, send_leave_request_v2,
-};
-use crate::membership::state::DeltaInfo;
-use crate::room::state::{self, CompressedEvent};
-use crate::schema::*;
-use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
+use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
+use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError};
 
 pub(crate) async fn invite_user(
     inviter_id: &UserId,

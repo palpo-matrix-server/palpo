@@ -1,13 +1,12 @@
-use std::collections::HashMap;
+
 
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
-use crate::core::events::AnyRawAccountDataEvent;
+use crate::core::events::{RoomAccountDataEventType, AnyRawAccountDataEvent};
 use crate::core::identifiers::*;
 use crate::core::{
     UnixMillis,
-    events::{AnyEphemeralRoomEvent, AnyEphemeralRoomEventContent, RoomAccountDataEventType},
     serde::RawJson,
 };
 use crate::schema::*;

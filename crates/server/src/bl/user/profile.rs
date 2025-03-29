@@ -29,19 +29,23 @@ pub struct NewDbProfile {
 }
 
 pub fn get_profile(user_id: &UserId, room_id: Option<&RoomId>) -> AppResult<Option<DbProfile>> {
-    if let Some(room_id) = room_id {
+    let profile = if let Some(room_id) = room_id {
+        println!("get_profile room_id: {:?}", room_id);
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.eq(room_id))
             .first::<DbProfile>(&mut *db::connect()?)
-            .optional()
-            .map_err(Into::into)
+            .optional()?
     } else {
+        println!("get_profilexx  2 room_id: {:?}", room_id);
+        let conn = &mut *db::connect()?;
+        println!("get_profile  3",);
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.is_null())
-            .first::<DbProfile>(&mut *db::connect()?)
-            .optional()
-            .map_err(Into::into)
-    }
+            .first::<DbProfile>(conn)
+            .optional()?
+    };
+    println!("get_profile  4",);
+    Ok(profile)
 }
