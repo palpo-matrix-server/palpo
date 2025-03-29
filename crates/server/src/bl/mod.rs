@@ -18,7 +18,7 @@ pub mod user;
 pub use exts::*;
 mod cjson;
 pub use cjson::Cjson;
-pub mod sync;
+pub mod sync_v3;
 
 pub use event::{PduBuilder, PduEvent};
 

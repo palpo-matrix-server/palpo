@@ -41,6 +41,7 @@ pub struct NewDbReceipt {
 /// Replaces the previous read receipt.
 #[tracing::instrument]
 pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> AppResult<()> {
+    println!("uuuuuuuuuuuuupdate_read   event: {:?}", event);
     for (event_id, receipts) in event.content {
         if let Ok(event_sn) = crate::event::get_event_sn(&event_id) {
             for (receipt_ty, user_receipts) in receipts {
@@ -106,7 +107,6 @@ pub fn read_receipts(
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::event_sn.ge(since_sn))
         .load::<DbReceipt>(&mut *db::connect()?)?;
-    println!("RRRRRRRRRRRRRead receipts: {:?}", receipts);
     for receipt in receipts {
         let DbReceipt {
             ty,

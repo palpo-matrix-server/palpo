@@ -18,7 +18,7 @@ use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, Sta
 use crate::core::identifiers::*;
 use crate::room::filter_rooms;
 use crate::room::receipt::pack_receipts;
-use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
+use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{AppError, AuthArgs, DepotExt,JsonResult, extract_variant, hoops, json_ok};
 
 pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
@@ -186,7 +186,7 @@ pub(super) async fn sync_events_v4(
                                     match new_membership {
                                         MembershipState::Join => {
                                             // A new user joined an encrypted room
-                                            if !crate::sync::share_encrypted_room(
+                                            if !crate::sync_v3::share_encrypted_room(
                                                 authed.user_id(),
                                                 &user_id,
                                                 Some(&room_id),
@@ -215,7 +215,7 @@ pub(super) async fn sync_events_v4(
                                 })
                                 .filter(|user_id| {
                                     // Only send keys if the sender doesn't share an encrypted room with the target already
-                                    !crate::bl::sync::share_encrypted_room(sender_id, user_id, Some(&room_id))
+                                    !crate::bl::sync_v3::share_encrypted_room(sender_id, user_id, Some(&room_id))
                                         .unwrap_or(false)
                                 }),
                         );
@@ -376,7 +376,7 @@ pub(super) async fn sync_events_v4(
             invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
             (Vec::new(), true)
         } else {
-            crate::sync::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
+            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
         };
 
         if room_since_sn != &0 && timeline_pdus.is_empty() {

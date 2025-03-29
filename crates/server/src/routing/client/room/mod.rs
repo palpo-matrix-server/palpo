@@ -1,6 +1,7 @@
 mod event;
 pub(super) mod membership;
 mod message;
+mod receipt;
 mod relation;
 mod state;
 mod tag;
@@ -63,8 +64,8 @@ pub fn authed_router() -> Router {
                     .push(Router::with_path("typing/{user_id}").put(state::send_typing))
                     .push(
                         Router::with_path("receipt/{receipt_type}/{event_id}")
-                            .post(state::send_receipt)
-                            .put(state::send_receipt),
+                            .post(receipt::send_receipt)
+                            .put(receipt::send_receipt),
                     )
                     .push(Router::with_path("timestamp_to_event").get(event::timestamp_to_event)),
             ),

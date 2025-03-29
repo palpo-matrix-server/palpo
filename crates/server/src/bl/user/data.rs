@@ -1,14 +1,9 @@
-
-
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
-use crate::core::events::{RoomAccountDataEventType, AnyRawAccountDataEvent};
+use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::{
-    UnixMillis,
-    serde::RawJson,
-};
+use crate::core::{UnixMillis, serde::RawJson};
 use crate::schema::*;
 use crate::{AppError, AppResult, JsonValue, db};
 
@@ -42,6 +37,32 @@ pub fn set_data(
     event_type: &str,
     json_data: JsonValue,
 ) -> AppResult<DbUserData> {
+    if let Some(room_id) = &room_id {
+        let user_data = user_datas::table
+            .filter(user_datas::user_id.eq(user_id))
+            .filter(user_datas::room_id.eq(room_id))
+            .filter(user_datas::data_type.eq(event_type))
+            .first::<DbUserData>(&mut *db::connect()?)
+            .optional()?;
+        if let Some(user_data) = user_data {
+            if user_data.json_data == json_data {
+                return Ok(user_data);
+            }
+        }
+    } else {
+        let user_data = user_datas::table
+            .filter(user_datas::user_id.eq(user_id))
+            .filter(user_datas::room_id.is_null())
+            .filter(user_datas::data_type.eq(event_type))
+            .first::<DbUserData>(&mut *db::connect()?)
+            .optional()?;
+        if let Some(user_data) = user_data {
+            if user_data.json_data == json_data {
+                return Ok(user_data);
+            }
+        }
+    }
+
     let new_data = NewDbUserData {
         user_id: user_id.to_owned(),
         room_id: room_id.clone(),

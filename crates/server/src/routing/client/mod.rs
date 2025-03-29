@@ -231,7 +231,7 @@ async fn sync_events_v3(
                 let device_id = authed.device_id().to_owned();
                 crate::user::ping_presence(&user_id, &args.set_presence)?;
                 async move {
-                    if let Err(e) = crate::sync::sync_events(user_id, device_id, args, tx).await {
+                    if let Err(e) = crate::sync_v3::sync_events(user_id, device_id, args, tx).await {
                         tracing::error!(error = ?e, "sync_events error 1");
                     }
                 }
@@ -249,7 +249,7 @@ async fn sync_events_v3(
                     let device_id = authed.device_id().to_owned();
                     crate::user::ping_presence(&user_id, &args.set_presence)?;
                     async move {
-                        if let Err(e) = crate::sync::sync_events(user_id, device_id, args, tx).await {
+                        if let Err(e) = crate::sync_v3::sync_events(user_id, device_id, args, tx).await {
                             tracing::error!(error = ?e, "sync_events error 2");
                         }
                     }
