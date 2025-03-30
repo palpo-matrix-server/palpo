@@ -351,7 +351,7 @@ fn select_edus_receipts_room(
     let receipts = crate::room::receipt::read_receipts(room_id, since_sn)?;
 
     let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
-    for (user_id, occur_sn, read_receipt) in receipts {
+    for (user_id,  read_receipt) in receipts {
         // if count > since_sn {
         //     break;
         // }
@@ -361,24 +361,21 @@ fn select_edus_receipts_room(
             continue;
         }
 
-        let Ok(event) = serde_json::from_str(read_receipt.inner().get()) else {
-            error!(
-                ?user_id,
-                ?occur_sn,
-                ?read_receipt,
-                "Invalid edu event in read_receipts."
-            );
-            continue;
-        };
+        // let Ok(event) = serde_json::from_str(read_receipt.inner().get()) else {
+        //     error!(
+        //         ?user_id,
+        //         ?read_receipt,
+        //         "Invalid edu event in read_receipts."
+        //     );
+        //     continue;
+        // };
 
-        let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
-            error!(?user_id, ?occur_sn, ?event, "Invalid event type in read_receipts");
-            continue;
-        };
+        // let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
+        //     error!(?user_id, ?event, "Invalid event type in read_receipts");
+        //     continue;
+        // };
 
-        let (event_id, mut receipt) = r
-            .content
-            .0
+        let (event_id, mut receipt) = read_receipt.0
             .into_iter()
             .next()
             .expect("we only use one event per read receipt");

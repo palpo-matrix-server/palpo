@@ -5,21 +5,20 @@ use std::time::Duration;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::MatrixError;
-use crate::core::RawJson;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::RoomAccountDataEventType;
+use crate::core::events::receipt::ReceiptEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::core::{MatrixError, RawJson};
 use crate::room::filter_rooms;
-use crate::room::receipt::pack_receipts;
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
-use crate::{AppError, AuthArgs, DepotExt,JsonResult, extract_variant, hoops, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, JsonResult, extract_variant, hoops, json_ok};
 
 pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
 
@@ -400,26 +399,23 @@ pub(super) async fn sync_events_v4(
             None
         };
 
-        let mut vector: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
-            crate::room::receipt::read_receipts(room_id, *room_since_sn)?
-                .into_iter()
-                .filter_map(|(read_user, event_sn, value)| {
-                    if crate::user::user_is_ignored(&read_user, sender_id) {
-                        Some(value)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let mut vector: Vec<ReceiptEventContent> = crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+            .into_iter()
+            .filter_map(|(read_user, value)| {
+                if crate::user::user_is_ignored(&read_user, sender_id) {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         if let Some(private_read_event) = private_read_event {
             vector.push(private_read_event);
         }
 
         let receipt_size = vector.len();
-        receipts
-            .rooms
-            .insert(room_id.clone(), pack_receipts(Box::new(vector.into_iter())));
+        receipts.rooms.insert(room_id.clone(), RawJson::new(&vector)?.cast());
 
         if account_data.rooms.get(room_id).is_some_and(Vec::is_empty) && receipt_size == 0 {
             continue;

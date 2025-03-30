@@ -477,17 +477,14 @@ pub(super) async fn create_room(
     body: JsonBody<CreateRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<CreateRoomResBody> {
-    println!("ccccccccccccccccc 0");
     let authed = depot.authed_info()?;
     let room_id = RoomId::new(crate::server_name());
     crate::room::ensure_room(&room_id, &crate::default_room_version())?;
 
-    println!("ccccccccccccccccc 1");
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.").into());
     }
 
-    println!("ccccccccccccccccc 2");
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
         let alias = RoomAliasId::parse(format!("#{}:{}", localpart, crate::server_name()))
@@ -644,7 +641,6 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
-    println!("CCCCCCCCCCCCCreate room  == 9");
     // 5. Events set by preset
     // 5.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
@@ -676,7 +672,6 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
-    println!("CCCCCCCCCCCCCreate room  == 10");
     // 5.3 Guest Access
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -711,7 +706,6 @@ pub(super) async fn create_room(
         crate::room::timeline::build_and_append_pdu(pdu_builder, authed.user_id(), &room_id)?;
     }
 
-    println!("CCCCCCCCCCCCCreate room  == 11");
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
         crate::room::timeline::build_and_append_pdu(
@@ -749,21 +743,16 @@ pub(super) async fn create_room(
         }
     }
 
-    println!("CCCCCCCCCCCCCreate room  == 12");
     // Homeserver specific stuff
     if let Some(alias) = alias {
         crate::room::set_alias(&room_id, &alias, authed.user_id())?;
     }
-    println!("CCCCCCCCCCCCCreate room  == 13");
 
     if body.visibility == Visibility::Public {
         crate::room::directory::set_public(&room_id, true)?;
     }
 
-    println!("CCCCCCCCCCCCCreate room  == 14");
     info!("{} created a room", authed.user_id());
-
-    println!("CCCCCCCCCCCCCreate room  == 15");
     json_ok(CreateRoomResBody { room_id })
 }
 

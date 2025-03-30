@@ -45,7 +45,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 use tower_service::Service as TowerService;
 
-use crate::core::UnixMillis;
+use crate::core::{Seqnum, UnixMillis};
 use crate::core::client::sync_events;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::identifiers::*;
@@ -216,14 +216,14 @@ pub struct DbServerSigningKeys {
     pub created_at: UnixMillis,
 }
 
-pub fn next_sn() -> AppResult<i64> {
+pub fn next_sn() -> AppResult<Seqnum> {
     diesel::dsl::sql::<diesel::sql_types::BigInt>("SELECT nextval('occur_sn_seq')")
-        .get_result::<i64>(&mut *db::connect()?)
+        .get_result::<Seqnum>(&mut *db::connect()?)
         .map_err(Into::into)
 }
-pub fn curr_sn() -> AppResult<i64> {
+pub fn curr_sn() -> AppResult<Seqnum> {
     diesel::dsl::sql::<diesel::sql_types::BigInt>("SELECT last_value from occur_sn_seq")
-        .get_result::<i64>(&mut *db::connect()?)
+        .get_result::<Seqnum>(&mut *db::connect()?)
         .map_err(Into::into)
 }
 

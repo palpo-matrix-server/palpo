@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
+use palpo_core::events::receipt::ReceiptEvent;
 use tokio::sync::watch::Sender;
 
 use crate::core::UnixMillis;
@@ -778,14 +779,16 @@ async fn load_joined_room(
 
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
 
-    let read_receipts = crate::room::receipt::read_receipts(&room_id, since_sn)?;
-    println!("============since_sn:{since_sn}====read_receipts: {:?}", read_receipts);
-    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = if !read_receipts.is_empty() {
-        vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?]
-    } else {
-        Vec::new()
-    };
-
+    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
+    for (_, content) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
+        let receipt = ReceiptEvent {
+            room_id: room_id.to_owned(),
+            content,
+        };
+        println!("============since_sn:{since_sn}====receipt: {:?}", receipt);
+        edus.push(RawJson::new(&receipt)?.cast());
+    }
+    
     if crate::room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(
             serde_json::from_str(&serde_json::to_string(

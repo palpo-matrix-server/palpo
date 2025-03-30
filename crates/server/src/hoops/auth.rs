@@ -15,7 +15,6 @@ use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, db};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
-    println!("=========auth_by_access_token_or_signatures");
     if let Some(authorization) = &aa.authorization {
         if authorization.starts_with("Bearer ") {
             auth_by_access_token_inner(aa, depot).await
@@ -29,12 +28,10 @@ pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request,
 
 #[handler]
 pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
-    println!("=========auth_by_access_token");
     auth_by_access_token_inner(aa, depot).await
 }
 #[handler]
 pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
-    println!("=========auth_by_signatures");
     auth_by_signatures_inner(req, depot).await
 }
 

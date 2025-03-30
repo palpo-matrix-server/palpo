@@ -213,6 +213,7 @@ pub fn get_to_device_events(
     since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
 ) -> AppResult<Vec<RawJson<AnyToDeviceEvent>>> {
+    println!("==================get_to_device_events");
     device_inboxes::table
         .filter(device_inboxes::user_id.eq(user_id))
         .filter(device_inboxes::device_id.eq(device_id))
@@ -232,6 +233,7 @@ pub fn add_to_device_event(
     event_type: &str,
     content: serde_json::Value,
 ) -> AppResult<()> {
+    println!("===============add_to_device_event");
     let mut json = serde_json::Map::new();
     json.insert("type".to_owned(), event_type.to_owned().into());
     json.insert("sender".to_owned(), sender.to_string().into());

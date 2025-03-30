@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
-use crate::core::{RawJson, UnixMillis};
+use crate::core::{RawJson, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{AppResult, JsonValue, db, diesel_exists};
 
@@ -81,13 +81,13 @@ pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
         .map_err(Into::into)
 }
 
-pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
     event_receipts::table
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::room_id.eq(room_id))
-        .order_by(event_receipts::event_sn.desc())
-        .select(event_receipts::event_sn)
-        .first::<i64>(&mut *db::connect()?)
+        .order_by(event_receipts::occur_sn.desc())
+        .select(event_receipts::occur_sn)
+        .first::<Seqnum>(&mut *db::connect()?)
         .optional()
         .map(|v| v.unwrap_or_default())
         .map_err(Into::into)

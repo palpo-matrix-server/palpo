@@ -785,14 +785,14 @@ CREATE TABLE event_receipts (
     room_id text NOT NULL,
     user_id text NOT NULL,
     event_id text NOT NULL,
-    event_sn bigint NOT NULL,
+    occur_sn bigint NOT NULL,
     json_data json NOT NULL,
     receipt_at bigint NOT NULL
 );
-ALTER TABLE ONLY event_receipts
-    ADD CONSTRAINT event_receipts_ukey UNIQUE (ty, room_id, user_id);
+
 CREATE INDEX event_receipts_room_id_idx ON event_receipts USING btree (room_id);
-CREATE INDEX event_receipts_event_sn_idx ON event_receipts USING btree (event_sn);
+CREATE INDEX event_receipts_user_id_idx ON event_receipts USING btree (user_id);
+CREATE INDEX event_receipts_occur_sn_idx ON event_receipts USING btree (occur_sn);
 
 
 DROP TABLE IF EXISTS event_searches;
@@ -880,11 +880,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_edges_event_id_prev_event_id_idx
 DROP TABLE IF EXISTS event_txn_ids;
 CREATE TABLE IF NOT EXISTS event_txn_ids
 (
-    event_id text NOT NULL PRIMARY KEY,
-    room_id text NOT NULL,
-    user_id text NOT NULL,
-    device_id text,
+    id bigserial NOT NULL PRIMARY KEY,
     txn_id text NOT NULL,
+    user_id text NOT NULL,
+    room_id text,
+    device_id text,
+    event_id text,
     created_at bigint NOT NULL
 );
 
@@ -898,7 +899,7 @@ CREATE INDEX IF NOT EXISTS event_txn_ids_created_at_idx
 
 CREATE UNIQUE INDEX IF NOT EXISTS event_txn_ids_txn_id
     ON event_txn_ids USING btree
-    (room_id ASC NULLS LAST, user_id ASC NULLS LAST, device_id ASC NULLS LAST, txn_id ASC NULLS LAST);
+    (txn_id ASC NULLS LAST, room_id ASC NULLS LAST, user_id ASC NULLS LAST, device_id ASC NULLS LAST);
 
 drop table if exists lazy_load_deliveries CASCADE;
 CREATE TABLE lazy_load_deliveries (
