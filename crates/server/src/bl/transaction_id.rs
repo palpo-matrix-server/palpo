@@ -36,7 +36,6 @@ pub fn add_txn_id(
     device_id: Option<&DeviceId>,
     event_id: Option<&EventId>,
 ) -> AppResult<()> {
-    println!("=============add_txn_id {event_id:?}  {txn_id:?}");
     diesel::insert_into(event_txn_ids::table)
         .values(&NewDbEventTxnId {
             txn_id: txn_id.to_owned(),
