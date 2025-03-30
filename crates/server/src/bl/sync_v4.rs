@@ -1,22 +1,11 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    mem,
     sync::{Arc, LazyLock, Mutex},
 };
 
-use diesel::dsl::count_distinct;
-use diesel::prelude::*;
-use palpo_core::JsonValue;
-
 use crate::core::client::sync_events;
-use crate::core::events::AnyStrippedStateEvent;
-use crate::core::events::GlobalAccountDataEventType;
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
-use crate::core::{OwnedMxcUri, OwnedRoomId, UnixMillis};
 use crate::schema::*;
-use crate::{AppError, AppResult, db, diesel_exists};
-use palpo_core::events::ignored_user_list::IgnoredUserListEvent;
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v4::ReqList>,

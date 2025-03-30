@@ -8,7 +8,6 @@ use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::value::to_raw_value;
-use smallvec::SmallVec;
 use std::sync::atomic::AtomicUsize;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
@@ -25,10 +24,9 @@ pub use crate::core::sending::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, device_id, push};
 use crate::schema::*;
-use crate::{AppError, AppResult, PduEvent, db, exts::*, utils};
+use crate::{AppError, AppResult, db, exts::*, utils};
 
 use super::{curr_sn, outgoing_requests};
-use std::sync::atomic::AtomicU64;
 
 mod dest;
 pub use dest::*;
@@ -353,7 +351,7 @@ fn select_edus_receipts_room(
     let receipts = crate::room::receipt::read_receipts(room_id, since_sn)?;
 
     let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
-    for (user_id, occur_sn, read_receipt) in receipts {
+    for (user_id,  read_receipt) in receipts {
         // if count > since_sn {
         //     break;
         // }
@@ -363,24 +361,21 @@ fn select_edus_receipts_room(
             continue;
         }
 
-        let Ok(event) = serde_json::from_str(read_receipt.inner().get()) else {
-            error!(
-                ?user_id,
-                ?occur_sn,
-                ?read_receipt,
-                "Invalid edu event in read_receipts."
-            );
-            continue;
-        };
+        // let Ok(event) = serde_json::from_str(read_receipt.inner().get()) else {
+        //     error!(
+        //         ?user_id,
+        //         ?read_receipt,
+        //         "Invalid edu event in read_receipts."
+        //     );
+        //     continue;
+        // };
 
-        let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
-            error!(?user_id, ?occur_sn, ?event, "Invalid event type in read_receipts");
-            continue;
-        };
+        // let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
+        //     error!(?user_id, ?event, "Invalid event type in read_receipts");
+        //     continue;
+        // };
 
-        let (event_id, mut receipt) = r
-            .content
-            .0
+        let (event_id, mut receipt) = read_receipt.0
             .into_iter()
             .next()
             .expect("we only use one event per read receipt");
@@ -581,11 +576,12 @@ async fn handle_events(
                 })?;
             let req_body = PushEventsReqBody { events: pdu_jsons };
 
-            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
-                SendingEventType::Edu(b) => Some(&**b),
-                SendingEventType::Pdu(b) => Some(b.as_bytes()),
-                SendingEventType::Flush => None,
-            })));
+            let txn_id =
+                &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
+                    SendingEventType::Edu(b) => Some(&**b),
+                    SendingEventType::Pdu(b) => Some(b.as_bytes()),
+                    SendingEventType::Flush => None,
+                })));
             let request = push_events_request(registration.url.as_deref().unwrap_or_default(), txn_id, req_body)
                 .map_err(|e| (kind.clone(), e.into()))?
                 .into_inner();

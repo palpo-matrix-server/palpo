@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
+use palpo_core::events::receipt::ReceiptEvent;
 use tokio::sync::watch::Sender;
 
 use crate::core::UnixMillis;
@@ -339,39 +340,47 @@ pub fn sync_events(
         // Remove all to-device events the device received *last time*
         crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
+        println!("=============acccount data  since_sn: {since_sn}");
+        let account_data = sync_events::v3::GlobalAccountData {
+            events: crate::user::data_changes(None, &sender_id, since_sn, None)?
+                .into_iter()
+                .filter_map(|e| {
+                    let x = extract_variant!(e, AnyRawAccountDataEvent::Global);
+                    println!("=================x: {x:?}");
+                    x
+                })
+                .collect(),
+        };
+
+        let rooms = sync_events::v3::Rooms {
+            leave: left_rooms,
+            join: joined_rooms,
+            invite: invited_rooms,
+            knock: BTreeMap::new(), // TODO
+        };
+        let presence = sync_events::v3::Presence {
+            events: presence_updates
+                .into_values()
+                .map(|v| RawJson::new(&v).expect("PresenceEvent always serializes successfully"))
+                .collect(),
+        };
+        let device_lists = DeviceLists {
+            changed: device_list_updates.into_iter().collect(),
+            left: device_list_left.into_iter().collect(),
+        };
+
+        let to_device = sync_events::v3::ToDevice {
+            events: crate::user::get_to_device_events(&sender_id, &sender_device_id, Some(since_sn), Some(next_batch))?,
+        };
+
         let response = sync_events::v3::SyncEventsResBody {
             next_batch: next_batch.to_string(),
-            rooms: sync_events::v3::Rooms {
-                leave: left_rooms,
-                join: joined_rooms,
-                invite: invited_rooms,
-                knock: BTreeMap::new(), // TODO
-            },
-            presence: sync_events::v3::Presence {
-                events: presence_updates
-                    .into_values()
-                    .map(|v| RawJson::new(&v).expect("PresenceEvent always serializes successfully"))
-                    .collect(),
-            },
-            account_data: sync_events::v3::GlobalAccountData {
-                events: crate::user::data_changes(None, &sender_id, since_sn, None)?
-                    .into_iter()
-                    .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
-                    .collect(),
-            },
-            device_lists: DeviceLists {
-                changed: device_list_updates.into_iter().collect(),
-                left: device_list_left.into_iter().collect(),
-            },
+            rooms,
+            presence,
+            account_data,
+            device_lists,
             device_one_time_keys_count: { crate::user::count_one_time_keys(&sender_id, &sender_device_id)? },
-            to_device: sync_events::v3::ToDevice {
-                events: crate::user::get_to_device_events(
-                    &sender_id,
-                    &sender_device_id,
-                    Some(since_sn),
-                    Some(next_batch),
-                )?,
-            },
+            to_device,
             // Fallback keys are not yet supported
             device_unused_fallback_key_types: None,
         };
@@ -778,12 +787,14 @@ async fn load_joined_room(
 
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
 
-    let read_receipts = crate::room::receipt::read_receipts(&room_id, since_sn)?;
-    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = if !read_receipts.is_empty() {
-        vec![RawJson::from_string(serde_json::to_string(&read_receipts)?)?]
-    } else {
-        Vec::new()
-    };
+    let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
+    for (_, content) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
+        let receipt = ReceiptEvent {
+            room_id: room_id.to_owned(),
+            content,
+        };
+        edus.push(RawJson::new(&receipt)?.cast());
+    }
 
     if crate::room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(

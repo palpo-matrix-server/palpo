@@ -164,7 +164,7 @@ impl<'de> Deserialize<'de> for ZoomLevel {
         D: serde::Deserializer<'de>,
     {
         let uint = u64::deserialize(deserializer)?;
-        if uint > Self::MAX.into() {
+        if uint > Self::MAX as u64 {
             Err(serde::de::Error::custom(ZoomLevelError::TooHigh))
         } else {
             Ok(Self(uint))

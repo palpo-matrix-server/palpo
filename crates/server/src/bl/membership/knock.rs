@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
-use std::time::Duration;
 
 use diesel::prelude::*;
 use palpo_core::federation::knock::{
@@ -17,16 +16,11 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{
-    DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id, gen_event_id_canonical_json,
-};
-use crate::membership::federation::membership::{
-    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody,
-    SendLeaveReqArgsV2, send_leave_request_v2,
+    DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id,
 };
 use crate::room::state;
 use crate::schema::*;
-use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError,  db, };
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,

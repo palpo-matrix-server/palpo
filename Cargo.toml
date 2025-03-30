@@ -71,14 +71,14 @@ pkcs8 = "0.10.2"
 rand = "0.8.3"
 regex = "1.6.0"
 reqwest = { version = "0.12", features = ["json"] }
-ring = "0.17.7"
+ring = "0.17.14"
 salvo = { version = "0.77", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.8.0"
 serde = { version = "1.0.118", features = ["derive"] }
 serde-aux = "4.0.0"
-serde_json = { version = "1.0.64" }
+serde_json = { version = "1.0.140" }
 serde_with = "3.0.0"
 serde_yaml = { version = "0.9.32" }
 smallvec ={ version = "1.14"}

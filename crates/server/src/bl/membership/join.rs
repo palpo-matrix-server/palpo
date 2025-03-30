@@ -1,11 +1,9 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, };
 use std::iter::once;
 use std::sync::Arc;
-use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_core::appservice::third_party;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
@@ -15,8 +13,7 @@ use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEv
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
-    InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2, SendLeaveReqBody,
-    make_leave_request,
+    MakeJoinReqArgs,  SendJoinArgs, SendJoinResBodyV2, 
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -62,7 +59,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json("room_id field is not a valid room ID: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
     if event_room_id != room_id {
         return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());
@@ -75,7 +72,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json("Event has invalid state event type: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("Event has invalid state event type: {e}")))?;
 
     if event_type != StateEventType::RoomMember {
         return Err(MatrixError::bad_json("Not allowed to send non-membership state event to join endpoint.").into());
@@ -118,7 +115,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json("State key is not a valid user ID: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("State key is not a valid user ID: {e}")))?;
     if state_key != sender {
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
@@ -158,7 +155,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     }
 
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
-        .map_err(|e| MatrixError::invalid_param("Failed to sign send_join event: {e}"))?;
+        .map_err(|e| MatrixError::invalid_param(format!("Failed to sign send_join event: {e}")))?;
 
     let origin: OwnedServerName = serde_json::from_value(
         serde_json::to_value(

@@ -1,35 +1,17 @@
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet};
+
+use std::collections::{BTreeMap};
 use std::time::Duration;
 
-use diesel::prelude::*;
-use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::membership::{
-    InviteUserResBodyV2, MakeJoinReqArgs, MakeLeaveResBody, SendJoinArgs, SendJoinResBodyV2, SendLeaveReqBody,
-    make_leave_request,
-};
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
+    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
 };
-use crate::core::{Seqnum, UnixMillis, federation};
-
-use crate::appservice::RegistrationInfo;
-use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
-use crate::federation::maybe_strip_event_id;
-use crate::membership::federation::membership::{
-    InviteUserReqArgs, InviteUserReqBodyV2, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody,
-    SendLeaveReqArgsV2, send_leave_request_v2,
-};
-use crate::membership::state::DeltaInfo;
+use crate::core::{UnixMillis, federation};
 use crate::room::state::{self, CompressedEvent};
-use crate::schema::*;
-use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SigningKeys, db, diesel_exists};
+use crate::{AppError, AppResult, MatrixError, SigningKeys};
 
 mod banned;
 mod forget;

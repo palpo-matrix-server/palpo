@@ -1,7 +1,6 @@
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
-use crate::room::StateEventType;
 use crate::{AppResult, GetUrlOrigin, MatrixError};
 
 pub(super) async fn remote_resolve(

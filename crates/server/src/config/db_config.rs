@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::false_value;
 
-fn default_db_pooll_size() -> u32 {
+fn default_db_pool_size() -> u32 {
     10
 }
 fn default_tcp_timeout() -> u64 {
@@ -39,7 +39,7 @@ pub struct DbConfig {
     /// some configurations.
     /// An optional follower database. Always read-only.
     pub url: String,
-    #[serde(default = "default_db_pooll_size")]
+    #[serde(default = "default_db_pool_size")]
     pub pool_size: u32,
     pub min_idle: Option<u32>,
 

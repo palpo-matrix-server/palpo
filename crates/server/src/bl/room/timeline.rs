@@ -6,7 +6,6 @@ use std::sync::{Arc, LazyLock, Mutex};
 use diesel::prelude::*;
 use palpo_core::client::filter::RoomEventFilter;
 use palpo_core::federation::backfill::BackfillReqArgs;
-use palpo_core::federation::room;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -29,7 +28,7 @@ use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::event::{DbEventData, NewDbEvent};
 use crate::event::{EventHash, PduBuilder, PduEvent};
-use crate::room::state::{CompressedState, get_room_version};
+use crate::room::state::{CompressedState, };
 use crate::schema::*;
 use crate::{AppError, AppResult, GetUrlOrigin, JsonValue, MatrixError, db, diesel_exists, utils};
 

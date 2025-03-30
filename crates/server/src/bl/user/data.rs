@@ -1,16 +1,11 @@
-use std::collections::HashMap;
-
 use diesel::prelude::*;
+use palpo_core::client::sync_events::v5::AccountData;
 use serde::de::DeserializeOwned;
 
-use crate::core::events::AnyRawAccountDataEvent;
+use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::{
-    UnixMillis,
-    events::{AnyEphemeralRoomEvent, AnyEphemeralRoomEventContent, RoomAccountDataEventType},
-    serde::RawJson,
-};
-use crate::schema::*;
+use crate::core::{UnixMillis, serde::RawJson};
+use crate::schema::*;use serde_json::json;
 use crate::{AppError, AppResult, JsonValue, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -43,6 +38,33 @@ pub fn set_data(
     event_type: &str,
     json_data: JsonValue,
 ) -> AppResult<DbUserData> {
+    if let Some(room_id) = &room_id {
+        let user_data = user_datas::table
+            .filter(user_datas::user_id.eq(user_id))
+            .filter(user_datas::room_id.eq(room_id))
+            .filter(user_datas::data_type.eq(event_type))
+            .first::<DbUserData>(&mut *db::connect()?)
+            .optional()?;
+        if let Some(user_data) = user_data {
+            if user_data.json_data == json_data {
+                return Ok(user_data);
+            }
+        }
+    } else {
+        let user_data = user_datas::table
+            .filter(user_datas::user_id.eq(user_id))
+            .filter(user_datas::room_id.is_null())
+            .filter(user_datas::data_type.eq(event_type))
+            .first::<DbUserData>(&mut *db::connect()?)
+            .optional()?;
+        if let Some(user_data) = user_data {
+            if user_data.json_data == json_data {
+                println!("ZZZZZZZZZZZZZZZZZZZZZ");
+                return Ok(user_data);
+            }
+        }
+    }
+
     let new_data = NewDbUserData {
         user_id: user_id.to_owned(),
         room_id: room_id.clone(),
@@ -51,6 +73,7 @@ pub fn set_data(
         occur_sn: crate::next_sn()? as i64,
         created_at: UnixMillis::now(),
     };
+    println!("======================set new data {new_data:?}");
     diesel::insert_into(user_datas::table)
         .values(&new_data)
         .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
@@ -133,11 +156,15 @@ pub fn data_changes(
     };
 
     for db_data in db_datas {
-        let kind = RoomAccountDataEventType::from(&*db_data.data_type);
+       let kind = RoomAccountDataEventType::from(&*db_data.data_type);
+        let account_data = json!({
+            "type": kind,
+            "content": db_data.json_data
+        });
         if db_data.room_id.is_none() {
-            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&db_data.json_data)?));
+            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&account_data)?));
         } else {
-            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&db_data.json_data)?));
+            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&account_data)?));
         }
     }
 

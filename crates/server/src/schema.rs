@@ -256,7 +256,7 @@ diesel::table! {
         room_id -> Text,
         user_id -> Text,
         event_id -> Text,
-        event_sn -> Int8,
+        occur_sn -> Int8,
         json_data -> Json,
         receipt_at -> Int8,
     }
@@ -300,12 +300,13 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_txn_ids (event_id) {
-        event_id -> Text,
-        room_id -> Text,
-        user_id -> Text,
-        device_id -> Nullable<Text>,
+    event_txn_ids (id) {
+        id -> Int8,
         txn_id -> Text,
+        user_id -> Text,
+        room_id -> Nullable<Text>,
+        device_id -> Nullable<Text>,
+        event_id -> Nullable<Text>,
         created_at -> Int8,
     }
 }

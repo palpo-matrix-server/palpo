@@ -4,14 +4,14 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
-    OwnedUserId, RoomId, UserId,
+    OwnedUserId, UserId,
     events::presence::{PresenceEvent, PresenceEventContent},
     presence::PresenceState,
 };
 
 use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{AppError, AppResult, db};
+use crate::{AppError, AppResult, MatrixError, db};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -71,28 +71,58 @@ impl DbPresence {
 }
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
-pub fn ping_presence(user_id: &UserId, state: &PresenceState) -> AppResult<()> {
+pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {
+    const REFRESH_TIMEOUT: u64 = 60 * 1000;
+
+    let last_presence = last_presence(user_id);
+    let state_changed = match last_presence {
+        Err(_) => true,
+        Ok(ref presence) => presence.content.presence != *new_state,
+    };
+
+    let last_last_active_ago = match last_presence {
+        Err(_) => 0_u64,
+        Ok(ref presence) => presence.content.last_active_ago.unwrap_or_default().into(),
+    };
+
+    if !state_changed && last_last_active_ago < REFRESH_TIMEOUT {
+        return Ok(());
+    }
+
+    let status_msg = match last_presence {
+        Ok(presence) => presence.content.status_msg.clone(),
+        Err(_) => Some(String::new()),
+    };
+
+    let currently_active = *new_state == PresenceState::Online;
+
     set_presence(
         NewDbPresence {
             user_id: user_id.to_owned(),
             stream_id: None,
-            state: Some(state.to_string()),
+            state: Some(new_state.to_string()),
             status_msg: None,
             last_active_at: Some(UnixMillis::now()),
             last_federation_update_at: None,
             last_user_sync_at: None,
-            currently_active: None, //TODO,
+            currently_active: Some(currently_active),
             occur_sn: None,
         },
         false,
     )
 }
-pub fn get_last_presence(user_id: &UserId) -> AppResult<Option<DbPresence>> {
-    user_presences::table
-        .filter(user_presences::user_id.eq(user_id))
-        .first::<DbPresence>(&mut *db::connect()?)
-        .optional()
-        .map_err(Into::into)
+pub fn last_presence(user_id: &UserId) -> AppResult<PresenceEvent> {
+    let presence = user_presences::table
+    .filter(user_presences::user_id.eq(user_id))
+    .first::<DbPresence>(&mut *db::connect()?)
+    .optional()?;
+    if let Some(data) = presence
+    {
+        Ok(data.to_presence_event(user_id)?)
+    } else {
+        println!("==================pin presence   x3");
+        Err(MatrixError::not_found("No presence data found for user").into())
+    }
 }
 
 /// Adds a presence event which will be saved until a new event replaces it.

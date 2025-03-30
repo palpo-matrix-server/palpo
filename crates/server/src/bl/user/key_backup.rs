@@ -7,7 +7,7 @@ use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::schema::*;
-use crate::{AppError, AppResult, JsonValue};
+use crate::{ AppResult, JsonValue, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_room_keys)]
@@ -76,11 +76,7 @@ pub struct NewDbRoomKeysVersion {
     pub created_at: UnixMillis,
 }
 
-pub fn create_backup(
-    user_id: &UserId,
-    algorithm: &RawJson<BackupAlgorithm>,
-    conn: &mut PgConnection,
-) -> AppResult<DbRoomKeysVersion> {
+pub fn create_backup(user_id: &UserId, algorithm: &RawJson<BackupAlgorithm>) -> AppResult<DbRoomKeysVersion> {
     let version = UnixMillis::now().get() as i64;
     let new_keys_version = NewDbRoomKeysVersion {
         user_id: user_id.to_owned(),
@@ -91,16 +87,11 @@ pub fn create_backup(
     };
     diesel::insert_into(e2e_room_keys_versions::table)
         .values(&new_keys_version)
-        .get_result(conn)
+        .get_result(&mut db::connect()?)
         .map_err(Into::into)
 }
 
-pub fn update_backup(
-    user_id: &UserId,
-    version: i64,
-    algorithm: &BackupAlgorithm,
-    conn: &mut PgConnection,
-) -> AppResult<()> {
+pub fn update_backup(user_id: &UserId, version: i64, algorithm: &BackupAlgorithm) -> AppResult<()> {
     diesel::update(
         e2e_room_keys_versions::table
             .filter(e2e_room_keys_versions::user_id.eq(user_id))
@@ -110,51 +101,42 @@ pub fn update_backup(
         e2e_room_keys_versions::algorithm.eq(serde_json::to_value(algorithm)?),
         e2e_room_keys_versions::etag.eq(UnixMillis::now().get() as i64),
     ))
-    .execute(conn)?;
+    .execute(&mut db::connect()?)?;
     Ok(())
 }
 
-pub fn get_latest_room_key(user_id: &UserId, conn: &mut PgConnection) -> AppResult<Option<DbRoomKey>> {
+pub fn get_latest_room_key(user_id: &UserId) -> AppResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
         .order(e2e_room_keys::version.desc())
-        .first::<DbRoomKey>(conn)
+        .first::<DbRoomKey>(&mut db::connect()?)
         .optional()
         .map_err(Into::into)
 }
 
-pub fn get_room_key(
-    user_id: &UserId,
-    room_id: &RoomId,
-    version: i64,
-    conn: &mut PgConnection,
-) -> AppResult<Option<DbRoomKey>> {
+pub fn get_room_key(user_id: &UserId, room_id: &RoomId, version: i64) -> AppResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
         .filter(e2e_room_keys::room_id.eq(room_id))
         .filter(e2e_room_keys::version.eq(version))
-        .first::<DbRoomKey>(conn)
+        .first::<DbRoomKey>(&mut db::connect()?)
         .optional()
         .map_err(Into::into)
 }
 
-pub fn get_latest_room_keys_version(user_id: &UserId, conn: &mut PgConnection) -> AppResult<Option<DbRoomKeysVersion>> {
+pub fn get_latest_room_keys_version(user_id: &UserId) -> AppResult<Option<DbRoomKeysVersion>> {
     e2e_room_keys_versions::table
         .filter(e2e_room_keys_versions::user_id.eq(user_id))
         .order(e2e_room_keys_versions::version.desc())
-        .first::<DbRoomKeysVersion>(conn)
+        .first::<DbRoomKeysVersion>(&mut db::connect()?)
         .optional()
         .map_err(Into::into)
 }
-pub fn get_room_keys_version(
-    user_id: &UserId,
-    version: i64,
-    conn: &mut PgConnection,
-) -> AppResult<Option<DbRoomKeysVersion>> {
+pub fn get_room_keys_version(user_id: &UserId, version: i64) -> AppResult<Option<DbRoomKeysVersion>> {
     e2e_room_keys_versions::table
         .filter(e2e_room_keys_versions::user_id.eq(user_id))
         .filter(e2e_room_keys_versions::version.eq(version))
-        .first::<DbRoomKeysVersion>(conn)
+        .first::<DbRoomKeysVersion>(&mut db::connect()?)
         .optional()
         .map_err(Into::into)
 }
@@ -165,7 +147,6 @@ pub fn add_key(
     room_id: &RoomId,
     session_id: &SessionId,
     key_data: &KeyBackupData,
-    conn: &mut PgConnection,
 ) -> AppResult<()> {
     let new_key = NewDbRoomKey {
         user_id: user_id.to_owned(),
@@ -179,53 +160,51 @@ pub fn add_key(
         created_at: UnixMillis::now(),
     };
 
-    conn.transaction::<_, AppError, _>(|conn| {
-        let exist_key = get_key_for_session(user_id, version, room_id, session_id, conn)?;
-        let replace = if let Some(exist_key) = exist_key {
-            if new_key.is_verified && !exist_key.is_verified {
-                true
-            } else if new_key.first_message_index < exist_key.first_message_index {
-                true
-            } else if new_key.first_message_index == exist_key.first_message_index {
-                new_key.forwarded_count < exist_key.forwarded_count
-            } else {
-                false
-            }
-        } else {
+    let exist_key = get_key_for_session(user_id, version, room_id, session_id)?;
+    let replace = if let Some(exist_key) = exist_key {
+        if new_key.is_verified && !exist_key.is_verified {
             true
-        };
-        if replace {
-            diesel::insert_into(e2e_room_keys::table)
-                .values(&new_key)
-                .on_conflict((
-                    e2e_room_keys::user_id,
-                    e2e_room_keys::room_id,
-                    e2e_room_keys::session_id,
-                    e2e_room_keys::version,
-                ))
-                .do_update()
-                .set(&new_key)
-                .execute(conn)?;
+        } else if new_key.first_message_index < exist_key.first_message_index {
+            true
+        } else if new_key.first_message_index == exist_key.first_message_index {
+            new_key.forwarded_count < exist_key.forwarded_count
+        } else {
+            false
         }
-        Ok(())
-    })
+    } else {
+        true
+    };
+    if replace {
+        diesel::insert_into(e2e_room_keys::table)
+            .values(&new_key)
+            .on_conflict((
+                e2e_room_keys::user_id,
+                e2e_room_keys::room_id,
+                e2e_room_keys::session_id,
+                e2e_room_keys::version,
+            ))
+            .do_update()
+            .set(&new_key)
+            .execute(&mut *db::connect()?)?;
+    }
+    Ok(())
 }
 
-pub fn count_keys(user_id: &UserId, version: i64, conn: &mut PgConnection) -> AppResult<i64> {
+pub fn count_keys(user_id: &UserId, version: i64) -> AppResult<i64> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
         .filter(e2e_room_keys::version.eq(version))
         .count()
-        .get_result(conn)
+        .get_result(&mut db::connect()?)
         .map_err(Into::into)
 }
 
-pub fn get_etag(user_id: &UserId, version: i64, conn: &mut PgConnection) -> AppResult<String> {
+pub fn get_etag(user_id: &UserId, version: i64) -> AppResult<String> {
     e2e_room_keys_versions::table
         .filter(e2e_room_keys_versions::user_id.eq(user_id))
         .filter(e2e_room_keys_versions::version.eq(version))
         .select(e2e_room_keys_versions::etag)
-        .first(conn)
+        .first(&mut db::connect()?)
         .map(|etag: i64| etag.to_string())
         .map_err(Into::into)
 }
@@ -235,58 +214,51 @@ pub fn get_key_for_session(
     version: i64,
     room_id: &RoomId,
     session_id: &SessionId,
-    conn: &mut PgConnection,
 ) -> AppResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
         .filter(e2e_room_keys::version.eq(version))
         .filter(e2e_room_keys::room_id.eq(room_id))
         .filter(e2e_room_keys::session_id.eq(session_id))
-        .first::<DbRoomKey>(conn)
+        .first::<DbRoomKey>(&mut db::connect()?)
         .optional()
         .map_err(Into::into)
 }
 
-pub fn delete_backup(user_id: &UserId, version: i64, conn: &mut PgConnection) -> AppResult<()> {
-    delete_all_keys(user_id, version, conn)?;
+pub fn delete_backup(user_id: &UserId, version: i64) -> AppResult<()> {
+    delete_all_keys(user_id, version)?;
     diesel::update(
         e2e_room_keys_versions::table
             .filter(e2e_room_keys_versions::user_id.eq(user_id))
             .filter(e2e_room_keys_versions::version.eq(version)),
     )
     .set(e2e_room_keys_versions::is_trashed.eq(true))
-    .execute(conn)?;
+    .execute(&mut db::connect()?)?;
     Ok(())
 }
 
-pub fn delete_all_keys(user_id: &UserId, version: i64, conn: &mut PgConnection) -> AppResult<()> {
+pub fn delete_all_keys(user_id: &UserId, version: i64) -> AppResult<()> {
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))
             .filter(e2e_room_keys::version.eq(version)),
     )
-    .execute(conn)?;
+    .execute(&mut db::connect()?)?;
     Ok(())
 }
 
-pub fn delete_room_keys(user_id: &UserId, version: i64, room_id: &RoomId, conn: &mut PgConnection) -> AppResult<()> {
+pub fn delete_room_keys(user_id: &UserId, version: i64, room_id: &RoomId) -> AppResult<()> {
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))
             .filter(e2e_room_keys::version.eq(version))
             .filter(e2e_room_keys::room_id.eq(room_id)),
     )
-    .execute(conn)?;
+    .execute(&mut db::connect()?)?;
     Ok(())
 }
 
-pub fn delete_room_key(
-    user_id: &UserId,
-    version: i64,
-    room_id: &RoomId,
-    session_id: &SessionId,
-    conn: &mut PgConnection,
-) -> AppResult<()> {
+pub fn delete_room_key(user_id: &UserId, version: i64, room_id: &RoomId, session_id: &SessionId) -> AppResult<()> {
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))
@@ -294,6 +266,6 @@ pub fn delete_room_key(
             .filter(e2e_room_keys::room_id.eq(room_id))
             .filter(e2e_room_keys::session_id.eq(session_id)),
     )
-    .execute(conn)?;
+    .execute(&mut db::connect()?)?;
     Ok(())
 }

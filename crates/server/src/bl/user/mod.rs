@@ -24,7 +24,7 @@ pub mod presence;
 pub use presence::*;
 
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, },
     mem,
     sync::{Arc, LazyLock, Mutex},
 };

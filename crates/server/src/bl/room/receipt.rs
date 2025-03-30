@@ -18,14 +18,14 @@ use crate::{AppResult, db};
 pub struct DbReceipt {
     pub id: i64,
     pub ty: String,
-
     pub room_id: OwnedRoomId,
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
-    pub event_sn: i64,
+    pub occur_sn: Seqnum,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
+
 #[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = event_receipts)]
 pub struct NewDbReceipt {
@@ -33,7 +33,7 @@ pub struct NewDbReceipt {
     pub room_id: OwnedRoomId,
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
-    pub event_sn: i64,
+    pub occur_sn: i64,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
@@ -41,6 +41,7 @@ pub struct NewDbReceipt {
 /// Replaces the previous read receipt.
 #[tracing::instrument]
 pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> AppResult<()> {
+    let occur_sn = crate::next_sn()?;
     for (event_id, receipts) in event.content {
         if let Ok(event_sn) = crate::event::get_event_sn(&event_id) {
             for (receipt_ty, user_receipts) in receipts {
@@ -51,15 +52,13 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
                         room_id: room_id.to_owned(),
                         user_id: user_id.to_owned(),
                         event_id: event_id.clone(),
-                        event_sn,
+                        occur_sn,
                         json_data: serde_json::to_value(receipt)?,
                         receipt_at,
                     };
+                    println!("iiiiiiiiiiiiiinsert receipt: {:?}", receipt);
                     diesel::insert_into(event_receipts::table)
                         .values(&receipt)
-                        .on_conflict((event_receipts::ty, event_receipts::room_id, event_receipts::user_id))
-                        .do_update()
-                        .set(&receipt)
                         .execute(&mut *db::connect()?)?;
                 }
             }
@@ -96,32 +95,35 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
 // }
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-pub fn read_receipts(
-    room_id: &RoomId,
-    since_sn: Seqnum,
-) -> AppResult<Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)>> {
+pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> AppResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
     let mut list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
+        .filter(event_receipts::occur_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))
-        .filter(event_receipts::event_sn.ge(since_sn))
         .load::<DbReceipt>(&mut *db::connect()?)?;
+    let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
     for receipt in receipts {
-        let DbReceipt {
-            ty,
-            user_id,
-            event_id,
-            event_sn,
-            json_data,
-            ..
-        } = receipt;
-        list.push((
-            user_id,
-            event_sn,
-            RawJson::from_value(&json_data).map_err(|e| MatrixError::bad_state(format!("invalid json: {e}")))?,
-        ));
+        grouped.entry(receipt.user_id.clone()).or_default().push(receipt);
     }
 
-    Ok(list)
+    let mut receipts = BTreeMap::new();
+    for (user_id, items) in grouped {
+        let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
+            BTreeMap::new();
+
+        for item in items {
+            event_content.entry(item.event_id.clone()).or_default().insert(
+                ReceiptType::from(item.ty),
+                BTreeMap::from_iter([(
+                    item.user_id.clone(),
+                    serde_json::from_value(item.json_data).unwrap_or_default(),
+                )]),
+            );
+        }
+        receipts.insert(user_id.clone(), ReceiptEventContent(event_content));
+    }
+
+    Ok(receipts)
 }
 
 /// Sets a private read marker at `count`.
@@ -133,29 +135,28 @@ pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, 
             room_id: room_id.to_owned(),
             user_id: user_id.to_owned(),
             event_id: event_id.to_owned(),
-            event_sn,
+            occur_sn: crate::next_sn()?,
             json_data: JsonValue::default(),
             receipt_at: UnixMillis::now(),
         })
-        .on_conflict_do_nothing()
         .execute(&mut db::connect()?)?;
     Ok(())
 }
 
 pub fn last_private_read_update_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
-    let event_sn = event_receipts::table
+    let occur_sn = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
         .order_by(event_receipts::id.desc())
-        .select(event_receipts::event_sn)
+        .select(event_receipts::occur_sn)
         .first::<Seqnum>(&mut *db::connect()?)?;
 
-    Ok(event_sn)
+    Ok(occur_sn)
 }
 
 /// Gets the latest private read receipt from the user in the room
-pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<RawJson<AnySyncEphemeralRoomEvent>> {
+pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<ReceiptEventContent> {
     let event_id = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
@@ -185,14 +186,15 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<RawJso
             )]),
         )]),
     )]);
-    let receipt_event_content = ReceiptEventContent(content);
-    let receipt_sync_event = SyncEphemeralRoomEvent {
-        content: receipt_event_content,
-    };
+    Ok(ReceiptEventContent(content))
+    // let receipt_event_content = ReceiptEventContent(content);
+    // let receipt_sync_event = SyncEphemeralRoomEvent {
+    //     content: receipt_event_content,
+    // };
 
-    let event = serde_json::value::to_raw_value(&receipt_sync_event).expect("receipt created manually");
+    // let event = serde_json::value::to_raw_value(&receipt_sync_event).expect("receipt created manually");
 
-    Ok(RawJson::from_raw_value(event))
+    // Ok(RawJson::from_raw_value(event))
 }
 
 // /// Returns the count of the last typing update in this room.
@@ -212,28 +214,3 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<RawJso
 //         .transpose()?
 //         .unwrap_or(0))
 // }
-
-pub fn pack_receipts<I>(receipts: I) -> RawJson<SyncEphemeralRoomEvent<ReceiptEventContent>>
-where
-    I: Iterator<Item = RawJson<AnySyncEphemeralRoomEvent>>,
-{
-    let mut json = BTreeMap::new();
-    for value in receipts {
-        let receipt = serde_json::from_str::<SyncEphemeralRoomEvent<ReceiptEventContent>>(value.inner().get());
-        match receipt {
-            Ok(value) => {
-                for (event, receipt) in value.content {
-                    json.insert(event, receipt);
-                }
-            }
-            _ => {
-                debug!("failed to parse receipt: {:?}", receipt);
-            }
-        }
-    }
-    let content = ReceiptEventContent::from_iter(json);
-
-    RawJson::from_raw_value(
-        serde_json::value::to_raw_value(&SyncEphemeralRoomEvent { content }).expect("received valid json"),
-    )
-}

@@ -12,6 +12,7 @@ use crate::core::client::discovery::{
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
+use crate::core::events::receipt::ReceiptEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{
     AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, RoomAccountDataEventType, StateEventType, TimelineEventType,
@@ -20,11 +21,8 @@ use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum};
 use crate::event::ignored_filter;
 use crate::room::filter_rooms;
-use crate::room::receipt::pack_receipts;
-use crate::sync::{DEFAULT_BUMP_TYPES, share_encrypted_room};
-use crate::{
-    AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, extract_variant, hoops, json_ok,
-};
+use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
+use crate::{AppError, AppResult, AuthArgs, DepotExt, JsonResult, extract_variant, json_ok};
 
 /// `POST /_matrix/client/unstable/org.matrix.simplified_msc3575/sync`
 /// ([MSC4186])
@@ -309,7 +307,7 @@ async fn process_rooms(
 
             (Vec::new(), true)
         } else {
-            crate::sync::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
+            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
         };
 
         if body.extensions.account_data.enabled == Some(true) {
@@ -331,17 +329,16 @@ async fn process_rooms(
             None
         };
 
-        let mut receipts: Vec<RawJson<AnySyncEphemeralRoomEvent>> =
-            crate::room::receipt::read_receipts(room_id, *room_since_sn)?
-                .into_iter()
-                .filter_map(|(read_user, event_sn, value)| {
-                    if !crate::user::user_is_ignored(&read_user, sender_id) {
-                        Some(value)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let mut receipts: Vec<ReceiptEventContent> = crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+            .into_iter()
+            .filter_map(|(read_user, value)| {
+                if !crate::user::user_is_ignored(&read_user, sender_id) {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         if let Some(private_read_event) = private_read_event {
             receipts.push(private_read_event);
@@ -354,7 +351,7 @@ async fn process_rooms(
                 .extensions
                 .receipts
                 .rooms
-                .insert(room_id.clone(), pack_receipts(Box::new(receipts.into_iter())));
+                .insert(room_id.clone(), RawJson::new(&receipts)?.cast());
         }
 
         if room_since_sn != &0

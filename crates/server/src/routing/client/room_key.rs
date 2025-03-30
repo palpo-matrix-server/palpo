@@ -72,7 +72,7 @@ fn get_keys_for_room(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot)
     let authed = depot.authed_info()?;
     let DbRoomKey {
         room_id, session_data, ..
-    } = key_backup::get_room_key(authed.user_id(), &args.room_id, args.version, &mut *db::connect()?)?
+    } = key_backup::get_room_key(authed.user_id(), &args.room_id, args.version)?
         .ok_or(MatrixError::not_found("Backup key not found for this user's room."))?;
     json_ok(KeysForRoomResBody::new(BTreeMap::from_iter(
         [(room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())].into_iter(),
@@ -113,8 +113,7 @@ fn add_keys(
     let authed = depot.authed_info()?;
     let version = version.into_inner();
 
-    let conn = &mut db::connect()?;
-    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
+    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id())?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
     if version != keys_version.version {
         return Err(MatrixError::invalid_param(
@@ -125,13 +124,13 @@ fn add_keys(
 
     for (room_id, room) in &body.rooms {
         for (session_id, key_data) in &room.sessions {
-            key_backup::add_key(authed.user_id(), version, room_id, session_id, key_data, conn)?
+            key_backup::add_key(authed.user_id(), version, room_id, session_id, key_data)?
         }
     }
 
     json_ok(ModifyKeysResBody {
-        count: (key_backup::count_keys(authed.user_id(), version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), version)?,
     })
 }
 
@@ -150,8 +149,7 @@ fn add_keys_for_room(
 ) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
 
-    let conn = &mut db::connect()?;
-    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
+    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id())?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
     if args.version != keys_version.version {
         return Err(MatrixError::invalid_param(
@@ -161,19 +159,12 @@ fn add_keys_for_room(
     }
 
     for (session_id, key_data) in &body.sessions {
-        key_backup::add_key(
-            authed.user_id(),
-            args.version,
-            &args.room_id,
-            session_id,
-            key_data,
-            conn,
-        )?
+        key_backup::add_key(authed.user_id(), args.version, &args.room_id, session_id, key_data)?
     }
 
     json_ok(ModifyKeysResBody {
-        count: (key_backup::count_keys(authed.user_id(), args.version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), args.version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), args.version)?,
     })
 }
 /// #PUT /_matrix/client/r0/room_keys/keys/{room_d}/{session_id}
@@ -192,8 +183,7 @@ fn add_keys_for_session(
     let authed = depot.authed_info()?;
     let body = body.into_inner();
 
-    let conn = &mut db::connect()?;
-    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
+    let keys_version = key_backup::get_latest_room_keys_version(authed.user_id())?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
     if args.version != keys_version.version {
         return Err(MatrixError::invalid_param(
@@ -202,14 +192,7 @@ fn add_keys_for_session(
         .into());
     }
 
-    key_backup::add_key(
-        authed.user_id(),
-        args.version,
-        &args.room_id,
-        &args.session_id,
-        &body.0,
-        conn,
-    )?;
+    key_backup::add_key(authed.user_id(), args.version, &args.room_id, &args.session_id, &body.0)?;
 
     // json_ok(ModifyKeysResBody {
     //     count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
@@ -224,15 +207,14 @@ fn add_keys_for_session(
 fn get_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> JsonResult<VersionResBody> {
     let authed = depot.authed_info()?;
     let version = version.into_inner();
-    let conn = &mut db::connect()?;
-    let algorithm = key_backup::get_room_keys_version(authed.user_id(), version, conn)?
+    let algorithm = key_backup::get_room_keys_version(authed.user_id(), version)?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?
         .algorithm;
 
     json_ok(VersionResBody {
         algorithm: RawJson::from_value(&algorithm)?,
-        count: (key_backup::count_keys(authed.user_id(), version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),
     })
 }
@@ -247,7 +229,7 @@ fn create_version(
 ) -> JsonResult<CreateVersionResBody> {
     let authed = depot.authed_info()?;
     let algorithm = body.into_inner().0;
-    let version = key_backup::create_backup(authed.user_id(), &algorithm, &mut *db::connect()?)?
+    let version = key_backup::create_backup(authed.user_id(), &algorithm)?
         .version
         .to_string();
 
@@ -260,7 +242,7 @@ fn create_version(
 fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
     let algorithm = body.into_inner().0;
-    key_backup::create_backup(authed.user_id(), &algorithm, &mut *db::connect()?)?;
+    key_backup::create_backup(authed.user_id(), &algorithm)?;
 
     empty_ok()
 }
@@ -271,15 +253,13 @@ fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &m
 fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody> {
     let authed = depot.authed_info()?;
 
-    let conn = &mut db::connect()?;
-    let DbRoomKeysVersion { version, algorithm, .. } =
-        key_backup::get_latest_room_keys_version(authed.user_id(), conn)?
-            .ok_or(MatrixError::not_found("Key backup does not exist."))?;
+    let DbRoomKeysVersion { version, algorithm, .. } = key_backup::get_latest_room_keys_version(authed.user_id())?
+        .ok_or(MatrixError::not_found("Key backup does not exist."))?;
 
     json_ok(VersionResBody {
         algorithm: RawJson::from_value(&algorithm)?,
-        count: (key_backup::count_keys(authed.user_id(), version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),
     })
 }
@@ -292,8 +272,7 @@ fn delete_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> 
     let authed = depot.authed_info()?;
     let version = version.into_inner();
 
-    let conn = &mut db::connect()?;
-    key_backup::delete_backup(authed.user_id(), version, conn)?;
+    key_backup::delete_backup(authed.user_id(), version)?;
 
     empty_ok()
 }
@@ -304,12 +283,11 @@ fn delete_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> 
 fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
     let version = version.into_inner();
-    let conn = &mut db::connect()?;
-    key_backup::delete_all_keys(authed.user_id(), version, conn)?;
+    key_backup::delete_all_keys(authed.user_id(), version)?;
 
     json_ok(ModifyKeysResBody {
-        count: (key_backup::count_keys(authed.user_id(), version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), version)?,
     })
 }
 /// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}
@@ -318,12 +296,11 @@ fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot)
 fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
 
-    let conn = &mut db::connect()?;
-    key_backup::delete_room_keys(authed.user_id(), args.version, &args.room_id, conn)?;
+    key_backup::delete_room_keys(authed.user_id(), args.version, &args.room_id)?;
 
     json_ok(ModifyKeysResBody {
-        count: (key_backup::count_keys(authed.user_id(), args.version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), args.version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), args.version)?,
     })
 }
 /// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
@@ -332,11 +309,10 @@ fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) 
 fn delete_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
 
-    let conn = &mut db::connect()?;
-    key_backup::delete_room_key(authed.user_id(), args.version, &args.room_id, &args.session_id, conn)?;
+    key_backup::delete_room_key(authed.user_id(), args.version, &args.room_id, &args.session_id)?;
 
     json_ok(ModifyKeysResBody {
-        count: (key_backup::count_keys(authed.user_id(), args.version, conn)? as u32).into(),
-        etag: key_backup::get_etag(authed.user_id(), args.version, conn)?,
+        count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
+        etag: key_backup::get_etag(authed.user_id(), args.version)?,
     })
 }

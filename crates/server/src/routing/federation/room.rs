@@ -15,7 +15,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::event::gen_event_id_canonical_json;
 use crate::{
-    AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok,
+    AuthArgs, DepotExt,IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent,  json_ok,
 };
 use serde_json::value::to_raw_value;
 
@@ -141,7 +141,7 @@ async fn send_knock(
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::invalid_param("Event has invalid event type: {e}"))?;
+    .map_err(|e| MatrixError::invalid_param(format!("Event has invalid event type: {e}")))?;
 
     if event_type != StateEventType::RoomMember {
         return Err(
