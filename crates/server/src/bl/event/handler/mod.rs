@@ -364,6 +364,8 @@ fn handle_outlier_pdu<'a>(
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
+        
+    println!("==============handle outlier pdu {}", incoming_pdu.event_id);
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()

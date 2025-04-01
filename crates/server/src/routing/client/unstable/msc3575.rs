@@ -127,7 +127,7 @@ pub(super) async fn sync_events_v4(
                 continue;
             };
 
-            let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, global_since_sn)?;
+            let since_frame_id = crate::event::get_last_frame_id(&room_id, global_since_sn)?;
 
             let encrypted_room =
                 crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();

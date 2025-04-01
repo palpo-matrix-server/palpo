@@ -71,6 +71,7 @@ pub fn sync_events(
 
         // Look for device list updates of this account
         device_list_updates.extend(crate::user::keys_changed_users(&sender_id, since_sn, None)?);
+        println!("========devicekeys_changed_users_list_updates: {:?}", device_list_updates);
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
         for room_id in &all_joined_rooms {
@@ -99,6 +100,7 @@ pub fn sync_events(
                 joined_rooms.insert(room_id.to_owned(), joined_room);
             }
         }
+        println!("========device_list_updates: {:?}", device_list_updates);
 
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
@@ -149,7 +151,7 @@ pub fn sync_events(
                 continue;
             }
 
-            let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
+            let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn)?;
 
             let since_state_ids = match since_frame_id {
                 Some(s) => crate::room::state::get_full_state_ids(s)?,
@@ -340,15 +342,10 @@ pub fn sync_events(
         // Remove all to-device events the device received *last time*
         crate::user::remove_to_device_events(&sender_id, &sender_device_id, since_sn - 1)?;
 
-        println!("=============acccount data  since_sn: {since_sn}");
         let account_data = sync_events::v3::GlobalAccountData {
             events: crate::user::data_changes(None, &sender_id, since_sn, None)?
                 .into_iter()
-                .filter_map(|e| {
-                    let x = extract_variant!(e, AnyRawAccountDataEvent::Global);
-                    println!("=================x: {x:?}");
-                    x
-                })
+                .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                 .collect(),
         };
 
@@ -476,7 +473,8 @@ async fn load_joined_room(
         return Err(AppError::public("Room has no state"));
     };
 
-    let since_frame_id = crate::room::user::get_last_event_frame_id(&room_id, since_sn)?;
+    let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn)?;
+    println!("==============since_sn: {since_sn} since_frame_id: {since_frame_id:?} current_frame_id: {current_frame_id:?}");
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) = if timeline_pdus
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
@@ -537,8 +535,10 @@ async fn load_joined_room(
         };
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
+        println!("mmmmmmmmmmmmm  joined_since_last_sync {joined_since_last_sync}");
 
         if since_sn == 0 || joined_since_last_sync {
+            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_initial");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -613,6 +613,7 @@ async fn load_joined_room(
             }
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
+            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_incremental");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();

@@ -590,6 +590,7 @@ pub fn create_hash_and_sign_event(
         soft_failed: false,
         rejection_reason: None,
     };
+    println!("==============create and sign event {event_id}");
     diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict(events::id)
@@ -662,6 +663,7 @@ pub fn create_hash_and_sign_event(
     let event_id = crate::event::gen_event_id(&pdu_json, &room_version_id)?;
     pdu.event_id = event_id.clone().into();
 
+    println!("==========create hash and sign event=====set event id {}", event_id);
     diesel::update(events::table.filter(events::sn.eq(event_sn)))
         .set(events::id.eq(&event_id))
         .execute(&mut db::connect()?)?;

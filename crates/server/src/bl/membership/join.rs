@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, };
+use std::collections::{BTreeMap, HashMap};
 use std::iter::once;
 use std::sync::Arc;
 
@@ -12,12 +12,10 @@ use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::membership::{
-    MakeJoinReqArgs,  SendJoinArgs, SendJoinResBodyV2, 
-};
+use crate::core::federation::membership::{MakeJoinReqArgs, SendJoinArgs, SendJoinResBodyV2};
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
+    CanonicalJsonObject, CanonicalJsonValue, RawJson, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
 
 use crate::appservice::RegistrationInfo;
@@ -44,13 +42,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = crate::room::state::get_room_version(room_id)?;
 
-    let (event_id, mut value) = match gen_event_id_canonical_json(pdu, &room_version_id) {
-        Ok(t) => t,
-        Err(_) => {
-            // Event could not be converted to canonical json
-            return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
-        }
-    };
+    let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
+        .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
 
     let event_room_id: OwnedRoomId = serde_json::from_value(
         value
@@ -175,8 +168,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
-    println!("==ddd  handle_incoming_pdu 0  {event_id}");
-    crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
+    println!("==ddd  handle_incoming_pdu 0  {event_id}  {value:?}");
+    crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value.clone(), true).await?;
     // drop(mutex_lock);
 
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
@@ -222,7 +215,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     Ok(RoomStateV1 {
         auth_chain,
         state,
-        event: None, // TODO: handle restricted joins
+        event: to_raw_json_value(&CanonicalJsonValue::Object(value)).ok(),
+        // event: None,
     })
 }
 pub async fn send_join_v2(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV2> {
@@ -603,6 +597,7 @@ async fn remote_join_room(
         warn!("Invalid PDU in send_join response: {}", e);
         AppError::public("Invalid join event PDU.")
     })?;
+    println!("==============remote join room {event_id}");
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -645,7 +640,8 @@ async fn remote_join_room(
                 warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                 AppError::public("Invalid PDU in send_join response.")
             })?;
-
+            
+    println!("==============remote join room 2 {event_id}");
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
                 .on_conflict_do_nothing()
@@ -689,6 +685,7 @@ async fn remote_join_room(
         if !crate::room::timeline::has_pdu(&event_id)? {
             let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
             let db_event = NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?;
+            println!("==============remote join room 3 {event_id}");
             diesel::insert_into(events::table)
                 .values(&db_event)
                 .on_conflict_do_nothing()

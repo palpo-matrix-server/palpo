@@ -532,7 +532,7 @@ fn collect_e2ee<'a>(
             continue;
         };
 
-        let since_frame_id = crate::room::user::get_event_frame_id(room_id, global_since_sn)
+        let since_frame_id = crate::event::get_frame_id(room_id, global_since_sn)
             .ok()
             .flatten();
 

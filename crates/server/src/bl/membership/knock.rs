@@ -344,6 +344,7 @@ async fn knock_room_remote(
             soft_failed: false,
             rejection_reason: None,
         };
+        println!("==============knock remote event {event_id}");
         diesel::insert_into(events::table)
             .values(&new_db_event)
             .on_conflict_do_nothing()
