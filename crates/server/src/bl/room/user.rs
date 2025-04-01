@@ -93,29 +93,6 @@ pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<S
         .map_err(Into::into)
 }
 
-pub fn get_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
-    event_points::table
-        .filter(event_points::room_id.eq(room_id))
-        .filter(event_points::event_sn.eq(event_sn))
-        .select(event_points::frame_id)
-        .first::<Option<i64>>(&mut *db::connect()?)
-        .optional()
-        .map(|v| v.flatten())
-        .map_err(Into::into)
-}
-
-pub fn get_last_event_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
-    event_points::table
-        .filter(event_points::room_id.eq(room_id))
-        .filter(event_points::event_sn.le(event_sn))
-        .select(event_points::frame_id)
-        .order_by(event_points::event_sn.desc())
-        .first::<Option<i64>>(&mut *db::connect()?)
-        .optional()
-        .map(|v| v.flatten())
-        .map_err(Into::into)
-}
-
 pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     let mut user_rooms: Vec<(OwnedUserId, Vec<OwnedRoomId>)> = Vec::new();
     for user_id in user_ids {

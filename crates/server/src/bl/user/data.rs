@@ -5,8 +5,9 @@ use serde::de::DeserializeOwned;
 use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::{UnixMillis, serde::RawJson};
-use crate::schema::*;use serde_json::json;
+use crate::schema::*;
 use crate::{AppError, AppResult, JsonValue, db};
+use serde_json::json;
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_datas)]
@@ -59,7 +60,6 @@ pub fn set_data(
             .optional()?;
         if let Some(user_data) = user_data {
             if user_data.json_data == json_data {
-                println!("ZZZZZZZZZZZZZZZZZZZZZ");
                 return Ok(user_data);
             }
         }
@@ -73,7 +73,6 @@ pub fn set_data(
         occur_sn: crate::next_sn()? as i64,
         created_at: UnixMillis::now(),
     };
-    println!("======================set new data {new_data:?}");
     diesel::insert_into(user_datas::table)
         .values(&new_data)
         .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
@@ -150,13 +149,16 @@ pub fn data_changes(
     let db_datas = if let Some(final_sn) = final_sn {
         query
             .filter(user_datas::occur_sn.le(final_sn))
+            .order_by(user_datas::occur_sn.asc())
             .load::<DbUserData>(&mut *db::connect()?)?
     } else {
-        query.load::<DbUserData>(&mut *db::connect()?)?
+        query
+            .order_by(user_datas::occur_sn.asc())
+            .load::<DbUserData>(&mut *db::connect()?)?
     };
 
     for db_data in db_datas {
-       let kind = RoomAccountDataEventType::from(&*db_data.data_type);
+        let kind = RoomAccountDataEventType::from(&*db_data.data_type);
         let account_data = json!({
             "type": kind,
             "content": db_data.json_data

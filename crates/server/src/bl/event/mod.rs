@@ -152,6 +152,28 @@ pub fn get_db_event(event_id: &EventId) -> AppResult<Option<DbEvent>> {
         .map_err(Into::into)
 }
 
+pub fn get_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<Option<i64>> {
+    event_points::table
+        .filter(event_points::room_id.eq(room_id))
+        .filter(event_points::event_sn.eq(event_sn))
+        .select(event_points::frame_id)
+        .first::<Option<i64>>(&mut *db::connect()?)
+        .optional()
+        .map(|v| v.flatten())
+        .map_err(Into::into)
+}
+pub fn get_last_frame_id(room_id: &RoomId, before_sn: i64) -> AppResult<Option<i64>> {
+    event_points::table
+        .filter(event_points::room_id.eq(room_id))
+        .filter(event_points::event_sn.le(before_sn))
+        .filter(event_points::frame_id.is_not_null())
+        .select(event_points::frame_id)
+        .order_by(event_points::event_sn.desc())
+        .first::<Option<i64>>(&mut *db::connect()?)
+        .optional()
+        .map(|v| v.flatten())
+        .map_err(Into::into)
+}
 pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.find(event_id))
         .set(event_points::frame_id.eq(frame_id))
