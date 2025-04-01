@@ -1,7 +1,9 @@
+use std::collections::VecDeque;
 use std::sync::{LazyLock, Mutex};
 
 use crate::{GetUrlOrigin, room::state::DbRoomStateField};
 use lru_cache::LruCache;
+use palpo_core::OwnedServerName;
 use tracing::{debug, error, warn};
 
 use crate::PduEvent;
@@ -43,25 +45,19 @@ pub async fn get_hierarchy(
 ) -> AppResult<HierarchyResBody> {
     let mut left_to_skip = skip;
 
-    let mut rooms_in_path = Vec::new();
-    let mut stack = vec![vec![room_id.to_owned()]];
-    let mut results = Vec::new();
+    let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> =
+        [room_id.to_owned(), vec![room_id.server_name()?.to_owned()]].into();
+        
+    let mut rooms_chunks = Vec::with_capacity(limit);
+	let mut parents = BTreeSet::new();
     let conf = crate::config();
 
-    while let Some(current_room) = {
-        while stack.last().map_or(false, |s| s.is_empty()) {
-            stack.pop();
-        }
-        if !stack.is_empty() {
-            stack.last_mut().and_then(|s| s.pop())
-        } else {
-            None
-        }
-    } {
-        rooms_in_path.push(current_room.clone());
-        if results.len() >= limit {
-            break;
-        }
+    while let Some((current_room, via)) = queue.pop_front() {
+        let summary = services
+        .rooms
+        .spaces
+        .get_summary_and_children_client(&current_room, suggested_only, sender_user, &via)
+        .await?;
 
         if let Some(cached) = ROOM_ID_SPACE_CHUNK_CACHE
             .lock()
