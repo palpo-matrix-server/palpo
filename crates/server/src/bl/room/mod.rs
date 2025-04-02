@@ -31,7 +31,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{OwnedServerName,UnixMillis};
+use crate::core::{Seqnum,UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
@@ -39,6 +39,7 @@ use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 #[diesel(table_name = rooms)]
 pub struct DbRoom {
     pub id: OwnedRoomId,
+    pub sn: Seqnum,
     pub version: String,
     pub is_public: bool,
     pub min_depth: i64,

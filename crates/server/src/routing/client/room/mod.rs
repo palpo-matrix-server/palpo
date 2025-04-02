@@ -6,6 +6,7 @@ mod relation;
 mod state;
 mod tag;
 mod thread;
+mod space;
 pub(crate) use membership::knock_room;
 
 use std::cmp::max;
@@ -59,7 +60,7 @@ pub fn authed_router() -> Router {
                     .push(Router::with_path("invite").post(membership::invite_user))
                     .push(Router::with_path("read_markers").post(set_read_markers))
                     .push(Router::with_path("aliases").get(get_aliases))
-                    .push(Router::with_path("hierarchy").get(get_hierarchy))
+                    .push(Router::with_path("hierarchy").get(space::get_hierarchy))
                     .push(Router::with_path("threads").get(thread::list_threads))
                     .push(Router::with_path("typing/{user_id}").put(state::send_typing))
                     .push(
@@ -211,25 +212,6 @@ async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut
     })
 }
 
-/// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
-/// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
-#[endpoint]
-async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot) -> JsonResult<HierarchyResBody> {
-    let authed = depot.authed_info()?;
-    let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
-    let limit = args.limit.unwrap_or(10).min(100) as usize;
-    let max_depth = args.max_depth.map_or(3, u64::from).min(10) + 1; // +1 to skip the space room itself
-    let body = crate::room::space::get_hierarchy(
-        authed.user_id(),
-        &args.room_id,
-        limit,
-        skip,
-        max_depth,
-        args.suggested_only,
-    )
-    .await?;
-    json_ok(body)
-}
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/upgrade
 /// Upgrades the room.
