@@ -30,8 +30,9 @@ use crate::core::events::{
     AnyStrippedStateEvent, AnySyncStateEvent, GlobalAccountDataEventType, RoomAccountDataEventType, StateEventType,
 };
 use crate::core::identifiers::*;
+use crate::core::room::RoomType;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{Seqnum,UnixMillis};
+use crate::core::{Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
@@ -99,6 +100,14 @@ pub fn ensure_room(id: &RoomId, room_version_id: &RoomVersionId) -> AppResult<Ow
 /// Checks if a room exists.
 pub fn room_exists(room_id: &RoomId) -> AppResult<bool> {
     diesel_exists!(rooms::table.filter(rooms::id.eq(room_id)), &mut *db::connect()?).map_err(Into::into)
+}
+
+pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
+    let room_sn = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .select(rooms::sn)
+        .first::<Seqnum>(&mut *db::connect()?)?;
+    Ok(room_sn)
 }
 
 pub fn is_disabled(room_id: &RoomId) -> AppResult<bool> {

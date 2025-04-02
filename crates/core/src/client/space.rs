@@ -165,7 +165,7 @@ pub struct HierarchyReqArgs {
     ///
     /// When reached, no further child rooms will be returned.
     #[salvo(parameter(parameter_in = Query))]
-    pub max_depth: Option<u64>,
+    pub max_depth: Option<usize>,
 
     /// Whether or not the server should only consider suggested rooms.
     ///

@@ -1,11 +1,11 @@
 use std::collections::{BTreeSet, VecDeque};
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use clap::error::Error;
 use lru_cache::LruCache;
 
 use crate::PduEvent;
-use crate::core::client::space::{HierarchyResBody, SpaceHierarchyRoomsChunk};
+use crate::core::client::space::SpaceHierarchyRoomsChunk;
 use crate::core::events::room::{
     canonical_alias::RoomCanonicalAliasEventContent,
     create::RoomCreateEventContent,
@@ -16,13 +16,14 @@ use crate::core::events::room::{
 };
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{StateEventType, space::child::SpaceChildEventContent};
-use crate::core::federation::space::SpaceHierarchyParentSummary;
-use crate::core::federation::space::hierarchy_request;
+use crate::core::federation::space::{HierarchyReqArgs, HierarchyResBody};
+use crate::core::federation::space::{SpaceHierarchyChildSummary, SpaceHierarchyParentSummary, hierarchy_request};
 use crate::core::identifiers::*;
+use crate::core::serde::RawJson;
 use crate::core::{OwnedRoomId, RoomId, UserId, federation, space::SpaceRoomJoinRule};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, room::state::DbRoomStateField};
 
-pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Option<SpaceHierarchyParentSummary>>>> =
+pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Option<CachedSpaceHierarchySummary>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 pub struct CachedSpaceHierarchySummary {
@@ -46,26 +47,17 @@ pub async fn get_summary_and_children_local(
     current_room: &RoomId,
     identifier: &Identifier<'_>,
 ) -> AppResult<Option<SummaryAccessibility>> {
-    match self
-        .roomid_spacehierarchy_cache
-        .lock()
-        .await
-        .get_mut(current_room)
-        .as_ref()
-    {
+    match ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().get_mut(current_room).as_ref() {
         None => (), // cache miss
         Some(None) => return Ok(None),
         Some(Some(cached)) => {
             return Ok(Some(
-                if self
-                    .is_accessible_child(
-                        current_room,
-                        &cached.summary.join_rule,
-                        identifier,
-                        &cached.summary.allowed_room_ids,
-                    )
-                    .await
-                {
+                if is_accessible_child(
+                    current_room,
+                    &cached.summary.join_rule,
+                    identifier,
+                    &cached.summary.allowed_room_ids,
+                ) {
                     SummaryAccessibility::Accessible(cached.summary.clone())
                 } else {
                     SummaryAccessibility::Inaccessible
@@ -74,11 +66,9 @@ pub async fn get_summary_and_children_local(
         }
     }
 
-    let children_pdus: Vec<_> = get_stripped_space_child_events(current_room).collect().await;
+    let children_pdus: Vec<_> = get_stripped_space_child_events(current_room)?;
 
-    let summary = get_room_summary(current_room, children_pdus, identifier);
-
-    let Ok(summary) = summary else {
+    let Ok(summary) = get_room_summary(current_room, children_pdus, identifier).await else {
         return Ok(None);
     };
 
@@ -100,34 +90,38 @@ async fn get_summary_and_children_federation(
     user_id: &UserId,
     via: &[OwnedServerName],
 ) -> AppResult<Option<SummaryAccessibility>> {
-    let request = get_hierarchy_request {
-        room_id: current_room.to_owned(),
-        suggested_only,
-    };
+    let mut res_body = None;
+    for server in via {
+        let request = hierarchy_request(
+            &server.origin().await,
+            HierarchyReqArgs {
+                room_id: current_room.to_owned(),
+                suggested_only,
+            },
+        )?
+        .into_inner();
 
-    let mut requests: FuturesUnordered<_> = via
-        .iter()
-        .map(|server| crate::sending::send_federation_request(server, request.clone()))
-        .collect();
-
-    let Some(Ok(response)) = requests.next().await else {
-        ROOM_ID_SPACE_CHUNK_CACHE
-            .lock()
-            .await
-            .insert(current_room.to_owned(), None);
-
+        if let Ok(respone) = crate::sending::send_federation_request(server, request).await {
+            if let Ok(body) = respone.json::<HierarchyResBody>().await {
+                let summary = body.room;
+                ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
+                    current_room.to_owned(),
+                    Some(CachedSpaceHierarchySummary {
+                        summary: summary.clone(),
+                    }),
+                );
+                res_body = Some(body);
+            }
+        }
+        if res_body.is_some() {
+            break;
+        }
+    }
+    let Some(res_body) = res_body else {
         return Ok(None);
     };
 
-    let summary = response.room;
-    ROOM_ID_SPACE_CHUNK_CACHE.lock().await.insert(
-        current_room.to_owned(),
-        Some(CachedSpaceHierarchySummary {
-            summary: summary.clone(),
-        }),
-    );
-
-    response
+    res_body
         .children
         .into_iter()
         .then(|child| ROOM_ID_SPACE_CHUNK_CACHE.lock().map(|lock| (child, lock)))
@@ -136,7 +130,7 @@ async fn get_summary_and_children_federation(
 
     let identifier = Identifier::UserId(user_id);
     let is_accessible_child =
-        is_accessible_child(current_room, &summary.join_rule, &identifier, &summary.allowed_room_ids).await;
+        is_accessible_child(current_room, &summary.join_rule, &identifier, &summary.allowed_room_ids);
 
     if is_accessible_child {
         return Ok(Some(SummaryAccessibility::Accessible(summary)));
@@ -147,7 +141,7 @@ async fn get_summary_and_children_federation(
 
 /// Simply returns the stripped m.space.child events of a room
 fn get_stripped_space_child_events(room_id: &RoomId) -> AppResult<Vec<RawJson<HierarchySpaceChildEvent>>> {
-    crate::room::state::get_room_sn(room_id)
+    crate::room::get_room_sn(room_id)
         .map_ok(|current_shortstatehash| {
             crate::room::state::state_keys_with_ids(current_shortstatehash, &StateEventType::SpaceChild)
         })
@@ -173,7 +167,7 @@ fn get_stripped_space_child_events(room_id: &RoomId) -> AppResult<Vec<RawJson<Hi
 
 /// Gets the summary of a space using either local or remote (federation)
 /// sources
-pub fn get_summary_and_children_client(
+pub async fn get_summary_and_children_client(
     current_room: &OwnedRoomId,
     suggested_only: bool,
     user_id: &UserId,
@@ -185,37 +179,35 @@ pub fn get_summary_and_children_client(
         return Ok(Some(response));
     }
 
-    get_summary_and_children_federation(current_room, suggested_only, user_id, via)
+    get_summary_and_children_federation(current_room, suggested_only, user_id, via).await
 }
 
 async fn get_room_summary(
     room_id: &RoomId,
-    children_state: Vec<Raw<HierarchySpaceChildEvent>>,
+    children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
     identifier: &Identifier<'_>,
-) -> AppResult<SpaceHierarchyParentSummary, Error> {
+) -> AppResult<SpaceHierarchyParentSummary> {
     let join_rule = crate::room::state::room_state_get_content(room_id, &StateEventType::RoomJoinRules, "")
-        .await
         .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
 
     let allowed_room_ids = crate::room::state::allowed_room_ids(join_rule.clone());
 
     let join_rule = join_rule.clone().into();
-    let is_accessible_child = self
-        .is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids)
-        .await;
+    let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
 
     if !is_accessible_child {
-        return Err!(Request(Forbidden("User is not allowed to see the room",)));
+        return Err(MatrixError::forbidden("User is not allowed to see the room").into());
     }
 
-    let name = crate::room::get_name(room_id).ok();
+    let name = crate::room::state::get_name(room_id).ok().flatten();
     let topic = crate::room::get_room_topic(room_id).ok();
-    let room_type = crate::room::get_room_type(room_id).ok();
+    let room_type = crate::room::state::get_room_type(room_id).ok();
     let world_readable = crate::room::state::is_world_readable(room_id);
-    let guest_can_join = crate::room::state::guest_can_join(room_id);
+    let guest_can_join = crate::room::state::guest_can_join(room_id)?;
     let num_joined_members = crate::room::room_joined_count(room_id).unwrap_or(0);
     let canonical_alias = crate::room::get_canonical_alias(room_id).ok();
-    let avatar_url = crate::room::get_avatar(room_id).map(|res| res.into_option().unwrap_or_default().url);
+    let avatar_url =
+        crate::room::state::AppearsOnTableget_avatar(room_id).map(|res| res.into_option().unwrap_or_default().url);
 
     Ok(SpaceHierarchyParentSummary {
         canonical_alias,
@@ -250,22 +242,20 @@ fn is_accessible_child(
     }
 
     if let Identifier::UserId(user_id) = identifier {
-        if crate::room::state::is_joined(user_id, current_room) {
+        if crate::room::is_joined(user_id, current_room)? {
             return true;
         }
 
-        if crate::room::state::is_invited(user_id, current_room) {
+        if crate::room::is_invited(user_id, current_room)? {
             return true;
         }
     }
 
     match join_rule {
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
-        SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().stream().any(|room| async {
-            match identifier {
-                Identifier::UserId(user) => crate::room::state::is_joined(user, room).await,
-                Identifier::ServerName(server) => crate::room::state::server_in_room(server, room).await,
-            }
+        SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
+            Identifier::UserId(user) => crate::room::is_joined(user, room),
+            Identifier::ServerName(server) => crate::room::state::server_in_room(server, room),
         }),
 
         // Invite only, Private, or Custom join rule
@@ -282,7 +272,7 @@ pub fn get_parent_children_via(
     parent
         .children_state
         .iter()
-        .map(Raw::deserialize)
+        .map(RawJson::deserialize)
         .filter_map(Result::ok)
         .filter_map(move |ce| {
             (!suggested_only || ce.content.suggested).then_some((ce.state_key, ce.content.via.into_iter()))

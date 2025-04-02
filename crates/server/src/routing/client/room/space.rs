@@ -1,15 +1,7 @@
-mod event;
-pub(super) mod membership;
-mod message;
-mod receipt;
-mod relation;
-mod state;
-mod tag;
-mod thread;
 pub(crate) use membership::knock_room;
 
 use std::cmp::max;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -42,21 +34,29 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue};
 use crate::event::PduBuilder;
+use crate::room::space::{summary_to_chunk, get_parent_children_via, SummaryAccessibility};
 use crate::{AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 /// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
 /// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
 #[endpoint]
-async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot) -> JsonResult<HierarchyResBody> {
+pub(super) async fn get_hierarchy(
+    _aa: AuthArgs,
+    args: HierarchyReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<HierarchyResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
     let limit = args.limit.unwrap_or(10).min(100) as usize;
-    let max_depth = args.max_depth.map_or(3, u64::from).min(10) + 1; // +1 to skip the space room itself
+    let max_depth = args.max_depth.map_or(3, usize::from).min(10) + 1; // +1 to skip the space room itself
 
     let mut left_to_skip = skip;
+    let room_id = &args.room_id;
+    let suggested_only = args.suggested_only;
 
     let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> =
-        [room_id.to_owned(), vec![room_id.server_name()?.to_owned()]].into();
+        [(room_id.to_owned(), vec![room_id.server_name()?.to_owned()])].into();
 
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
@@ -64,7 +64,7 @@ async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot)
 
     while let Some((current_room, via)) = queue.pop_front() {
         let summary =
-            crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_user, &via)
+            crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via)
                 .await?;
 
         match (summary, current_room == room_id) {
