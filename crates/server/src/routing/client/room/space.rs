@@ -1,41 +1,19 @@
-pub(crate) use membership::knock_room;
-
 use std::cmp::max;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::str::FromStr;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
 
-use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
-use crate::core::client::room::CreateRoomResBody;
-use crate::core::client::room::{
-    AliasesResBody, CreateRoomReqBody, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
-};
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::guest_access::GuestAccess;
-use crate::core::events::room::guest_access::RoomGuestAccessEventContent;
-use crate::core::events::room::history_visibility::HistoryVisibility;
-use crate::core::events::room::history_visibility::RoomHistoryVisibilityEventContent;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
-use crate::core::events::room::tombstone::RoomTombstoneEventContent;
-use crate::core::events::room::topic::RoomTopicEventContent;
-use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
-use crate::core::room::Visibility;
-use crate::core::serde::{CanonicalJsonObject, JsonValue};
-use crate::event::PduBuilder;
-use crate::room::space::{summary_to_chunk, get_parent_children_via, SummaryAccessibility};
-use crate::{AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::room::space::{PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk};
+use crate::{AppError, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
 /// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
 /// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
@@ -50,13 +28,24 @@ pub(super) async fn get_hierarchy(
     let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
     let limit = args.limit.unwrap_or(10).min(100) as usize;
     let max_depth = args.max_depth.map_or(3, usize::from).min(10) + 1; // +1 to skip the space room itself
+    let pagination_token = args.from.as_ref().and_then(|s| PaginationToken::from_str(s).ok());
+
+    let room_sns = pagination_token.map(|p| p.room_sns).unwrap_or_default();
 
     let mut left_to_skip = skip;
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
 
-    let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> =
-        [(room_id.to_owned(), vec![room_id.server_name()?.to_owned()])].into();
+    let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> = [(
+        room_id.to_owned(),
+        vec![
+            room_id
+                .server_name()
+                .map_err(|name| AppError::public(format!("bad server name: {name}")))?
+                .to_owned(),
+        ],
+    )]
+    .into();
 
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
@@ -64,10 +53,9 @@ pub(super) async fn get_hierarchy(
 
     while let Some((current_room, via)) = queue.pop_front() {
         let summary =
-            crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via)
-                .await?;
+            crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
 
-        match (summary, current_room == room_id) {
+        match (summary, &current_room == room_id) {
             (None | Some(SummaryAccessibility::Inaccessible), false) => {
                 // Just ignore other unavailable rooms
             }
@@ -78,13 +66,13 @@ pub(super) async fn get_hierarchy(
                 return Err(MatrixError::forbidden("The requested room is inaccessible").into());
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
-                let populate = parents.len() >= room_sns.clone().count();
+                let populate = parents.len() >= room_sns.len();
 
                 let mut children: Vec<(OwnedRoomId, Vec<OwnedServerName>)> =
                     get_parent_children_via(&summary, suggested_only)
+                        .into_iter()
                         .filter(|(room, _)| !parents.contains(room))
                         .rev()
-                        .map(|(key, val)| (key, val.collect()))
                         .collect();
 
                 if !populate {
@@ -92,12 +80,13 @@ pub(super) async fn get_hierarchy(
                         .iter()
                         .rev()
                         .skip_while(|(room, _)| {
-                            let room_sn = crate::room::get_room_sn(room)?;
-                            room_sn
-                                .map_ok(|short| Some(&short) != room_sns.clone().nth(parents.len()))
+                            crate::room::get_room_sn(room)
+                                .map(|room_sn| Some(&room_sn) != room_sns.get(parents.len()))
                                 .unwrap_or_else(|_| false)
                         })
                         .map(Clone::clone)
+                        .collect::<Vec<_>>()
+                        .into_iter()
                         .rev()
                         .collect::<Vec<(OwnedRoomId, Vec<OwnedServerName>)>>();
                 }
@@ -132,18 +121,21 @@ pub(super) async fn get_hierarchy(
         let next_room_sns: Vec<_> = parents
             .iter()
             .filter_map(|room_id| crate::room::get_room_sn(room_id).ok())
-            .collect()
-            .await;
+            .collect();
 
-        (next_room_sns.iter().ne(room_sns) && !next_room_sns.is_empty())
-            .then_some(PaginationToken {
-                room_sns: next_room_sns,
-                limit: max_depth.try_into().ok()?,
-                max_depth: max_depth.try_into().ok()?,
-                suggested_only,
-            })
-            .as_ref()
-            .map(PaginationToken::to_string)
+        if !next_room_sns.is_empty() && next_room_sns.iter().ne(&room_sns)  {
+            Some(
+                PaginationToken {
+                    room_sns: next_room_sns,
+                    limit,
+                    max_depth,
+                    suggested_only,
+                }
+                .to_string(),
+            )
+        } else {
+            None
+        }
     } else {
         None
     };

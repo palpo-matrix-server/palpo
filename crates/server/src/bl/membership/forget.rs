@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use palpo_core::appservice::third_party;
 
 use crate::core::identifiers::*;
 use crate::schema::*;

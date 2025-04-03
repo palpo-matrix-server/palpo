@@ -70,6 +70,21 @@ pub fn empty_ok() -> JsonResult<EmptyObject> {
     Ok(Json(EmptyObject {}))
 }
 
+pub trait OptionalExtension<T> {
+    fn optional(self) -> AppResult<Option<T>>;
+}
+
+impl<T> OptionalExtension<T> for AppResult<T> {
+    fn optional(self) -> AppResult<Option<T>> {
+        match self {
+            Ok(value) => Ok(Some(value)),
+            Err(AppError::NotFound) => Ok(None),
+            Err(AppError::Diesel(diesel::result::Error::NotFound)) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // if dotenvy::from_filename(".env.local").is_err() {

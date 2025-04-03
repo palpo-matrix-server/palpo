@@ -171,7 +171,7 @@ pub fn get_relations(
         .load::<DbEventRelation>(&mut *db::connect()?)?;
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Some(mut pdu) = crate::room::timeline::get_pdu(&relation.child_id)? {
+        if let Ok(mut pdu) = crate::room::timeline::get_pdu(&relation.child_id) {
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }

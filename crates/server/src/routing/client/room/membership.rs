@@ -58,7 +58,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         }
     } else {
         state::get_room_frame_id(&args.room_id, Some(can_see.as_until_sn()))?
-            .ok_or_else(|| AppError::public("state delta not found"))?
     };
     let mut states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
@@ -349,7 +348,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?;
+    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref()).ok();
 
     let event = if let Some(room_state) = room_state {
         let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
@@ -436,13 +435,11 @@ pub(super) async fn unban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
-            .ok_or(MatrixError::bad_state("Cannot unban a user who is not banned."))?
-            .content
-            .get(),
-    )
-    .map_err(|_| AppError::internal("Invalid member event in database."))?;
+    let mut event = crate::room::state::get_room_state_content::<RoomMemberEventContent>(
+        &room_id,
+        &StateEventType::RoomMember,
+        body.user_id.as_ref(),
+    )?;
 
     event.membership = MembershipState::Leave;
     event.reason = body.reason.clone();
@@ -481,13 +478,11 @@ pub(super) async fn kick_user(
         return Err(MatrixError::forbidden("User are not in the room.").into());
     }
 
-    let mut event: RoomMemberEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref())?
-            .ok_or(MatrixError::bad_state("Cannot kick member that's not in the room."))?
-            .content
-            .get(),
-    )
-    .map_err(|_| AppError::internal("Invalid member event in database."))?;
+    let mut event = crate::room::state::get_room_state_content::<RoomMemberEventContent>(
+        &room_id,
+        &StateEventType::RoomMember,
+        body.user_id.as_ref(),
+    )?;
 
     event.membership = MembershipState::Leave;
     event.reason = body.reason.clone();

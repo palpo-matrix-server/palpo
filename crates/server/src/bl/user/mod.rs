@@ -24,7 +24,7 @@ pub mod presence;
 pub use presence::*;
 
 use std::{
-    collections::{BTreeMap, },
+    collections::BTreeMap,
     mem,
     sync::{Arc, LazyLock, Mutex},
 };
@@ -231,8 +231,6 @@ pub fn display_name(user_id: &UserId) -> AppResult<Option<String>> {
         .filter(user_profiles::room_id.is_null())
         .select(user_profiles::display_name)
         .first::<Option<String>>(&mut *db::connect()?)
-        .optional()
-        .map(Option::flatten)
         .map_err(Into::into)
 }
 

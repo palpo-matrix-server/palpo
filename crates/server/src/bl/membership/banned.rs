@@ -1,6 +1,5 @@
 use salvo::conn::SocketAddr;
 
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::identifiers::*;
 
 use crate::AppResult;

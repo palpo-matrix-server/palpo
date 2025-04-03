@@ -283,7 +283,7 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
     }
 
     // Check if this is a new transaction id
-    if crate::transaction_id::txn_id_exists( &message_id, &sender, None).unwrap_or_default() {
+    if crate::transaction_id::txn_id_exists(&message_id, &sender, None).unwrap_or_default() {
         println!("=================handle_edu_direct_to_device 2");
         return;
     }

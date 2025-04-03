@@ -128,6 +128,40 @@ pub struct SpaceHierarchyChildSummary {
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
+impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
+    fn from(parent: SpaceHierarchyParentSummary) -> Self {
+        let SpaceHierarchyParentSummary {
+            canonical_alias,
+            name,
+            num_joined_members,
+            room_id,
+            topic,
+            world_readable,
+            guest_can_join,
+            avatar_url,
+            join_rule,
+            room_type,
+            children_state: _,
+            allowed_room_ids,
+        } = parent;
+
+        Self {
+            canonical_alias,
+            name,
+            num_joined_members,
+            room_id,
+            topic,
+            world_readable,
+            guest_can_join,
+            avatar_url,
+            join_rule,
+            room_type,
+            allowed_room_ids,
+        }
+    }
+}
+
+
 /// `GET /_matrix/federation/*/hierarchy/{room_id}`
 ///
 /// Get the space tree in a depth-first manner to locate child rooms of a given space.

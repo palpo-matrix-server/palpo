@@ -1,15 +1,12 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use palpo_core::JsonValue;
-use palpo_core::MatrixError;
 
-use crate::core::Seqnum;
-use crate::core::UnixMillis;
+use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType, Receipts};
-use crate::core::events::{AnySyncEphemeralRoomEvent, SyncEphemeralRoomEvent};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
+use crate::core::serde::{JsonValue, RawJson};
+use crate::core::{Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{AppResult, db};
 
@@ -168,8 +165,7 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
     // let room_sn = crate::room::get_room_sn(room_id)
     //     .map_err(|e| MatrixError::bad_state(format!("room does not exist in database for {room_id}: {e}")))?;
 
-    let pdu = crate::room::timeline::get_pdu(&event_id)?
-        .ok_or_else(|| MatrixError::bad_state(format!("event {event_id} does not exist in database")))?;
+    let pdu = crate::room::timeline::get_pdu(&event_id)?;
 
     let event_id: OwnedEventId = (&*pdu.event_id).to_owned();
     let user_id: OwnedUserId = user_id.to_owned();

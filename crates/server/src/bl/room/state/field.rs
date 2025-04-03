@@ -18,13 +18,12 @@ pub fn get_field(field_id: i64) -> AppResult<DbRoomStateField> {
         .first::<DbRoomStateField>(&mut *db::connect()?)
         .map_err(Into::into)
 }
-pub fn get_field_id(event_ty: &StateEventType, state_key: &str) -> AppResult<Option<i64>> {
+pub fn get_field_id(event_ty: &StateEventType, state_key: &str) -> AppResult<i64> {
     room_state_fields::table
         .filter(room_state_fields::event_ty.eq(event_ty))
         .filter(room_state_fields::state_key.eq(state_key))
         .select(room_state_fields::id)
         .first::<i64>(&mut *db::connect()?)
-        .optional()
         .map_err(Into::into)
 }
 pub fn ensure_field_id(event_ty: &StateEventType, state_key: &str) -> AppResult<i64> {

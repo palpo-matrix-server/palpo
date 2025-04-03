@@ -10,13 +10,11 @@ use std::time::Duration;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de::Error as _};
 
-use crate::events::{
-    AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType,
-};
+use crate::events::{AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType};
 use crate::identifiers::*;
 use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
 use crate::state::TypeStateKey;
-use crate::{OwnedMxcUri, Seqnum, };
+use crate::{OwnedMxcUri, Seqnum};
 
 use super::UnreadNotificationsCount;
 pub use super::v4::{

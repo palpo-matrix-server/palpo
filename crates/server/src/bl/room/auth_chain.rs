@@ -118,32 +118,26 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        match crate::room::timeline::get_pdu(&event_id)? {
-            None => {
-                tracing::error!("Could not find pdu mentioned in auth events");
-            }
-            Some(pdu) => {
-                if pdu.room_id != room_id {
-                    tracing::error!(
-                        ?event_id,
-                        ?room_id,
-                        wrong_room_id = ?pdu.room_id,
-                        "auth event for incorrect room"
-                    );
-                    return Err(MatrixError::forbidden("auth event for incorrect room").into());
-                }
+        let pdu = crate::room::timeline::get_pdu(&event_id)?;
+        if pdu.room_id != room_id {
+            tracing::error!(
+                ?event_id,
+                ?room_id,
+                wrong_room_id = ?pdu.room_id,
+                "auth event for incorrect room"
+            );
+            return Err(MatrixError::forbidden("auth event for incorrect room").into());
+        }
 
-                for (auth_event_id, auth_event_sn) in events::table
-                    .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
-                    .select((events::id, events::sn))
-                    .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
-                {
-                    if found.insert(auth_event_sn) {
-                        tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
+        for (auth_event_id, auth_event_sn) in events::table
+            .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
+            .select((events::id, events::sn))
+            .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
+        {
+            if found.insert(auth_event_sn) {
+                tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
 
-                        todo.push_back(auth_event_id);
-                    }
-                }
+                todo.push_back(auth_event_id);
             }
         }
     }

@@ -15,7 +15,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{MakeJoinReqArgs, SendJoinArgs, SendJoinResBodyV2};
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJson, RawJsonValue, to_canonical_value, to_raw_json_value,
+    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
 
 use crate::appservice::RegistrationInfo;
@@ -24,9 +24,9 @@ use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::schema::*;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, db};
+use crate::{OptionalExtension, schema::*};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -36,11 +36,10 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     crate::event::handler::acl_check(origin, room_id)?;
 
     // We need to return the state prior to joining, let's keep a reference to that here
-    let frame_id =
-        crate::room::state::get_room_frame_id(room_id, None)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
+    let frame_id = state::get_room_frame_id(room_id, None)?;
 
     // We do not add the event_id field to the pdu here because of signature and hashes checks
-    let room_version_id = crate::room::state::get_room_version(room_id)?;
+    let room_version_id = state::get_room_version(room_id)?;
 
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
         .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
@@ -92,7 +91,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json("sender property is not a valid user ID: {e}"))?;
+    .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user ID: {e}")))?;
 
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
@@ -172,7 +171,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value.clone(), true).await?;
     // drop(mutex_lock);
 
-    let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
+    let state_ids = state::get_full_state_ids(frame_id)?;
 
     let mut state = state_ids
         .iter()
@@ -246,7 +245,7 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
-    if user.is_guest && appservice.is_none() && !crate::room::state::guest_can_join(room_id)? {
+    if user.is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room").into());
     }
 
@@ -278,18 +277,9 @@ async fn local_join_room(
 ) -> AppResult<()> {
     println!("================join local");
     info!("We can join locally");
-    let join_rules_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomJoinRules, "")?;
-    // let power_levels_event = crate::room::state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
-
-    let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
-        .as_ref()
-        .map(|join_rules_event| {
-            serde_json::from_str(join_rules_event.content.get()).map_err(|e| {
-                warn!("Invalid join rules event: {}", e);
-                AppError::public("Invalid join rules event in database.")
-            })
-        })
-        .transpose()?;
+    let join_rules_event_content =
+        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "").ok();
+    // let power_levels_event = state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
     let restriction_rooms = match join_rules_event_content {
         Some(RoomJoinRulesEventContent {
@@ -628,7 +618,7 @@ async fn remote_join_room(
             Err(_) => continue,
         };
 
-        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
             let pdu = PduEvent::from_canonical_object(
@@ -640,8 +630,8 @@ async fn remote_join_room(
                 warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                 AppError::public("Invalid PDU in send_join response.")
             })?;
-            
-    println!("==============remote join room 2 {event_id}");
+
+            println!("==============remote join room 2 {event_id}");
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
                 .on_conflict_do_nothing()
@@ -665,7 +655,7 @@ async fn remote_join_room(
         };
 
         if let Some(state_key) = &pdu.state_key {
-            let state_key_id = crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
             state.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
@@ -736,7 +726,7 @@ async fn remote_join_room(
         frame_id,
         appended,
         disposed,
-    } = crate::room::state::save_state(
+    } = state::save_state(
         room_id,
         Arc::new(
             state
@@ -746,7 +736,7 @@ async fn remote_join_room(
         ),
     )?;
 
-    crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
+    state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
     // crate::room::update_room_servers(room_id)?;
@@ -754,7 +744,7 @@ async fn remote_join_room(
 
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    let frame_id_after_join = crate::room::state::append_to_state(&parsed_join_pdu)?;
+    let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
 
     info!("Appending new room join event");
     crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow())).unwrap();
@@ -762,7 +752,7 @@ async fn remote_join_room(
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
-    crate::room::state::set_room_state(room_id, frame_id_after_join)?;
+    state::set_room_state(room_id, frame_id_after_join)?;
     Ok(())
 }
 

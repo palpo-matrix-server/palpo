@@ -3,10 +3,10 @@ pub(super) mod membership;
 mod message;
 mod receipt;
 mod relation;
+mod space;
 mod state;
 mod tag;
 mod thread;
-mod space;
 pub(crate) use membership::knock_room;
 
 use std::cmp::max;
@@ -23,7 +23,6 @@ use crate::core::client::room::CreateRoomResBody;
 use crate::core::client::room::{
     AliasesResBody, CreateRoomReqBody, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
 };
-use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -43,7 +42,7 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue};
 use crate::event::PduBuilder;
-use crate::{AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")
@@ -212,7 +211,6 @@ async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut
     })
 }
 
-
 /// #POST /_matrix/client/r0/rooms/{room_id}/upgrade
 /// Upgrades the room.
 ///
@@ -258,13 +256,8 @@ async fn upgrade(
     .event_id;
 
     // Get the old room creation event
-    let mut create_event_content = serde_json::from_str::<CanonicalJsonObject>(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "")?
-            .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
-            .content
-            .get(),
-    )
-    .map_err(|_| AppError::internal("Invalid room event in database."))?;
+    let mut create_event_content =
+        crate::room::state::get_room_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "")?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -351,9 +344,9 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "")? {
-            Some(v) => v.content.clone(),
-            None => continue, // Skipping missing events.
+        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "") {
+            Ok(v) => v.content.clone(),
+            _ => continue, // Skipping missing events.
         };
 
         crate::room::timeline::build_and_append_pdu(
@@ -374,13 +367,11 @@ async fn upgrade(
     }
 
     // Get the old room power levels
-    let mut power_levels_event_content: RoomPowerLevelsEventContent = serde_json::from_str(
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
-            .ok_or_else(|| AppError::internal("Found room without m.room.create event."))?
-            .content
-            .get(),
-    )
-    .map_err(|_| AppError::internal("Invalid room event in database."))?;
+    let mut power_levels_event_content = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+    )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
     let new_level = max(50, power_levels_event_content.users_default + 1);

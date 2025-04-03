@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap, hash_map};
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};

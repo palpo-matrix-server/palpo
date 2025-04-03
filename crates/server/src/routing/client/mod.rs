@@ -13,17 +13,17 @@ mod register;
 mod room;
 mod room_key;
 mod session;
+mod sync_v3;
 mod third_party;
 mod to_device;
 mod unstable;
 mod user;
 mod user_directory;
 mod voip;
-mod sync_v3;
 
 pub(crate) mod media;
 
-use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
+use std::collections::BTreeMap;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -32,10 +32,7 @@ use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
-use crate::core::client::sync_events::{self, UnreadNotificationsCount};
-use crate::core::device::DeviceLists;
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
+use crate::routing::prelude::*;
 
 pub fn router() -> Router {
     let mut client = Router::with_path("client").oapi_tag("client");

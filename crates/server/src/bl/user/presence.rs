@@ -113,11 +113,10 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
 }
 pub fn last_presence(user_id: &UserId) -> AppResult<PresenceEvent> {
     let presence = user_presences::table
-    .filter(user_presences::user_id.eq(user_id))
-    .first::<DbPresence>(&mut *db::connect()?)
-    .optional()?;
-    if let Some(data) = presence
-    {
+        .filter(user_presences::user_id.eq(user_id))
+        .first::<DbPresence>(&mut *db::connect()?)
+        .optional()?;
+    if let Some(data) = presence {
         Ok(data.to_presence_event(user_id)?)
     } else {
         println!("==================pin presence   x3");

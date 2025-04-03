@@ -1,6 +1,6 @@
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::federation::membership::{InviteUserResBodyV2};
+use crate::core::federation::membership::InviteUserResBodyV2;
 use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
 use crate::event::{PduBuilder, gen_event_id_canonical_json};

@@ -17,6 +17,8 @@ pub enum AppError {
     Public(String),
     #[error("internal: `{0}`")]
     Internal(String),
+    #[error("not found")]
+    NotFound,
     #[error("salvo internal error: `{0}`")]
     Salvo(#[from] ::salvo::Error),
     #[error("parse int error: `{0}`")]
@@ -115,6 +117,10 @@ impl Writer for AppError {
                 let body: Vec<u8> = crate::core::serde::json_to_buf(&uiaa).unwrap();
                 res.write_body(body).ok();
                 return;
+            }
+            Self::NotFound => {
+                res.status_code(StatusCode::NOT_FOUND);
+                MatrixError::not_found("Resource not found.")
             }
             Self::Diesel(e) => {
                 tracing::error!(error = ?e, "diesel db error.");

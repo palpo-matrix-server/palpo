@@ -53,11 +53,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
-        println!(
-            "LLLLLLLLLLLLLLeave room local {}   user: {user_id}",
-            crate::server_name()
-        );
-        let member_event = crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str())?;
+        let member_event =
+            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str()).ok();
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {

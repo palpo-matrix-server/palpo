@@ -1,30 +1,28 @@
-use std::collections::{BTreeSet, VecDeque};
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use clap::error::Error;
 use lru_cache::LruCache;
 
-use crate::PduEvent;
 use crate::core::client::space::SpaceHierarchyRoomsChunk;
-use crate::core::events::room::{
-    canonical_alias::RoomCanonicalAliasEventContent,
-    create::RoomCreateEventContent,
-    guest_access::{GuestAccess, RoomGuestAccessEventContent},
-    history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent},
-    join_rules::{self, AllowRule, JoinRule, RoomJoinRulesEventContent},
-    topic::RoomTopicEventContent,
-};
+use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{StateEventType, space::child::SpaceChildEventContent};
-use crate::core::federation::space::{HierarchyReqArgs, HierarchyResBody};
-use crate::core::federation::space::{SpaceHierarchyChildSummary, SpaceHierarchyParentSummary, hierarchy_request};
+use crate::core::federation::space::{
+    HierarchyReqArgs, HierarchyResBody, SpaceHierarchyChildSummary, SpaceHierarchyParentSummary, hierarchy_request,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::core::{OwnedRoomId, RoomId, UserId, federation, space::SpaceRoomJoinRule};
+use crate::core::{OwnedRoomId, RoomId, UserId, space::SpaceRoomJoinRule};
+use crate::room::state;
+use crate::room::state::get_room_frame_id;
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, room::state::DbRoomStateField};
 
-pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Option<CachedSpaceHierarchySummary>>>> =
-    LazyLock::new(|| Mutex::new(LruCache::new(100)));
+mod pagination_token;
+pub use pagination_token::PaginationToken;
+
+use super::state::get_full_state;
+
+type CacheItem = LruCache<OwnedRoomId, Option<CachedSpaceHierarchySummary>>;
+pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<CacheItem>> = LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 pub struct CachedSpaceHierarchySummary {
     summary: SpaceHierarchyParentSummary,
@@ -103,11 +101,10 @@ async fn get_summary_and_children_federation(
 
         if let Ok(respone) = crate::sending::send_federation_request(server, request).await {
             if let Ok(body) = respone.json::<HierarchyResBody>().await {
-                let summary = body.room;
                 ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
                     current_room.to_owned(),
                     Some(CachedSpaceHierarchySummary {
-                        summary: summary.clone(),
+                        summary: body.room.clone().clone(),
                     }),
                 );
                 res_body = Some(body);
@@ -124,10 +121,20 @@ async fn get_summary_and_children_federation(
     res_body
         .children
         .into_iter()
-        .then(|child| ROOM_ID_SPACE_CHUNK_CACHE.lock().map(|lock| (child, lock)))
-        .filter_map(|(child, mut cache)| (!cache.contains_key(current_room)).then_some((child, cache)))
+        .filter_map(|child| {
+            if let Ok(mut cache) = ROOM_ID_SPACE_CHUNK_CACHE.lock() {
+                if !cache.contains_key(current_room) {
+                    Some((child, cache))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .for_each(|(child, cache)| cache_insert(cache, current_room, child));
 
+    let summary = res_body.room;
     let identifier = Identifier::UserId(user_id);
     let is_accessible_child =
         is_accessible_child(current_room, &summary.join_rule, &identifier, &summary.allowed_room_ids);
@@ -141,28 +148,26 @@ async fn get_summary_and_children_federation(
 
 /// Simply returns the stripped m.space.child events of a room
 fn get_stripped_space_child_events(room_id: &RoomId) -> AppResult<Vec<RawJson<HierarchySpaceChildEvent>>> {
-    crate::room::get_room_sn(room_id)
-        .map_ok(|current_shortstatehash| {
-            crate::room::state::state_keys_with_ids(current_shortstatehash, &StateEventType::SpaceChild)
-        })
-        .filter_map(move |(state_key, event_id): (_, OwnedEventId)| {
-            crate::room::timeline::get_pdu(&event_id)
-                .map_ok(move |pdu| (state_key, pdu))
-                .ok()
-        })
-        .filter_map(move |(state_key, pdu)| {
-            if let Ok(content) = pdu.get_content::<SpaceChildEventContent>() {
-                if content.via.is_empty() {
-                    return None;
+    let frame_id = get_room_frame_id(room_id, None)?;
+    let child_events = get_full_state(frame_id)?
+        .into_iter()
+        .filter_map(|((state_event_type, state_key), pdu)| {
+            if state_event_type == StateEventType::SpaceChild {
+                if let Ok(content) = pdu.get_content::<SpaceChildEventContent>() {
+                    if content.via.is_empty() {
+                        return None;
+                    }
                 }
-            }
 
-            if RoomId::parse(&state_key).is_ok() {
-                return Some(pdu.to_stripped_spacechild_state_event());
+                if RoomId::parse(&state_key).is_ok() {
+                    return Some(pdu.to_stripped_space_child_event());
+                }
             }
 
             None
         })
+        .collect();
+    Ok(child_events)
 }
 
 /// Gets the summary of a space using either local or remote (federation)
@@ -175,7 +180,7 @@ pub async fn get_summary_and_children_client(
 ) -> AppResult<Option<SummaryAccessibility>> {
     let identifier = Identifier::UserId(user_id);
 
-    if let Ok(Some(response)) = get_summary_and_children_local(current_room, &identifier) {
+    if let Ok(Some(response)) = get_summary_and_children_local(current_room, &identifier).await {
         return Ok(Some(response));
     }
 
@@ -187,27 +192,27 @@ async fn get_room_summary(
     children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
     identifier: &Identifier<'_>,
 ) -> AppResult<SpaceHierarchyParentSummary> {
-    let join_rule = crate::room::state::room_state_get_content(room_id, &StateEventType::RoomJoinRules, "")
-        .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
+    let join_rule =
+        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "")
+            .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
 
-    let allowed_room_ids = crate::room::state::allowed_room_ids(join_rule.clone());
+    let allowed_room_ids = state::allowed_room_ids(join_rule.clone());
 
-    let join_rule = join_rule.clone().into();
+    let join_rule: SpaceRoomJoinRule = join_rule.clone().into();
     let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
 
     if !is_accessible_child {
         return Err(MatrixError::forbidden("User is not allowed to see the room").into());
     }
 
-    let name = crate::room::state::get_name(room_id).ok().flatten();
-    let topic = crate::room::get_room_topic(room_id).ok();
-    let room_type = crate::room::state::get_room_type(room_id).ok();
-    let world_readable = crate::room::state::is_world_readable(room_id);
-    let guest_can_join = crate::room::state::guest_can_join(room_id)?;
-    let num_joined_members = crate::room::room_joined_count(room_id).unwrap_or(0);
-    let canonical_alias = crate::room::get_canonical_alias(room_id).ok();
-    let avatar_url =
-        crate::room::state::AppearsOnTableget_avatar(room_id).map(|res| res.into_option().unwrap_or_default().url);
+    let name = state::get_name(room_id).ok();
+    let topic = state::get_room_topic(room_id).ok();
+    let room_type = state::get_room_type(room_id).ok().flatten();
+    let world_readable = state::is_world_readable(room_id)?;
+    let guest_can_join = state::guest_can_join(room_id)?;
+    let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
+    let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
+    let avatar_url = state::get_avatar_url(room_id).ok().flatten();
 
     Ok(SpaceHierarchyParentSummary {
         canonical_alias,
@@ -242,11 +247,11 @@ fn is_accessible_child(
     }
 
     if let Identifier::UserId(user_id) = identifier {
-        if crate::room::is_joined(user_id, current_room)? {
+        if crate::room::is_joined(user_id, current_room).unwrap_or(false) {
             return true;
         }
 
-        if crate::room::is_invited(user_id, current_room)? {
+        if crate::room::is_invited(user_id, current_room).unwrap_or(false) {
             return true;
         }
     }
@@ -254,8 +259,8 @@ fn is_accessible_child(
     match join_rule {
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
-            Identifier::UserId(user) => crate::room::is_joined(user, room),
-            Identifier::ServerName(server) => crate::room::state::server_in_room(server, room),
+            Identifier::UserId(user) => crate::room::is_joined(user, room).unwrap_or(false),
+            Identifier::ServerName(server) => crate::room::is_server_in_room(server, room).unwrap_or(false),
         }),
 
         // Invite only, Private, or Custom join rule
@@ -272,14 +277,17 @@ pub fn get_parent_children_via(
     parent
         .children_state
         .iter()
-        .map(RawJson::deserialize)
-        .filter_map(Result::ok)
-        .filter_map(move |ce| {
-            (!suggested_only || ce.content.suggested).then_some((ce.state_key, ce.content.via.into_iter()))
+        .filter_map(|state| {
+            if let Ok(ce) = RawJson::deserialize(state) {
+                (!suggested_only || ce.content.suggested).then_some((ce.state_key, ce.content.via))
+            } else {
+                None
+            }
         })
+        .collect()
 }
 
-async fn cache_insert(mut cache: MutexGuard<'_, Cache>, current_room: &RoomId, child: SpaceHierarchyChildSummary) {
+fn cache_insert(mut cache: MutexGuard<'_, CacheItem>, current_room: &RoomId, child: SpaceHierarchyChildSummary) {
     let SpaceHierarchyChildSummary {
         canonical_alias,
         name,
@@ -306,7 +314,7 @@ async fn cache_insert(mut cache: MutexGuard<'_, Cache>, current_room: &RoomId, c
         room_type,
         allowed_room_ids,
         room_id: room_id.clone(),
-        children_state: get_stripped_space_child_events(&room_id).collect().await,
+        children_state: get_stripped_space_child_events(&room_id).unwrap_or_default(),
     };
 
     cache.insert(current_room.to_owned(), Some(CachedSpaceHierarchySummary { summary }));

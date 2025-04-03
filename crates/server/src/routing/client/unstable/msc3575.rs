@@ -1,24 +1,19 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::discovery::{
-    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
-};
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
-use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::ReceiptEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
-use crate::core::identifiers::*;
-use crate::core::{MatrixError, RawJson};
-use crate::room::filter_rooms;
+use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
+use crate::extract_variant;
+use crate::room::{filter_rooms, state};
+use crate::routing::prelude::*;
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
-use crate::{AppError, AuthArgs, DepotExt, JsonResult, extract_variant, hoops, json_ok};
 
 pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
 
@@ -122,15 +117,16 @@ pub(super) async fn sync_events_v4(
         device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
         for room_id in &all_joined_rooms {
-            let Some(current_frame_id) = crate::room::state::get_room_frame_id(&room_id, None)? else {
+            let Ok(current_frame_id) = state::get_room_frame_id(&room_id, None) else {
                 error!("Room {} has no state", room_id);
                 continue;
             };
 
-            let since_frame_id = crate::event::get_last_frame_id(&room_id, global_since_sn)?;
+            let since_frame_id = crate::event::get_last_frame_id(&room_id, global_since_sn).ok();
 
-            let encrypted_room =
-                crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
+            let encrypted_room = state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")
+                .optional()?
+                .is_some();
 
             if let Some(since_frame_id) = since_frame_id {
                 // Skip if there are only timeline changes
@@ -138,30 +134,28 @@ pub(super) async fn sync_events_v4(
                     continue;
                 }
 
-                let since_encryption =
-                    crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
+                let since_encryption = state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
-                let since_sender_member: Option<RoomMemberEventContent> =
-                    crate::room::state::get_state(since_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
-                        .map(|pdu| {
-                            serde_json::from_str(pdu.content.get())
-                                .map_err(|_| AppError::public("Invalid PDU in database."))
-                        })
-                        .transpose()?;
+                let since_sender_member = state::get_state_content::<RoomMemberEventContent>(
+                    since_frame_id,
+                    &StateEventType::RoomMember,
+                    sender_id.as_str(),
+                )
+                .ok();
 
                 let joined_since_last_sync = crate::room::user::join_sn(sender_id, &room_id)? >= global_since_sn;
 
                 let new_encrypted_room = encrypted_room && since_encryption.is_none();
 
                 if encrypted_room {
-                    let current_state_ids = crate::room::state::get_full_state_ids(current_frame_id)?;
-                    let since_state_ids = crate::room::state::get_full_state_ids(since_frame_id)?;
+                    let current_state_ids = state::get_full_state_ids(current_frame_id)?;
+                    let since_state_ids = state::get_full_state_ids(since_frame_id)?;
 
                     for (key, id) in current_state_ids {
                         if since_state_ids.get(&key) != Some(&id) {
-                            let pdu = match crate::room::timeline::get_pdu(&id)? {
-                                Some(pdu) => pdu,
-                                None => {
+                            let pdu = match crate::room::timeline::get_pdu(&id) {
+                                Ok(pdu) => pdu,
+                                _ => {
                                     error!("Pdu in state not found: {}", id);
                                     continue;
                                 }
@@ -437,27 +431,21 @@ pub(super) async fn sync_events_v4(
 
         let required_state = required_state_request
             .iter()
-            .map(|state| crate::room::state::get_room_state(&room_id, &state.0, &state.1))
-            .into_iter()
-            .flatten()
-            .filter_map(|o| o)
+            .filter_map(|state| state::get_room_state(&room_id, &state.0, &state.1).ok())
             .map(|state| state.to_sync_state_event())
             .collect();
 
         // Heroes
-        let heroes = crate::room::state::get_members(&room_id)?
+        let heroes = state::get_members(&room_id)?
             .into_iter()
             .filter(|user_id| user_id != sender_id)
             .flat_map(|user_id| {
-                Ok::<_, AppError>(
-                    crate::room::state::get_member(&room_id, &user_id)?.map(|member| SyncRoomHero {
-                        user_id: user_id.into(),
-                        name: member.display_name,
-                        avatar: member.avatar_url,
-                    }),
-                )
+                state::get_member(&room_id, &user_id).map(|member| SyncRoomHero {
+                    user_id: user_id.into(),
+                    name: member.display_name,
+                    avatar: member.avatar_url,
+                })
             })
-            .flatten()
             .take(5)
             .collect::<Vec<_>>();
 
@@ -486,10 +474,10 @@ pub(super) async fn sync_events_v4(
         rooms.insert(
             room_id.clone(),
             SyncRoom {
-                name: crate::room::state::get_name(&room_id, None)?.or_else(|| hero_name),
+                name: state::get_name(&room_id).ok().or_else(|| hero_name),
                 avatar: match hero_avatar {
                     Some(hero_avatar) => Some(hero_avatar),
-                    _ => crate::room::state::get_avatar_url(room_id).ok().flatten(),
+                    _ => state::get_avatar_url(room_id).ok().flatten(),
                 },
                 initial: Some(room_since_sn == &0),
                 is_dm: None,

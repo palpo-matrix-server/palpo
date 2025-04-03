@@ -7,7 +7,7 @@ use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::schema::*;
-use crate::{ AppResult, JsonValue, db};
+use crate::{AppResult, JsonValue, db};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_room_keys)]

@@ -1,16 +1,12 @@
-
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use tokio::sync::RwLock;
 
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue,
-};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::{UnixMillis, federation};
-use crate::room::state::{self, CompressedEvent};
+use crate::room::state;
 use crate::{AppError, AppResult, MatrixError, SigningKeys};
 
 mod banned;
