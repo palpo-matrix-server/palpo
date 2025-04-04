@@ -43,17 +43,18 @@ fn search(
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
             user_id: user_id.clone(),
-            display_name: crate::user::display_name(&user_id).ok()?,
-            avatar_url: crate::user::avatar_url(&user_id).ok()?,
+            display_name: crate::user::display_name(&user_id).ok().flatten(),
+            avatar_url: crate::user::avatar_url(&user_id).ok().flatten(),
         };
 
         let user_is_in_public_rooms = crate::user::joined_rooms(&user_id, 0).ok()?.into_iter().any(|room| {
-            crate::room::state::get_room_state(&room, &StateEventType::RoomJoinRules, "").map_or(false, |event| {
-                event.map_or(false, |event| {
-                    serde_json::from_str(event.content.get())
-                        .map_or(false, |r: RoomJoinRulesEventContent| r.join_rule == JoinRule::Public)
-                })
-            })
+            crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
+                &room,
+                &StateEventType::RoomJoinRules,
+                "",
+            )
+            .map(|r| r.join_rule == JoinRule::Public)
+            .unwrap_or(false)
         });
 
         if user_is_in_public_rooms {

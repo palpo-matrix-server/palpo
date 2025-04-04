@@ -70,69 +70,6 @@ pub struct SpaceHierarchyParentSummary {
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
-/// Initial set of mandatory fields of `SpaceHierarchyParentSummary`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `SpaceHierarchyParentSummary` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SpaceHierarchyParentSummaryInit {
-    /// The number of members joined to the room.
-    pub num_joined_members: u64,
-
-    /// The ID of the room.
-    pub room_id: OwnedRoomId,
-
-    /// Whether the room may be viewed by guest users without joining.
-    pub world_readable: bool,
-
-    /// Whether guest users may join the room and participate in it.
-    ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
-    pub guest_can_join: bool,
-
-    /// The join rule of the room.
-    pub join_rule: SpaceRoomJoinRule,
-
-    /// The stripped `m.space.child` events of the space-room.
-    ///
-    /// If the room is not a space-room, this should be empty.
-    pub children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
-
-    /// If the room is a restricted room, these are the room IDs which are specified by the join
-    /// rules.
-    pub allowed_room_ids: Vec<OwnedRoomId>,
-}
-
-impl From<SpaceHierarchyParentSummaryInit> for SpaceHierarchyParentSummary {
-    fn from(init: SpaceHierarchyParentSummaryInit) -> Self {
-        let SpaceHierarchyParentSummaryInit {
-            num_joined_members,
-            room_id,
-            world_readable,
-            guest_can_join,
-            join_rule,
-            children_state,
-            allowed_room_ids,
-        } = init;
-
-        Self {
-            canonical_alias: None,
-            name: None,
-            num_joined_members,
-            room_id,
-            topic: None,
-            world_readable,
-            guest_can_join,
-            avatar_url: None,
-            join_rule,
-            room_type: None,
-            children_state,
-            allowed_room_ids,
-        }
-    }
-}
-
 /// The summary of a space's child.
 ///
 /// To create an instance of this type, first create a `SpaceHierarchyChildSummaryInit` and convert
@@ -191,61 +128,39 @@ pub struct SpaceHierarchyChildSummary {
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
-/// Initial set of mandatory fields of `SpaceHierarchyChildSummary`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `SpaceHierarchyChildSummary` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SpaceHierarchyChildSummaryInit {
-    /// The number of members joined to the room.
-    pub num_joined_members: u64,
-
-    /// The ID of the room.
-    pub room_id: OwnedRoomId,
-
-    /// Whether the room may be viewed by guest users without joining.
-    pub world_readable: bool,
-
-    /// Whether guest users may join the room and participate in it.
-    ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
-    pub guest_can_join: bool,
-
-    /// The join rule of the room.
-    pub join_rule: SpaceRoomJoinRule,
-
-    /// If the room is a restricted room, these are the room IDs which are specified by the join
-    /// rules.
-    pub allowed_room_ids: Vec<OwnedRoomId>,
-}
-
-impl From<SpaceHierarchyChildSummaryInit> for SpaceHierarchyChildSummary {
-    fn from(init: SpaceHierarchyChildSummaryInit) -> Self {
-        let SpaceHierarchyChildSummaryInit {
+impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
+    fn from(parent: SpaceHierarchyParentSummary) -> Self {
+        let SpaceHierarchyParentSummary {
+            canonical_alias,
+            name,
             num_joined_members,
             room_id,
+            topic,
             world_readable,
             guest_can_join,
+            avatar_url,
             join_rule,
+            room_type,
+            children_state: _,
             allowed_room_ids,
-        } = init;
+        } = parent;
 
         Self {
-            canonical_alias: None,
-            name: None,
+            canonical_alias,
+            name,
             num_joined_members,
             room_id,
-            topic: None,
+            topic,
             world_readable,
             guest_can_join,
-            avatar_url: None,
+            avatar_url,
             join_rule,
-            room_type: None,
+            room_type,
             allowed_room_ids,
         }
     }
 }
+
 
 /// `GET /_matrix/federation/*/hierarchy/{room_id}`
 ///

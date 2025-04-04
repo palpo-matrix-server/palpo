@@ -1,6 +1,6 @@
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::federation::membership::{InviteUserResBodyV2};
+use crate::core::federation::membership::InviteUserResBodyV2;
 use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
 use crate::event::{PduBuilder, gen_event_id_canonical_json};
@@ -90,7 +90,6 @@ pub(crate) async fn invite_user(
         )
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
 
-        println!("==ddd  handle_incoming_pdu 1  {event_id}");
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
         return crate::sending::send_pdu_room(room_id, &event_id);
     }

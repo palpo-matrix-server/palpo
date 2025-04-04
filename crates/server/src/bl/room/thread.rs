@@ -44,7 +44,7 @@ pub fn get_threads(
 
     let mut events = Vec::with_capacity(items.len());
     for (event_id, _) in items {
-        if let Some(pdu) = crate::room::timeline::get_pdu(&event_id)? {
+        if let Ok(pdu) = crate::room::timeline::get_pdu(&event_id) {
             events.push((event_id, pdu));
         }
     }
@@ -52,8 +52,7 @@ pub fn get_threads(
 }
 
 pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
-    let root_pdu = crate::room::timeline::get_pdu(thread_id)?
-        .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found."))?;
+    let root_pdu = crate::room::timeline::get_pdu(thread_id)?;
 
     let mut root_pdu_json = crate::room::timeline::get_pdu_json(thread_id)?
         .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;

@@ -13,7 +13,6 @@ use tokio::sync::{Mutex, Semaphore, mpsc};
 
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
@@ -351,7 +350,7 @@ fn select_edus_receipts_room(
     let receipts = crate::room::receipt::read_receipts(room_id, since_sn)?;
 
     let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
-    for (user_id,  read_receipt) in receipts {
+    for (user_id, read_receipt) in receipts {
         // if count > since_sn {
         //     break;
         // }
@@ -375,7 +374,8 @@ fn select_edus_receipts_room(
         //     continue;
         // };
 
-        let (event_id, mut receipt) = read_receipt.0
+        let (event_id, mut receipt) = read_receipt
+            .0
             .into_iter()
             .next()
             .expect("we only use one event per read receipt");
@@ -546,14 +546,6 @@ async fn handle_events(
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
                         crate::room::timeline::get_pdu(event_id)
                             .map_err(|e| (kind.clone(), e))?
-                            .ok_or_else(|| {
-                                (
-                                    kind.clone(),
-                                    AppError::internal(
-                                        "[Appservice] Event in outgoing_requests not found in database.",
-                                    ),
-                                )
-                            })?
                             .to_room_event(),
                     ),
                     SendingEventType::Edu(_) => {
@@ -599,18 +591,7 @@ async fn handle_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(
-                            crate::room::timeline::get_pdu(event_id)
-                                .map_err(|e| (kind.clone(), e))?
-                                .ok_or_else(|| {
-                                    (
-                                        kind.clone(),
-                                        AppError::internal(
-                                            "[Push] Event in servernamevent_datas not found in database.",
-                                        ),
-                                    )
-                                })?,
-                        );
+                        pdus.push(crate::room::timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)

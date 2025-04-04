@@ -528,6 +528,7 @@ diesel::table! {
 
     rooms (id) {
         id -> Text,
+        sn -> Int8,
         version -> Text,
         is_public -> Bool,
         min_depth -> Int8,

@@ -1,28 +1,23 @@
 use std::cmp::{self, Ordering};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::discovery::{
-    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
-};
-use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::receipt::ReceiptEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{
-    AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, RoomAccountDataEventType, StateEventType, TimelineEventType,
-};
+use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum};
 use crate::event::ignored_filter;
+use crate::extract_variant;
 use crate::room::filter_rooms;
+use crate::routing::prelude::*;
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
-use crate::{AppError, AppResult, AuthArgs, DepotExt, JsonResult, extract_variant, json_ok};
 
 /// `POST /_matrix/client/unstable/org.matrix.simplified_msc3575/sync`
 /// ([MSC4186])
@@ -389,9 +384,8 @@ async fn process_rooms(
             .iter()
             .filter_map(|state| {
                 crate::room::state::get_room_state(room_id, &state.0, &state.1)
-                    .ok()
-                    .flatten()
                     .map(|s| s.to_sync_state_event())
+                    .ok()
             })
             .collect::<Vec<_>>();
 
@@ -402,7 +396,6 @@ async fn process_rooms(
             .filter_map(|user_id| {
                 crate::room::state::get_member(room_id, &user_id)
                     .ok()
-                    .flatten()
                     .map(|member| sync_events::v5::SyncRoomHero {
                         user_id: user_id.into(),
                         name: member.display_name,
@@ -437,7 +430,7 @@ async fn process_rooms(
         rooms.insert(
             room_id.clone(),
             SyncRoom {
-                name: crate::room::state::get_name(room_id, None).ok().flatten().or(name),
+                name: crate::room::state::get_name(room_id).ok().or(name),
                 avatar: match heroes_avatar {
                     Some(heroes_avatar) => Some(heroes_avatar),
                     _ => crate::room::state::get_avatar_url(room_id).ok().flatten(),
@@ -527,14 +520,12 @@ fn collect_e2ee<'a>(
     device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
     for room_id in all_joined_rooms {
-        let Ok(Some(current_frame_id)) = crate::room::state::get_room_frame_id(room_id, None) else {
+        let Ok(current_frame_id) = crate::room::state::get_room_frame_id(room_id, None) else {
             error!("Room {room_id} has no state");
             continue;
         };
 
-        let since_frame_id = crate::event::get_frame_id(room_id, global_since_sn)
-            .ok()
-            .flatten();
+        let since_frame_id = crate::event::get_frame_id(room_id, global_since_sn).ok();
 
         let encrypted_room =
             crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
@@ -545,15 +536,15 @@ fn collect_e2ee<'a>(
                 continue;
             }
 
-            let since_encryption = crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
+            let since_encryption =
+                crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
-            let since_sender_member: Option<RoomMemberEventContent> =
-                crate::room::state::get_state(since_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
-                    .and_then(|pdu| {
-                        serde_json::from_str(pdu.content.get())
-                            .map_err(|_| AppError::public("Invalid PDU in database."))
-                            .ok()
-                    });
+            let since_sender_member = crate::room::state::get_state_content::<RoomMemberEventContent>(
+                since_frame_id,
+                &StateEventType::RoomMember,
+                sender_id.as_str(),
+            )
+            .ok();
 
             let joined_since_last_sync = since_sender_member
                 .as_ref()
@@ -568,13 +559,13 @@ fn collect_e2ee<'a>(
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&Arc::from(&*id)) {
-                        let Ok(Some(pdu)) = crate::room::timeline::get_pdu(&id) else {
+                        let Ok(pdu) = crate::room::timeline::get_pdu(&id) else {
                             error!("Pdu in state not found: {id}");
                             continue;
                         };
                         if pdu.event_ty == TimelineEventType::RoomMember {
                             if let Some(Ok(user_id)) = pdu.state_key.as_deref().map(UserId::parse) {
-                                if user_id == sender_id {
+                                if &user_id == sender_id {
                                     continue;
                                 }
 

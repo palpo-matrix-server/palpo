@@ -1,12 +1,11 @@
 use diesel::prelude::*;
-use palpo_core::client::sync_events::v5::AccountData;
 use serde::de::DeserializeOwned;
 
 use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::{UnixMillis, serde::RawJson};
 use crate::schema::*;
-use crate::{AppError, AppResult, JsonValue, db};
+use crate::{ AppResult, JsonValue, db};
 use serde_json::json;
 
 #[derive(Identifiable, Queryable, Debug, Clone)]

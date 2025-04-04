@@ -28,7 +28,7 @@ use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::event::{DbEventData, NewDbEvent};
 use crate::event::{EventHash, PduBuilder, PduEvent};
-use crate::room::state::{CompressedState, };
+use crate::room::state::CompressedState;
 use crate::schema::*;
 use crate::{AppError, AppResult, GetUrlOrigin, JsonValue, MatrixError, db, diesel_exists, utils};
 
@@ -108,19 +108,15 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 ///
 /// Checks database if not found in the timeline.
 // TODO: use cache
-pub fn get_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
+pub fn get_pdu(event_id: &EventId) -> AppResult<PduEvent> {
     // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
     //     return Ok(Some(Arc::clone(p)));
     // }
-    event_datas::table
+    let (event_sn, json) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((event_datas::event_sn, event_datas::json_data))
-        .first::<(Seqnum, JsonValue)>(&mut *db::connect()?)
-        .optional()?
-        .map(|(event_sn, json)| {
-            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
-        })
-        .transpose()
+        .first::<(Seqnum, JsonValue)>(&mut *db::connect()?)?;
+    PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
 }
 
 pub fn has_pdu(event_id: &EventId) -> AppResult<bool> {
@@ -153,11 +149,6 @@ pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, l
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!(
-        ">>>>>>>>>>>>>>>>append_pdu, {} event_id: {}",
-        crate::server_name(),
-        pdu.event_id
-    );
     let conf = crate::config();
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -167,18 +158,10 @@ where
             .entry("unsigned".to_owned())
             .or_insert_with(|| CanonicalJsonValue::Object(Default::default()))
         {
-            if let Some(state_frame_id) = crate::room::state::get_pdu_frame_id(&pdu.event_id).unwrap() {
-                if let Some(prev_state) =
+            if let Ok(state_frame_id) = crate::room::state::get_pdu_frame_id(&pdu.event_id) {
+                if let Ok(prev_state) =
                     crate::room::state::get_state(state_frame_id - 1, &pdu.event_ty.to_string().into(), state_key)
-                        .unwrap()
                 {
-                    println!(
-                        "iiiiiiiii {} insert prev content 2: {:?}  state_key:{:?}  {:?}",
-                        crate::server_name(),
-                        pdu.event_ty,
-                        state_key,
-                        prev_state.content
-                    );
                     unsigned.insert(
                         "prev_content".to_owned(),
                         CanonicalJsonValue::Object(
@@ -227,14 +210,12 @@ where
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
-    let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
-            .map(|ev| {
-                serde_json::from_str(ev.content.get())
-                    .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+        &pdu.room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+    )
+    .unwrap_or_default();
 
     let sync_pdu = pdu.to_sync_room_event();
 
@@ -342,23 +323,24 @@ where
                 .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
             if let Some(body) = content.body {
-                let admin_room = crate::room::resolve_local_alias(
+                if let Ok(admin_room) = crate::room::resolve_local_alias(
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
                         .expect("#admins:server_name is a valid room alias"),
-                )?;
-                let server_user = format!("@palpo:{}", &conf.server_name);
+                ) {
+                    let server_user = format!("@palpo:{}", &conf.server_name);
 
-                let to_palpo = body.starts_with(&format!("{server_user}: "))
-                    || body.starts_with(&format!("{server_user} "))
-                    || body == format!("{server_user}:")
-                    || body == format!("{server_user}");
+                    let to_palpo = body.starts_with(&format!("{server_user}: "))
+                        || body.starts_with(&format!("{server_user} "))
+                        || body == format!("{server_user}:")
+                        || body == format!("{server_user}");
 
-                // This will evaluate to false if the emergency password is set up so that
-                // the administrator can execute commands as palpo
-                let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
+                    // This will evaluate to false if the emergency password is set up so that
+                    // the administrator can execute commands as palpo
+                    let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
-                if to_palpo && !from_palpo && admin_room.as_ref() == Some(&pdu.room_id) {
-                    crate::admin::process_message(body);
+                    if to_palpo && !from_palpo && admin_room == pdu.room_id {
+                        crate::admin::process_message(body);
+                    }
                 }
             }
         }
@@ -429,7 +411,6 @@ where
                 }
             }
         }
-
         let matching_users = || {
             crate::server_name() == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
@@ -439,12 +420,12 @@ where
                         })
                     })
         };
-        let matching_aliases = |conn: &mut PgConnection| {
+        let matching_aliases = || {
             crate::room::local_aliases_for_room(&pdu.room_id)
                 .unwrap_or_default()
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
-                || if let Ok(Some(pdu)) =
+                || if let Ok(pdu) =
                     crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "")
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
@@ -461,8 +442,7 @@ where
                 }
         };
 
-        if matching_aliases(&mut *db::connect()?) || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users()
-        {
+        if matching_aliases() || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users() {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
         }
     }
@@ -539,7 +519,7 @@ pub fn create_hash_and_sign_event(
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(crate::room::timeline::get_pdu(event_id).ok()??.depth))
+        .filter_map(|event_id| Some(crate::room::timeline::get_pdu(event_id).ok()?.depth))
         .max()
         .unwrap_or_else(|| 0)
         + 1;
@@ -547,14 +527,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Some(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key)?
-        {
-            println!(
-                "iiiiiiiii {} insert prev content 1: {:?}  cframe_id:{:?}",
-                crate::server_name(),
-                prev_pdu.content.get(),
-                crate::room::state::get_current_frame_id(room_id)?
-            );
+        if let Ok(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key) {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -745,11 +718,11 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
-    let admin_room = crate::room::resolve_local_alias(
-        <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
-            .expect("#admins:server_name is a valid room alias"),
-    )?;
-    if crate::room::is_admin_room(room_id)? {
+    // let admin_room = crate::room::resolve_local_alias(
+    //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
+    //         .expect("#admins:server_name is a valid room alias"),
+    // )?;
+    if crate::room::is_admin_room(room_id) {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 
@@ -944,7 +917,7 @@ pub fn get_pdus(
 #[tracing::instrument(skip(reason))]
 pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
-    if let Some(mut pdu) = get_pdu(event_id)? {
+    if let Ok(mut pdu) = get_pdu(event_id) {
         pdu.redact(reason)?;
         replace_pdu(event_id, &utils::to_canonical_object(&pdu)?)?;
         diesel::update(events::table.filter(events::id.eq(event_id)))
@@ -968,14 +941,11 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
         return Ok(());
     }
 
-    let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")?
-            .map(|ev| {
-                serde_json::from_str(ev.content.get())
-                    .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+    )?;
     let mut admin_servers = power_levels
         .users
         .iter()
@@ -1025,16 +995,15 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Some(pdu_id) = crate::room::timeline::get_pdu(&event_id)? {
+    if let Ok(pdu_id) = crate::room::timeline::get_pdu(&event_id) {
         info!("We already know {event_id} at {pdu_id:?}");
         return Ok(());
     }
 
-    println!("==ddd  handle_incoming_pdu 3  {event_id}");
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");
-    let pdu = get_pdu(&event_id)?.expect("We just created it");
+    let pdu = get_pdu(&event_id)?;
 
     // // Insert pdu
     // prepend_backfill_pdu(&pdu, &event_id, &value)?;

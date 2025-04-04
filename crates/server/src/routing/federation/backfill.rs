@@ -2,7 +2,7 @@ use salvo::prelude::*;
 
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{UnixMillis, user_id};
-use crate::{AuthArgs, JsonResult, MatrixError, json_ok, DepotExt, };
+use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("backfill/{room_id}").get(history)

@@ -15,12 +15,10 @@ use crate::core::federation::knock::MakeKnockReqArgs;
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::core::{Seqnum, UnixMillis};
-use crate::event::{
-    DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id,
-};
+use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
 use crate::room::state;
 use crate::schema::*;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError,  db, };
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, db};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,
@@ -45,7 +43,7 @@ pub async fn knock_room_by_id(
         return Ok(());
     }
 
-    if let Ok(Some(memeber)) = state::get_member(room_id, sender_id) {
+    if let Ok(memeber) = state::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
             return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.").into());
@@ -139,9 +137,9 @@ async fn knock_room_local(
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
-            display_name: crate::user::display_name(sender_id)?,
-            avatar_url: crate::user::avatar_url(sender_id)?,
-            blurhash: crate::user::blurhash(sender_id)?,
+            display_name: crate::user::display_name(sender_id).ok().flatten(),
+            avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
+            blurhash: crate::user::blurhash(sender_id).ok().flatten(),
             reason,
             ..RoomMemberEventContent::new(MembershipState::Knock)
         })

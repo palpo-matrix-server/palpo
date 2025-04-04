@@ -14,9 +14,7 @@ use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::event::gen_event_id_canonical_json;
-use crate::{
-    AuthArgs, DepotExt,IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent,  json_ok,
-};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
 use serde_json::value::to_raw_value;
 
 pub fn router() -> Router {
@@ -39,8 +37,7 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
-    let state_hash =
-        crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
+    let state_hash = crate::room::state::get_pdu_frame_id(&args.event_id)?;
 
     let pdus = crate::room::state::get_full_state_ids(state_hash)?
         .into_values()
@@ -262,7 +259,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
 
     // let state_lock = crate::room::state::mutex.lock(&body.room_id).await;
 
-    if let Ok(Some(member)) = crate::room::state::get_member(&args.room_id, &args.user_id) {
+    if let Ok(member) = crate::room::state::get_member(&args.room_id, &args.user_id) {
         if member.membership == MembershipState::Ban {
             warn!(
                 "Remote user {} is banned from {} but attempted to knock",
@@ -301,8 +298,7 @@ fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonR
 
     crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;
 
-    let frame_id =
-        crate::room::state::get_pdu_frame_id(&args.event_id)?.ok_or(MatrixError::not_found("Pdu state not found."))?;
+    let frame_id = crate::room::state::get_pdu_frame_id(&args.event_id)?;
 
     let pdu_ids = crate::room::state::get_full_state_ids(frame_id)?
         .into_values()

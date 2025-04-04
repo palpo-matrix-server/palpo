@@ -13,6 +13,14 @@ use url::Url;
 
 use crate::{AppResult, JsonResult, hoops, json_ok};
 
+pub mod prelude {
+    pub use crate::core::identifiers::*;
+    pub use crate::core::{MatrixError, RawJson};
+    pub use crate::{
+        AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, empty_ok, hoops, json_ok,
+    };
+}
+
 pub fn router() -> Router {
     Router::new()
         .hoop(hoops::ensure_accept)

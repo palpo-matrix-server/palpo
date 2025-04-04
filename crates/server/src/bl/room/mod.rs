@@ -6,8 +6,6 @@ pub mod directory;
 pub mod lazy_loading;
 pub mod pdu_metadata;
 pub mod receipt;
-use palpo_core::events::direct::DirectEventContent;
-use palpo_core::events::ignored_user_list::IgnoredUserListEventContent;
 pub mod space;
 pub mod state;
 pub mod timeline;
@@ -23,6 +21,7 @@ use diesel::prelude::*;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::directory::RoomTypeFilter;
+use crate::core::events::direct::DirectEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
@@ -30,8 +29,9 @@ use crate::core::events::{
     AnyStrippedStateEvent, AnySyncStateEvent, GlobalAccountDataEventType, RoomAccountDataEventType, StateEventType,
 };
 use crate::core::identifiers::*;
+use crate::core::room::RoomType;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{OwnedServerName,UnixMillis};
+use crate::core::{Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 
@@ -39,6 +39,7 @@ use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
 #[diesel(table_name = rooms)]
 pub struct DbRoom {
     pub id: OwnedRoomId,
+    pub sn: Seqnum,
     pub version: String,
     pub is_public: bool,
     pub min_depth: i64,
@@ -100,6 +101,14 @@ pub fn room_exists(room_id: &RoomId) -> AppResult<bool> {
     diesel_exists!(rooms::table.filter(rooms::id.eq(room_id)), &mut *db::connect()?).map_err(Into::into)
 }
 
+pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
+    let room_sn = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .select(rooms::sn)
+        .first::<Seqnum>(&mut *db::connect()?)?;
+    Ok(room_sn)
+}
+
 pub fn is_disabled(room_id: &RoomId) -> AppResult<bool> {
     rooms::table
         .filter(rooms::id.eq(room_id))
@@ -117,11 +126,8 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 }
 
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    self::state::get_room_state(&room_id, &StateEventType::RoomGuestAccess, "")?.map_or(Ok(false), |s| {
-        serde_json::from_str(s.content.get())
-            .map(|c: RoomGuestAccessEventContent| c.guest_access == GuestAccess::CanJoin)
-            .map_err(|_| AppError::internal("Invalid room guest access event in database."))
-    })
+    self::state::get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "")
+        .map(|c| c.guest_access == GuestAccess::CanJoin)
 }
 
 /// Update current membership data.
@@ -156,9 +162,12 @@ pub fn update_membership(
                 // db::mark_as_once_joined(user_id, room_id)?;
 
                 // Check if the room has a predecessor
-                if let Some(predecessor) = crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")?
-                    .and_then(|create| serde_json::from_str(create.content.get()).ok())
-                    .and_then(|content: RoomCreateEventContent| content.predecessor)
+                if let Ok(Some(predecessor)) = crate::room::state::get_room_state_content::<RoomCreateEventContent>(
+                    room_id,
+                    &StateEventType::RoomCreate,
+                    "",
+                )
+                .map(|c| c.predecessor)
                 {
                     // Copy user settings from predecessor to the current room:
                     // - Push rules
@@ -617,13 +626,8 @@ pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate:
         .iter()
         .filter_map(|r| {
             let r = *r;
-            let room_type = state::get_room_type(r);
-
-            if room_type.as_ref().is_err() {
-                return None;
-            }
-
-            let room_type_filter = RoomTypeFilter::from(room_type.ok());
+            let room_type = state::get_room_type(r).ok()?;
+            let room_type_filter = RoomTypeFilter::from(room_type);
 
             let include = if negate {
                 !filter.contains(&room_type_filter)

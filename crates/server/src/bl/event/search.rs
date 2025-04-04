@@ -78,12 +78,12 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let results: Vec<_> = items
         .into_iter()
         .filter_map(|(rank, event_id, _, _)| {
-            crate::room::timeline::get_pdu(&event_id)
-                .ok()?
-                .filter(|pdu| {
-                    crate::room::state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false)
-                })
-                .map(|pdu| (rank, pdu.to_room_event()))
+            let pdu = crate::room::timeline::get_pdu(&event_id).ok()?;
+            if crate::room::state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
+                Some((rank, pdu.to_room_event()))
+            } else {
+                None
+            }
         })
         .map(|(rank, event)| SearchResult {
             context: EventContextResult {

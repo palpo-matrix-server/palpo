@@ -10,11 +10,13 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::diesel_exists;
 use crate::exts::*;
+use crate::room::state;
 use crate::schema::*;
 use crate::user::{DbProfile, NewDbPresence};
-use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, db, empty_ok, hoops, json_ok};
+use crate::{
+    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, db, diesel_exists, empty_ok, hoops, json_ok,
+};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/{user_id}")
@@ -148,19 +150,11 @@ async fn set_avatar_url(
                     event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
-                        ..serde_json::from_str(
-                            crate::room::state::get_room_state(
-                                &room_id,
-                                &StateEventType::RoomMember,
-                                user_id.as_str(),
-                            )?
-                            .ok_or_else(|| {
-                                AppError::internal("Tried to send avatar_url update for user not in the room.")
-                            })?
-                            .content
-                            .get(),
-                        )
-                        .map_err(|_| AppError::internal("Database contains invalid PDU."))?
+                        ..state::get_room_state_content::<RoomMemberEventContent>(
+                            &room_id,
+                            &StateEventType::RoomMember,
+                            user_id.as_str(),
+                        )?
                     })
                     .expect("event is valid, we just created it"),
                     state_key: Some(user_id.to_string()),
@@ -231,7 +225,7 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
         return json_ok(body);
     }
     json_ok(DisplayNameResBody {
-        display_name: crate::user::display_name(&user_id)?,
+        display_name: crate::user::display_name(&user_id).ok().flatten(),
     })
 }
 
@@ -264,19 +258,11 @@ async fn set_display_name(
                     event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
-                        ..serde_json::from_str(
-                            crate::room::state::get_room_state(
-                                &room_id,
-                                &StateEventType::RoomMember,
-                                user_id.as_str(),
-                            )?
-                            .ok_or_else(|| {
-                                AppError::internal("Tried to send display_name update for user not in the room.")
-                            })?
-                            .content
-                            .get(),
-                        )
-                        .map_err(|_| AppError::internal("Database contains invalid PDU."))?
+                        ..crate::room::state::get_room_state_content::<RoomMemberEventContent>(
+                            &room_id,
+                            &StateEventType::RoomMember,
+                            user_id.as_str(),
+                        )?
                     })
                     .expect("event is valid, we just created it"),
                     state_key: Some(user_id.to_string()),

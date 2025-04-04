@@ -56,8 +56,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
 /// Resolve a room alias to a room id.
 #[endpoint]
 async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, true>) -> JsonResult<RoomInfoResBody> {
-    let room_id =
-        crate::room::resolve_local_alias(&room_alias)?.ok_or(MatrixError::not_found("Room alias not found."))?;
+    let room_id = crate::room::resolve_local_alias(&room_alias)?;
     let mut servers = crate::room::room_servers(&room_id)?;
     servers.insert(0, crate::server_name().to_owned());
     servers.dedup();

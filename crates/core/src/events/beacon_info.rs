@@ -7,7 +7,7 @@ use palpo_macros::EventContent;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime};
 
-use crate::events::location::{AssetContent, };
+use crate::events::location::AssetContent;
 use crate::{OwnedUserId, UnixMillis};
 
 /// The content of a beacon_info state.

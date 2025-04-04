@@ -291,6 +291,7 @@ CREATE INDEX pushers_app_id_pushkey_idx ON pushers USING btree (app_id, pushkey)
 DROP TABLE if exists rooms CASCADE;
 CREATE TABLE rooms (
     id text NOT NULL PRIMARY KEY,
+    sn bigint not null default nextval('occur_sn_seq'),
     version text NOT NULL,
     is_public boolean NOT NULL default false,
     min_depth bigint not null default 0,

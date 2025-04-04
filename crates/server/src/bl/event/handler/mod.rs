@@ -20,7 +20,7 @@ use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::federation::event::get_events_request;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
-use crate::core::state::{self, RoomVersion, StateMap};
+use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::event::{DbEventData, NewDbEvent, PduEvent};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, db, exts::*, schema::*};
@@ -89,7 +89,7 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // 1. Skip the PDU if we already have it as a timeline event
-    if let Some(_pdu_id) = crate::room::state::get_pdu_frame_id(event_id)? {
+    if crate::room::state::get_pdu_frame_id(event_id).is_ok() {
         println!("skipped");
         return Ok(());
     }
@@ -314,9 +314,9 @@ fn handle_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
-            let auth_event = match crate::room::timeline::get_pdu(id)? {
-                Some(e) => e,
-                None => {
+            let auth_event = match crate::room::timeline::get_pdu(id) {
+                Ok(e) => e,
+                Err(_) => {
                     warn!("Could not find auth event {}", id);
                     continue;
                 }
@@ -364,8 +364,7 @@ fn handle_outlier_pdu<'a>(
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
-        
-    println!("==============handle outlier pdu {}", incoming_pdu.event_id);
+
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()
@@ -433,7 +432,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
-    let auth_checked = state::event_auth::auth_check(
+    let auth_checked = event_auth::auth_check(
         &room_version,
         &incoming_pdu,
         None::<PduEvent>, // TODO: third party invite
@@ -441,7 +440,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
             crate::room::state::ensure_field_id(&k.to_string().into(), s)
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
-                .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok().flatten())
+                .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok())
         },
     )
     .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
@@ -462,7 +461,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
-    let auch_checked = state::event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
+    let auch_checked = event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })
     .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
@@ -576,9 +575,8 @@ fn resolve_state(
     incoming_state: HashMap<i64, Arc<EventId>>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
-    let current_frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
 
-    let current_state_ids = if let Some(current_frame_id) = current_frame_id {
+    let current_state_ids = if let Ok(current_frame_id) = crate::room::state::get_room_frame_id(room_id, None) {
         crate::room::state::get_full_state_ids(current_frame_id)?
     } else {
         HashMap::new()
@@ -614,7 +612,7 @@ fn resolve_state(
     debug!("Resolving state");
 
     // let lock = crate::STATERES_MUTEX.lock;
-    let state = match state::resolve(
+    let state = match crate::core::state::resolve(
         room_version_id,
         &fork_states,
         auth_chain_sets
@@ -626,7 +624,7 @@ fn resolve_state(
                 error!("LOOK AT ME Failed to fetch event: {}", e);
                 None
             }
-            Ok(pdu) => pdu,
+            Ok(pdu) => Some(pdu),
         },
     ) {
         Ok(new_state) => new_state,
@@ -685,7 +683,7 @@ pub(crate) async fn fetch_and_handle_outliers(
         // a. Look in the main timeline (pduid_pdu tree)
         // b. Look at outlier pdu tree
         // (get_pdu_json checks both)
-        if let Ok(Some(local_pdu)) = crate::room::timeline::get_pdu(id) {
+        if let Ok(local_pdu) = crate::room::timeline::get_pdu(id) {
             trace!("Found {} in db", id);
             events_with_auth_events.push((id, Some(local_pdu), vec![]));
             continue;
@@ -793,8 +791,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                 }
             }
 
-            println!("caaaaaaaaall handle_outlier_pdu 2 event_id:{next_id}");
-            if let Some(pdu) = crate::room::timeline::get_pdu(&next_id)? {
+            if let Ok(pdu) = crate::room::timeline::get_pdu(&next_id) {
                 pdus.push((pdu, Some(value)));
                 continue;
             }
@@ -823,11 +820,6 @@ pub async fn fetch_missing_prev_events(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
-    println!(
-        "\n\n\n\n\n>>>>>>>>>>>>>>>>fetch_missing_prev_events, {} initial_set: {:?}",
-        crate::server_name(),
-        initial_set
-    );
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut eventid_info = HashMap::new();
@@ -880,17 +872,18 @@ pub async fn fetch_missing_prev_events(
         }
     }
 
-    let sorted = state::lexicographical_topological_sort(&graph, |event_id| {
+    let sorted = crate::room::state::lexicographical_topological_sort(&graph, &|event_id| {
         // This return value is the key used for sorting events,
         // events are then sorted by power level, time,
         // and lexically by event_id.
-        Ok((
+        futures_util::future::ok((
             0,
             eventid_info
-                .get(event_id)
+                .get(&event_id)
                 .map_or_else(|| UnixMillis::default(), |info| info.0.origin_server_ts),
         ))
     })
+    .await
     .map_err(|_| AppError::internal("Error sorting prev events"))?;
 
     Ok((sorted, eventid_info))
@@ -898,9 +891,9 @@ pub async fn fetch_missing_prev_events(
 
 /// Returns Ok if the acl allows the server
 pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
-    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "")? {
-        Some(acl) => acl,
-        None => return Ok(()),
+    let acl_event = match crate::room::state::get_room_state(room_id, &StateEventType::RoomServerAcl, "") {
+        Ok(acl) => acl,
+        Err(_) => return Ok(()),
     };
 
     let acl_event_content: RoomServerAclEventContent = match serde_json::from_str(acl_event.content.get()) {

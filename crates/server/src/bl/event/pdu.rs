@@ -278,7 +278,7 @@ impl PduEvent {
     }
 
     #[tracing::instrument]
-    pub fn to_stripped_spacechild_state_event(&self) -> RawJson<HierarchySpaceChildEvent> {
+    pub fn to_stripped_space_child_event(&self) -> RawJson<HierarchySpaceChildEvent> {
         let data = json!({
             "content": self.content,
             "type": self.event_ty,

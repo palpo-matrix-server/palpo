@@ -6,7 +6,7 @@ use lru_cache::LruCache;
 use super::{CompressedState, StateDiff};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{AppResult, db};
+use crate::{AppError, AppResult, MatrixError, db};
 
 pub static STATE_INFO_CACHE: LazyLock<Mutex<LruCache<i64, Vec<FrameInfo>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
@@ -61,36 +61,30 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
     }
 }
 
-pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Option<i64>> {
-    if let Some(until_sn) = until_sn {
+pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<i64> {
+    let frame_id = if let Some(until_sn) = until_sn {
         event_points::table
             .filter(event_points::room_id.eq(room_id))
             .filter(event_points::event_sn.le(until_sn))
+            .filter(event_points::frame_id.is_not_null())
             .select(event_points::frame_id)
             .order(event_points::event_sn.desc())
-            .first::<Option<i64>>(&mut *db::connect()?)
-            .optional()
-            .map(|v| v.flatten())
-            .map_err(Into::into)
+            .first::<Option<i64>>(&mut *db::connect()?)?
     } else {
         rooms::table
             .find(room_id)
             .select(rooms::state_frame_id)
-            .first::<Option<i64>>(&mut *db::connect()?)
-            .optional()
-            .map(|v| v.flatten())
-            .map_err(Into::into)
-    }
+            .first::<Option<i64>>(&mut *db::connect()?)?
+    };
+    frame_id.ok_or(MatrixError::not_found("room frame is not found").into())
 }
 
-pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<Option<i64>> {
-    event_points::table
+pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<i64> {
+    let frame_id = event_points::table
         .filter(event_points::event_id.eq(event_id))
         .select(event_points::frame_id)
-        .first::<Option<i64>>(&mut *db::connect()?)
-        .optional()
-        .map(|v| v.flatten())
-        .map_err(Into::into)
+        .first::<Option<i64>>(&mut *db::connect()?)?;
+    frame_id.ok_or(MatrixError::not_found("pdu frame is not found").into())
 }
 /// Returns (state_hash, already_existed)
 pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
@@ -105,12 +99,11 @@ pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {
         .map_err(Into::into)
 }
 
-pub fn get_frame_id(room_id: &RoomId, hash_data: &[u8]) -> AppResult<Option<i64>> {
+pub fn get_frame_id(room_id: &RoomId, hash_data: &[u8]) -> AppResult<i64> {
     room_state_frames::table
         .filter(room_state_frames::room_id.eq(room_id))
         .filter(room_state_frames::hash_data.eq(hash_data))
         .select(room_state_frames::id)
         .get_result(&mut *db::connect()?)
-        .optional()
         .map_err(Into::into)
 }

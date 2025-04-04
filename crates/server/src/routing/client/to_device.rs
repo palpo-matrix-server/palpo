@@ -22,20 +22,15 @@ fn send_to_device(
     body: JsonBody<SendEventToDeviceReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
-    println!("===============send to device  0");
     let authed = depot.authed_info()?;
     // Check if this is a new transaction id
     if crate::transaction_id::txn_id_exists(&args.txn_id, authed.user_id(), Some(authed.device_id()))? {
-        println!("===============send to device  1");
         return empty_ok();
     }
 
-    println!("===============send to device  2");
     for (target_user_id, map) in &body.messages {
         for (target_device_id_maybe, event) in map {
-            println!("===============send to device  3");
             if target_user_id.server_name().is_remote() {
-                println!("===============send to device  4");
                 let mut map = BTreeMap::new();
                 map.insert(target_device_id_maybe.clone(), event.clone());
                 let mut messages = BTreeMap::new();
@@ -57,7 +52,6 @@ fn send_to_device(
                 continue;
             }
 
-            println!("===============send to device  5");
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => crate::user::add_to_device_event(
                     authed.user_id(),
@@ -70,9 +64,7 @@ fn send_to_device(
                 )?,
 
                 DeviceIdOrAllDevices::AllDevices => {
-                    println!("===============send to device  6");
                     for target_device_id in crate::user::all_device_ids(target_user_id)? {
-                        println!("===============send to device  7");
                         crate::user::add_to_device_event(
                             authed.user_id(),
                             target_user_id,

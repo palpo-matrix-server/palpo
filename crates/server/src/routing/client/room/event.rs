@@ -24,10 +24,7 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
 
-    let event = crate::room::timeline::get_pdu(&args.event_id)?.ok_or_else(|| {
-        warn!("Event not found, event ID: {:?}", &args.event_id);
-        MatrixError::not_found("Event not found.")
-    })?;
+    let event = crate::room::timeline::get_pdu(&args.event_id)?;
 
     if !crate::room::state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
         return Err(MatrixError::not_found("Event not found.").into());
@@ -50,10 +47,7 @@ pub(super) fn report(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let pdu = match crate::room::timeline::get_pdu(&args.event_id)? {
-        Some(pdu) => pdu,
-        _ => return Err(MatrixError::invalid_param("Invalid Event ID").into()),
-    };
+    let pdu = crate::room::timeline::get_pdu(&args.event_id)?;
 
     if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
         return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
@@ -117,8 +111,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_token =
         crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
 
-    let base_event =
-        crate::room::timeline::get_pdu(&args.event_id)?.ok_or(MatrixError::not_found("Base event not found."))?;
+    let base_event = crate::room::timeline::get_pdu(&args.event_id)?;
 
     let room_id = base_event.room_id.clone();
 
@@ -183,12 +176,12 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         }
     }
 
-    let frame_id =
-        match crate::room::state::get_pdu_frame_id(events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id))?
-        {
-            Some(s) => s,
-            None => crate::room::state::get_room_frame_id(&room_id, None)?.expect("All rooms have state"),
-        };
+    let frame_id = match crate::room::state::get_pdu_frame_id(
+        events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id),
+    ) {
+        Ok(s) => s,
+        Err(_) => crate::room::state::get_room_frame_id(&room_id, None)?,
+    };
 
     let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
 
@@ -207,18 +200,18 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         } = crate::room::state::get_field(field_id)?;
 
         if event_ty != StateEventType::RoomMember {
-            let pdu = match crate::room::timeline::get_pdu(&event_id)? {
-                Some(pdu) => pdu,
-                None => {
+            let pdu = match crate::room::timeline::get_pdu(&event_id) {
+                Ok(pdu) => pdu,
+                Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
                     continue;
                 }
             };
             state.push(pdu.to_state_event());
         } else if !lazy_load_enabled || lazy_loaded.contains(&state_key) {
-            let pdu = match crate::room::timeline::get_pdu(&event_id)? {
-                Some(pdu) => pdu,
-                None => {
+            let pdu = match crate::room::timeline::get_pdu(&event_id) {
+                Ok(pdu) => pdu,
+                Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
                     continue;
                 }

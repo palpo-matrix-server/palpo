@@ -237,14 +237,12 @@ pub async fn send_push_notice(
     let mut notify = None;
     let mut tweaks = Vec::new();
 
-    let power_levels: RoomPowerLevelsEventContent =
-        crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomPowerLevels, "")?
-            .map(|ev| {
-                serde_json::from_str(ev.content.get())
-                    .map_err(|_| AppError::internal("invalid m.room.power_levels event"))
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+        &pdu.room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+    )
+    .unwrap_or_default();
 
     for action in get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)? {
         let n = match action {
@@ -289,7 +287,7 @@ pub fn get_actions<'a>(
         room_id: room_id.to_owned(),
         member_count: 10_u32.into(), // TODO: get member count efficiently
         user_id: user.to_owned(),
-        user_display_name: crate::user::display_name(user)?.unwrap_or_else(|| user.localpart().to_owned()),
+        user_display_name: crate::user::display_name(user).ok().flatten().unwrap_or_else(|| user.localpart().to_owned()),
         power_levels: Some(power_levels),
         supported_features: vec![],
     };
@@ -355,9 +353,9 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
                     notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
                 }
 
-                notification.sender_display_name = crate::user::display_name(&event.sender)?;
+                notification.sender_display_name = crate::user::display_name(&event.sender).ok().flatten();
 
-                notification.room_name = crate::room::state::get_name(&event.room_id, None)?;
+                notification.room_name = crate::room::state::get_name(&event.room_id).ok();
 
                 crate::sending::post(Url::parse(&http.url)?)
                     .stuff(SendEventNotificationReqBody::new(notification))?

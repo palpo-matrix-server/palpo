@@ -1,17 +1,17 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::state::{self, StateMap};
 use crate::event::PduEvent;
 use crate::room::state::DbRoomStateField;
-use crate::{AppError, AppResult};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
-    let Some(prev_frame_id) = crate::room::state::get_pdu_frame_id(prev_event)? else {
+    let Ok(prev_frame_id) = crate::room::state::get_pdu_frame_id(prev_event) else {
         return Ok(None);
     };
 
@@ -20,10 +20,7 @@ pub(super) async fn state_at_incoming_degree_one(
     };
 
     debug!("Using cached state");
-    let prev_pdu = crate::room::timeline::get_pdu(prev_event)
-        .ok()
-        .flatten()
-        .ok_or_else(|| AppError::internal("Could not find prev event, but we know the state."))?;
+    let prev_pdu = crate::room::timeline::get_pdu(prev_event)?;
 
     if let Some(state_key) = &prev_pdu.state_key {
         let state_key_id = crate::room::state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
@@ -45,14 +42,14 @@ pub(super) async fn state_at_incoming_resolved(
 
     let mut okay = true;
     for prev_eventid in &incoming_pdu.prev_events {
-        let prev_event = if let Ok(Some(pdu)) = crate::room::timeline::get_pdu(prev_eventid) {
+        let prev_event = if let Ok(pdu) = crate::room::timeline::get_pdu(prev_eventid) {
             pdu
         } else {
             okay = false;
             break;
         };
 
-        let sstate_hash = if let Ok(Some(s)) = crate::room::state::get_pdu_frame_id(prev_eventid) {
+        let sstate_hash = if let Ok(s) = crate::room::state::get_pdu_frame_id(prev_eventid) {
             s
         } else {
             okay = false;
@@ -118,7 +115,7 @@ pub(super) async fn state_at_incoming_resolved(
             if let Err(e) = &res {
                 error!("LOOK AT ME Failed to fetch event: {}", e);
             }
-            res.ok().flatten()
+            res.ok()
         },
     );
     drop(lock);

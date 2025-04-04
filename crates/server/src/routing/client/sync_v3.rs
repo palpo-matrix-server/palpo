@@ -1,17 +1,9 @@
+use std::collections::hash_map;
 
-use std::collections::{BTreeMap, BTreeSet, HashSet, hash_map};
-
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::discovery::{
-    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
-};
-use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
-use crate::core::client::sync_events::{self, UnreadNotificationsCount};
-use crate::core::device::DeviceLists;
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
+use crate::core::client::sync_events;
+use crate::{AppError, AuthArgs, DepotExt, JsonResult, json_ok};
 
 /// #GET /_matrix/client/r0/sync
 /// Synchronize the client's state with the latest state on the server.

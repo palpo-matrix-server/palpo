@@ -71,7 +71,10 @@ pub fn sync_events(
 
         // Look for device list updates of this account
         device_list_updates.extend(crate::user::keys_changed_users(&sender_id, since_sn, None)?);
-        println!("========devicekeys_changed_users_list_updates: {:?}", device_list_updates);
+        println!(
+            "========devicekeys_changed_users_list_updates: {:?}",
+            device_list_updates
+        );
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
         for room_id in &all_joined_rooms {
@@ -151,28 +154,28 @@ pub fn sync_events(
                 continue;
             }
 
-            let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn)?;
+            let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn);
 
             let since_state_ids = match since_frame_id {
-                Some(s) => crate::room::state::get_full_state_ids(s)?,
-                None => HashMap::new(),
+                Ok(s) => crate::room::state::get_full_state_ids(s)?,
+                _ => HashMap::new(),
             };
 
-            let Some(curr_frame_id) = crate::room::state::get_room_frame_id(room_id, None)? else {
+            let Ok(curr_frame_id) = crate::room::state::get_room_frame_id(room_id, None) else {
                 continue;
             };
-            let Some(left_event_id) =
-                crate::room::state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?
+            let Ok(left_event_id) =
+                crate::room::state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())
             else {
                 error!("Left room but no left state event");
                 continue;
             };
 
-            let Some(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id)? else {
+            let Ok(left_frame_id) = crate::room::state::get_pdu_frame_id(&left_event_id) else {
                 error!("Leave event has no state");
                 continue;
             };
-            if let Some(since_frame_id) = since_frame_id {
+            if let Ok(since_frame_id) = since_frame_id {
                 if left_frame_id < since_frame_id {
                     continue;
                 }
@@ -205,9 +208,9 @@ pub fn sync_events(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || sender_id == state_key
                     {
-                        let pdu = match crate::room::timeline::get_pdu(&event_id)? {
-                            Some(pdu) => pdu,
-                            None => {
+                        let pdu = match crate::room::timeline::get_pdu(&event_id) {
+                            Ok(pdu) => pdu,
+                            _ => {
                                 error!("Pdu in state not found: {}", event_id);
                                 continue;
                             }
@@ -218,7 +221,7 @@ pub fn sync_events(
                 }
             }
 
-            let left_event = crate::room::timeline::get_pdu(&left_event_id)?.map(|pdu| pdu.to_sync_room_event());
+            let left_event = crate::room::timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
             left_rooms.insert(
                 room_id.to_owned(),
                 sync_events::v3::LeftRoom {
@@ -226,7 +229,7 @@ pub fn sync_events(
                     timeline: sync_events::v3::Timeline {
                         limited: false,
                         prev_batch: Some(since_sn.to_string()),
-                        events: if let Some(left_event) = left_event {
+                        events: if let Ok(left_event) = left_event {
                             vec![left_event]
                         } else {
                             Vec::new()
@@ -258,12 +261,9 @@ pub fn sync_events(
                 let dont_share_encrypted_room =
                     crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
                         .into_iter()
-                        .filter_map(|other_room_id| {
-                            Some(
-                                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
-                                    .ok()?
-                                    .is_some(),
-                            )
+                        .map(|other_room_id| {
+                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
+                                .is_ok()
                         })
                         .all(|encrypted| !encrypted);
                 // If the user doesn't share an encrypted room with the target anymore, we need
@@ -277,12 +277,8 @@ pub fn sync_events(
             let dont_share_encrypted_room =
                 crate::room::user::get_shared_rooms(vec![sender_id.clone(), user_id.clone()])?
                     .into_iter()
-                    .filter_map(|other_room_id| {
-                        Some(
-                            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
-                                .ok()?
-                                .is_some(),
-                        )
+                    .map(|other_room_id| {
+                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
                     })
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need to tell
@@ -454,7 +450,7 @@ async fn load_joined_room(
     }
 
     let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 50, until_sn)?;
-
+ 
     let send_notification_counts =
         !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? > since_sn;
 
@@ -464,17 +460,16 @@ async fn load_joined_room(
     }
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(sender_id, &sender_device_id, &room_id, since_sn)?;
-
+ 
     // Database queries:
-    let current_frame_id = if let Some(s) = crate::room::state::get_room_frame_id(&room_id, None)? {
+    let current_frame_id = if let Ok(s) = crate::room::state::get_room_frame_id(&room_id, None) {
         s
     } else {
         error!("Room {} has no state", room_id);
         return Err(AppError::public("Room has no state"));
     };
 
-    let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn)?;
-    println!("==============since_sn: {since_sn} since_frame_id: {since_frame_id:?} current_frame_id: {current_frame_id:?}");
+    let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn).ok();
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) = if timeline_pdus
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
@@ -535,10 +530,8 @@ async fn load_joined_room(
         };
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
-        println!("mmmmmmmmmmmmm  joined_since_last_sync {joined_since_last_sync}");
-
+      
         if since_sn == 0 || joined_since_last_sync {
-            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_initial");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -553,9 +546,9 @@ async fn load_joined_room(
                 } = crate::room::state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let pdu = match crate::room::timeline::get_pdu(&id)? {
-                        Some(pdu) => pdu,
-                        None => {
+                    let pdu = match crate::room::timeline::get_pdu(&id) {
+                        Ok(pdu) => pdu,
+                        Err(_) => {
                             error!("Pdu in state not found: {}", id);
                             continue;
                         }
@@ -567,9 +560,9 @@ async fn load_joined_room(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let pdu = match crate::room::timeline::get_pdu(&id)? {
-                        Some(pdu) => pdu,
-                        None => {
+                    let pdu = match crate::room::timeline::get_pdu(&id) {
+                        Ok(pdu) => pdu,
+                        Err(_) => {
                             error!("Pdu in state not found: {}", id);
                             continue;
                         }
@@ -613,7 +606,6 @@ async fn load_joined_room(
             }
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
-            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_incremental");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
@@ -624,9 +616,9 @@ async fn load_joined_room(
 
                 for (key, id) in current_state_ids {
                     if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let pdu = match crate::room::timeline::get_pdu(&id)? {
-                            Some(pdu) => pdu,
-                            None => {
+                        let pdu = match crate::room::timeline::get_pdu(&id) {
+                            Ok(pdu) => pdu,
+                            Err(_) => {
                                 error!("Pdu in state not found: {}", id);
                                 continue;
                             }
@@ -658,11 +650,9 @@ async fn load_joined_room(
                     &event.sender,
                 )? || lazy_load_send_redundant
                 {
-                    if let Some(member_event) = crate::room::state::get_room_state(
-                        &room_id,
-                        &StateEventType::RoomMember,
-                        event.sender.as_str(),
-                    )? {
+                    if let Ok(member_event) =
+                        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, event.sender.as_str())
+                    {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
                     }
@@ -678,9 +668,10 @@ async fn load_joined_room(
             );
 
             let encrypted_room =
-                crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "")?.is_some();
+                crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
 
-            let since_encryption = crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "")?;
+            let since_encryption =
+                crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
             // Calculations:
             let new_encrypted_room = encrypted_room && since_encryption.is_none();
@@ -863,12 +854,8 @@ pub(crate) fn share_encrypted_room(
     let shared_rooms = crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)
-        .filter_map(|other_room_id| {
-            Some(
-                crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "")
-                    .ok()?
-                    .is_some(),
-            )
+        .map(|other_room_id| {
+            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
         })
         .any(|encrypted| encrypted);
 

@@ -67,40 +67,33 @@ pub async fn resolve_alias(
         Err(_) => resolve_appservice_alias(room_alias).await?,
     };
 
-    if let Some(room_id) = room_id {
-        Ok((room_id, Vec::new()))
-    } else {
-        Err(MatrixError::not_found("Room with alias not found.").into())
-    }
+    Ok((room_id, Vec::new()))
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<Option<OwnedRoomId>> {
-    room_aliases::table
+pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
+    let room_id = room_aliases::table
         .filter(room_aliases::alias_id.eq(alias_id))
         .select(room_aliases::room_id)
-        .first::<String>(&mut *db::connect()?)
-        .optional()?
-        .map(|room_id| RoomId::parse(room_id).map_err(|_| AppError::public("Room ID is invalid.")))
-        .transpose()
+        .first::<String>(&mut *db::connect()?)?;
+
+    println!("======resolve_local_alias==========alias id: {alias_id}  room_id:  {room_id:?}");
+    RoomId::parse(room_id).map_err(|_| AppError::public("Room ID is invalid."))
 }
 
-async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<Option<OwnedRoomId>> {
+async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<OwnedRoomId> {
     for appservice in crate::appservice::all()?.values() {
         let url = appservice
             .registration
             .build_url(&format!("app/v1/rooms/{}", room_alias))?;
         if appservice.aliases.is_match(room_alias.as_str())
-            && matches!(
-                crate::sending::post(url).send::<Option<()>>().await,
-                Ok(Some(_opt_result))
-            )
+            && matches!(crate::sending::post(url).send::<Option<()>>().await, Ok(_opt_result))
         {
             return resolve_local_alias(room_alias).map_err(|_| MatrixError::not_found("Room does not exist.").into());
         }
     }
 
-    Ok(None)
+    Err(MatrixError::not_found("resolve appservice alias not found").into())
 }
 
 pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasId>> {
@@ -111,11 +104,11 @@ pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasI
         .map_err(Into::into)
 }
 
-pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
-    admin_room_id().map(|admin_room_id| admin_room_id.as_deref() == Some(room_id))
+pub fn is_admin_room(room_id: &RoomId) -> bool {
+    admin_room_id().map_or(false, |admin_room_id| admin_room_id == room_id)
 }
 
-pub fn admin_room_id() -> AppResult<Option<OwnedRoomId>> {
+pub fn admin_room_id() -> AppResult<OwnedRoomId> {
     let server_name = crate::server_name();
     crate::room::resolve_local_alias(
         <&RoomAliasId>::try_from(format!("#admins:{}", server_name).as_str())
@@ -158,9 +151,9 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
     }
 
     let mut room_id = None;
-    match crate::room::resolve_local_alias(&room_alias)? {
-        Some(r) => room_id = Some(r),
-        None => {
+    match crate::room::resolve_local_alias(&room_alias) {
+        Ok(r) => room_id = Some(r),
+        Err(_) => {
             for appservice in crate::appservice::all()?.values() {
                 let url = appservice
                     .registration
@@ -172,8 +165,8 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
                     )
                 {
                     room_id = Some(
-                        crate::room::resolve_local_alias(&room_alias)?
-                            .ok_or_else(|| AppError::public("Appservice lied to us. Room does not exist."))?,
+                        crate::room::resolve_local_alias(&room_alias)
+                            .map_err(|_| AppError::public("Appservice lied to us. Room does not exist."))?,
                     );
                     break;
                 }
@@ -191,14 +184,11 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
 
 #[tracing::instrument]
 pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
-    let Some(room_id) = crate::room::resolve_local_alias(alias_id)? else {
-        return Err(MatrixError::not_found("Alias not found.").into());
-    };
+    let room_id = crate::room::resolve_local_alias(alias_id)?;
     if user_can_remove_alias(alias_id, user)? {
-        let state_alias = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCanonicalAlias, "")?;
-        diesel::delete(room_aliases::table.find(&alias_id)).execute(&mut *db::connect()?)?;
+        let state_alias = crate::room::state::get_canonical_alias(&room_id);
 
-        if state_alias.is_some() {
+        if state_alias.is_ok() {
             crate::room::timeline::build_and_append_pdu(
                 PduBuilder {
                     event_type: TimelineEventType::RoomCanonicalAlias,
@@ -215,7 +205,8 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
             )
             .ok();
         }
-
+        diesel::delete(room_aliases::table.filter(room_aliases::alias_id.eq(alias_id))).execute(&mut *db::connect()?)?;
+        
         Ok(())
     } else {
         Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())
@@ -223,9 +214,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
 }
 #[tracing::instrument]
 fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<bool> {
-    let Some(room_id) = crate::room::resolve_local_alias(alias_id)? else {
-        return Err(MatrixError::not_found("Alias not found.").into());
-    };
+    let room_id = crate::room::resolve_local_alias(alias_id)?;
 
     let alias = room_aliases::table
         .find(alias_id)
@@ -240,14 +229,14 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
-    } else if let Some(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomPowerLevels, "")? {
-        serde_json::from_str(event.content.get())
-            .map_err(|_| AppError::public("Invalid event content for m.room.power_levels"))
-            .map(|content: RoomPowerLevelsEventContent| {
-                RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias)
-            })
+    } else if let Ok(content) = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+    ) {
+        Ok(RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Some(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "")? {
+    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "") {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);

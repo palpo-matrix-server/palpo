@@ -6,6 +6,7 @@ use palpo_macros::StringEnum;
 use salvo::prelude::*;
 
 use crate::PrivOwnedStr;
+use crate::events::room::join_rules::JoinRule;
 
 /// The rule used for users wishing to join a room.
 ///
@@ -46,4 +47,9 @@ pub enum SpaceRoomJoinRule {
     #[doc(hidden)]
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
+}
+impl From<JoinRule> for SpaceRoomJoinRule {
+    fn from(value: JoinRule) -> Self {
+        value.as_str().into()
+    }
 }
