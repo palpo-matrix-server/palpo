@@ -184,15 +184,11 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    println!("xxxxxx   append_pdu 1");
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
-    println!("xxxxxx   append_pdu 2");
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
-    println!("xxxxxx   append_pdu 3");
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
-    println!("xxxxxx   append_pdu 4");
 
     // Insert pdu
     let event_data = DbEventData {
@@ -203,7 +199,6 @@ where
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
-    println!("xxxxxx   append_pdu 5");
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -213,9 +208,7 @@ where
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
-    println!("xxxxxx   append_pdu 6");
     crate::event::search::save_pdu(pdu, &pdu_json)?;
-    println!("xxxxxx   append_pdu 7");
 
     // See if the event matches any known pushers
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
@@ -230,7 +223,6 @@ where
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
-    println!("xxxxxx   append_pdu 8");
     for user in crate::room::get_our_real_users(&pdu.room_id)?.iter() {
         // Don't notify the user of their own events
         if user == &pdu.sender {
@@ -345,23 +337,24 @@ where
 
             println!("xxxxxx   append_pdu 16");
             if let Some(body) = content.body {
-                let admin_room = crate::room::resolve_local_alias(
+                if let Ok(admin_room) = crate::room::resolve_local_alias(
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
                         .expect("#admins:server_name is a valid room alias"),
-                )?;
-                let server_user = format!("@palpo:{}", &conf.server_name);
+                ) {
+                    let server_user = format!("@palpo:{}", &conf.server_name);
 
-                let to_palpo = body.starts_with(&format!("{server_user}: "))
-                    || body.starts_with(&format!("{server_user} "))
-                    || body == format!("{server_user}:")
-                    || body == format!("{server_user}");
+                    let to_palpo = body.starts_with(&format!("{server_user}: "))
+                        || body.starts_with(&format!("{server_user} "))
+                        || body == format!("{server_user}:")
+                        || body == format!("{server_user}");
 
-                // This will evaluate to false if the emergency password is set up so that
-                // the administrator can execute commands as palpo
-                let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
+                    // This will evaluate to false if the emergency password is set up so that
+                    // the administrator can execute commands as palpo
+                    let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
-                if to_palpo && !from_palpo && admin_room.as_ref() == Some(&pdu.room_id) {
-                    crate::admin::process_message(body);
+                    if to_palpo && !from_palpo && admin_room == pdu.room_id {
+                        crate::admin::process_message(body);
+                    }
                 }
             }
         }
@@ -403,16 +396,13 @@ where
             _ => {} // TODO: Aggregate other types
         }
     }
-    println!("xxxxxx   append_pdu 18");
     if !relates_added {
-        println!("xxxxxx   append_pdu 18     ----  0");
         if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
             println!("xxxxxx   append_pdu 18     ----  1");
             crate::room::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
             println!("xxxxxx   append_pdu 18     ----  2");
         }
     }
-    println!("xxxxxx   append_pdu 18     ----  3");
 
     for appservice in crate::appservice::all()?.values() {
         println!("xxxxxx   append_pdu 18     ----  4");
@@ -756,11 +746,11 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
     let conf = crate::config();
-    let admin_room = crate::room::resolve_local_alias(
-        <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
-            .expect("#admins:server_name is a valid room alias"),
-    )?;
-    if crate::room::is_admin_room(room_id)? {
+    // let admin_room = crate::room::resolve_local_alias(
+    //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
+    //         .expect("#admins:server_name is a valid room alias"),
+    // )?;
+    if crate::room::is_admin_room(room_id) {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 

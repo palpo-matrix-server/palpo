@@ -78,7 +78,13 @@ impl<T> OptionalExtension<T> for AppResult<T> {
     fn optional(self) -> AppResult<Option<T>> {
         match self {
             Ok(value) => Ok(Some(value)),
-            Err(AppError::NotFound) => Ok(None),
+            Err(AppError::Matrix(e)) => {
+                if e.is_not_found() {
+                    Ok(None)
+                } else {
+                    Err(AppError::Matrix(e))
+                }
+            }
             Err(AppError::Diesel(diesel::result::Error::NotFound)) => Ok(None),
             Err(e) => Err(e),
         }

@@ -128,6 +128,9 @@ impl MatrixError {
     pub fn wrong_room_keys_version(current_version: Option<String>, body: impl Into<ErrorBody>) -> Self {
         Self::new(ErrorKind::WrongRoomKeysVersion { current_version }, body)
     }
+    pub fn is_not_found(&self) -> bool {
+        matches!(self.kind, ErrorKind::NotFound)
+    }
 }
 impl Serialize for MatrixError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

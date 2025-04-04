@@ -199,7 +199,7 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
             .try_into()
             .expect("#admins:server_name is a valid room alias"),
     );
-    let palpo_room = if let Ok(Some(palpo_room)) = palpo_room {
+    let palpo_room = if let Ok(palpo_room) = palpo_room {
         palpo_room
     } else {
         create_admin_room(&palpo_user).expect("admin room creation error")
@@ -737,7 +737,7 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
 /// Gets the room ID of the admin room
 ///
 /// Errors are propagated from the database, and will have None if there is no admin room
-pub(crate) fn get_admin_room() -> AppResult<Option<OwnedRoomId>> {
+pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
     let conf = crate::config();
     let admin_room_alias: Box<RoomAliasId> = format!("#admins:{}", &conf.server_name)
         .try_into()
@@ -939,7 +939,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
 pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResult<()> {
     let conf = crate::config();
 
-    let room_id = get_admin_room()?.expect("Admin room must exist");
+    let room_id = get_admin_room()?;
 
     // Use the server user to grant the new admin's power level
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");

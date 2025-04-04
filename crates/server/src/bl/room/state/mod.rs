@@ -422,7 +422,7 @@ pub fn get_state_event_id(frame_id: i64, event_type: &StateEventType, state_key:
         .iter()
         .find(|bytes| bytes.starts_with(&state_key_id.to_be_bytes()))
         .and_then(|compressed| compressed.split().ok().map(|(_, id)| id))
-        .ok_or(AppError::NotFound)
+        .ok_or(MatrixError::not_found("state event not found").into())
 }
 
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).

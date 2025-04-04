@@ -157,7 +157,7 @@ pub fn get_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<i64> {
         .filter(event_points::event_sn.eq(event_sn))
         .select(event_points::frame_id)
         .first::<Option<i64>>(&mut *db::connect()?)?
-        .ok_or(AppError::NotFound)
+        .ok_or(MatrixError::not_found("room frame id is not found").into())
 }
 pub fn get_last_frame_id(room_id: &RoomId, before_sn: i64) -> AppResult<i64> {
     event_points::table
@@ -167,7 +167,7 @@ pub fn get_last_frame_id(room_id: &RoomId, before_sn: i64) -> AppResult<i64> {
         .select(event_points::frame_id)
         .order_by(event_points::event_sn.desc())
         .first::<Option<i64>>(&mut *db::connect()?)?
-        .ok_or(AppError::NotFound)
+        .ok_or(MatrixError::not_found("room last frame id is not found").into())
 }
 pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.find(event_id))

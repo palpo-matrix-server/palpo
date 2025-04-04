@@ -34,9 +34,11 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
 
     println!("GGGGGGet alias   2");
     let mut room_id = None;
-    if let Some(r) = crate::room::resolve_local_alias(&room_alias)? {
+    if let Ok(r) = crate::room::resolve_local_alias(&room_alias) {
+        println!("GGGGGGet alias   2   0  {room_alias}");
         room_id = Some(r);
     } else {
+        println!("GGGGGGet alias   2   1");
         for (_id, appservice) in crate::appservice::all()? {
             if appservice.aliases.is_match(room_alias.as_str())
                 && crate::sending::get(
@@ -49,8 +51,8 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
                 .is_ok()
             {
                 room_id = Some(
-                    crate::room::resolve_local_alias(&room_alias)?
-                        .ok_or_else(|| AppError::public("Appservice lied to us. Room does not exist."))?,
+                    crate::room::resolve_local_alias(&room_alias)
+                        .map_err(|_| AppError::public("Appservice lied to us. Room does not exist."))?,
                 );
                 break;
             }
@@ -79,7 +81,7 @@ pub(super) async fn upsert_alias(
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
     }
 
-    if crate::room::resolve_local_alias(&alias_id)?.is_some() {
+    if crate::room::resolve_local_alias(&alias_id).is_ok() {
         return Err(MatrixError::forbidden("Alias already exists.").into());
     }
 

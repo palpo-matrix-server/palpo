@@ -204,7 +204,7 @@ fn register(
     // If this is the first real user, grant them admin privileges
     // Note: the server user, @palpo:servername, is generated first
     if !is_guest {
-        if let Some(admin_room) = crate::admin::get_admin_room()? {
+        if let Ok(admin_room) = crate::admin::get_admin_room() {
             if crate::room::join_count(&admin_room)? == 1 {
                 crate::admin::make_user_admin(&user_id, display_name)?;
                 warn!("Granting {} admin privileges as the first user", user_id);

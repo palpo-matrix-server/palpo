@@ -6,7 +6,7 @@ use lru_cache::LruCache;
 use super::{CompressedState, StateDiff};
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{AppError, AppResult, db};
+use crate::{AppError, AppResult, MatrixError, db};
 
 pub static STATE_INFO_CACHE: LazyLock<Mutex<LruCache<i64, Vec<FrameInfo>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
@@ -76,7 +76,7 @@ pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<i
             .select(rooms::state_frame_id)
             .first::<Option<i64>>(&mut *db::connect()?)?
     };
-    frame_id.ok_or(AppError::NotFound)
+    frame_id.ok_or(MatrixError::not_found("room frame is not found").into())
 }
 
 pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<i64> {
@@ -84,7 +84,7 @@ pub fn get_pdu_frame_id(event_id: &EventId) -> AppResult<i64> {
         .filter(event_points::event_id.eq(event_id))
         .select(event_points::frame_id)
         .first::<Option<i64>>(&mut *db::connect()?)?;
-    frame_id.ok_or(AppError::NotFound)
+    frame_id.ok_or(MatrixError::not_found("pdu frame is not found").into())
 }
 /// Returns (state_hash, already_existed)
 pub fn ensure_frame(room_id: &RoomId, hash_data: Vec<u8>) -> AppResult<i64> {

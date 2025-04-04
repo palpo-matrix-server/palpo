@@ -463,7 +463,7 @@ pub(super) async fn create_room(
         let alias = RoomAliasId::parse(format!("#{}:{}", localpart, crate::server_name()))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
-        if crate::room::resolve_local_alias(&alias)?.is_some() {
+        if crate::room::resolve_local_alias(&alias).is_ok() {
             return Err(MatrixError::room_in_use("Room alias already exists.").into());
         } else {
             Some(alias)
@@ -530,6 +530,7 @@ pub(super) async fn create_room(
         return Err(MatrixError::bad_json("Invalid creation content").into());
     }
 
+    println!("========       CREATE ROOM  0");
     // 1. The room create event
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -542,6 +543,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  1");
     // 2. Let the room creator join
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -564,6 +566,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  2");
     // 3. Power levels
     // Figure out preset. We need it for preset specific events
     let preset = body.preset.clone().unwrap_or(match &body.visibility {
@@ -581,6 +584,7 @@ pub(super) async fn create_room(
         }
     }
 
+    println!("========       CREATE ROOM  3");
     let power_levels_content =
         default_power_levels_content(body.power_level_content_override.as_ref(), &body.visibility, users)?;
 
@@ -595,6 +599,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  4");
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
         crate::room::timeline::build_and_append_pdu(
@@ -614,6 +619,7 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
+    println!("========       CREATE ROOM  5");
     // 5. Events set by preset
     // 5.1 Join Rules
     crate::room::timeline::build_and_append_pdu(
@@ -632,6 +638,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  6");
     // 5.2 History Visibility
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -645,6 +652,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  6");
     // 5.3 Guest Access
     crate::room::timeline::build_and_append_pdu(
         PduBuilder {
@@ -661,6 +669,7 @@ pub(super) async fn create_room(
         &room_id,
     )?;
 
+    println!("========       CREATE ROOM  7");
     // 6. Events listed in initial_state
     for event in &body.initial_state {
         let mut pdu_builder = event.deserialize_as::<PduBuilder>().map_err(|e| {
@@ -679,6 +688,7 @@ pub(super) async fn create_room(
         crate::room::timeline::build_and_append_pdu(pdu_builder, authed.user_id(), &room_id)?;
     }
 
+    println!("========       CREATE ROOM  8");
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
         crate::room::timeline::build_and_append_pdu(
@@ -708,6 +718,7 @@ pub(super) async fn create_room(
         )?;
     }
 
+    println!("========       CREATE ROOM  9");
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
         if let Err(e) = crate::membership::invite_user(authed.user_id(), user_id, &room_id, None, body.is_direct).await
@@ -725,6 +736,7 @@ pub(super) async fn create_room(
         crate::room::directory::set_public(&room_id, true)?;
     }
 
+    println!("========       CREATE ROOM  10");
     info!("{} created a room", authed.user_id());
     json_ok(CreateRoomResBody { room_id })
 }
