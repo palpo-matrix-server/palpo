@@ -313,11 +313,11 @@ async fn upgrade(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(authed.user_id())?,
-                avatar_url: crate::user::avatar_url(authed.user_id())?,
+                display_name: crate::user::display_name(authed.user_id()).ok().flatten(),
+                avatar_url: crate::user::avatar_url(authed.user_id()).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(authed.user_id())?,
+                blurhash: crate::user::blurhash(authed.user_id()).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
             })
@@ -548,11 +548,11 @@ pub(super) async fn create_room(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(authed.user_id())?,
-                avatar_url: crate::user::avatar_url(authed.user_id())?,
+                display_name: crate::user::display_name(authed.user_id()).ok().flatten(),
+                avatar_url: crate::user::avatar_url(authed.user_id()).ok().flatten(),
                 is_direct: Some(body.is_direct),
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(authed.user_id())?,
+                blurhash: crate::user::blurhash(authed.user_id()).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
             })

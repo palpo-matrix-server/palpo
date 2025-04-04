@@ -137,9 +137,9 @@ async fn knock_room_local(
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
-            display_name: crate::user::display_name(sender_id)?,
-            avatar_url: crate::user::avatar_url(sender_id)?,
-            blurhash: crate::user::blurhash(sender_id)?,
+            display_name: crate::user::display_name(sender_id).ok().flatten(),
+            avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
+            blurhash: crate::user::blurhash(sender_id).ok().flatten(),
             reason,
             ..RoomMemberEventContent::new(MembershipState::Knock)
         })

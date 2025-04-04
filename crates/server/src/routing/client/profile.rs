@@ -225,7 +225,7 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
         return json_ok(body);
     }
     json_ok(DisplayNameResBody {
-        display_name: crate::user::display_name(&user_id)?,
+        display_name: crate::user::display_name(&user_id).ok().flatten(),
     })
 }
 

@@ -318,11 +318,11 @@ async fn local_join_room(
 
     let event = RoomMemberEventContent {
         membership: MembershipState::Join,
-        display_name: crate::user::display_name(user_id)?,
-        avatar_url: crate::user::avatar_url(user_id)?,
+        display_name: crate::user::display_name(user_id).ok().flatten(),
+        avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
         is_direct: None,
         third_party_invite: None,
-        blurhash: crate::user::blurhash(user_id)?,
+        blurhash: crate::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
     };
@@ -369,11 +369,11 @@ async fn local_join_room(
             "content".to_owned(),
             to_canonical_value(RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(user_id)?,
-                avatar_url: crate::user::avatar_url(user_id)?,
+                display_name: crate::user::display_name(user_id).ok().flatten(),
+                avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(user_id)?,
+                blurhash: crate::user::blurhash(user_id).ok().flatten(),
                 reason,
                 join_authorized_via_users_server,
             })

@@ -150,6 +150,7 @@ where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
     let conf = crate::config();
+    println!("xxxxxx   append_pdu 0");
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
     // interpret things like membership changes
@@ -183,11 +184,15 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
+    println!("xxxxxx   append_pdu 1");
     crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
+    println!("xxxxxx   append_pdu 2");
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
+    println!("xxxxxx   append_pdu 3");
     crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
+    println!("xxxxxx   append_pdu 4");
 
     // Insert pdu
     let event_data = DbEventData {
@@ -198,6 +203,7 @@ where
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
     };
+    println!("xxxxxx   append_pdu 5");
     diesel::insert_into(event_datas::table)
         .values(&event_data)
         .on_conflict((event_datas::event_id, event_datas::event_sn))
@@ -207,7 +213,9 @@ where
     diesel::update(events::table.find(&*pdu.event_id))
         .set(events::is_outlier.eq(false))
         .execute(&mut db::connect()?)?;
+    println!("xxxxxx   append_pdu 6");
     crate::event::search::save_pdu(pdu, &pdu_json)?;
+    println!("xxxxxx   append_pdu 7");
 
     // See if the event matches any known pushers
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
@@ -222,6 +230,7 @@ where
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
+    println!("xxxxxx   append_pdu 8");
     for user in crate::room::get_our_real_users(&pdu.room_id)?.iter() {
         // Don't notify the user of their own events
         if user == &pdu.sender {
@@ -235,6 +244,7 @@ where
         .map(|content: PushRulesEventContent| content.global)
         .unwrap_or_else(|| Ruleset::server_default(user));
 
+        println!("xxxxxx   append_pdu 9");
         let mut highlight = false;
         let mut notify = false;
 
@@ -247,6 +257,7 @@ where
                 _ => {}
             };
         }
+        println!("xxxxxx   append_pdu 9   -- 0");
 
         if notify {
             notifies.push(user.clone());
@@ -256,12 +267,18 @@ where
             highlights.push(user.clone());
         }
 
+        println!("xxxxxx   append_pdu 9   -- 1");
         for push_key in crate::user::pusher::get_push_keys(user)? {
+            println!("xxxxxx   append_pdu 9   -- 2");
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
+            println!("xxxxxx   append_pdu 9   -- 3");
         }
+        println!("xxxxxx   append_pdu 9   -- 4");
     }
+    println!("xxxxxx   append_pdu 10");
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
+    println!("xxxxxx   append_pdu 11");
     match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
@@ -297,9 +314,11 @@ where
                     _ => None,
                 };
 
+                println!("xxxxxx   append_pdu 12");
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online)?;
                 }
+                println!("xxxxxx   append_pdu 13");
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 crate::room::update_membership(
@@ -311,6 +330,7 @@ where
                     &pdu.sender,
                     stripped_state,
                 )?;
+                println!("xxxxxx   append_pdu 14");
             }
         }
         TimelineEventType::RoomMessage => {
@@ -319,9 +339,11 @@ where
                 body: Option<String>,
             }
 
+            println!("xxxxxx   append_pdu 15");
             let content = serde_json::from_str::<ExtractBody>(pdu.content.get())
                 .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
+            println!("xxxxxx   append_pdu 16");
             if let Some(body) = content.body {
                 let admin_room = crate::room::resolve_local_alias(
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
@@ -363,6 +385,7 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
+    println!("xxxxxx   append_pdu 17");
     if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
@@ -380,15 +403,23 @@ where
             _ => {} // TODO: Aggregate other types
         }
     }
+    println!("xxxxxx   append_pdu 18");
     if !relates_added {
+        println!("xxxxxx   append_pdu 18     ----  0");
         if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
+            println!("xxxxxx   append_pdu 18     ----  1");
             crate::room::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
+            println!("xxxxxx   append_pdu 18     ----  2");
         }
     }
+    println!("xxxxxx   append_pdu 18     ----  3");
 
     for appservice in crate::appservice::all()?.values() {
+        println!("xxxxxx   append_pdu 18     ----  4");
         if crate::room::appservice_in_room(&pdu.room_id, &appservice)? {
+            println!("xxxxxx   append_pdu 18     ----  5");
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+            println!("xxxxxx   append_pdu 18     ----  6");
             continue;
         }
 
@@ -400,17 +431,22 @@ where
                 .as_ref()
                 .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
             {
+                println!("xxxxxx   append_pdu 18     ----  7");
                 if let Some(appservice_uid) =
                     UserId::parse_with_server_name(&*appservice.registration.sender_localpart, &conf.server_name).ok()
                 {
+                    println!("xxxxxx   append_pdu 18     ----  8");
                     if state_key_uid == &appservice_uid {
                         crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+                        println!("xxxxxx   append_pdu 18     ----  9");
                         continue;
                     }
                 }
             }
         }
+        println!("xxxxxx   append_pdu 18     ----  10");
 
+        println!("xxxxxx   append_pdu 19");
         let matching_users = || {
             crate::server_name() == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
@@ -420,7 +456,7 @@ where
                         })
                     })
         };
-        let matching_aliases = |conn: &mut PgConnection| {
+        let matching_aliases = || {
             crate::room::local_aliases_for_room(&pdu.room_id)
                 .unwrap_or_default()
                 .iter()
@@ -441,9 +477,10 @@ where
                     false
                 }
         };
+        println!("xxxxxx   append_pdu 20");
 
-        if matching_aliases(&mut *db::connect()?) || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users()
-        {
+        if matching_aliases() || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users() {
+            println!("xxxxxx   append_pdu 21");
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
         }
     }
@@ -832,6 +869,7 @@ pub fn get_pdus(
         crate::curr_sn()? + 1
     };
 
+    println!("=================get_pdus 0");
     while list.len() < limit {
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
         if dir == Direction::Forward {
@@ -843,6 +881,7 @@ pub fn get_pdus(
             query = query.filter(events::sn.le(until_sn));
         }
 
+        println!("=================get_pdus 1");
         if let Some(filter) = filter {
             if let Some(url_filter) = &filter.url_filter {
                 match url_filter {
@@ -895,9 +934,11 @@ pub fn get_pdus(
         } else {
             break;
         };
+        println!("=================get_pdus 2");
         for (event_id, event_sn, value) in datas {
             let mut pdu = PduEvent::from_json_value(&event_id, event_sn, value)?;
 
+            println!("=================get_pdus 3");
             if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;

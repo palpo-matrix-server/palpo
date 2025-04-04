@@ -283,14 +283,16 @@ pub fn get_actions<'a>(
         users_default: power_levels.users_default,
         notifications: power_levels.notifications.clone(),
     };
+    println!("xxxxxxxxxxxxxxx  get actions 0");
     let ctx = PushConditionRoomCtx {
         room_id: room_id.to_owned(),
         member_count: 10_u32.into(), // TODO: get member count efficiently
         user_id: user.to_owned(),
-        user_display_name: crate::user::display_name(user)?.unwrap_or_else(|| user.localpart().to_owned()),
+        user_display_name: crate::user::display_name(user).ok().flatten().unwrap_or_else(|| user.localpart().to_owned()),
         power_levels: Some(power_levels),
         supported_features: vec![],
     };
+    println!("xxxxxxxxxxxxxxx  get actions 1");
 
     Ok(ruleset.get_actions(pdu, &ctx))
 }
@@ -353,7 +355,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
                     notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
                 }
 
-                notification.sender_display_name = crate::user::display_name(&event.sender)?;
+                notification.sender_display_name = crate::user::display_name(&event.sender).ok().flatten();
 
                 notification.room_name = crate::room::state::get_name(&event.room_id).ok();
 

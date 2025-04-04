@@ -625,8 +625,8 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
     }
 
     let history_visibility =
-        get_state_content::<RoomHistoryVisibilityEventContent>(frame_id, &StateEventType::RoomHistoryVisibility, "")
-            .map(|c: RoomHistoryVisibilityEventContent| c.history_visibility)?;
+        get_state_content::<RoomHistoryVisibilityEventContent>(frame_id, &StateEventType::RoomHistoryVisibility, "").
+        map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| c.history_visibility);
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,

@@ -43,8 +43,8 @@ fn search(
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
             user_id: user_id.clone(),
-            display_name: crate::user::display_name(&user_id).ok()?,
-            avatar_url: crate::user::avatar_url(&user_id).ok()?,
+            display_name: crate::user::display_name(&user_id).ok().flatten(),
+            avatar_url: crate::user::avatar_url(&user_id).ok().flatten(),
         };
 
         let user_is_in_public_rooms = crate::user::joined_rooms(&user_id, 0).ok()?.into_iter().any(|room| {
