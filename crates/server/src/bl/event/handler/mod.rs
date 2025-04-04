@@ -365,7 +365,6 @@ fn handle_outlier_pdu<'a>(
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
 
-        println!("==============handle outlier pdu {}", incoming_pdu.event_id);
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()
@@ -792,7 +791,6 @@ pub(crate) async fn fetch_and_handle_outliers(
                 }
             }
 
-            println!("caaaaaaaaall handle_outlier_pdu 2 event_id:{next_id}");
             if let Ok(pdu) = crate::room::timeline::get_pdu(&next_id) {
                 pdus.push((pdu, Some(value)));
                 continue;

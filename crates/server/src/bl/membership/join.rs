@@ -167,7 +167,6 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //         .or_default(),
     // );
     // let mutex_lock = mutex.lock().await;
-    println!("==ddd  handle_incoming_pdu 0  {event_id}  {value:?}");
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value.clone(), true).await?;
     // drop(mutex_lock);
 
@@ -428,7 +427,6 @@ async fn local_join_room(
                 return Err(MatrixError::invalid_param("Server sent event with wrong event id").into());
             }
 
-            println!("==ddd  handle_incoming_pdu 2  {event_id}");
             // let pub_key_map = RwLock::new(BTreeMap::new());
             crate::event::handler::handle_incoming_pdu(
                 &remote_server,
@@ -587,7 +585,6 @@ async fn remote_join_room(
         warn!("Invalid PDU in send_join response: {}", e);
         AppError::public("Invalid join event PDU.")
     })?;
-    println!("==============remote join room {event_id}");
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -631,7 +628,6 @@ async fn remote_join_room(
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
-            println!("==============remote join room 2 {event_id}");
             diesel::insert_into(events::table)
                 .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
                 .on_conflict_do_nothing()
@@ -675,7 +671,6 @@ async fn remote_join_room(
         if !crate::room::timeline::has_pdu(&event_id)? {
             let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
             let db_event = NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?;
-            println!("==============remote join room 3 {event_id}");
             diesel::insert_into(events::table)
                 .values(&db_event)
                 .on_conflict_do_nothing()

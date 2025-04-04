@@ -188,9 +188,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
     if user_can_remove_alias(alias_id, user)? {
         let state_alias = crate::room::state::get_canonical_alias(&room_id);
 
-        println!("=================0 remove alias: {alias_id}  room_id:  {room_id:?}");
         if state_alias.is_ok() {
-            println!("=================1");
             crate::room::timeline::build_and_append_pdu(
                 PduBuilder {
                     event_type: TimelineEventType::RoomCanonicalAlias,
@@ -207,10 +205,8 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
             )
             .ok();
         }
-        println!("=================2");
         diesel::delete(room_aliases::table.filter(room_aliases::alias_id.eq(alias_id))).execute(&mut *db::connect()?)?;
-        println!("=================3");
-
+        
         Ok(())
     } else {
         Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())

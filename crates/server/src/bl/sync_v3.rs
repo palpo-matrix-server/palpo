@@ -445,15 +445,12 @@ async fn load_joined_room(
     left_users: &mut HashSet<OwnedUserId>,
     until_sn: Option<i64>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
-    println!("xxxxxxxxxxxxxx   load_joined_room  0");
     if since_sn > crate::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
 
-    println!("xxxxxxxxxxxxxx   load_joined_room  1");
     let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 50, until_sn)?;
-    println!("xxxxxxxxxxxxxx   load_joined_room  2");
-
+ 
     let send_notification_counts =
         !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? > since_sn;
 
@@ -462,10 +459,8 @@ async fn load_joined_room(
         timeline_users.insert(event.sender.as_str().to_owned());
     }
 
-    println!("xxxxxxxxxxxxxx   load_joined_room  3");
     crate::room::lazy_loading::lazy_load_confirm_delivery(sender_id, &sender_device_id, &room_id, since_sn)?;
-    println!("xxxxxxxxxxxxxx   load_joined_room  4");
-
+ 
     // Database queries:
     let current_frame_id = if let Ok(s) = crate::room::state::get_room_frame_id(&room_id, None) {
         s
@@ -479,7 +474,6 @@ async fn load_joined_room(
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
     {
-        println!("xxxxxxxxxxxxxx   load_joined_room  5");
         // No state changes
         (Vec::new(), None, None, false, Vec::new())
     } else {
@@ -488,7 +482,6 @@ async fn load_joined_room(
             let joined_member_count = crate::room::joined_member_count(&room_id).unwrap_or(0);
             let invited_member_count = crate::room::invited_member_count(&room_id).unwrap_or(0);
 
-            println!("xxxxxxxxxxxxxx   load_joined_room  6");
             // Recalculate heroes (first 5 members)
             let mut heroes = Vec::new();
 
@@ -536,12 +529,9 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        println!("xxxxxxxxxxxxxx   load_joined_room  7");
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
-        println!("mmmmmmmmmmmmm  joined_since_last_sync {joined_since_last_sync}");
-
+      
         if since_sn == 0 || joined_since_last_sync {
-            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_initial");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -616,7 +606,6 @@ async fn load_joined_room(
             }
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
-            println!("mmmmmmmmmmmmmmmmmmmm calculate_state_incremental");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();

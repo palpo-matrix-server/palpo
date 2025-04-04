@@ -53,7 +53,6 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
                         json_data: serde_json::to_value(receipt)?,
                         receipt_at,
                     };
-                    println!("iiiiiiiiiiiiiinsert receipt: {:?}", receipt);
                     diesel::insert_into(event_receipts::table)
                         .values(&receipt)
                         .execute(&mut *db::connect()?)?;

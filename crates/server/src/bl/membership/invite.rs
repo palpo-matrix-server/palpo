@@ -90,7 +90,6 @@ pub(crate) async fn invite_user(
         )
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
 
-        println!("==ddd  handle_incoming_pdu 1  {event_id}");
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
         return crate::sending::send_pdu_room(room_id, &event_id);
     }

@@ -204,7 +204,6 @@ async fn invite_user(
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
     let origin = depot.origin()?;
-    println!("cccccreate_leave_event_template_route, user: {:?}", args.user_id);
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }

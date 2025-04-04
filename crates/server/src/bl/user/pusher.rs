@@ -283,7 +283,6 @@ pub fn get_actions<'a>(
         users_default: power_levels.users_default,
         notifications: power_levels.notifications.clone(),
     };
-    println!("xxxxxxxxxxxxxxx  get actions 0");
     let ctx = PushConditionRoomCtx {
         room_id: room_id.to_owned(),
         member_count: 10_u32.into(), // TODO: get member count efficiently
@@ -292,7 +291,6 @@ pub fn get_actions<'a>(
         power_levels: Some(power_levels),
         supported_features: vec![],
     };
-    println!("xxxxxxxxxxxxxxx  get actions 1");
 
     Ok(ruleset.get_actions(pdu, &ctx))
 }

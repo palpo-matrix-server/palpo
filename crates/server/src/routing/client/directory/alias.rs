@@ -17,11 +17,8 @@ use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, db, diesel
 /// - TODO: Suggest more servers to join via
 #[endpoint]
 pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
-    println!("GGGGGGet alias zzz");
     let room_alias = room_alias.into_inner();
-    println!("GGGGGGet alias   0: {:?}", room_alias);
     if room_alias.is_remote() {
-        println!("GGGGGGet alias   1  {}", room_alias.server_name().origin().await);
         let response = directory_request(&room_alias.server_name().origin().await, &room_alias)?
             .send::<RoomInfoResBody>()
             .await?;
@@ -32,13 +29,10 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
         return json_ok(AliasResBody::new(response.room_id, servers));
     }
 
-    println!("GGGGGGet alias   2");
     let mut room_id = None;
     if let Ok(r) = crate::room::resolve_local_alias(&room_alias) {
-        println!("GGGGGGet alias   2   0  {room_alias}");
         room_id = Some(r);
     } else {
-        println!("GGGGGGet alias   2   1");
         for (_id, appservice) in crate::appservice::all()? {
             if appservice.aliases.is_match(room_alias.as_str())
                 && crate::sending::get(
@@ -59,7 +53,6 @@ pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAlia
         }
     }
 
-    println!("GGGGGGet alias   3");
     let Some(room_id) = room_id else {
         return Err(MatrixError::not_found("Room with alias not found.").into());
     };

@@ -28,21 +28,17 @@ async fn send_message(
     _txn_id: PathParam<OwnedTransactionId>,
     body: JsonBody<SendMessageReqBody>,
 ) -> JsonResult<SendMessageResBody> {
-    println!("==============call==send message 0");
     let origin = depot.origin()?;
     let body = body.into_inner();
     if &body.origin != origin {
-        println!("==============call==send message 1");
         return Err(MatrixError::forbidden("Not allowed to send transactions on behalf of other servers").into());
     }
 
     if body.pdus.len() > PDU_LIMIT {
-        println!("==============call==send message 2");
         return Err(MatrixError::forbidden("Not allowed to send more than {PDU_LIMIT} PDUs in one transaction").into());
     }
 
     if body.edus.len() > EDU_LIMIT {
-        println!("==============call==send message 3");
         return Err(MatrixError::forbidden("Not allowed to send more than {EDU_LIMIT} EDUs in one transaction").into());
     }
 
@@ -265,7 +261,6 @@ async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListU
 }
 
 async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceContent) {
-    println!("=================handle_edu_direct_to_device 0");
     let DirectDeviceContent {
         sender,
         ev_type,
@@ -274,7 +269,6 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
     } = content;
 
     if sender.server_name() != origin {
-        println!("=================handle_edu_direct_to_device 1");
         warn!(
             %sender, %origin,
             "received direct to device EDU for user not belonging to origin"
@@ -284,18 +278,15 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
 
     // Check if this is a new transaction id
     if crate::transaction_id::txn_id_exists(&message_id, &sender, None).unwrap_or_default() {
-        println!("=================handle_edu_direct_to_device 2");
         return;
     }
 
     for (target_user_id, map) in &messages {
         for (target_device_id_maybe, event) in map {
-            println!("=================handle_edu_direct_to_device 3");
             let Ok(event) = event
                 .deserialize_as()
                 .map_err(|e| error!("To-Device event is invalid: {e}"))
             else {
-                println!("=================handle_edu_direct_to_device 4");
                 continue;
             };
 
@@ -311,7 +302,6 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
                         .unwrap_or_default()
                         .iter()
                         .for_each(|target_device_id| {
-                            println!("=================handle_edu_direct_to_device 5");
                             crate::user::add_to_device_event(
                                 sender,
                                 target_user_id,
