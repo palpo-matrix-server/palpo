@@ -115,6 +115,12 @@ pub fn auth_check<E: Event>(
     current_third_party_invite: Option<impl Event>,
     fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
 ) -> StateResult<bool> {
+    println!(
+        "auth_check beginning for {} ({})",
+        incoming_event.event_id(),
+        incoming_event.event_type()
+    );
+
     info!(
         "auth_check beginning for {} ({})",
         incoming_event.event_id(),
@@ -291,6 +297,14 @@ pub fn auth_check<E: Event>(
             "\n\n\n===========incoming event: {:?}  target_user:{target_user:?}  sender:{sender:?}",
             incoming_event.content()
         );
+        if let Some(power_levels_event) = &power_levels_event {
+            println!(
+                "vvvvvvvvvvvvv  power_levels_event: {:#?}",
+                power_levels_event.content().get()
+            );
+        } else {
+            println!("vvvvvvvvvvvvv  power_levels_event: None");
+        }
         if !valid_membership_change(
             room_version,
             target_user,
@@ -337,20 +351,35 @@ pub fn auth_check<E: Event>(
 
     // If type is m.room.third_party_invite
     let sender_power_level = if let Some(pl) = &power_levels_event {
+        println!(
+            "mmmmmmmmmm  power_levels_event: {:#?}",
+            pl.content().get()
+        );
+        println!("c    ccccccccccccc   0");
         let content = deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
-        if let Some(level) = content.users.get(sender) {
-            *level
+        println!("c    ccccccccccccc   content: {:#?}", pl.content().get());
+        if let Some(level) = content.get_user_power(sender) {
+            println!("c    ccccccccccccc   0 level: {level}");
+            level
         } else {
+            println!("c    ccccccccccccc   0 users_default: {}", content.users_default);
             content.users_default
         }
     } else {
         // If no power level event found the creator gets 100 everyone else gets 0
+        println!(
+            "c    ccccccccccccc   room_version.use_room_create_sender {}=={}",
+            room_version.use_room_create_sender, sender
+        );
         let is_creator = if room_version.use_room_create_sender {
             room_create_event.sender() == sender
         } else {
-            from_json_str::<RoomCreateEventContent>(room_create_event.content().get())
-                .is_ok_and(|create| create.creator.unwrap() == *sender)
+            from_json_str::<RoomCreateEventContent>(room_create_event.content().get()).is_ok_and(|create| {
+                println!("=============== create.creator:{:?}=={}", create.creator, sender);
+                create.creator.unwrap() == *sender
+            })
         };
+        println!("c    ccccccccccccc   0 is_creator: {is_creator}");
 
         if is_creator { 100 } else { 0 }
     };
@@ -499,8 +528,8 @@ fn valid_membership_change(
             let invite = deserialize_power_levels_content_invite(pl.content().get(), room_version)?.invite;
 
             let content = deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
-            let user_pl = if let Some(level) = content.users.get(user_for_join_auth) {
-                *level
+            let user_pl = if let Some(level) = content.get_user_power(user_for_join_auth) {
+                level
             } else {
                 content.users_default
             };
@@ -715,6 +744,10 @@ fn can_send_event(event: impl Event, ple: Option<impl Event>, user_level: i64) -
     let event_type_power_level = get_send_level(event.event_type(), event.state_key(), ple);
 
     debug!("{} ev_type {event_type_power_level} usr {user_level}", event.event_id());
+    println!(
+        "ddddddddddddddddddddd {} ev_type {event_type_power_level} usr {user_level}",
+        event.event_id()
+    );
 
     if user_level < event_type_power_level {
         return false;

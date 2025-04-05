@@ -75,7 +75,7 @@ pub struct CreateRoomReqBody {
 
     /// Power level content to override in the default power level event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub power_level_content_override: Option<RoomPowerLevelsEventContent>,
+    pub power_level_content_override: Option<RawJson<RoomPowerLevelsEventContent>>,
 
     /// Convenience parameter for setting various default state events based on a preset.
     #[serde(default, skip_serializing_if = "Option::is_none")]

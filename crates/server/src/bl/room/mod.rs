@@ -492,7 +492,7 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
     if server
         == room_id
             .server_name()
-            .map_err((|_| AppError::internal("bad room server name.")))?
+            .map_err(|_| AppError::internal("bad room server name."))?
     {
         return Ok(true);
     }

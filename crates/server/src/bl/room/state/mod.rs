@@ -6,7 +6,6 @@ mod frame;
 pub use frame::*;
 mod graph;
 pub use graph::*;
-use palpo_core::Seqnum;
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -16,12 +15,13 @@ use lru_cache::LruCache;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
+use crate::core::Seqnum;
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
-use crate::core::events::room::join_rules::{AllowRule, RoomMembership, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent, RoomMembership};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
@@ -362,9 +362,6 @@ pub fn get_auth_events(
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
             }
-        } else {
-            // TODO: State
-            if let Ok(pdu) = crate::room::timeline::get_pdu(&event_id) {}
         }
     }
     Ok(state_map)
@@ -625,8 +622,10 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
     }
 
     let history_visibility =
-        get_state_content::<RoomHistoryVisibilityEventContent>(frame_id, &StateEventType::RoomHistoryVisibility, "").
-        map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| c.history_visibility);
+        get_state_content::<RoomHistoryVisibilityEventContent>(frame_id, &StateEventType::RoomHistoryVisibility, "")
+            .map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| {
+                c.history_visibility
+            });
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,
