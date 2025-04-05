@@ -367,7 +367,7 @@ fn get_power_level_for_sender<E: Event>(
     };
 
     if let Some(ev) = event {
-        if let Some(&user_level) = content.users.get(ev.sender()) {
+        if let Some(user_level) = content.get_user_power(ev.sender()) {
             debug!("found {} at power_level {user_level}", ev.sender());
             return Ok(user_level);
         }

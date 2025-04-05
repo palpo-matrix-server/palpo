@@ -152,6 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::admin::supervise();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
+    println!("Listening on {}", crate::listen_addr());
     if config.enable_tls {
         let config = RustlsConfig::new(
             Keycert::new()

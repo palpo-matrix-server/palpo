@@ -40,8 +40,9 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
-use crate::core::serde::{CanonicalJsonObject, JsonValue};
+use crate::core::serde::{CanonicalJsonObject, RawJson, JsonValue};
 use crate::event::PduBuilder;
+use crate::user::user_is_ignored;
 use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
@@ -451,6 +452,7 @@ pub(super) async fn create_room(
     depot: &mut Depot,
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let room_id = RoomId::new(crate::server_name());
     crate::room::ensure_room(&room_id, &crate::default_room_version())?;
 
@@ -492,7 +494,7 @@ pub(super) async fn create_room(
                 .expect("Invalid creation content");
             content.insert(
                 "creator".into(),
-                json!(&authed.user_id())
+                json!(sender_id)
                     .try_into()
                     .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
             );
@@ -507,7 +509,7 @@ pub(super) async fn create_room(
         None => {
             // TODO: Add correct value for v11
             let mut content = serde_json::from_str::<CanonicalJsonObject>(
-                to_raw_value(&RoomCreateEventContent::new_v1(authed.user_id().clone()))
+                to_raw_value(&RoomCreateEventContent::new_v1(sender_id.clone()))
                     .map_err(|_| MatrixError::bad_json("Invalid creation content"))?
                     .get(),
             )
@@ -538,7 +540,7 @@ pub(super) async fn create_room(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -548,19 +550,19 @@ pub(super) async fn create_room(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(authed.user_id()).ok().flatten(),
-                avatar_url: crate::user::avatar_url(authed.user_id()).ok().flatten(),
+                display_name: crate::user::display_name(sender_id).ok().flatten(),
+                avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
                 is_direct: Some(body.is_direct),
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(authed.user_id()).ok().flatten(),
+                blurhash: crate::user::blurhash(sender_id).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
             })
             .expect("event is valid, we just created it"),
-            state_key: Some(authed.user_id().to_string()),
+            state_key: Some(sender_id.to_string()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -573,10 +575,13 @@ pub(super) async fn create_room(
     });
 
     let mut users = BTreeMap::new();
-    users.insert(authed.user_id().clone(), 100);
+    users.insert(sender_id.clone(), 100);
 
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
+            if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
+                continue;
+            }
             users.insert(invitee_id.clone(), 100);
         }
     }
@@ -591,7 +596,7 @@ pub(super) async fn create_room(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -608,7 +613,7 @@ pub(super) async fn create_room(
                 state_key: Some("".to_owned()),
                 ..Default::default()
             },
-            authed.user_id(),
+            sender_id,
             &room_id,
         )
         .unwrap();
@@ -628,7 +633,7 @@ pub(super) async fn create_room(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -641,7 +646,7 @@ pub(super) async fn create_room(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -657,7 +662,7 @@ pub(super) async fn create_room(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
     )?;
 
@@ -676,7 +681,7 @@ pub(super) async fn create_room(
             continue;
         }
 
-        crate::room::timeline::build_and_append_pdu(pdu_builder, authed.user_id(), &room_id)?;
+        crate::room::timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id)?;
     }
 
     // 7. Events implied by name and topic
@@ -689,7 +694,7 @@ pub(super) async fn create_room(
                 state_key: Some("".to_owned()),
                 ..Default::default()
             },
-            authed.user_id(),
+            sender_id,
             &room_id,
         )?;
     }
@@ -703,35 +708,34 @@ pub(super) async fn create_room(
                 state_key: Some("".to_owned()),
                 ..Default::default()
             },
-            authed.user_id(),
+            sender_id,
             &room_id,
         )?;
     }
 
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
-        if let Err(e) = crate::membership::invite_user(authed.user_id(), user_id, &room_id, None, body.is_direct).await
-        {
+        if let Err(e) = crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await {
             tracing::error!("Failed to invite user {}: {:?}", user_id, e);
         }
     }
 
     // Homeserver specific stuff
     if let Some(alias) = alias {
-        crate::room::set_alias(&room_id, &alias, authed.user_id())?;
+        crate::room::set_alias(&room_id, &alias, sender_id)?;
     }
 
     if body.visibility == Visibility::Public {
         crate::room::directory::set_public(&room_id, true)?;
     }
 
-    info!("{} created a room", authed.user_id());
+    info!("{} created a room", sender_id);
     json_ok(CreateRoomResBody { room_id })
 }
 
 /// creates the power_levels_content for the PDU builder
 fn default_power_levels_content(
-    power_level_content_override: Option<&RoomPowerLevelsEventContent>,
+    power_level_content_override: Option<&RawJson<RoomPowerLevelsEventContent>>, // must be raw_json
     visibility: &Visibility,
     users: BTreeMap<OwnedUserId, i64>,
 ) -> AppResult<serde_json::Value> {
@@ -769,7 +773,7 @@ fn default_power_levels_content(
     }
 
     if let Some(power_level_content_override) = power_level_content_override {
-        let JsonValue::Object(json) = serde_json::to_value(power_level_content_override)
+        let JsonValue::Object(json) = serde_json::from_str(power_level_content_override.inner().get())
             .map_err(|_| MatrixError::bad_json("Invalid power_level_content_override."))?
         else {
             return Err(MatrixError::bad_json("Invalid power_level_content_override.").into());

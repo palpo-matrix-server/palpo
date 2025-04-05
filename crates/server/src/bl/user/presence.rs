@@ -119,7 +119,6 @@ pub fn last_presence(user_id: &UserId) -> AppResult<PresenceEvent> {
     if let Some(data) = presence {
         Ok(data.to_presence_event(user_id)?)
     } else {
-        println!("==================pin presence   x3");
         Err(MatrixError::not_found("No presence data found for user").into())
     }
 }
