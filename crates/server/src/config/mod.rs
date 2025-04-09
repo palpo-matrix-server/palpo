@@ -18,8 +18,6 @@ pub fn init() {
         .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
         .merge(Env::prefixed("PALPO_").global());
 
-    println!("Loading config  {:#?}", raw_config);
-
     let conf = match raw_config.extract::<ServerConfig>() {
         Ok(s) => s,
         Err(e) => {

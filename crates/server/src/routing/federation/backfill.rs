@@ -29,6 +29,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
         &user_id!("@doesntmatter:palpo.im"),
         &args.room_id,
         until,
+        None,
         limit,
         None,
     )?;

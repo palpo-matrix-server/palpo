@@ -553,6 +553,8 @@ pub fn create_hash_and_sign_event(
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
         depth: depth as i64,
+        topological_ordering: depth as i64,
+        stream_ordering: 0,
         origin_server_ts: Some(UnixMillis::now()),
         received_at: None,
         sender_id: Some(sender_id.to_owned()),
@@ -788,26 +790,27 @@ where
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, usize::MAX, None, until_sn)
+    get_pdus_forward(user_id, room_id, 0, until_sn, usize::MAX, None)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
     room_id: &RoomId,
-    occur_sn: i64,
+    since_sn: Seqnum,
+    until_sn: Option<i64>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
-    until_sn: Option<i64>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Forward, until_sn)
+    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
 }
 pub fn get_pdus_backward(
     user_id: &UserId,
     room_id: &RoomId,
-    occur_sn: i64,
+    since_sn: Seqnum,
+    until_sn: Option<i64>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, occur_sn, limit, filter, Direction::Backward, None)
+    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
@@ -816,11 +819,11 @@ pub fn get_pdus_backward(
 pub fn get_pdus(
     user_id: &UserId,
     room_id: &RoomId,
-    occur_sn: i64,
+    since_sn: Seqnum,
+    until_sn: Option<i64>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
-    until_sn: Option<i64>,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
@@ -830,16 +833,23 @@ pub fn get_pdus(
     } else {
         crate::curr_sn()? + 1
     };
+    println!("===============start_sn: {start_sn} dir: {dir:?}");
 
     while list.len() < limit {
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
-        if dir == Direction::Forward {
-            query = query.filter(events::sn.ge(occur_sn));
-        } else {
-            query = query.filter(events::sn.le(occur_sn));
-        };
         if let Some(until_sn) = until_sn {
-            query = query.filter(events::sn.le(until_sn));
+            let (min_sn, max_sn) = if until_sn > since_sn {
+                (since_sn, until_sn)
+            } else {
+                (until_sn, since_sn)
+            };
+            query = query.filter(events::sn.le(max_sn)).filter(events::sn.ge(min_sn));
+        } else {
+            if dir == Direction::Forward {
+                query = query.filter(events::sn.ge(since_sn));
+            } else {
+                query = query.filter(events::sn.le(since_sn));
+            }
         }
 
         if let Some(filter) = filter {
@@ -871,42 +881,46 @@ pub fn get_pdus(
                 }
             }
         }
-        let datas: Vec<(OwnedEventId, Seqnum, JsonValue)> = if dir == Direction::Forward {
-            event_datas::table
-                .filter(event_datas::event_id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
-                .order(event_datas::event_sn.asc())
+        let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
+            events::table
+                .filter(events::id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
+                .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
-                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
+                .select((events::id, events::sn))
+                .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
         } else {
-            event_datas::table
-                .filter(event_datas::event_id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
-                .order(event_datas::event_sn.desc())
+            events::table
+                .filter(events::id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
+                .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
                 .limit(utils::usize_to_i64(limit))
-                .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
-                .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut *db::connect()?)?
+                .select((events::id, events::sn))
+                .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
         };
-        if datas.is_empty() {
+        println!("gggggggggggggg    dir:{dir:?}         get_pdus: datas: {:#?}", events);
+        if events.is_empty() {
             break;
         }
-        start_sn = if let Some(&(_, sn, _)) = datas.last() {
+        start_sn = if let Some(&(_, sn)) = events.last() {
             sn
         } else {
             break;
         };
-        for (event_id, event_sn, value) in datas {
-            let mut pdu = PduEvent::from_json_value(&event_id, event_sn, value)?;
-
-            if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
-                if pdu.sender != user_id {
-                    pdu.remove_transaction_id()?;
-                }
-                pdu.add_age()?;
-                list.push((event_sn, pdu));
-                if list.len() >= limit {
-                    break;
+        for (event_id, event_sn) in events {
+            if let Ok(mut pdu) = crate::room::timeline::get_pdu(&event_id) {
+                if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
+                    if pdu.sender != user_id {
+                        pdu.remove_transaction_id()?;
+                    }
+                    pdu.add_age()?;
+                    list.push((event_sn, pdu));
+                    if list.len() >= limit {
+                        break;
+                    }
                 }
             }
+        }
+        if dir == Direction::Backward {
+            list.reverse();
         }
     }
 

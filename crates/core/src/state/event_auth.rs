@@ -351,18 +351,10 @@ pub fn auth_check<E: Event>(
 
     // If type is m.room.third_party_invite
     let sender_power_level = if let Some(pl) = &power_levels_event {
-        println!(
-            "mmmmmmmmmm  power_levels_event: {:#?}",
-            pl.content().get()
-        );
-        println!("c    ccccccccccccc   0");
         let content = deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
-        println!("c    ccccccccccccc   content: {:#?}", pl.content().get());
         if let Some(level) = content.get_user_power(sender) {
-            println!("c    ccccccccccccc   0 level: {level}");
             level
         } else {
-            println!("c    ccccccccccccc   0 users_default: {}", content.users_default);
             content.users_default
         }
     } else {
@@ -375,11 +367,9 @@ pub fn auth_check<E: Event>(
             room_create_event.sender() == sender
         } else {
             from_json_str::<RoomCreateEventContent>(room_create_event.content().get()).is_ok_and(|create| {
-                println!("=============== create.creator:{:?}=={}", create.creator, sender);
                 create.creator.unwrap() == *sender
             })
         };
-        println!("c    ccccccccccccc   0 is_creator: {is_creator}");
 
         if is_creator { 100 } else { 0 }
     };
@@ -744,10 +734,6 @@ fn can_send_event(event: impl Event, ple: Option<impl Event>, user_level: i64) -
     let event_type_power_level = get_send_level(event.event_type(), event.state_key(), ple);
 
     debug!("{} ev_type {event_type_power_level} usr {user_level}", event.event_id());
-    println!(
-        "ddddddddddddddddddddd {} ev_type {event_type_power_level} usr {user_level}",
-        event.event_id()
-    );
 
     if user_level < event_type_power_level {
         return false;

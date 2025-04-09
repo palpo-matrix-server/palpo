@@ -429,8 +429,10 @@ CREATE TABLE events (
     sn bigint not null default nextval('occur_sn_seq'),
     ty text NOT NULL,
     room_id text NOT NULL,
-    unrecognized_keys text,
     depth bigint DEFAULT 0 NOT NULL,
+    topological_ordering bigint NOT NULL,
+    stream_ordering bigint NOT NULL,
+    unrecognized_keys text,
     origin_server_ts bigint,
     received_at bigint,
     sender_id text,
@@ -443,8 +445,6 @@ CREATE TABLE events (
     rejection_reason text,
     CONSTRAINT events_sn_ukey UNIQUE (sn),
     CONSTRAINT event_id_sn_ukey UNIQUE (id, sn)
---     topological_ordering bigint NOT NULL,
---     stream_ordering bigint
 );
 
 

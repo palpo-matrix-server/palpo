@@ -36,6 +36,7 @@ pub(super) async fn fetch_state(
         .json::<RoomStateIdsResBody>()
         .await?;
     debug!("Fetching state events at event.");
+    println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  0");
     let state_vec = super::fetch_and_handle_outliers(
         origin,
         &res.pdu_ids.iter().map(|x| Arc::from(&**x)).collect::<Vec<_>>(),

@@ -115,7 +115,7 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-    let (sorted_prev_events, mut eventid_info) =
+    let (sorted_prev_events, mut event_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
 
     debug!(events = ?sorted_prev_events, "Got previous events");
@@ -124,7 +124,7 @@ pub(crate) async fn handle_incoming_pdu(
             origin,
             event_id,
             room_id,
-            &mut eventid_info,
+            &mut event_info,
             &incoming_pdu,
             first_pdu_in_room.origin_server_ts,
             &prev_id,
@@ -166,7 +166,7 @@ async fn handle_prev_pdu(
     origin: &ServerName,
     event_id: &EventId,
     room_id: &RoomId,
-    eventid_info: &mut HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
+    event_info: &mut HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
     create_event: &PduEvent,
     first_ts_in_room: UnixMillis,
     prev_id: &EventId,
@@ -185,7 +185,7 @@ async fn handle_prev_pdu(
         }
     }
 
-    if let Some((pdu, json)) = eventid_info.remove(&*prev_id) {
+    if let Some((pdu, json)) = event_info.remove(&*prev_id) {
         // Skip old events
         if pdu.origin_server_ts < first_ts_in_room {
             println!("skip old event {}", pdu.event_id);
@@ -295,6 +295,7 @@ fn handle_outlier_pdu<'a>(
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
             // NOTE: Step 5 is not applied anymore because it failed too often
             debug!(event_id = ?incoming_pdu.event_id, "Fetching auth events");
+            println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  1");
             fetch_and_handle_outliers(
                 origin,
                 &incoming_pdu
@@ -306,6 +307,7 @@ fn handle_outlier_pdu<'a>(
                 room_version_id,
             )
             .await?;
+        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  2");
         }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -340,6 +342,7 @@ fn handle_outlier_pdu<'a>(
             }
         }
 
+        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  3");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -365,6 +368,7 @@ fn handle_outlier_pdu<'a>(
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
 
+        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  4");
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()
@@ -385,6 +389,7 @@ fn handle_outlier_pdu<'a>(
             .execute(&mut db::connect()?)
             .unwrap();
 
+            println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  5");
         debug!("Added pdu as outlier.");
 
         Ok((incoming_pdu, val))
@@ -820,18 +825,26 @@ pub async fn fetch_missing_prev_events(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
+    println!(
+        ">>>>>>>>>>>>>>>>fetch_missing_prev_events, {} room_id: {} initial_set: {:?}",
+        crate::server_name(),
+        room_id,
+        initial_set
+    );
+    
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
-    let mut eventid_info = HashMap::new();
+    let mut event_info = HashMap::new();
     let mut todo_outlier_stack: VecDeque<Arc<EventId>> = initial_set.into();
-
-    // let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
-    //     .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
-
     let mut amount = 0;
     let room_version_id = &crate::room::room_version(room_id)?;
+
+    let first_pdu_in_room = crate::room::timeline::first_pdu_in_room(room_id)?
+        .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
+
     while let Some(prev_event_id) = todo_outlier_stack.pop_front() {
-        if let Some((pdu, json_opt)) =
+        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  3");
+        if let Some((pdu, mut json_opt)) =
             fetch_and_handle_outliers(origin, &[prev_event_id.clone()], room_id, room_version_id)
                 .await?
                 .pop()
@@ -845,23 +858,26 @@ pub async fn fetch_missing_prev_events(
                 continue;
             }
 
-            if let Some(json) = json_opt.or_else(|| crate::room::timeline::get_pdu_json(&prev_event_id).ok().flatten())
-            {
-                // if pdu.origin_server_ts > first_pdu_in_room.origin_server_ts {
-                //     amount += 1;
-                //     for prev_prev in &pdu.prev_events {
-                //         if !graph.contains_key(prev_prev) {
-                //             todo_outlier_stack.push(prev_prev.clone());
-                //         }
-                //     }
+            if json_opt.is_none() {
+                json_opt = crate::room::timeline::get_pdu_json(&prev_event_id).ok().flatten();
+            }
 
-                //     graph.insert(prev_event_id.clone(), pdu.prev_events.iter().cloned().collect());
-                // } else {
-                // Time based check failed
-                graph.insert(prev_event_id.clone(), HashSet::new());
-                // }
+            if let Some(json) = json_opt {
+                if pdu.origin_server_ts > first_pdu_in_room.origin_server_ts {
+                    amount = amount.saturating_add(1);
+                    for prev_prev in &pdu.prev_events {
+                        if !graph.contains_key(prev_prev) {
+                            todo_outlier_stack.push_back(prev_prev.clone());
+                        }
+                    }
 
-                eventid_info.insert(prev_event_id.clone(), (Arc::new(pdu), json));
+                    graph.insert(prev_event_id.clone(), pdu.prev_events.iter().cloned().collect());
+                } else {
+                    // Time based check failed
+                    graph.insert(prev_event_id.clone(), HashSet::new());
+                }
+
+                event_info.insert(prev_event_id.clone(), (Arc::new(pdu), json));
             } else {
                 // Get json failed, so this was not fetched over federation
                 graph.insert(prev_event_id.clone(), HashSet::new());
@@ -878,15 +894,15 @@ pub async fn fetch_missing_prev_events(
         // and lexically by event_id.
         futures_util::future::ok((
             0,
-            eventid_info
+            event_info
                 .get(&event_id)
-                .map_or_else(|| UnixMillis::default(), |info| info.0.origin_server_ts),
+                .map_or_else(|| UnixMillis(0), |info| info.0.origin_server_ts),
         ))
     })
     .await
     .map_err(|_| AppError::internal("Error sorting prev events"))?;
 
-    Ok((sorted, eventid_info))
+    Ok((sorted, event_info))
 }
 
 /// Returns Ok if the acl allows the server

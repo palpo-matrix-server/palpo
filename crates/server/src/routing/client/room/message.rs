@@ -73,9 +73,9 @@ pub(super) async fn get_messages(
                 authed.user_id(),
                 &args.room_id,
                 from,
+                until_sn,
                 limit,
                 Some(&args.filter),
-                until_sn,
             )?;
 
             for (_, event) in &events_after {
@@ -113,6 +113,7 @@ pub(super) async fn get_messages(
                 authed.user_id(),
                 &args.room_id,
                 from,
+                None,
                 limit,
                 Some(&args.filter),
             )?;

@@ -45,20 +45,21 @@ pub(super) async fn sync_events_v3(
     depot: &mut Depot,
 ) -> JsonResult<sync_events::v3::SyncEventsResBody> {
     let authed = depot.authed_info()?.clone();
+    let sender_id = authed.user_id();
     let mut rx = match crate::SYNC_RECEIVERS
         .write()
         .unwrap()
-        .entry((authed.user_id().clone(), authed.device_id().clone()))
+        .entry((sender_id.clone(), authed.device_id().clone()))
     {
         hash_map::Entry::Vacant(v) => {
             let (tx, rx) = tokio::sync::watch::channel(None);
             v.insert((args.since.clone(), rx.clone()));
             tokio::spawn({
-                let user_id = authed.user_id().to_owned();
+                let sender_id = sender_id.to_owned();
                 let device_id = authed.device_id().to_owned();
-                crate::user::ping_presence(&user_id, &args.set_presence)?;
+                crate::user::ping_presence(&sender_id, &args.set_presence)?;
                 async move {
-                    if let Err(e) = crate::sync_v3::sync_events(user_id, device_id, args, tx).await {
+                    if let Err(e) = crate::sync_v3::sync_events(sender_id, device_id, args, tx).await {
                         tracing::error!(error = ?e, "sync_events error 1");
                     }
                 }
@@ -72,11 +73,11 @@ pub(super) async fn sync_events_v3(
                     o.insert((args.since.clone(), rx.clone()));
                 }
                 tokio::spawn({
-                    let user_id = authed.user_id().to_owned();
+                    let sender_id = sender_id.to_owned();
                     let device_id = authed.device_id().to_owned();
-                    crate::user::ping_presence(&user_id, &args.set_presence)?;
+                    crate::user::ping_presence(&sender_id, &args.set_presence)?;
                     async move {
-                        if let Err(e) = crate::sync_v3::sync_events(user_id, device_id, args, tx).await {
+                        if let Err(e) = crate::sync_v3::sync_events(sender_id, device_id, args, tx).await {
                             tracing::error!(error = ?e, "sync_events error 2");
                         }
                     }
