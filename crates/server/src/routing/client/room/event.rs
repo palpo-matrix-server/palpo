@@ -161,7 +161,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
-    let events_after: Vec<_> =
+    let events_after =
         crate::room::timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?;
 
     for (_, event) in &events_after {

@@ -896,7 +896,6 @@ pub fn get_pdus(
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut *db::connect()?)?
         };
-        println!("gggggggggggggg    dir:{dir:?}         get_pdus: datas: {:#?}", events);
         if events.is_empty() {
             break;
         }
@@ -919,10 +918,13 @@ pub fn get_pdus(
                 }
             }
         }
-        if dir == Direction::Backward {
-            list.reverse();
-        }
     }
+
+    println!("gggggggggggggg    dir:{dir:?}         list: {:#?}", list);
+    if dir == Direction::Backward {
+        list.reverse();
+    }
+    println!("gggggggggggggg22    dir:{dir:?}         list: {:#?}", list);
 
     Ok(list)
 }

@@ -829,11 +829,10 @@ pub(crate) fn load_timeline(
         "=====================load_timeline  since_sn: {}   until_sn: {:?}",
         since_sn, until_sn
     );
-    let mut timeline_pdus =
-        timeline::get_pdus_backward(user_id, &room_id, since_sn, until_sn, limit + 1, None)?;
+    let mut timeline_pdus = timeline::get_pdus_backward(user_id, &room_id, since_sn, until_sn, limit + 1, None)?;
 
     if timeline_pdus.len() > limit {
-        timeline_pdus.pop();
+        timeline_pdus.remove(0);
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))
