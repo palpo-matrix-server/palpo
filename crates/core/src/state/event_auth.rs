@@ -115,12 +115,6 @@ pub fn auth_check<E: Event>(
     current_third_party_invite: Option<impl Event>,
     fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
 ) -> StateResult<bool> {
-    println!(
-        "auth_check beginning for {} ({})",
-        incoming_event.event_id(),
-        incoming_event.event_type()
-    );
-
     info!(
         "auth_check beginning for {} ({})",
         incoming_event.event_id(),
@@ -293,18 +287,6 @@ pub fn auth_check<E: Event>(
             .map(|mem| mem.membership)
             .unwrap_or(MembershipState::Leave);
 
-        println!(
-            "\n\n\n===========incoming event: {:?}  target_user:{target_user:?}  sender:{sender:?}",
-            incoming_event.content()
-        );
-        if let Some(power_levels_event) = &power_levels_event {
-            println!(
-                "vvvvvvvvvvvvv  power_levels_event: {:#?}",
-                power_levels_event.content().get()
-            );
-        } else {
-            println!("vvvvvvvvvvvvv  power_levels_event: None");
-        }
         if !valid_membership_change(
             room_version,
             target_user,

@@ -920,11 +920,9 @@ pub fn get_pdus(
         }
     }
 
-    println!("gggggggggggggg    dir:{dir:?}         list: {:#?}", list);
     if dir == Direction::Backward {
         list.reverse();
     }
-    println!("gggggggggggggg22    dir:{dir:?}         list: {:#?}", list);
 
     Ok(list)
 }

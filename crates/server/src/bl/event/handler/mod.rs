@@ -295,7 +295,6 @@ fn handle_outlier_pdu<'a>(
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
             // NOTE: Step 5 is not applied anymore because it failed too often
             debug!(event_id = ?incoming_pdu.event_id, "Fetching auth events");
-            println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  1");
             fetch_and_handle_outliers(
                 origin,
                 &incoming_pdu
@@ -307,7 +306,6 @@ fn handle_outlier_pdu<'a>(
                 room_version_id,
             )
             .await?;
-        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  2");
         }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -342,7 +340,6 @@ fn handle_outlier_pdu<'a>(
             }
         }
 
-        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  3");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -368,7 +365,6 @@ fn handle_outlier_pdu<'a>(
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
 
-        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  4");
         diesel::insert_into(events::table)
             .values(db_event)
             .on_conflict_do_nothing()
@@ -389,7 +385,6 @@ fn handle_outlier_pdu<'a>(
             .execute(&mut db::connect()?)
             .unwrap();
 
-            println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  5");
         debug!("Added pdu as outlier.");
 
         Ok((incoming_pdu, val))
@@ -824,14 +819,7 @@ pub async fn fetch_missing_prev_events(
 ) -> AppResult<(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
-)> {
-    println!(
-        ">>>>>>>>>>>>>>>>fetch_missing_prev_events, {} room_id: {} initial_set: {:?}",
-        crate::server_name(),
-        room_id,
-        initial_set
-    );
-    
+)> {    
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut event_info = HashMap::new();
@@ -843,7 +831,6 @@ pub async fn fetch_missing_prev_events(
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
     while let Some(prev_event_id) = todo_outlier_stack.pop_front() {
-        println!("XXXXXXXXXXXXXXXXXXXXXXXX  fetch_and_handle_outliers  3");
         if let Some((pdu, mut json_opt)) =
             fetch_and_handle_outliers(origin, &[prev_event_id.clone()], room_id, room_version_id)
                 .await?

@@ -193,12 +193,6 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         .on_conflict_do_nothing()
         .returning(events::sn)
         .get_result::<Seqnum>(&mut *db::connect()?)?;
-    println!(
-        "=================create event 1 {}  {}  {}",
-        crate::server_name(),
-        event_id,
-        event_sn
-    );
     // Add event_id back
     leave_event_stub.insert(
         "event_id".to_owned(),
