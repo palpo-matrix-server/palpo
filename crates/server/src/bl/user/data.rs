@@ -136,7 +136,7 @@ pub fn data_changes(
     room_id: Option<&RoomId>,
     user_id: &UserId,
     since_sn: i64,
-    final_sn: Option<i64>,
+    until_sn: Option<i64>,
 ) -> AppResult<Vec<AnyRawAccountDataEvent>> {
     let mut user_datas = Vec::new();
 
@@ -145,9 +145,9 @@ pub fn data_changes(
         .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
         .filter(user_datas::occur_sn.ge(since_sn))
         .into_boxed();
-    let db_datas = if let Some(final_sn) = final_sn {
+    let db_datas = if let Some(until_sn) = until_sn {
         query
-            .filter(user_datas::occur_sn.le(final_sn))
+            .filter(user_datas::occur_sn.le(until_sn))
             .order_by(user_datas::occur_sn.asc())
             .load::<DbUserData>(&mut *db::connect()?)?
     } else {

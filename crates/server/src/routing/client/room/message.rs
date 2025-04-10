@@ -69,13 +69,13 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events_after: Vec<_> = crate::room::timeline::get_pdus_forward(
+            let events_after = crate::room::timeline::get_pdus_forward(
                 authed.user_id(),
                 &args.room_id,
                 from,
+                until_sn,
                 limit,
                 Some(&args.filter),
-                until_sn,
             )?;
 
             for (_, event) in &events_after {
@@ -109,10 +109,11 @@ pub(super) async fn get_messages(
             } else {
                 from
             };
-            let events_before: Vec<_> = crate::room::timeline::get_pdus_backward(
+            let events_before = crate::room::timeline::get_pdus_backward(
                 authed.user_id(),
                 &args.room_id,
                 from,
+                None,
                 limit,
                 Some(&args.filter),
             )?;

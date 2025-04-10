@@ -77,7 +77,6 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
         .select(room_aliases::room_id)
         .first::<String>(&mut *db::connect()?)?;
 
-    println!("======resolve_local_alias==========alias id: {alias_id}  room_id:  {room_id:?}");
     RoomId::parse(room_id).map_err(|_| AppError::public("Room ID is invalid."))
 }
 

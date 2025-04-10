@@ -16,7 +16,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
-use crate::room::state;
+use crate::room::state::{self, DeltaInfo};
 use crate::schema::*;
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, db};
 
@@ -69,7 +69,6 @@ async fn knock_room_local(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     info!("We can knock locally");
-    println!("We can knock locally");
 
     let room_version_id = crate::room::state::get_room_version(room_id)?;
 
@@ -86,9 +85,9 @@ async fn knock_room_local(
     }
 
     let content = RoomMemberEventContent {
-        display_name: crate::user::display_name(sender_id)?,
-        avatar_url: crate::user::avatar_url(sender_id)?,
-        blurhash: crate::user::blurhash(sender_id)?,
+        display_name: crate::user::display_name(sender_id).ok().flatten(),
+        avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
+        blurhash: crate::user::blurhash(sender_id).ok().flatten(),
         reason: reason.clone(),
         ..RoomMemberEventContent::new(MembershipState::Knock)
     };
@@ -108,20 +107,19 @@ async fn knock_room_local(
 
     warn!("We couldn't do the knock locally, maybe federation can help to satisfy the knock");
 
-    let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
+    let (make_knock_body, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
 
     info!("make_knock finished");
 
-    let room_version_id = make_knock_responseponse.room_version;
+    let room_version_id = make_knock_body.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
         return Err(
-            MatrixError::forbidden("Remote room version {room_version_id} is not supported by conduwuit").into(),
+            MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo").into(),
         );
     }
-
-    let mut knock_event_stub = serde_json::from_str::<CanonicalJsonObject>(make_knock_responseponse.event.get())
-        .map_err(|e| {
+    let mut knock_event_stub =
+        serde_json::from_str::<CanonicalJsonObject>(make_knock_body.event.get()).map_err(|e| {
             StatusError::internal_server_error()
                 .brief(format!("Invalid make_knock event json received from server: {e:?}"))
         })?;
@@ -212,7 +210,6 @@ async fn knock_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
-    println!("Knocking {room_id} over federation.");
     info!("Knocking {room_id} over federation.");
 
     let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
@@ -223,7 +220,7 @@ async fn knock_room_remote(
 
     if !crate::supports_room_version(&room_version_id) {
         return Err(StatusError::internal_server_error()
-            .brief("Remote room version {room_version_id} is not supported by conduwuit")
+            .brief("Remote room version {room_version_id} is not supported by palpo")
             .into());
     }
 
@@ -244,9 +241,9 @@ async fn knock_room_remote(
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
-            display_name: crate::user::display_name(sender_id)?,
-            avatar_url: crate::user::avatar_url(sender_id)?,
-            blurhash: crate::user::blurhash(sender_id)?,
+            display_name: crate::user::display_name(sender_id).ok().flatten(),
+            avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
+            blurhash: crate::user::blurhash(sender_id).ok().flatten(),
             reason,
             ..RoomMemberEventContent::new(MembershipState::Knock)
         })
@@ -332,6 +329,8 @@ async fn knock_room_remote(
             room_id: room_id.to_owned(),
             unrecognized_keys: None,
             depth: 0,
+            topological_ordering: 0,
+            stream_ordering: 0,
             origin_server_ts: Some(UnixMillis::now()),
             received_at: None,
             sender_id: Some(sender_id.to_owned()),
@@ -342,7 +341,6 @@ async fn knock_room_remote(
             soft_failed: false,
             rejection_reason: None,
         };
-        println!("==============knock remote event {event_id}");
         diesel::insert_into(events::table)
             .values(&new_db_event)
             .on_conflict_do_nothing()
@@ -369,7 +367,16 @@ async fn knock_room_remote(
     let compressed = state::compress_events(room_id, state_map.into_iter())?;
 
     debug!("Saving compressed state");
-    let delta = state::save_state(room_id, Arc::new(compressed))?;
+    let DeltaInfo {
+        frame_id,
+        appended,
+        disposed,
+    } = state::save_state(room_id, Arc::new(compressed))?;
+
+    debug!("Forcing state for new room");
+    crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
+
+    let frame_id = crate::room::state::append_to_state(&parsed_knock_pdu)?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
     crate::room::update_membership(
@@ -388,7 +395,7 @@ async fn knock_room_remote(
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
-    state::set_room_state(room_id, delta.frame_id);
+    state::set_room_state(room_id, frame_id);
 
     Ok(())
 }

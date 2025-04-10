@@ -5,6 +5,7 @@ use std::time::Duration;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::core::Seqnum;
 use crate::core::client::sync_events::{self, v4::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::receipt::ReceiptEventContent;
@@ -369,7 +370,7 @@ pub(super) async fn sync_events_v4(
             invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
             (Vec::new(), true)
         } else {
-            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, *timeline_limit, None)?
+            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, Some(Seqnum::MAX), *timeline_limit)?
         };
 
         if room_since_sn != &0 && timeline_pdus.is_empty() {

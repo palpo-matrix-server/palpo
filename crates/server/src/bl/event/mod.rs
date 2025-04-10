@@ -31,8 +31,10 @@ pub struct DbEvent {
     pub sn: i64,
     pub ty: String,
     pub room_id: OwnedRoomId,
-    pub unrecognized_keys: Option<String>,
     pub depth: i64,
+    pub topological_ordering: i64,
+    pub stream_ordering: i64,
+    pub unrecognized_keys: Option<String>,
     pub origin_server_ts: Option<UnixMillis>,
     pub received_at: Option<i64>,
     pub sender_id: Option<OwnedUserId>,
@@ -43,7 +45,6 @@ pub struct DbEvent {
     pub is_redacted: bool,
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
-    // pub topological_ordering: i64,
 }
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
@@ -53,8 +54,10 @@ pub struct NewDbEvent {
     #[serde(rename = "type")]
     pub ty: String,
     pub room_id: OwnedRoomId,
-    pub unrecognized_keys: Option<String>,
     pub depth: i64,
+    pub topological_ordering: i64,
+    pub stream_ordering: i64,
+    pub unrecognized_keys: Option<String>,
     pub origin_server_ts: Option<UnixMillis>,
     pub received_at: Option<i64>,
     pub sender_id: Option<OwnedUserId>,
@@ -74,10 +77,13 @@ impl NewDbEvent {
         Self::from_json_value(id, sn, serde_json::to_value(value)?)
     }
     pub fn from_json_value(id: &EventId, sn: Seqnum, mut value: JsonValue) -> AppResult<Self> {
+        let depth = value.get("depth").cloned().unwrap_or(0.into());
         let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
         obj.insert("sn".into(), sn.into());
-        Ok(serde_json::from_value(value)?)
+        obj.insert("topological_ordering".into(), depth);
+        obj.insert("stream_ordering".into(), 0.into());
+        Ok(serde_json::from_value(value).map_err(|e|MatrixError::bad_json("invalid json for event"))?)
     }
 }
 
@@ -173,12 +179,18 @@ pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.find(event_id))
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut db::connect()?)?;
+    diesel::update(events::table.find(event_id))
+        .set(events::stream_ordering.eq(frame_id))
+        .execute(&mut db::connect()?)?;
     Ok(())
 }
 
 pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
         .set(event_points::frame_id.eq(frame_id))
+        .execute(&mut db::connect()?)?;
+    diesel::update(events::table.filter(events::sn.eq(event_sn)))
+        .set(events::stream_ordering.eq(frame_id))
         .execute(&mut db::connect()?)?;
     Ok(())
 }

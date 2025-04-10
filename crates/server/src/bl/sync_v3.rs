@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 use palpo_core::events::receipt::ReceiptEvent;
 use tokio::sync::watch::Sender;
 
@@ -18,6 +19,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
+use crate::room::timeline;
 use crate::schema::*;
 use crate::{AppError, AppResult, db, extract_variant};
 
@@ -71,10 +73,6 @@ pub fn sync_events(
 
         // Look for device list updates of this account
         device_list_updates.extend(crate::user::keys_changed_users(&sender_id, since_sn, None)?);
-        println!(
-            "========devicekeys_changed_users_list_updates: {:?}",
-            device_list_updates
-        );
 
         let all_joined_rooms = crate::user::joined_rooms(&sender_id, 0)?;
         for room_id in &all_joined_rooms {
@@ -83,13 +81,13 @@ pub fn sync_events(
                 &sender_device_id,
                 &room_id,
                 since_sn,
+                Some(curr_sn),
                 next_batch,
                 lazy_load_enabled,
                 lazy_load_send_redundant,
                 full_state,
                 &mut device_list_updates,
                 &mut left_users,
-                None,
             )
             .await
             {
@@ -103,7 +101,6 @@ pub fn sync_events(
                 joined_rooms.insert(room_id.to_owned(), joined_room);
             }
         }
-        println!("========device_list_updates: {:?}", device_list_updates);
 
         let mut left_rooms = BTreeMap::new();
         let all_left_rooms = crate::room::rooms_left(&sender_id)?;
@@ -208,7 +205,7 @@ pub fn sync_events(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || sender_id == state_key
                     {
-                        let pdu = match crate::room::timeline::get_pdu(&event_id) {
+                        let pdu = match timeline::get_pdu(&event_id) {
                             Ok(pdu) => pdu,
                             _ => {
                                 error!("Pdu in state not found: {}", event_id);
@@ -221,7 +218,7 @@ pub fn sync_events(
                 }
             }
 
-            let left_event = crate::room::timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+            let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
             left_rooms.insert(
                 room_id.to_owned(),
                 sync_events::v3::LeftRoom {
@@ -349,7 +346,7 @@ pub fn sync_events(
             leave: left_rooms,
             join: joined_rooms,
             invite: invited_rooms,
-            knock: BTreeMap::new(), // TODO
+            knock: knocked_rooms,
         };
         let presence = sync_events::v3::Presence {
             events: presence_updates
@@ -437,22 +434,22 @@ async fn load_joined_room(
     sender_device_id: &DeviceId,
     room_id: &RoomId,
     since_sn: i64,
+    until_sn: Option<i64>,
     next_batch: i64,
     lazy_load_enabled: bool,
     lazy_load_send_redundant: bool,
     full_state: bool,
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-    until_sn: Option<i64>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
     if since_sn > crate::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
 
-    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, 50, until_sn)?;
- 
+    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, Some(next_batch), 10)?;
+
     let send_notification_counts =
-        !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? > since_sn;
+        !timeline_pdus.is_empty() || crate::room::user::last_notification_read(sender_id, &room_id)? >= since_sn;
 
     let mut timeline_users = HashSet::new();
     for (_, event) in &timeline_pdus {
@@ -460,16 +457,10 @@ async fn load_joined_room(
     }
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(sender_id, &sender_device_id, &room_id, since_sn)?;
- 
-    // Database queries:
-    let current_frame_id = if let Ok(s) = crate::room::state::get_room_frame_id(&room_id, None) {
-        s
-    } else {
-        error!("Room {} has no state", room_id);
-        return Err(AppError::public("Room has no state"));
-    };
 
+    let current_frame_id = crate::room::state::get_room_frame_id(&room_id, None)?;
     let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn).ok();
+
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) = if timeline_pdus
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
@@ -489,7 +480,7 @@ async fn load_joined_room(
                 // Go through all PDUs and for each member event, check if the user is still joined or
                 // invited until we have 5 or we reach the end
 
-                for hero in crate::room::timeline::all_pdus(sender_id, &room_id, until_sn)?
+                for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {
@@ -530,7 +521,7 @@ async fn load_joined_room(
         };
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
-      
+
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
@@ -546,7 +537,7 @@ async fn load_joined_room(
                 } = crate::room::state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let pdu = match crate::room::timeline::get_pdu(&id) {
+                    let pdu = match timeline::get_pdu(&id) {
                         Ok(pdu) => pdu,
                         Err(_) => {
                             error!("Pdu in state not found: {}", id);
@@ -560,7 +551,7 @@ async fn load_joined_room(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let pdu = match crate::room::timeline::get_pdu(&id) {
+                    let pdu = match timeline::get_pdu(&id) {
                         Ok(pdu) => pdu,
                         Err(_) => {
                             error!("Pdu in state not found: {}", id);
@@ -616,7 +607,7 @@ async fn load_joined_room(
 
                 for (key, id) in current_state_ids {
                     if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let pdu = match crate::room::timeline::get_pdu(&id) {
+                        let pdu = match timeline::get_pdu(&id) {
                             Ok(pdu) => pdu,
                             Err(_) => {
                                 error!("Pdu in state not found: {}", id);
@@ -830,15 +821,18 @@ async fn load_joined_room(
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
-    occur_sn: i64,
+    since_sn: Seqnum,
+    until_sn: Option<Seqnum>,
     limit: usize,
-    until_sn: Option<i64>,
 ) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
-    let mut timeline_pdus =
-        crate::room::timeline::get_pdus_forward(user_id, &room_id, occur_sn, limit + 1, None, until_sn)?;
+    println!(
+        "=====================load_timeline  since_sn: {}   until_sn: {:?}",
+        since_sn, until_sn
+    );
+    let mut timeline_pdus = timeline::get_pdus_backward(user_id, &room_id, since_sn, until_sn, limit + 1, None)?;
 
     if timeline_pdus.len() > limit {
-        timeline_pdus.pop();
+        timeline_pdus.remove(0);
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))

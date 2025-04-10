@@ -83,7 +83,6 @@ async fn handle_pdus(
         let pdu_start_time = Instant::now();
         // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(&room_id).await;
 
-        println!("==ddd  handle_incoming_pdu 4  {event_id}");
         let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true)
             .await
             .map(|_| ());
@@ -111,7 +110,6 @@ async fn handle_pdus(
 
 async fn handle_edus(edus: Vec<Edu>, origin: &ServerName) {
     for edu in edus {
-        println!("==============call==handle_edus {:#?}", edu);
         match edu {
             Edu::Presence(presence) => handle_edu_presence(origin, presence).await,
             Edu::Receipt(receipt) => handle_edu_receipt(origin, receipt).await,
