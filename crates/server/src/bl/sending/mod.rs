@@ -7,10 +7,12 @@ use std::time::{Duration, Instant};
 use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
+use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use std::sync::atomic::AtomicUsize;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
+use crate::core::appservice::Registration;
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::GlobalAccountDataEventType;
@@ -740,17 +742,17 @@ pub async fn send_federation_request(
     response.map_err(Into::into)
 }
 
-// #[tracing::instrument(skip(registration, request))]
-// pub async fn send_appservice_request<T>(registration: Registration, request: T) -> AppResult<T::IncomingResponse>
-// where
-//     T: Debug,
-// {
-//     let permit = acquire_request().await;
-//     let response = crate::appservice::send_request(registration, request).await;
-//     drop(permit);
+#[tracing::instrument(skip_all)]
+pub async fn send_appservice_request<T>(registration: Registration, request: reqwest::Request) -> AppResult<T>
+where
+    T: for<'de> Deserialize<'de> + Debug,
+{
+    // let permit = acquire_request().await;
+    let response = crate::appservice::send_request(registration, request).await?;
+    // drop(permit);
 
-//     response
-// }
+    Ok(response.json().await?)
+}
 
 fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
     Ok(outgoing_requests::table

@@ -7,6 +7,8 @@ pub(super) async fn remote_resolve(
     room_alias: &RoomAliasId,
     servers: Vec<OwnedServerName>,
 ) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
+    println!("sssssssssssssssssssssremote_resolve room_alias:{room_alias} servers:{servers:?}");
+
     debug!(?room_alias, servers = ?servers, "remote resolve");
     let servers = [vec![room_alias.server_name().to_owned()], servers].concat();
 
@@ -32,6 +34,7 @@ pub(super) async fn remote_resolve(
         }
     }
 
+    println!("============resolved_room_id:{resolved_room_id:?}");
     resolved_room_id
         .map(|room_id| (room_id, resolved_servers))
         .ok_or_else(|| MatrixError::not_found("No servers could assist in resolving the room alias").into())

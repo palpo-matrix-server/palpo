@@ -8,7 +8,10 @@
 /// [spec]: https://spec.matrix.org/latest/application-service-api/#get_matrixappv1roomsroomalias
 use salvo::oapi::ToParameters;
 use serde::Deserialize;
+use url::Url;
 
+use crate::sending::SendRequest;
+use crate::sending::SendResult;
 use crate::OwnedRoomAliasId;
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -18,6 +21,11 @@ use crate::OwnedRoomAliasId;
 //         1.0 => "/_matrix/app/v1/rooms/:room_alias",
 //     }
 // };
+
+pub fn query_room_alias_request(origin: &str, args: QueryRoomAliasReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/app/v1/rooms/{}", args.room_alias))?;
+    Ok(crate::sending::post(url))
+}
 
 /// Request type for the `query_room_alias` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
