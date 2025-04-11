@@ -289,6 +289,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             (servers, room_id)
         }
         Err(room_alias) => {
+            let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via)).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr)?;
 
             let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
