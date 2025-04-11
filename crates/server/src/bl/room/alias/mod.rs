@@ -2,14 +2,15 @@ use diesel::prelude::*;
 use rand::seq::SliceRandom;
 use serde_json::value::to_raw_value;
 
-use crate::bl::exts::*;
 use crate::core::UnixMillis;
+use crate::core::appservice::query::{QueryRoomAliasReqArgs, query_room_alias_request};
 use crate::core::client::room::AliasResBody;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
+use crate::exts::*;
 use crate::room::StateEventType;
 use crate::user::DbUser;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, db};
@@ -52,7 +53,9 @@ pub async fn resolve_alias(
 ) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
     let server_name = room_alias.server_name();
     let is_local_server = server_name.is_local();
+    println!("XXXXXXXXXXXXXXXXXX  is_local_server:{is_local_server}");
     let servers_contains_local = || {
+        println!("SSSSSSSSS  server_name:{server_name:?} Sververs: {:?}", servers);
         servers
             .as_ref()
             .is_some_and(|servers| servers.contains(&server_name.to_owned()))
@@ -72,6 +75,8 @@ pub async fn resolve_alias(
 
 #[tracing::instrument(level = "debug")]
 pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
+    println!("============resolve_local_alias alias: {alias_id:?}");
+
     let room_id = room_aliases::table
         .filter(room_aliases::alias_id.eq(alias_id))
         .select(room_aliases::room_id)
@@ -81,14 +86,31 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
 }
 
 async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<OwnedRoomId> {
+    println!("UUUUUUUUUUUUUUUUUUUUU  Z");
     for appservice in crate::appservice::all()?.values() {
-        let url = appservice
-            .registration
-            .build_url(&format!("app/v1/rooms/{}", room_alias))?;
-        if appservice.aliases.is_match(room_alias.as_str())
-            && matches!(crate::sending::post(url).send::<Option<()>>().await, Ok(_opt_result))
-        {
-            return resolve_local_alias(room_alias).map_err(|_| MatrixError::not_found("Room does not exist.").into());
+        println!("==========room_alias: {room_alias:?}====appservice {:?}", appservice);
+        if appservice.aliases.is_match(room_alias.as_str()) {
+            println!("UUUUUUUUUUUUUUUUUUUUU  0");
+            if let Some(url) = &appservice.registration.url {
+                println!("UUUUUUUUUUUUUUUUUUUUUUrl {url}");
+                let request = query_room_alias_request(
+                    url,
+                    QueryRoomAliasReqArgs {
+                        room_alias: room_alias.to_owned(),
+                    },
+                )?
+                .into_inner();
+                println!("=====================request: {request:?}");
+                if matches!(
+                    crate::sending::send_appservice_request::<Option<()>>(appservice.registration.clone(), request)
+                        .await,
+                    Ok(Some(_opt_result))
+                ) {
+                    println!("UUUUUUUUUUUUUUUUUUUUU  2");
+                    return resolve_local_alias(room_alias)
+                        .map_err(|_| MatrixError::not_found("Room does not exist.").into());
+                }
+            }
         }
     }
 
@@ -205,7 +227,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
             .ok();
         }
         diesel::delete(room_aliases::table.filter(room_aliases::alias_id.eq(alias_id))).execute(&mut *db::connect()?)?;
-        
+
         Ok(())
     } else {
         Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())

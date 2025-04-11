@@ -286,12 +286,15 @@ pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
         .load::<DbRegistration>(&mut *db::connect()?)?
         .into_iter()
         .filter_map(|db_registration| {
-            let info: Option<RegistrationInfo> = db_registration.try_into().ok();
-            if let Some(info) = info {
-                Some((info.registration.id.clone(), info))
-            } else {
-                None
-            }
+            println!("db_registration: {:?}", db_registration);
+            let info: RegistrationInfo = match db_registration.try_into() {
+                Ok(registration) => registration,
+                Err(e) => {
+                    warn!("Failed to parse appservice registration: {}", e);
+                    return None;
+                }
+            };
+            Some((info.registration.id.clone(), info))
         })
         .collect())
 }

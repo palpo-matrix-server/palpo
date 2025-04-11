@@ -18,6 +18,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
+use crate::membership::banned_room_check;
 use crate::membership::knock_room_by_id;
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
@@ -237,12 +238,15 @@ pub(crate) async fn join_room_by_id_or_alias(
     server_name: QueryParam<Vec<OwnedServerName>, false>,
     via: QueryParam<Vec<OwnedServerName>, false>,
     body: JsonBody<Option<JoinRoomByIdOrAliasReqBody>>,
+    req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     println!("\n\n\n ======================= join_room_by_id_or_alias");
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner().unwrap_or_default();
+    let remote_addr = req.remote_addr();
 
     // The servers to attempt to join the room through.
     //
@@ -253,18 +257,18 @@ pub(crate) async fn join_room_by_id_or_alias(
     //
     // When deserializing, the value is read from `via` if it's not missing or
     // empty and `server_name` otherwise.
-    let mut servers = via.into_inner().unwrap_or_default();
-    if servers.is_empty() {
-        servers = server_name.into_inner().unwrap_or_default();
-    }
+    let mut via = via.into_inner().unwrap_or_default();
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
-            // TODO
-            // banned_room_check(authed.user_id(), Some(&room_id), room_id.server_name(), client)?;
-
-            // TODO
-            // servers.extend(crate::room::state::servers_invite_via(&room_id)?);
+            banned_room_check(
+                authed.user_id(),
+                Some(&room_id),
+                room_id.server_name().ok(),
+                remote_addr,
+            )?;
+            let mut servers = via;
+            servers.extend(crate::room::state::servers_invite_via(&room_id)?);
 
             let state_servers = crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
             let state_servers = state_servers
@@ -285,21 +289,10 @@ pub(crate) async fn join_room_by_id_or_alias(
             (servers, room_id)
         }
         Err(room_alias) => {
-            let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(servers.clone())).await?;
+            banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr)?;
 
-            // TODO
-            // banned_room_check(
-            //     &services,
-            //     sender_user,
-            //     Some(&room_id),
-            //     Some(room_alias.server_name()),
-            //     client,
-            // )?;
+            let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
 
-            // let addl_via_servers = crate::room::state::servers_invite_via(&room_id).map(ToOwned::to_owned);
-
-            // TODO: NOW
-            let addl_via_servers = servers.clone();
             let addl_state_servers =
                 crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
