@@ -69,8 +69,10 @@ pub struct ServerConfig {
     pub jwt_secret: Option<String>,
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
-    #[serde(default = "default_log")]
-    pub log: String,
+    #[serde(default = "default_rust_log")]
+    pub rust_log: String,
+    #[serde(default = "default_log_format")]
+    pub log_format: String,
     #[serde(default)]
     pub turn_username: String,
     #[serde(default)]
@@ -289,8 +291,12 @@ fn default_trusted_servers() -> Vec<OwnedServerName> {
     vec![OwnedServerName::try_from("matrix.org").unwrap()]
 }
 
-fn default_log() -> String {
-    "warn,state=warn,_=off,sled=off".to_owned()
+fn default_rust_log() -> String {
+    "warn".to_owned()
+}
+
+fn default_log_format() -> String {
+    "json".to_owned()
 }
 
 fn default_turn_ttl() -> u64 {

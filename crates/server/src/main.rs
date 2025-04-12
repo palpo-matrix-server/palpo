@@ -99,23 +99,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if let Err(e) = dotenv() {
         tracing::info!("dotenv error: {:?}", e);
     }
-    let filter = env::var("RUST_LOG").unwrap_or_else(|_| "palpo=warn,palpo_core=warn,salvo=warn".to_owned());
-    if env::var("LOG_FORMAT").unwrap_or_default() == "json" {
-        tracing_subscriber::fmt()
-            .json()
-            .with_env_filter(filter)
-            .with_span_events(FmtSpan::CLOSE)
-            .init();
-    } else {
-        tracing_subscriber::fmt()
-            .pretty()
-            .with_env_filter(filter)
-            .with_span_events(FmtSpan::CLOSE)
-            .init();
-    }
 
     crate::config::init();
     let config = crate::config::get();
+    match &*config.log_format {
+        "json" => {
+            tracing_subscriber::fmt()
+                .json()
+                .with_env_filter(&config.rust_log)
+                .with_span_events(FmtSpan::CLOSE)
+                .init();
+        }
+        "compact" => {
+            tracing_subscriber::fmt()
+                .compact()
+                .with_env_filter(&config.rust_log)
+                .without_time()
+                .with_span_events(FmtSpan::CLOSE)
+                .init();
+        }
+        _ => {
+            tracing_subscriber::fmt()
+                .pretty()
+                .with_env_filter(&config.rust_log)
+                .with_span_events(FmtSpan::CLOSE)
+                .init();
+        }
+    }
+
     crate::db::init(&config.db);
 
     crate::sending::start_handler();

@@ -37,7 +37,9 @@ use std::{future, iter};
 
 use diesel::prelude::*;
 use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
-use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::Resolver as HickoryResolver;
+use hickory_resolver::name_server::TokioConnectionProvider;
+use hickory_resolver::config::*;
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
@@ -460,10 +462,13 @@ pub fn trusted_servers() -> &'static [OwnedServerName] {
     &config().trusted_servers
 }
 
-pub fn dns_resolver() -> &'static TokioAsyncResolver {
-    static DNS_RESOLVER: OnceLock<TokioAsyncResolver> = OnceLock::new();
+pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
+    static DNS_RESOLVER: OnceLock<HickoryResolver<TokioConnectionProvider>> = OnceLock::new();
     DNS_RESOLVER.get_or_init(|| {
-        TokioAsyncResolver::tokio_from_system_conf().expect("failed to set up trust dns resolver with system config")
+        HickoryResolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default()
+        ).build()
     })
 }
 

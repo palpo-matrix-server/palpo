@@ -127,7 +127,6 @@ where
         .collect::<Vec<_>>();
 
     debug!("events left to resolve: {}", events_to_resolve.len());
-    trace!("{events_to_resolve:?}");
 
     // This "epochs" power level event
     let power_event = resolved_control.get(&(StateEventType::RoomPowerLevels, "".into()));

@@ -1,5 +1,7 @@
-use rand::prelude::*;
+
 use std::{cmp::Ordering, fmt, str::FromStr};
+
+use rand::prelude::*;
 
 use crate::core::OwnedUserId;
 use crate::core::canonical_json::{CanonicalJsonError, CanonicalJsonObject, try_from_json_map};
@@ -64,8 +66,8 @@ pub fn user_id_from_bytes(bytes: &[u8]) -> AppResult<OwnedUserId> {
 }
 
 pub fn random_string(length: usize) -> String {
-    thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    rand::rng()
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(length)
         .map(char::from)
         .collect()
