@@ -123,7 +123,7 @@ pub(super) async fn get_hierarchy(
             .filter_map(|room_id| crate::room::get_room_sn(room_id).ok())
             .collect();
 
-        if !next_room_sns.is_empty() && next_room_sns.iter().ne(&room_sns)  {
+        if !next_room_sns.is_empty() && next_room_sns.iter().ne(&room_sns) {
             Some(
                 PaginationToken {
                     room_sns: next_room_sns,

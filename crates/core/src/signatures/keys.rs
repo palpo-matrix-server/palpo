@@ -140,7 +140,7 @@ impl Ed25519KeyPair {
     ///
     /// Returns an error if the generation failed.
     pub fn generate() -> Result<Zeroizing<Vec<u8>>, Error> {
-        let signing_key = SigningKey::generate(&mut rand::rngs::OsRng);
+        let signing_key = SigningKey::generate(&mut rand_core::OsRng);
         Ok(signing_key.to_pkcs8_der().map_err(Error::DerParse)?.to_bytes())
     }
 

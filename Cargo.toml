@@ -28,35 +28,35 @@ anyhow = "1.0.44"
 async-trait = "0.1.48"
 as_variant = "1"
 base64 = "0.22"
-bcrypt = "0.15.0"
+bcrypt = "0.17.0"
 bigdecimal = "0.4"
 blurhash = "0.2"
 bytes = "1.1.0"
 byteorder = "1.5.0"
-chksum = "0.3.0"
+chksum = "0.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
-clap = { version = "4.5.1", default-features = false }
-config = "0.14.0"
+clap = { version = "4.5.36", default-features = false }
+config = "0.15.11"
 cookie = "0.18.0"
-cruet = "0.14"
+cruet = "0.15.0"
 cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
 # diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2"
 dotenvy = "0.15.0"
-ed25519-dalek = "2"
+ed25519-dalek = "2.1.1"
 fast32 = "1"
 figment = "0.10.8"
 futures-util = { version = "0.3.24", features = ["io"] }
 form_urlencoded = "1"
 globwalk = "0.9.0"
-hickory-resolver = "0.24"
-hyper-util = "0.1"
+hickory-resolver = "0.25.1"
+hyper-util = "0.1.11"
 hmac = "0.12"
 http = "1"
 image = "0.25"
-indexmap = "2"
+indexmap = "2.9.0"
 itertools = "0.14"
 jsonwebtoken = "9.1"
 js_option = "0.1.0"
@@ -64,33 +64,34 @@ konst = "0.3"
 lru-cache = "0.1"
 maplit = "1"
 mime = "0.3.16"
-mime-infer = "3"
+mime-infer = "4.0.0"
 path-slash = "0.2.1"
 percent-encoding = "2"
 pkcs8 = "0.10.2"
-rand = "0.8.3"
+rand = "0.9.0"
+rand_core = "0.6.4"
 regex = "1.6.0"
 reqwest = { version = "0.12", features = ["json"] }
 ring = "0.17.14"
-salvo = { version = "0.77", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
+salvo = { version = "0.77", git = "https://github.com/salvo-rs/salvo.git", branch = "main", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
-secrecy = "0.8.0"
+secrecy = "0.10.3"
 serde = { version = "1.0.118", features = ["derive"] }
 serde-aux = "4.0.0"
 serde_json = { version = "1.0.140" }
 serde_with = "3.0.0"
 serde_yaml = { version = "0.9.32" }
-smallvec ={ version = "1.14"}
+smallvec ={ version = "1.15.0"}
 sha2 = "0.10.8"
 sha1 = "0.10.6"
 smallstr = "0.3"
-strum = "0.26.1"
-strum_macros = "0.26.1"
+strum = "0.27.1"
+strum_macros = "0.27.1"
 tempfile = "3.6.0"
 textnonce = "1.0.0"
-thiserror = "1.0.26"
-tokio = { version = "1.21.1", features = ["macros", "parking_lot", "process"] }
+thiserror = "2.0.12"
+tokio = { version = "1.44.2", features = ["macros", "parking_lot", "process"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
 tower-service = "0.3"
 tokio-util = { version = "0.7.4", features = ["io"] }

@@ -109,6 +109,7 @@ path-slash = { workspace = true }
 percent-encoding = { workspace = true }
 pkcs8 = { workspace = true, features = ["alloc"] }
 rand = { workspace = true }
+rand_core = { workspace = true }
 # redis = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }

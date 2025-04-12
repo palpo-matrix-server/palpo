@@ -44,6 +44,8 @@ trusted_servers = ["matrix.org"]
 
 enable_admin_room = true
 
+log_format = "pretty" # pretty, json, compact
+
 #max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 #log = "warn,state=warn,rocket=off,_=off,sled=off"
 

@@ -949,7 +949,9 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
     let first_pdu = pdus.first();
 
-    let Some(first_pdu) = first_pdu else { return Ok(()) };
+    let Some(first_pdu) = first_pdu else {
+        return Ok(());
+    };
     if first_pdu.0 < from {
         // No backfill required, there are still events between them
         return Ok(());

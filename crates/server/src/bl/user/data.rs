@@ -5,7 +5,7 @@ use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::{UnixMillis, serde::RawJson};
 use crate::schema::*;
-use crate::{ AppResult, JsonValue, db};
+use crate::{AppResult, JsonValue, db};
 use serde_json::json;
 
 #[derive(Identifiable, Queryable, Debug, Clone)]

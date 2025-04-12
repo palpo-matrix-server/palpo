@@ -37,7 +37,9 @@ use std::{future, iter};
 
 use diesel::prelude::*;
 use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
-use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::Resolver as HickoryResolver;
+use hickory_resolver::name_server::TokioConnectionProvider;
+use hickory_resolver::config::*;
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
@@ -103,8 +105,6 @@ pub static BAD_QUERY_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, RateLimit
 pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Semaphore>>> =
     LazyLock::new(Default::default);
 pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
-    LazyLock::new(Default::default);
-pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> =
     LazyLock::new(Default::default);
 pub static STATERES_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
 pub static APPSERVICE_IN_ROOM_CACHE: LazyRwLock<HashMap<OwnedRoomId, HashMap<String, bool>>> =
@@ -323,18 +323,14 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .select(room_users::id)
         .first::<i64>(&mut *db::connect()?)
         .unwrap_or_default();
+
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
-    // let frame_id = room_state_frames::table
-    //     .filter(room_state_frames::room_id.eq_any(&room_ids))
-    //     .order_by(room_state_frames::id.desc())
-    //     .select(room_state_frames::id)
-    //     .first::<i64>(&mut *db::connect()?)
-    //     .unwrap_or_default();
-    let frame_id = room_state_deltas::table
-        .filter(room_state_deltas::room_id.eq_any(&room_ids))
-        .order_by(room_state_deltas::frame_id.desc())
-        .select(room_state_deltas::frame_id)
-        .first::<i64>(&mut *db::connect()?)
+    let last_event_sn = event_points::table
+        .filter(event_points::room_id.eq_any(&room_ids))
+        .filter(event_points::frame_id.is_not_null())
+        .order_by(event_points::event_sn.desc())
+        .select(event_points::event_sn)
+        .first::<Seqnum>(&mut *db::connect()?)
         .unwrap_or_default();
 
     let push_rule_sn = user_datas::table
@@ -385,22 +381,13 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
             {
                 return Ok(());
             }
-            // if frame_id
-            //     < room_state_frames::table
-            //         .filter(room_state_frames::room_id.eq_any(&room_ids))
-            //         .order_by(room_state_frames::id.desc())
-            //         .select(room_state_frames::id)
-            //         .first::<i64>(&mut *db::connect()?)
-            //         .unwrap_or_default()
-            // {
-            //     return Ok(());
-            // }
-            if frame_id
-                < room_state_deltas::table
-                    .filter(room_state_deltas::room_id.eq_any(&room_ids))
-                    .order_by(room_state_deltas::frame_id.desc())
-                    .select(room_state_deltas::frame_id)
-                    .first::<i64>(&mut *db::connect()?)
+            if last_event_sn
+                < event_points::table
+                    .filter(event_points::room_id.eq_any(&room_ids))
+                    .filter(event_points::frame_id.is_not_null())
+                    .order_by(event_points::event_sn.desc())
+                    .select(event_points::event_sn)
+                    .first::<Seqnum>(&mut *db::connect()?)
                     .unwrap_or_default()
             {
                 return Ok(());
@@ -475,10 +462,13 @@ pub fn trusted_servers() -> &'static [OwnedServerName] {
     &config().trusted_servers
 }
 
-pub fn dns_resolver() -> &'static TokioAsyncResolver {
-    static DNS_RESOLVER: OnceLock<TokioAsyncResolver> = OnceLock::new();
+pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
+    static DNS_RESOLVER: OnceLock<HickoryResolver<TokioConnectionProvider>> = OnceLock::new();
     DNS_RESOLVER.get_or_init(|| {
-        TokioAsyncResolver::tokio_from_system_conf().expect("failed to set up trust dns resolver with system config")
+        HickoryResolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default()
+        ).build()
     })
 }
 

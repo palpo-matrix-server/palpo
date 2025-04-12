@@ -114,9 +114,7 @@ async fn knock_room_local(
     let room_version_id = make_knock_body.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
-        return Err(
-            MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo").into(),
-        );
+        return Err(MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo").into());
     }
     let mut knock_event_stub =
         serde_json::from_str::<CanonicalJsonObject>(make_knock_body.event.get()).map_err(|e| {

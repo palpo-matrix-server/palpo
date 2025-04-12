@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap, hash_map};
-use std::time::{Instant};
+use std::time::Instant;
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -599,11 +599,15 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
             changed_at,
             occur_sn: crate::next_sn()?,
         };
+
+        diesel::delete(
+            e2e_key_changes::table
+                .filter(e2e_key_changes::user_id.eq(user_id))
+                .filter(e2e_key_changes::room_id.eq(room_id)),
+        )
+        .execute(&mut db::connect()?)?;
         diesel::insert_into(e2e_key_changes::table)
             .values(&change)
-            .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
-            .do_update()
-            .set(&change)
             .execute(&mut db::connect()?)?;
     }
 
@@ -613,12 +617,17 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
         changed_at,
         occur_sn: crate::next_sn()?,
     };
+
+    diesel::delete(
+        e2e_key_changes::table
+            .filter(e2e_key_changes::user_id.eq(user_id))
+            .filter(e2e_key_changes::room_id.is_null()),
+    )
+    .execute(&mut db::connect()?)?;
     diesel::insert_into(e2e_key_changes::table)
         .values(&change)
-        .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
-        .do_update()
-        .set(&change)
         .execute(&mut db::connect()?)?;
+
     Ok(())
 }
 
@@ -657,39 +666,51 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
     Ok(Some(device_keys))
 }
 
-pub fn keys_changed_users(user_id: &UserId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
-    if let Some(to_sn) = to_sn {
+    if let Some(until_sn) = until_sn {
         e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
-            .filter(e2e_key_changes::occur_sn.le(to_sn))
+            .filter(
+                e2e_key_changes::room_id
+                    .eq_any(&room_ids)
+                    .or(e2e_key_changes::room_id.is_null()),
+            )
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
+            .filter(e2e_key_changes::occur_sn.le(until_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut db::connect()?)
             .map_err(Into::into)
     } else {
         e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .filter(
+                e2e_key_changes::room_id
+                    .eq_any(&room_ids)
+                    .or(e2e_key_changes::room_id.is_null()),
+            )
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut db::connect()?)
             .map_err(Into::into)
     }
 }
 
-pub fn room_keys_changed(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<(OwnedUserId, Seqnum)>> {
-    if let Some(to_sn) = to_sn {
+pub fn room_keys_changed(
+    room_id: &RoomId,
+    since_sn: i64,
+    until_sn: Option<i64>,
+) -> AppResult<Vec<(OwnedUserId, Seqnum)>> {
+    if let Some(until_sn) = until_sn {
         e2e_key_changes::table
             .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
-            .filter(e2e_key_changes::occur_sn.le(to_sn))
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
+            .filter(e2e_key_changes::occur_sn.le(until_sn))
             .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
             .load::<(OwnedUserId, i64)>(&mut db::connect()?)
             .map_err(Into::into)
     } else {
         e2e_key_changes::table
             .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
             .load::<(OwnedUserId, i64)>(&mut db::connect()?)
             .map_err(Into::into)

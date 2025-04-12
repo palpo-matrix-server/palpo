@@ -100,7 +100,7 @@ impl Scribe for ThumbnailResBody {
         use rand::Rng as _;
 
         let boundary = rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
+            .sample_iter(&rand::distr::Alphanumeric)
             .map(char::from)
             .take(GENERATED_BOUNDARY_LENGTH)
             .collect::<String>();

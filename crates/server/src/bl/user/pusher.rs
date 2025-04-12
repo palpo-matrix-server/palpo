@@ -287,7 +287,10 @@ pub fn get_actions<'a>(
         room_id: room_id.to_owned(),
         member_count: 10_u32.into(), // TODO: get member count efficiently
         user_id: user.to_owned(),
-        user_display_name: crate::user::display_name(user).ok().flatten().unwrap_or_else(|| user.localpart().to_owned()),
+        user_display_name: crate::user::display_name(user)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| user.localpart().to_owned()),
         power_levels: Some(power_levels),
         supported_features: vec![],
     };

@@ -31,17 +31,16 @@ use std::{
 
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
-use palpo_core::JsonValue;
 
+use crate::core::Seqnum;
 use crate::core::client::sync_events;
-use crate::core::events::AnyStrippedStateEvent;
-use crate::core::events::GlobalAccountDataEventType;
+use crate::core::events::ignored_user_list::IgnoredUserListEvent;
+use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
-use crate::core::{OwnedMxcUri, OwnedRoomId, UnixMillis};
+use crate::core::serde::{JsonValue, RawJson};
+use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::schema::*;
 use crate::{AppError, AppResult, db, diesel_exists};
-use palpo_core::events::ignored_user_list::IgnoredUserListEvent;
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]
@@ -89,7 +88,7 @@ pub struct SlidingSyncCache {
 }
 
 /// Returns an iterator over all rooms this user joined.
-pub fn joined_rooms(user_id: &UserId, since_sn: i64) -> AppResult<Vec<OwnedRoomId>> {
+pub fn joined_rooms(user_id: &UserId, since_sn: Seqnum) -> AppResult<Vec<OwnedRoomId>> {
     room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("join"))

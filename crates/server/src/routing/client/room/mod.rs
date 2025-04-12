@@ -40,7 +40,7 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
-use crate::core::serde::{CanonicalJsonObject, RawJson, JsonValue};
+use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::PduBuilder;
 use crate::user::user_is_ignored;
 use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
