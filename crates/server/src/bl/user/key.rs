@@ -599,11 +599,15 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
             changed_at,
             occur_sn: crate::next_sn()?,
         };
+
+        diesel::delete(
+            e2e_key_changes::table
+                .filter(e2e_key_changes::user_id.eq(user_id))
+                .filter(e2e_key_changes::room_id.eq(room_id)),
+        )
+        .execute(&mut db::connect()?)?;
         diesel::insert_into(e2e_key_changes::table)
             .values(&change)
-            .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
-            .do_update()
-            .set(&change)
             .execute(&mut db::connect()?)?;
     }
 
@@ -613,12 +617,17 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
         changed_at,
         occur_sn: crate::next_sn()?,
     };
+
+    diesel::delete(
+        e2e_key_changes::table
+            .filter(e2e_key_changes::user_id.eq(user_id))
+            .filter(e2e_key_changes::room_id.is_null()),
+    )
+    .execute(&mut db::connect()?)?;
     diesel::insert_into(e2e_key_changes::table)
         .values(&change)
-        .on_conflict((e2e_key_changes::user_id, e2e_key_changes::room_id))
-        .do_update()
-        .set(&change)
         .execute(&mut db::connect()?)?;
+
     Ok(())
 }
 

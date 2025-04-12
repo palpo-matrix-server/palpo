@@ -1,4 +1,5 @@
-use std::collections::hash_map;use std::time::Duration;
+use std::collections::hash_map;
+use std::time::Duration;
 
 use salvo::prelude::*;
 
