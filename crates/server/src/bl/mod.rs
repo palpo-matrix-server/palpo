@@ -321,18 +321,14 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .select(room_users::id)
         .first::<i64>(&mut *db::connect()?)
         .unwrap_or_default();
+
     let room_ids = crate::user::joined_rooms(user_id, 0)?;
-    // let frame_id = room_state_frames::table
-    //     .filter(room_state_frames::room_id.eq_any(&room_ids))
-    //     .order_by(room_state_frames::id.desc())
-    //     .select(room_state_frames::id)
-    //     .first::<i64>(&mut *db::connect()?)
-    //     .unwrap_or_default();
-    let frame_id = room_state_deltas::table
-        .filter(room_state_deltas::room_id.eq_any(&room_ids))
-        .order_by(room_state_deltas::frame_id.desc())
-        .select(room_state_deltas::frame_id)
-        .first::<i64>(&mut *db::connect()?)
+    let last_event_sn = event_points::table
+        .filter(event_points::room_id.eq_any(&room_ids))
+        .filter(event_points::frame_id.is_not_null())
+        .order_by(event_points::event_sn.desc())
+        .select(event_points::event_sn)
+        .first::<Seqnum>(&mut *db::connect()?)
         .unwrap_or_default();
 
     let push_rule_sn = user_datas::table
@@ -383,22 +379,13 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
             {
                 return Ok(());
             }
-            // if frame_id
-            //     < room_state_frames::table
-            //         .filter(room_state_frames::room_id.eq_any(&room_ids))
-            //         .order_by(room_state_frames::id.desc())
-            //         .select(room_state_frames::id)
-            //         .first::<i64>(&mut *db::connect()?)
-            //         .unwrap_or_default()
-            // {
-            //     return Ok(());
-            // }
-            if frame_id
-                < room_state_deltas::table
-                    .filter(room_state_deltas::room_id.eq_any(&room_ids))
-                    .order_by(room_state_deltas::frame_id.desc())
-                    .select(room_state_deltas::frame_id)
-                    .first::<i64>(&mut *db::connect()?)
+            if last_event_sn
+                < event_points::table
+                    .filter(event_points::room_id.eq_any(&room_ids))
+                    .filter(event_points::frame_id.is_not_null())
+                    .order_by(event_points::event_sn.desc())
+                    .select(event_points::event_sn)
+                    .first::<Seqnum>(&mut *db::connect()?)
                     .unwrap_or_default()
             {
                 return Ok(());

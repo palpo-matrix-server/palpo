@@ -71,7 +71,6 @@ pub async fn sync_events(
 
     // Look for device list updates of this account
     device_list_updates.extend(crate::user::keys_changed_users(sender_id, since_sn, None)?);
-    println!("dddddddddddddddevice_list_updates: {:?}", device_list_updates);
 
     let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
     for room_id in &all_joined_rooms {
