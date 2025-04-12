@@ -25,13 +25,14 @@ pub(super) async fn get_messages(
 ) -> JsonResult<MessagesResBody> {
     let authed = depot.authed_info()?;
 
-    let until_sn = if !diesel_exists!(
+    let is_joined = diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("join")),
         &mut *db::connect()?
-    )? {
+    )?;
+    let until_sn = if !is_joined {
         let Some((until_sn, forgotten)) = room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))

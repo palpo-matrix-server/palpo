@@ -1,4 +1,4 @@
-use futures_util::{StreamExt, FutureExt, stream};
+use futures_util::{FutureExt, StreamExt, stream};
 use salvo::prelude::*;
 
 use crate::core::MatrixError;
@@ -51,7 +51,8 @@ async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot)
                         children.into_iter().flatten().map(Into::into).collect(),
                         inaccessible_children.into_iter().flatten().collect(),
                     )
-                }).await;
+                })
+                .await;
 
             json_ok(HierarchyResBody {
                 room,

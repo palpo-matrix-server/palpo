@@ -102,7 +102,9 @@ pub fn try_auth(
         }) => {
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
-                _ => return Err(MatrixError::unauthorized("Identifier type not recognized.").into()),
+                _ => {
+                    return Err(MatrixError::unauthorized("Identifier type not recognized.").into());
+                }
             };
 
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)

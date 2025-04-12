@@ -104,8 +104,6 @@ pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Sem
     LazyLock::new(Default::default);
 pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
     LazyLock::new(Default::default);
-pub static SYNC_RECEIVERS: LazyRwLock<HashMap<(OwnedUserId, OwnedDeviceId), SyncHandle>> =
-    LazyLock::new(Default::default);
 pub static STATERES_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
 pub static APPSERVICE_IN_ROOM_CACHE: LazyRwLock<HashMap<OwnedRoomId, HashMap<String, bool>>> =
     LazyRwLock::new(Default::default);

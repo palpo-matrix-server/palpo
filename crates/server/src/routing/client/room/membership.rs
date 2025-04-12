@@ -504,10 +504,11 @@ pub(crate) async fn knock_room(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
         Ok(room_id) => {
             crate::membership::banned_room_check(
-                authed.user_id(),
+                sender_id,
                 Some(&room_id),
                 room_id.server_name().ok(),
                 req.remote_addr(),
@@ -517,7 +518,7 @@ pub(crate) async fn knock_room(
             servers.extend(crate::room::state::servers_invite_via(&room_id).unwrap_or_default());
 
             servers.extend(
-                crate::room::state::get_user_state(authed.user_id(), &room_id)
+                crate::room::state::get_user_state(sender_id, &room_id)
                     .unwrap_or_default()
                     .unwrap_or_default()
                     .iter()
@@ -536,13 +537,15 @@ pub(crate) async fn knock_room(
         Err(room_alias) => {
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(body.via.clone())).await?;
 
-            // TODO: NOW
-            // banned_room_check(sender_user, Some(&room_id), Some(room_alias.server_name()), client).await?;
+            banned_room_check(
+                sender_id,
+                Some(&room_id),
+                Some(room_alias.server_name()),
+                req.remote_addr(),
+            )?;
 
-            // TODO: NOW
-            let addl_via_servers = servers.clone();
-            let addl_state_servers =
-                crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
+            let addl_state_servers = crate::room::state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()
@@ -562,6 +565,6 @@ pub(crate) async fn knock_room(
         }
     };
 
-    knock_room_by_id(authed.user_id(), &room_id, body.reason.clone(), &servers).await?;
+    knock_room_by_id(sender_id, &room_id, body.reason.clone(), &servers).await?;
     empty_ok()
 }

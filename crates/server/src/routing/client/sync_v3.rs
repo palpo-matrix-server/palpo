@@ -1,4 +1,4 @@
-use std::collections::hash_map;
+use std::collections::hash_map;use std::time::Duration;
 
 use salvo::prelude::*;
 
@@ -46,63 +46,29 @@ pub(super) async fn sync_events_v3(
 ) -> JsonResult<sync_events::v3::SyncEventsResBody> {
     let authed = depot.authed_info()?.clone();
     let sender_id = authed.user_id();
-    let mut rx = match crate::SYNC_RECEIVERS
-        .write()
-        .unwrap()
-        .entry((sender_id.clone(), authed.device_id().clone()))
-    {
-        hash_map::Entry::Vacant(v) => {
-            let (tx, rx) = tokio::sync::watch::channel(None);
-            v.insert((args.since.clone(), rx.clone()));
-            tokio::spawn({
-                let sender_id = sender_id.to_owned();
-                let device_id = authed.device_id().to_owned();
-                crate::user::ping_presence(&sender_id, &args.set_presence)?;
-                async move {
-                    if let Err(e) = crate::sync_v3::sync_events(sender_id, device_id, args, tx).await {
-                        tracing::error!(error = ?e, "sync_events error 1");
-                    }
-                }
-            });
-            rx
-        }
-        hash_map::Entry::Occupied(mut o) => {
-            if o.get().0 != args.since || args.since.is_none() {
-                let (tx, rx) = tokio::sync::watch::channel(None);
-                if args.since.is_some() {
-                    o.insert((args.since.clone(), rx.clone()));
-                }
-                tokio::spawn({
-                    let sender_id = sender_id.to_owned();
-                    let device_id = authed.device_id().to_owned();
-                    crate::user::ping_presence(&sender_id, &args.set_presence)?;
-                    async move {
-                        if let Err(e) = crate::sync_v3::sync_events(sender_id, device_id, args, tx).await {
-                            tracing::error!(error = ?e, "sync_events error 2");
-                        }
-                    }
-                });
-                rx
-            } else {
-                o.get().1.clone()
-            }
-        }
-    };
+    let device_id = authed.device_id();
 
-    let we_have_to_wait = rx.borrow().is_none();
-    if we_have_to_wait {
-        if let Err(e) = rx.changed().await {
-            error!("Error waiting for sync: {}", e);
-        }
+    crate::user::ping_presence(&sender_id, &args.set_presence)?;
+    // Setup watchers, so if there's no response, we can wait for them
+    let watcher = crate::watch(&sender_id, &device_id);
+
+    let mut body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
+
+    if !args.full_state
+        && body.rooms.is_empty()
+        && body.presence.is_empty()
+        && body.account_data.is_empty()
+        && body.device_lists.is_empty()
+        && body.to_device.is_empty()
+    {
+        // Hang a few seconds so requests are not spammed
+        // Stop hanging if new info arrives
+        let default = Duration::from_secs(30);
+        let duration = std::cmp::min(args.timeout.unwrap_or(default), default);
+        _ = tokio::time::timeout(duration, watcher).await;
+
+        // Retry returning data
+        body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
     }
-
-    let result = match rx
-        .borrow()
-        .as_ref()
-        .expect("When sync channel changes it's always set to some")
-    {
-        Ok(response) => json_ok(response.clone()),
-        Err(error) => Err(AppError::public(error.to_string())),
-    };
-    result
+    json_ok(body)
 }

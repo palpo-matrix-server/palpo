@@ -602,7 +602,7 @@ fn resolve_state(
                         .map(
                             |DbRoomStateField {
                                  event_ty, state_key, ..
-                             }| ((event_ty.to_string().into(), state_key), event_id),
+                             }| { ((event_ty.to_string().into(), state_key), event_id) },
                         )
                         .ok()
                 })
@@ -819,7 +819,7 @@ pub async fn fetch_missing_prev_events(
 ) -> AppResult<(
     Vec<Arc<EventId>>,
     HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
-)> {    
+)> {
     let conf = crate::config();
     let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
     let mut event_info = HashMap::new();

@@ -83,7 +83,7 @@ impl NewDbEvent {
         obj.insert("sn".into(), sn.into());
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
-        Ok(serde_json::from_value(value).map_err(|e|MatrixError::bad_json("invalid json for event"))?)
+        Ok(serde_json::from_value(value).map_err(|e| MatrixError::bad_json("invalid json for event"))?)
     }
 }
 

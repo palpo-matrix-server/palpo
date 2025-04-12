@@ -64,11 +64,11 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
         .unwrap_or_default();
 
     let mut devices = vec![];
-    for (device_id, display_name) in user_devices::table
+    let devices_and_names = user_devices::table
         .filter(user_devices::user_id.eq(&user_id))
         .select((user_devices::device_id, user_devices::display_name))
-        .load::<(OwnedDeviceId, Option<String>)>(&mut *db::connect()?)?
-    {
+        .load::<(OwnedDeviceId, Option<String>)>(&mut *db::connect()?)?;
+    for (device_id, display_name) in devices_and_names {
         devices.push(Device {
             keys: crate::user::get_device_keys_and_sigs(&user_id, &device_id)?
                 .ok_or_else(|| AppError::public("server keys not found"))?,
