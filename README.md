@@ -22,7 +22,7 @@ Palpo is a cutting-edge chat server written in Rust and supporting Matrix protoc
 ---
 
 ## Current progress
-All Complement test reslts: [__test_all.result.jsonl](tests/results/__test_all.result.jsonl)
+All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.result.jsonl)
 
 ---
 
