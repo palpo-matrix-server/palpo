@@ -257,7 +257,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     //
     // When deserializing, the value is read from `via` if it's not missing or
     // empty and `server_name` otherwise.
-    let mut via = via.into_inner().unwrap_or_default();
+    let mut via = via.into_inner().unwrap_or_else(||server_name.into_inner().unwrap_or_default());
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
@@ -286,6 +286,7 @@ pub(crate) async fn join_room_by_id_or_alias(
 
             servers.sort_unstable();
             servers.dedup();
+            println!("=============0=servers: {servers:?}  room_id: {room_id}");
             (servers, room_id)
         }
         Err(room_alias) => {
@@ -311,11 +312,13 @@ pub(crate) async fn join_room_by_id_or_alias(
             addl_servers.dedup();
             servers.append(&mut addl_servers);
 
+            println!("=============2=servers: {servers:?}  room_id: {room_id}");
             (servers, room_id)
         }
     };
 
-    let join_room_response = crate::membership::join_room(
+    println!("=============3=servers: {servers:?}");
+    let join_room_body = crate::membership::join_room(
         authed.user(),
         &room_id,
         body.reason.clone(),
@@ -326,7 +329,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     .await?;
 
     json_ok(JoinRoomResBody {
-        room_id: join_room_response.room_id,
+        room_id: join_room_body.room_id,
     })
 }
 
