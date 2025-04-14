@@ -99,7 +99,7 @@ pub fn force_state(
                     Err(_) => continue,
                 };
 
-                crate::room::update_membership(
+                crate::membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
                     room_id,

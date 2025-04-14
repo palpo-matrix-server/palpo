@@ -37,7 +37,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 let last_state = crate::room::state::get_user_state(user_id, room_id)?;
 
                 // We always drop the invite, we can't rely on other servers
-                crate::room::update_membership(
+                crate::membership::update_membership(
                     &event_id,
                     event_sn,
                     room_id,
@@ -71,7 +71,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .first::<(OwnedEventId, i64)>(&mut *db::connect()?)
                 .optional()?;
             if let Some((event_id, event_sn)) = event_id_sns {
-                crate::room::update_membership(
+                crate::membership::update_membership(
                     &event_id,
                     event_sn,
                     room_id,

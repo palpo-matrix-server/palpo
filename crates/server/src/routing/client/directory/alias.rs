@@ -17,46 +17,14 @@ use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, db, diesel
 /// - TODO: Suggest more servers to join via
 #[endpoint]
 pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
+    println!("====================get alias: {room_alias}");
     let room_alias = room_alias.into_inner();
-    if room_alias.is_remote() {
-        let response = directory_request(&room_alias.server_name().origin().await, &room_alias)?
-            .send::<RoomInfoResBody>()
-            .await?;
-
-        let mut servers = response.servers;
-        servers.shuffle(&mut rand::thread_rng());
-
-        return json_ok(AliasResBody::new(response.room_id, servers));
-    }
-
-    let mut room_id = None;
-    if let Ok(r) = crate::room::resolve_local_alias(&room_alias) {
-        room_id = Some(r);
-    } else {
-        for (_id, appservice) in crate::appservice::all()? {
-            if appservice.aliases.is_match(room_alias.as_str())
-                && crate::sending::get(
-                    appservice
-                        .registration
-                        .build_url(&format!("app/v1/rooms/{}", room_alias))?,
-                )
-                .send::<RoomInfoResBody>()
-                .await
-                .is_ok()
-            {
-                room_id = Some(
-                    crate::room::resolve_local_alias(&room_alias)
-                        .map_err(|_| AppError::public("Appservice lied to us. Room does not exist."))?,
-                );
-                break;
-            }
-        }
-    }
-
-    let Some(room_id) = room_id else {
+    let Ok((room_id, servers)) = crate::room::resolve_alias(&room_alias, None).await else {
         return Err(MatrixError::not_found("Room with alias not found.").into());
     };
-    json_ok(AliasResBody::new(room_id, vec![crate::server_name().to_owned()]))
+    let servers = crate::room::room_available_servers(&room_id, &room_alias, servers).await?;
+    debug!(?room_alias, ?room_id, "available servers: {servers:?}");
+    json_ok(AliasResBody::new(room_id, servers))
 }
 
 /// #PUT /_matrix/client/r0/directory/room/{room_alias}

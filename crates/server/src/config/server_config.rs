@@ -150,6 +150,26 @@ pub struct ServerConfig {
     /// default: 1024
     #[serde(default = "default_trusted_server_batch_size")]
     pub trusted_server_batch_size: usize,
+
+	/// Retry failed and incomplete messages to remote servers immediately upon
+	/// startup. This is called bursting. If this is disabled, said messages may
+	/// not be delivered until more messages are queued for that server. Do not
+	/// change this option unless server resources are extremely limited or the
+	/// scale of the server's deployment is huge. Do not disable this unless you
+	/// know what you are doing.
+	#[serde(default = "true_value")]
+	pub startup_netburst: bool,
+
+	/// Messages are dropped and not reattempted. The `startup_netburst` option
+	/// must be enabled for this value to have any effect. Do not change this
+	/// value unless you know what you are doing. Set this value to -1 to
+	/// reattempt every message without trimming the queues; this may consume
+	/// significant disk. Set this value to 0 to drop all messages without any
+	/// attempt at redelivery.
+	///
+	/// default: 50
+	#[serde(default = "default_startup_netburst_keep")]
+	pub startup_netburst_keep: i64,
 }
 
 fn default_trusted_server_batch_size() -> usize {
@@ -159,6 +179,8 @@ fn default_trusted_server_batch_size() -> usize {
 fn default_space_path() -> String {
     "./space".into()
 }
+
+fn default_startup_netburst_keep() -> i64 { 50 }
 
 impl fmt::Display for ServerConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

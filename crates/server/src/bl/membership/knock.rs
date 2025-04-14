@@ -186,7 +186,7 @@ async fn knock_room_local(
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
-    crate::room::update_membership(
+    crate::membership::update_membership(
         &event_id,
         event_sn,
         room_id,
@@ -377,7 +377,7 @@ async fn knock_room_remote(
     let frame_id = crate::room::state::append_to_state(&parsed_knock_pdu)?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
-    crate::room::update_membership(
+    crate::membership::update_membership(
         &event_id,
         event_sn,
         room_id,

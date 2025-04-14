@@ -4,7 +4,7 @@
 .env.local
 debug.log
 .idea
-/tests/results/_*
+/tests/results/__**
 /tests/results/*.log
 sytestout
 __test*

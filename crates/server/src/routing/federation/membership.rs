@@ -184,7 +184,7 @@ async fn invite_user(
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !crate::room::is_server_in_room(crate::server_name(), &args.room_id)? {
-        crate::room::update_membership(
+        crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
             &args.room_id,

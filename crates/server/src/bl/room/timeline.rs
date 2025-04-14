@@ -302,7 +302,7 @@ where
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
-                crate::room::update_membership(
+                crate::membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
                     &pdu.room_id,

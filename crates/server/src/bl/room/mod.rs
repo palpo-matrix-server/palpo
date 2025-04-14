@@ -18,6 +18,7 @@ pub mod thread;
 use std::collections::HashMap;
 
 use diesel::prelude::*;
+use rand::seq::SliceRandom;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::directory::RoomTypeFilter;
@@ -33,7 +34,7 @@ use crate::core::room::RoomType;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, db, diesel_exists};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, db, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -128,236 +129,6 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
     self::state::get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "")
         .map(|c| c.guest_access == GuestAccess::CanJoin)
-}
-
-/// Update current membership data.
-#[tracing::instrument(skip(last_state))]
-pub fn update_membership(
-    event_id: &EventId,
-    event_sn: i64,
-    room_id: &RoomId,
-    user_id: &UserId,
-    membership: MembershipState,
-    sender_id: &UserId,
-    last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
-) -> AppResult<()> {
-    let conf = crate::config();
-    // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !crate::user::user_exists(user_id)? {
-        crate::user::create_user(user_id, None)?;
-        // TODO: display_name, avatar url
-    }
-
-    let state_data = if let Some(last_state) = last_state {
-        Some(serde_json::to_value(last_state)?)
-    } else {
-        None
-    };
-
-    match &membership {
-        MembershipState::Join => {
-            // Check if the user never joined this room
-            if !once_joined(user_id, room_id)? {
-                // Add the user ID to the join list then
-                // db::mark_as_once_joined(user_id, room_id)?;
-
-                // Check if the room has a predecessor
-                if let Ok(Some(predecessor)) = crate::room::state::get_room_state_content::<RoomCreateEventContent>(
-                    room_id,
-                    &StateEventType::RoomCreate,
-                    "",
-                )
-                .map(|c| c.predecessor)
-                {
-                    // Copy user settings from predecessor to the current room:
-                    // - Push rules
-                    //
-                    // TODO: finish this once push rules are implemented.
-                    //
-                    // let mut push_rules_event_content: PushRulesEvent = account_data
-                    //     .get(
-                    //         None,
-                    //         user_id,
-                    //         EventType::PushRules,
-                    //     )?;
-                    //
-                    // NOTE: find where `predecessor.room_id` match
-                    //       and update to `room_id`.
-                    //
-                    // account_data
-                    //     .update(
-                    //         None,
-                    //         user_id,
-                    //         EventType::PushRules,
-                    //         &push_rules_event_content,
-                    //         globals,
-                    //     )
-                    //     .ok();
-
-                    // Copy old tags to new room
-                    if let Some(tag_event_content) = crate::user::get_room_data::<JsonValue>(
-                        user_id,
-                        &predecessor.room_id,
-                        &RoomAccountDataEventType::Tag.to_string(),
-                    )? {
-                        crate::user::set_data(
-                            user_id,
-                            Some(room_id.to_owned()),
-                            &RoomAccountDataEventType::Tag.to_string(),
-                            tag_event_content,
-                        )
-                        .ok();
-                    };
-
-                    // Copy direct chat flag
-                    if let Some(mut direct_event_content) = crate::user::get_data::<DirectEventContent>(
-                        user_id,
-                        None,
-                        &GlobalAccountDataEventType::Direct.to_string(),
-                    )? {
-                        let mut room_ids_updated = false;
-
-                        for room_ids in direct_event_content.0.values_mut() {
-                            if room_ids.iter().any(|r| r == &predecessor.room_id) {
-                                room_ids.push(room_id.to_owned());
-                                room_ids_updated = true;
-                            }
-                        }
-
-                        if room_ids_updated {
-                            crate::user::set_data(
-                                user_id,
-                                None,
-                                &GlobalAccountDataEventType::Direct.to_string(),
-                                serde_json::to_value(&direct_event_content)?,
-                            )?;
-                        }
-                    };
-                }
-            }
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
-                // let forgotten = room_users::table
-                //     .filter(room_users::room_id.eq(room_id))
-                //     .filter(room_users::user_id.eq(user_id))
-                //     .select(room_users::forgotten)
-                //     .first::<bool>(conn)
-                //     .optional()?
-                //     .unwrap_or_default();
-                diesel::delete(
-                    room_users::table
-                        .filter(room_users::room_id.eq(room_id))
-                        .filter(room_users::user_id.eq(user_id)),
-                )
-                .execute(conn)?;
-                diesel::insert_into(room_users::table)
-                    .values(&NewDbRoomUser {
-                        room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
-                            .to_owned(),
-                        user_id: user_id.to_owned(),
-                        user_server_id: user_id.server_name().to_owned(),
-                        event_id: event_id.to_owned(),
-                        event_sn,
-                        sender_id: sender_id.to_owned(),
-                        membership: membership.to_string(),
-                        forgotten: false,
-                        display_name: None,
-                        avatar_url: None,
-                        state_data,
-                        created_at: UnixMillis::now(),
-                    })
-                    .execute(conn)?;
-                Ok(())
-            })?;
-        }
-        MembershipState::Invite => {
-            // We want to know if the sender is ignored by the receiver
-            if crate::user::user_is_ignored(sender_id, user_id) {
-                return Ok(());
-            }
-
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
-                // let forgotten = room_users::table
-                //     .filter(room_users::room_id.eq(room_id))
-                //     .filter(room_users::user_id.eq(user_id))
-                //     .select(room_users::forgotten)
-                //     .first::<bool>(conn)
-                //     .optional()?
-                //     .unwrap_or_default();
-                diesel::delete(
-                    room_users::table
-                        .filter(room_users::room_id.eq(room_id))
-                        .filter(room_users::user_id.eq(user_id)),
-                )
-                .execute(conn)?;
-                diesel::insert_into(room_users::table)
-                    .values(&NewDbRoomUser {
-                        room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
-                            .to_owned(),
-                        user_id: user_id.to_owned(),
-                        user_server_id: user_id.server_name().to_owned(),
-                        event_id: event_id.to_owned(),
-                        event_sn,
-                        sender_id: sender_id.to_owned(),
-                        membership: membership.to_string(),
-                        forgotten: false,
-                        display_name: None,
-                        avatar_url: None,
-                        state_data,
-                        created_at: UnixMillis::now(),
-                    })
-                    .execute(conn)?;
-                Ok(())
-            })?;
-        }
-        MembershipState::Leave | MembershipState::Ban => {
-            db::connect()?.transaction::<_, AppError, _>(|conn| {
-                // let forgotten = room_users::table
-                //     .filter(room_users::room_id.eq(room_id))
-                //     .filter(room_users::user_id.eq(user_id))
-                //     .select(room_users::forgotten)
-                //     .first::<bool>(conn)
-                //     .optional()?
-                //     .unwrap_or_default();
-                diesel::delete(
-                    room_users::table
-                        .filter(room_users::room_id.eq(room_id))
-                        .filter(room_users::user_id.eq(user_id)),
-                )
-                .execute(conn)?;
-                diesel::insert_into(room_users::table)
-                    .values(&NewDbRoomUser {
-                        room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
-                            .to_owned(),
-                        user_id: user_id.to_owned(),
-                        user_server_id: user_id.server_name().to_owned(),
-                        event_id: event_id.to_owned(),
-                        event_sn,
-                        sender_id: sender_id.to_owned(),
-                        membership: membership.to_string(),
-                        forgotten: false,
-                        display_name: None,
-                        avatar_url: None,
-                        state_data,
-                        created_at: UnixMillis::now(),
-                    })
-                    .execute(conn)?;
-                Ok(())
-            })?;
-        }
-        _ => {}
-    }
-    update_room_servers(room_id)?;
-    update_room_currents(room_id)?;
-    Ok(())
 }
 
 pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
@@ -613,13 +384,6 @@ pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
         .first::<String>(&mut *db::connect()?)?;
     Ok(RoomVersionId::try_from(room_version)?)
 }
-// pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
-//     let room_sn = rooms::table
-//         .filter(rooms::id.eq(room_id))
-//         .select(rooms::sn)
-//         .first::<Seqnum>(&mut *db::connect()?)?;
-//     Ok(room_sn)
-// }
 
 pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
     rooms
@@ -638,4 +402,41 @@ pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate:
             include.then_some(r)
         })
         .collect()
+}
+
+pub async fn room_available_servers(
+    room_id: &RoomId,
+    room_alias: &RoomAliasId,
+    pre_servers: Vec<OwnedServerName>,
+) -> AppResult<Vec<OwnedServerName>> {
+    // find active servers in room state cache to suggest
+    let mut servers: Vec<OwnedServerName> = room_servers(room_id)?;
+
+    // push any servers we want in the list already (e.g. responded remote alias
+    // servers, room alias server itself)
+    servers.extend(pre_servers);
+
+    servers.sort_unstable();
+    servers.dedup();
+
+    // shuffle list of servers randomly after sort and dedupe
+    servers.shuffle(&mut rand::thread_rng());
+
+    // insert our server as the very first choice if in list, else check if we can
+    // prefer the room alias server first
+    match servers.iter().position(|server_name| server_name.is_local()) {
+        Some(server_index) => {
+            servers.swap_remove(server_index);
+            servers.insert(0, crate::server_name().to_owned());
+        }
+        _ => match servers.iter().position(|server| server == room_alias.server_name()) {
+            Some(alias_server_index) => {
+                servers.swap_remove(alias_server_index);
+                servers.insert(0, room_alias.server_name().into());
+            }
+            _ => {}
+        },
+    }
+
+    Ok(servers)
 }

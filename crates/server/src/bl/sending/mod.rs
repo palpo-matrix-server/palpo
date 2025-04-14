@@ -141,6 +141,7 @@ async fn handler() -> AppResult<()> {
     let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
 
     for (id, outgoing_kind, event) in active_requests()? {
+        println!("===============startup_netburst {outgoing_kind:?} {event:?}");
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
             .or_insert_with(Vec::new);
@@ -156,7 +157,7 @@ async fn handler() -> AppResult<()> {
 
     for (outgoing_kind, events) in initial_transactions {
         current_transaction_status.insert(outgoing_kind.clone(), TransactionStatus::Running);
-        futures.push(handle_events(outgoing_kind.clone(), events));
+        futures.push(send_events(outgoing_kind.clone(), events));
     }
 
     loop {
@@ -174,7 +175,7 @@ async fn handler() -> AppResult<()> {
                             mark_as_active(&new_events)?;
 
                             futures.push(
-                                handle_events(
+                                send_events(
                                     outgoing_kind.clone(),
                                     new_events.into_iter().map(|(_, event)| event).collect(),
                                 )
@@ -187,7 +188,7 @@ async fn handler() -> AppResult<()> {
                         tracing::error!("Failed to send event: {:?}", event);
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
-                            TransactionStatus::Retrying(n) => TransactionStatus::Failed(*n+1, Instant::now()),
+                            TransactionStatus::Retrying(n) => TransactionStatus::Failed(n.saturating_add(1), Instant::now()),
                             TransactionStatus::Failed(_, _) => {
                                 error!("Request that was not even running failed?!");
                                 return
@@ -202,7 +203,7 @@ async fn handler() -> AppResult<()> {
                     vec![(id, event)],
                     &mut current_transaction_status,
                 ) {
-                    futures.push(handle_events(outgoing_kind, events));
+                    futures.push(send_events(outgoing_kind, events));
                 }
             }
         }
@@ -250,7 +251,7 @@ fn select_events(
 
     if retry {
         // We retry the previous transaction
-        for (_, e) in active_requests_for(outgoing_kind)?.into_iter() {
+        for (_, e) in active_requests_for(outgoing_kind)? {
             events.push(e);
         }
     } else {
@@ -535,10 +536,11 @@ pub fn send_pdu_appservice(appservice_id: String, pdu_id: &EventId) -> AppResult
 }
 
 #[tracing::instrument(skip(events, kind))]
-async fn handle_events(
+async fn send_events(
     kind: OutgoingKind,
     events: Vec<SendingEventType>,
 ) -> Result<OutgoingKind, (OutgoingKind, AppError)> {
+    println!("=================send events");
     match &kind {
         OutgoingKind::Appservice(id) => {
             let mut pdu_jsons = Vec::new();
@@ -797,11 +799,13 @@ fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
 }
 
 fn delete_request(id: i64) -> AppResult<()> {
+    println!("=================delete request");
     diesel::delete(outgoing_requests::table.find(id)).execute(&mut *db::connect()?)?;
     Ok(())
 }
 
 fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
+    println!("=================delete_all_active_requests_for {outgoing_kind:?}");
     diesel::delete(
         outgoing_requests::table
             .filter(outgoing_requests::kind.eq(outgoing_kind.name()))
@@ -813,6 +817,7 @@ fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()>
 }
 
 fn delete_all_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
+    println!("=================delete_all_requests_for {outgoing_kind:?}");
     diesel::delete(outgoing_requests::table.filter(outgoing_requests::kind.eq(outgoing_kind.name())))
         .execute(&mut *db::connect()?)?;
 

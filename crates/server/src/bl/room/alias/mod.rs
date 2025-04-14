@@ -75,8 +75,6 @@ pub async fn resolve_alias(
 
 #[tracing::instrument(level = "debug")]
 pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
-    println!("============resolve_local_alias alias: {alias_id:?}");
-
     let room_id = room_aliases::table
         .filter(room_aliases::alias_id.eq(alias_id))
         .select(room_aliases::room_id)
@@ -86,13 +84,9 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
 }
 
 async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<OwnedRoomId> {
-    println!("UUUUUUUUUUUUUUUUUUUUU  Z");
     for appservice in crate::appservice::all()?.values() {
-        println!("==========room_alias: {room_alias:?}====appservice {:?}", appservice);
         if appservice.aliases.is_match(room_alias.as_str()) {
-            println!("UUUUUUUUUUUUUUUUUUUUU  0");
             if let Some(url) = &appservice.registration.url {
-                println!("UUUUUUUUUUUUUUUUUUUUUUrl {url}");
                 let request = query_room_alias_request(
                     url,
                     QueryRoomAliasReqArgs {
@@ -100,13 +94,11 @@ async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<OwnedRo
                     },
                 )?
                 .into_inner();
-                println!("=====================request: {request:?}");
                 if matches!(
                     crate::sending::send_appservice_request::<Option<()>>(appservice.registration.clone(), request)
                         .await,
                     Ok(Some(_opt_result))
                 ) {
-                    println!("UUUUUUUUUUUUUUUUUUUUU  2");
                     return resolve_local_alias(room_alias)
                         .map_err(|_| MatrixError::not_found("Room does not exist.").into());
                 }
