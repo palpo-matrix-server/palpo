@@ -2,8 +2,8 @@ use diesel::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::{AppResult, MatrixError, data, utils};
 
 use super::DbUser;

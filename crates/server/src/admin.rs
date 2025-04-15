@@ -27,10 +27,10 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
-use crate::data::{self, connect};
 use crate::data::schema::*;
+use crate::data::{self, connect};
 use crate::utils::{self, HtmlEscape};
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, data};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]

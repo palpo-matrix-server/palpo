@@ -6,7 +6,8 @@ use salvo::prelude::*;
 
 use crate::core::client::backup::*;
 use crate::core::serde::RawJson;
-use crate::data::schema::*;use crate::data::connect;
+use crate::data::connect;
+use crate::data::schema::*;
 use crate::user::key_backup::{self, DbRoomKey, DbRoomKeysVersion};
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
 

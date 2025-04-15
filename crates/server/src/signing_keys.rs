@@ -12,12 +12,12 @@ use std::time::{Duration, Instant, SystemTime};
 use std::{future, iter};
 
 use diesel::prelude::*;
-use futures_util::{stream::FuturesUnordered, FutureExt, StreamExt};
+use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, watch::Receiver, Semaphore};
+use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 
 use crate::core::client::sync_events;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};

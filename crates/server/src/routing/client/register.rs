@@ -12,7 +12,8 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
-use crate::data::schema::*;use crate::data::connect;
+use crate::data::connect;
+use crate::data::schema::*;
 use crate::user::{NewDbPresence, NewDbProfile};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,

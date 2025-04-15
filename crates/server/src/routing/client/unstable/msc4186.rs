@@ -13,8 +13,8 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum};
-use crate::event::ignored_filter;
 use crate::data;
+use crate::event::ignored_filter;
 use crate::extract_variant;
 use crate::room::filter_rooms;
 use crate::routing::prelude::*;

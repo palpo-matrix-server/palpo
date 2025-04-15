@@ -17,13 +17,13 @@ use uuid::Uuid;
 
 use crate::core::client::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
+use crate::data::connect;
+use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail};
 use crate::data::schema::*;
-use crate::data::media::{DbThumbnail,NewDbMetadata,NewDbThumbnail, DbMetadata};
 use crate::media::*;
 use crate::{
     AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, data, empty_ok, exts::*, hoops, json_ok, utils,
 };
-use crate::data::connect;
 
 pub fn self_auth_router() -> Router {
     Router::with_path("media")

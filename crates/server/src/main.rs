@@ -15,11 +15,12 @@
 #[macro_use]
 extern crate tracing;
 
-pub mod routing;
+pub mod auth;
 pub mod config;
 pub mod env_vars;
 pub mod hoops;
-pub mod utils;pub mod auth;
+pub mod routing;
+pub mod utils;
 pub use auth::{AuthArgs, AuthedInfo};
 pub mod admin;
 pub mod appservice;
@@ -39,21 +40,21 @@ pub mod user;
 pub use exts::*;
 mod cjson;
 pub use cjson::Cjson;
+mod signing_keys;
 pub mod sync_v3;
 pub mod sync_v4;
 pub mod sync_v5;
 pub mod watcher;
-mod signing_keys;
-pub use signing_keys::{SigningKeys};
+pub use signing_keys::SigningKeys;
 
 pub use event::{PduBuilder, PduEvent};
 mod global;
 pub use global::*;
 
 pub mod error;
+pub use core::error::MatrixError;
 pub use error::AppError;
 pub use palpo_core as core;
-pub use core::error::MatrixError;
 pub use palpo_data as data;
 #[macro_use]
 mod macros;
@@ -154,14 +155,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let router = routing::router();
     let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
-    let router = router
-        .unshift(doc.into_router("/api-doc/openapi.json"))
-        .unshift(
-            Scalar::new("/api-doc/openapi.json")
-                .title("Palpo - Scalar")
-                .into_router("/scalar"),
-        )
-        .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
+    // let router = router
+    //     .unshift(doc.into_router("/api-doc/openapi.json"))
+    //     .unshift(
+    //         Scalar::new("/api-doc/openapi.json")
+    //             .title("Palpo - Scalar")
+    //             .into_router("/scalar"),
+    //     )
+    //     .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
     let catcher = Catcher::default().hoop(hoops::catch_status_error);
     let service = Service::new(router)
         .catcher(catcher)

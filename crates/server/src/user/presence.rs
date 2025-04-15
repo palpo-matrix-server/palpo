@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::core::UnixMillis;
 use crate::core::events::presence::{PresenceEvent, PresenceEventContent};
 use crate::core::presence::PresenceState;
-use crate::core::UnixMillis;
 use crate::core::{OwnedUserId, UserId};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{data, AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, data};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]

@@ -7,8 +7,8 @@ use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok};
 
 pub fn authed_router() -> Router {

@@ -7,9 +7,10 @@ use salvo::prelude::*;
 use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::signatures;
+use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::DepotExt;
-use crate::server_key::{PubKeyMap, PubKeys};use crate::data::connect;
+use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, data};
 
@@ -22,6 +23,7 @@ pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request,
             auth_by_signatures_inner(req, depot).await
         }
     } else {
+        println!("Missing or invalid Authorization header  {req:#?}");
         Err(MatrixError::missing_token("Missing token.").into())
     }
 }

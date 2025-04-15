@@ -6,8 +6,8 @@ use salvo::prelude::*;
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
 use crate::core::federation::query::{RoomInfoResBody, directory_request};
 use crate::core::identifiers::*;
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::exts::*;
 use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, data, diesel_exists, empty_ok, json_ok};
 
@@ -17,12 +17,16 @@ use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, data, dies
 /// - TODO: Suggest more servers to join via
 #[endpoint]
 pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
-    println!("====================get alias: {room_alias}");
+    println!("=================1111===get alias: {room_alias}");
     let room_alias = room_alias.into_inner();
+    println!("vMMMMMMM   0");
     let Ok((room_id, servers)) = crate::room::resolve_alias(&room_alias, None).await else {
+        println!("vMMMMMMM   1");
         return Err(MatrixError::not_found("Room with alias not found.").into());
     };
+    println!("vMMMMMMM   2");
     let servers = crate::room::room_available_servers(&room_id, &room_alias, servers).await?;
+    println!("vMMMMMMM   3");
     debug!(?room_alias, ?room_id, "available servers: {servers:?}");
     json_ok(AliasResBody::new(room_id, servers))
 }

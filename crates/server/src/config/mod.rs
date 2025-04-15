@@ -1,13 +1,12 @@
-
 mod server_config;
 
 use std::sync::OnceLock;
 
-use figment::providers::{Env, Format, Toml};
 use figment::Figment;
+use figment::providers::{Env, Format, Toml};
 
-pub use server_config::*;
 pub use crate::data::DbConfig;
+pub use server_config::*;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 

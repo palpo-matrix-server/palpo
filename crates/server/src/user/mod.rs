@@ -35,8 +35,8 @@ use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};
-use crate::data::{self, connect};
 use crate::data::schema::*;
+use crate::data::{self, connect};
 use crate::{AppError, AppResult, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]

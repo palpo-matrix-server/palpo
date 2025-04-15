@@ -18,8 +18,8 @@ use crate::core::push::{
     Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, PushFormat, Pusher, PusherKind, Ruleset, Tweak,
 };
 use crate::core::serde::{JsonValue, RawJson};
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::event::PduEvent;
 use crate::{AppError, AppResult, AuthedInfo, data};
 

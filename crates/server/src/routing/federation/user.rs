@@ -8,8 +8,8 @@ use crate::AuthArgs;
 use crate::core::federation::device::{Device, DevicesResBody};
 use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeysReqBody, QueryKeysResBody};
 use crate::core::identifiers::*;
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok};
 
 pub fn router() -> Router {
