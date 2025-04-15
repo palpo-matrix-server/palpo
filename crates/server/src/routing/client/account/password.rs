@@ -4,9 +4,10 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::data::schema::*;
 use crate::exts::*;
-use crate::schema::*;
-use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, db, empty_ok, hoops, utils};
+use crate::data::connect;
+use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, data, empty_ok, hoops, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("password")
@@ -56,7 +57,7 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
                 .filter(pushers::user_id.eq(authed.user_id()))
                 .filter(pushers::access_token_id.ne(access_token_id)),
         )
-        .execute(&mut *db::connect()?)?;
+        .execute(&mut connect()?)?;
     }
     if body.logout_devices {
         // Logout all devices except the current one
@@ -65,19 +66,19 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
                 .filter(user_devices::user_id.eq(authed.user_id()))
                 .filter(user_devices::device_id.ne(authed.device_id())),
         )
-        .execute(&mut *db::connect()?)?;
+        .execute(&mut connect()?)?;
         diesel::delete(
             user_access_tokens::table
                 .filter(user_access_tokens::user_id.eq(authed.user_id()))
                 .filter(user_access_tokens::device_id.ne(authed.device_id())),
         )
-        .execute(&mut db::connect()?)?;
+        .execute(&mut connect()?)?;
         diesel::delete(
             user_refresh_tokens::table
                 .filter(user_refresh_tokens::user_id.eq(authed.user_id()))
                 .filter(user_refresh_tokens::device_id.ne(authed.device_id())),
         )
-        .execute(&mut db::connect()?)?;
+        .execute(&mut connect()?)?;
     }
 
     info!("User {} changed their password.", authed.user_id());

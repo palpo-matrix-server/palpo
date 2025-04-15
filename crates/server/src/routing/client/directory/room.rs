@@ -6,9 +6,10 @@ use crate::core::client::directory::SetRoomVisibilityReqBody;
 use crate::core::client::directory::VisibilityResBody;
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
+use crate::data::schema::*;
 use crate::room::DbRoom;
-use crate::schema::*;
-use crate::{AuthArgs, db, diesel_exists};
+use crate::data::connect;
+use crate::{AuthArgs, data, diesel_exists};
 use crate::{EmptyResult, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/directory/list/room/{room_id}
@@ -19,7 +20,7 @@ pub(super) async fn get_visibility(_aa: AuthArgs, room_id: PathParam<OwnedRoomId
     let query = rooms::table
         .filter(rooms::id.eq(&room_id))
         .filter(rooms::is_public.eq(true));
-    let visibility = if diesel_exists!(query, &mut *db::connect()?)? {
+    let visibility = if diesel_exists!(query, &mut connect()?)? {
         Visibility::Public
     } else {
         Visibility::Private
@@ -38,11 +39,11 @@ pub(super) async fn set_visibility(
     body: JsonBody<SetRoomVisibilityReqBody>,
 ) -> EmptyResult {
     let room_id = room_id.into_inner();
-    let room = rooms::table.find(&room_id).first::<DbRoom>(&mut *db::connect()?)?;
+    let room = rooms::table.find(&room_id).first::<DbRoom>(&mut connect()?)?;
 
     diesel::update(&room)
         .set(rooms::is_public.eq(body.visibility == Visibility::Public))
-        .execute(&mut *db::connect()?)?;
+        .execute(&mut connect()?)?;
     empty_ok()
 }
 

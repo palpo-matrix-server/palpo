@@ -1,6 +1,6 @@
 [package]
 name = "palpo-core"
-description = "Procedural macros used by the palpo crates."
+description = "Core library used by the palpo crates."
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

@@ -44,7 +44,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
                     event_id: args.event_id.clone(),
                 },
             };
-            crate::user::set_data(
+            crate::data::user::set_data(
                 authed.user_id(),
                 Some(args.room_id.clone()),
                 &RoomAccountDataEventType::FullyRead.to_string(),

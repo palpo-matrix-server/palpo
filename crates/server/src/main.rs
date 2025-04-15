@@ -16,26 +16,47 @@
 extern crate tracing;
 
 pub mod routing;
-// pub(crate) mod schema;
-pub mod bl;
-pub use bl::*;
 pub mod config;
-pub mod db;
 pub mod env_vars;
 pub mod hoops;
-pub mod schema;
-pub mod utils;
+pub mod utils;pub mod auth;
+pub use auth::{AuthArgs, AuthedInfo};
+pub mod admin;
+pub mod appservice;
+pub mod directory;
+pub mod event;
+pub mod exts;
+pub mod federation;
+pub mod media;
+pub mod membership;
+pub mod room;
+pub mod sending;
+pub mod server_key;
+pub mod state;
+pub mod transaction_id;
+pub mod uiaa;
+pub mod user;
+pub use exts::*;
+mod cjson;
+pub use cjson::Cjson;
+pub mod sync_v3;
+pub mod sync_v4;
+pub mod sync_v5;
+pub mod watcher;
+mod signing_keys;
+pub use signing_keys::{SigningKeys};
+
+pub use event::{PduBuilder, PduEvent};
+mod global;
+pub use global::*;
 
 pub mod error;
-pub mod full_text_search;
-pub use crate::core::error::MatrixError;
 pub use error::AppError;
 pub use palpo_core as core;
+pub use core::error::MatrixError;
+pub use palpo_data as data;
 #[macro_use]
 mod macros;
-// #[macro_use]
-// use serde_json;
-pub(crate) use serde_json::Value as JsonValue;
 
 use std::env;
 use std::time::Duration;
@@ -127,7 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     }
 
-    crate::db::init(&config.db);
+    crate::data::init(&config.db);
 
     crate::sending::start_handler();
 

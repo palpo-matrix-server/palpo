@@ -8,9 +8,10 @@ use crate::core::client::device::{
 };
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::error::ErrorKind;
-use crate::schema::*;
-use crate::user::DbUserDevice;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, db, empty_ok, json_ok, utils};
+use crate::data::schema::*;
+use crate::data::user::DbUserDevice;
+use crate::data::connect;
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, data, empty_ok, json_ok, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -53,7 +54,7 @@ async fn list_devices(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<DevicesRes
 
     let devices = user_devices::table
         .filter(user_devices::user_id.eq(authed.user_id()))
-        .load::<DbUserDevice>(&mut *db::connect()?)?;
+        .load::<DbUserDevice>(&mut connect()?)?;
     json_ok(DevicesResBody {
         devices: devices.into_iter().map(DbUserDevice::into_matrix_device).collect(),
     })
@@ -70,11 +71,11 @@ fn update_device(
     let device_id = device_id.into_inner();
     let device = user_devices::table
         .filter(user_devices::device_id.eq(&device_id))
-        .first::<DbUserDevice>(&mut *db::connect()?)?;
+        .first::<DbUserDevice>(&mut connect()?)?;
 
     diesel::update(&device)
         .set(user_devices::display_name.eq(&body.display_name))
-        .execute(&mut *db::connect()?)?;
+        .execute(&mut connect()?)?;
 
     empty_ok()
 }
@@ -161,7 +162,7 @@ async fn delete_devices(_aa: AuthArgs, body: JsonBody<DeleteDevicesReqBody>, dep
             .filter(user_devices::user_id.eq(authed.device_id()))
             .filter(user_devices::device_id.eq_any(&devices)),
     )
-    .execute(&mut *db::connect()?)?;
+    .execute(&mut connect()?)?;
 
     empty_ok()
 }

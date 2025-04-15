@@ -7,11 +7,11 @@ use salvo::prelude::*;
 use crate::core::authorization::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::signatures;
+use crate::data::schema::*;
 use crate::exts::DepotExt;
-use crate::schema::*;
-use crate::server_key::{PubKeyMap, PubKeys};
+use crate::server_key::{PubKeyMap, PubKeys};use crate::data::connect;
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
-use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, db};
+use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, data};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
@@ -38,7 +38,7 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
 async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
     let token = aa.require_access_token()?;
 
-    let conn = &mut db::connect()?;
+    let conn = &mut connect()?;
     let access_token = user_access_tokens::table
         .filter(user_access_tokens::token.eq(token))
         .first::<DbAccessToken>(conn)

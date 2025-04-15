@@ -17,9 +17,13 @@ use uuid::Uuid;
 
 use crate::core::client::media::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
+use crate::data::schema::*;
+use crate::data::media::{DbThumbnail,NewDbMetadata,NewDbThumbnail, DbMetadata};
 use crate::media::*;
-use crate::schema::*;
-use crate::{AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, db, empty_ok, exts::*, hoops, json_ok, utils};
+use crate::{
+    AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, data, empty_ok, exts::*, hoops, json_ok, utils,
+};
+use crate::data::connect;
 
 pub fn self_auth_router() -> Router {
     Router::with_path("media")
@@ -45,7 +49,7 @@ pub fn self_auth_router() -> Router {
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    if let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? {
+    if let Some(metadata) = crate::data::media::get_metadata(&args.server_name, &args.media_id)? {
         let content_type = metadata
             .content_type
             .as_deref()
@@ -91,7 +95,7 @@ pub async fn get_content_with_filename(
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    let Some(metadata) = crate::media::get_metadata(&args.server_name, &args.media_id)? else {
+    let Some(metadata) = crate::data::media::get_metadata(&args.server_name, &args.media_id)? else {
         return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
     };
     let content_type = if let Some(content_type) = metadata.content_type.as_deref() {
@@ -145,7 +149,7 @@ pub fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     //         media_id: &media_id,
     //         created_ts: chrono::Utc::now().timestamp_millis() as i64,
     //     })
-    //     .execute(&mut db::connect()?)?;
+    //     .execute(&mut connect()?)?;
     Ok(Json(CreateMxcUriResBody {
         content_uri: OwnedMxcUri::from(mxc),
         unused_expires_at: None,
@@ -212,7 +216,7 @@ pub async fn create_content(
 
         diesel::insert_into(media_metadatas::table)
             .values(&metadata)
-            .execute(&mut *db::connect()?)?;
+            .execute(&mut connect()?)?;
         //TODO: thumbnail support
     } else {
         return Err(MatrixError::cannot_overwrite_media("Media ID already has content").into());
@@ -281,7 +285,7 @@ pub async fn upload_content(
 
         diesel::insert_into(media_metadatas::table)
             .values(&metadata)
-            .execute(&mut *db::connect()?)?;
+            .execute(&mut connect()?)?;
 
         //TODO: thumbnail support
         empty_ok()
@@ -358,7 +362,7 @@ pub async fn get_thumbnail(
         return Ok(());
     }
 
-    match crate::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height) {
+    match crate::data::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height) {
         Ok(Some(DbThumbnail {
             // content_disposition,
             content_type,
@@ -395,7 +399,7 @@ pub async fn get_thumbnail(
 
     let thumb_path = crate::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail { content_type, .. }) =
-        crate::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
+        crate::data::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
         let file = NamedFile::builder(&thumb_path)
@@ -416,7 +420,7 @@ pub async fn get_thumbnail(
         disposition_type,
         content_type,
         ..
-    })) = crate::media::get_metadata(&args.server_name, &args.media_id)
+    })) = crate::data::media::get_metadata(&args.server_name, &args.media_id)
     {
         // Generate a thumbnail
         let image_path = crate::media_path(&args.server_name, &args.media_id);
@@ -492,7 +496,7 @@ pub async fn get_thumbnail(
                     resize_method: "_".into(),
                     created_at: UnixMillis::now(),
                 })
-                .execute(&mut *db::connect()?)?;
+                .execute(&mut connect()?)?;
             let mut f = File::create(&thumb_path).await?;
             f.write_all(&thumbnail_bytes).await?;
 

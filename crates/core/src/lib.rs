@@ -41,14 +41,15 @@ extern crate self as palpo_core;
 
 use std::fmt;
 
-use ::serde::{Deserialize, Serialize};
 use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
+use ::serde::{Deserialize, Serialize};
 
 pub use self::identifiers::*;
-pub use self::serde::{JsonValue, RawJson, RawJsonValue, canonical_json};
+pub use self::serde::{canonical_json, JsonValue, RawJson, RawJsonValue};
 pub use self::time::{UnixMillis, UnixSeconds};
 pub type Seqnum = i64;
+pub type MatrixResult<T> = Result<T, MatrixError>;
 
 // Wrapper around `Box<str>` that cannot be used in a meaningful way outside of
 // this crate:: Used for string enums because their `_Custom` variant can't be

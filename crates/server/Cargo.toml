@@ -8,6 +8,7 @@ homepage.workspace = true
 keywords.workspace = true
 repository.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 # [features]
 # manage = []
@@ -17,6 +18,7 @@ license.workspace = true
 [dependencies]
 palpo-core = { workspace = true, features = ["unstable-msc2654"] }
 palpo-macros = { workspace = true }
+palpo-data = { workspace = true }
 
 anyhow = { workspace = true }
 base64 = { workspace = true }

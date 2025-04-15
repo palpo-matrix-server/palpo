@@ -10,12 +10,13 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
+use crate::data::schema::*;
+use crate::data::connect;
 use crate::exts::*;
 use crate::room::state;
-use crate::schema::*;
 use crate::user::{DbProfile, NewDbPresence};
 use crate::{
-    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, db, diesel_exists, empty_ok, hoops, json_ok,
+    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, diesel_exists, empty_ok, hoops, json_ok,
 };
 
 pub fn public_router() -> Router {
@@ -57,7 +58,7 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
     } = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
         .filter(user_profiles::room_id.is_null())
-        .first::<DbProfile>(&mut *db::connect()?)?;
+        .first::<DbProfile>(&mut connect()?)?;
 
     json_ok(ProfileResBody {
         avatar_url,
@@ -95,7 +96,7 @@ async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonR
         avatar_url, blurhash, ..
     } = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
-        .first::<DbProfile>(&mut *db::connect()?)?;
+        .first::<DbProfile>(&mut connect()?)?;
 
     json_ok(AvatarUrlResBody {
         avatar_url,
@@ -125,7 +126,7 @@ async fn set_avatar_url(
     let query = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
         .filter(user_profiles::room_id.is_null());
-    if diesel_exists!(query, &mut *db::connect()?)? {
+    if diesel_exists!(query, &mut connect()?)? {
         #[derive(AsChangeset, Debug)]
         #[diesel(table_name = user_profiles, treat_none_as_null = true)]
         struct UpdateParams {
@@ -136,7 +137,7 @@ async fn set_avatar_url(
             avatar_url: avatar_url.clone(),
             blurhash,
         };
-        diesel::update(query).set(updata_params).execute(&mut *db::connect()?)?;
+        diesel::update(query).set(updata_params).execute(&mut connect()?)?;
     } else {
         return Err(StatusError::not_found().brief("Profile not found.").into());
     }

@@ -8,8 +8,9 @@ use crate::AuthArgs;
 use crate::core::federation::device::{Device, DevicesResBody};
 use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeysReqBody, QueryKeysResBody};
 use crate::core::identifiers::*;
-use crate::schema::*;
-use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, db, json_ok};
+use crate::data::schema::*;
+use crate::data::connect;
+use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("user")
@@ -59,7 +60,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
         .filter(device_streams::user_id.eq(&user_id))
         .select(device_streams::id)
         .order_by(device_streams::id.desc())
-        .first::<i64>(&mut *db::connect()?)
+        .first::<i64>(&mut connect()?)
         .optional()?
         .unwrap_or_default();
 
@@ -67,7 +68,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
     let devices_and_names = user_devices::table
         .filter(user_devices::user_id.eq(&user_id))
         .select((user_devices::device_id, user_devices::display_name))
-        .load::<(OwnedDeviceId, Option<String>)>(&mut *db::connect()?)?;
+        .load::<(OwnedDeviceId, Option<String>)>(&mut connect()?)?;
     for (device_id, display_name) in devices_and_names {
         devices.push(Device {
             keys: crate::user::get_device_keys_and_sigs(&user_id, &device_id)?

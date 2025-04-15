@@ -7,8 +7,9 @@ use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
-use crate::schema::*;
-use crate::{AuthArgs, DepotExt, JsonResult, db, hoops, json_ok};
+use crate::data::schema::*;
+use crate::data::connect;
+use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")
@@ -38,7 +39,7 @@ fn search(
         )
         .filter(user_profiles::user_id.ne(authed.user_id()))
         .select(user_profiles::user_id)
-        .load::<OwnedUserId>(&mut *db::connect()?)?;
+        .load::<OwnedUserId>(&mut connect()?)?;
 
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {

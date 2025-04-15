@@ -43,8 +43,10 @@ pub enum AppError {
     HttpParse(#[from] salvo::http::ParseError),
     #[error("reqwest: `{0}`")]
     Reqwest(#[from] reqwest::Error),
+    #[error("data: `{0}`")]
+    Data(#[from] crate::data::DataError),
     #[error("pool: `{0}`")]
-    Pool(#[from] crate::db::PoolError),
+    Pool(#[from] crate::data::PoolError),
     #[error("utf8: `{0}`")]
     Utf8Error(#[from] std::str::Utf8Error),
     // #[error("redis: `{0}`")]
