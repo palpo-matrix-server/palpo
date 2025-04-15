@@ -21,7 +21,7 @@
 server_name = "your.server.name"
 
 # The local address that the server listens on.
-listen_addr = "127.0.0.1:8008"
+listen_addr = "127.0.0.1:6006"
 #server_name= "127.0.0.1"
 
 # Max size for uploads
