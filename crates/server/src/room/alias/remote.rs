@@ -22,6 +22,10 @@ pub(super) async fn remote_resolve(
                     "Server {server} answered with {room_id:?} for {room_alias:?} servers: \
 					 {servers:?}"
                 );
+				println!(
+					"Server {server} answered with {room_id:?} for {room_alias:?} servers: \
+					 {servers:?}"
+				);
 
                 resolved_room_id.get_or_insert(room_id);
                 add_server(&mut resolved_servers, server);
