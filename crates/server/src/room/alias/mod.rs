@@ -54,12 +54,11 @@ pub async fn resolve_alias(
 ) -> AppResult<(OwnedRoomId, Vec<OwnedServerName>)> {
     let server_name = room_alias.server_name();
     let is_local_server = server_name.is_local();
-    println!("XXXXXXXXXXXXXXXXXX  is_local_server:{is_local_server}");
     let servers_contains_local = || {
-        println!("SSSSSSSSS  server_name:{server_name:?} Sververs: {:?}", servers);
+        let conf = crate::config();
         servers
             .as_ref()
-            .is_some_and(|servers| servers.contains(&server_name.to_owned()))
+            .is_some_and(|servers| servers.contains(&conf.server_name))
     };
 
     if !is_local_server && !servers_contains_local() {
