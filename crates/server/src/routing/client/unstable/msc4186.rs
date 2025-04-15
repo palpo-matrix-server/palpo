@@ -14,6 +14,7 @@ use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventT
 use crate::core::identifiers::*;
 use crate::core::{RawJson, Seqnum};
 use crate::event::ignored_filter;
+use crate::data;
 use crate::extract_variant;
 use crate::room::filter_rooms;
 use crate::routing::prelude::*;
@@ -40,9 +41,9 @@ pub(super) async fn sync_events_v5(
     let sender_id = authed.user_id();
     let mut body = body.into_inner();
     // Setup watchers, so if there's no response, we can wait for them
-    let watcher = crate::watch(sender_id, authed.device_id());
+    let watcher = crate::watcher::watch(sender_id, authed.device_id());
 
-    let next_batch = crate::curr_sn()? + 1;
+    let next_batch = data::curr_sn()? + 1;
 
     let conn_id = body.conn_id.clone();
 
@@ -308,7 +309,7 @@ async fn process_rooms(
         if body.extensions.account_data.enabled == Some(true) {
             response.extensions.account_data.rooms.insert(
                 room_id.to_owned(),
-                crate::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
+                data::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                     .collect::<Vec<_>>(),
@@ -486,7 +487,7 @@ fn collect_account_data(
         return Ok(sync_events::v5::AccountData::default());
     }
 
-    account_data.global = crate::user::data_changes(None, sender_id, global_since_sn, None)?
+    account_data.global = data::user::data_changes(None, sender_id, global_since_sn, None)?
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
         .collect();
@@ -495,7 +496,7 @@ fn collect_account_data(
         for room in rooms {
             account_data.rooms.insert(
                 room.clone(),
-                crate::user::data_changes(Some(room), sender_id, global_since_sn, None)?
+                data::user::data_changes(Some(room), sender_id, global_since_sn, None)?
                     .into_iter()
                     .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                     .collect(),

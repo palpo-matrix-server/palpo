@@ -12,6 +12,7 @@ use crate::core::events::receipt::ReceiptEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::extract_variant;
+use crate::data;
 use crate::room::{filter_rooms, state};
 use crate::routing::prelude::*;
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
@@ -32,9 +33,9 @@ pub(super) async fn sync_events_v4(
     let sender_id = authed.user_id();
 
     // Setup watchers, so if there's no response, we can wait for them
-    let watcher = crate::watch(sender_id, authed.device_id());
+    let watcher = crate::watcher::watch(sender_id, authed.device_id());
 
-    let next_batch = crate::curr_sn()? + 1;
+    let next_batch = data::curr_sn()? + 1;
     let mut body = body.into_inner();
 
     let conn_id = body
@@ -93,7 +94,7 @@ pub(super) async fn sync_events_v4(
     };
 
     if body.extensions.account_data.enabled.unwrap_or(false) {
-        account_data.global = crate::user::data_changes(None, sender_id, global_since_sn, Some(next_batch))
+        account_data.global = crate::data::user::data_changes(None, sender_id, global_since_sn, Some(next_batch))
             .unwrap_or_default()
             .into_iter()
             .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
@@ -103,7 +104,7 @@ pub(super) async fn sync_events_v4(
             for room in rooms {
                 account_data.rooms.insert(
                     room.clone(),
-                    crate::user::data_changes(Some(&room), sender_id, global_since_sn, Some(next_batch))
+                    crate::data::user::data_changes(Some(&room), sender_id, global_since_sn, Some(next_batch))
                         .unwrap_or_default()
                         .into_iter()
                         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
@@ -209,7 +210,7 @@ pub(super) async fn sync_events_v4(
                                 })
                                 .filter(|user_id| {
                                     // Only send keys if the sender doesn't share an encrypted room with the target already
-                                    !crate::bl::sync_v3::share_encrypted_room(sender_id, user_id, Some(&room_id))
+                                    !crate::sync_v3::share_encrypted_room(sender_id, user_id, Some(&room_id))
                                         .unwrap_or(false)
                                 }),
                         );
@@ -379,7 +380,7 @@ pub(super) async fn sync_events_v4(
 
         account_data.rooms.insert(
             room_id.to_owned(),
-            crate::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
+            crate::data::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
                 .into_iter()
                 .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
                 .collect(),
@@ -552,7 +553,7 @@ pub(super) async fn sync_events_v4(
             },
             account_data: AccountData {
                 global: if body.extensions.account_data.enabled.unwrap_or(false) {
-                    crate::user::data_changes(None, sender_id, global_since_sn, None)?
+                    crate::data::user::data_changes(None, sender_id, global_since_sn, None)?
                         .into_iter()
                         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
                         .collect()

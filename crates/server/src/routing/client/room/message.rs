@@ -8,9 +8,10 @@ use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody, SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::diesel_exists;
-use crate::schema::*;
-use crate::{AuthArgs, JsonResult, JsonValue, MatrixError, PduBuilder, db, exts::*, json_ok};
+use crate::core::serde::JsonValue;
+use crate::data::schema::*;
+use crate::diesel_exists;use crate::data::connect;
+use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, data, exts::*, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -30,7 +31,7 @@ pub(super) async fn get_messages(
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("join")),
-        &mut *db::connect()?
+        &mut connect()?
     )?;
     let until_sn = if !is_joined {
         let Some((until_sn, forgotten)) = room_users::table
@@ -38,7 +39,7 @@ pub(super) async fn get_messages(
             .filter(room_users::user_id.eq(authed.user_id()))
             .filter(room_users::membership.eq("leave"))
             .select((room_users::event_sn, room_users::forgotten))
-            .first::<(i64, bool)>(&mut *db::connect()?)
+            .first::<(i64, bool)>(&mut connect()?)
             .optional()?
         else {
             return Err(MatrixError::forbidden("You aren’t a member of the room.").into());

@@ -341,10 +341,6 @@ pub fn auth_check<E: Event>(
         }
     } else {
         // If no power level event found the creator gets 100 everyone else gets 0
-        println!(
-            "c    ccccccccccccc   room_version.use_room_create_sender {}=={}",
-            room_version.use_room_create_sender, sender
-        );
         let is_creator = if room_version.use_room_create_sender {
             room_create_event.sender() == sender
         } else {

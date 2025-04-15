@@ -12,11 +12,11 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
-use crate::schema::*;
+use crate::data::schema::*;use crate::data::connect;
 use crate::user::{NewDbPresence, NewDbProfile};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, db, diesel_exists, empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, data, diesel_exists, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {
@@ -151,7 +151,7 @@ fn register(
             avatar_url: None,
             blurhash: None,
         })
-        .execute(&mut db::connect()?)?;
+        .execute(&mut connect()?)?;
 
     // Presence update
     crate::user::set_presence(
@@ -170,7 +170,7 @@ fn register(
     )?;
 
     // Initial account data
-    crate::user::set_data(
+    crate::data::user::set_data(
         &user_id,
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
@@ -247,7 +247,7 @@ async fn available(username: QueryParam<String, true>) -> JsonResult<AvailableRe
 
     // Check if username is creative enough
     let query = users::table.find(&user_id);
-    if diesel_exists!(query, &mut *db::connect()?)? {
+    if diesel_exists!(query, &mut connect()?)? {
         return Err(MatrixError::user_in_use("Desired user ID is already taken.").into());
     }
 

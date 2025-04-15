@@ -6,7 +6,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::bl::exts::*;
+use crate::exts::*;
 use crate::core::client::membership::{
     BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomByIdOrAliasReqBody, JoinRoomByIdReqBody,
     JoinRoomResBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs,
@@ -18,15 +18,15 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
-use crate::membership::banned_room_check;
-use crate::membership::knock_room_by_id;
+use crate::data::schema::*;
+use crate::data::connect;
+use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
-use crate::schema::*;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, db, diesel_exists, empty_ok,
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, data, diesel_exists, empty_ok,
     json_ok,
 };
 
@@ -52,7 +52,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
                 .filter(event_points::frame_id.is_not_null())
                 .order(event_points::frame_id.desc())
                 .select(event_points::frame_id)
-                .first::<Option<i64>>(&mut db::connect()?)?
+                .first::<Option<i64>>(&mut connect()?)?
                 .unwrap_or_default()
         } else {
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
@@ -257,7 +257,9 @@ pub(crate) async fn join_room_by_id_or_alias(
     //
     // When deserializing, the value is read from `via` if it's not missing or
     // empty and `server_name` otherwise.
-    let mut via = via.into_inner().unwrap_or_else(||server_name.into_inner().unwrap_or_default());
+    let mut via = via
+        .into_inner()
+        .unwrap_or_else(|| server_name.into_inner().unwrap_or_default());
 
     let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
@@ -470,7 +472,7 @@ pub(super) async fn kick_user(
         room_users::table
             .filter(room_users::user_id.eq(&body.user_id))
             .filter(room_users::membership.eq_any(["join", "invite"])),
-        &mut db::connect()?
+        &mut connect()?
     )? {
         return Err(MatrixError::forbidden("User are not in the room.").into());
     }

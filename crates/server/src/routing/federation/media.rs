@@ -14,10 +14,12 @@ use tokio::io::AsyncWriteExt;
 
 use crate::core::UnixMillis;
 use crate::core::federation::media::*;
+use crate::data::schema::*;
 use crate::media::*;
-use crate::schema::*;
+use crate::data::media::*;
+use crate::data::connect;
 use crate::utils::content_disposition::make_content_disposition;
-use crate::{AppResult, AuthArgs, MatrixError, db, hoops};
+use crate::{AppResult, AuthArgs, MatrixError, data, hoops};
 
 pub fn router() -> Router {
     Router::with_path("media")
@@ -33,7 +35,7 @@ pub fn router() -> Router {
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
     let server_name = crate::server_name();
-    if let Some(metadata) = crate::media::get_metadata(server_name, &args.media_id)? {
+    if let Some(metadata) = crate::data::media::get_metadata(server_name, &args.media_id)? {
         let content_type = metadata
             .content_type
             .as_deref()
@@ -72,7 +74,7 @@ pub async fn get_thumbnail(
 ) -> AppResult<()> {
     let server_name = crate::server_name();
     if let Some(DbThumbnail { content_type, .. }) =
-        crate::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
+        crate::data::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
     {
         let thumb_path = crate::media_path(
             server_name,
@@ -98,7 +100,7 @@ pub async fn get_thumbnail(
 
     let thumb_path = crate::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail { content_type, .. }) =
-        crate::media::get_thumbnail(server_name, &args.media_id, width, height)?
+        crate::data::media::get_thumbnail(server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
         let content_disposition =
@@ -118,7 +120,7 @@ pub async fn get_thumbnail(
         disposition_type,
         content_type,
         ..
-    })) = crate::media::get_metadata(server_name, &args.media_id)
+    })) = crate::data::media::get_metadata(server_name, &args.media_id)
     {
         // Generate a thumbnail
         let image_path = crate::media_path(server_name, &args.media_id);
@@ -192,7 +194,7 @@ pub async fn get_thumbnail(
                     resize_method: "_".into(),
                     created_at: UnixMillis::now(),
                 })
-                .execute(&mut *db::connect()?)?;
+                .execute(&mut connect()?)?;
             let mut f = File::create(&thumb_path).await?;
             f.write_all(&thumbnail_bytes).await?;
 

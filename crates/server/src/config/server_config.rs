@@ -1,11 +1,12 @@
 use std::fmt;
 
-use super::DbConfig;
-use crate::core::{OwnedServerName, RoomVersionId};
-use crate::env_vars::required_var;
-use crate::{false_value, true_value};
 use salvo::http::HeaderValue;
 use serde::Deserialize;
+
+use crate::data::DbConfig;
+use crate::core::serde::{default_false, default_true};
+use crate::core::{OwnedServerName, RoomVersionId};
+use crate::env_vars::required_var;
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct WellKnownConfig {
@@ -26,9 +27,9 @@ pub struct ServerConfig {
     pub listen_addr: String,
     pub server_name: OwnedServerName,
     pub db: DbConfig,
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub enable_lightning_bolt: bool,
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub allow_check_for_updates: bool,
     #[serde(default = "default_pdu_cache_capacity")]
     pub pdu_cache_capacity: u32,
@@ -40,28 +41,28 @@ pub struct ServerConfig {
     pub max_concurrent_requests: u16,
     #[serde(default = "default_max_fetch_prev_events")]
     pub max_fetch_prev_events: u16,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_registration: bool,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_outgoing_read_receipts: bool,
     pub registration_token: Option<String>,
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub allow_encryption: bool,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_federation: bool,
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub allow_room_creation: bool,
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub allow_unstable_room_versions: bool,
     #[serde(default = "default_room_version")]
     pub room_version: RoomVersionId,
     pub well_known_client: Option<String>,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_jaeger: bool,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub tracing_flame: bool,
 
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub enable_admin_room: bool,
 
     // #[serde(default)]
@@ -86,11 +87,11 @@ pub struct ServerConfig {
 
     pub emergency_password: Option<String>,
 
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_local_presence: bool,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_incoming_presence: bool,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub allow_outgoing_presence: bool,
     #[serde(default = "default_presence_idle_timeout_s")]
     pub presence_idle_timeout_s: u64,
@@ -112,7 +113,7 @@ pub struct ServerConfig {
     pub well_known: WellKnownConfig,
 
     pub auto_acme: Option<String>,
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     pub enable_tls: bool,
 
     /// Whether to query the servers listed in trusted_servers first or query
@@ -134,7 +135,7 @@ pub struct ServerConfig {
     /// willing to tolerate delays are advised to set this to false. Note that
     /// setting query_trusted_key_servers_first to true causes this option to
     /// be ignored.
-    #[serde(default = "true_value")]
+    #[serde(default = "default_true")]
     pub query_trusted_key_servers_first_on_join: bool,
 
     /// Only query trusted servers for keys and never the origin server. This is
@@ -150,6 +151,26 @@ pub struct ServerConfig {
     /// default: 1024
     #[serde(default = "default_trusted_server_batch_size")]
     pub trusted_server_batch_size: usize,
+
+    /// Retry failed and incomplete messages to remote servers immediately upon
+    /// startup. This is called bursting. If this is disabled, said messages may
+    /// not be delivered until more messages are queued for that server. Do not
+    /// change this option unless server resources are extremely limited or the
+    /// scale of the server's deployment is huge. Do not disable this unless you
+    /// know what you are doing.
+    #[serde(default = "default_true")]
+    pub startup_netburst: bool,
+
+    /// Messages are dropped and not reattempted. The `startup_netburst` option
+    /// must be enabled for this value to have any effect. Do not change this
+    /// value unless you know what you are doing. Set this value to -1 to
+    /// reattempt every message without trimming the queues; this may consume
+    /// significant disk. Set this value to 0 to drop all messages without any
+    /// attempt at redelivery.
+    ///
+    /// default: 50
+    #[serde(default = "default_startup_netburst_keep")]
+    pub startup_netburst_keep: i64,
 }
 
 fn default_trusted_server_batch_size() -> usize {
@@ -158,6 +179,10 @@ fn default_trusted_server_batch_size() -> usize {
 
 fn default_space_path() -> String {
     "./space".into()
+}
+
+fn default_startup_netburst_keep() -> i64 {
+    50
 }
 
 impl fmt::Display for ServerConfig {
@@ -204,7 +229,11 @@ impl fmt::Display for ServerConfig {
                 }
             }),
             ("TURN secret", {
-                if self.turn_secret.is_empty() { "not set" } else { "set" }
+                if self.turn_secret.is_empty() {
+                    "not set"
+                } else {
+                    "set"
+                }
             }),
             ("Turn TTL", &self.turn_ttl.to_string()),
             ("Turn URIs", {
@@ -220,7 +249,7 @@ impl fmt::Display for ServerConfig {
         let mut msg: String = "Active config values:\n\n".to_owned();
 
         for line in lines.into_iter().enumerate() {
-            msg += &format!("{}: {}\n", line.1.0, line.1.1);
+            msg += &format!("{}: {}\n", line.1 .0, line.1 .1);
         }
 
         write!(f, "{msg}")

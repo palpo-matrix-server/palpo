@@ -149,7 +149,7 @@ fn set_read_markers(
                 event_id: fully_read.clone(),
             },
         };
-        crate::user::set_data(
+        crate::data::user::set_data(
             authed.user_id(),
             Some(room_id.clone()),
             &RoomAccountDataEventType::FullyRead.to_string(),

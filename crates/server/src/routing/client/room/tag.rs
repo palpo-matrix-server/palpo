@@ -17,7 +17,7 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, json_ok};
 pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut Depot) -> JsonResult<TagsResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data_content = crate::user::get_data::<TagEventContent>(
+    let user_data_content = crate::data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
@@ -42,7 +42,7 @@ pub(super) async fn upsert_tag(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data_content = crate::user::get_data::<TagEventContent>(
+    let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
@@ -53,7 +53,7 @@ pub(super) async fn upsert_tag(
         .tags
         .insert(args.tag.clone().into(), body.tag_info.clone());
 
-    crate::user::set_data(
+    crate::data::user::set_data(
         authed.user_id(),
         Some(args.room_id.clone()),
         &RoomAccountDataEventType::Tag.to_string(),
@@ -70,7 +70,7 @@ pub(super) async fn upsert_tag(
 pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data_content = crate::user::get_data::<TagEventContent>(
+    let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
@@ -79,7 +79,7 @@ pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &m
 
     user_data_content.tags.remove(&args.tag.clone().into());
 
-    crate::user::set_data(
+    crate::data::user::set_data(
         authed.user_id(),
         Some(args.room_id.clone()),
         &RoomAccountDataEventType::Tag.to_string(),

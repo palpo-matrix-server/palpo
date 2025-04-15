@@ -6,9 +6,9 @@ use salvo::prelude::*;
 
 use crate::core::client::backup::*;
 use crate::core::serde::RawJson;
-use crate::schema::*;
+use crate::data::schema::*;use crate::data::connect;
 use crate::user::key_backup::{self, DbRoomKey, DbRoomKeysVersion};
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, db, empty_ok, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("room_keys")
@@ -53,7 +53,7 @@ async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Dep
     let rooms = e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(authed.user_id()))
         .filter(e2e_room_keys::version.eq(version))
-        .load::<DbRoomKey>(&mut *db::connect()?)?
+        .load::<DbRoomKey>(&mut connect()?)?
         .into_iter()
         .map(|rk| {
             let DbRoomKey {
@@ -89,7 +89,7 @@ async fn get_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mu
         .filter(e2e_room_keys::room_id.eq(&args.room_id))
         .filter(e2e_room_keys::session_id.eq(&args.session_id))
         // .select(e2e_room_keys::session_data)
-        .first::<DbRoomKey>(&mut *db::connect()?)
+        .first::<DbRoomKey>(&mut connect()?)
         .optional()?
         .ok_or(MatrixError::not_found("Backup key not found for this user's session."))?
         .into();
