@@ -6,7 +6,6 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::exts::*;
 use crate::core::client::membership::{
     BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomByIdOrAliasReqBody, JoinRoomByIdReqBody,
     JoinRoomResBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs,
@@ -18,8 +17,9 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
-use crate::data::schema::*;
 use crate::data::connect;
+use crate::data::schema::*;
+use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;

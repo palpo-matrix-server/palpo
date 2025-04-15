@@ -14,10 +14,10 @@ use tokio::io::AsyncWriteExt;
 
 use crate::core::UnixMillis;
 use crate::core::federation::media::*;
+use crate::data::connect;
+use crate::data::media::*;
 use crate::data::schema::*;
 use crate::media::*;
-use crate::data::media::*;
-use crate::data::connect;
 use crate::utils::content_disposition::make_content_disposition;
 use crate::{AppResult, AuthArgs, MatrixError, data, hoops};
 

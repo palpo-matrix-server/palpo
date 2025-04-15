@@ -4,9 +4,9 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
+use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::*;
-use crate::data::connect;
 use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, data, empty_ok, hoops, utils};
 
 pub fn authed_router() -> Router {

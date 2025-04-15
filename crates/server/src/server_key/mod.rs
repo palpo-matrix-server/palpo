@@ -16,8 +16,8 @@ use crate::core::serde::{Base64, CanonicalJsonObject, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
 use crate::core::{JsonValue, OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis};
 use crate::data::connect;
-use crate::data::schema::*;
 use crate::data::misc::DbServerSigningKeys;
+use crate::data::schema::*;
 use crate::utils::timepoint_from_now;
 use crate::{AppError, AppResult, data, exts::*};
 

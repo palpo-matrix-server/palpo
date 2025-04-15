@@ -1,5 +1,3 @@
-
-
 use std::collections::{BTreeMap, HashMap};
 use std::error::Error as StdError;
 use std::future::Future;
@@ -31,11 +29,10 @@ use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
 use crate::core::signatures::Ed25519KeyPair;
 use crate::core::{Seqnum, UnixMillis};
-use crate::data::{ connect};
-use crate::data::misc::{DbServerSigningKeys};
+use crate::data::connect;
+use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
-use crate::{AppResult, SigningKeys, MatrixError, ServerConfig};
-
+use crate::{AppResult, MatrixError, ServerConfig, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
