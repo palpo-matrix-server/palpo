@@ -13,11 +13,11 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::data::user::{NewDbPresence, NewDbProfile};
+use crate::data::{connect, diesel_exists};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH,  empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {

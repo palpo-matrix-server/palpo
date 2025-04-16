@@ -1,10 +1,10 @@
 use diesel::prelude::*;
 
+use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::{OwnedMxcUri, OwnedRoomId};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_profiles)]

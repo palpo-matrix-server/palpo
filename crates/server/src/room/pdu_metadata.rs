@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use serde::Deserialize;
 
+use crate::AppResult;
 use crate::core::Direction;
 use crate::core::client::relation::RelationEventsResBody;
 use crate::core::events::{TimelineEventType, relation::RelationType};
@@ -8,7 +9,6 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::PduEvent;
-use crate::{AppResult, };
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {

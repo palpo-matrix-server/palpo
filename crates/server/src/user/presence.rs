@@ -1,16 +1,8 @@
-use std::collections::HashMap;
-
-use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
-
+use crate::AppResult;
 use crate::core::UnixMillis;
-use crate::core::events::presence::{PresenceEvent, PresenceEventContent};
+use crate::core::UserId;
 use crate::core::presence::PresenceState;
-use crate::core::{OwnedUserId, UserId};
-use crate::data::connect;
-use crate::data::schema::*;
-use crate::data::user::{set_presence, NewDbPresence, last_presence};
-use crate::{AppError, AppResult, MatrixError, data};
+use crate::data::user::{NewDbPresence, last_presence, set_presence};
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {

@@ -21,7 +21,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::PduEvent;
-use crate::{AppError, AppResult, AuthedInfo, data};
+use crate::{AppError, AppResult, AuthedInfo};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = pushers)]

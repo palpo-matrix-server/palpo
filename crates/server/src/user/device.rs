@@ -8,7 +8,7 @@ use crate::core::{JsonValue, RawJson, Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::user::NewDbAccessToken;
-use crate::{AppError, AppResult, data};
+use crate::{AppError, AppResult};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]

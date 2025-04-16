@@ -6,7 +6,7 @@ use crate::AppResult;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
-use crate::core::{JsonValue, RawJson, Seqnum, };
+use crate::core::{JsonValue, RawJson, Seqnum};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 

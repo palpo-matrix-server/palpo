@@ -24,14 +24,12 @@ use crate::appservice::RegistrationInfo;
 use crate::core::directory::RoomTypeFilter;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
-use crate::core::events::{
-     AnySyncStateEvent, StateEventType,
-};
+use crate::core::events::{AnySyncStateEvent, StateEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
-use crate::data::{ connect, diesel_exists};
+use crate::data::{connect, diesel_exists};
 use crate::{APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]

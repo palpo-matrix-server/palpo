@@ -2,7 +2,7 @@ use diesel::prelude::*;
 
 use crate::core::identifiers::*;
 use crate::data::schema::*;
-use crate::data::{self, connect, diesel_exists};
+use crate::data::{connect, diesel_exists};
 use crate::{AppResult, MatrixError};
 
 /// Makes a user forget a room.

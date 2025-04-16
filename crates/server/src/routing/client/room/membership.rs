@@ -24,7 +24,7 @@ use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder,  empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, empty_ok, json_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -253,7 +253,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     //
     // When deserializing, the value is read from `via` if it's not missing or
     // empty and `server_name` otherwise.
-    let mut via = via
+    let via = via
         .into_inner()
         .unwrap_or_else(|| server_name.into_inner().unwrap_or_default());
 

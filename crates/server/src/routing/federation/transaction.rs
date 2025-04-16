@@ -12,8 +12,8 @@ use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::{RawJsonValue, UnixMillis};
-use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::data::user::NewDbPresence;
+use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn router() -> Router {

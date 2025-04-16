@@ -2,10 +2,10 @@ use diesel::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
+use crate::AppResult;
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppResult, };
 
 pub const LAZY_LOAD_WAITING: LazyLock<
     Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,
