@@ -361,7 +361,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(room_id).await;
+    // let mutex_lock = crate::room::event_handler.mutex_federation.lock(room_id).await;
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &args.room_id, value, true).await?;
     // drop(mutex_lock);
 

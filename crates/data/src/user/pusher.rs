@@ -84,7 +84,7 @@ pub fn get_pusher(user_id: &UserId, pushkey: &str) -> DataResult<Option<Pusher>>
         .filter(pushers::user_id.eq(user_id))
         .filter(pushers::pushkey.eq(pushkey))
         .order_by(pushers::id.desc())
-        .first::<DbPusher>(&mut *connect()?)
+        .first::<DbPusher>(&mut connect()?)
         .optional()?;
     if let Some(pusher) = pusher {
         pusher.try_into().map(Option::Some)
@@ -97,7 +97,7 @@ pub fn get_pushers(user_id: &UserId) -> DataResult<Vec<DbPusher>> {
     pushers::table
         .filter(pushers::user_id.eq(user_id))
         .order_by(pushers::id.desc())
-        .load::<DbPusher>(&mut *connect()?)
+        .load::<DbPusher>(&mut connect()?)
         .map_err(Into::into)
 }
 
@@ -132,6 +132,6 @@ pub fn get_push_keys(user_id: &UserId) -> DataResult<Vec<String>> {
     pushers::table
         .filter(pushers::user_id.eq(user_id))
         .select(pushers::pushkey)
-        .load::<String>(&mut *connect()?)
+        .load::<String>(&mut connect()?)
         .map_err(Into::into)
 }

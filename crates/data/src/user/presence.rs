@@ -70,7 +70,7 @@ impl DbPresence {
 pub fn last_presence(user_id: &UserId) -> DataResult<PresenceEvent> {
     let presence = user_presences::table
         .filter(user_presences::user_id.eq(user_id))
-        .first::<DbPresence>(&mut *connect()?)
+        .first::<DbPresence>(&mut connect()?)
         .optional()?;
     if let Some(data) = presence {
         Ok(data.to_presence_event(user_id)?)
@@ -125,7 +125,7 @@ pub fn remove_presence(user_id: &UserId) -> DataResult<()> {
 pub fn presences_since(since_sn: i64) -> DataResult<HashMap<OwnedUserId, PresenceEvent>> {
     let presences = user_presences::table
         .filter(user_presences::occur_sn.ge(since_sn))
-        .load::<DbPresence>(&mut *connect()?)?;
+        .load::<DbPresence>(&mut connect()?)?;
     presences
         .into_iter()
         .map(|presence| {

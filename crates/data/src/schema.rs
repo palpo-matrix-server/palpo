@@ -390,6 +390,23 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    media_url_previews (id) {
+        id -> Int8,
+        url -> Text,
+        title -> Nullable<Text>,
+        description -> Nullable<Text>,
+        image -> Nullable<Text>,
+        image_size -> Nullable<Int8>,
+        image_width -> Nullable<Int4>,
+        image_height -> Nullable<Int4>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     outgoing_requests (id) {
         id -> Int8,
         kind -> Text,
@@ -930,6 +947,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     lazy_load_deliveries,
     media_metadatas,
     media_thumbnails,
+    media_url_previews,
     outgoing_requests,
     pushers,
     room_aliases,

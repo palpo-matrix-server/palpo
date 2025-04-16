@@ -81,7 +81,7 @@ async fn handle_pdus(
     for (event_id, value, room_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        // let mutex_lock = services.rooms.event_handler.mutex_federation.lock(&room_id).await;
+        // let mutex_lock = crate::room::event_handler.mutex_federation.lock(&room_id).await;
 
         let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true)
             .await

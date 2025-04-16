@@ -8,7 +8,7 @@ pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&Eve
 
     crate::event::handler::acl_check(origin, room_id)?;
 
-    // let world_readable = self.services.rooms.state_accessor.is_world_readable(room_id);
+    // let world_readable = crate::room::is_world_readable(room_id);
 
     // if any user on our homeserver is trying to knock this room, we'll need to
     // acknowledge bans or leaves

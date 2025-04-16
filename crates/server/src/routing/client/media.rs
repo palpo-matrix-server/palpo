@@ -15,8 +15,9 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
+use crate::core::UnixMillis;
 use crate::core::client::media::*;
-use crate::core::{OwnedMxcUri, UnixMillis};
+use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail};
 use crate::data::schema::*;
@@ -141,13 +142,6 @@ pub async fn get_content_with_filename(
 pub fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     let media_id = utils::random_string(crate::MXC_LENGTH);
     let mxc = format!("mxc://{}/{}", crate::server_name(), media_id);
-    // TODO: ?
-    // diesel::insert_into(media_contents::table)
-    //     .values(&NewMediaContent {
-    //         media_id: &media_id,
-    //         created_ts: chrono::Utc::now().timestamp_millis() as i64,
-    //     })
-    //     .execute(&mut connect()?)?;
     Ok(Json(CreateMxcUriResBody {
         content_uri: OwnedMxcUri::from(mxc),
         unused_expires_at: None,
@@ -178,7 +172,10 @@ pub async fn create_content(
     // let media_id = checksum.to_base32_crockford();
 
     let media_id = utils::base32_crockford(Uuid::new_v4().as_bytes());
-    let mxc = format!("mxc://{}/{}", crate::server_name(), media_id);
+    let mxc = Mxc {
+        server_name: crate::server_name(),
+        media_id: &media_id,
+    };
 
     let conf = crate::config();
     let dest_path = crate::media_path(&conf.server_name, &media_id);
@@ -200,7 +197,7 @@ pub async fn create_content(
         file.write_all(&payload).await?;
 
         let metadata = NewDbMetadata {
-            media_id,
+            media_id: media_id.clone(),
             origin_server: conf.server_name.clone(),
             disposition_type: Some("inline".into()),
             content_type: args.content_type.clone(),
@@ -212,16 +209,14 @@ pub async fn create_content(
             created_at: UnixMillis::now(),
         };
 
-        diesel::insert_into(media_metadatas::table)
-            .values(&metadata)
-            .execute(&mut connect()?)?;
+        crate::data::media::insert_metadata(&metadata)?;
         //TODO: thumbnail support
     } else {
         return Err(MatrixError::cannot_overwrite_media("Media ID already has content").into());
     }
 
     json_ok(CreateContentResBody {
-        content_uri: mxc.try_into().unwrap(),
+        content_uri: mxc.to_string().into(),
         blurhash: None,
     })
 }
@@ -281,9 +276,7 @@ pub async fn upload_content(
             created_at: UnixMillis::now(),
         };
 
-        diesel::insert_into(media_metadatas::table)
-            .values(&metadata)
-            .execute(&mut connect()?)?;
+        crate::data::media::insert_metadata(&metadata)?;
 
         //TODO: thumbnail support
         empty_ok()
@@ -301,10 +294,30 @@ pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
     })
 }
 
+/// # `GET /_matrix/client/v1/media/preview_url`
+///
+/// Returns URL preview.
 #[endpoint]
-pub async fn preview_url(_aa: AuthArgs) -> EmptyResult {
-    // TODO: todo
-    empty_ok()
+pub async fn preview_url(
+    _aa: AuthArgs,
+    args: MediaPreviewReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<MediaPreviewResBody> {
+    let sender_id = depot.authed_info()?.user_id();
+
+    let url =
+        Url::parse(&args.url).map_err(|e| MatrixError::invalid_param(format!("Requested URL is not valid: {e}")))?;
+
+    if !crate::media::url_preview_allowed(&url) {
+        return Err(MatrixError::forbidden("URL is not allowed to be previewed").into());
+    }
+
+    let preview = crate::media::get_url_preview(&url).await?;
+
+    let res_body = serde_json::value::to_raw_value(&preview)
+        .map(MediaPreviewResBody::from_raw_value)
+        .map_err(|e| MatrixError::unknown(format!("Failed to parse URL preview: {e}")))?;
+    json_ok(res_body)
 }
 
 //// #GET /_matrix/media/r0/thumbnail/{server_name}/{media_id}

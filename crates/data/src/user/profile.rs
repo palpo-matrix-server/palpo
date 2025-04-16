@@ -33,10 +33,10 @@ pub fn get_profile(user_id: &UserId, room_id: Option<&RoomId>) -> DataResult<Opt
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.eq(room_id))
-            .first::<DbProfile>(&mut *connect()?)
+            .first::<DbProfile>(&mut connect()?)
             .optional()?
     } else {
-        let conn = &mut *connect()?;
+        let conn = &mut connect()?;
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.is_null())

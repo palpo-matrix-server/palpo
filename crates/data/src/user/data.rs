@@ -43,7 +43,7 @@ pub fn set_data(
             .filter(user_datas::user_id.eq(user_id))
             .filter(user_datas::room_id.eq(room_id))
             .filter(user_datas::data_type.eq(event_type))
-            .first::<DbUserData>(&mut *connect()?)
+            .first::<DbUserData>(&mut connect()?)
             .optional()?;
         if let Some(user_data) = user_data {
             if user_data.json_data == json_data {
@@ -55,7 +55,7 @@ pub fn set_data(
             .filter(user_datas::user_id.eq(user_id))
             .filter(user_datas::room_id.is_null())
             .filter(user_datas::data_type.eq(event_type))
-            .first::<DbUserData>(&mut *connect()?)
+            .first::<DbUserData>(&mut connect()?)
             .optional()?;
         if let Some(user_data) = user_data {
             if user_data.json_data == json_data {
@@ -77,7 +77,7 @@ pub fn set_data(
         .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
         .do_update()
         .set(&new_data)
-        .get_result::<DbUserData>(&mut *connect()?)
+        .get_result::<DbUserData>(&mut connect()?)
         .map_err(Into::into)
 }
 
@@ -88,7 +88,7 @@ pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>,
         .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
         .filter(user_datas::data_type.eq(kind))
         .order_by(user_datas::id.desc())
-        .first::<DbUserData>(&mut *connect()?)
+        .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
         Ok(Some(serde_json::from_value(row.json_data)?))
@@ -105,7 +105,7 @@ pub fn get_room_data<E: DeserializeOwned>(user_id: &UserId, room_id: &RoomId, ki
         .filter(user_datas::room_id.eq(room_id))
         .filter(user_datas::data_type.eq(kind))
         .order_by(user_datas::id.desc())
-        .first::<DbUserData>(&mut *connect()?)
+        .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
         Ok(Some(serde_json::from_value(row.json_data)?))
@@ -121,7 +121,7 @@ pub fn get_global_data<E: DeserializeOwned>(user_id: &UserId, kind: &str) -> Dat
         .filter(user_datas::room_id.is_null())
         .filter(user_datas::data_type.eq(kind))
         .order_by(user_datas::id.desc())
-        .first::<DbUserData>(&mut *connect()?)
+        .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
         Ok(Some(serde_json::from_value(row.json_data)?))
@@ -149,11 +149,11 @@ pub fn data_changes(
         query
             .filter(user_datas::occur_sn.le(until_sn))
             .order_by(user_datas::occur_sn.asc())
-            .load::<DbUserData>(&mut *connect()?)?
+            .load::<DbUserData>(&mut connect()?)?
     } else {
         query
             .order_by(user_datas::occur_sn.asc())
-            .load::<DbUserData>(&mut *connect()?)?
+            .load::<DbUserData>(&mut connect()?)?
     };
 
     for db_data in db_datas {
