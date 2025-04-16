@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppError, AppResult, data};
+use crate::{AppError, AppResult};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]

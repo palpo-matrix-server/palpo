@@ -1,37 +1,15 @@
-use std::collections::{BTreeMap, HashMap};
-use std::error::Error as StdError;
 use std::future::Future;
-use std::net::{IpAddr, SocketAddr};
-use std::ops::Deref;
-use std::path::PathBuf;
 use std::pin::Pin;
-use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
-use std::time::{Duration, Instant, SystemTime};
-use std::{future, iter};
+use std::time::Duration;
 
 use diesel::prelude::*;
-use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
-use hickory_resolver::Resolver as HickoryResolver;
-use hickory_resolver::config::*;
-use hickory_resolver::name_server::TokioConnectionProvider;
-use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
-use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use salvo::oapi::ToSchema;
-use serde::{Deserialize, Serialize};
-use tokio::sync::{Semaphore, broadcast, watch::Receiver};
-use tower_service::Service as TowerService;
+use futures_util::{StreamExt, stream::FuturesUnordered};
 
-use crate::core::client::sync_events;
-use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
+use crate::AppResult;
+use crate::core::Seqnum;
 use crate::core::identifiers::*;
-use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
-use crate::core::signatures::Ed25519KeyPair;
-use crate::core::{Seqnum, UnixMillis};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, ServerConfig};
 
 pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let inbox_id = device_inboxes::table

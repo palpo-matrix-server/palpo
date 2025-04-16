@@ -1,33 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
-use std::error::Error as StdError;
-use std::future::Future;
-use std::net::{IpAddr, SocketAddr};
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::pin::Pin;
-use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
-use std::time::{Duration, Instant, SystemTime};
-use std::{future, iter};
+use std::collections::BTreeMap;
+use std::time::{Duration, SystemTime};
 
-use diesel::prelude::*;
-use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
-use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
-use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use salvo::oapi::ToSchema;
-use serde::{Deserialize, Serialize};
-use tokio::sync::{Semaphore, broadcast, watch::Receiver};
+use serde::Deserialize;
 
-use crate::core::client::sync_events;
+use crate::core::UnixMillis;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
-use crate::core::identifiers::*;
-use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
-use crate::core::signatures::Ed25519KeyPair;
-use crate::core::{Seqnum, UnixMillis};
-use crate::data::connect;
-use crate::data::schema::*;
-use crate::{AppResult, MatrixError, ServerConfig};
+use crate::core::serde::Base64;
 
 /// Similar to ServerSigningKeys, but drops a few unnecessary fields we don't require post-validation
 #[derive(Deserialize, Debug, Clone)]

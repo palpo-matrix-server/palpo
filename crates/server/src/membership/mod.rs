@@ -17,7 +17,7 @@ use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
 use crate::room::state;
-use crate::{AppError, AppResult, MatrixError, SigningKeys, data};
+use crate::{AppError, AppResult, MatrixError, SigningKeys};
 
 mod banned;
 mod forget;

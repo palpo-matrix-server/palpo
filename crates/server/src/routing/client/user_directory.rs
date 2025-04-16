@@ -9,7 +9,7 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")

@@ -19,7 +19,7 @@ use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::utils::timepoint_from_now;
-use crate::{AppError, AppResult, data, exts::*};
+use crate::{AppError, AppResult, exts::*};
 
 pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
 pub type PubKeyMap = PublicKeyMap;

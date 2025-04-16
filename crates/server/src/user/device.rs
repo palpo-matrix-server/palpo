@@ -5,10 +5,10 @@ use crate::core::client::device::Device;
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
 use crate::core::{JsonValue, RawJson, Seqnum, UnixMillis};
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::user::NewDbAccessToken;
-use crate::{AppError, AppResult, data, diesel_exists};
+use crate::{AppError, AppResult};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]

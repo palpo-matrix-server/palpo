@@ -7,7 +7,7 @@ use crate::event::{PduBuilder, gen_event_id_canonical_json};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
 use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError};
 
-pub(crate) async fn invite_user(
+pub async fn invite_user(
     inviter_id: &UserId,
     invitee_id: &UserId,
     room_id: &RoomId,

@@ -3,9 +3,6 @@ use std::{
     sync::{Arc, LazyLock, Mutex},
 };
 
-use palpo_core::JsonValue;
-
-use crate::core::UnixMillis;
 use crate::core::client::sync_events;
 use crate::core::identifiers::*;
 

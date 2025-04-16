@@ -13,7 +13,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{DbEventData, NewDbEvent, PduBuilder};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, data};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {

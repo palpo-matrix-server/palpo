@@ -99,7 +99,7 @@ impl Scribe for ThumbnailResBody {
     fn render(self, res: &mut Response) {
         use rand::Rng as _;
 
-        let boundary = rand::thread_rng()
+        let boundary = rand::rng()
             .sample_iter(&rand::distr::Alphanumeric)
             .map(char::from)
             .take(GENERATED_BOUNDARY_LENGTH)

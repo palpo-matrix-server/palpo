@@ -6,7 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::OwnedUserId;
 use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
-use crate::user::NewDbPresence;
+use crate::data::user::NewDbPresence;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
@@ -33,7 +33,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
         return Err(MatrixError::unauthorized("You cannot get the presence state of this user").into());
     }
 
-    let content = crate::user::last_presence(&user_id)?.content;
+    let content = crate::data::user::last_presence(&user_id)?.content;
 
     json_ok(PresenceResBody {
         // TODO: Should just use the presenceeventcontent type here?
@@ -62,7 +62,7 @@ async fn set_status(
     if authed.user_id() != &user_id {
         return Err(MatrixError::forbidden("You cannot set the presence state of another user").into());
     }
-    crate::user::set_presence(
+    crate::data::user::set_presence(
         NewDbPresence {
             user_id: authed.user_id().to_owned(),
             stream_id: None,

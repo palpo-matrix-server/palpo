@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use super::{DbRoomStateDelta, FrameInfo, room_state_deltas};
 use crate::core::{OwnedEventId, RoomId, Seqnum};
 use crate::data::connect;
-use crate::{AppResult, data, utils};
+use crate::{AppResult, utils};
 
 pub struct StateDiff {
     pub parent_id: Option<i64>,

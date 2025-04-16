@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
+use crate::AppResult;
 use crate::core::events::StateEventType;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_fields)]

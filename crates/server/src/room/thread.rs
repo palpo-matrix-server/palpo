@@ -8,7 +8,7 @@ use crate::core::serde::CanonicalJsonValue;
 use crate::data::connect;
 use crate::data::room::DbThread;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, PduEvent, data};
+use crate::{AppResult, MatrixError, PduEvent};
 
 pub fn get_threads(
     room_id: &RoomId,

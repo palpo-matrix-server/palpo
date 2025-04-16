@@ -1,25 +1,13 @@
 use std::collections::BTreeMap;
 
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::client::room::ReportContentReqBody;
-use crate::core::client::state::{
-    SendStateEventReqBody, SendStateEventResBody, StateEventsForEmptyKeyReqArgs, StateEventsForKeyReqArgs,
-    StateEventsForKeyResBody, StateEventsResBody,
-};
-use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::{
     Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
-use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::identifiers::*;
-use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
-use crate::room::state::UserCanSeeEvent;
-use crate::utils::HtmlEscape;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, empty_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.

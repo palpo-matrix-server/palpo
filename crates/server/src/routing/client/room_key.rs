@@ -9,7 +9,7 @@ use crate::core::serde::RawJson;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::user::key_backup::{self, DbRoomKey, DbRoomKeysVersion};
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("room_keys")

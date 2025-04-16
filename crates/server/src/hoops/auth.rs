@@ -12,7 +12,7 @@ use crate::data::schema::*;
 use crate::exts::DepotExt;
 use crate::server_key::{PubKeyMap, PubKeys};
 use crate::user::{DbAccessToken, DbUser, DbUserDevice};
-use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, data};
+use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {

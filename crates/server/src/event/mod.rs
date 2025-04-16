@@ -12,7 +12,7 @@ use crate::core::serde::default_false;
 use crate::core::{JsonValue, RawJsonValue, Seqnum, UnixMillis};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppError, AppResult, MatrixError, data};
+use crate::{AppError, AppResult, MatrixError};
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 #[diesel(table_name = event_datas, primary_key(event_id))]
@@ -84,7 +84,7 @@ impl NewDbEvent {
         obj.insert("sn".into(), sn.into());
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
-        Ok(serde_json::from_value(value).map_err(|e| MatrixError::bad_json("invalid json for event"))?)
+        Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
     }
 }
 

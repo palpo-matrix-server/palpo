@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use futures_util::io::empty;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -17,18 +16,15 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
-use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, data, diesel_exists, empty_ok,
-    json_ok,
-};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, empty_ok, json_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -257,7 +253,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     //
     // When deserializing, the value is read from `via` if it's not missing or
     // empty and `server_name` otherwise.
-    let mut via = via
+    let via = via
         .into_inner()
         .unwrap_or_else(|| server_name.into_inner().unwrap_or_default());
 

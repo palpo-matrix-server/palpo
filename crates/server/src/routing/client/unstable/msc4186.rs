@@ -34,7 +34,7 @@ use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 pub(super) async fn sync_events_v5(
     _aa: AuthArgs,
     args: SyncEventsReqArgs,
-    mut body: JsonBody<SyncEventsReqBody>,
+    body: JsonBody<SyncEventsReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBody> {
     let authed = depot.authed_info()?;

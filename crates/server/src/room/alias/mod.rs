@@ -15,7 +15,7 @@ use crate::data::schema::*;
 use crate::exts::*;
 use crate::room::StateEventType;
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, data};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder};
 
 mod remote;
 use remote::remote_resolve;
@@ -158,7 +158,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
             .json::<AliasResBody>()
             .await?;
 
-        body.servers.shuffle(&mut rand::thread_rng());
+        body.servers.shuffle(&mut rand::rng());
 
         return Ok(body);
     }

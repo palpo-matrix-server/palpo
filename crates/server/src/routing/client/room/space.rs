@@ -1,16 +1,9 @@
-use std::cmp::max;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeSet, VecDeque};
 use std::str::FromStr;
 
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde_json::json;
-use serde_json::value::to_raw_value;
 
-use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
-use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
-use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::identifiers::*;
 use crate::room::space::{PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk};
 use crate::{AppError, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};

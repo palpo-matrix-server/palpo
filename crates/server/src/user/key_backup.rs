@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
+use crate::AppResult;
 use crate::core::UnixMillis;
 use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_room_keys)]

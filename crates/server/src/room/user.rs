@@ -2,13 +2,13 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 
+use crate::AppResult;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
-use crate::core::{JsonValue, RawJson, Seqnum, UnixMillis};
-use crate::data::connect;
+use crate::core::{JsonValue, RawJson, Seqnum};
 use crate::data::schema::*;
-use crate::{AppResult, diesel_exists};
+use crate::data::{connect, diesel_exists};
 
 pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     diesel::update(

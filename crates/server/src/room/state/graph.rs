@@ -1,12 +1,10 @@
 use std::borrow::Borrow;
 use std::cmp::{Ordering, Reverse};
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::fmt::Debug;
 use std::future::Future;
 use std::hash::{BuildHasher, Hash};
 
 use crate::core::{EventId, UnixMillis};
-use serde_json::from_str as from_json_str;
 
 use crate::AppResult;
 

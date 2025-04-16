@@ -7,7 +7,7 @@ use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::*;
-use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, data, empty_ok, hoops, utils};
+use crate::{AuthArgs, EmptyResult, SESSION_ID_LENGTH, empty_ok, hoops, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("password")

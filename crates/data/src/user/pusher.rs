@@ -2,23 +2,17 @@ use std::fmt::Debug;
 
 use diesel::prelude::*;
 use palpo_core::push::PusherIds;
-use url::Url;
 
-use crate::core::client::push::pusher::PusherAction;
-use crate::core::client::push::PusherPostData;
+use crate::core::UnixMillis;
+use crate::core::events::AnySyncTimelineEvent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
-use crate::core::events::{AnySyncTimelineEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
-use crate::core::push::push_gateway::{
-    Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,
-};
 use crate::core::push::{
-    Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, PushFormat, Pusher, PusherKind, Ruleset, Tweak,
+    Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset,
 };
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::UnixMillis;
 use crate::schema::*;
-use crate::{connect, DataError, DataResult};
+use crate::{DataError, DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = pushers)]

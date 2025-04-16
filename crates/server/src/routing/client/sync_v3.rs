@@ -1,10 +1,9 @@
-use std::collections::hash_map;
 use std::time::Duration;
 
 use salvo::prelude::*;
 
 use crate::core::client::sync_events;
-use crate::{AppError, AuthArgs, DepotExt, JsonResult, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, json_ok};
 
 /// #GET /_matrix/client/r0/sync
 /// Synchronize the client's state with the latest state on the server.

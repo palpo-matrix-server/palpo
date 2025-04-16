@@ -12,12 +12,12 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
-use crate::data::connect;
 use crate::data::schema::*;
-use crate::user::{NewDbPresence, NewDbProfile};
+use crate::data::user::{NewDbPresence, NewDbProfile};
+use crate::data::{connect, diesel_exists};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, data, diesel_exists, empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {
@@ -155,7 +155,7 @@ fn register(
         .execute(&mut connect()?)?;
 
     // Presence update
-    crate::user::set_presence(
+    crate::data::user::set_presence(
         NewDbPresence {
             user_id: user_id.clone(),
             stream_id: None,

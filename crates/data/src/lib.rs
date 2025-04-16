@@ -2,8 +2,8 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use diesel::prelude::*;
-use diesel::r2d2::{self, CustomizeConnection, State};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel::r2d2::{self, State};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use scheduled_thread_pool::ScheduledThreadPool;
 use url::Url;
 
@@ -18,17 +18,17 @@ pub mod full_text_search;
 pub mod pool;
 pub use pool::{DieselPool, PgPooledConnection, PoolError};
 
+pub mod media;
+pub mod misc;
 pub mod room;
 pub mod schema;
-pub mod user;
 pub mod sending;
-pub mod misc;
-pub mod media;
+pub mod user;
 
 mod error;
 pub use error::DataError;
 
-use crate::core::{Seqnum, UnixMillis};
+use crate::core::Seqnum;
 
 pub type DataResult<T> = Result<T, DataError>;
 
@@ -100,4 +100,3 @@ pub fn curr_sn() -> DataResult<Seqnum> {
         .get_result::<Seqnum>(&mut connect()?)
         .map_err(Into::into)
 }
-

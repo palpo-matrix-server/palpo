@@ -7,7 +7,7 @@ use super::{CompressedState, StateDiff};
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, data};
+use crate::{AppResult, MatrixError};
 
 pub static STATE_INFO_CACHE: LazyLock<Mutex<LruCache<i64, Vec<FrameInfo>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100_000)));

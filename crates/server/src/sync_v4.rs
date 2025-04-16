@@ -5,7 +5,6 @@ use std::{
 
 use crate::core::client::sync_events;
 use crate::core::identifiers::*;
-use crate::data::schema::*;
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v4::ReqList>,

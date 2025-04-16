@@ -1,24 +1,13 @@
-use std::collections::HashMap;
-
 use diesel::prelude::*;
-use rand::seq::SliceRandom;
 use serde::Deserialize;
 
+use crate::DataResult;
 use crate::core::canonical_json::CanonicalJsonObject;
-use crate::core::directory::RoomTypeFilter;
-use crate::core::events::direct::DirectEventContent;
-use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::{
-    AnyStrippedStateEvent, AnySyncStateEvent, GlobalAccountDataEventType, RoomAccountDataEventType, StateEventType,
-};
+use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
-use crate::core::room::RoomType;
-use crate::core::serde::{default_false, JsonValue, RawJson};
-use crate::core::{MatrixError, MatrixResult, Seqnum, UnixMillis};
+use crate::core::serde::{JsonValue, default_false};
+use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::{diesel_exists, DataResult};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -253,7 +242,7 @@ impl NewDbEvent {
         obj.insert("sn".into(), sn.into());
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
-        Ok(serde_json::from_value(value).map_err(|e| MatrixError::bad_json("invalid json for event"))?)
+        Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
     }
 }
 

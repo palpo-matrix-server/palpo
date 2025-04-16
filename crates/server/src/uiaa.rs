@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, data, utils};
+use crate::{AppResult, MatrixError, utils};
 
 use super::LazyRwLock;
 
