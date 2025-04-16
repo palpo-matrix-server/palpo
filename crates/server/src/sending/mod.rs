@@ -382,7 +382,7 @@ fn select_edus_receipts_room(
 /// Look for presence
 #[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
 fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
-    let presences_since = crate::user::presences_since(since_sn)?;
+    let presences_since = crate::data::user::presences_since(since_sn)?;
 
     let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();
     for (user_id, presence_event) in presences_since {
@@ -425,7 +425,7 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
 
 #[tracing::instrument(skip(server_name))]
 pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
-    let mut max_edu_sn = data::curr_sn()?;
+    let max_edu_sn = data::curr_sn()?;
     let conf = crate::config();
 
     let since_sn = data::curr_sn()?;

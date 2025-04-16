@@ -1,15 +1,13 @@
 use diesel::prelude::*;
-use rand::seq::SliceRandom;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
 use crate::core::client::room::{AliasResBody, SetAliasReqBody};
-use crate::core::federation::query::{RoomInfoResBody, directory_request};
 use crate::core::identifiers::*;
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::exts::*;
-use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, data, diesel_exists, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/directory/room/{room_alias}
 /// Resolve an alias locally or over federation.

@@ -17,9 +17,8 @@ use crate::core::federation::media::*;
 use crate::data::connect;
 use crate::data::media::*;
 use crate::data::schema::*;
-use crate::media::*;
 use crate::utils::content_disposition::make_content_disposition;
-use crate::{AppResult, AuthArgs, MatrixError, data, hoops};
+use crate::{AppResult, AuthArgs, MatrixError,hoops};
 
 pub fn router() -> Router {
     Router::with_path("media")

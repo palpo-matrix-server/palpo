@@ -14,7 +14,7 @@ use crate::core::serde::RawJson;
 use crate::core::{OwnedRoomId, RoomId, UserId, space::SpaceRoomJoinRule};
 use crate::room::state;
 use crate::room::state::get_room_frame_id;
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, room::state::DbRoomStateField};
+use crate::{AppResult, GetUrlOrigin, MatrixError};
 
 mod pagination_token;
 pub use pagination_token::PaginationToken;

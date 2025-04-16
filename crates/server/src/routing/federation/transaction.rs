@@ -13,7 +13,7 @@ use crate::core::presence::PresenceContent;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::core::{RawJsonValue, UnixMillis};
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::user::NewDbPresence;
+use crate::data::user::NewDbPresence;
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn router() -> Router {
@@ -138,7 +138,7 @@ async fn handle_edu_presence(origin: &ServerName, presence: PresenceContent) {
             continue;
         }
 
-        crate::user::set_presence(
+        crate::data::user::set_presence(
             NewDbPresence {
                 user_id: update.user_id.clone(),
                 stream_id: None,

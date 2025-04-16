@@ -26,12 +26,11 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value};
 use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
-use crate::data::connect;
-use crate::data::curr_sn;
 use crate::data::schema::*;
+use crate::data::{self, connect, diesel_exists};
 use crate::event::{DbEventData, EventHash, NewDbEvent, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, data, diesel_exists, utils};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -45,7 +44,7 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .first::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)
         .optional()?
         .map(|(event_id, event_sn, json)| {
-            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
+            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -67,7 +66,7 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .select(event_datas::json_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?
-        .map(|json| serde_json::from_value(json).map_err(|e| AppError::internal("Invalid PDU in db.")))
+        .map(|json| serde_json::from_value(json).map_err(|_e| AppError::internal("Invalid PDU in db.")))
         .transpose()
 }
 
@@ -90,7 +89,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
+            PduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -117,7 +116,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<PduEvent> {
         .filter(event_datas::event_id.eq(event_id))
         .select((event_datas::event_sn, event_datas::json_data))
         .first::<(Seqnum, JsonValue)>(&mut connect()?)?;
-    PduEvent::from_json_value(event_id, event_sn, json).map_err(|e| AppError::internal("Invalid PDU in db."))
+    PduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
 }
 
 pub fn has_pdu(event_id: &EventId) -> AppResult<bool> {
@@ -828,9 +827,11 @@ pub fn get_pdus(
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
-
-    let mut start_sn = if dir == Direction::Forward { 0 } else { curr_sn()? + 1 };
-    println!("===============start_sn: {start_sn} dir: {dir:?}");
+    let mut start_sn = if dir == Direction::Forward {
+        0
+    } else {
+        data::curr_sn()? + 1
+    };
 
     while list.len() < limit {
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();

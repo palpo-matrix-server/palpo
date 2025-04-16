@@ -27,7 +27,7 @@ use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, Ro
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
 use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -173,7 +173,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     let state_ids = state::get_full_state_ids(frame_id)?;
 
-    let mut state = state_ids
+    let state = state_ids
         .iter()
         .filter_map(|(_, id)| crate::room::timeline::get_pdu_json(id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)

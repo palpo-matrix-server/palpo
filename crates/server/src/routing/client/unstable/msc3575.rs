@@ -26,7 +26,7 @@ pub(crate) const SINGLE_CONNECTION_SYNC: &str = "single_connection_sync";
 pub(super) async fn sync_events_v4(
     _aa: AuthArgs,
     args: SyncEventsReqArgs,
-    mut body: JsonBody<SyncEventsReqBody>,
+     body: JsonBody<SyncEventsReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SyncEventsResBody> {
     let authed = depot.authed_info()?;

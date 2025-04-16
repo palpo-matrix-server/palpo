@@ -6,10 +6,10 @@ use crate::core::client::directory::SetRoomVisibilityReqBody;
 use crate::core::client::directory::VisibilityResBody;
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::room::DbRoom;
-use crate::{AuthArgs, data, diesel_exists};
+use crate::{AuthArgs, };
 use crate::{EmptyResult, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/directory/list/room/{room_id}

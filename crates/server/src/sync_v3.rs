@@ -1,12 +1,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
-use std::future::Future;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use palpo_core::Seqnum;
 use palpo_core::events::receipt::ReceiptEvent;
-use tokio::sync::watch::Sender;
 
 use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
@@ -303,7 +300,7 @@ pub async fn sync_events(
 
     if crate::allow_local_presence() {
         // Take presence updates from this room
-        for (user_id, presence_event) in crate::user::presences_since(since_sn)? {
+        for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {
                 continue;
             }

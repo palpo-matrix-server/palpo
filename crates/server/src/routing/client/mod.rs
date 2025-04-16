@@ -168,7 +168,7 @@ async fn supported_versions() -> JsonResult<VersionsResBody> {
         unstable_features: BTreeMap::from_iter([
             ("org.matrix.e2e_cross_signing".to_owned(), true),
             ("org.matrix.simplified_msc3575".to_owned(), true), /* Simplified Sliding sync (https://github.com/matrix-org/matrix-spec-proposals/pull/4186) */
-		]),
+        ]),
     })
 }
 

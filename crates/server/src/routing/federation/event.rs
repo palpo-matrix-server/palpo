@@ -6,7 +6,7 @@ use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduEvent, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError,  empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()

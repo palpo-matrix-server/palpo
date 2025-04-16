@@ -36,8 +36,8 @@ use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::data::schema::*;
-use crate::data::{self, connect};
-use crate::{AppError, AppResult, diesel_exists};
+use crate::data::{self, connect, diesel_exists};
+use crate::{AppError, AppResult};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]

@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::core::RoomId;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data};
+use crate::{AppResult, };
 
 #[tracing::instrument]
 pub fn set_public(room_id: &RoomId, value: bool) -> AppResult<()> {

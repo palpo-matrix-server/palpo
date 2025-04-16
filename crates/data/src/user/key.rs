@@ -1,18 +1,14 @@
-use std::collections::{hash_map, BTreeMap, HashMap};
-use std::time::Instant;
+use std::collections::BTreeMap;
 
 use diesel::prelude::*;
-use futures_util::stream::{FuturesUnordered, StreamExt};
-use serde_json::json;
 
-use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
+use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::core::federation::key::{claim_keys_request, query_keys_request, QueryKeysReqBody, QueryKeysResBody};
 use crate::core::identifiers::*;
-use crate::core::{client, federation, DeviceKeyAlgorithm, JsonValue, MatrixError, Seqnum, UnixMillis};
+use crate::core::{DeviceKeyAlgorithm, JsonValue, MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::user::clean_signatures;
-use crate::{DataError, connect, DataResult};
+use crate::{ DataResult, connect};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]

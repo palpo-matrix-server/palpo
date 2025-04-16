@@ -3,9 +3,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};
-use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data, diesel_exists};
+use crate::data::{connect, diesel_exists};
+use crate::{AppResult, };
 
 pub const LAZY_LOAD_WAITING: LazyLock<
     Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,

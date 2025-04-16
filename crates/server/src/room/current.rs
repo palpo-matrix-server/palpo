@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, data};
+use crate::{AppResult, };
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = stats_room_currents, primary_key(room_id))]

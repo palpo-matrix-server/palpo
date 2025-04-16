@@ -8,7 +8,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::PduEvent;
-use crate::{AppResult, data};
+use crate::{AppResult, };
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {

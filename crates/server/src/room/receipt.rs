@@ -10,7 +10,7 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::{DbReceipt, NewDbReceipt};
 use crate::data::schema::*;
 use crate::data::{connect, next_sn};
-use crate::{AppResult, data};
+use crate::{AppResult, };
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
@@ -69,7 +69,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> AppResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
-    let mut list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
+    let  list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
         .filter(event_receipts::occur_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))

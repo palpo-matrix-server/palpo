@@ -25,7 +25,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{DbEventData, NewDbEvent, PduEvent};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
-use crate::{AppError, AppResult, MatrixError, data, exts::*};
+use crate::{AppError, AppResult, MatrixError, exts::*};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -419,7 +419,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
 
-    let mut state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
+    let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(incoming_pdu).await?
     } else {
         state_at_incoming_resolved(incoming_pdu, room_id, room_version_id).await?

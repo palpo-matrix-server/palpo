@@ -3,10 +3,10 @@ use palpo_core::UnixMillis;
 
 use crate::core::identifiers::*;
 use crate::core::{DeviceId, TransactionId, UserId};
-use crate::data::connect;
 use crate::data::room::{DbEventTxnId, NewDbEventTxnId};
 use crate::data::schema::*;
-use crate::{AppResult, data, diesel_exists};
+use crate::data::{connect, diesel_exists};
+use crate::{AppResult, data};
 
 pub fn add_txn_id(
     txn_id: &TransactionId,

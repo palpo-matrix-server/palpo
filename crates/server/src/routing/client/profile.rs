@@ -10,14 +10,12 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::{DbProfile, NewDbPresence};
+use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::room::state;
-use crate::user::{DbProfile, NewDbPresence};
-use crate::{
-    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, diesel_exists, empty_ok, hoops, json_ok,
-};
+use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/{user_id}")
@@ -168,7 +166,7 @@ async fn set_avatar_url(
         .collect();
 
     // Presence update
-    crate::user::set_presence(
+    crate::data::user::set_presence(
         NewDbPresence {
             user_id: user_id.clone(),
             // room_id: Some(room_id),
@@ -290,7 +288,7 @@ async fn set_display_name(
         let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
 
         // Presence update
-        crate::user::set_presence(
+        crate::data::user::set_presence(
             NewDbPresence {
                 user_id: user_id.clone(),
                 stream_id: None,

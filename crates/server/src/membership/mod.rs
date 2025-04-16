@@ -17,7 +17,7 @@ use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
 use crate::room::state;
-use crate::{AppError, AppResult, MatrixError, SigningKeys, data};
+use crate::{AppError, AppResult, MatrixError, SigningKeys, };
 
 mod banned;
 mod forget;
@@ -27,10 +27,10 @@ mod knock;
 mod leave;
 pub use banned::*;
 pub use forget::*;
-pub use invite::*;
 pub use join::*;
 pub use knock::*;
 pub use leave::*;
+pub use invite::*;
 
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,

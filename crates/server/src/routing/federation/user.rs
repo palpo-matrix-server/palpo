@@ -10,7 +10,7 @@ use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeys
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok};
+use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("user")

@@ -21,14 +21,11 @@ pub use session::*;
 pub mod presence;
 pub use presence::*;
 
-use std::collections::BTreeMap;
 use std::mem;
-use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
-use crate::core::client::sync_events;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;

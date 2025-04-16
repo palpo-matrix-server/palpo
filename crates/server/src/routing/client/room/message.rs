@@ -9,10 +9,9 @@ use crate::core::client::message::{
 };
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
-use crate::data::connect;
 use crate::data::schema::*;
-use crate::diesel_exists;
-use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, data, exts::*, json_ok};
+use crate::data::{connect, diesel_exists};
+use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, exts::*, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.

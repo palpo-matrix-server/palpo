@@ -1,7 +1,7 @@
 //! (De)serializable types for the [Matrix Server-Server API][federation-api].
 //! These types are used by server code.
 //!
-//! [federation-api]: https://spec.matrix.org/latest/server-server-api/
+//! [federation-api]: https://spec.matrix.org/latest/application-service-api/
 mod third_party;
 mod transaction;
 

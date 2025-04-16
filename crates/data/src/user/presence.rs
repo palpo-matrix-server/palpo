@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::core::events::presence::{PresenceEvent, PresenceEventContent};
 use crate::core::identifiers::*;
@@ -9,7 +8,7 @@ use crate::core::presence::PresenceState;
 use crate::core::{MatrixError, UnixMillis};
 
 use crate::schema::*;
-use crate::{connect, DataError, DataResult};
+use crate::{DataResult, connect};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -68,47 +67,6 @@ impl DbPresence {
     }
 }
 
-/// Resets the presence timeout, so the user will stay in their current presence state.
-pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> DataResult<()> {
-    const REFRESH_TIMEOUT: u64 = 60 * 1000;
-
-    let last_presence = last_presence(user_id);
-    let state_changed = match last_presence {
-        Err(_) => true,
-        Ok(ref presence) => presence.content.presence != *new_state,
-    };
-
-    let last_last_active_ago = match last_presence {
-        Err(_) => 0_u64,
-        Ok(ref presence) => presence.content.last_active_ago.unwrap_or_default().into(),
-    };
-
-    if !state_changed && last_last_active_ago < REFRESH_TIMEOUT {
-        return Ok(());
-    }
-
-    let status_msg = match last_presence {
-        Ok(presence) => presence.content.status_msg.clone(),
-        Err(_) => Some(String::new()),
-    };
-
-    let currently_active = *new_state == PresenceState::Online;
-
-    set_presence(
-        NewDbPresence {
-            user_id: user_id.to_owned(),
-            stream_id: None,
-            state: Some(new_state.to_string()),
-            status_msg: None,
-            last_active_at: Some(UnixMillis::now()),
-            last_federation_update_at: None,
-            last_user_sync_at: None,
-            currently_active: Some(currently_active),
-            occur_sn: None,
-        },
-        false,
-    )
-}
 pub fn last_presence(user_id: &UserId) -> DataResult<PresenceEvent> {
     let presence = user_presences::table
         .filter(user_presences::user_id.eq(user_id))
@@ -122,7 +80,7 @@ pub fn last_presence(user_id: &UserId) -> DataResult<PresenceEvent> {
 }
 
 /// Adds a presence event which will be saved until a new event replaces it.
-pub fn set_presence(mut presence: NewDbPresence, force: bool) -> DataResult<()> {
+pub fn set_presence(presence: NewDbPresence, force: bool) -> DataResult<()> {
     if force {
         diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
             .execute(&mut connect()?)?;
@@ -176,61 +134,4 @@ pub fn presences_since(since_sn: i64) -> DataResult<HashMap<OwnedUserId, Presenc
                 .map(|event| (presence.user_id, event))
         })
         .collect()
-}
-
-#[inline]
-pub fn from_json_bytes_to_event(bytes: &[u8], user_id: &UserId) -> DataResult<PresenceEvent> {
-    let presence = Presence::from_json_bytes(bytes)?;
-    let event = presence.to_presence_event(user_id);
-
-    Ok(event)
-}
-
-/// Represents data required to be kept in order to implement the presence
-/// specification.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(super) struct Presence {
-    state: PresenceState,
-    currently_active: bool,
-    last_active_ts: u64,
-    status_msg: Option<String>,
-}
-
-impl Presence {
-    #[must_use]
-    pub(super) fn new(
-        state: PresenceState,
-        currently_active: bool,
-        last_active_ts: u64,
-        status_msg: Option<String>,
-    ) -> Self {
-        Self {
-            state,
-            currently_active,
-            last_active_ts,
-            status_msg,
-        }
-    }
-
-    pub(super) fn from_json_bytes(bytes: &[u8]) -> DataResult<Self> {
-        serde_json::from_slice(bytes).map_err(|_| DataError::public("Invalid presence data in database"))
-    }
-
-    /// Creates a PresenceEvent from available data.
-    pub(super) fn to_presence_event(&self, user_id: &UserId) -> PresenceEvent {
-        let now = UnixMillis::now();
-        let last_active_ago = Some(now.0.saturating_sub(self.last_active_ts));
-
-        PresenceEvent {
-            sender: user_id.to_owned(),
-            content: PresenceEventContent {
-                presence: self.state.clone(),
-                status_msg: self.status_msg.clone(),
-                currently_active: Some(self.currently_active),
-                last_active_ago,
-                display_name: crate::user::display_name(user_id).ok().flatten(),
-                avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
-            },
-        }
-    }
 }

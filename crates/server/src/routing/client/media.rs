@@ -22,7 +22,7 @@ use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail}
 use crate::data::schema::*;
 use crate::media::*;
 use crate::{
-    AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, data, empty_ok, exts::*, hoops, json_ok, utils,
+    AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError,  empty_ok, exts::*, hoops, json_ok, utils,
 };
 
 pub fn self_auth_router() -> Router {

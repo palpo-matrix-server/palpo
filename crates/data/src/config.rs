@@ -15,7 +15,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use diesel::prelude::*;
-use diesel::r2d2::{self, CustomizeConnection, State};
+use diesel::r2d2::{self, CustomizeConnection, };
 
 use crate::core::serde::default_false;
 

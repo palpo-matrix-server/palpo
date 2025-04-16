@@ -15,12 +15,12 @@ use crate::core::federation::knock::MakeKnockReqArgs;
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::core::{Seqnum, UnixMillis};
+use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
 use crate::room::state::{self, DeltaInfo};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,

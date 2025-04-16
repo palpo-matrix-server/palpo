@@ -15,7 +15,6 @@ use lru_cache::LruCache;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
-use crate::core::Seqnum;
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -35,7 +34,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent};
 use crate::event::{update_frame_id, update_frame_id_by_sn};
-use crate::{AppError, AppResult, MatrixError, data, utils};
+use crate::{AppError, AppResult, MatrixError, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]

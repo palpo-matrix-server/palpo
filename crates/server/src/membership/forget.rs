@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
 use crate::core::identifiers::*;
-use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, data, diesel_exists};
+use crate::data::{self, connect, diesel_exists};
+use crate::{AppResult, MatrixError};
 
 /// Makes a user forget a room.
 #[tracing::instrument]

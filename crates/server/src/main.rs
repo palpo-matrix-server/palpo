@@ -59,7 +59,6 @@ pub use palpo_data as data;
 #[macro_use]
 mod macros;
 
-use std::env;
 use std::time::Duration;
 
 use dotenvy::dotenv;
