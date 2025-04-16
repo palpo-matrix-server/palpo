@@ -26,7 +26,7 @@ pub fn get_filter(user_id: &UserId, filter_id: i64) -> DataResult<Option<FilterD
         .filter(user_filters::id.eq(filter_id))
         .filter(user_filters::user_id.eq(user_id))
         .select(user_filters::filter)
-        .first(&mut *connect()?)
+        .first(&mut connect()?)
         .optional()?;
     if let Some(filter) = filter {
         Ok(Some(serde_json::from_value(filter)?))
@@ -42,6 +42,6 @@ pub fn create_filter(user_id: &UserId, filter: &FilterDefinition) -> DataResult<
             filter: serde_json::to_value(filter)?,
             created_at: UnixMillis::now(),
         })
-        .get_result::<DbUserFilter>(&mut *connect()?)?;
+        .get_result::<DbUserFilter>(&mut connect()?)?;
     Ok(filter.id)
 }

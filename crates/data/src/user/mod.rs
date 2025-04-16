@@ -137,7 +137,7 @@ pub fn invited_rooms(
         .filter(room_users::membership.eq("invite"))
         .filter(room_users::event_sn.ge(since_sn))
         .select((room_users::room_id, room_users::state_data))
-        .load::<(OwnedRoomId, Option<JsonValue>)>(&mut *connect()?)?
+        .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
             if let Some(state_data) = state_data
@@ -162,7 +162,7 @@ pub fn knocked_rooms(
         .filter(room_users::membership.eq("knock"))
         .filter(room_users::event_sn.ge(since_sn))
         .select((room_users::room_id, room_users::state_data))
-        .load::<(OwnedRoomId, Option<JsonValue>)>(&mut *connect()?)?
+        .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
             if let Some(state_data) = state_data
@@ -181,13 +181,13 @@ pub fn knocked_rooms(
 /// Check if a user has an account on this homeserver.
 pub fn user_exists(user_id: &UserId) -> DataResult<bool> {
     let query = users::table.find(user_id);
-    diesel_exists!(query, &mut *connect()?).map_err(Into::into)
+    diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
 
 pub fn get_user(user_id: &UserId) -> DataResult<Option<DbUser>> {
     users::table
         .find(user_id)
-        .first::<DbUser>(&mut *connect()?)
+        .first::<DbUser>(&mut connect()?)
         .optional()
         .map_err(Into::into)
 }
@@ -196,7 +196,7 @@ pub fn get_user(user_id: &UserId) -> DataResult<Option<DbUser>> {
 pub fn count() -> DataResult<u64> {
     let count = user_passwords::table
         .select(count_distinct(user_passwords::user_id))
-        .first::<i64>(&mut *connect()?)?;
+        .first::<i64>(&mut connect()?)?;
     Ok(count as u64)
 }
 
@@ -206,7 +206,7 @@ pub fn count() -> DataResult<u64> {
 pub fn list_local_users() -> DataResult<Vec<OwnedUserId>> {
     user_passwords::table
         .select(user_passwords::user_id)
-        .load::<OwnedUserId>(&mut *connect()?)
+        .load::<OwnedUserId>(&mut connect()?)
         .map_err(Into::into)
 }
 
@@ -216,7 +216,7 @@ pub fn display_name(user_id: &UserId) -> DataResult<Option<String>> {
         .filter(user_profiles::user_id.eq(user_id.as_str()))
         .filter(user_profiles::room_id.is_null())
         .select(user_profiles::display_name)
-        .first::<Option<String>>(&mut *connect()?)
+        .first::<Option<String>>(&mut connect()?)
         .map_err(Into::into)
 }
 
@@ -238,7 +238,7 @@ pub fn avatar_url(user_id: &UserId) -> DataResult<Option<OwnedMxcUri>> {
         .filter(user_profiles::user_id.eq(user_id.as_str()))
         .filter(user_profiles::room_id.is_null())
         .select(user_profiles::avatar_url)
-        .first::<Option<OwnedMxcUri>>(&mut *connect()?)
+        .first::<Option<OwnedMxcUri>>(&mut connect()?)
         .optional()
         .map(Option::flatten)
         .map_err(Into::into)
@@ -250,7 +250,7 @@ pub fn blurhash(user_id: &UserId) -> DataResult<Option<String>> {
         .filter(user_profiles::user_id.eq(user_id.as_str()))
         .filter(user_profiles::room_id.is_null())
         .select(user_profiles::blurhash)
-        .first::<Option<String>>(&mut *connect()?)
+        .first::<Option<String>>(&mut connect()?)
         .optional()
         .map(Option::flatten)
         .map_err(Into::into)

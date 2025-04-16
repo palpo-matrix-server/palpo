@@ -348,7 +348,7 @@ pub fn sign_key(
     //     .filter(e2e_cross_signing_keys::user_id.eq(target_id))
     //     .filter(e2e_cross_signing_keys::key_type.eq("master"))
     //     .order_by(e2e_cross_signing_keys::id.desc())
-    //     .first::<DbCrossSigningKey>(&mut *connect()?)?;
+    //     .first::<DbCrossSigningKey>(&mut connect()?)?;
     // let mut cross_signing_key: CrossSigningKey = serde_json::from_value(cross_signing_key.key_data.clone())?;
     let origin_key_id = DeviceKeyId::parse(&signature.0)?.to_owned();
 
@@ -423,7 +423,7 @@ pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> DataResult<Opt
         .filter(e2e_device_keys::user_id.eq(user_id))
         .filter(e2e_device_keys::device_id.eq(device_id))
         .select(e2e_device_keys::key_data)
-        .first::<JsonValue>(&mut *connect()?)
+        .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|v| serde_json::from_value(v).map_err(Into::into))
         .transpose()
@@ -437,7 +437,7 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> DataR
         .filter(e2e_cross_signing_sigs::origin_user_id.eq(user_id))
         .filter(e2e_cross_signing_sigs::target_user_id.eq(user_id))
         .filter(e2e_cross_signing_sigs::target_device_id.eq(device_id))
-        .load::<DbCrossSignature>(&mut *connect()?)?;
+        .load::<DbCrossSignature>(&mut connect()?)?;
     for DbCrossSignature {
         origin_key_id,
         signature,

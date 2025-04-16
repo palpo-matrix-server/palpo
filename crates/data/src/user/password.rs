@@ -26,6 +26,6 @@ fn get_password_hash(user_id: &UserId) -> DataResult<String> {
         .filter(user_passwords::user_id.eq(user_id))
         .order_by(user_passwords::id.desc())
         .select(user_passwords::hash)
-        .first::<String>(&mut *connect()?)
+        .first::<String>(&mut connect()?)
         .map_err(Into::into)
 }

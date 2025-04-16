@@ -34,8 +34,7 @@ CREATE TABLE media_thumbnails (
     resize_method text NOT NULL,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_thumbnail_index ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
-
+CREATE UNIQUE INDEX media_thumbnails_index ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
 
 drop table if exists user_datas CASCADE;
 CREATE TABLE user_datas (

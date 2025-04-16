@@ -185,7 +185,7 @@ pub fn add_key(
             ))
             .do_update()
             .set(&new_key)
-            .execute(&mut *connect()?)?;
+            .execute(&mut connect()?)?;
     }
     Ok(())
 }

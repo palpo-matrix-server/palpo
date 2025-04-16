@@ -18,7 +18,7 @@ use hickory_resolver::name_server::TokioConnectionProvider;
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
-use serde::Serialize;
+use serde::Serialize;use ipaddress::IPAddress;
 use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 use tower_service::Service as TowerService;
 
@@ -211,6 +211,19 @@ pub fn well_known_server() -> OwnedServerName {
     }
 }
 
+pub fn cidr_range_denylist() -> &'static [IPAddress] {
+    static CIDR_RANGE_DENYLIST: OnceLock<Vec<IPAddress>> = OnceLock::new();
+    CIDR_RANGE_DENYLIST.get_or_init(|| {
+        let conf = crate::config();
+        conf
+            .ip_range_denylist
+            .iter()
+            .map(IPAddress::parse)
+            .inspect(|cidr| trace!("Denied CIDR range: {cidr:?}"))
+            .collect::<Result<_, String>>()
+            .expect("Invalid CIDR range in config")
+    })
+}
 /// Returns a reqwest client which can be used to send requests
 pub fn default_client() -> reqwest::Client {
     // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
@@ -247,6 +260,10 @@ pub fn federation_client() -> reqwest::Client {
                 .expect("build reqwest client failed")
         })
         .clone()
+}
+
+pub fn valid_cidr_range(ip: &IPAddress) -> bool {
+    cidr_range_denylist().iter().all(|cidr| !cidr.includes(ip))
 }
 
 pub fn server_name() -> &'static ServerName {

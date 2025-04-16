@@ -1,7 +1,12 @@
-use std::fmt;
+use std::fmt; use std::net::IpAddr;
 
+use regex::RegexSet;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
+use either::{
+	Either,
+	Either::{Left, Right},
+};
 
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedServerName, RoomVersionId};
@@ -104,6 +109,280 @@ pub struct ServerConfig {
     #[serde(default = "default_typing_federation_timeout_s")]
     pub typing_federation_timeout_s: u64,
 
+    /// Minimum time local client can indicate typing. This does not override a
+    /// client's request to stop typing. It only enforces a minimum value in
+    /// case of no stop request.
+    ///
+    /// default: 15
+    #[serde(default = "default_typing_client_timeout_min_s")]
+    pub typing_client_timeout_min_s: u64,
+
+    /// Maximum time local client can indicate typing.
+    ///
+    /// default: 45
+    #[serde(default = "default_typing_client_timeout_max_s")]
+    pub typing_client_timeout_max_s: u64,
+
+    /// Set this to true for conduwuit to compress HTTP response bodies using
+    /// zstd. This option does nothing if conduwuit was not built with
+    /// `zstd_compression` feature. Please be aware that enabling HTTP
+    /// compression may weaken TLS. Most users should not need to enable this.
+    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
+    /// before deciding to enable this.
+    #[serde(default)]
+    pub zstd_compression: bool,
+
+    /// Set this to true for conduwuit to compress HTTP response bodies using
+    /// gzip. This option does nothing if conduwuit was not built with
+    /// `gzip_compression` feature. Please be aware that enabling HTTP
+    /// compression may weaken TLS. Most users should not need to enable this.
+    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH before
+    /// deciding to enable this.
+    ///
+    /// If you are in a large amount of rooms, you may find that enabling this
+    /// is necessary to reduce the significantly large response bodies.
+    #[serde(default)]
+    pub gzip_compression: bool,
+
+    /// Set this to true for conduwuit to compress HTTP response bodies using
+    /// brotli. This option does nothing if conduwuit was not built with
+    /// `brotli_compression` feature. Please be aware that enabling HTTP
+    /// compression may weaken TLS. Most users should not need to enable this.
+    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
+    /// before deciding to enable this.
+    #[serde(default)]
+    pub brotli_compression: bool,
+
+    /// Set to true to allow user type "guest" registrations. Some clients like
+    /// Element attempt to register guest users automatically.
+    #[serde(default)]
+    pub allow_guest_registration: bool,
+
+    /// Set to true to log guest registrations in the admin room. Note that
+    /// these may be noisy or unnecessary if you're a public homeserver.
+    #[serde(default)]
+    pub log_guest_registrations: bool,
+
+    /// Set to true to allow guest registrations/users to auto join any rooms
+    /// specified in `auto_join_rooms`.
+    #[serde(default)]
+    pub allow_guests_auto_join_rooms: bool,
+
+    /// Enable the legacy unauthenticated Matrix media repository endpoints.
+    /// These endpoints consist of:
+    /// - /_matrix/media/*/config
+    /// - /_matrix/media/*/upload
+    /// - /_matrix/media/*/preview_url
+    /// - /_matrix/media/*/download/*
+    /// - /_matrix/media/*/thumbnail/*
+    ///
+    /// The authenticated equivalent endpoints are always enabled.
+    ///
+    /// Defaults to true for now, but this is highly subject to change, likely
+    /// in the next release.
+    #[serde(default = "default_true")]
+    pub allow_legacy_media: bool,
+
+    #[serde(default = "default_true")]
+    pub freeze_legacy_media: bool,
+
+    /// Check consistency of the media directory at startup:
+    /// 1. When `media_compat_file_link` is enabled, this check will upgrade
+    ///    media when switching back and forth between Conduit and conduwuit.
+    ///    Both options must be enabled to handle this.
+    /// 2. When media is deleted from the directory, this check will also delete
+    ///    its database entry.
+    ///
+    /// If none of these checks apply to your use cases, and your media
+    /// directory is significantly large setting this to false may reduce
+    /// startup time.
+    #[serde(default = "default_true")]
+    pub media_startup_check: bool,
+
+    /// Enable backward-compatibility with Conduit's media directory by creating
+    /// symlinks of media.
+    ///
+    /// This option is only necessary if you plan on using Conduit again.
+    /// Otherwise setting this to false reduces filesystem clutter and overhead
+    /// for managing these symlinks in the directory. This is now disabled by
+    /// default. You may still return to upstream Conduit but you have to run
+    /// conduwuit at least once with this set to true and allow the
+    /// media_startup_check to take place before shutting down to return to
+    /// Conduit.
+    #[serde(default)]
+    pub media_compat_file_link: bool,
+
+    /// Prune missing media from the database as part of the media startup
+    /// checks.
+    ///
+    /// This means if you delete files from the media directory the
+    /// corresponding entries will be removed from the database. This is
+    /// disabled by default because if the media directory is accidentally moved
+    /// or inaccessible, the metadata entries in the database will be lost with
+    /// sadness.
+    #[serde(default)]
+    pub prune_missing_media: bool,
+
+    /// Vector list of regex patterns of server names that conduwuit will refuse
+    /// to download remote media from.
+    ///
+    /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub prevent_media_downloads_from: RegexSet,
+
+    /// List of forbidden server names via regex patterns that we will block
+    /// incoming AND outgoing federation with, and block client room joins /
+    /// remote user invites.
+    ///
+    /// This check is applied on the room ID, room alias, sender server name,
+    /// sender user's server name, inbound federation X-Matrix origin, and
+    /// outbound federation handler.
+    ///
+    /// Basically "global" ACLs.
+    ///
+    /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub forbidden_remote_server_names: RegexSet,
+
+    /// List of forbidden server names via regex patterns that we will block all
+    /// outgoing federated room directory requests for. Useful for preventing
+    /// our users from wandering into bad servers or spaces.
+    ///
+    /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub forbidden_remote_room_directory_server_names: RegexSet,
+
+    /// Vector list of IPv4 and IPv6 CIDR ranges / subnets *in quotes* that you
+    /// do not want conduwuit to send outbound requests to. Defaults to
+    /// RFC1918, unroutable, loopback, multicast, and testnet addresses for
+    /// security.
+    ///
+    /// Please be aware that this is *not* a guarantee. You should be using a
+    /// firewall with zones as doing this on the application layer may have
+    /// bypasses.
+    ///
+    /// Currently this does not account for proxies in use like Synapse does.
+    ///
+    /// To disable, set this to be an empty vector (`[]`).
+    ///
+    /// Defaults to:
+    /// ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12",
+    /// "192.168.0.0/16", "100.64.0.0/10", "192.0.0.0/24", "169.254.0.0/16",
+    /// "192.88.99.0/24", "198.18.0.0/15", "192.0.2.0/24", "198.51.100.0/24",
+    /// "203.0.113.0/24", "224.0.0.0/4", "::1/128", "fe80::/10", "fc00::/7",
+    /// "2001:db8::/32", "ff00::/8", "fec0::/10"]
+    #[serde(default = "default_ip_range_denylist")]
+    pub ip_range_denylist: Vec<String>,
+
+    /// Optional IP address or network interface-name to bind as the source of
+    /// URL preview requests. If not set, it will not bind to a specific
+    /// address or interface.
+    ///
+    /// Interface names only supported on Linux, Android, and Fuchsia platforms;
+    /// all other platforms can specify the IP address. To list the interfaces
+    /// on your system, use the command `ip link show`.
+    ///
+    /// example: `"eth0"` or `"1.2.3.4"`
+    ///
+    /// default:
+    #[serde(default, with = "either::serde_untagged_optional")]
+    pub url_preview_bound_interface: Option<Either<IpAddr, String>>,
+
+    /// Vector list of domains allowed to send requests to for URL previews.
+    ///
+    /// This is a *contains* match, not an explicit match. Putting "google.com"
+    /// will match "https://google.com" and
+    /// "http://mymaliciousdomainexamplegoogle.com" Setting this to "*" will
+    /// allow all URL previews. Please note that this opens up significant
+    /// attack surface to your server, you are expected to be aware of the risks
+    /// by doing so.
+    ///
+    /// default: []
+    #[serde(default)]
+    pub url_preview_domain_contains_allowlist: Vec<String>,
+
+    /// Vector list of explicit domains allowed to send requests to for URL
+    /// previews.
+    ///
+    /// This is an *explicit* match, not a contains match. Putting "google.com"
+    /// will match "https://google.com", "http://google.com", but not
+    /// "https://mymaliciousdomainexamplegoogle.com". Setting this to "*" will
+    /// allow all URL previews. Please note that this opens up significant
+    /// attack surface to your server, you are expected to be aware of the risks
+    /// by doing so.
+    ///
+    /// default: []
+    #[serde(default)]
+    pub url_preview_domain_explicit_allowlist: Vec<String>,
+
+    /// Vector list of explicit domains not allowed to send requests to for URL
+    /// previews.
+    ///
+    /// This is an *explicit* match, not a contains match. Putting "google.com"
+    /// will match "https://google.com", "http://google.com", but not
+    /// "https://mymaliciousdomainexamplegoogle.com". The denylist is checked
+    /// first before allowlist. Setting this to "*" will not do anything.
+    ///
+    /// default: []
+    #[serde(default)]
+    pub url_preview_domain_explicit_denylist: Vec<String>,
+
+    /// Vector list of URLs allowed to send requests to for URL previews.
+    ///
+    /// Note that this is a *contains* match, not an explicit match. Putting
+    /// "google.com" will match "https://google.com/",
+    /// "https://google.com/url?q=https://mymaliciousdomainexample.com", and
+    /// "https://mymaliciousdomainexample.com/hi/google.com" Setting this to "*"
+    /// will allow all URL previews. Please note that this opens up significant
+    /// attack surface to your server, you are expected to be aware of the risks
+    /// by doing so.
+    ///
+    /// default: []
+    #[serde(default)]
+    pub url_preview_url_contains_allowlist: Vec<String>,
+
+    /// Maximum amount of bytes allowed in a URL preview body size when
+    /// spidering. Defaults to 256KB in bytes.
+    ///
+    /// default: 256000
+    #[serde(default = "default_url_preview_max_spider_size")]
+    pub url_preview_max_spider_size: usize,
+
+    /// Option to decide whether you would like to run the domain allowlist
+    /// checks (contains and explicit) on the root domain or not. Does not apply
+    /// to URL contains allowlist. Defaults to false.
+    ///
+    /// Example usecase: If this is enabled and you have "wikipedia.org" allowed
+    /// in the explicit and/or contains domain allowlist, it will allow all
+    /// subdomains under "wikipedia.org" such as "en.m.wikipedia.org" as the
+    /// root domain is checked and matched. Useful if the domain contains
+    /// allowlist is still too broad for you but you still want to allow all the
+    /// subdomains under a root domain.
+    #[serde(default)]
+    pub url_preview_check_root_domain: bool,
+
+    /// List of forbidden room aliases and room IDs as strings of regex
+    /// patterns.
+    ///
+    /// Regex can be used or explicit contains matches can be done by just
+    /// specifying the words (see example).
+    ///
+    /// This is checked upon room alias creation, custom room ID creation if
+    /// used, and startup as warnings if any room aliases in your database have
+    /// a forbidden room alias/ID.
+    ///
+    /// example: ["19dollarfortnitecards", "b[4a]droom", "badphrase"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub forbidden_alias_names: RegexSet,
+
     #[serde(default = "default_space_path")]
     pub space_path: String,
 
@@ -151,6 +430,21 @@ pub struct ServerConfig {
     /// default: 1024
     #[serde(default = "default_trusted_server_batch_size")]
     pub trusted_server_batch_size: usize,
+
+    /// List of forbidden username patterns/strings.
+    ///
+    /// Regex can be used or explicit contains matches can be done by just
+    /// specifying the words (see example).
+    ///
+    /// This is checked upon username availability check, registration, and
+    /// startup as warnings if any local users in your database have a forbidden
+    /// username.
+    ///
+    /// example: ["administrator", "b[a4]dusernam[3e]", "badphrase"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub forbidden_usernames: RegexSet,
 
     /// Retry failed and incomplete messages to remote servers immediately upon
     /// startup. This is called bursting. If this is disabled, said messages may
@@ -333,12 +627,48 @@ fn default_presence_idle_timeout_s() -> u64 {
 }
 
 fn default_presence_offline_timeout_s() -> u64 {
-    15 * 60
+    30 * 60
 }
+
 fn default_typing_federation_timeout_s() -> u64 {
     30
 }
 
+fn default_typing_client_timeout_min_s() -> u64 {
+    15
+}
+
+fn default_typing_client_timeout_max_s() -> u64 {
+    45
+}
+
 pub fn default_room_version() -> RoomVersionId {
     RoomVersionId::V10
+}
+
+fn default_url_preview_max_spider_size() -> usize {
+    256_000 // 256KB
+}
+fn default_ip_range_denylist() -> Vec<String> {
+	vec![
+		"127.0.0.0/8".to_owned(),
+		"10.0.0.0/8".to_owned(),
+		"172.16.0.0/12".to_owned(),
+		"192.168.0.0/16".to_owned(),
+		"100.64.0.0/10".to_owned(),
+		"192.0.0.0/24".to_owned(),
+		"169.254.0.0/16".to_owned(),
+		"192.88.99.0/24".to_owned(),
+		"198.18.0.0/15".to_owned(),
+		"192.0.2.0/24".to_owned(),
+		"198.51.100.0/24".to_owned(),
+		"203.0.113.0/24".to_owned(),
+		"224.0.0.0/4".to_owned(),
+		"::1/128".to_owned(),
+		"fe80::/10".to_owned(),
+		"fc00::/7".to_owned(),
+		"2001:db8::/32".to_owned(),
+		"ff00::/8".to_owned(),
+		"fec0::/10".to_owned(),
+	]
 }

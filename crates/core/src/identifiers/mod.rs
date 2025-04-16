@@ -23,7 +23,7 @@ pub use self::{
     },
     key_name::{KeyName, OwnedKeyName},
     matrix_uri::{MatrixToUri, MatrixUri},
-    mxc_uri::{MxcUri, OwnedMxcUri},
+    mxc_uri::{MxcUri, Mxc, OwnedMxcUri},
     room_alias_id::{OwnedRoomAliasId, RoomAliasId},
     room_id::{OwnedRoomId, RoomId},
     room_or_alias_id::{OwnedRoomOrAliasId, RoomOrAliasId},

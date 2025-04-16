@@ -39,10 +39,12 @@ data-encoding = { workspace = true }
 dotenvy = { workspace = true }
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
 diesel_migrations = { workspace = true }
+either = { workspace = true, features = ["serde"]}
 fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
+ipaddress = { workspace = true }
 itertools = { workspace = true }
 hickory-resolver = { workspace = true }
 hyper-util = { workspace = true, features = ["client"] }
@@ -67,6 +69,7 @@ secrecy = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }
+serde_regex = { workspace = true }
 sha1 = { workspace = true }
 smallvec ={ workspace = true }
 strum = { workspace = true }
@@ -86,6 +89,7 @@ uuid = { version = "1.1.2", features = ["v4"] }
 serde_with = { workspace = true }
 serde_yaml = { workspace = true }
 ulid = { workspace = true }
+webpage = { workspace = true }
 # notify = "5.1.0"
 
 # [patch.crates-io]

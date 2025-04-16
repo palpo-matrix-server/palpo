@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::media::Method;
 use crate::sending::{SendRequest, SendResult};
-use crate::{OwnedMxcUri, OwnedServerName, ServerName, UnixMillis};
+use crate::serde::to_raw_json_value;
+use crate::{OwnedMxcUri, OwnedServerName, RawJsonValue, ServerName, UnixMillis};
 
 /// The default duration that the client should be willing to wait to start receiving data.
 pub(crate) fn default_download_timeout() -> Duration {
@@ -107,48 +108,51 @@ impl ConfigResBody {
 //     }
 // };
 
-// /// Request type for the `get_media_preview` endpoint.
+/// Request type for the `get_media_preview` endpoint.
 
-// pub struct MediaPreviewReqBody {
-//     /// URL to get a preview of.
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub url: String,
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct MediaPreviewReqArgs {
+    /// URL to get a preview of.
+    #[salvo(parameter(parameter_in = Query))]
+    pub url: String,
 
-//     /// Preferred point in time (in milliseconds) to return a preview for.
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub ts: UnixMillis,
-// }
+    /// Preferred point in time (in milliseconds) to return a preview for.
+    #[salvo(parameter(parameter_in = Query))]
+    pub ts: UnixMillis,
+}
 
-// /// Response type for the `get_media_preview` endpoint.
-// #[derive(ToSchema,Serialize, Debug)]
-// pub struct MediaPreviewResBody {
-//     /// OpenGraph-like data for the URL.
-//     ///
-//     /// Differences from OpenGraph: the image size in bytes is added to the `matrix:image:size`
-//     /// field, and `og:image` returns the MXC URI to the image, if any.
-//     #[salvo(schema(value_type = Object, additional_properties = true))]
-//     pub data: Option<Box<RawJsonValue>>,
-// }
-// impl MediaPreviewResBody {
-//     /// Creates an empty `Response`.
-//     pub fn new() -> Self {
-//         Self { data: None }
-//     }
+/// Response type for the `get_media_preview` endpoint.
+#[derive(ToSchema, Serialize, Debug)]
+pub struct MediaPreviewResBody {
+    /// OpenGraph-like data for the URL.
+    ///
+    /// Differences from OpenGraph: the image size in bytes is added to the `matrix:image:size`
+    /// field, and `og:image` returns the MXC URI to the image, if any.
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    #[serde(flatten)]
+    pub data: Option<Box<RawJsonValue>>,
+}
+impl MediaPreviewResBody {
+    /// Creates an empty `Response`.
+    pub fn new() -> Self {
+        Self { data: None }
+    }
 
-//     /// Creates a new `Response` with the given OpenGraph data (in a
-//     /// `serde_json::value::RawValue`).
-//     pub fn from_raw_value(data: Box<RawJsonValue>) -> Self {
-//         Self { data: Some(data) }
-//     }
+    /// Creates a new `Response` with the given OpenGraph data (in a
+    /// `serde_json::value::RawValue`).
+    pub fn from_raw_value(data: Box<RawJsonValue>) -> Self {
+        Self { data: Some(data) }
+    }
 
-//     /// Creates a new `Response` with the given OpenGraph data (in any kind of serializable
-//     /// object).
-//     pub fn from_serialize<T: Serialize>(data: &T) -> serde_json::Result<Self> {
-//         Ok(Self {
-//             data: Some(to_raw_json_value(data)?),
-//         })
-//     }
-// }
+    /// Creates a new `Response` with the given OpenGraph data (in any kind of serializable
+    /// object).
+    pub fn from_serialize<T: Serialize>(data: &T) -> serde_json::Result<Self> {
+        Ok(Self {
+            data: Some(to_raw_json_value(data)?),
+        })
+    }
+}
+
 pub fn thumbnail_request(origin: &str, server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!(
         "{origin}/_matrix/media/v3/thumbnail/{server}/{}",
