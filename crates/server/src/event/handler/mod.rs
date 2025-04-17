@@ -466,13 +466,14 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
 
-    let soft_fail = match (auch_checked, incoming_pdu.redacts_id(&room_version_id)) {
-        (false, _) => true,
-        (true, None) => false,
-        (true, Some(redact_id)) => {
-            !crate::room::state::user_can_redact(&redact_id, &incoming_pdu.sender, &incoming_pdu.room_id, true)?
-        }
-    };
+    let soft_fail = false;
+    // let soft_fail = match (auch_checked, incoming_pdu.redacts_id(&room_version_id)) {
+    //     (false, _) => true,
+    //     (true, None) => false,
+    //     (true, Some(redact_id)) => {
+    //         !crate::room::state::user_can_redact(&redact_id, &incoming_pdu.sender, &incoming_pdu.room_id, true)?
+    //     }
+    // };
 
     // 13. Use state resolution to find new room state
 
