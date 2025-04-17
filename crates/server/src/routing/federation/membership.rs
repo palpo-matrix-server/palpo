@@ -104,7 +104,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     json_ok(body)
 }
 
-// TODO: NOW
 /// #PUT /_matrix/federation/v2/invite/{room_id}/{event_id}
 /// Invites a remote user to a room.
 #[endpoint]

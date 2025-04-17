@@ -12,13 +12,7 @@ use crate::{AuthArgs, DepotExt, EmptyResult, SESSION_ID_LENGTH, empty_ok, utils}
 #[endpoint]
 pub(super) async fn upload(_aa: AuthArgs, body: JsonBody<UploadSigningKeysReqBody>, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
-
     let body = body.into_inner();
-
-    //Resending exactly the same keys should just 200 OK without doing a UIA prompt.
-    if !crate::user::key::has_different_keys(authed.user_id(), &body)? {
-        return empty_ok();
-    }
 
     // UIAA
     let mut uiaa_info = UiaaInfo {
