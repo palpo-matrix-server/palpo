@@ -320,3 +320,86 @@ pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
         false
     }
 }
+
+
+/// Runs through all the deactivation steps:
+///
+/// - Mark as deactivated
+/// - Removing display name
+/// - Removing avatar URL and blurhash
+/// - Removing all profile data
+/// - Leaving all rooms (and forgets all of them)
+pub async fn full_user_deactivate(
+	services: &Services,
+	user_id: &UserId,
+	all_joined_rooms: &[OwnedRoomId],
+) -> Result<()> {
+	services.users.deactivate_account(user_id).await.ok();
+	super::update_displayname(services, user_id, None, all_joined_rooms).await;
+	super::update_avatar_url(services, user_id, None, None, all_joined_rooms).await;
+
+	services
+		.users
+		.all_profile_keys(user_id)
+		.ready_for_each(|(profile_key, _)| {
+			services.users.set_profile_key(user_id, &profile_key, None);
+		})
+		.await;
+
+	for room_id in all_joined_rooms {
+		let state_lock = services.rooms.state.mutex.lock(room_id).await;
+
+		let room_power_levels = services
+			.rooms
+			.state_accessor
+			.room_state_get_content::<RoomPowerLevelsEventContent>(
+				room_id,
+				&StateEventType::RoomPowerLevels,
+				"",
+			)
+			.await
+			.ok();
+
+		let user_can_demote_self =
+			room_power_levels
+				.as_ref()
+				.is_some_and(|power_levels_content| {
+					RoomPowerLevels::from(power_levels_content.clone())
+						.user_can_change_user_power_level(user_id, user_id)
+				}) || services
+				.rooms
+				.state_accessor
+				.room_state_get(room_id, &StateEventType::RoomCreate, "")
+				.await
+				.is_ok_and(|event| event.sender == user_id);
+
+		if user_can_demote_self {
+			let mut power_levels_content = room_power_levels.unwrap_or_default();
+			power_levels_content.users.remove(user_id);
+
+			// ignore errors so deactivation doesn't fail
+			match services
+				.rooms
+				.timeline
+				.build_and_append_pdu(
+					PduBuilder::state(String::new(), &power_levels_content),
+					user_id,
+					room_id,
+					&state_lock,
+				)
+				.await
+			{
+				| Err(e) => {
+					warn!(%room_id, %user_id, "Failed to demote user's own power level: {e}");
+				},
+				| _ => {
+					info!("Demoted {user_id} in {room_id} as part of account deactivation");
+				},
+			}
+		}
+	}
+
+	super::leave_all_rooms(services, user_id).await;
+
+	Ok(())
+}

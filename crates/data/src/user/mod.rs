@@ -117,6 +117,14 @@ impl NewDbAccessToken {
     }
 }
 
+pub fn is_admin(user_id: &UserId) -> DataResult<bool> {
+    users::table
+        .filter(users::id.eq(user_id))
+        .select(users::is_admin)
+        .first::<bool>(&mut connect()?)
+        .map_err(Into::into)
+}
+
 /// Returns an iterator over all rooms this user joined.
 pub fn joined_rooms(user_id: &UserId, since_sn: Seqnum) -> DataResult<Vec<OwnedRoomId>> {
     room_users::table
