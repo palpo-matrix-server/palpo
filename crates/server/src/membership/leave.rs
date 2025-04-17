@@ -10,8 +10,9 @@ use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_raw_json_va
 use crate::core::{Seqnum, UnixMillis};
 
 use crate::data::connect;
+use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::event::{DbEventData, NewDbEvent, PduBuilder};
+use crate::event::PduBuilder;
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError};
 
@@ -179,7 +180,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         depth: 0,
         topological_ordering: 0,
         stream_ordering: 0,
-        origin_server_ts: Some(UnixMillis::now()),
+        origin_server_ts: UnixMillis::now(),
         received_at: None,
         sender_id: Some(user_id.to_owned()),
         contains_url: false,

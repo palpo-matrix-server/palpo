@@ -1,5 +1,6 @@
 pub mod handler;
 mod pdu;
+use palpo_core::Direction;
 pub use pdu::*;
 pub mod search;
 
@@ -11,82 +12,9 @@ use crate::core::identifiers::*;
 use crate::core::serde::default_false;
 use crate::core::{JsonValue, RawJsonValue, Seqnum, UnixMillis};
 use crate::data::connect;
+use crate::data::room::DbEvent;
 use crate::data::schema::*;
 use crate::{AppError, AppResult, MatrixError};
-
-#[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
-#[diesel(table_name = event_datas, primary_key(event_id))]
-pub struct DbEventData {
-    pub event_id: OwnedEventId,
-    pub event_sn: i64,
-    pub room_id: OwnedRoomId,
-    pub internal_metadata: Option<JsonValue>,
-    pub json_data: JsonValue,
-    pub format_version: Option<i64>,
-}
-
-#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
-#[diesel(table_name = events, primary_key(id))]
-pub struct DbEvent {
-    pub id: OwnedEventId,
-    pub sn: i64,
-    pub ty: String,
-    pub room_id: OwnedRoomId,
-    pub depth: i64,
-    pub topological_ordering: i64,
-    pub stream_ordering: i64,
-    pub unrecognized_keys: Option<String>,
-    pub origin_server_ts: Option<UnixMillis>,
-    pub received_at: Option<i64>,
-    pub sender_id: Option<OwnedUserId>,
-    pub contains_url: bool,
-    pub worker_id: Option<String>,
-    pub state_key: Option<String>,
-    pub is_outlier: bool,
-    pub is_redacted: bool,
-    pub soft_failed: bool,
-    pub rejection_reason: Option<String>,
-}
-#[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
-#[diesel(table_name = events, primary_key(id))]
-pub struct NewDbEvent {
-    pub id: OwnedEventId,
-    pub sn: i64,
-    #[serde(rename = "type")]
-    pub ty: String,
-    pub room_id: OwnedRoomId,
-    pub depth: i64,
-    pub topological_ordering: i64,
-    pub stream_ordering: i64,
-    pub unrecognized_keys: Option<String>,
-    pub origin_server_ts: Option<UnixMillis>,
-    pub received_at: Option<i64>,
-    pub sender_id: Option<OwnedUserId>,
-    #[serde(default = "default_false")]
-    pub contains_url: bool,
-    pub worker_id: Option<String>,
-    pub state_key: Option<String>,
-    #[serde(default = "default_false")]
-    pub is_outlier: bool,
-    #[serde(default = "default_false")]
-    pub soft_failed: bool,
-    pub rejection_reason: Option<String>,
-}
-
-impl NewDbEvent {
-    pub fn from_canonical_json(id: &EventId, sn: Seqnum, value: &CanonicalJsonObject) -> AppResult<Self> {
-        Self::from_json_value(id, sn, serde_json::to_value(value)?)
-    }
-    pub fn from_json_value(id: &EventId, sn: Seqnum, mut value: JsonValue) -> AppResult<Self> {
-        let depth = value.get("depth").cloned().unwrap_or(0.into());
-        let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
-        obj.insert("id".into(), id.as_str().into());
-        obj.insert("sn".into(), sn.into());
-        obj.insert("topological_ordering".into(), depth);
-        obj.insert("stream_ordering".into(), 0.into());
-        Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
-    }
-}
 
 /// Generates a correct eventId for the incoming pdu.
 ///
@@ -141,6 +69,41 @@ pub fn get_event_id_by_sn(event_sn: Seqnum) -> AppResult<OwnedEventId> {
         .select(event_points::event_id)
         .first::<OwnedEventId>(&mut connect()?)
         .map_err(Into::into)
+}
+
+pub fn get_event_for_timestamp(
+    room_id: &RoomId,
+    timestamp: UnixMillis,
+    dir: Direction,
+) -> AppResult<(OwnedEventId, UnixMillis)> {
+    match dir {
+        Direction::Forward => {
+            let (local_event_id, origin_server_ts) = events::table
+                .filter(events::room_id.eq(room_id))
+                .filter(events::origin_server_ts.is_not_null())
+                .filter(events::origin_server_ts.ge(timestamp))
+                .order_by(events::origin_server_ts.asc())
+                .select((events::id, events::origin_server_ts))
+                .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
+            Ok((local_event_id, origin_server_ts))
+        }
+        Direction::Backward => {
+            let (local_event_id, origin_server_ts) = events::table
+                .filter(events::room_id.eq(room_id))
+                .filter(events::origin_server_ts.is_not_null())
+                .filter(events::origin_server_ts.le(timestamp))
+                .order_by(events::origin_server_ts.desc())
+                .select((events::id, events::origin_server_ts))
+                .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
+            Ok((local_event_id, origin_server_ts))
+        }
+    }
+    // TODO: implement this function to find the event for a given timestamp
+    // Check for gaps in the history where events could be hiding in between
+    // the timestamp given and the event we were able to find locally
+    // let is_event_next_to_backward_gap = false;
+    // let is_event_next_to_forward_gap = false;
+    // let local_event = None;
 }
 
 pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(Seqnum, String)> {
