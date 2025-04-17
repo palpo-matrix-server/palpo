@@ -213,20 +213,6 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut futures: FuturesUnordered<_> = get_over_federation
         .into_iter()
         .map(|(server, vec)| async move {
-            // TODO: fixme0
-            //         if let Some((time, tries)) = BAD_QUERY_RATE_LIMITER.read().unwrap().get(&*server) {
-            //             // Exponential backoff
-            //             let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
-            //             if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-            //                 min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-            //             }
-
-            //             if time.elapsed() < min_elapsed_duration {
-            //                 debug!("Backing off query from {:?}", server);
-            //                 return (server, Err(AppError::public("bad query, still backing off")));
-            //             }
-            //         }
-
             let mut device_keys_input_fed = BTreeMap::new();
             for (user_id, keys) in vec {
                 device_keys_input_fed.insert(user_id.to_owned(), keys.clone());
