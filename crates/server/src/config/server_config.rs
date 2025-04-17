@@ -1,12 +1,13 @@
-use std::fmt; use std::net::IpAddr;
+use std::fmt;
+use std::net::IpAddr;
 
+use either::{
+    Either,
+    Either::{Left, Right},
+};
 use regex::RegexSet;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
-use either::{
-	Either,
-	Either::{Left, Right},
-};
 
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedServerName, RoomVersionId};
@@ -650,25 +651,25 @@ fn default_url_preview_max_spider_size() -> usize {
     256_000 // 256KB
 }
 fn default_ip_range_denylist() -> Vec<String> {
-	vec![
-		"127.0.0.0/8".to_owned(),
-		"10.0.0.0/8".to_owned(),
-		"172.16.0.0/12".to_owned(),
-		"192.168.0.0/16".to_owned(),
-		"100.64.0.0/10".to_owned(),
-		"192.0.0.0/24".to_owned(),
-		"169.254.0.0/16".to_owned(),
-		"192.88.99.0/24".to_owned(),
-		"198.18.0.0/15".to_owned(),
-		"192.0.2.0/24".to_owned(),
-		"198.51.100.0/24".to_owned(),
-		"203.0.113.0/24".to_owned(),
-		"224.0.0.0/4".to_owned(),
-		"::1/128".to_owned(),
-		"fe80::/10".to_owned(),
-		"fc00::/7".to_owned(),
-		"2001:db8::/32".to_owned(),
-		"ff00::/8".to_owned(),
-		"fec0::/10".to_owned(),
-	]
+    vec![
+        "127.0.0.0/8".to_owned(),
+        "10.0.0.0/8".to_owned(),
+        "172.16.0.0/12".to_owned(),
+        "192.168.0.0/16".to_owned(),
+        "100.64.0.0/10".to_owned(),
+        "192.0.0.0/24".to_owned(),
+        "169.254.0.0/16".to_owned(),
+        "192.88.99.0/24".to_owned(),
+        "198.18.0.0/15".to_owned(),
+        "192.0.2.0/24".to_owned(),
+        "198.51.100.0/24".to_owned(),
+        "203.0.113.0/24".to_owned(),
+        "224.0.0.0/4".to_owned(),
+        "::1/128".to_owned(),
+        "fe80::/10".to_owned(),
+        "fc00::/7".to_owned(),
+        "2001:db8::/32".to_owned(),
+        "ff00::/8".to_owned(),
+        "fec0::/10".to_owned(),
+    ]
 }

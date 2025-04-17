@@ -16,9 +16,10 @@ use hickory_resolver::Resolver as HickoryResolver;
 use hickory_resolver::config::*;
 use hickory_resolver::name_server::TokioConnectionProvider;
 use hyper_util::client::legacy::connect::dns::{GaiResolver, Name as HyperName};
+use ipaddress::IPAddress;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use salvo::oapi::ToSchema;
-use serde::Serialize;use ipaddress::IPAddress;
+use serde::Serialize;
 use tokio::sync::{Semaphore, broadcast, watch::Receiver};
 use tower_service::Service as TowerService;
 
@@ -215,8 +216,7 @@ pub fn cidr_range_denylist() -> &'static [IPAddress] {
     static CIDR_RANGE_DENYLIST: OnceLock<Vec<IPAddress>> = OnceLock::new();
     CIDR_RANGE_DENYLIST.get_or_init(|| {
         let conf = crate::config();
-        conf
-            .ip_range_denylist
+        conf.ip_range_denylist
             .iter()
             .map(IPAddress::parse)
             .inspect(|cidr| trace!("Denied CIDR range: {cidr:?}"))

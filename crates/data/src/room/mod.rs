@@ -194,7 +194,7 @@ pub struct DbEvent {
     pub topological_ordering: i64,
     pub stream_ordering: i64,
     pub unrecognized_keys: Option<String>,
-    pub origin_server_ts: Option<UnixMillis>,
+    pub origin_server_ts: UnixMillis,
     pub received_at: Option<i64>,
     pub sender_id: Option<OwnedUserId>,
     pub contains_url: bool,
@@ -217,7 +217,7 @@ pub struct NewDbEvent {
     pub topological_ordering: i64,
     pub stream_ordering: i64,
     pub unrecognized_keys: Option<String>,
-    pub origin_server_ts: Option<UnixMillis>,
+    pub origin_server_ts: UnixMillis,
     pub received_at: Option<i64>,
     pub sender_id: Option<OwnedUserId>,
     #[serde(default = "default_false")]
@@ -230,7 +230,6 @@ pub struct NewDbEvent {
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
 }
-
 impl NewDbEvent {
     pub fn from_canonical_json(id: &EventId, sn: Seqnum, value: &CanonicalJsonObject) -> DataResult<Self> {
         Self::from_json_value(id, sn, serde_json::to_value(value)?)
@@ -244,18 +243,6 @@ impl NewDbEvent {
         obj.insert("stream_ordering".into(), 0.into());
         Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
     }
-}
-
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = event_txn_ids, primary_key(event_id))]
-pub struct DbEventTxnId {
-    pub id: i64,
-    pub txn_id: OwnedTransactionId,
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
-    pub device_id: Option<OwnedDeviceId>,
-    pub event_id: Option<OwnedEventId>,
-    pub created_at: UnixMillis,
 }
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]

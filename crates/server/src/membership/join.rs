@@ -20,8 +20,9 @@ use crate::core::serde::{
 
 use crate::appservice::RegistrationInfo;
 use crate::data::connect;
+use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::event::{DbEventData, NewDbEvent, PduBuilder, PduEvent, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;

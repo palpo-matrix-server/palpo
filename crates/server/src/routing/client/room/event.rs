@@ -7,7 +7,10 @@ use serde_json::value::to_raw_value;
 use crate::PduBuilder;
 use crate::core::client::filter::LazyLoadOptions;
 use crate::core::client::redact::{RedactEventReqArgs, RedactEventReqBody, RedactEventResBody};
-use crate::core::client::room::{ContextReqArgs, ContextResBody, ReportContentReqBody, RoomEventResBody};
+use crate::core::client::room::{
+    ContextReqArgs, ContextResBody, EventByTimestampReqArgs, EventByTimestampResBody, ReportContentReqBody,
+    RoomEventResBody,
+};
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -263,8 +266,13 @@ pub(super) async fn send_redact(
     json_ok(RedactEventResBody { event_id })
 }
 #[endpoint]
-pub(super) async fn timestamp_to_event(_aa: AuthArgs) -> EmptyResult {
-    //TODO:??
-    // let authed = depot.authed_info()?;
-    empty_ok()
+pub(super) async fn timestamp_to_event(
+    _aa: AuthArgs,
+    args: EventByTimestampReqArgs,
+) -> JsonResult<EventByTimestampResBody> {
+    let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
+    json_ok(EventByTimestampResBody {
+        event_id,
+        origin_server_ts,
+    })
 }

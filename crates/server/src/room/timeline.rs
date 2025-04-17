@@ -26,9 +26,10 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value};
 use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
+use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
-use crate::event::{DbEventData, EventHash, NewDbEvent, PduBuilder, PduEvent};
+use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, utils};
 
@@ -555,7 +556,7 @@ pub fn create_hash_and_sign_event(
         depth: depth as i64,
         topological_ordering: depth as i64,
         stream_ordering: 0,
-        origin_server_ts: Some(UnixMillis::now()),
+        origin_server_ts: UnixMillis::now(),
         received_at: None,
         sender_id: Some(sender_id.to_owned()),
         contains_url: content_value.get("url").is_some(),

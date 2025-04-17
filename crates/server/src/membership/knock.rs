@@ -331,7 +331,7 @@ async fn knock_room_remote(
             depth: 0,
             topological_ordering: 0,
             stream_ordering: 0,
-            origin_server_ts: Some(UnixMillis::now()),
+            origin_server_ts: UnixMillis::now(),
             received_at: None,
             sender_id: Some(sender_id.to_owned()),
             contains_url: false,

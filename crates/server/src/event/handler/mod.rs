@@ -22,8 +22,9 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::connect;
+use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::event::{DbEventData, NewDbEvent, PduEvent};
+use crate::event::PduEvent;
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, exts::*};
 
