@@ -29,7 +29,6 @@ fn send_to_device(
     }
 
     for (target_user_id, map) in &body.messages {
-        println!("==================target_user_id {target_user_id}  {map:?}");
         for (target_device_id_maybe, event) in map {
             if target_user_id.server_name().is_remote() {
                 let mut map = BTreeMap::new();
@@ -53,7 +52,6 @@ fn send_to_device(
                 continue;
             }
 
-            println!("==================target_device_id_maybe");
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => crate::user::add_to_device_event(
                     authed.user_id(),

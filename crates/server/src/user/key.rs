@@ -464,10 +464,6 @@ pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<
 }
 
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
-    println!(
-        ">>>>>>>>>>>>>>>>>>add add_device_keys user_id: {:?} device_id: {device_id} device_keys:{device_keys:?}",
-        user_id
-    );
     let new_device_key = NewDbDeviceKey {
         user_id: user_id.to_owned(),
         device_id: device_id.to_owned(),
@@ -584,7 +580,6 @@ pub fn sign_key(
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
-    println!(">>>>>>>>>>>>>>mark_device_key_update, user_id: {:?}", user_id);
     let changed_at = UnixMillis::now();
     for room_id in crate::user::joined_rooms(user_id, 0)? {
         // comment for testing

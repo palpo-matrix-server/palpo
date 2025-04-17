@@ -4,18 +4,17 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::Duration;
 
 use ipaddress::IPAddress;
+use reqwest::IntoUrl;
 use salvo::Response;
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{Mutex, MutexGuard};
-use tokio::task;
 use url::Url;
 
-use crate::core::federation::media::ContentReqArgs;
 use crate::core::identifiers::*;
-use crate::core::{MatrixError, ServerName, UnixMillis, media};
+use crate::core::{MatrixError, UnixMillis};
 use crate::data::media::{DbUrlPreview, NewDbMetadata, NewDbUrlPreview};
-use crate::{AppResult, data, join_path, utils};
+use crate::{AppResult, data, utils};
 
 static URL_PREVIEW_MUTEX: LazyLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = LazyLock::new(Default::default);
 async fn get_url_preview_mutex(url: &str) -> Arc<Mutex<()>> {
@@ -37,40 +36,48 @@ fn client() -> &'static reqwest::Client {
     })
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, Debug)]
 pub struct UrlPreviewData {
+    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:url"))]
+    pub og_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:title"))]
-    pub title: Option<String>,
+    pub og_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:type"))]
+    pub og_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:description"))]
-    pub description: Option<String>,
+    pub og_description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image"))]
-    pub image: Option<String>,
+    pub og_image: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "matrix:image:size"))]
     pub image_size: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image:width"))]
-    pub image_width: Option<u32>,
+    pub og_image_width: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image:height"))]
-    pub image_height: Option<u32>,
+    pub og_image_height: Option<u32>,
 }
 impl UrlPreviewData {
     pub fn into_new_db_url_preview(self, url: impl Into<String>) -> NewDbUrlPreview {
         let Self {
-            title,
-            description,
-            image,
+            og_title,
+            og_type,
+            og_url,
+            og_description,
+            og_image,
             image_size,
-            image_width,
-            image_height,
+            og_image_width,
+            og_image_height,
             ..
         } = self;
         NewDbUrlPreview {
             url: url.into(),
-            title,
-            description,
-            image,
+            og_title,
+            og_type,
+            og_url,
+            og_description,
+            og_image,
             image_size: image_size.map(|s| s as i64),
-            image_width: image_width.map(|w| w as i32),
-            image_height: image_height.map(|h| h as i32),
+            og_image_width: og_image_width.map(|w| w as i32),
+            og_image_height: og_image_height.map(|h| h as i32),
             created_at: UnixMillis::now(),
         }
     }
@@ -78,21 +85,25 @@ impl UrlPreviewData {
 impl From<DbUrlPreview> for UrlPreviewData {
     fn from(preview: DbUrlPreview) -> Self {
         let DbUrlPreview {
-            title,
-            description,
-            image,
+            og_title,
+            og_type,
+            og_url,
+            og_description,
+            og_image,
             image_size,
-            image_width,
-            image_height,
+            og_image_width,
+            og_image_height,
             ..
         } = preview;
         Self {
-            title,
-            description,
-            image,
+            og_title,
+            og_type,
+            og_url,
+            og_description,
+            og_image,
             image_size: image_size.map(|s| s as u64),
-            image_width: image_width.map(|w| w as u32),
-            image_height: image_height.map(|h| h as u32),
+            og_image_width: og_image_width.map(|w| w as u32),
+            og_image_height: og_image_height.map(|h| h as u32),
         }
     }
 }
@@ -113,106 +124,106 @@ pub fn url_preview_allowed(url: &Url) -> bool {
         }
         Some(h) => h.to_owned(),
     };
-    return true;
-    // TODO: Uncomment and implement the following lines
 
-    // let allowlist_domain_contains = url_preview_domain_contains_allowlist();
-    // let allowlist_domain_explicit = url_preview_domain_explicit_allowlist();
-    // let denylist_domain_explicit = url_preview_domain_explicit_denylist();
-    // let allowlist_url_contains = url_preview_url_contains_allowlist();
+    let conf = crate::config();
+    let allowlist_domain_contains = &conf.url_preview_domain_contains_allowlist;
+    let allowlist_domain_explicit = &conf.url_preview_domain_explicit_allowlist;
+    let denylist_domain_explicit = &conf.url_preview_domain_explicit_denylist;
+    let allowlist_url_contains = &conf.url_preview_url_contains_allowlist;
 
-    // if allowlist_domain_contains.contains(&"*".to_owned())
-    //     || allowlist_domain_explicit.contains(&"*".to_owned())
-    //     || allowlist_url_contains.contains(&"*".to_owned())
-    // {
-    //     debug!(
-    //         "Config key contains * which is allowing all URL previews. Allowing URL {}",
-    //         url
-    //     );
-    //     return true;
-    // }
+    if allowlist_domain_contains.contains(&"*".to_owned())
+        || allowlist_domain_explicit.contains(&"*".to_owned())
+        || allowlist_url_contains.contains(&"*".to_owned())
+    {
+        debug!(
+            "Config key contains * which is allowing all URL previews. Allowing URL {}",
+            url
+        );
+        return true;
+    }
 
-    // if !host.is_empty() {
-    //     if denylist_domain_explicit.contains(&host) {
-    //         debug!(
-    //             "Host {} is not allowed by url_preview_domain_explicit_denylist (check 1/4)",
-    //             &host
-    //         );
-    //         return false;
-    //     }
+    if !host.is_empty() {
+        if denylist_domain_explicit.contains(&host) {
+            debug!(
+                "Host {} is not allowed by url_preview_domain_explicit_denylist (check 1/4)",
+                &host
+            );
+            return false;
+        }
 
-    //     if allowlist_domain_explicit.contains(&host) {
-    //         debug!(
-    //             "Host {} is allowed by url_preview_domain_explicit_allowlist (check 2/4)",
-    //             &host
-    //         );
-    //         return true;
-    //     }
+        if allowlist_domain_explicit.contains(&host) {
+            debug!(
+                "Host {} is allowed by url_preview_domain_explicit_allowlist (check 2/4)",
+                &host
+            );
+            return true;
+        }
 
-    //     if allowlist_domain_contains
-    //         .iter()
-    //         .any(|domain_s| domain_s.contains(&host.clone()))
-    //     {
-    //         debug!(
-    //             "Host {} is allowed by url_preview_domain_contains_allowlist (check 3/4)",
-    //             &host
-    //         );
-    //         return true;
-    //     }
+        if allowlist_domain_contains
+            .iter()
+            .any(|domain_s| domain_s.contains(&host.clone()))
+        {
+            debug!(
+                "Host {} is allowed by url_preview_domain_contains_allowlist (check 3/4)",
+                &host
+            );
+            return true;
+        }
 
-    //     if allowlist_url_contains
-    //         .iter()
-    //         .any(|url_s| url.to_string().contains(url_s))
-    //     {
-    //         debug!(
-    //             "URL {} is allowed by url_preview_url_contains_allowlist (check 4/4)",
-    //             &host
-    //         );
-    //         return true;
-    //     }
+        if allowlist_url_contains
+            .iter()
+            .any(|url_s| url.to_string().contains(url_s))
+        {
+            debug!(
+                "URL {} is allowed by url_preview_url_contains_allowlist (check 4/4)",
+                &host
+            );
+            return true;
+        }
 
-    //     // check root domain if available and if user has root domain checks
-    //     if url_preview_check_root_domain() {
-    //         debug!("Checking root domain");
-    //         match host.split_once('.') {
-    //             None => return false,
-    //             Some((_, root_domain)) => {
-    //                 if denylist_domain_explicit.contains(&root_domain.to_owned()) {
-    //                     debug!(
-    //                         "Root domain {} is not allowed by \
-    // 						 url_preview_domain_explicit_denylist (check 1/3)",
-    //                         &root_domain
-    //                     );
-    //                     return true;
-    //                 }
+        // check root domain if available and if user has root domain checks
+        if conf.url_preview_check_root_domain {
+            debug!("Checking root domain");
+            match host.split_once('.') {
+                None => return false,
+                Some((_, root_domain)) => {
+                    if denylist_domain_explicit.contains(&root_domain.to_owned()) {
+                        debug!(
+                            "Root domain {} is not allowed by \
+    						 url_preview_domain_explicit_denylist (check 1/3)",
+                            &root_domain
+                        );
+                        return true;
+                    }
 
-    //                 if allowlist_domain_explicit.contains(&root_domain.to_owned()) {
-    //                     debug!(
-    //                         "Root domain {} is allowed by url_preview_domain_explicit_allowlist \
-    // 						 (check 2/3)",
-    //                         &root_domain
-    //                     );
-    //                     return true;
-    //                 }
+                    if allowlist_domain_explicit.contains(&root_domain.to_owned()) {
+                        debug!(
+                            "Root domain {} is allowed by url_preview_domain_explicit_allowlist \
+    						 (check 2/3)",
+                            &root_domain
+                        );
+                        return true;
+                    }
 
-    //                 if allowlist_domain_contains
-    //                     .iter()
-    //                     .any(|domain_s| domain_s.contains(&root_domain.to_owned()))
-    //                 {
-    //                     debug!(
-    //                         "Root domain {} is allowed by url_preview_domain_contains_allowlist \
-    // 						 (check 3/3)",
-    //                         &root_domain
-    //                     );
-    //                     return true;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+                    if allowlist_domain_contains
+                        .iter()
+                        .any(|domain_s| domain_s.contains(&root_domain.to_owned()))
+                    {
+                        debug!(
+                            "Root domain {} is allowed by url_preview_domain_contains_allowlist \
+    						 (check 3/3)",
+                            &root_domain
+                        );
+                        return true;
+                    }
+                }
+            }
+        }
+    }
 
-    // false
+    false
 }
+
 pub async fn get_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
     if let Ok(preview) = data::media::get_url_preview(url.as_str()) {
         return Ok(preview.into());
@@ -236,13 +247,11 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
         }
     }
 
-    let response = client.head(url.as_str()).send().await?;
-
+    let response = client.get(url.clone()).send().await?;
     debug!(?url, "URL preview response headers: {:?}", response.headers());
 
     if let Some(remote_addr) = response.remote_addr() {
         debug!(?url, "URL preview response remote address: {:?}", remote_addr);
-
         if let Ok(ip) = IPAddress::parse(remote_addr.ip().to_string()) {
             if !crate::valid_cidr_range(&ip) {
                 return Err(MatrixError::forbidden("Requesting from this address is forbidden").into());
@@ -259,20 +268,19 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
         .map_err(|e| MatrixError::unknown(format!("Unknown or invalid Content-Type header: {e}")))?;
 
     let data = match content_type {
-        html if html.starts_with("text/html") => download_html(url.as_str()).await?,
-        img if img.starts_with("image/") => download_image(url.as_str()).await?,
+        html if html.starts_with("text/html") => download_html(url).await?,
+        img if img.starts_with("image/") => download_image(url).await?,
         _ => return Err(MatrixError::unknown("Unsupported Content-Type").into()),
     };
-
     crate::data::media::set_url_preview(&data.clone().into_new_db_url_preview(url.as_str()))?;
 
     Ok(data)
 }
-async fn download_image(url: &str) -> AppResult<UrlPreviewData> {
+async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
     use image::ImageReader;
 
     let conf = crate::config();
-    let image = client().get(url).send().await?;
+    let image = client().get(url.to_owned()).send().await?;
     let content_type = image.headers().get(reqwest::header::CONTENT_TYPE);
     let content_type = content_type.and_then(|ct| ct.to_str().ok()).map(|c| c.to_owned());
     let image = image.bytes().await?;
@@ -315,20 +323,20 @@ async fn download_image(url: &str) -> AppResult<UrlPreviewData> {
     };
 
     Ok(UrlPreviewData {
-        image: Some(mxc.to_string()),
+        og_image: Some(mxc.to_string()),
         image_size: Some(image.len() as u64),
-        image_width: width,
-        image_height: height,
+        og_image_width: width,
+        og_image_height: height,
         ..Default::default()
     })
 }
 
-async fn download_html(url: &str) -> AppResult<UrlPreviewData> {
+async fn download_html(url: &Url) -> AppResult<UrlPreviewData> {
     use webpage::HTML;
 
     let conf = crate::config();
     let client = client();
-    let mut response = client.get(url).send().await?;
+    let mut response = client.get(url.to_owned()).send().await?;
 
     let mut bytes: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await? {
@@ -344,20 +352,22 @@ async fn download_html(url: &str) -> AppResult<UrlPreviewData> {
         }
     }
     let body = String::from_utf8_lossy(&bytes);
-    let Ok(html) = HTML::from_string(body.to_string(), Some(url.to_owned())) else {
+    let Ok(html) = HTML::from_string(body.to_string(), Some(url.to_string())) else {
         return Err(MatrixError::unknown("Failed to parse HTML").into());
     };
 
     let mut data = match html.opengraph.images.first() {
         None => UrlPreviewData::default(),
-        Some(obj) => download_image(&obj.url).await?,
+        Some(obj) => download_image(&url.join(&obj.url)?).await?,
     };
 
+    println!("====================og props: {:#?}", html.opengraph);
+    data.og_type = Some(html.opengraph.og_type);
     let props = html.opengraph.properties;
-
     /* use OpenGraph title/description, but fall back to HTML if not available */
-    data.title = props.get("title").cloned().or(html.title);
-    data.description = props.get("description").cloned().or(html.description);
+    data.og_url = props.get("url").cloned().or(Some(url.to_string()));
+    data.og_title = props.get("title").cloned().or(html.title);
+    data.og_description = props.get("description").cloned().or(html.description);
 
     Ok(data)
 }

@@ -42,7 +42,6 @@ pub(super) async fn get_hierarchy(
 
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
-    let conf = crate::config();
 
     while let Some((current_room, via)) = queue.pop_front() {
         let summary =

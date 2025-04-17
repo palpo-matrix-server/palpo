@@ -173,7 +173,6 @@ async fn handle_prev_pdu(
     first_ts_in_room: UnixMillis,
     prev_id: &EventId,
 ) -> AppResult<()> {
-    println!("===============handle_prev_pdu {:?}", prev_id);
     if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*prev_id) {
         // Exponential backoff
         let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
@@ -400,7 +399,6 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("===========upgrade_outlier_to_timeline_pdu {:?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if crate::room::timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
@@ -668,11 +666,6 @@ pub(crate) async fn fetch_and_handle_outliers(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
-    println!(
-        ">>>>>>>>>>>>>>>>fetch_and_handle_outliers, {} events: {:?}",
-        crate::server_name(),
-        events
-    );
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
             e.insert((Instant::now(), 1));

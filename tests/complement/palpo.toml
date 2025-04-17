@@ -50,6 +50,9 @@ log_format = "compact" # pretty, json
 # servers.)
 trusted_servers = ["matrix.org"]
 
+url_preview_domain_contains_allowlist = ["*"]
+ip_range_denylist = []
+
 # [keypair]
 # document = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAELqWFgDu6Ap47RzE1ehee2XCvGamRzu6u0N66lsgOJ0="
 # version = "1"

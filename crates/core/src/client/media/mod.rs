@@ -118,38 +118,35 @@ pub struct MediaPreviewReqArgs {
 
     /// Preferred point in time (in milliseconds) to return a preview for.
     #[salvo(parameter(parameter_in = Query))]
-    pub ts: UnixMillis,
+    pub ts: Option<UnixMillis>,
 }
 
 /// Response type for the `get_media_preview` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct MediaPreviewResBody {
+#[salvo(schema(value_type = Object))]
+pub struct MediaPreviewResBody(
     /// OpenGraph-like data for the URL.
     ///
     /// Differences from OpenGraph: the image size in bytes is added to the `matrix:image:size`
     /// field, and `og:image` returns the MXC URI to the image, if any.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    #[serde(flatten)]
-    pub data: Option<Box<RawJsonValue>>,
-}
+    pub Option<Box<RawJsonValue>>,
+);
 impl MediaPreviewResBody {
     /// Creates an empty `Response`.
     pub fn new() -> Self {
-        Self { data: None }
+        Self(None)
     }
 
     /// Creates a new `Response` with the given OpenGraph data (in a
     /// `serde_json::value::RawValue`).
     pub fn from_raw_value(data: Box<RawJsonValue>) -> Self {
-        Self { data: Some(data) }
+        Self(Some(data))
     }
 
     /// Creates a new `Response` with the given OpenGraph data (in any kind of serializable
     /// object).
     pub fn from_serialize<T: Serialize>(data: &T) -> serde_json::Result<Self> {
-        Ok(Self {
-            data: Some(to_raw_json_value(data)?),
-        })
+        Ok(Self(Some(to_raw_json_value(data)?)))
     }
 }
 

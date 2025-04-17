@@ -91,12 +91,14 @@ pub fn get_thumbnail(
 pub struct DbUrlPreview {
     pub id: i64,
     pub url: String,
-    pub title: Option<String>,
-    pub description: Option<String>,
-    pub image: Option<String>,
+    pub og_title: Option<String>,
+    pub og_type: Option<String>,
+    pub og_url: Option<String>,
+    pub og_description: Option<String>,
+    pub og_image: Option<String>,
     pub image_size: Option<i64>,
-    pub image_width: Option<i32>,
-    pub image_height: Option<i32>,
+    pub og_image_width: Option<i32>,
+    pub og_image_height: Option<i32>,
     pub created_at: UnixMillis,
 }
 
@@ -104,12 +106,14 @@ pub struct DbUrlPreview {
 #[diesel(table_name = media_url_previews)]
 pub struct NewDbUrlPreview {
     pub url: String,
-    pub title: Option<String>,
-    pub description: Option<String>,
-    pub image: Option<String>,
+    pub og_title: Option<String>,
+    pub og_type: Option<String>,
+    pub og_url: Option<String>,
+    pub og_description: Option<String>,
+    pub og_image: Option<String>,
     pub image_size: Option<i64>,
-    pub image_width: Option<i32>,
-    pub image_height: Option<i32>,
+    pub og_image_width: Option<i32>,
+    pub og_image_height: Option<i32>,
     pub created_at: UnixMillis,
 }
 
