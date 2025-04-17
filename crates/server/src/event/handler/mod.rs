@@ -155,9 +155,7 @@ pub(crate) async fn handle_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id)
-        .await
-        .unwrap();
+    crate::event::handler::upgrade_outlier_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -444,12 +442,10 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok())
         },
     )
-    .map_err(|_e| MatrixError::invalid_param("Auth check failed for event passes based on the state"))?;
+    .map_err(|_e| MatrixError::forbidden("Auth check failed for event passes based on the state"))?;
 
     if !auth_checked {
-        return Err(AppError::internal(
-            "Event has failed auth check with state at the event.",
-        ));
+        return Err(MatrixError::forbidden("Event has failed auth check with state at the event.").into());
     }
     debug!("Auth check succeeded");
 
@@ -470,15 +466,13 @@ pub async fn upgrade_outlier_to_timeline_pdu(
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
 
-    // TODO: NOW
-    let soft_fail = false;
-    // let soft_fail = match (auch_checked, incoming_pdu.redacts_id(&room_version_id)) {
-    //     (false, _) => true,
-    //     (true, None) => false,
-    //     (true, Some(redact_id)) => {
-    //         !crate::room::state::user_can_redact(&redact_id, &incoming_pdu.sender, &incoming_pdu.room_id, true)?
-    //     }
-    // };
+    let soft_fail = match (auch_checked, incoming_pdu.redacts_id(&room_version_id)) {
+        (false, _) => true,
+        (true, None) => false,
+        (true, Some(redact_id)) => {
+            !crate::room::state::user_can_redact(&redact_id, &incoming_pdu.sender, &incoming_pdu.room_id, true)?
+        }
+    };
 
     // 13. Use state resolution to find new room state
 

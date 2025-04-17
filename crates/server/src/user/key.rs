@@ -711,23 +711,3 @@ pub fn room_keys_changed(
             .map_err(Into::into)
     }
 }
-
-// Check if a key provided in `body` differs from the same key stored in the DB. Returns
-// true on the first difference. If a key exists in `body` but does not exist in the DB,
-// returns True. If `body` has no keys, this always returns False.
-// Note by 'key' we mean Matrix key rather than JSON key.
-
-// The purpose of this function is to detect whether or not we need to apply UIA checks.
-// We must apply UIA checks if any key in the database is being overwritten. If a key is
-// being inserted for the first time, or if the key exactly matches what is in the database,
-// then no UIA check needs to be performed.
-
-// Args:
-//     user_id: The user who sent the `body`.
-//     body: The JSON request body from POST /keys/device_signing/upload
-// Returns:
-//     true if any key in `body` has a different value in the database.
-pub fn has_different_keys(user_id: &UserId, body: &UploadSigningKeysReqBody) -> AppResult<bool> {
-    //TODO: NOW
-    Ok(true)
-}
