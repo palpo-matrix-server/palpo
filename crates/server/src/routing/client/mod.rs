@@ -164,6 +164,12 @@ async fn supported_versions() -> JsonResult<VersionsResBody> {
             "v1.3".to_owned(),
             "v1.4".to_owned(),
             "v1.5".to_owned(),
+            "v1.6".to_owned(),
+            "v1.7".to_owned(),
+            "v1.8".to_owned(),
+            "v1.9".to_owned(),
+            "v1.10".to_owned(),
+            "v1.11".to_owned(),
         ],
         unstable_features: BTreeMap::from_iter([
             ("org.matrix.e2e_cross_signing".to_owned(), true),
