@@ -115,7 +115,6 @@ async fn handler() -> AppResult<()> {
     let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
 
     for (id, outgoing_kind, event) in active_requests()? {
-        println!("===============startup_netburst {outgoing_kind:?} {event:?}");
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
             .or_insert_with(Vec::new);
@@ -779,7 +778,6 @@ fn delete_request(id: i64) -> AppResult<()> {
 }
 
 fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
-    println!("=================delete_all_active_requests_for {outgoing_kind:?}");
     diesel::delete(
         outgoing_requests::table
             .filter(outgoing_requests::kind.eq(outgoing_kind.name()))
@@ -791,7 +789,6 @@ fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()>
 }
 
 fn delete_all_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
-    println!("=================delete_all_requests_for {outgoing_kind:?}");
     diesel::delete(outgoing_requests::table.filter(outgoing_requests::kind.eq(outgoing_kind.name())))
         .execute(&mut connect()?)?;
 

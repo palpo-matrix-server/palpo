@@ -371,7 +371,6 @@ pub fn sign_key(
 }
 
 pub fn mark_device_key_update(user_id: &UserId) -> DataResult<()> {
-    println!(">>>>>>>>>>>>>>mark_device_key_update, user_id: {:?}", user_id);
     let changed_at = UnixMillis::now();
     for room_id in crate::user::joined_rooms(user_id, 0)? {
         // comment for testing

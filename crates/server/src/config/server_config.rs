@@ -123,8 +123,8 @@ pub struct ServerConfig {
     #[serde(default = "default_typing_client_timeout_max_s")]
     pub typing_client_timeout_max_s: u64,
 
-    /// Set this to true for conduwuit to compress HTTP response bodies using
-    /// zstd. This option does nothing if conduwuit was not built with
+    /// Set this to true for palpo to compress HTTP response bodies using
+    /// zstd. This option does nothing if palpo was not built with
     /// `zstd_compression` feature. Please be aware that enabling HTTP
     /// compression may weaken TLS. Most users should not need to enable this.
     /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
@@ -132,8 +132,8 @@ pub struct ServerConfig {
     #[serde(default)]
     pub zstd_compression: bool,
 
-    /// Set this to true for conduwuit to compress HTTP response bodies using
-    /// gzip. This option does nothing if conduwuit was not built with
+    /// Set this to true for palpo to compress HTTP response bodies using
+    /// gzip. This option does nothing if palpo was not built with
     /// `gzip_compression` feature. Please be aware that enabling HTTP
     /// compression may weaken TLS. Most users should not need to enable this.
     /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH before
@@ -144,8 +144,8 @@ pub struct ServerConfig {
     #[serde(default)]
     pub gzip_compression: bool,
 
-    /// Set this to true for conduwuit to compress HTTP response bodies using
-    /// brotli. This option does nothing if conduwuit was not built with
+    /// Set this to true for palpo to compress HTTP response bodies using
+    /// brotli. This option does nothing if palpo was not built with
     /// `brotli_compression` feature. Please be aware that enabling HTTP
     /// compression may weaken TLS. Most users should not need to enable this.
     /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
@@ -188,7 +188,7 @@ pub struct ServerConfig {
 
     /// Check consistency of the media directory at startup:
     /// 1. When `media_compat_file_link` is enabled, this check will upgrade
-    ///    media when switching back and forth between Conduit and conduwuit.
+    ///    media when switching back and forth between Conduit and palpo.
     ///    Both options must be enabled to handle this.
     /// 2. When media is deleted from the directory, this check will also delete
     ///    its database entry.
@@ -206,7 +206,7 @@ pub struct ServerConfig {
     /// Otherwise setting this to false reduces filesystem clutter and overhead
     /// for managing these symlinks in the directory. This is now disabled by
     /// default. You may still return to upstream Conduit but you have to run
-    /// conduwuit at least once with this set to true and allow the
+    /// palpo at least once with this set to true and allow the
     /// media_startup_check to take place before shutting down to return to
     /// Conduit.
     #[serde(default)]
@@ -223,7 +223,7 @@ pub struct ServerConfig {
     #[serde(default)]
     pub prune_missing_media: bool,
 
-    /// Vector list of regex patterns of server names that conduwuit will refuse
+    /// Vector list of regex patterns of server names that palpo will refuse
     /// to download remote media from.
     ///
     /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
@@ -259,7 +259,7 @@ pub struct ServerConfig {
     pub forbidden_remote_room_directory_server_names: RegexSet,
 
     /// Vector list of IPv4 and IPv6 CIDR ranges / subnets *in quotes* that you
-    /// do not want conduwuit to send outbound requests to. Defaults to
+    /// do not want palpo to send outbound requests to. Defaults to
     /// RFC1918, unroutable, loopback, multicast, and testnet addresses for
     /// security.
     ///

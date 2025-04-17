@@ -3,7 +3,7 @@ use salvo::prelude::*;
 
 use crate::core::OwnedTransactionId;
 use crate::core::appservice::ping::{SendPingReqBody, SendPingResBody, send_ping_request};
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("appservice/{appservice_id}/ping").post(ping)

@@ -262,10 +262,6 @@ pub async fn join_room(
         }
     }
 
-    println!(
-        "================servers: {servers:?}  servername: {} ================",
-        crate::server_name()
-    );
     let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0] == crate::server_name());
@@ -768,10 +764,6 @@ async fn make_join_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
-    println!(
-        "xxxxxxxxxxxxxxxxxx  servers: {servers:?}  servername: {}",
-        crate::server_name()
-    );
     let mut make_join_res_body_and_server = Err(StatusError::bad_request()
         .brief("No server available to assist in joining.")
         .into());

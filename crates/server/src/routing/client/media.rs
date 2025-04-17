@@ -314,8 +314,7 @@ pub async fn preview_url(
 
     let preview = crate::media::get_url_preview(&url).await?;
 
-    let res_body = serde_json::value::to_raw_value(&preview)
-        .map(MediaPreviewResBody::from_raw_value)
+    let res_body = MediaPreviewResBody::from_serialize(&preview)
         .map_err(|e| MatrixError::unknown(format!("Failed to parse URL preview: {e}")))?;
     json_ok(res_body)
 }

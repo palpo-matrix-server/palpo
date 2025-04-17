@@ -393,12 +393,14 @@ diesel::table! {
     media_url_previews (id) {
         id -> Int8,
         url -> Text,
-        title -> Nullable<Text>,
-        description -> Nullable<Text>,
-        image -> Nullable<Text>,
+        og_title -> Nullable<Text>,
+        og_type -> Nullable<Text>,
+        og_url -> Nullable<Text>,
+        og_description -> Nullable<Text>,
+        og_image -> Nullable<Text>,
         image_size -> Nullable<Int8>,
-        image_width -> Nullable<Int4>,
-        image_height -> Nullable<Int4>,
+        og_image_width -> Nullable<Int4>,
+        og_image_height -> Nullable<Int4>,
         created_at -> Int8,
     }
 }
