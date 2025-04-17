@@ -634,7 +634,9 @@ impl StdError for UiaaInfo {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AuthError {
+    #[serde(flatten)]
     pub kind: ErrorKind,
+    #[serde(rename = "error")]
     pub message: String,
 }
 

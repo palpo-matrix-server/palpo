@@ -9,7 +9,7 @@ use crate::core::client::device::{
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::error::ErrorKind;
 use crate::data::connect;
-use crate::data::schema::*;
+use crate::data::schema::*;use crate::core::client::uiaa::AuthError;
 use crate::data::user::DbUserDevice;
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
 
@@ -93,7 +93,7 @@ async fn delete_device(
     _aa: AuthArgs,
     device_id: PathParam<OwnedDeviceId>,
     body: JsonBody<Option<DeleteDeviceReqBody>>,
-    depot: &mut Depot,
+    depot: &mut Depot, res: &mut Response,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let auth = body.into_inner().map(|body| body.auth).flatten();
@@ -111,6 +111,7 @@ async fn delete_device(
     };
     let Some(auth) = auth else {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::Unauthorized, "Missing authentication data"));
         return Err(uiaa_info.into());
     };
 
@@ -121,6 +122,8 @@ async fn delete_device(
             }
         }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::Forbidden, "Invalid authentication data"));
+        res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
     crate::user::remove_device(authed.user_id(), &device_id)?;
