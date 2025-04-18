@@ -1,11 +1,15 @@
 use salvo::prelude::*;
 
+use crate::hoops;
+
 mod msc3391;
 mod msc3575;
 mod msc4186;
 
 pub(super) fn router() -> Router {
     Router::with_path("unstable")
+        .hoop(hoops::limit_rate)
+        .hoop(hoops::auth_by_access_token)
         .push(
             Router::with_path("org.matrix.msc3391/user/{user_id}/account_data/{account_type}")
                 .delete(msc3391::delete_account_data),
