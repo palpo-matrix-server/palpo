@@ -4,7 +4,6 @@ pub use preview::*;
 use std::time::Duration;
 
 use salvo::Response;
-use url::Url;
 
 use crate::core::federation::media::ContentReqArgs;
 use crate::core::{ServerName, media};

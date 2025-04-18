@@ -15,8 +15,8 @@ use crate::events::AnyTimelineEvent;
 use crate::events::receipt::ReceiptContent;
 use crate::presence::PresenceContent;
 use crate::sending::{SendRequest, SendResult};
-use crate::serde::from_raw_json_value;
-use crate::{JsonValue, OwnedRoomId, OwnedUserId, RawJsonValue, serde::RawJson};
+use crate::serde::{JsonValue, RawJson, RawJsonValue, from_raw_json_value};
+use crate::{OwnedRoomId, OwnedUserId};
 
 /// `PUT /_matrix/app/*/transactions/{txn_id}`
 ///

@@ -4,14 +4,15 @@ use std::time::Instant;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::device::{DeviceListUpdateContent, DirectDeviceContent};
 use crate::core::events::receipt::{ReceiptContent, ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::events::typing::TypingContent;
 use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
+use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
-use crate::core::{RawJsonValue, UnixMillis};
 use crate::data::user::NewDbPresence;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};

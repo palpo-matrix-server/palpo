@@ -1,8 +1,11 @@
 use diesel::prelude::*;
 
-use crate::core::{client::filter::FilterDefinition, identifiers::*, JsonValue, UnixMillis};
+use crate::core::UnixMillis;
+use crate::core::client::filter::FilterDefinition;
+use crate::core::identifiers::*;
+use crate::core::serde::JsonValue;
 use crate::schema::*;
-use crate::{connect, DataResult};
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_filters)]

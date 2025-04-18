@@ -1,11 +1,11 @@
 //! Helper module for the Serialize / Deserialize impl's for the UserIdentifier struct
 //! in the parent module.
 
-use crate::{serde::from_raw_json_value, third_party::Medium};
 use serde::{Deserialize, Deserializer, Serialize, de, ser::SerializeStruct};
 
 use super::{CustomThirdPartyId, UserIdentifier};
-use crate::RawJsonValue;
+use crate::serde::{RawJsonValue, from_raw_json_value};
+use crate::third_party::Medium;
 
 impl Serialize for UserIdentifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

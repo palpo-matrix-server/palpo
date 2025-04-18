@@ -5,7 +5,8 @@ use super::{
     RoomRedactionUnsigned, SyncRoomRedactionEvent,
 };
 use crate::events::RedactionDeHelper;
-use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RawJsonValue, UnixMillis, serde::from_raw_json_value};
+use crate::serde::{RawJsonValue, from_raw_json_value};
+use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, UnixMillis};
 
 impl<'de> Deserialize<'de> for RoomRedactionEvent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

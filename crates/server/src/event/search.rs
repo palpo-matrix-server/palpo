@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::canonical_json::CanonicalJsonValue;
+use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};
 use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;

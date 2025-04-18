@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use serde::Deserialize;
 
 use crate::{connect, DataResult};
-use crate::core::canonical_json::CanonicalJsonObject;
+use crate::core::serde::CanonicalJsonObject;
 use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, default_false};

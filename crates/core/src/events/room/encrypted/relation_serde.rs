@@ -5,7 +5,7 @@ use crate::{
 use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{InReplyTo, Relation, Thread};
-use crate::{JsonValue, RawJsonValue};
+use crate::serde::{JsonValue, RawJsonValue};
 
 impl<'de> Deserialize<'de> for Relation {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

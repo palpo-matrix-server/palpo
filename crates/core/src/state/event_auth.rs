@@ -12,13 +12,13 @@ use crate::events::room::{
     power_levels::RoomPowerLevelsEventContent,
     third_party_invite::RoomThirdPartyInviteEventContent,
 };
-use crate::serde::{Base64, RawJson};
+use crate::serde::{Base64,RawJsonValue, RawJson};
 use crate::state::power_levels::{
     deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
     deserialize_power_levels_content_redact,
 };
 use crate::state::{Event, RoomVersion, StateError, StateEventType, StateResult, TimelineEventType};
-use crate::{OwnedUserId, RawJsonValue, RoomVersionId, UserId};
+use crate::{OwnedUserId, RoomVersionId, UserId};
 
 // FIXME: field extracting could be bundled for `content`
 #[derive(Deserialize)]

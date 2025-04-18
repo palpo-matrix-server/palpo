@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt, str::FromStr};
 use rand::prelude::*;
 
 use crate::core::OwnedUserId;
-use crate::core::canonical_json::{CanonicalJsonError, CanonicalJsonObject, try_from_json_map};
+use crate::core::serde::canonical_json::{CanonicalJsonError, CanonicalJsonObject, try_from_json_map};
 use crate::core::signatures::Ed25519KeyPair;
 use crate::{AppError, AppResult};
 

@@ -8,7 +8,7 @@ use sha1::Sha1;
 
 use crate::core::UnixSeconds;
 use crate::core::client::voip::TurnServerResBody;
-use crate::{AuthArgs, DepotExt, JsonResult, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, MatrixError, JsonResult, hoops, json_ok};
 
 type HmacSha1 = Hmac<Sha1>;
 
@@ -23,6 +23,11 @@ pub fn authed_router() -> Router {
 #[endpoint]
 async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerResBody> {
     let authed = depot.authed_info()?;
+
+    // MSC4166: return M_NOT_FOUND 404 if no TURN URIs are specified in any way
+    if crate::turn_uris().is_empty() {
+        return Err(MatrixError::not_found("turn_uris is empty").into());
+    }
 
     let turn_secret = crate::turn_secret().clone();
 

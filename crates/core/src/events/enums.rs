@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, de};
 
 use super::room::encrypted;
-use crate::RawJsonValue;
+use crate::serde::RawJsonValue;
 use crate::events::beacon::BeaconEventContent;
 use crate::identifiers::*;
 use crate::{UnixMillis, serde::from_raw_json_value};

@@ -5,10 +5,11 @@ use diesel::prelude::*;
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::identifiers::*;
-use crate::core::{DeviceKeyAlgorithm, JsonValue, MatrixError, Seqnum, UnixMillis};
+use crate::core::serde::JsonValue;
+use crate::core::{DeviceKeyAlgorithm, MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::user::clean_signatures;
-use crate::{ DataResult, connect};
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]

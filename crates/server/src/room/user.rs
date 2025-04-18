@@ -3,10 +3,11 @@ use std::collections::HashSet;
 use diesel::prelude::*;
 
 use crate::AppResult;
+use crate::core::Seqnum;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
-use crate::core::{JsonValue, RawJson, Seqnum};
+use crate::core::serde::{JsonValue, RawJson};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 

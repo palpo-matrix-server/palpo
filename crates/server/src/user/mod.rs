@@ -25,21 +25,18 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::sync::{Arc, LazyLock, Mutex};
 
-use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
-use crate::core::Seqnum;
 use crate::core::client::sync_events;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
-use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType, StateEventType};
+use crate::core::events::{ GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
 use crate::data::{self, connect, diesel_exists};
-use crate::{AppError, AppResult, utils, MatrixError, PduBuilder};
+use crate::{AppError, AppResult, MatrixError, PduBuilder, utils};
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v4::ReqList>,
@@ -194,6 +191,50 @@ pub async fn find_from_openid_token(token: &str) -> AppResult<OwnedUserId> {
 
         return Err(MatrixError::unauthorized("OpenID token is expired").into());
     }
+
+    Ok(user_id)
+}
+
+/// Creates a short-lived login token, which can be used to log in using the
+/// `m.login.token` mechanism.
+pub fn create_login_token(user_id: &UserId, token: &str) -> AppResult<u64> {
+    use std::num::Saturating as Sat;
+
+    let expires_in = crate::config().login_token_ttl;
+    let expires_at = (Sat(UnixMillis::now().get()) + Sat(expires_in)).0 as i64;
+
+    diesel::insert_into(user_login_tokens::table)
+        .values((
+            user_login_tokens::user_id.eq(user_id),
+            user_login_tokens::token.eq(token),
+            user_login_tokens::expires_at.eq(expires_at),
+        ))
+        .on_conflict(user_login_tokens::token)
+        .do_update()
+        .set(user_login_tokens::expires_at.eq(expires_at))
+        .execute(&mut connect()?)?;
+
+    Ok(expires_in)
+}
+
+/// Find out which user a login token belongs to.
+/// Removes the token to prevent double-use attacks.
+pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
+    let Ok((user_id, expires_at)) = user_login_tokens::table
+        .filter(user_login_tokens::token.eq(token))
+        .select((user_login_tokens::user_id, user_login_tokens::expires_at))
+        .first::<(OwnedUserId, UnixMillis)>(&mut connect()?)
+    else {
+        return Err(MatrixError::forbidden("Login token is unrecognised").into());
+    };
+
+    if expires_at < UnixMillis::now() {
+        trace!(?user_id, ?token, "Removing expired login token");
+        diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
+        return Err(MatrixError::forbidden("Login token is expired").into());
+    }
+
+    diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
 
     Ok(user_id)
 }

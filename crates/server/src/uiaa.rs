@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 use diesel::prelude::*;
 
 use crate::SESSION_ID_LENGTH;
+use crate::core::serde::CanonicalJsonValue;
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
@@ -14,7 +15,7 @@ use crate::{AppResult, MatrixError, data, utils};
 
 use super::LazyRwLock;
 
-static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), UploadSigningKeysReqBody>> =
+static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), CanonicalJsonValue>> =
     LazyLock::new(Default::default);
 
 /// Creates a new Uiaa session. Make sure the session token is unique.
@@ -22,13 +23,13 @@ pub fn create_session(
     user_id: &UserId,
     device_id: &DeviceId,
     uiaa_info: &UiaaInfo,
-    req_body: UploadSigningKeysReqBody,
+    json_body: CanonicalJsonValue,
 ) -> AppResult<()> {
     set_uiaa_request(
         user_id,
         device_id,
         uiaa_info.session.as_ref().expect("session should be set"), // TODO: better session error handling (why is it optional in palpo?)
-        req_body,
+        json_body,
     );
     update_session(
         user_id,
@@ -166,14 +167,14 @@ pub fn try_auth(
     Ok((true, uiaa_info))
 }
 
-pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: UploadSigningKeysReqBody) {
-    UIAA_REQUESTS
-        .write()
-        .expect("write UIAA_REQUESTS failed")
-        .insert((user_id.to_owned(), device_id.to_owned(), session.to_owned()), request);
+pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: CanonicalJsonValue) {
+    UIAA_REQUESTS.write().expect("write UIAA_REQUESTS failed").insert(
+        (user_id.to_owned(), device_id.to_owned(), session.to_owned()),
+        request,
+    );
 }
 
-pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<UploadSigningKeysReqBody> {
+pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<CanonicalJsonValue> {
     UIAA_REQUESTS
         .read()
         .expect("read UIAA_REQUESTS failed")

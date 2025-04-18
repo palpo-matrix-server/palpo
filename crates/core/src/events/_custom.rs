@@ -8,7 +8,8 @@ use crate::events::{
     RedactedStateEventContent, RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent,
     StateEventType, StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
 };
-use crate::{RawJsonValue, RoomVersionId};
+use crate::serde::RawJsonValue;
+use crate::{ RoomVersionId};
 
 macro_rules! custom_event_content {
     ($i:ident, $evt:ident) => {

@@ -10,17 +10,15 @@ use base64::{Engine, alphabet};
 use serde_json::{from_str as from_json_str, to_string as to_json_string};
 use sha2::{Sha256, digest::Digest};
 
-use crate::{
-    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
-    canonical_json::{CanonicalJsonObject, CanonicalJsonValue, JsonType, redact},
-    serde::{Base64, base64::Standard},
-    signatures::{
-        Error, JsonError, ParseError, VerificationError,
-        keys::{KeyPair, PublicKeyMap},
-        split_id,
-        verification::{Ed25519Verifier, Verified, Verifier},
-    },
+use crate::serde::canonical_json::{CanonicalJsonObject, CanonicalJsonValue, JsonType, redact};
+use crate::serde::{Base64, base64::Standard};
+use crate::signatures::{
+    Error, JsonError, ParseError, VerificationError,
+    keys::{KeyPair, PublicKeyMap},
+    split_id,
+    verification::{Ed25519Verifier, Verified, Verifier},
 };
+use crate::{OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId};
 
 const MAX_PDU_BYTES: usize = 65_535;
 

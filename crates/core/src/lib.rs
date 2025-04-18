@@ -46,7 +46,6 @@ use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 use ::serde::{Deserialize, Serialize};
 
 pub use self::identifiers::*;
-pub use self::serde::{canonical_json, JsonValue, RawJson, RawJsonValue};
 pub use self::time::{UnixMillis, UnixSeconds};
 pub type Seqnum = i64;
 pub type MatrixResult<T> = Result<T, MatrixError>;
