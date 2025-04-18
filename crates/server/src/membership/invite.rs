@@ -5,7 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
 use crate::event::{PduBuilder, gen_event_id_canonical_json};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
-use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError};
+use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
 
 pub async fn invite_user(
     inviter_id: &UserId,
@@ -103,11 +103,11 @@ pub async fn invite_user(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_json_value(&RoomMemberEventContent {
                 membership: MembershipState::Invite,
-                display_name: crate::user::display_name(invitee_id)?,
-                avatar_url: crate::user::avatar_url(invitee_id)?,
+                display_name: data::user::display_name(invitee_id)?,
+                avatar_url: data::user::avatar_url(invitee_id)?,
                 is_direct: Some(is_direct),
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(invitee_id)?,
+                blurhash: data::user::blurhash(invitee_id)?,
                 reason,
                 join_authorized_via_users_server: None,
             })

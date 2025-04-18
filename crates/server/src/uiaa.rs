@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, utils};
+use crate::{AppResult, MatrixError, data, utils};
 
 use super::LazyRwLock;
 
@@ -115,7 +115,7 @@ pub fn try_auth(
                 return Err(MatrixError::forbidden("User ID does not match.").into());
             }
 
-            let Some(user) = crate::user::get_user(&auth_user_id)? else {
+            let Some(user) = data::user::get_user(&auth_user_id)? else {
                 return Err(MatrixError::unauthorized("User not found.").into());
             };
             crate::user::vertify_password(&user, &password)?;

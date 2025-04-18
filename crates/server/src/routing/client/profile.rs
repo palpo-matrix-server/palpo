@@ -15,7 +15,7 @@ use crate::data::user::{DbProfile, NewDbPresence};
 use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::room::state;
-use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, empty_ok, hoops, json_ok};
+use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/{user_id}")
@@ -141,7 +141,7 @@ async fn set_avatar_url(
     }
 
     // Send a new membership event and presence update into all joined rooms
-    let all_joined_rooms: Vec<_> = crate::user::joined_rooms(&user_id, 0)?
+    let all_joined_rooms: Vec<_> = data::user::joined_rooms(&user_id)?
         .into_iter()
         .map(|room_id| {
             Ok::<_, AppError>((
@@ -224,7 +224,7 @@ async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> Jso
         return json_ok(body);
     }
     json_ok(DisplayNameResBody {
-        display_name: crate::user::display_name(&user_id).ok().flatten(),
+        display_name: data::user::display_name(&user_id).ok().flatten(),
     })
 }
 
@@ -246,10 +246,10 @@ async fn set_display_name(
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
 
-    crate::user::set_display_name(&user_id, display_name.as_deref())?;
+    data::user::set_display_name(&user_id, display_name.as_deref())?;
 
     // Send a new membership event and presence update into all joined rooms
-    let all_joined_rooms: Vec<_> = crate::user::joined_rooms(&user_id, 0)?
+    let all_joined_rooms: Vec<_> = data::user::joined_rooms(&user_id)?
         .into_iter()
         .map(|room_id| {
             Ok::<_, AppError>((

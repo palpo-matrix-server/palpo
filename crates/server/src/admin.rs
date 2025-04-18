@@ -227,12 +227,16 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
     }
 }
 
-pub fn process_message(room_message: String) {
-    sender().send(AdminRoomEvent::ProcessMessage(room_message)).unwrap();
+pub fn process_message(room_message: String) -> AppResult<()> {
+    sender()
+        .send(AdminRoomEvent::ProcessMessage(room_message))
+        .map_err(|e| AppError::internal(format!("Failed to process message to admin room: {e}")))
 }
 
-pub fn send_message(message_content: RoomMessageEventContent) {
-    sender().send(AdminRoomEvent::SendMessage(message_content)).unwrap();
+pub fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
+    sender()
+        .send(AdminRoomEvent::SendMessage(message_content))
+        .map_err(|e| AppError::internal(format!("Failed to send message to admin room: {e}")))
 }
 
 // Parse and process a message from the admin room
@@ -342,7 +346,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             let output = format!("Rooms:\n{}", items.join("\n"));
             RoomMessageEventContent::text_plain(output)
         }
-        AdminCommand::ListLocalUsers => match crate::user::list_local_users() {
+        AdminCommand::ListLocalUsers => match data::user::list_local_users() {
             Ok(users) => {
                 let mut msg: String = format!("Found {} local user account(s):\n", users.len());
                 msg += &users.into_iter().map(|u| u.to_string()).collect::<Vec<_>>().join("\n");
@@ -446,7 +450,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             };
 
             // Check if the specified user is valid
-            if !crate::user::user_exists(&user_id)?
+            if !data::user::user_exists(&user_id)?
                 || user_id == UserId::parse_with_server_name("palpo", &conf.server_name).expect("palpo user exists")
             {
                 return Ok(RoomMessageEventContent::text_plain(
@@ -481,7 +485,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                     "Userid {user_id} is not allowed due to historical"
                 )));
             }
-            if crate::user::user_exists(&user_id)? {
+            if data::user::user_exists(&user_id)? {
                 return Ok(RoomMessageEventContent::text_plain(format!(
                     "Userid {user_id} already exists"
                 )));
@@ -497,7 +501,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 display_name.push_str(" ⚡️");
             }
 
-            crate::user::set_display_name(&user_id, Some(&*display_name))?;
+            data::user::set_display_name(&user_id, Some(&*display_name))?;
 
             // Initial account data
             data::user::set_data(
@@ -527,10 +531,10 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::DeactivateUser { leave_rooms, user_id } => {
             let user_id = Arc::<UserId>::from(user_id);
-            if crate::user::user_exists(&user_id)? {
+            if data::user::user_exists(&user_id)? {
                 RoomMessageEventContent::text_plain(format!("Making {user_id} leave all rooms before deactivation..."));
 
-                crate::user::deactivate(&user_id, &user_id)?;
+                data::user::deactivate(&user_id)?;
 
                 if leave_rooms {
                     crate::membership::leave_all_rooms(&user_id).await?;
@@ -575,7 +579,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 }
 
                 for user_id in &user_ids {
-                    if crate::user::deactivate(user_id, user_id).is_ok() {
+                    if data::user::deactivate(user_id).is_ok() {
                         deactivation_count += 1
                     }
                 }

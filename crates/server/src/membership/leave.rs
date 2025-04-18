@@ -14,13 +14,13 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduBuilder;
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, data};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
-    let all_room_ids = crate::user::joined_rooms(user_id, 0)?
+    let all_room_ids = data::user::joined_rooms(user_id)?
         .into_iter()
-        .chain(crate::user::invited_rooms(user_id, 0)?.into_iter().map(|t| t.0))
+        .chain(data::user::invited_rooms(user_id, 0)?.into_iter().map(|t| t.0))
         .collect::<Vec<_>>();
     for room_id in all_room_ids {
         leave_room(user_id, &room_id, None).await.ok();

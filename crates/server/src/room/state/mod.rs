@@ -23,7 +23,7 @@ use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHisto
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent, RoomMembership};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
+use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::RoomType;
@@ -495,18 +495,18 @@ pub async fn user_can_redact(
     room_id: &RoomId,
     federation: bool,
 ) -> AppResult<bool> {
-    let redacting_event = crate::room::timeline.get_pdu(redacts)?;
+    let redacting_event = crate::room::timeline::get_pdu(redacts);
 
     if redacting_event
         .as_ref()
-        .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomCreate)
+        .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomCreate)
     {
         return Err(MatrixError::forbidden("Redacting m.room.create is not safe, forbidding.").into());
     }
 
     if redacting_event
         .as_ref()
-        .is_ok_and(|pdu| pdu.kind == TimelineEventType::RoomServerAcl)
+        .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomServerAcl)
     {
         return Err(MatrixError::forbidden(
             "Redacting m.room.server_acl will result in the room being inaccessible for \
@@ -515,9 +515,8 @@ pub async fn user_can_redact(
         .into());
     }
 
-    if let Ok(pl_event_content) = self
-        .room_state_get_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
-        .await
+    if let Ok(pl_event_content) =
+    get_room_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
     {
         let pl_event: RoomPowerLevels = pl_event_content.into();
         Ok(pl_event.user_can_redact_event_of_other(sender)
@@ -533,13 +532,13 @@ pub async fn user_can_redact(
                 })
     } else {
         // Falling back on m.room.create to judge power level
-        if let Ok(room_create) = self.room_state_get(room_id, &StateEventType::RoomCreate, "").await {
+        if let Ok(room_create) = get_room_state(room_id, &StateEventType::RoomCreate, "") {
             Ok(room_create.sender == sender
                 || redacting_event
                     .as_ref()
                     .is_ok_and(|redacting_event| redacting_event.sender == sender))
         } else {
-            Err(Error::bad_database(
+            Err(AppError::public(
                 "No m.room.power_levels or m.room.create events in database for room",
             ))
         }

@@ -18,8 +18,8 @@ use crate::core::push::{
     Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, PushFormat, Pusher, PusherKind, Ruleset, Tweak,
 };
 use crate::core::serde::{JsonValue, RawJson};
-use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::{self, connect};
 use crate::event::PduEvent;
 use crate::{AppError, AppResult, AuthedInfo};
 
@@ -288,7 +288,7 @@ pub fn get_actions<'a>(
         room_id: room_id.to_owned(),
         member_count: 10_u32.into(), // TODO: get member count efficiently
         user_id: user.to_owned(),
-        user_display_name: crate::user::display_name(user)
+        user_display_name: data::user::display_name(user)
             .ok()
             .flatten()
             .unwrap_or_else(|| user.localpart().to_owned()),
@@ -357,7 +357,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
                     notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
                 }
 
-                notification.sender_display_name = crate::user::display_name(&event.sender).ok().flatten();
+                notification.sender_display_name = data::user::display_name(&event.sender).ok().flatten();
 
                 notification.room_name = crate::room::state::get_name(&event.room_id).ok();
 

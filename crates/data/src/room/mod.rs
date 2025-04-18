@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use serde::Deserialize;
 
-use crate::DataResult;
+use crate::{connect, DataResult};
 use crate::core::canonical_json::CanonicalJsonObject;
 use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
@@ -254,4 +254,9 @@ pub struct NewDbEventTxnId {
     pub device_id: Option<OwnedDeviceId>,
     pub event_id: Option<OwnedEventId>,
     pub created_at: UnixMillis,
+}
+
+pub fn is_disabled(room_id: &RoomId) -> DataResult<bool> {
+    let query = rooms::table.filter(rooms::disabled.eq(true));
+    Ok(diesel_exists!(query, &mut connect()?)?)
 }

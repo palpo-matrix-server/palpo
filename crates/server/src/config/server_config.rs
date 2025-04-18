@@ -1,16 +1,14 @@
 use std::fmt;
 use std::net::IpAddr;
+use std::path::PathBuf;
 
-use either::{
-    Either,
-    Either::{Left, Right},
-};
+use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
 
 use crate::core::serde::{default_false, default_true};
-use crate::core::{OwnedServerName, RoomVersionId};
+use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
 use crate::env_vars::required_var;
 
@@ -80,16 +78,115 @@ pub struct ServerConfig {
     pub rust_log: String,
     #[serde(default = "default_log_format")]
     pub log_format: String,
+
+    /// OpenID token expiration/TTL in seconds.
+    ///
+    /// These are the OpenID tokens that are primarily used for Matrix account
+    /// integrations (e.g. Vector Integrations in Element), *not* OIDC/OpenID
+    /// Connect/etc.
+    ///
+    /// default: 3600
+    #[serde(default = "default_openid_token_ttl")]
+    pub openid_token_ttl: u64,
+
+    /// Allow an existing session to mint a login token for another client.
+    /// This requires interactive authentication, but has security ramifications
+    /// as a malicious client could use the mechanism to spawn more than one
+    /// session.
+    /// Enabled by default.
+    #[serde(default = "default_true")]
+    pub login_via_existing_session: bool,
+
+    /// Login token expiration/TTL in milliseconds.
+    ///
+    /// These are short-lived tokens for the m.login.token endpoint.
+    /// This is used to allow existing sessions to create new sessions.
+    /// see login_via_existing_session.
+    ///
+    /// default: 120000
+    #[serde(default = "default_login_token_ttl")]
+    pub login_token_ttl: u64,
+
+    /// Static TURN username to provide the client if not using a shared secret
+    /// ("turn_secret"), It is recommended to use a shared secret over static
+    /// credentials.
     #[serde(default)]
     pub turn_username: String,
+
+    /// Static TURN password to provide the client if not using a shared secret
+    /// ("turn_secret"). It is recommended to use a shared secret over static
+    /// credentials.
+    ///
+    /// display: sensitive
     #[serde(default)]
     pub turn_password: String,
+
+    /// Vector list of TURN URIs/servers to use.
+    ///
+    /// Replace "example.turn.uri" with your TURN domain, such as the coturn
+    /// "realm" config option. If using TURN over TLS, replace the URI prefix
+    /// "turn:" with "turns:".
+    ///
+    /// example: ["turn:example.turn.uri?transport=udp",
+    /// "turn:example.turn.uri?transport=tcp"]
+    ///
+    /// default: []
     #[serde(default = "Vec::new")]
     pub turn_uris: Vec<String>,
+
+    /// TURN secret to use for generating the HMAC-SHA1 hash apart of username
+    /// and password generation.
+    ///
+    /// This is more secure, but if needed you can use traditional static
+    /// username/password credentials.
+    ///
+    /// display: sensitive
     #[serde(default)]
     pub turn_secret: String,
+
+    /// TURN secret to use that's read from the file path specified.
+    ///
+    /// This takes priority over "turn_secret" first, and falls back to
+    /// "turn_secret" if invalid or failed to open.
+    ///
+    /// example: "/etc/conduwuit/.turn_secret"
+    pub turn_secret_file: Option<PathBuf>,
+
+    /// TURN TTL, in seconds.
+    ///
+    /// default: 86400
     #[serde(default = "default_turn_ttl")]
     pub turn_ttl: u64,
+
+    /// List/vector of room IDs or room aliases that conduwuit will make newly
+    /// registered users join. The rooms specified must be rooms that you have
+    /// joined at least once on the server, and must be public.
+    ///
+    /// example: ["#conduwuit:puppygock.gay",
+    /// "!eoIzvAvVwY23LPDay8:puppygock.gay"]
+    ///
+    /// default: []
+    #[serde(default = "Vec::new")]
+    pub auto_join_rooms: Vec<OwnedRoomOrAliasId>,
+
+    /// Config option to automatically deactivate the account of any user who
+    /// attempts to join a:
+    /// - banned room
+    /// - forbidden room alias
+    /// - room alias or ID with a forbidden server name
+    ///
+    /// This may be useful if all your banned lists consist of toxic rooms or
+    /// servers that no good faith user would ever attempt to join, and
+    /// to automatically remediate the problem without any admin user
+    /// intervention.
+    ///
+    /// This will also make the user leave all rooms. Federation (e.g. remote
+    /// room invites) are ignored here.
+    ///
+    /// Defaults to false as rooms can be banned for non-moderation-related
+    /// reasons and this performs a full user deactivation.
+    #[serde(default)]
+    pub auto_deactivate_banned_room_attempts: bool,
 
     pub emergency_password: Option<String>,
 
@@ -103,6 +200,14 @@ pub struct ServerConfig {
     pub presence_idle_timeout_s: u64,
     #[serde(default = "default_presence_offline_timeout_s")]
     pub presence_offline_timeout_s: u64,
+
+    /// Controls whether admin room notices like account registrations, password
+    /// changes, account deactivations, room directory publications, etc will be
+    /// sent to the admin room. Update notices and normal admin command
+    /// responses will still be sent.
+    #[serde(default = "default_true")]
+    pub admin_room_notices: bool,
+
     /// Config option to control maximum time federation user can indicate
     /// typing.
     ///
@@ -468,18 +573,6 @@ pub struct ServerConfig {
     pub startup_netburst_keep: i64,
 }
 
-fn default_trusted_server_batch_size() -> usize {
-    256
-}
-
-fn default_space_path() -> String {
-    "./space".into()
-}
-
-fn default_startup_netburst_keep() -> i64 {
-    50
-}
-
 impl fmt::Display for ServerConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Prepare a list of config values to show
@@ -589,6 +682,24 @@ fn default_palpo_cache_capacity_modifier() -> f64 {
 
 fn default_pdu_cache_capacity() -> u32 {
     150_000
+}
+
+fn default_trusted_server_batch_size() -> usize {
+    256
+}
+
+fn default_space_path() -> String {
+    "./space".into()
+}
+
+fn default_startup_netburst_keep() -> i64 {
+    50
+}
+fn default_login_token_ttl() -> u64 {
+    2 * 60 * 1000
+}
+fn default_openid_token_ttl() -> u64 {
+    60 * 60
 }
 
 fn default_cleanup_second_interval() -> u32 {

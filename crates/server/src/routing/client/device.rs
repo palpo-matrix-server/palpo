@@ -6,10 +6,11 @@ use crate::core::OwnedDeviceId;
 use crate::core::client::device::{
     DeleteDeviceReqBody, DeleteDevicesReqBody, DeviceResBody, DevicesResBody, UpdatedDeviceReqBody,
 };
+use crate::core::client::uiaa::AuthError;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::error::ErrorKind;
 use crate::data::connect;
-use crate::data::schema::*;use crate::core::client::uiaa::AuthError;
+use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
 
@@ -93,7 +94,8 @@ async fn delete_device(
     _aa: AuthArgs,
     device_id: PathParam<OwnedDeviceId>,
     body: JsonBody<Option<DeleteDeviceReqBody>>,
-    depot: &mut Depot, res: &mut Response,
+    depot: &mut Depot,
+    res: &mut Response,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let auth = body.into_inner().map(|body| body.auth).flatten();

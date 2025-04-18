@@ -567,7 +567,7 @@ pub fn sign_key(
 
 pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
     let changed_at = UnixMillis::now();
-    for room_id in crate::user::joined_rooms(user_id, 0)? {
+    for room_id in data::user::joined_rooms(user_id)? {
         // comment for testing
         // // Don't send key updates to unencrypted rooms
         // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
@@ -648,7 +648,7 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
 }
 
 pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
-    let room_ids = crate::user::joined_rooms(user_id, 0)?;
+    let room_ids = data::user::joined_rooms(user_id)?;
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table
             .filter(

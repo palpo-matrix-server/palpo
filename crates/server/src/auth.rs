@@ -5,7 +5,7 @@ use crate::appservice::RegistrationInfo;
 use crate::core::identifiers::*;
 use crate::core::serde::default_true;
 use crate::core::{MatrixError, ServerName};
-use crate::user::{DbUser, DbUserDevice};
+use crate::data::user::{DbUser, DbUserDevice};
 
 #[derive(Clone, Debug)]
 pub struct AuthedInfo {

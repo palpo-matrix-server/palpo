@@ -7,9 +7,9 @@ use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultR
 use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
-use crate::data::connect;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
+use crate::data::{self, connect};
 use crate::{AppResult, MatrixError, PduEvent};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
@@ -18,7 +18,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let room_ids = filter
         .rooms
         .clone()
-        .unwrap_or_else(|| crate::user::joined_rooms(user_id, 0).unwrap_or_default());
+        .unwrap_or_else(|| data::user::joined_rooms(user_id).unwrap_or_default());
 
     // Use limit or else 10, with maximum 100
     let limit = filter.limit.unwrap_or(10).min(100) as usize;

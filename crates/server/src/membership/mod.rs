@@ -17,7 +17,7 @@ use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
 use crate::room::state;
-use crate::{AppError, AppResult, MatrixError, SigningKeys};
+use crate::{AppError, AppResult, MatrixError, SigningKeys, data};
 
 mod banned;
 mod forget;
@@ -116,7 +116,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !crate::user::user_exists(user_id)? {
+    if user_id.server_name() != &conf.server_name && !data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }

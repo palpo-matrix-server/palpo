@@ -12,9 +12,9 @@ use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::DbUser;
 use crate::exts::*;
 use crate::room::StateEventType;
-use crate::user::DbUser;
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder};
 
 mod remote;

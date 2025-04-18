@@ -9,7 +9,7 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AuthArgs, DepotExt, JsonResult, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")
@@ -44,11 +44,11 @@ fn search(
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
             user_id: user_id.clone(),
-            display_name: crate::user::display_name(&user_id).ok().flatten(),
-            avatar_url: crate::user::avatar_url(&user_id).ok().flatten(),
+            display_name: data::user::display_name(&user_id).ok().flatten(),
+            avatar_url: data::user::avatar_url(&user_id).ok().flatten(),
         };
 
-        let user_is_in_public_rooms = crate::user::joined_rooms(&user_id, 0).ok()?.into_iter().any(|room| {
+        let user_is_in_public_rooms = data::user::joined_rooms(&user_id).ok()?.into_iter().any(|room| {
             crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
                 &room,
                 &StateEventType::RoomJoinRules,

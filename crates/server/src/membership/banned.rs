@@ -1,8 +1,9 @@
 use salvo::conn::SocketAddr;
 
+use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 
-use crate::AppResult;
+use crate::{AppResult, MatrixError, data};
 
 /// Checks if the room is banned in any way possible and the sender user is not
 /// an admin.
@@ -10,7 +11,7 @@ use crate::AppResult;
 /// Performs automatic deactivation if `auto_deactivate_banned_room_attempts` is
 /// enabled
 #[tracing::instrument]
-pub fn banned_room_check(
+pub async fn banned_room_check(
     user_id: &UserId,
     room_id: Option<&RoomId>,
     server_name: Option<&ServerName>,
@@ -22,7 +23,7 @@ pub fn banned_room_check(
 
     let conf = crate::config();
     if let Some(room_id) = room_id {
-        if services.rooms.metadata.is_banned(room_id).await
+        if data::room::is_disabled(room_id)?
             || conf
                 .forbidden_remote_server_names
                 .is_match(room_id.server_name().unwrap().host())
@@ -38,22 +39,20 @@ pub fn banned_room_check(
                 if conf.admin_room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
-							 room join from IP {client_ip}"
+							 room join from IP {client_addr}"
                     )))
                     .ok();
                 }
 
-                let all_joined_rooms: Vec<OwnedRoomId> = data::user::oined_rooms(user_id)?;
+                let all_joined_rooms: Vec<OwnedRoomId> = data::user::joined_rooms(user_id)?;
 
-                full_user_deactivate(user_id, &all_joined_rooms).await?;
+                crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
             return Err(MatrixError::forbidden("This room is banned on this homeserver.").into());
         }
     } else if let Some(server_name) = server_name {
-        if conf.forbidden_remote_server_names
-            .is_match(server_name.host())
-        {
+        if conf.forbidden_remote_server_names.is_match(server_name.host()) {
             warn!(
                 "User {user_id} who is not an admin tried joining a room which has the server \
 				 name {server_name} that is globally forbidden. Rejecting.",
@@ -64,13 +63,13 @@ pub fn banned_room_check(
                 if conf.admin_room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
-							 room join from IP {client_ip}"
+							 room join from IP {client_addr}"
                     )))
                     .ok();
                 }
 
-                let all_joined_rooms = crate::user::joined_rooms(user_id)?;
-                full_user_deactivate(user_id, &all_joined_rooms).await?;
+                let all_joined_rooms = data::user::joined_rooms(user_id)?;
+                crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
             return Err(MatrixError::forbidden("This remote server is banned on this homeserver.").into());

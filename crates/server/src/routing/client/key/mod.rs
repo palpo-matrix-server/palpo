@@ -12,7 +12,7 @@ use crate::core::client::key::{
     UploadKeysResBody,
 };
 use crate::user::key;
-use crate::{AuthArgs, CjsonResult, DepotExt, JsonResult, cjson_ok, json_ok};
+use crate::{AuthArgs, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("keys")
@@ -90,7 +90,7 @@ async fn get_key_changes(_aa: AuthArgs, args: KeyChangesReqArgs, depot: &mut Dep
     let mut device_list_updates = HashSet::new();
     device_list_updates.extend(crate::user::keys_changed_users(authed.user_id(), from_sn, Some(to_sn))?);
 
-    for room_id in crate::user::joined_rooms(authed.user_id(), 0)? {
+    for room_id in data::user::joined_rooms(authed.user_id())? {
         device_list_updates.extend(crate::room::keys_changed_users(&room_id, from_sn, Some(to_sn))?);
     }
     json_ok(KeyChangesResBody {

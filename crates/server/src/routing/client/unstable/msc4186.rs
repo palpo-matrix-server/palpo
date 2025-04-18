@@ -67,12 +67,12 @@ pub(super) async fn sync_events_v5(
     let known_rooms =
         crate::sync_v5::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
+    let all_joined_rooms = data::user::joined_rooms(sender_id)?;
 
-    let all_invited_rooms = crate::user::invited_rooms(sender_id, 0)?;
+    let all_invited_rooms = data::user::invited_rooms(sender_id, 0)?;
     let all_invited_rooms: Vec<&RoomId> = all_invited_rooms.iter().map(|r| r.0.as_ref()).collect();
 
-    let all_knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?;
+    let all_knocked_rooms = data::user::knocked_rooms(sender_id, 0)?;
     let all_knocked_rooms: Vec<&RoomId> = all_knocked_rooms.iter().map(|r| r.0.as_ref()).collect();
 
     let all_rooms: Vec<&RoomId> = all_joined_rooms
