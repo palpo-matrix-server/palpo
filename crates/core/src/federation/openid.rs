@@ -22,8 +22,8 @@ use crate::OwnedUserId;
 
 /// Request type for the `get_openid_userinfo` endpoint.
 
-#[derive(ToSchema, Deserialize, Debug)]
-pub struct UserInfoReqBody {
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct UserInfoReqArgs {
     /// The OpenID access token to get information about the owner for.
     #[salvo(parameter(parameter_in = Query))]
     pub access_token: String,
