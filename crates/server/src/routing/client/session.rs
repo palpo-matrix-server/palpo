@@ -6,8 +6,8 @@ use crate::core::client::session::*;
 use crate::core::client::uiaa::UserIdentifier;
 use crate::core::identifiers::*;
 use crate::{
-    AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, TOKEN_LENGTH, empty_ok, hoops, json_ok,
-    utils,
+    AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, TOKEN_LENGTH, data, empty_ok, hoops,
+    json_ok, utils,
 };
 
 #[derive(Debug, Deserialize)]
@@ -77,7 +77,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             };
             let user_id = UserId::parse_with_server_name(username, crate::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
-            let Some(user) = crate::user::get_user(&user_id)? else {
+            let Some(user) = data::user::get_user(&user_id)? else {
                 return Err(MatrixError::forbidden("User not found.").into());
             };
             if let Err(_e) = crate::user::vertify_password(&user, &password) {

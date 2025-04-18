@@ -22,13 +22,13 @@ use crate::appservice::RegistrationInfo;
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
+use crate::data::user::DbUser;
 use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::user::DbUser;
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -326,11 +326,11 @@ async fn local_join_room(
 
     let event = RoomMemberEventContent {
         membership: MembershipState::Join,
-        display_name: crate::user::display_name(user_id).ok().flatten(),
-        avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
+        display_name: data::user::display_name(user_id).ok().flatten(),
+        avatar_url: data::user::avatar_url(user_id).ok().flatten(),
         is_direct: None,
         third_party_invite: None,
-        blurhash: crate::user::blurhash(user_id).ok().flatten(),
+        blurhash: data::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
     };
@@ -377,11 +377,11 @@ async fn local_join_room(
             "content".to_owned(),
             to_canonical_value(RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(user_id).ok().flatten(),
-                avatar_url: crate::user::avatar_url(user_id).ok().flatten(),
+                display_name: data::user::display_name(user_id).ok().flatten(),
+                avatar_url: data::user::avatar_url(user_id).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(user_id).ok().flatten(),
+                blurhash: data::user::blurhash(user_id).ok().flatten(),
                 reason,
                 join_authorized_via_users_server,
             })
@@ -495,11 +495,11 @@ async fn remote_join_room(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
             membership: MembershipState::Join,
-            display_name: crate::user::display_name(user_id)?,
-            avatar_url: crate::user::avatar_url(user_id)?,
+            display_name: data::user::display_name(user_id)?,
+            avatar_url: data::user::avatar_url(user_id)?,
             is_direct: None,
             third_party_invite: None,
-            blurhash: crate::user::blurhash(user_id)?,
+            blurhash: data::user::blurhash(user_id)?,
             reason,
             join_authorized_via_users_server,
         })

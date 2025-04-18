@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
     AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
@@ -93,18 +94,18 @@ impl PduEvent {
         Ok(())
     }
 
-    // pub fn redacts_id(&self, room_version: &RoomVersionId) -> Option<OwnedEventId> {
-    //     use RoomVersionId::*;
+    pub fn redacts_id(&self, room_version: &RoomVersionId) -> Option<OwnedEventId> {
+        use RoomVersionId::*;
 
-    //     if self.kind != TimelineEventType::RoomRedaction {
-    //         return None;
-    //     }
+        if self.event_ty != TimelineEventType::RoomRedaction {
+            return None;
+        }
 
-    //     match *room_version {
-    //         V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => self.redacts.clone(),
-    //         _ => self.get_content::<RoomRedactionEventContent>().ok()?.redacts,
-    //     }
-    // }
+        match *room_version {
+            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => self.redacts.clone().map(OwnedEventId::from),
+            _ => self.get_content::<RoomRedactionEventContent>().ok()?.redacts,
+        }
+    }
 
     pub fn remove_transaction_id(&mut self) -> AppResult<()> {
         if let Some(unsigned) = &self.unsigned {

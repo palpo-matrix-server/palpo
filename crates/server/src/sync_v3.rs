@@ -70,7 +70,7 @@ pub async fn sync_events(
     // Look for device list updates of this account
     device_list_updates.extend(crate::user::keys_changed_users(sender_id, since_sn, None)?);
 
-    let all_joined_rooms = crate::user::joined_rooms(sender_id, 0)?;
+    let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
         let joined_room = match load_joined_room(
             sender_id,
@@ -234,7 +234,7 @@ pub async fn sync_events(
         );
     }
 
-    let invited_rooms: BTreeMap<_, _> = crate::user::invited_rooms(sender_id, since_sn)?
+    let invited_rooms: BTreeMap<_, _> = data::user::invited_rooms(sender_id, since_sn)?
         .into_iter()
         .map(|(room_id, invite_state_events)| {
             (
@@ -279,7 +279,7 @@ pub async fn sync_events(
         }
     }
 
-    let knocked_rooms = crate::user::knocked_rooms(sender_id, 0)?.into_iter().fold(
+    let knocked_rooms = data::user::knocked_rooms(sender_id, 0)?.into_iter().fold(
         BTreeMap::default(),
         |mut knocked_rooms: BTreeMap<_, _>, (room_id, knock_state)| {
             let knock_sn = crate::room::user::knock_sn(sender_id, &room_id).ok();

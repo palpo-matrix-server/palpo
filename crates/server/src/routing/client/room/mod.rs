@@ -43,7 +43,7 @@ use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::PduBuilder;
 use crate::user::user_is_ignored;
-use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")
@@ -314,11 +314,11 @@ async fn upgrade(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(authed.user_id()).ok().flatten(),
-                avatar_url: crate::user::avatar_url(authed.user_id()).ok().flatten(),
+                display_name: data::user::display_name(authed.user_id()).ok().flatten(),
+                avatar_url: data::user::avatar_url(authed.user_id()).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(authed.user_id()).ok().flatten(),
+                blurhash: data::user::blurhash(authed.user_id()).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
             })
@@ -550,11 +550,11 @@ pub(super) async fn create_room(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::user::display_name(sender_id).ok().flatten(),
-                avatar_url: crate::user::avatar_url(sender_id).ok().flatten(),
+                display_name: data::user::display_name(sender_id).ok().flatten(),
+                avatar_url: data::user::avatar_url(sender_id).ok().flatten(),
                 is_direct: Some(body.is_direct),
                 third_party_invite: None,
-                blurhash: crate::user::blurhash(sender_id).ok().flatten(),
+                blurhash: data::user::blurhash(sender_id).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
             })

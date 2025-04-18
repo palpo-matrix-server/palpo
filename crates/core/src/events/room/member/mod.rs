@@ -8,15 +8,14 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::PrivOwnedStr;
+use crate::events::room::redaction::RoomRedactionEventContent;
 use crate::events::{
     AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
     PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,
-};
+}; 
+use crate::identifiers::*;
 use crate::serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum};
-use crate::{
-    OwnedMxcUri, OwnedServerName, OwnedServerSigningKeyId, OwnedTransactionId, OwnedUserId, PrivOwnedStr,
-    RoomVersionId, UserId,
-};
 
 mod change;
 

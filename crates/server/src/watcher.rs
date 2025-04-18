@@ -8,7 +8,7 @@ use futures_util::{StreamExt, stream::FuturesUnordered};
 use crate::AppResult;
 use crate::core::Seqnum;
 use crate::core::identifiers::*;
-use crate::data::connect;
+use crate::data::{self, connect};
 use crate::data::schema::*;
 
 pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
@@ -32,7 +32,7 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .first::<i64>(&mut connect()?)
         .unwrap_or_default();
 
-    let room_ids = crate::user::joined_rooms(user_id, 0)?;
+    let room_ids = data::user::joined_rooms(user_id)?;
     let last_event_sn = event_points::table
         .filter(event_points::room_id.eq_any(&room_ids))
         .filter(event_points::frame_id.is_not_null())

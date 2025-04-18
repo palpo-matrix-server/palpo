@@ -24,7 +24,7 @@ use crate::room::state;
 use crate::room::state::UserCanSeeEvent;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, json_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -117,7 +117,7 @@ pub(crate) async fn joined_rooms(_aa: AuthArgs, depot: &mut Depot) -> JsonResult
     let authed = depot.authed_info()?;
 
     json_ok(JoinedRoomsResBody {
-        joined_rooms: crate::user::joined_rooms(authed.user_id(), 0)?,
+        joined_rooms: data::user::joined_rooms(authed.user_id())?,
     })
 }
 
@@ -264,7 +264,8 @@ pub(crate) async fn join_room_by_id_or_alias(
                 Some(&room_id),
                 room_id.server_name().ok(),
                 remote_addr,
-            )?;
+            )
+            .await?;
             let mut servers = via;
             servers.extend(crate::room::state::servers_invite_via(&room_id)?);
 
@@ -288,7 +289,7 @@ pub(crate) async fn join_room_by_id_or_alias(
         }
         Err(room_alias) => {
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via)).await?;
-            banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr)?;
+            banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
             let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
 
@@ -510,7 +511,8 @@ pub(crate) async fn knock_room(
                 Some(&room_id),
                 room_id.server_name().ok(),
                 req.remote_addr(),
-            )?;
+            )
+            .await?;
 
             let mut servers = body.via.clone();
             servers.extend(crate::room::state::servers_invite_via(&room_id).unwrap_or_default());
@@ -540,7 +542,8 @@ pub(crate) async fn knock_room(
                 Some(&room_id),
                 Some(room_alias.server_name()),
                 req.remote_addr(),
-            )?;
+            )
+            .await?;
 
             let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
             let addl_state_servers = crate::room::state::get_user_state(sender_id, &room_id)?.unwrap_or_default();

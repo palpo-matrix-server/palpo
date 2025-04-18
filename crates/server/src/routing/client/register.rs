@@ -17,7 +17,7 @@ use crate::data::user::{NewDbPresence, NewDbProfile};
 use crate::data::{connect, diesel_exists};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, data, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {
@@ -63,7 +63,7 @@ fn register(
                 .ok()
                 .filter(|user_id| !user_id.is_historical() && user_id.server_name() == conf.server_name)
                 .ok_or(MatrixError::invalid_username("Username is invalid."))?;
-            if crate::user::user_exists(&proposed_user_id)? {
+            if data::user::user_exists(&proposed_user_id)? {
                 return Err(MatrixError::user_in_use("Desired user ID is already taken.").into());
             }
             proposed_user_id
@@ -74,7 +74,7 @@ fn register(
                 &conf.server_name,
             )
             .unwrap();
-            if !crate::user::user_exists(&proposed_user_id)? {
+            if !data::user::user_exists(&proposed_user_id)? {
                 break proposed_user_id;
             }
         },

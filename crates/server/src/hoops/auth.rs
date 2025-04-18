@@ -9,9 +9,9 @@ use crate::core::serde::CanonicalJsonValue;
 use crate::core::signatures;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::exts::DepotExt;
 use crate::server_key::{PubKeyMap, PubKeys};
-use crate::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError};
 
 #[handler]

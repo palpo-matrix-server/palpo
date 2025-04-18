@@ -26,14 +26,14 @@ use std::mem;
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
+use crate::core::Seqnum;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::Seqnum;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::schema::*;
-use crate::{connect, diesel_exists, DataError, DataResult};
+use crate::{DataError, DataResult, connect, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]
@@ -117,12 +117,19 @@ impl NewDbAccessToken {
     }
 }
 
+pub fn is_admin(user_id: &UserId) -> DataResult<bool> {
+    users::table
+        .filter(users::id.eq(user_id))
+        .select(users::is_admin)
+        .first::<bool>(&mut connect()?)
+        .map_err(Into::into)
+}
+
 /// Returns an iterator over all rooms this user joined.
-pub fn joined_rooms(user_id: &UserId, since_sn: Seqnum) -> DataResult<Vec<OwnedRoomId>> {
+pub fn joined_rooms(user_id: &UserId) -> DataResult<Vec<OwnedRoomId>> {
     room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("join"))
-        .filter(room_users::event_sn.ge(since_sn))
         .select(room_users::room_id)
         .load(&mut connect()?)
         .map_err(Into::into)
@@ -219,7 +226,6 @@ pub fn display_name(user_id: &UserId) -> DataResult<Option<String>> {
         .first::<Option<String>>(&mut connect()?)
         .map_err(Into::into)
 }
-
 pub fn set_display_name(user_id: &UserId, display_name: Option<&str>) -> DataResult<()> {
     diesel::update(
         user_profiles::table
@@ -242,6 +248,16 @@ pub fn avatar_url(user_id: &UserId) -> DataResult<Option<OwnedMxcUri>> {
         .optional()
         .map(Option::flatten)
         .map_err(Into::into)
+}
+pub fn set_avatar_url(user_id: &UserId, avatar_url: Option<&MxcUri>) -> DataResult<()> {
+    diesel::update(
+        user_profiles::table
+            .filter(user_profiles::user_id.eq(user_id.as_str()))
+            .filter(user_profiles::room_id.is_null()),
+    )
+    .set(user_profiles::avatar_url.eq(avatar_url.map(|url| url.as_str())))
+    .execute(&mut connect()?)?;
+    Ok(())
 }
 
 /// Get the blurhash of a user.
@@ -279,12 +295,9 @@ pub fn clean_signatures<F: Fn(&UserId) -> bool>(
     Ok(())
 }
 
-pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> DataResult<()> {
+pub fn deactivate(user_id: &UserId) -> DataResult<()> {
     diesel::update(users::table.find(user_id))
-        .set((
-            users::deactivated_at.eq(UnixMillis::now()),
-            users::deactivated_by.eq(doer_id.to_owned()),
-        ))
+        .set((users::deactivated_at.eq(UnixMillis::now()),))
         .execute(&mut connect()?)?;
 
     diesel::delete(user_threepids::table.filter(user_threepids::user_id.eq(user_id))).execute(&mut connect()?)?;
@@ -292,21 +305,4 @@ pub fn deactivate(user_id: &UserId, doer_id: &UserId) -> DataResult<()> {
         .execute(&mut connect()?)?;
 
     Ok(())
-}
-
-/// Returns true/false based on whether the recipient/receiving user has
-/// blocked the sender
-pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
-    if let Ok(Some(ignored)) = crate::user::data::get_global_data::<IgnoredUserListEvent>(
-        recipient_id,
-        &GlobalAccountDataEventType::IgnoredUserList.to_string(),
-    ) {
-        ignored
-            .content
-            .ignored_users
-            .keys()
-            .any(|blocked_user| blocked_user == sender_id)
-    } else {
-        false
-    }
 }

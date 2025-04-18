@@ -6,7 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::client::account::{DeactivateReqBody, DeactivateResBody, ThirdPartyIdRemovalStatus, WhoamiResBody};
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, exts::*, hoops, json_ok, utils};
+use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data, exts::*, hoops, json_ok, utils};
 
 pub fn public_router() -> Router {
     Router::with_path("account")
@@ -113,7 +113,7 @@ async fn deactivate(
     }
 
     // Remove devices and mark account as deactivated
-    crate::user::deactivate(authed.user_id(), authed.user_id())?;
+    data::user::deactivate(authed.user_id())?;
 
     // info!("User {} deactivated their account.", authed.user_id());
     // crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
