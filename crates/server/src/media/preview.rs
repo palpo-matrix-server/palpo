@@ -7,7 +7,7 @@ use ipaddress::IPAddress;
 use reqwest::IntoUrl;
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::{Mutex, };
+use tokio::sync::Mutex;
 use url::Url;
 
 use crate::core::identifiers::*;
