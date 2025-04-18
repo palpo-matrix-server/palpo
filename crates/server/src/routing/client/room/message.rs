@@ -71,7 +71,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events_after = crate::room::timeline::get_pdus_forward(
+            let events = crate::room::timeline::get_pdus_forward(
                 authed.user_id(),
                 &args.room_id,
                 from,
@@ -80,7 +80,7 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
             )?;
 
-            for (_, event) in &events_after {
+            for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417
                  * https://github.com/vector-im/element-web/issues/21034
@@ -96,13 +96,13 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events_after.last().map(|(count, _)| count).copied();
+            next_token = events.last().map(|(sn, _)| sn).copied();
 
-            let events_after: Vec<_> = events_after.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
+            let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
             resp.start = from.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
-            resp.chunk = events_after;
+            resp.chunk = events;
         }
         crate::core::Direction::Backward => {
             crate::room::timeline::backfill_if_required(&args.room_id, from).await?;
@@ -111,7 +111,7 @@ pub(super) async fn get_messages(
             } else {
                 from
             };
-            let events_before = crate::room::timeline::get_pdus_backward(
+            let events = crate::room::timeline::get_pdus_backward(
                 authed.user_id(),
                 &args.room_id,
                 from,
@@ -120,7 +120,7 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
             )?;
 
-            for (_, event) in &events_before {
+            for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417
                  * https://github.com/vector-im/element-web/issues/21034
@@ -136,13 +136,13 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events_before.last().map(|(count, _)| count).copied();
+            next_token = events.last().map(|(sn, _)| sn).copied();
 
-            let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
+            let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
             resp.start = from.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
-            resp.chunk = events_before;
+            resp.chunk = events;
         }
     }
 

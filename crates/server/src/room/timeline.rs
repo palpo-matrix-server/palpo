@@ -819,13 +819,13 @@ pub fn get_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
-    until_sn: Option<i64>,
+    until_sn: Option<Seqnum>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
-) -> AppResult<Vec<(i64, PduEvent)>> {
+) -> AppResult<Vec<(Seqnum, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
-    let mut list: Vec<(i64, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
+    let mut list: Vec<(Seqnum, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
@@ -835,12 +835,11 @@ pub fn get_pdus(
     while list.len() < limit {
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
         if let Some(until_sn) = until_sn {
-            let (min_sn, max_sn) = if until_sn > since_sn {
-                (since_sn, until_sn)
+            if dir == Direction::Forward {
+                query = query.filter(events::sn.le(until_sn)).filter(events::sn.ge(since_sn));
             } else {
-                (until_sn, since_sn)
-            };
-            query = query.filter(events::sn.le(max_sn)).filter(events::sn.ge(min_sn));
+                query = query.filter(events::sn.le(since_sn)).filter(events::sn.ge(until_sn));
+            }
         } else {
             if dir == Direction::Forward {
                 query = query.filter(events::sn.ge(since_sn));

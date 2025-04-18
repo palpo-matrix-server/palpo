@@ -287,7 +287,6 @@ pub fn auth_check<E: Event>(
             .map(|mem| mem.membership)
             .unwrap_or(MembershipState::Leave);
 
-            println!("ccccccccccccccvalid_membership_change 0");
         if !valid_membership_change(
             room_version,
             target_user,
@@ -302,10 +301,8 @@ pub fn auth_check<E: Event>(
             &user_for_join_auth_membership,
             room_create_event,
         )? {
-            println!("ccccccccccccccvalid_membership_change 01");
             return Ok(false);
         }
-        println!("ccccccccccccccvalid_membership_change 2");
 
         info!("m.room.member event was allowed");
         return Ok(true);
