@@ -753,7 +753,16 @@ pub(crate) fn load_timeline(
     until_sn: Option<Seqnum>,
     limit: usize,
 ) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
-    let mut timeline_pdus = timeline::get_pdus_backward(user_id, &room_id, since_sn, until_sn, limit + 1, None)?;
+    let mut timeline_pdus = if let Some(until_sn) = until_sn {
+        let (min_sn, max_sn) = if until_sn > since_sn {
+            (since_sn, until_sn)
+        } else {
+            (until_sn, since_sn)
+        };
+        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), limit + 1, None)?
+    } else {
+        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, limit + 1, None)?
+    };
 
     if timeline_pdus.len() > limit {
         timeline_pdus.remove(0);
