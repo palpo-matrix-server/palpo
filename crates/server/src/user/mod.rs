@@ -39,7 +39,7 @@ use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
 use crate::data::{self, connect, diesel_exists};
-use crate::{AppError, AppResult, PduBuilder};
+use crate::{AppError, AppResult, utils, MatrixError, PduBuilder};
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v4::ReqList>,
@@ -176,4 +176,24 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
     crate::membership::leave_all_rooms(user_id).await;
 
     Ok(())
+}
+
+/// Find out which user an OpenID access token belongs to.
+pub async fn find_from_openid_token(token: &str) -> AppResult<OwnedUserId> {
+    let Ok((user_id, expires_at)) = user_openid_tokens::table
+        .filter(user_openid_tokens::token.eq(token))
+        .select((user_openid_tokens::user_id, user_openid_tokens::expires_at))
+        .first::<(OwnedUserId, UnixMillis)>(&mut connect()?)
+    else {
+        return Err(MatrixError::unauthorized("OpenID token is unrecognised").into());
+    };
+    if expires_at < UnixMillis::now() {
+        tracing::warn!("OpenID token is expired, removing");
+        diesel::delete(user_openid_tokens::table.filter(user_openid_tokens::token.eq(token)))
+            .execute(&mut connect()?)?;
+
+        return Err(MatrixError::unauthorized("OpenID token is expired").into());
+    }
+
+    Ok(user_id)
 }
