@@ -6,7 +6,8 @@ use std::{
 };
 
 use crate::events::TimelineEventType;
-use crate::{EventId, RawJsonValue, RoomId, UnixMillis, UserId};
+use crate::serde::RawJsonValue;
+use crate::{EventId, RoomId, UnixMillis, UserId};
 
 /// Abstraction of a PDU so users can have their own PDU types.
 pub trait Event {

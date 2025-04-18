@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::events::{AnyStrippedStateEvent, StateEventType, room::member::RoomMemberEventContent};
 use crate::identifiers::*;
 use crate::sending::{SendRequest, SendResult};
-use crate::{RawJsonValue, UnixMillis, serde::RawJson};
+use crate::{UnixMillis};
+use crate::{ serde::{RawJsonValue, RawJson}};
 
 pub fn invite_user_request_v2(
     origin: &str,

@@ -5,9 +5,8 @@ use serde::{Deserialize, de};
 use super::{
     MessageType, RoomMessageEventContent, RoomMessageEventContentWithoutRelation, relation_serde::deserialize_relation,
 };
-use crate::RawJsonValue;
 use crate::events::Mentions;
-use crate::serde::from_raw_json_value;
+use crate::serde::{RawJsonValue, from_raw_json_value};
 
 impl<'de> Deserialize<'de> for RoomMessageEventContent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

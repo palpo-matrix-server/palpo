@@ -1,17 +1,12 @@
 use std::sync::Arc;
 
-use crate::core::RawJson;
-
-use crate::core::{
-    EventId, RoomId, UserId,
-    events::{
-        AnyStateEventContent, StateEventType,
-        room::canonical_alias::RoomCanonicalAliasEventContent,
-        room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent},
-        room::join_rules::{JoinRule, RoomJoinRulesEventContent},
-        room::member::{MembershipState, RoomMemberEventContent},
-    },
-};
+use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
+use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::events::{AnyStateEventContent, StateEventType};
+use crate::core::serde::RawJson;
+use crate::core::{EventId, RoomId, UserId};
 use crate::event::PduBuilder;
 use crate::{AppResult, IsRemoteOrLocal, MatrixError};
 

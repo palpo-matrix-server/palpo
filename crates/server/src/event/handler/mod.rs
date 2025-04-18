@@ -19,12 +19,13 @@ use crate::core::events::StateEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::federation::event::get_events_request;
 use crate::core::identifiers::*;
-use crate::core::serde::CanonicalJsonValue;
+use crate::core::serde::{canonical_json, CanonicalJsonValue};
 use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduEvent;
+
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, exts::*};
 
@@ -255,7 +256,7 @@ fn handle_outlier_pdu<'a>(
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
-                let obj = match crate::core::canonical_json::redact(value, room_version_id, None) {
+                let obj = match  canonical_json::redact(value, room_version_id, None) {
                     Ok(obj) => obj,
                     Err(_) => return Err(MatrixError::invalid_param("Redaction failed").into()),
                 };

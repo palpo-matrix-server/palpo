@@ -1,8 +1,7 @@
-
-
 use diesel::prelude::*;
 
-use crate::core::{JsonValue,OwnedServerName, UnixMillis};
+use crate::core::serde::JsonValue;
+use crate::core::{OwnedServerName, UnixMillis};
 use crate::schema::*;
 
 #[derive(Identifiable, Queryable, Insertable, Debug, Clone)]

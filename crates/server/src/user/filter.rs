@@ -1,9 +1,10 @@
 use diesel::prelude::*;
 
 use crate::AppResult;
+use crate::core::UnixMillis;
 use crate::core::client::filter::FilterDefinition;
 use crate::core::identifiers::*;
-use crate::core::{JsonValue, UnixMillis};
+use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
 

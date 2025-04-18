@@ -1,13 +1,16 @@
+use std::time::Duration;
+
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde::Deserialize;
 
 use crate::core::client::session::*;
-use crate::core::client::uiaa::UserIdentifier;
+use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
+use crate::core::serde::CanonicalJsonValue;
 use crate::{
-    AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, TOKEN_LENGTH, data, empty_ok, hoops,
-    json_ok, utils,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH,
+    TOKEN_LENGTH, data, empty_ok, hoops, json_ok, utils,
 };
 
 #[derive(Debug, Deserialize)]
@@ -87,18 +90,10 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             user_id
         }
         LoginInfo::Token(Token { token }) => {
-            if let Some(jwt_decoding_key) = crate::jwt_decoding_key() {
-                let token =
-                    jsonwebtoken::decode::<Claims>(token, jwt_decoding_key, &jsonwebtoken::Validation::default())
-                        .map_err(|_| MatrixError::invalid_username("Token is invalid."))?;
-                let username = token.claims.sub.to_lowercase();
-                UserId::parse_with_server_name(username, crate::server_name())
-                    .map_err(|_| MatrixError::invalid_username("Username is invalid."))?
-            } else {
-                return Err(
-                    MatrixError::unknown("Token login is not supported (server has no jwt decoding key).").into(),
-                );
+            if !crate::config().login_via_existing_session {
+                return Err(MatrixError::unknown("Token login is not enabled.").into());
             }
+            crate::user::take_login_token(token)?
         }
         LoginInfo::Appservice(Appservice { identifier }) => {
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {
@@ -144,12 +139,58 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
     })
 }
 
+/// # `POST /_matrix/client/v1/login/get_token`
+///
+/// Allows a logged-in user to get a short-lived token which can be used
+/// to log in with the m.login.token flow.
+///
+/// <https://spec.matrix.org/v1.13/client-server-api/#post_matrixclientv1loginget_token>
 #[endpoint]
-async fn get_token(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
-    panic!("get_tokenNot implemented")
-    // let authed = depot.authed_info()?;
-    // Ok(())
+async fn get_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonResult<TokenResBody> {
+    let conf = crate::config();
+    let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
+    let device_id = authed.device_id();
+
+    if !conf.login_via_existing_session {
+        return Err(MatrixError::forbidden("Login via an existing session is not enabled").into());
+    }
+
+    // This route SHOULD have UIA
+    // TODO: How do we make only UIA sessions that have not been used before valid?
+    let mut uiaa_info = UiaaInfo {
+        flows: vec![AuthFlow {
+            stages: vec![AuthType::Password],
+        }],
+        completed: Vec::new(),
+        params: Box::default(),
+        session: None,
+        auth_error: None,
+    };
+
+    let payload = req.payload().await?;
+    let body = serde_json::from_slice::<TokenReqBody>(&payload);
+    if let Ok(Some(auth)) = body.as_ref().map(|b| &b.auth) {
+        let (worked, uiaa_info) = crate::uiaa::try_auth(sender_id, device_id, auth, &uiaa_info)?;
+
+        if !worked {
+            return Err(AppError::Uiaa(uiaa_info));
+        }
+    } else if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(&payload) {
+        uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        crate::uiaa::create_session(sender_id, device_id, &uiaa_info, json);
+        return Err(AppError::Uiaa(uiaa_info));
+    } else {
+        return Err(MatrixError::not_json("No JSON body was sent when required.").into());
+    }
+
+    let login_token = utils::random_string(TOKEN_LENGTH);
+    let expires_in = crate::user::create_login_token(sender_id, &login_token)?;
+
+    json_ok(TokenResBody {
+        expires_in: Duration::from_millis(expires_in),
+        login_token,
+    })
 }
 
 /// #POST /_matrix/client/r0/logout

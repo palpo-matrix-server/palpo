@@ -773,6 +773,18 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    user_login_tokens (id) {
+        id -> Int8,
+        user_id -> Text,
+        token -> Text,
+        expires_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_openid_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -975,6 +987,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_devices,
     user_filters,
     user_ignores,
+    user_login_tokens,
     user_openid_tokens,
     user_passwords,
     user_presences,

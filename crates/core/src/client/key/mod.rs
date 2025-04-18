@@ -9,12 +9,10 @@ use std::time::Duration;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    DeviceKeyAlgorithm, JsonValue, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr, RawJsonValue,
-    client::uiaa::AuthData,
-    encryption::{CrossSigningKey, DeviceKeys, OneTimeKey},
-    serde::{RawJson, StringEnum},
-};
+use crate::client::uiaa::AuthData;
+use crate::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
+use crate::serde::{RawJson, RawJsonValue, JsonValue, StringEnum};
+use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr};
 
 /// An iterator over signed key IDs and their associated data.
 #[derive(Debug)]

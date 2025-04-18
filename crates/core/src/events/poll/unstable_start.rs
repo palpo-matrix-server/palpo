@@ -21,7 +21,8 @@ use crate::events::{
     RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
     room::message::RelationWithoutReplacement,
 };
-use crate::{OwnedEventId, RawJsonValue, UnixMillis};
+use crate::serde::RawJsonValue;
+use crate::{OwnedEventId, UnixMillis};
 
 /// The payload for an unstable poll start event.
 ///

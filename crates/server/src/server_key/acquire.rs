@@ -5,15 +5,12 @@ use std::{
 };
 
 use futures_util::{StreamExt, stream::FuturesUnordered};
-use serde_json::value::RawValue as RawJsonValue;
 use tokio::time::{Instant, timeout_at};
 
 use super::{add_signing_keys, batch_notary_request, key_exists, server_request, verify_key_exists};
-use crate::core::serde::CanonicalJsonObject;
-use crate::core::{
-    OwnedServerName, OwnedServerSigningKeyId, RawJson, ServerName, ServerSigningKeyId,
-    federation::discovery::ServerSigningKeys,
-};
+use crate::core::federation::discovery::ServerSigningKeys;
+use crate::core::serde::{CanonicalJsonObject, RawJson, RawJsonValue};
+use crate::core::{OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId};
 
 type Batch = BTreeMap<OwnedServerName, Vec<OwnedServerSigningKeyId>>;
 
