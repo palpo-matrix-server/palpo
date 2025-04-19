@@ -743,7 +743,7 @@ async fn remote_join_room(
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
-    // crate::room::update_room_servers(room_id)?;
+     crate::room::update_room_servers(room_id)?;
     // crate::room::update_room_currents(room_id)?;
 
     // We append to state before appending the pdu, so we don't have a moment in time with the

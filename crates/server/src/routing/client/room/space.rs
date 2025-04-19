@@ -8,7 +8,7 @@ use crate::core::identifiers::*;
 use crate::room::space::{PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk};
 use crate::{AppError, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
-/// #GET /_matrix/client/v1/rooms/{room_id}/hierarchy``
+/// `#GET /_matrix/client/v1/rooms/{room_id}/hierarchy`
 /// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
 #[endpoint]
 pub(super) async fn get_hierarchy(
@@ -16,12 +16,22 @@ pub(super) async fn get_hierarchy(
     args: HierarchyReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<HierarchyResBody> {
+    println!("\n\n\n\n\n\nVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
     let limit = args.limit.unwrap_or(10).min(100) as usize;
-    let max_depth = args.max_depth.map_or(3, usize::from).min(10) + 1; // +1 to skip the space room itself
+    let max_depth = args.max_depth.map_or(3, usize::from).min(10);
     let pagination_token = args.from.as_ref().and_then(|s| PaginationToken::from_str(s).ok());
+
+	// Should prevent unexpeded behaviour in (bad) clients
+	if let Some(token) = &pagination_token {
+		if token.suggested_only != args.suggested_only || token.max_depth != max_depth {
+			return Err(MatrixError::invalid_param(
+				"suggested_only and max_depth cannot change on paginated requests"
+			).into());
+		}
+	}
 
     let room_sns = pagination_token.map(|p| p.room_sns).unwrap_or_default();
 
@@ -44,11 +54,14 @@ pub(super) async fn get_hierarchy(
     let mut parents = BTreeSet::new();
 
     while let Some((current_room, via)) = queue.pop_front() {
+        println!("wwwwwwwwwwwwwww  --0");
         let summary =
             crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
+            println!("wwwwwwwwwwwwwww  --1  {} summary:{:?}", &current_room == room_id, summary.is_none());
 
         match (summary, &current_room == room_id) {
             (None | Some(SummaryAccessibility::Inaccessible), false) => {
+                println!("IIIgnore");
                 // Just ignore other unavailable rooms
             }
             (None, true) => {
@@ -59,6 +72,7 @@ pub(super) async fn get_hierarchy(
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
                 let populate = parents.len() >= room_sns.len();
+				println!("SSSSSSSSSSSSSSSpopulate: {:#?}  parents: {parents:?}   room_sns: {room_sns:?} ", populate);
 
                 let mut children: Vec<(OwnedRoomId, Vec<OwnedServerName>)> =
                     get_parent_children_via(&summary, suggested_only)
@@ -66,6 +80,8 @@ pub(super) async fn get_hierarchy(
                         .filter(|(room, _)| !parents.contains(room))
                         .rev()
                         .collect();
+
+                    println!("==============childre1: {children:?}");
 
                 if !populate {
                     children = children
@@ -81,24 +97,24 @@ pub(super) async fn get_hierarchy(
                         .into_iter()
                         .rev()
                         .collect::<Vec<(OwnedRoomId, Vec<OwnedServerName>)>>();
+                    println!("==============childre2: {children:?}");
                 }
 
                 if populate {
+                    println!("SSSSSSSSSSSSSSSSummary: {:#?}", summary);
                     rooms.push(summary_to_chunk(summary.clone()));
                 } else if queue.is_empty() && children.is_empty() {
                     return Err(MatrixError::invalid_param("Room IDs in token were not found.").into());
                 }
 
                 parents.insert(current_room.clone());
-                if rooms.len() >= limit {
-                    break;
-                }
-
-                if children.is_empty() {
+                if children.is_empty()  || rooms.len() >= limit {
+					println!("================break 1");
                     break;
                 }
 
                 if parents.len() >= max_depth {
+					println!("================continue 1");
                     continue;
                 }
 
@@ -132,5 +148,6 @@ pub(super) async fn get_hierarchy(
         None
     };
 
+    println!("RRRRRRRRRRRRRRRRoms: {rooms:#?}");
     json_ok(HierarchyResBody { next_batch, rooms })
 }

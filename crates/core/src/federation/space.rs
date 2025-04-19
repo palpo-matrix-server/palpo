@@ -180,7 +180,7 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
 
 pub fn hierarchy_request(origin: &str, args: HierarchyReqArgs) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}/_matrix/client/v1/rooms/{}/hierarchy?suggested_only={}",
+        "{origin}/_matrix/federation/v1/hierarchy/{}?suggested_only={}",
         args.room_id, args.suggested_only
     ))?;
     Ok(crate::sending::get(url))
