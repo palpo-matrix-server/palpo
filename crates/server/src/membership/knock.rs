@@ -52,10 +52,7 @@ pub async fn knock_room_by_id(
         }
     }
 
-    let server_in_room = crate::room::is_server_in_room(crate::server_name(), room_id)?;
-    let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
-
-    if local_knock {
+    if crate::room::local_work_for_room(room_id, servers)? {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
         knock_room_remote(sender_id, room_id, reason, servers).await?;

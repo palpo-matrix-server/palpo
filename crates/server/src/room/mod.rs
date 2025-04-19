@@ -194,7 +194,6 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
-        println!("=============room_id: {room_id}   joined_server: {:?}", joined_server);
         diesel::insert_into(room_servers::table)
             .values((
                 room_servers::room_id.eq(room_id),
@@ -255,6 +254,12 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
         &mut connect()?
     )
     .map_err(Into::into)
+}
+pub fn local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
+    let local = is_server_in_room(crate::server_name(), room_id)?
+        || servers.is_empty()
+        || (servers.len() == 1 && servers[0].is_local());
+    Ok(local)
 }
 pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     // if server
