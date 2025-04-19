@@ -143,7 +143,7 @@ impl From<SpaceHierarchyRoomsChunkInit> for SpaceHierarchyRoomsChunk {
 //     }
 // };
 
-/// Request type for the `hierarchy` endpoint.    
+/// Request type for the `hierarchy` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct HierarchyReqArgs {
     /// The room ID of the space to get a hierarchy for.

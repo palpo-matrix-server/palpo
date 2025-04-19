@@ -263,11 +263,8 @@ pub async fn join_room(
         }
     }
 
-    let local_join = crate::room::is_server_in_room(crate::server_name(), room_id)?
-        || servers.is_empty()
-        || (servers.len() == 1 && servers[0] == crate::server_name());
     // Ask a remote server if we are not participating in this room
-    if local_join {
+    if crate::room::local_work_for_room(room_id, servers)? {
         local_join_room(&user.id, room_id, reason, servers, third_party_signed).await?;
     } else {
         remote_join_room(&user.id, room_id, reason, servers, third_party_signed).await?;
@@ -743,7 +740,7 @@ async fn remote_join_room(
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
-    // crate::room::update_room_servers(room_id)?;
+    crate::room::update_room_servers(room_id)?;
     // crate::room::update_room_currents(room_id)?;
 
     // We append to state before appending the pdu, so we don't have a moment in time with the

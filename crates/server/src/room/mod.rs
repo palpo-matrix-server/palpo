@@ -255,14 +255,20 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     )
     .map_err(Into::into)
 }
+pub fn local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
+    let local = is_server_in_room(crate::server_name(), room_id)?
+        || servers.is_empty()
+        || (servers.len() == 1 && servers[0].is_local());
+    Ok(local)
+}
 pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
-    if server
-        == room_id
-            .server_name()
-            .map_err(|_| AppError::internal("bad room server name."))?
-    {
-        return Ok(true);
-    }
+    // if server
+    //     == room_id
+    //         .server_name()
+    //         .map_err(|_| AppError::internal("bad room server name."))?
+    // {
+    //     return Ok(true);
+    // }
     let query = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
         .filter(room_servers::server_id.eq(server));
