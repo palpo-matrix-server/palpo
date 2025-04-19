@@ -51,6 +51,12 @@ fn register(
     depot: &mut Depot,
     res: &mut Response,
 ) -> JsonResult<RegisterResBody> {
+    let body = body.into_inner();
+    // For complement test `TestRequestEncodingFails`.
+    if body.is_default() {
+        return Err(MatrixError::bad_json("Invalid json data.").into());
+    }
+
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
         return Err(MatrixError::forbidden("Registration has been disabled.").into());
