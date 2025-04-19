@@ -194,7 +194,6 @@ pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .map(|m| m == MembershipState::Join.to_string())
         .optional()?
         .unwrap_or(false);
-    println!("========is_joined: {user_id} {room_id} {joined}");
     Ok(joined)
 }
 

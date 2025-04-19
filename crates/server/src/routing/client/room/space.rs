@@ -16,7 +16,6 @@ pub(super) async fn get_hierarchy(
     args: HierarchyReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<HierarchyResBody> {
-    println!("\n\n\n\n\n\nVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
@@ -54,14 +53,11 @@ pub(super) async fn get_hierarchy(
     let mut parents = BTreeSet::new();
 
     while let Some((current_room, via)) = queue.pop_front() {
-        println!("wwwwwwwwwwwwwww  --0");
         let summary =
             crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
-            println!("wwwwwwwwwwwwwww  --1  {} summary:{:?}", &current_room == room_id, summary.is_none());
 
         match (summary, &current_room == room_id) {
             (None | Some(SummaryAccessibility::Inaccessible), false) => {
-                println!("IIIgnore");
                 // Just ignore other unavailable rooms
             }
             (None, true) => {
@@ -72,7 +68,6 @@ pub(super) async fn get_hierarchy(
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
                 let populate = parents.len() >= room_sns.len();
-				println!("SSSSSSSSSSSSSSSpopulate: {:#?}  parents: {parents:?}   room_sns: {room_sns:?} ", populate);
 
                 let mut children: Vec<(OwnedRoomId, Vec<OwnedServerName>)> =
                     get_parent_children_via(&summary, suggested_only)
@@ -80,8 +75,6 @@ pub(super) async fn get_hierarchy(
                         .filter(|(room, _)| !parents.contains(room))
                         .rev()
                         .collect();
-
-                    println!("==============childre1: {children:?}");
 
                 if !populate {
                     children = children
@@ -97,11 +90,9 @@ pub(super) async fn get_hierarchy(
                         .into_iter()
                         .rev()
                         .collect::<Vec<(OwnedRoomId, Vec<OwnedServerName>)>>();
-                    println!("==============childre2: {children:?}");
                 }
 
                 if populate {
-                    println!("SSSSSSSSSSSSSSSSummary: {:#?}", summary);
                     rooms.push(summary_to_chunk(summary.clone()));
                 } else if queue.is_empty() && children.is_empty() {
                     return Err(MatrixError::invalid_param("Room IDs in token were not found.").into());
@@ -109,12 +100,10 @@ pub(super) async fn get_hierarchy(
 
                 parents.insert(current_room.clone());
                 if children.is_empty()  || rooms.len() >= limit {
-					println!("================break 1");
                     break;
                 }
 
                 if parents.len() >= max_depth {
-					println!("================continue 1");
                     continue;
                 }
 
