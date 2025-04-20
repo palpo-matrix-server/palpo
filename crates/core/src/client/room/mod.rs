@@ -1,9 +1,10 @@
 /// Endpoints for room management.
 mod alias;
 mod thread;
+mod summary;
 pub use thread::*;
-
 pub use alias::*;
+pub use summary::*;
 
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,7 @@ use crate::{
     Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
     RoomVersionId, UnixMillis,
 };
+
 /// `POST /_matrix/client/*/createRoom`
 ///
 /// Create a new room.

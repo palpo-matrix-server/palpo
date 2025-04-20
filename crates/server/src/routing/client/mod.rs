@@ -14,6 +14,8 @@ mod room;
 mod room_key;
 mod session;
 mod sync_v3;
+pub mod sync_msc3575;
+pub mod sync_msc4186;
 mod third_party;
 mod to_device;
 mod unstable;

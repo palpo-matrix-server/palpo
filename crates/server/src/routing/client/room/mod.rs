@@ -7,6 +7,7 @@ mod space;
 mod state;
 mod tag;
 mod thread;
+pub mod summary;
 pub(crate) use membership::knock_room;
 
 use std::cmp::max;
@@ -41,7 +42,6 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::{PduBuilder, PduEvent};
-use crate::room::state::UserCanSeeEvent;
 use crate::user::user_is_ignored;
 use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
 
@@ -134,8 +134,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     let sender_id = authed.user_id();
     let room_id = &args.room_id;
 
-    let can_see = crate::room::state::user_can_see_state_events(sender_id, room_id)?;
-    if can_see != UserCanSeeEvent::Always {
+    if !crate::room::state::user_can_see_state_events(sender_id, room_id)? {
         return Err(MatrixError::forbidden("No room preview available.").into());
     }
 

@@ -124,3 +124,9 @@ async fn deactivate(
         id_server_unbind_result: ThirdPartyIdRemovalStatus::NoSupport,
     })
 }
+
+// msc3391
+#[handler]
+pub(super) fn delete_account_data_msc3391(_req: &mut Request, _res: &mut Response) -> JsonResult<()> {
+    json_ok(())
+}

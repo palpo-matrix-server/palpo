@@ -47,12 +47,10 @@ pub async fn get_summary_and_children_local(
     current_room: &RoomId,
     identifier: &Identifier<'_>,
 ) -> AppResult<Option<SummaryAccessibility>> {
-	println!("=========get_summary_and_children_local=========");
     match ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().get_mut(current_room).as_ref() {
         None => (), // cache miss
         Some(None) => return Ok(None),
         Some(Some(cached)) => {
-			println!("=========get_summary_and_children_local=========1");
             let accessibility = if is_accessible_child(
                 current_room,
                 &cached.summary.join_rule,
@@ -67,16 +65,13 @@ pub async fn get_summary_and_children_local(
             return Ok(Some(accessibility));
         }
     }
-	println!("=========get_summary_and_children_local=========2");
 
     let children_pdus: Vec<_> = get_stripped_space_child_events(current_room)?;
 
     let Ok(summary) = get_room_summary(current_room, children_pdus, identifier).await else {
-		println!("=========get_summary_and_children_local=========3");
         return Ok(None);
     };
 
-    println!("=========get_summary_and_children_local=========4");
     ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
         current_room.to_owned(),
         Some(CachedSpaceHierarchySummary {
@@ -190,7 +185,6 @@ pub async fn get_summary_and_children_client(
     let identifier = Identifier::UserId(user_id);
 
     if let Ok(Some(response)) = get_summary_and_children_local(current_room, &identifier).await {
-        println!("============get_summary_and_children_client 1");
         return Ok(Some(response));
     }
 
@@ -202,7 +196,6 @@ async fn get_room_summary(
     children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
     identifier: &Identifier<'_>,
 ) -> AppResult<SpaceHierarchyParentSummary> {
-    println!("DDD===D       get_room_summary xx 0");
     let join_rule =
         state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "")
             .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
@@ -210,15 +203,11 @@ async fn get_room_summary(
     let allowed_room_ids = state::allowed_room_ids(join_rule.clone());
 
     let join_rule: SpaceRoomJoinRule = join_rule.clone().into();
-    println!("DDDDDDDDDDDDDDDDDDDDDDD       get_room_summary 0");
     let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
-    println!("mmmmmmmmm       get_room_summary is_accessible_child  {is_accessible_child}");
 
     if !is_accessible_child {
-		println!("mmmmmmmmmmmmmmmmmmm       get_room_summary 1");
         return Err(MatrixError::forbidden("User is not allowed to see the room").into());
     }
-    println!("mmmmmmmmmmmmmmmmmmm       get_room_summary 2");
 
     let name = state::get_name(room_id).ok();
     let topic = state::get_room_topic(room_id).ok();
@@ -228,6 +217,8 @@ async fn get_room_summary(
     let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
     let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
     let avatar_url = state::get_avatar_url(room_id).ok().flatten();
+    let room_version = state::get_room_version(room_id).ok();
+    let encryption = state::get_room_encryption(room_id).ok();
 
     Ok(SpaceHierarchyParentSummary {
         canonical_alias,
@@ -244,6 +235,8 @@ async fn get_room_summary(
         num_joined_members: num_joined_members
             .try_into()
             .expect("user count should not be that big"),
+        room_version,
+        encryption,
     })
 }
 
@@ -270,7 +263,9 @@ fn is_accessible_child(
         }
     }
 
-	println!("============is_accessible_child Z  {join_rule:?} allowed_room_ids:{allowed_room_ids:?}  identifier:{identifier:?}");
+    println!(
+        "============is_accessible_child Z  {join_rule:?} allowed_room_ids:{allowed_room_ids:?}  identifier:{identifier:?}"
+    );
     match join_rule {
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
@@ -315,6 +310,8 @@ fn cache_insert(mut cache: MutexGuard<'_, CacheItem>, current_room: &RoomId, chi
         join_rule,
         room_type,
         allowed_room_ids,
+        room_version,
+        encryption,
     } = child;
 
     let summary = SpaceHierarchyParentSummary {
@@ -330,6 +327,8 @@ fn cache_insert(mut cache: MutexGuard<'_, CacheItem>, current_room: &RoomId, chi
         allowed_room_ids,
         room_id: room_id.clone(),
         children_state: get_stripped_space_child_events(&room_id).unwrap_or_default(),
+        room_version,
+        encryption,
     };
 
     cache.insert(current_room.to_owned(), Some(CachedSpaceHierarchySummary { summary }));

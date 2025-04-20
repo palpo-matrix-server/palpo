@@ -21,7 +21,6 @@ use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
-use crate::room::state::UserCanSeeEvent;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, json_ok};
@@ -33,9 +32,7 @@ use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, 
 #[endpoint]
 pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
-
-    let can_see = state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
-    if can_see == UserCanSeeEvent::Never {
+    if !crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
@@ -44,7 +41,6 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             event_points::table
                 .filter(event_points::room_id.eq(&args.room_id))
                 .filter(event_points::event_sn.le(at_sn))
-                .filter(event_points::event_sn.le(can_see.as_until_sn()))
                 .filter(event_points::frame_id.is_not_null())
                 .order(event_points::frame_id.desc())
                 .select(event_points::frame_id)
@@ -54,9 +50,9 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        state::get_room_frame_id(&args.room_id, Some(can_see.as_until_sn()))?
+        crate::room::state::get_room_frame_id(&args.room_id, None)?
     };
-    let mut states: Vec<_> = state::get_full_state(frame_id)?
+    let mut states: Vec<_> = crate::room::state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
         .map(|(_, pdu)| pdu.to_member_event())
@@ -90,13 +86,12 @@ pub(super) fn joined_members(
 ) -> JsonResult<JoinedMembersResBody> {
     let authed = depot.authed_info()?;
 
-    let can_see = state::user_can_see_state_events(&authed.user_id(), &room_id)?;
-    if can_see != UserCanSeeEvent::Always {
+    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id, Some(can_see.as_until_sn()))? {
+    for user_id in crate::room::get_joined_users(&room_id, None)? {
         if let Some(DbProfile {
             display_name,
             avatar_url,

@@ -11,7 +11,7 @@ use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
-use crate::room::state::UserCanSeeEvent;
+use crate::room::state;
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
@@ -28,14 +28,13 @@ pub(super) fn get_state(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &room_id)?;
-    if can_see == UserCanSeeEvent::Never {
+    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let frame_id = crate::room::state::get_room_frame_id(&room_id, Some(can_see.as_until_sn()))?;
+    let frame_id = state::get_room_frame_id(&room_id, None)?;
 
-    let room_state = crate::room::state::get_full_state(frame_id)?
+    let room_state = state::get_full_state(frame_id)?
         .values()
         .map(|pdu| pdu.to_state_event())
         .collect();
@@ -108,12 +107,11 @@ pub(super) fn state_for_key(
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
-    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
-    if can_see == UserCanSeeEvent::Never {
+    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_room_state(&args.room_id, &args.event_type, &args.state_key)?;
+    let event = state::get_room_state(&args.room_id, &args.event_type, &args.state_key)?;
 
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
@@ -138,12 +136,11 @@ pub(super) async fn state_for_empty_key(
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
 
-    let can_see = crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)?;
-    if can_see == UserCanSeeEvent::Never {
+    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
-    let event = crate::room::state::get_room_state(&args.room_id, &args.event_type, "")?;
+    let event = state::get_room_state(&args.room_id, &args.event_type, "")?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
