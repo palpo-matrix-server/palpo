@@ -18,6 +18,7 @@ use serde::de::DeserializeOwned;
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
+use crate::core::events::room::encryption::RoomEncryptionEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent, RoomMembership};
@@ -516,7 +517,7 @@ pub async fn user_can_redact(
     }
 
     if let Ok(pl_event_content) =
-    get_room_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
+        get_room_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "")
     {
         let pl_event: RoomPowerLevels = pl_event_content.into();
         Ok(pl_event.user_can_redact_event_of_other(sender)
@@ -651,45 +652,19 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
     Ok(visibility)
 }
 
-#[derive(Eq, PartialEq, Debug, Clone, Copy)]
-pub enum UserCanSeeEvent {
-    Always,
-    Until(i64),
-    Never,
-}
-impl UserCanSeeEvent {
-    pub fn as_until_sn(&self) -> i64 {
-        match self {
-            UserCanSeeEvent::Always => i64::MAX,
-            UserCanSeeEvent::Until(sn) => *sn,
-            UserCanSeeEvent::Never => 0,
-        }
-    }
-}
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
-pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<UserCanSeeEvent> {
+pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     if crate::room::is_joined(&user_id, &room_id)? {
-        return Ok(UserCanSeeEvent::Always);
+        return Ok(true);
     }
 
     let history_visibility = get_history_visibility(&room_id)?;
-    if history_visibility == HistoryVisibility::WorldReadable {
-        return Ok(UserCanSeeEvent::Always);
-    }
-
-    let leave_sn = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .select(room_users::membership.eq("leave"))
-        .select(room_users::event_sn)
-        .first::<i64>(&mut connect()?)
-        .optional()?;
-    if let Some(leave_sn) = leave_sn {
-        Ok(UserCanSeeEvent::Until(leave_sn))
-    } else {
-        Ok(UserCanSeeEvent::Never)
+    match history_visibility {
+        HistoryVisibility::Invited => crate::room::user::is_invited(user_id, room_id),
+        HistoryVisibility::WorldReadable => Ok(true),
+        _ => Ok(false),
     }
 }
 
@@ -810,6 +785,15 @@ pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> 
 
 pub fn is_world_readable(room_id: &RoomId) -> AppResult<bool> {
     get_history_visibility(room_id).map(|visibility| visibility == HistoryVisibility::WorldReadable)
+}
+
+pub fn get_room_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {
+    get_room_state_content(room_id, &StateEventType::RoomEncryption, "")
+        .map(|content: RoomEncryptionEventContent| content.algorithm)
+}
+
+pub fn is_encrypted_room(room_id: &RoomId) -> bool {
+    get_room_state(room_id, &StateEventType::RoomEncryption, "").is_ok()
 }
 
 #[tracing::instrument]

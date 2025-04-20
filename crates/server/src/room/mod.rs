@@ -1,4 +1,4 @@
-mod alias;
+pub mod alias;
 pub use alias::*;
 pub mod auth_chain;
 mod current;

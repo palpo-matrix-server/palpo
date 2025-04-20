@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::space::child::HierarchySpaceChildEvent;
 use crate::sending::{SendRequest, SendResult};
-use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule};
+use crate::{
+    EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId, room::RoomType,
+    serde::RawJson, space::SpaceRoomJoinRule,
+};
 
 /// The summary of a parent space.
-///
-/// To create an instance of this type, first create a `SpaceHierarchyParentSummaryInit` and convert
-/// it via `SpaceHierarchyParentSummary::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyParentSummary {
     /// The canonical alias of the room, if any.
@@ -68,6 +68,23 @@ pub struct SpaceHierarchyParentSummary {
     /// rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
+
+    /// If the room is encrypted, the algorithm used for this room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.encryption",
+        alias = "encryption"
+    )]
+    pub encryption: Option<EventEncryptionAlgorithm>,
+
+    /// Version of the room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.room_version",
+        alias = "im.nheko.summary.version",
+        alias = "room_version"
+    )]
+    pub room_version: Option<RoomVersionId>,
 }
 
 /// The summary of a space's child.
@@ -126,6 +143,23 @@ pub struct SpaceHierarchyChildSummary {
     /// rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
+
+    /// If the room is encrypted, the algorithm used for this room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.encryption",
+        alias = "encryption"
+    )]
+    pub encryption: Option<EventEncryptionAlgorithm>,
+
+    /// Version of the room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.room_version",
+        alias = "im.nheko.summary.version",
+        alias = "room_version"
+    )]
+    pub room_version: Option<RoomVersionId>,
 }
 
 impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
@@ -143,6 +177,8 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
             room_type,
             children_state: _,
             allowed_room_ids,
+            encryption,
+            room_version,
         } = parent;
 
         Self {
@@ -157,10 +193,11 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
             join_rule,
             room_type,
             allowed_room_ids,
+            encryption,
+            room_version
         }
     }
 }
-
 
 /// `GET /_matrix/federation/*/hierarchy/{room_id}`
 ///
