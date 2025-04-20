@@ -19,16 +19,15 @@ use serde_json::value::to_raw_value;
 
 use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
-use crate::core::client::room::CreateRoomResBody;
 use crate::core::client::room::{
-    AliasesResBody, CreateRoomReqBody, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
+    AliasesResBody, CreateRoomReqBody, CreateRoomResBody, InitialSyncReqArgs, InitialSyncResBody, PaginationChunk,
+    RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
 };
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::guest_access::GuestAccess;
-use crate::core::events::room::guest_access::RoomGuestAccessEventContent;
+use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::HistoryVisibility;
 use crate::core::events::room::history_visibility::RoomHistoryVisibilityEventContent;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
@@ -41,9 +40,12 @@ use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEven
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
-use crate::event::PduBuilder;
+use crate::event::{PduBuilder, PduEvent};
+use crate::room::state::UserCanSeeEvent;
 use crate::user::user_is_ignored;
 use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
+
+const LIMIT_MAX: usize = 100;
 
 pub fn public_router() -> Router {
     Router::with_path("rooms")
@@ -125,11 +127,52 @@ pub fn authed_router() -> Router {
         )
 }
 
+// `#GET /_matrix/client/r0/rooms/{room_id}/initialSync`
 #[endpoint]
-async fn initial_sync(_aa: AuthArgs) -> EmptyResult {
-    empty_ok()
+async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot) -> JsonResult<InitialSyncResBody> {
+    let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
+    let room_id = &args.room_id;
+
+    let can_see = crate::room::state::user_can_see_state_events(sender_id, room_id)?;
+    if can_see != UserCanSeeEvent::Always {
+        return Err(MatrixError::forbidden("No room preview available.").into());
+    }
+
+    let limit = LIMIT_MAX;
+    let events = crate::room::timeline::get_pdus_backward(sender_id, room_id, 0, None, limit, None)?;
+
+    let frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
+    let state: Vec<_> = crate::room::state::get_full_state(frame_id)?
+        .into_iter()
+        .map(|(_, event)| event.to_state_event())
+        .collect::<Vec<_>>();
+
+    let messages = PaginationChunk {
+        start: events.last().map(|(sn, _)| sn).as_ref().map(ToString::to_string),
+        end: events
+            .first()
+            .map(|(sn, _)| sn)
+            .as_ref()
+            .map(ToString::to_string)
+            .unwrap_or_default(),
+        chunk: events.into_iter().map(|(_sn, event)| event.to_room_event()).collect(),
+    };
+
+    json_ok(InitialSyncResBody {
+        room_id: room_id.to_owned(),
+        account_data: None,
+        state: state.into(),
+        messages: if !messages.chunk.is_empty() {
+            Some(messages)
+        } else {
+            None
+        },
+        visibility: crate::room::directory::visibility(room_id).into(),
+        membership: crate::room::user::membership(sender_id, room_id),
+    })
 }
-/// #POST /_matrix/client/r0/rooms/{room_id}/read_markers
+/// `#POST /_matrix/client/r0/rooms/{room_id}/read_markers`
 /// Sets different types of read markers.
 ///
 /// - Updates fully-read account data event to `fully_read`

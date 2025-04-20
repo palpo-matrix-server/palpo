@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::AppResult;
 use crate::core::RoomId;
 use crate::data::connect;
-use crate::data::schema::*;
+use crate::data::schema::*;use crate::core::room::Visibility;
 
 #[tracing::instrument]
 pub fn set_public(room_id: &RoomId, value: bool) -> AppResult<()> {
@@ -20,4 +20,13 @@ pub fn is_public(room_id: &RoomId) -> AppResult<bool> {
         .select(rooms::is_public)
         .first::<bool>(&mut connect()?)
         .map_err(Into::into)
+}
+
+#[tracing::instrument]
+pub fn visibility(room_id: &RoomId) -> Visibility {
+   if is_public(room_id).unwrap_or(false) {
+        Visibility::Public
+    } else {
+        Visibility::Private
+    }
 }
