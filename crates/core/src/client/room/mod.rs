@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::filter::RoomEventFilter;
 use crate::client::membership::InviteThreepid;
+use crate::events::AnyRoomAccountDataEvent;
+use crate::events::room::member::MembershipState;
 use crate::events::{
     AnyInitialStateEvent, AnyStateEvent, AnyTimelineEvent,
     room::{create::PreviousRoom, power_levels::RoomPowerLevelsEventContent},
@@ -20,7 +22,6 @@ use crate::{
     Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
     RoomVersionId, UnixMillis,
 };
-
 /// `POST /_matrix/client/*/createRoom`
 ///
 /// Create a new room.
@@ -521,4 +522,76 @@ impl KnockResBody {
     pub fn new(room_id: OwnedRoomId) -> Self {
         Self { room_id }
     }
+}
+
+// const METADATA: Metadata = metadata! {
+//     method: GET,
+//     rate_limited: false,
+//     authentication: AccessToken,
+//     history: {
+//         1.0 => "/_matrix/client/r0/rooms/:room_id/initialSync",
+//         1.1 => "/_matrix/client/v3/rooms/:room_id/initialSync",
+//     }
+// };
+
+/// Request type for the `get_room_event` endpoint.
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct InitialSyncReqArgs {
+    /// The ID of the room.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// Limit messages chunks size
+    #[salvo(parameter(parameter_in = Query))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<usize>,
+}
+
+/// Response type for the `get_room_event` endpoint.
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+pub struct InitialSyncResBody {
+    /// The private data that this user has attached to this room.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_data: Option<Vec<RawJson<AnyRoomAccountDataEvent>>>,
+
+    /// The user’s membership state in this room. One of: [invite, join, leave, ban].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub membership: Option<MembershipState>,
+
+    /// The pagination chunk for this room.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub messages: Option<PaginationChunk>,
+
+    /// The ID of this room.
+    pub room_id: OwnedRoomId,
+
+    /// If the user is a member of the room this will be the current state of the room as a
+    /// list of events. If the user has left the room this will be the state of the room when
+    /// they left it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<Vec<RawJson<AnyStateEvent>>>,
+
+    /// Whether this room is visible to the /publicRooms API or not.
+    /// One of: [private, public].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visibility: Option<Visibility>,
+}
+
+/// Page of timeline events
+#[derive(ToSchema,Clone, Debug, Default, Deserialize, Serialize)]
+pub struct PaginationChunk {
+    /// If the user is a member of the room this will be a list of the most recent messages
+    /// for this room. If the user has left the room this will be the messages that preceded
+    /// them leaving. This array will consist of at most limit elements.
+    pub chunk: Vec<RawJson<AnyTimelineEvent>>,
+
+    /// A token which correlates to the end of chunk. Can be passed to
+    /// /rooms/<room_id>/messages to retrieve later events.
+    pub end: String,
+
+    /// A token which correlates to the start of chunk. Can be passed to
+    /// /rooms/<room_id>/messages to retrieve earlier events. If no earlier events are
+    /// available, this property may be omitted from the response.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<String>,
 }
