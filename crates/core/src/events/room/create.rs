@@ -6,6 +6,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::events::room::encryption::RoomEncryptionEventContent;
 use crate::events::{EmptyStateKey, RedactContent, RedactedStateEventContent};
 use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId, room::RoomType};
 
@@ -30,8 +31,8 @@ pub struct RoomCreateEventContent {
     /// Whether or not this room's data should be transferred to other homeservers.
     #[serde(
         rename = "m.federate",
-        default = "palpo_core::serde::default_true",
-        skip_serializing_if = "palpo_core::serde::is_true"
+        default = "crate::serde::default_true",
+        skip_serializing_if = "crate::serde::is_true"
     )]
     pub federate: bool,
 

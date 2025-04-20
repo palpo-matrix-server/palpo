@@ -26,14 +26,14 @@ use std::mem;
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
-use crate::core::Seqnum;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
+use crate::core::Seqnum;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::schema::*;
-use crate::{DataError, DataResult, connect, diesel_exists};
+use crate::{connect, diesel_exists, DataError, DataResult};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]
@@ -270,6 +270,16 @@ pub fn blurhash(user_id: &UserId) -> DataResult<Option<String>> {
         .optional()
         .map(Option::flatten)
         .map_err(Into::into)
+}
+
+pub fn is_deactivated(user_id: &UserId) -> DataResult<bool> {
+    let deactivated_at = users::table
+        .filter(users::id.eq(user_id))
+        .select(users::deactivated_at)
+        .first::<Option<UnixMillis>>(&mut connect()?)
+        .optional()?
+        .flatten();
+    Ok(deactivated_at.is_some())
 }
 
 /// Ensure that a user only sees signatures from themselves and the target user

@@ -213,3 +213,23 @@ pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson
         Ok(vec![])
     }
 }
+
+#[tracing::instrument(level = "trace")]
+pub fn membership(user_id: &UserId, room_id: &RoomId) -> Option<MembershipState> {
+    if is_joined(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Join);
+    }
+    if is_left(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Leave);
+    }
+    if is_knocked(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Knock);
+    }
+    if is_invited(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Invite);
+    }
+    if once_joined(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Ban);
+    }
+    None
+}

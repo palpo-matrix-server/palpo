@@ -10,7 +10,7 @@ pub fn router() -> Router {
     Router::with_path("hierarchy/{room_id}").get(get_hierarchy)
 }
 
-/// # `GET /_matrix/federation/v1/hierarchy/{roomId}`
+/// # `GET /_matrix/federation/v1/hierarchy/{room_id}`
 ///
 /// Gets the space tree in a depth-first manner to locate child rooms of a given
 /// space.
