@@ -499,9 +499,7 @@ pub(super) async fn kick_user(
 
     // TODO: state lock
     let Ok(event) = state::get_member(&room_id, &body.user_id) else {
-        // copy synapse's behaviour of returning 200 without any change to the state
-        // instead of erroring on left users
-        return empty_ok();
+        return Err(MatrixError::forbidden("User are not in the room.").into());
     };
 
     if !matches!(
