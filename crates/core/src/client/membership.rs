@@ -517,6 +517,9 @@ pub enum MembershipEventFilter {
     /// The user has been banned.
     Ban,
 
+    /// The user has knocked.
+    Knock,
+
     #[doc(hidden)]
     _Custom(PrivOwnedStr),
 }

@@ -12,7 +12,7 @@ use crate::events::room::{
     power_levels::RoomPowerLevelsEventContent,
     third_party_invite::RoomThirdPartyInviteEventContent,
 };
-use crate::serde::{Base64,RawJsonValue, RawJson};
+use crate::serde::{Base64, RawJson, RawJsonValue};
 use crate::state::power_levels::{
     deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
     deserialize_power_levels_content_redact,
@@ -344,9 +344,8 @@ pub fn auth_check<E: Event>(
         let is_creator = if room_version.use_room_create_sender {
             room_create_event.sender() == sender
         } else {
-            from_json_str::<RoomCreateEventContent>(room_create_event.content().get()).is_ok_and(|create| {
-                create.creator.unwrap() == *sender
-            })
+            from_json_str::<RoomCreateEventContent>(room_create_event.content().get())
+                .is_ok_and(|create| create.creator.unwrap() == *sender)
         };
 
         if is_creator { 100 } else { 0 }
@@ -668,36 +667,33 @@ fn valid_membership_change(
         MembershipState::Knock if room_version.allow_knocking => {
             // 1. If the `join_rule` is anything other than `knock` or `knock_restricted`, reject.
             if !matches!(join_rules, JoinRule::KnockRestricted(_) | JoinRule::Knock) {
-            {
                 warn!("Join rule is not set to knock or knock_restricted, knocking is not allowed");
                 false
-            }  else if matches!(join_rules, JoinRule::KnockRestricted(_))
-            && !room_version.knock_restricted_join_rule
-        {
-            // 2. If the `join_rule` is `knock_restricted`, but the room does not support
-            //    `knock_restricted`, reject.
-            warn!(
-                "Join rule is set to knock_restricted but room version does not support \
+            } else if matches!(join_rules, JoinRule::KnockRestricted(_)) && !room_version.knock_restricted_join_rule {
+                // 2. If the `join_rule` is `knock_restricted`, but the room does not support
+                //    `knock_restricted`, reject.
+                warn!(
+                    "Join rule is set to knock_restricted but room version does not support \
                  knock_restricted, knocking is not allowed"
-            );
-            false
-        } else if sender != target_user {
-                    warn!(
-                        ?sender,
-                        ?target_user,
-                        "Can't make another user join, sender did not match target"
-                    );
-                    false
-                } else if matches!(sender_membership, MembershipState::Ban | MembershipState::Join) {
-                    warn!(
-                        ?target_user_membership_event_id,
-                        "Membership state of ban or join are invalid",
-                    );
-                    false
-                } else {
-                    true
-                }
-        },
+                );
+                false
+            } else if sender != target_user {
+                warn!(
+                    ?sender,
+                    ?target_user,
+                    "Can't make another user join, sender did not match target"
+                );
+                false
+            } else if matches!(sender_membership, MembershipState::Ban | MembershipState::Join) {
+                warn!(
+                    ?target_user_membership_event_id,
+                    "Membership state of ban or join are invalid",
+                );
+                false
+            } else {
+                true
+            }
+        }
         _ => {
             warn!("Unknown membership transition");
             false

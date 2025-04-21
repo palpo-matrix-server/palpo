@@ -5,6 +5,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
+use crate::core::client::membership::MembershipEventFilter;
 use crate::core::client::membership::{
     BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomByIdOrAliasReqBody, JoinRoomByIdReqBody,
     JoinRoomResBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs,
@@ -23,7 +24,9 @@ use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, json_ok};
+use crate::{
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
+};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -32,6 +35,9 @@ use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, 
 #[endpoint]
 pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
+    let membership = args.membership.as_ref();
+    let not_membership = args.not_membership.as_ref();
+
     if !crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
@@ -55,8 +61,8 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let mut states: Vec<_> = crate::room::state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
-        .ready_filter_map(|pdu| membership_filter(pdu, membership, not_membership))
-        .map(|(_, pdu)| pdu.to_member_event())
+        .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership))
+        .map(|pdu| pdu.to_member_event())
         .collect();
 
     json_ok(MembersResBody { chunk: states })
