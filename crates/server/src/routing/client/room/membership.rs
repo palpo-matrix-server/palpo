@@ -457,31 +457,36 @@ pub(super) async fn kick_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    if !diesel_exists!(
-        room_users::table
-            .filter(room_users::user_id.eq(&body.user_id))
-            .filter(room_users::membership.eq_any(["join", "invite"])),
-        &mut connect()?
-    )? {
-        return Err(MatrixError::forbidden("User are not in the room.").into());
+    // TODO: state lock
+    let Ok(event) = state::get_member(&room_id, &body.user_id) else {
+        // copy synapse's behaviour of returning 200 without any change to the state
+        // instead of erroring on left users
+        return empty_ok();
+    };
+
+    if !matches!(
+        event.membership,
+        MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
+    ) {
+        return Err(MatrixError::forbidden(format!(
+            "Cannot kick a user who is not apart of the room (current membership: {})",
+            event.membership
+        ))
+        .into());
     }
 
-    let mut event = crate::room::state::get_room_state_content::<RoomMemberEventContent>(
-        &room_id,
-        &StateEventType::RoomMember,
-        body.user_id.as_ref(),
-    )?;
-
-    event.membership = MembershipState::Leave;
-    event.reason = body.reason.clone();
-
     crate::room::timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomMember,
-            content: to_raw_value(&event).expect("event is valid, we just created it"),
-            state_key: Some(body.user_id.to_string()),
-            ..Default::default()
-        },
+        PduBuilder::state(
+            body.user_id.to_string(),
+            &RoomMemberEventContent {
+                membership: MembershipState::Leave,
+                reason: body.reason.clone(),
+                is_direct: None,
+                join_authorized_via_users_server: None,
+                third_party_invite: None,
+                ..event
+            },
+        ),
         authed.user_id(),
         &room_id,
     )?;
