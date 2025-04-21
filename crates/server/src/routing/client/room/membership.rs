@@ -55,22 +55,56 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let mut states: Vec<_> = crate::room::state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
+        .ready_filter_map(|pdu| membership_filter(pdu, membership, not_membership))
         .map(|(_, pdu)| pdu.to_member_event())
         .collect();
-    if let Some(membership) = &args.membership {
-        states = states
-            .into_iter()
-            .filter(|event| membership.to_string() == event.deserialize().unwrap().membership().to_string())
-            .collect();
-    }
-    if let Some(not_membership) = &args.not_membership {
-        states = states
-            .into_iter()
-            .filter(|event| not_membership.to_string() != event.deserialize().unwrap().membership().to_string())
-            .collect();
-    }
 
     json_ok(MembersResBody { chunk: states })
+}
+fn membership_filter(
+    pdu: PduEvent,
+    for_membership: Option<&MembershipEventFilter>,
+    not_membership: Option<&MembershipEventFilter>,
+) -> Option<PduEvent> {
+    let membership_state_filter = match for_membership {
+        Some(MembershipEventFilter::Ban) => MembershipState::Ban,
+        Some(MembershipEventFilter::Invite) => MembershipState::Invite,
+        Some(MembershipEventFilter::Knock) => MembershipState::Knock,
+        Some(MembershipEventFilter::Leave) => MembershipState::Leave,
+        Some(_) | None => MembershipState::Join,
+    };
+
+    let not_membership_state_filter = match not_membership {
+        Some(MembershipEventFilter::Ban) => MembershipState::Ban,
+        Some(MembershipEventFilter::Invite) => MembershipState::Invite,
+        Some(MembershipEventFilter::Join) => MembershipState::Join,
+        Some(MembershipEventFilter::Knock) => MembershipState::Knock,
+        Some(_) | None => MembershipState::Leave,
+    };
+
+    let evt_membership = pdu.get_content::<RoomMemberEventContent>().ok()?.membership;
+
+    if for_membership.is_some() && not_membership.is_some() {
+        if membership_state_filter != evt_membership || not_membership_state_filter == evt_membership {
+            None
+        } else {
+            Some(pdu)
+        }
+    } else if for_membership.is_some() && not_membership.is_none() {
+        if membership_state_filter != evt_membership {
+            None
+        } else {
+            Some(pdu)
+        }
+    } else if not_membership.is_some() && for_membership.is_none() {
+        if not_membership_state_filter == evt_membership {
+            None
+        } else {
+            Some(pdu)
+        }
+    } else {
+        Some(pdu)
+    }
 }
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/joined_members

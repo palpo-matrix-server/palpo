@@ -258,14 +258,10 @@ fn is_accessible_child(
         if crate::room::is_joined(user_id, current_room).unwrap_or(false)
             || crate::room::is_invited(user_id, current_room).unwrap_or(false)
         {
-            println!("============is_accessible_child true");
             return true;
         }
     }
 
-    println!(
-        "============is_accessible_child Z  {join_rule:?} allowed_room_ids:{allowed_room_ids:?}  identifier:{identifier:?}"
-    );
     match join_rule {
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
