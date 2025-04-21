@@ -12,6 +12,7 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
+use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::user::{NewDbPresence, NewDbProfile};
 use crate::data::{connect, diesel_exists};
@@ -45,16 +46,20 @@ pub fn authed_router() -> Router {
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3register
 #[endpoint]
-fn register(
+async fn register(
     aa: AuthArgs,
     body: JsonBody<RegisterReqBody>,
+    req: &mut Request,
     depot: &mut Depot,
     res: &mut Response,
 ) -> JsonResult<RegisterResBody> {
     let body = body.into_inner();
     // For complement test `TestRequestEncodingFails`.
     if body.is_default() {
-        return Err(MatrixError::bad_json("Invalid json data.").into());
+        let payload = req.payload().await?;
+        if let Err(e) = serde_json::from_slice::<JsonValue>(payload) {
+            return Err(MatrixError::not_json(format!("Invalid json data: {e}")).into());
+        }
     }
 
     let conf = crate::config();
