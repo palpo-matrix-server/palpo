@@ -251,8 +251,11 @@ pub(super) async fn post_message(
 
     let payload = req.payload().await?;
     // Ensure it's valid JSON.
-    let _content: JsonValue =
+    let content: JsonValue =
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
+    if !content.is_object() {
+        return Err(MatrixError::bad_json("JSON body is not object.").into());
+    }
 
     let mut unsigned = BTreeMap::new();
     let event_id = crate::room::timeline::build_and_append_pdu(
