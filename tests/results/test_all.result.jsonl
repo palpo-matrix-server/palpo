@@ -41,9 +41,6 @@
 {"Action":"fail","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser/join_remote_federated_room_as_application_service_user"}
-{"Action":"fail","Test":"TestJson"}
-{"Action":"fail","Test":"TestJson/Parallel"}
-{"Action":"fail","Test":"TestJson/Parallel/Invalid_numerical_values"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation"}
@@ -265,7 +262,10 @@
 {"Action":"pass","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_state_with_unverifiable_auth_events_shouldn't_block_room_join"}
 {"Action":"pass","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_unobtainable_keys_shouldn't_block_room_join"}
 {"Action":"pass","Test":"TestJoinViaRoomIDAndServerName"}
+{"Action":"pass","Test":"TestJson"}
+{"Action":"pass","Test":"TestJson/Parallel"}
 {"Action":"pass","Test":"TestJson/Parallel/Invalid_JSON_special_values"}
+{"Action":"pass","Test":"TestJson/Parallel/Invalid_numerical_values"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/federation/looking_backwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_event_after_given_timestmap"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_event_before_given_timestmap"}
