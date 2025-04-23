@@ -47,8 +47,19 @@ pub struct ServerConfig {
     pub max_fetch_prev_events: u16,
     #[serde(default = "default_false")]
     pub allow_registration: bool,
+
+    /// Allow sending read receipts to remote servers.
     #[serde(default = "default_false")]
     pub allow_outgoing_read_receipts: bool,
+
+    /// Allow outgoing typing updates to federation.
+    #[serde(default = "default_true")]
+    pub allow_outgoing_typing: bool,
+
+    /// Allow incoming typing updates from federation.
+    #[serde(default = "default_true")]
+    pub allow_incoming_typing: bool,
+
     pub registration_token: Option<String>,
     #[serde(default = "default_true")]
     pub allow_encryption: bool,

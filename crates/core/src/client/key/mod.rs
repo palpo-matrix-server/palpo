@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::uiaa::AuthData;
 use crate::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::serde::{RawJson, RawJsonValue, JsonValue, StringEnum};
+use crate::serde::{JsonValue, RawJson, RawJsonValue, StringEnum};
 use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr};
 
 /// An iterator over signed key IDs and their associated data.

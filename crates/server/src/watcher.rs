@@ -8,8 +8,8 @@ use futures_util::{StreamExt, stream::FuturesUnordered};
 use crate::AppResult;
 use crate::core::Seqnum;
 use crate::core::identifiers::*;
-use crate::data::{self, connect};
 use crate::data::schema::*;
+use crate::data::{self, connect};
 
 pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let inbox_id = device_inboxes::table

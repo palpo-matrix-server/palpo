@@ -12,7 +12,7 @@ use diesel::prelude::*;
 use serde_json::value::RawValue as RawJsonValue;
 
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
-use crate::core::serde::{Base64, JsonValue, CanonicalJsonObject, RawJson};
+use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
 use crate::core::{OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis};
 use crate::data::connect;

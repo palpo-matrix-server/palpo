@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};
 use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
+use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};

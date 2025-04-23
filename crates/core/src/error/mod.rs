@@ -15,8 +15,8 @@ mod kind;
 /// Deserialize and Serialize implementations for ErrorKind.
 /// Separate module because it's a lot of code.
 mod kind_serde;
-pub use kind::*;
 use crate::RoomVersionId;
+pub use kind::*;
 
 macro_rules! simple_kind_fns {
     ($($fname:ident, $kind:ident;)+) => {

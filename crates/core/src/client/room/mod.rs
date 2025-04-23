@@ -1,10 +1,10 @@
 /// Endpoints for room management.
 mod alias;
-mod thread;
 mod summary;
-pub use thread::*;
+mod thread;
 pub use alias::*;
 pub use summary::*;
+pub use thread::*;
 
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -580,7 +580,7 @@ pub struct InitialSyncResBody {
 }
 
 /// Page of timeline events
-#[derive(ToSchema,Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PaginationChunk {
     /// If the user is a member of the room this will be a list of the most recent messages
     /// for this room. If the user has left the room this will be the messages that preceded

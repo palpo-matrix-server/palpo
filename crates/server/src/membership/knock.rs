@@ -73,7 +73,6 @@ async fn knock_room_local(
     info!("We can knock locally");
     println!("We can knock locally");
 
-
     let room_version_id = crate::room::state::get_room_version(room_id)?;
 
     if matches!(
@@ -226,8 +225,8 @@ async fn knock_room_remote(
             .into());
     }
 
-    let mut knock_event_stub: CanonicalJsonObject = serde_json::from_str(make_knock_response.event.get())
-        .map_err(|e| {
+    let mut knock_event_stub: CanonicalJsonObject =
+        serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error()
                 .brief(format!("Invalid make_knock event json received from server: {e:?}"))
         })?;
@@ -290,9 +289,8 @@ async fn knock_room_remote(
 
     info!("Parsing knock event");
     let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let parsed_knock_pdu =
-        PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
-            .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
+    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
+        .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");
     let state = send_knock_body

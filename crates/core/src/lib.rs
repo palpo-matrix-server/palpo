@@ -41,9 +41,9 @@ extern crate self as palpo_core;
 
 use std::fmt;
 
+use ::serde::{Deserialize, Serialize};
 use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
-use ::serde::{Deserialize, Serialize};
 
 pub use self::identifiers::*;
 pub use self::time::{UnixMillis, UnixSeconds};

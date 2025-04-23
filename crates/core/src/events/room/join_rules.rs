@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::EmptyStateKey;
 use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
-use crate::{OwnedRoomId, RoomId, PrivOwnedStr};
+use crate::{OwnedRoomId, PrivOwnedStr, RoomId};
 
 /// The content of an `m.room.join_rules` event.
 ///

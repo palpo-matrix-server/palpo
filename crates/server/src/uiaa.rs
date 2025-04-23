@@ -4,10 +4,10 @@ use std::sync::LazyLock;
 use diesel::prelude::*;
 
 use crate::SESSION_ID_LENGTH;
-use crate::core::serde::CanonicalJsonValue;
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
+use crate::core::serde::CanonicalJsonValue;
 use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
@@ -168,10 +168,10 @@ pub fn try_auth(
 }
 
 pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: CanonicalJsonValue) {
-    UIAA_REQUESTS.write().expect("write UIAA_REQUESTS failed").insert(
-        (user_id.to_owned(), device_id.to_owned(), session.to_owned()),
-        request,
-    );
+    UIAA_REQUESTS
+        .write()
+        .expect("write UIAA_REQUESTS failed")
+        .insert((user_id.to_owned(), device_id.to_owned(), session.to_owned()), request);
 }
 
 pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<CanonicalJsonValue> {

@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 
 use crate::events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent};
 use crate::{
-    OwnedUserId, UserId, 
+    OwnedUserId, UserId,
     power_levels::{NotificationPowerLevels, default_power_level},
-    serde::{vec_deserialize_v1_powerlevel_values,vec_deserialize_int_powerlevel_values, deserialize_v1_powerlevel},
+    serde::{deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values, vec_deserialize_v1_powerlevel_values},
 };
 use serde::Deserialize;
 use serde_json::{Error, from_str as from_json_str};
@@ -132,22 +132,22 @@ pub(crate) struct PowerLevelsContentFields {
 }
 
 impl PowerLevelsContentFields {
-	pub(crate) fn get_user_power(&self, user_id: &UserId) -> Option<i64> {
-		let comparator = |item: &(OwnedUserId, i64)| {
-			let item: &UserId = &item.0;
-			item.cmp(user_id)
-		};
+    pub(crate) fn get_user_power(&self, user_id: &UserId) -> Option<i64> {
+        let comparator = |item: &(OwnedUserId, i64)| {
+            let item: &UserId = &item.0;
+            item.cmp(user_id)
+        };
 
-		self.users
-			.binary_search_by(comparator)
-			.ok()
-			.and_then(|idx| self.users.get(idx).map(|item| item.1))
-	}
+        self.users
+            .binary_search_by(comparator)
+            .ok()
+            .and_then(|idx| self.users.get(idx).map(|item| item.1))
+    }
 }
 
 #[derive(Deserialize)]
 struct IntPowerLevelsContentFields {
-	#[serde(default, deserialize_with = "vec_deserialize_int_powerlevel_values")]
+    #[serde(default, deserialize_with = "vec_deserialize_int_powerlevel_values")]
     users: Vec<(OwnedUserId, i64)>,
 
     #[serde(default)]

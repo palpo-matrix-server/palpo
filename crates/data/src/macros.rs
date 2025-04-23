@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! diesel_exists {
     ($query:expr, $conn:expr) => {{

@@ -13,7 +13,7 @@ use crate::events::room::redaction::RoomRedactionEventContent;
 use crate::events::{
     AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
     PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,
-}; 
+};
 use crate::identifiers::*;
 use crate::serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum};
 

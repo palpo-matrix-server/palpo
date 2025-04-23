@@ -12,5 +12,8 @@ pub(super) fn router() -> Router {
         )
         .push(Router::with_path("org.matrix.msc3575/sync").delete(super::sync_msc3575::sync_events_v4))
         .push(Router::with_path("org.matrix.simplified_msc3575/sync").post(super::sync_msc4186::sync_events_v5))
-        .push(Router::with_path("im.nheko.summary/rooms/{room_id_or_alias}/summary").get(super::room::summary::get_summary_msc_3266))
+        .push(
+            Router::with_path("im.nheko.summary/rooms/{room_id_or_alias}/summary")
+                .get(super::room::summary::get_summary_msc_3266),
+        )
 }

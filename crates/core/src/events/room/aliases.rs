@@ -4,9 +4,9 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::RawJsonValue;
 use crate::events::{EventContent, EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType};
-use crate::{OwnedRoomAliasId, OwnedServerName,  RoomVersionId};
+use crate::serde::RawJsonValue;
+use crate::{OwnedRoomAliasId, OwnedServerName, RoomVersionId};
 
 /// The content of an `m.room.aliases` event.
 ///
