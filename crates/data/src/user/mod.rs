@@ -26,14 +26,14 @@ use std::mem;
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
+use crate::core::Seqnum;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::Seqnum;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::schema::*;
-use crate::{connect, diesel_exists, DataError, DataResult};
+use crate::{DataError, DataResult, connect, diesel_exists};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = users)]

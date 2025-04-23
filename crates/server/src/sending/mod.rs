@@ -513,7 +513,6 @@ async fn send_events(
     kind: OutgoingKind,
     events: Vec<SendingEventType>,
 ) -> Result<OutgoingKind, (OutgoingKind, AppError)> {
-    println!("=================send events");
     match &kind {
         OutgoingKind::Appservice(id) => {
             let mut pdu_jsons = Vec::new();
@@ -772,7 +771,6 @@ fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
 }
 
 fn delete_request(id: i64) -> AppResult<()> {
-    println!("=================delete request");
     diesel::delete(outgoing_requests::table.find(id)).execute(&mut connect()?)?;
     Ok(())
 }

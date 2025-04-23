@@ -52,7 +52,10 @@ pub async fn knock_room_by_id(
         }
     }
 
-    if crate::room::local_work_for_room(room_id, servers)? {
+    let server_in_room = crate::room::is_server_in_room(crate::server_name(), room_id)?;
+    let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
+
+    if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
         knock_room_remote(sender_id, room_id, reason, servers).await?;
@@ -68,6 +71,8 @@ async fn knock_room_local(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     info!("We can knock locally");
+    println!("We can knock locally");
+
 
     let room_version_id = crate::room::state::get_room_version(room_id)?;
 
@@ -179,7 +184,6 @@ async fn knock_room_local(
     info!("send_knock finished");
 
     info!("Parsing knock event");
-
     let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
@@ -208,12 +212,13 @@ async fn knock_room_remote(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     info!("Knocking {room_id} over federation.");
+    println!("Knocking {room_id} over federation.");
 
-    let (make_knock_responseponse, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
+    let (make_knock_response, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
 
     info!("make_knock finished");
 
-    let room_version_id = make_knock_responseponse.room_version;
+    let room_version_id = make_knock_response.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
         return Err(StatusError::internal_server_error()
@@ -221,7 +226,7 @@ async fn knock_room_remote(
             .into());
     }
 
-    let mut knock_event_stub: CanonicalJsonObject = serde_json::from_str(make_knock_responseponse.event.get())
+    let mut knock_event_stub: CanonicalJsonObject = serde_json::from_str(make_knock_response.event.get())
         .map_err(|e| {
             StatusError::internal_server_error()
                 .brief(format!("Invalid make_knock event json received from server: {e:?}"))
@@ -253,7 +258,6 @@ async fn knock_room_remote(
 
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version_id)?;
-    let event_sn = ensure_event_sn(room_id, &event_id)?;
 
     // Add event_id
     knock_event_stub.insert(
@@ -285,8 +289,9 @@ async fn knock_room_remote(
     info!("send_knock finished");
 
     info!("Parsing knock event");
+    let event_sn = ensure_event_sn(&room_id, &event_id)?;
     let parsed_knock_pdu =
-        PduEvent::from_canonical_object(&event_id, ensure_event_sn(&room_id, &event_id)?, knock_event.clone())
+        PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
             .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");
@@ -341,8 +346,7 @@ async fn knock_room_remote(
         diesel::insert_into(events::table)
             .values(&new_db_event)
             .on_conflict_do_nothing()
-            .returning(events::sn)
-            .get_result::<Seqnum>(&mut connect()?)?;
+            .execute(&mut connect()?)?;
         let event_data = DbEventData {
             event_id: event_id.clone(),
             event_sn,
@@ -415,6 +419,7 @@ async fn make_knock_request(
 
         info!("Asking {remote_server} for make_knock ({make_knock_counter})");
 
+        println!("Asking {remote_server} for make_knock ({make_knock_counter})");
         let request = crate::core::federation::knock::make_knock_request(
             &remote_server.origin().await,
             MakeKnockReqArgs {

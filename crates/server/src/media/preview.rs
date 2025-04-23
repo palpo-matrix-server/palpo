@@ -360,7 +360,6 @@ async fn download_html(url: &Url) -> AppResult<UrlPreviewData> {
         Some(obj) => download_image(&url.join(&obj.url)?).await?,
     };
 
-    println!("====================og props: {:#?}", html.opengraph);
     data.og_type = Some(html.opengraph.og_type);
     let props = html.opengraph.properties;
     /* use OpenGraph title/description, but fall back to HTML if not available */

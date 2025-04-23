@@ -183,7 +183,7 @@ impl Rooms {
 
     /// Returns true if there is no update in any room.
     pub fn is_empty(&self) -> bool {
-        self.leave.is_empty() && self.join.is_empty() && self.invite.is_empty()
+        self.leave.is_empty() && self.join.is_empty() && self.invite.is_empty() && self.knock.is_empty()
     }
 }
 

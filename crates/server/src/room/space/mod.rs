@@ -102,9 +102,7 @@ async fn get_summary_and_children_federation(
         .into_inner();
 
         if let Ok(respone) = crate::sending::send_federation_request(server, request).await {
-            println!("============get_summary_and_children_federation 1 response: {respone:?}");
             if let Ok(body) = respone.json::<HierarchyResBody>().await {
-                println!("============get_summary_and_children_federation 2 body: {body:?}");
                 ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
                     current_room.to_owned(),
                     Some(CachedSpaceHierarchySummary {

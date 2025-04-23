@@ -14,7 +14,7 @@ use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok};
 use serde_json::value::to_raw_value;
 
 pub fn router() -> Router {
@@ -26,7 +26,7 @@ pub fn router() -> Router {
                 .post(get_filtered_public_rooms),
         )
         .push(Router::with_path("send_knock/{room_id}/{event_id}").put(send_knock))
-        .push(Router::with_path("make_knock/{room_id}/{user_id}").put(make_knock))
+        .push(Router::with_path("make_knock/{room_id}/{user_id}").get(make_knock))
         .push(Router::with_path("state_ids/{room_id}").get(get_state_at_event))
 }
 
@@ -105,6 +105,7 @@ async fn get_filtered_public_rooms(
 async fn send_knock(
     _aa: AuthArgs,
     args: SendKnockReqArgs,
+    req: &mut Request,
     body: JsonBody<SendKnockReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendKnockResBody> {
@@ -126,7 +127,7 @@ async fn send_knock(
         return Err(MatrixError::forbidden("Room version does not support knocking.").into());
     }
 
-    let Ok((event_id, value)) = gen_event_id_canonical_json(&body.pdu, &room_version_id) else {
+    let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
         // Event could not be converted to canonical json
         return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
     };
@@ -200,13 +201,17 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::bad_json(format!("Event has an invalid origin server name: {e}")))?;
 
-    let mut event: JsonObject = serde_json::from_str(body.pdu.get())
+    let mut event: JsonObject = serde_json::from_str(body.0.get())
         .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
     event.insert("event_id".to_owned(), "$placeholder".into());
 
-    let pdu: PduEvent = serde_json::from_value(event.into())
-        .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
+    let pdu: PduEvent = PduEvent::from_json_value(
+        &event_id,
+        crate::event::ensure_event_sn(&args.room_id, &event_id)?,
+        event.into(),
+    )
+    .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
     // let mutex_lock = crate::event::mutex_federation.lock(&body.room_id).await;
 

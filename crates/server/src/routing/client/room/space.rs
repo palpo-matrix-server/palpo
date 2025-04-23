@@ -137,6 +137,5 @@ pub(super) async fn get_hierarchy(
         None
     };
 
-    println!("RRRRRRRRRRRRRRRRoms: {rooms:#?}");
     json_ok(HierarchyResBody { next_batch, rooms })
 }
