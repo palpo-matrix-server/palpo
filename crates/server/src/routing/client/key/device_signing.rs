@@ -1,10 +1,9 @@
-
 use salvo::prelude::*;
 
-use crate::core::serde::CanonicalJsonValue;
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::{AuthArgs,MatrixError, DepotExt, EmptyResult, SESSION_ID_LENGTH, empty_ok, utils};
+use crate::core::serde::CanonicalJsonValue;
+use crate::{AuthArgs, DepotExt, EmptyResult, MatrixError, SESSION_ID_LENGTH, empty_ok, utils};
 
 /// #POST /_matrix/client/r0/keys/device_signing/upload
 /// Uploads end-to-end key information for the sender user.
@@ -26,7 +25,7 @@ pub(super) async fn upload(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) 
         auth_error: None,
     };
     let body = serde_json::from_slice::<UploadSigningKeysReqBody>(&payload);
-    if body.is_err() || body.as_ref().map(|b|b.auth.is_none()).unwrap_or(true)  {
+    if body.is_err() || body.as_ref().map(|b| b.auth.is_none()).unwrap_or(true) {
         if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(&payload) {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::create_session(authed.user_id(), authed.device_id(), &uiaa_info, json)?;

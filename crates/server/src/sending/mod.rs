@@ -460,7 +460,7 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
     Ok(())
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "debug")]
 pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
     let servers = room_servers::table
         .filter(room_servers::room_id.eq(room_id))
@@ -470,11 +470,40 @@ pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 
-#[tracing::instrument(skip(servers, pdu_id))]
+#[tracing::instrument(skip(servers, pdu_id), level = "debug")]
 pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
     let requests = servers
         .into_iter()
         .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
+        .collect::<Vec<_>>();
+    let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
+    for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
+        sender().send((outgoing_kind.to_owned(), event, key)).unwrap();
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(skip(room_id, serialized), level = "debug")]
+pub fn send_edu_room(room_id: &RoomId, serialized: &EduBuf) -> AppResult<()> {
+    let servers = room_servers::table
+        .filter(room_servers::room_id.eq(room_id))
+        .filter(room_servers::server_id.ne(crate::server_name()))
+        .select(room_servers::server_id)
+        .load::<OwnedServerName>(&mut connect()?)?;
+    send_edu_servers(servers.into_iter(), serialized)
+}
+
+#[tracing::instrument(skip(servers, serialized), level = "debug")]
+pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, serialized: &EduBuf) -> AppResult<()> {
+    let requests = servers
+        .into_iter()
+        .map(|server| {
+            (
+                OutgoingKind::Normal(server),
+                SendingEventType::Edu(serialized.to_owned()),
+            )
+        })
         .collect::<Vec<_>>();
     let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
     for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {

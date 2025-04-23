@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::{Base64, RawJsonValue, RawJson};
+use crate::serde::{Base64, RawJson, RawJsonValue};
 use crate::{OwnedDeviceKeyId, OwnedRoomId, OwnedSessionId, OwnedUserId};
 
 /// A wrapper around a mapping of session IDs to key data.

@@ -8,7 +8,7 @@ use sha1::Sha1;
 
 use crate::core::UnixSeconds;
 use crate::core::client::voip::TurnServerResBody;
-use crate::{AuthArgs, DepotExt, MatrixError, JsonResult, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, hoops, json_ok};
 
 type HmacSha1 = Hmac<Sha1>;
 

@@ -1,13 +1,13 @@
 use diesel::prelude::*;
 use serde::Deserialize;
 
-use crate::{connect, DataResult};
-use crate::core::serde::CanonicalJsonObject;
 use crate::core::events::StateEventType;
 use crate::core::identifiers::*;
+use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::{JsonValue, default_false};
 use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
+use crate::{DataResult, connect};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]

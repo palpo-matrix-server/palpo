@@ -3,9 +3,9 @@ use salvo::prelude::*;
 use serde::{Deserialize, de};
 
 use super::room::encrypted;
-use crate::serde::RawJsonValue;
 use crate::events::beacon::BeaconEventContent;
 use crate::identifiers::*;
+use crate::serde::RawJsonValue;
 use crate::{UnixMillis, serde::from_raw_json_value};
 
 event_enum! {

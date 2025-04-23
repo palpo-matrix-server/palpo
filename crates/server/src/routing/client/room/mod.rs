@@ -5,9 +5,9 @@ mod receipt;
 mod relation;
 mod space;
 mod state;
+pub mod summary;
 mod tag;
 mod thread;
-pub mod summary;
 pub(crate) use membership::knock_room;
 
 use std::cmp::max;

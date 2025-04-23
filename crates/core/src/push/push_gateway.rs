@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use crate::events::TimelineEventType;
 use crate::identifiers::*;
 use crate::push::{PusherData, Tweak};
-use crate::serde::{RawJsonValue,StringEnum};
-use crate::{PrivOwnedStr,  UnixSeconds};
+use crate::serde::{RawJsonValue, StringEnum};
+use crate::{PrivOwnedStr, UnixSeconds};
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

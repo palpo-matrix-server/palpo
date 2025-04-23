@@ -194,7 +194,7 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
             room_type,
             allowed_room_ids,
             encryption,
-            room_version
+            room_version,
         }
     }
 }

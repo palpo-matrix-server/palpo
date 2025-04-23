@@ -1,8 +1,8 @@
 use serde_json::value::RawValue as RawJsonValue;
 
 use super::get_event_keys;
-use crate::core::serde::canonical_json::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::core::identifiers::*;
+use crate::core::serde::canonical_json::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::core::signatures::{self, Verified};
 use crate::event::gen_event_id_canonical_json;
 use crate::server_key::required_keys_exist;

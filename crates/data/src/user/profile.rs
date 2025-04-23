@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::OwnedMxcUri;
+use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{connect, DataResult};
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_profiles)]

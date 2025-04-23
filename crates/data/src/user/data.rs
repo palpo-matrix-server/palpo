@@ -1,12 +1,12 @@
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
+use crate::core::UnixMillis;
 use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::UnixMillis;
-use crate::core::serde::{JsonValue, json, RawJson};
+use crate::core::serde::{JsonValue, RawJson, json};
 use crate::schema::*;
-use crate::{connect, DataResult};
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_datas)]

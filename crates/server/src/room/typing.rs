@@ -3,12 +3,13 @@ use std::sync::LazyLock;
 
 use tokio::sync::{RwLock, broadcast};
 
-use crate::AppResult;
 use crate::core::UnixMillis;
 use crate::core::events::SyncEphemeralRoomEvent;
-use crate::core::events::typing::TypingEventContent;
+use crate::core::events::typing::{TypingContent, TypingEventContent};
+use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::data;
+use crate::sending::EduBuf;
+use crate::{AppResult, IsRemoteOrLocal, data, sending};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
     LazyLock::new(Default::default); // u64 is unix timestamp of timeout
@@ -38,6 +39,10 @@ pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> App
     // crate::room::state::update_frame_id(point_id, current_frame_id)?;
 
     let _ = TYPING_UPDATE_SENDER.send(room_id.to_owned());
+
+    if user_id.is_local() {
+        federation_send(room_id, user_id, true).await.ok();
+    }
     Ok(())
 }
 
@@ -54,6 +59,10 @@ pub async fn remove_typing(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .await
         .insert(room_id.to_owned(), data::next_sn()?);
     let _ = TYPING_UPDATE_SENDER.send(room_id.to_owned());
+
+    if user_id.is_local() {
+        federation_send(room_id, user_id, false).await.ok();
+    }
     Ok(())
 }
 
@@ -77,9 +86,9 @@ async fn maintain_typings(room_id: &RoomId) -> AppResult<()> {
         let Some(room) = typing.get(room_id) else {
             return Ok(());
         };
-        for (user, timeout) in room {
+        for (user_id, timeout) in room {
             if *timeout < current_timestamp.get() {
-                removable.push(user.clone());
+                removable.push(user_id.clone());
             }
         }
         drop(typing);
@@ -87,14 +96,20 @@ async fn maintain_typings(room_id: &RoomId) -> AppResult<()> {
     if !removable.is_empty() {
         let typing = &mut TYPING.write().await;
         let room = typing.entry(room_id.to_owned()).or_default();
-        for user in removable {
-            room.remove(&user);
+        for user_id in &removable {
+            room.remove(user_id);
         }
         LAST_TYPING_UPDATE
             .write()
             .await
             .insert(room_id.to_owned(), data::next_sn()?);
         let _ = TYPING_UPDATE_SENDER.send(room_id.to_owned());
+
+        for user_id in &removable {
+            if user_id.is_local() {
+                federation_send(room_id, user_id, false).await.ok();
+            }
+        }
     }
     Ok(())
 }
@@ -122,4 +137,22 @@ pub async fn all_typings(room_id: &RoomId) -> AppResult<SyncEphemeralRoomEvent<T
                 .unwrap_or_default(),
         },
     })
+}
+
+async fn federation_send(room_id: &RoomId, user_id: &UserId, typing: bool) -> AppResult<()> {
+    debug_assert!(user_id.is_local(), "tried to broadcast typing status of remote user",);
+
+    if !crate::config().allow_outgoing_typing {
+        return Ok(());
+    }
+
+    let content = TypingContent::new(room_id.to_owned(), user_id.to_owned(), typing);
+    let edu = Edu::Typing(content);
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::Typing");
+
+    sending::send_edu_room(room_id, &buf)?;
+
+    Ok(())
 }

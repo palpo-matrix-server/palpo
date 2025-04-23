@@ -13,9 +13,9 @@
 
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
 use diesel::prelude::*;
-use diesel::r2d2::{self, CustomizeConnection, };
+use diesel::r2d2::{self, CustomizeConnection};
+use serde::{Deserialize, Serialize};
 
 use crate::core::serde::default_false;
 
@@ -84,7 +84,7 @@ impl fmt::Display for DbConfig {
         let mut msg: String = "Active config values:\n\n".to_owned();
 
         for line in lines.into_iter().enumerate() {
-            msg += &format!("{}: {}\n", line.1 .0, line.1 .1);
+            msg += &format!("{}: {}\n", line.1.0, line.1.1);
         }
 
         write!(f, "{msg}")
@@ -98,7 +98,6 @@ impl fmt::Display for DbConfig {
 //         self.primary.read_only_mode
 //     }
 // }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct ConnectionConfig {

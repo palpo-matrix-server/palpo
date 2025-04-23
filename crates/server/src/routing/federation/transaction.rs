@@ -31,6 +31,11 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
+    println!(
+        "==========send_message===={}======body:{:#?}",
+        crate::server_name(),
+        body
+    );
     if &body.origin != origin {
         return Err(MatrixError::forbidden("Not allowed to send transactions on behalf of other servers").into());
     }
@@ -126,9 +131,9 @@ async fn handle_edus(edus: Vec<Edu>, origin: &ServerName) {
 }
 
 async fn handle_edu_presence(origin: &ServerName, presence: PresenceContent) {
-    // if !crate::config().allow_incoming_presence() {
-    //     return;
-    // }
+    if !crate::config().allow_incoming_presence {
+        return;
+    }
 
     for update in presence.push {
         if update.user_id.server_name() != origin {

@@ -23,14 +23,14 @@ pub(super) async fn get_hierarchy(
     let max_depth = args.max_depth.map_or(3, usize::from).min(10);
     let pagination_token = args.from.as_ref().and_then(|s| PaginationToken::from_str(s).ok());
 
-	// Should prevent unexpeded behaviour in (bad) clients
-	if let Some(token) = &pagination_token {
-		if token.suggested_only != args.suggested_only || token.max_depth != max_depth {
-			return Err(MatrixError::invalid_param(
-				"suggested_only and max_depth cannot change on paginated requests"
-			).into());
-		}
-	}
+    // Should prevent unexpeded behaviour in (bad) clients
+    if let Some(token) = &pagination_token {
+        if token.suggested_only != args.suggested_only || token.max_depth != max_depth {
+            return Err(
+                MatrixError::invalid_param("suggested_only and max_depth cannot change on paginated requests").into(),
+            );
+        }
+    }
 
     let room_sns = pagination_token.map(|p| p.room_sns).unwrap_or_default();
 
@@ -99,7 +99,7 @@ pub(super) async fn get_hierarchy(
                 }
 
                 parents.insert(current_room.clone());
-                if children.is_empty()  || rooms.len() >= limit {
+                if children.is_empty() || rooms.len() >= limit {
                     break;
                 }
 
