@@ -245,7 +245,7 @@ pub fn update_membership(
                 Ok(())
             })?;
         }
-        MembershipState::Invite => {
+        MembershipState::Invite | MembershipState::Knock => {
             // We want to know if the sender is ignored by the receiver
             if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());

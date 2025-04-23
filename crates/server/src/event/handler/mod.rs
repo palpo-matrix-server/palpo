@@ -61,11 +61,6 @@ pub(crate) async fn handle_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
-    println!(
-        ">>>>>>>>>>>>>>>>handle_incoming_pdu, {} event_id: {}",
-        crate::server_name(),
-        event_id
-    );
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }

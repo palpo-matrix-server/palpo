@@ -112,23 +112,13 @@ pub struct SendKnockReqArgs {
 /// Request type for the `send_knock` endpoint.
 
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
-pub struct SendKnockReqBody {
-    // /// The room ID that should receive the knock.
-    // #[salvo(parameter(parameter_in = Path))]
-    // pub room_id: OwnedRoomId,
+#[salvo(schema(value_type = Object))]
+pub struct SendKnockReqBody(pub Box<RawJsonValue>);
 
-    // /// The event ID for the knock event.
-    // #[salvo(parameter(parameter_in = Path))]
-    // pub event_id: OwnedEventId,
-    /// The PDU.
-    #[salvo(schema(value_type = Object, additional_properties = true))]
-    #[serde(flatten)]
-    pub pdu: Box<RawJsonValue>,
-}
 impl SendKnockReqBody {
     /// Creates a new `Request` with the given PDU.
     pub fn new(pdu: Box<RawJsonValue>) -> Self {
-        Self { pdu }
+        Self(pdu)
     }
 }
 crate::json_body_modifier!(SendKnockReqBody);

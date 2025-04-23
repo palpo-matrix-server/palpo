@@ -38,7 +38,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let membership = args.membership.as_ref();
     let not_membership = args.not_membership.as_ref();
 
-    if !crate::room::state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
+    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
     }
 
@@ -56,9 +56,9 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        crate::room::state::get_room_frame_id(&args.room_id, None)?
+        state::get_room_frame_id(&args.room_id, None)?
     };
-    let mut states: Vec<_> = crate::room::state::get_full_state(frame_id)?
+    let mut states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
         .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership))
@@ -302,9 +302,9 @@ pub(crate) async fn join_room_by_id_or_alias(
             )
             .await?;
             let mut servers = via;
-            servers.extend(crate::room::state::servers_invite_via(&room_id)?);
+            servers.extend(state::servers_invite_via(&room_id)?);
 
-            let state_servers = crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
             let state_servers = state_servers
                 .iter()
                 .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
@@ -326,10 +326,9 @@ pub(crate) async fn join_room_by_id_or_alias(
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via)).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
-            let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
+            let addl_via_servers = state::servers_invite_via(&room_id)?;
 
-            let addl_state_servers =
-                crate::room::state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let addl_state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()
@@ -463,7 +462,7 @@ pub(super) async fn unban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let mut event = crate::room::state::get_room_state_content::<RoomMemberEventContent>(
+    let mut event = state::get_room_state_content::<RoomMemberEventContent>(
         &room_id,
         &StateEventType::RoomMember,
         body.user_id.as_ref(),
@@ -485,6 +484,7 @@ pub(super) async fn unban_user(
 
     empty_ok()
 }
+
 /// #POST /_matrix/client/r0/rooms/{room_id}/kick
 /// Tries to send a kick event into the room.
 #[endpoint]
@@ -499,7 +499,7 @@ pub(super) async fn kick_user(
 
     // TODO: state lock
     let Ok(event) = state::get_member(&room_id, &body.user_id) else {
-        return Err(MatrixError::forbidden("User are not in the room.").into());
+        return empty_ok();
     };
 
     if !matches!(
@@ -553,10 +553,10 @@ pub(crate) async fn knock_room(
             .await?;
 
             let mut servers = body.via.clone();
-            servers.extend(crate::room::state::servers_invite_via(&room_id).unwrap_or_default());
+            servers.extend(state::servers_invite_via(&room_id).unwrap_or_default());
 
             servers.extend(
-                crate::room::state::get_user_state(sender_id, &room_id)
+                state::get_user_state(sender_id, &room_id)
                     .unwrap_or_default()
                     .unwrap_or_default()
                     .iter()
@@ -583,8 +583,8 @@ pub(crate) async fn knock_room(
             )
             .await?;
 
-            let addl_via_servers = crate::room::state::servers_invite_via(&room_id)?;
-            let addl_state_servers = crate::room::state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
+            let addl_via_servers = state::servers_invite_via(&room_id)?;
+            let addl_state_servers = state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()

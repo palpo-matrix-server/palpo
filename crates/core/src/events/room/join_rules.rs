@@ -181,6 +181,7 @@ impl<'de> Deserialize<'de> for JoinRule {
 #[derive(ToSchema, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Restricted {
     /// Allow rules which describe conditions that allow joining a room.
+    #[serde(default)]
     pub allow: Vec<AllowRule>,
 }
 

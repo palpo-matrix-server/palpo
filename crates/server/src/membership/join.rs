@@ -280,7 +280,6 @@ async fn local_join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<()> {
-    println!("================join local");
     info!("We can join locally");
     let join_rules_event_content =
         state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "").ok();
@@ -459,7 +458,6 @@ async fn remote_join_room(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<()> {
-    println!("================join over federation");
     info!("Joining {room_id} over federation.");
 
     let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;

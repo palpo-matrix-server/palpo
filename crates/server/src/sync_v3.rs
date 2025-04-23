@@ -285,7 +285,7 @@ pub async fn sync_events(
             let knock_sn = crate::room::user::knock_sn(sender_id, &room_id).ok();
 
             // Knocked before last sync
-            if Some(since_sn) >= knock_sn {
+            if Some(since_sn) > knock_sn {
                 return knocked_rooms;
             }
 
@@ -357,7 +357,7 @@ pub async fn sync_events(
         events: crate::user::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
     };
 
-    let response = SyncEventsResBody {
+    let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
         presence,
@@ -368,8 +368,7 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
-
-    Ok(response)
+    Ok(res_body)
 }
 
 #[tracing::instrument(skip_all)]

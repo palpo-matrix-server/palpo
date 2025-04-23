@@ -44,7 +44,7 @@ pub(super) async fn sync_events_v3(
     args: sync_events::v3::SyncEventsReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<sync_events::v3::SyncEventsResBody> {
-    let authed = depot.authed_info()?.clone();
+    let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let device_id = authed.device_id();
 

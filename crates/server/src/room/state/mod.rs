@@ -765,10 +765,6 @@ pub fn get_canonical_alias(room_id: &RoomId) -> AppResult<Option<OwnedRoomAliasI
     get_room_state_content::<RoomCanonicalAliasEventContent>(&room_id, &StateEventType::RoomCanonicalAlias, "")
         .map(|c| c.alias)
 }
-// pub fn get_join_rule(room_id: &RoomId) -> AppResult<(SpaceRoomJoinRule, Vec<OwnedRoomId>)> {
-//     get_room_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "")
-//         .map(|c| (c.join_rule.clone().into(), allowed_room_ids(c.join_rule)))
-// }
 pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
     get_room_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "")
         .map(|c| c.join_rule)
