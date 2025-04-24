@@ -35,8 +35,8 @@ use crate::core::identifiers::*;
 use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
-use crate::data::{self, connect, diesel_exists};
-use crate::{AppError, AppResult, MatrixError, PduBuilder, utils};
+use crate::data::{self, connect};
+use crate::{AppError, AppResult, MatrixError, PduBuilder};
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v4::ReqList>,

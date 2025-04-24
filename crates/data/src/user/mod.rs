@@ -26,9 +26,7 @@ use std::mem;
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 
-use crate::core::Seqnum;
-use crate::core::events::ignored_user_list::IgnoredUserListEvent;
-use crate::core::events::{AnyStrippedStateEvent, GlobalAccountDataEventType};
+use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};

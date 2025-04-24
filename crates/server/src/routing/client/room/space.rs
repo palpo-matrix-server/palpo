@@ -33,11 +33,8 @@ pub(super) async fn get_hierarchy(
     }
 
     let room_sns = pagination_token.map(|p| p.room_sns).unwrap_or_default();
-
-    let mut left_to_skip = skip;
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
-
     let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> = [(
         room_id.to_owned(),
         vec![
@@ -51,7 +48,6 @@ pub(super) async fn get_hierarchy(
 
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
-
     while let Some((current_room, via)) = queue.pop_front() {
         let summary =
             crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
@@ -99,7 +95,7 @@ pub(super) async fn get_hierarchy(
                 }
 
                 parents.insert(current_room.clone());
-                if children.is_empty() || rooms.len() >= limit {
+                if rooms.len() >= limit {
                     break;
                 }
 

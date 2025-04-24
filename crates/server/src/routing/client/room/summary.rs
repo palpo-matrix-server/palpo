@@ -1,31 +1,16 @@
-use std::cmp::{self, Ordering};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::Arc;
-use std::time::Duration;
-
 use futures_util::StreamExt;
 use futures_util::stream::FuturesUnordered;
-use palpo_core::federation::space::HierarchyResBody;
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::Seqnum;
 use crate::core::client::room::{SummaryMsc3266ReqArgs, SummaryMsc3266ResBody};
-use crate::core::client::sync_events::{self, v5::*};
-use crate::core::device::DeviceLists;
-use crate::core::events::receipt::ReceiptEventContent;
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
+use crate::core::events::room::member::MembershipState;
 use crate::core::federation::space::HierarchyReqArgs;
+use crate::core::federation::space::HierarchyResBody;
 use crate::core::federation::space::{SpaceHierarchyParentSummary, hierarchy_request};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
 use crate::core::space::SpaceRoomJoinRule;
-use crate::event::ignored_filter;
-use crate::extract_variant;
-use crate::room::{filter_rooms, state};
+use crate::room::state;
 use crate::routing::prelude::*;
-use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{GetUrlOrigin, data, sending};
 
 /// # `GET /_matrix/client/unstable/im.nheko.summary/summary/{roomIdOrAlias}`

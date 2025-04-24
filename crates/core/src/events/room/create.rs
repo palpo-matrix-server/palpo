@@ -6,7 +6,6 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::room::encryption::RoomEncryptionEventContent;
 use crate::events::{EmptyStateKey, RedactContent, RedactedStateEventContent};
 use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId, room::RoomType};
 
