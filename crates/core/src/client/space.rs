@@ -2,7 +2,9 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::events::space::child::HierarchySpaceChildEvent;
-use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule};
+use crate::serde::RawJson;
+use crate::space::SpaceRoomJoinRule;
+use crate::{EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId, room::RoomType};
 
 /// Endpoints for spaces.
 ///
@@ -68,63 +70,28 @@ pub struct SpaceHierarchyRoomsChunk {
     ///
     /// If the room is not a space-room, this should be empty.
     pub children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
-}
 
-/// Initial set of mandatory fields of `SpaceHierarchyRoomsChunk`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `SpaceHierarchyRoomsChunk` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SpaceHierarchyRoomsChunkInit {
-    /// The number of members joined to the room.
-    pub num_joined_members: u64,
+    /// If the room is encrypted, the algorithm used for this room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.encryption",
+        alias = "encryption"
+    )]
+    pub encryption: Option<EventEncryptionAlgorithm>,
 
-    /// The ID of the room.
-    pub room_id: OwnedRoomId,
+    /// Version of the room.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "im.nheko.summary.room_version",
+        alias = "im.nheko.summary.version",
+        alias = "room_version"
+    )]
+    pub room_version: Option<RoomVersionId>,
 
-    /// Whether the room may be viewed by guest users without joining.
-    pub world_readable: bool,
-
-    /// Whether guest users may join the room and participate in it.
-    ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
-    pub guest_can_join: bool,
-
-    /// The join rule of the room.
-    pub join_rule: SpaceRoomJoinRule,
-
-    /// The stripped `m.space.child` events of the space-room.
-    ///
-    /// If the room is not a space-room, this should be empty.
-    pub children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
-}
-
-impl From<SpaceHierarchyRoomsChunkInit> for SpaceHierarchyRoomsChunk {
-    fn from(init: SpaceHierarchyRoomsChunkInit) -> Self {
-        let SpaceHierarchyRoomsChunkInit {
-            num_joined_members,
-            room_id,
-            world_readable,
-            guest_can_join,
-            join_rule,
-            children_state,
-        } = init;
-
-        Self {
-            canonical_alias: None,
-            name: None,
-            num_joined_members,
-            room_id,
-            topic: None,
-            world_readable,
-            guest_can_join,
-            avatar_url: None,
-            join_rule,
-            room_type: None,
-            children_state,
-        }
-    }
+    /// If the room is a restricted room, these are the room IDs which are specified by the
+    /// join rules.
+    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
+    pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
 /// `GET /_matrix/client/*/rooms/{room_id}/hierarchy`

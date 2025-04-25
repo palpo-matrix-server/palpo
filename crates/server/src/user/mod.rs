@@ -27,12 +27,12 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::client::sync_events;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::events::{GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
-use crate::core::{OwnedMxcUri, UnixMillis};
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
 use crate::data::{self, connect};

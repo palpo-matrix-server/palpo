@@ -766,7 +766,7 @@ fn default_typing_client_timeout_max_s() -> u64 {
 }
 
 pub fn default_room_version() -> RoomVersionId {
-    RoomVersionId::V10
+    RoomVersionId::V11
 }
 
 fn default_url_preview_max_spider_size() -> usize {
