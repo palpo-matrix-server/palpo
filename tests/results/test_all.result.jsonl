@@ -6,7 +6,6 @@
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty/initial_sync"}
 {"Action":"fail","Test":"TestCannotKickNonPresentUser"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
-{"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
@@ -78,7 +77,6 @@
 {"Action":"fail","Test":"TestRemotePresence"}
 {"Action":"fail","Test":"TestRemotePresence/Presence_changes_are_also_reported_to_remote_room_members"}
 {"Action":"fail","Test":"TestRemotePresence/Presence_changes_to_UNAVAILABLE_are_reported_to_remote_room_members"}
-{"Action":"fail","Test":"TestRemoteTyping"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoin"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room"}
 {"Action":"fail","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_succeed_when_joined_to_allowed_room"}
@@ -112,7 +110,6 @@
 {"Action":"fail","Test":"TestSync/parallel/Get_presence_for_newly_joined_members_in_incremental_sync"}
 {"Action":"fail","Test":"TestSync/parallel/Newly_joined_room_has_correct_timeline_in_incremental_sync"}
 {"Action":"fail","Test":"TestSync/parallel/Newly_joined_room_includes_presence_in_incremental_sync"}
-{"Action":"fail","Test":"TestSync/parallel/sync_should_succeed_even_if_the_sync_token_points_to_a_redaction_of_an_unknown_event"}
 {"Action":"fail","Test":"TestThreadedReceipts"}
 {"Action":"fail","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation"}
@@ -187,6 +184,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -428,6 +426,7 @@
 {"Action":"pass","Test":"TestRemotePngThumbnail"}
 {"Action":"pass","Test":"TestRemotePngThumbnail/test_/_matrix/client/v1/media_endpoint"}
 {"Action":"pass","Test":"TestRemotePngThumbnail/test_/_matrix/media/v3_endpoint"}
+{"Action":"pass","Test":"TestRemoteTyping"}
 {"Action":"pass","Test":"TestRequestEncodingFails"}
 {"Action":"pass","Test":"TestRequestEncodingFails/POST_rejects_invalid_utf-8_in_JSON"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoinInMSC3787Room/Join_should_fail_initially"}
@@ -567,6 +566,7 @@
 {"Action":"pass","Test":"TestSync/parallel/Device_list_tracking/User_is_correctly_listed_when_they_leave,_even_when_lazy_loading_is_enabled"}
 {"Action":"pass","Test":"TestSync/parallel/Full_state_sync_includes_joined_rooms"}
 {"Action":"pass","Test":"TestSync/parallel/Newly_joined_room_is_included_in_an_incremental_sync"}
+{"Action":"pass","Test":"TestSync/parallel/sync_should_succeed_even_if_the_sync_token_points_to_a_redaction_of_an_unknown_event"}
 {"Action":"pass","Test":"TestSyncTimelineGap"}
 {"Action":"pass","Test":"TestSyncTimelineGap/full"}
 {"Action":"pass","Test":"TestSyncTimelineGap/incremental"}
