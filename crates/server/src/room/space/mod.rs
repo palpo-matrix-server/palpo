@@ -61,7 +61,6 @@ pub async fn get_summary_and_children_local(
             } else {
                 SummaryAccessibility::Inaccessible
             };
-            println!("SummaryAccessibility: {accessibility:?}");
             return Ok(Some(accessibility));
         }
     }
