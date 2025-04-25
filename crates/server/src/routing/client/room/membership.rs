@@ -17,8 +17,8 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
+use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
@@ -58,7 +58,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     } else {
         state::get_room_frame_id(&args.room_id, None)?
     };
-    let mut states: Vec<_> = state::get_full_state(frame_id)?
+    let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
         .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership))

@@ -55,7 +55,7 @@ pub fn hash_password(password: &str) -> Result<String, argon2::Error> {
 }
 
 #[tracing::instrument(skip(keys))]
-pub fn hash_keys<'a, T, I>(mut keys: I) -> Vec<u8>
+pub fn hash_keys<'a, T, I>(keys: I) -> Vec<u8>
 where
     I: Iterator<Item = T> + 'a,
     T: AsRef<[u8]> + 'a,

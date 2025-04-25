@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;

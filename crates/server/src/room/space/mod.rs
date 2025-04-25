@@ -61,7 +61,6 @@ pub async fn get_summary_and_children_local(
             } else {
                 SummaryAccessibility::Inaccessible
             };
-            println!("SummaryAccessibility: {accessibility:?}");
             return Ok(Some(accessibility));
         }
     }
@@ -344,7 +343,9 @@ impl From<CachedSpaceHierarchySummary> for SpaceHierarchyRoomsChunk {
             join_rule,
             room_type,
             children_state,
-            ..
+            encryption,
+            room_version,
+            allowed_room_ids,
         } = value.summary;
 
         Self {
@@ -359,6 +360,9 @@ impl From<CachedSpaceHierarchySummary> for SpaceHierarchyRoomsChunk {
             join_rule,
             room_type,
             children_state,
+            encryption,
+            room_version,
+            allowed_room_ids,
         }
     }
 }
@@ -379,7 +383,9 @@ pub fn summary_to_chunk(summary: SpaceHierarchyParentSummary) -> SpaceHierarchyR
         join_rule,
         room_type,
         children_state,
-        ..
+        encryption,
+        room_version,
+        allowed_room_ids,
     } = summary;
 
     SpaceHierarchyRoomsChunk {
@@ -394,5 +400,8 @@ pub fn summary_to_chunk(summary: SpaceHierarchyParentSummary) -> SpaceHierarchyR
         join_rule,
         room_type,
         children_state,
+        encryption,
+        room_version,
+        allowed_room_ids,
     }
 }

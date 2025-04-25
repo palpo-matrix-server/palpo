@@ -9,7 +9,6 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::PrivOwnedStr;
-use crate::events::room::redaction::RoomRedactionEventContent;
 use crate::events::{
     AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
     PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,

@@ -16,6 +16,9 @@ pub(super) async fn get_hierarchy(
     args: HierarchyReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<HierarchyResBody> {
+    type Entry = (OwnedRoomId, Vec<OwnedServerName>);
+    type RoomDeque = VecDeque<Entry>;
+
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
@@ -33,12 +36,9 @@ pub(super) async fn get_hierarchy(
     }
 
     let room_sns = pagination_token.map(|p| p.room_sns).unwrap_or_default();
-
-    let mut left_to_skip = skip;
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
-
-    let mut queue: VecDeque<(OwnedRoomId, Vec<OwnedServerName>)> = [(
+    let mut queue: RoomDeque = [(
         room_id.to_owned(),
         vec![
             room_id
@@ -51,7 +51,6 @@ pub(super) async fn get_hierarchy(
 
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
-
     while let Some((current_room, via)) = queue.pop_front() {
         let summary =
             crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
@@ -69,12 +68,11 @@ pub(super) async fn get_hierarchy(
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
                 let populate = parents.len() >= room_sns.len();
 
-                let mut children: Vec<(OwnedRoomId, Vec<OwnedServerName>)> =
-                    get_parent_children_via(&summary, suggested_only)
-                        .into_iter()
-                        .filter(|(room, _)| !parents.contains(room))
-                        .rev()
-                        .collect();
+                let mut children = get_parent_children_via(&summary, suggested_only)
+                    .into_iter()
+                    .filter(|(room, _)| !parents.contains(room))
+                    .rev()
+                    .collect::<Vec<Entry>>();
 
                 if !populate {
                     children = children
@@ -89,7 +87,7 @@ pub(super) async fn get_hierarchy(
                         .collect::<Vec<_>>()
                         .into_iter()
                         .rev()
-                        .collect::<Vec<(OwnedRoomId, Vec<OwnedServerName>)>>();
+                        .collect::<Vec<Entry>>();
                 }
 
                 if populate {
@@ -99,11 +97,11 @@ pub(super) async fn get_hierarchy(
                 }
 
                 parents.insert(current_room.clone());
-                if children.is_empty() || rooms.len() >= limit {
+                if rooms.len() >= limit {
                     break;
                 }
 
-                if parents.len() >= max_depth {
+                if parents.len() > max_depth {
                     continue;
                 }
 

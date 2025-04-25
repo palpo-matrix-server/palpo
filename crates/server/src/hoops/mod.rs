@@ -31,7 +31,6 @@ pub async fn limit_size(req: &mut Request, depot: &mut Depot, res: &mut Response
 
 #[handler]
 async fn access_control(req: &mut Request, depot: &mut Depot, res: &mut Response, ctrl: &mut FlowCtrl) {
-    let host = get_origin_host(req).unwrap_or_default();
     let headers = res.headers_mut();
     headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
     headers.insert(

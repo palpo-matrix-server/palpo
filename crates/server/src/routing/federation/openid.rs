@@ -1,8 +1,7 @@
-use salvo::oapi::extract::QueryParam;
 use salvo::prelude::*;
 
 use crate::core::federation::openid::{UserInfoReqArgs, UserInfoResBody};
-use crate::{AuthArgs, EmptyResult, JsonResult, empty_ok, json_ok};
+use crate::{AuthArgs, JsonResult, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("openid/userinfo").get(user_info)

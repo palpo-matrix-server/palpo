@@ -14,7 +14,7 @@ use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
 use serde_json::value::to_raw_value;
 
 pub fn router() -> Router {
