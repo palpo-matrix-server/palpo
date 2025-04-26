@@ -648,15 +648,11 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppRe
     Ok(Some(device_keys))
 }
 
-pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
-    let room_ids = data::user::joined_rooms(user_id)?;
+pub fn keys_changed_users(sender_id: &UserId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    let room_ids = data::user::joined_rooms(sender_id)?;
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table
-            .filter(
-                e2e_key_changes::room_id
-                    .eq_any(&room_ids)
-                    .or(e2e_key_changes::room_id.is_null()),
-            )
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
             .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .filter(e2e_key_changes::occur_sn.le(until_sn))
             .select(e2e_key_changes::user_id)
@@ -664,11 +660,7 @@ pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>
             .map_err(Into::into)
     } else {
         e2e_key_changes::table
-            .filter(
-                e2e_key_changes::room_id
-                    .eq_any(&room_ids)
-                    .or(e2e_key_changes::room_id.is_null()),
-            )
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
             .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut connect()?)

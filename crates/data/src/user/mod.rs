@@ -125,12 +125,20 @@ pub fn is_admin(user_id: &UserId) -> DataResult<bool> {
 
 /// Returns an iterator over all rooms this user joined.
 pub fn joined_rooms(user_id: &UserId) -> DataResult<Vec<OwnedRoomId>> {
-    room_users::table
+    let room_memeberships = room_users::table
         .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::membership.eq("join"))
-        .select(room_users::room_id)
-        .load(&mut connect()?)
-        .map_err(Into::into)
+        .distinct_on(room_users::room_id)
+        .select((room_users::room_id, room_users::membership))
+        .order_by((room_users::room_id.desc(), room_users::id.desc()))
+        .load::<(OwnedRoomId, String)>(&mut connect()?)?;
+    Ok(room_memeberships
+        .into_iter()
+        .filter_map(
+            |(room_id, membership)| {
+                if membership == "join" { Some(room_id) } else { None }
+            },
+        )
+        .collect::<Vec<_>>())
 }
 /// Returns an iterator over all rooms a user was invited to.
 pub fn invited_rooms(
