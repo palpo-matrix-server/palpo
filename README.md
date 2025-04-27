@@ -45,7 +45,7 @@ All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.resul
 - [ ] **Documentation & Website**: Enhance developer docs and build an informative project site
 
 ### Major tests to be passed
-- [ ] Complement tests `TestDeviceListUpdates/*`.
+- [x] Complement tests `TestDeviceListUpdates/*`.
 - [ ] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
 - [ ] Complement tests `TestDeviceListsUpdateOverFederation/*`.
 - [ ] Complement tests `TestFederationRoomsInvite/*`.
