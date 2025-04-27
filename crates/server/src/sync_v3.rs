@@ -68,7 +68,7 @@ pub async fn sync_events(
     let mut device_list_left = HashSet::new();
 
     // Look for device list updates of this account
-    device_list_updates.extend(crate::user::keys_changed_users(sender_id, since_sn, None)?);
+    device_list_updates.extend(data::user::keys_changed_users(sender_id, since_sn, None)?);
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
@@ -363,7 +363,7 @@ pub async fn sync_events(
         presence,
         account_data,
         device_lists,
-        device_one_time_keys_count: { crate::user::count_one_time_keys(sender_id, device_id)? },
+        device_one_time_keys_count: { data::user::count_one_time_keys(sender_id, device_id)? },
         to_device,
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, hash_map};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::time::Instant;
 
 use diesel::prelude::*;
@@ -6,16 +6,19 @@ use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::json;
 
 use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
+use crate::core::device::DeviceListUpdateContent;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
+use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::*;
+use crate::sending::EduBuf;
 use crate::user::clean_signatures;
-use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, data};
+use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, data, sending};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
@@ -170,7 +173,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         if device_ids.is_empty() {
             let mut container = BTreeMap::new();
             for device_id in crate::user::all_device_ids(user_id)? {
-                if let Some(mut keys) = crate::user::get_device_keys_and_sigs(user_id, &device_id)? {
+                if let Some(mut keys) = data::user::get_device_keys_and_sigs(user_id, &device_id)? {
                     let device = crate::user::get_device(user_id, &device_id)?;
                     if let Some(display_name) = &device.display_name {
                         keys.unsigned.device_display_name = display_name.to_owned().into();
@@ -182,7 +185,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         } else {
             for device_id in device_ids {
                 let mut container = BTreeMap::new();
-                if let Some(keys) = crate::user::get_device_keys_and_sigs(user_id, device_id)? {
+                if let Some(keys) = data::user::get_device_keys_and_sigs(user_id, device_id)? {
                     container.insert(device_id.to_owned(), keys);
                 }
                 device_keys.insert(user_id.to_owned(), container);
@@ -438,34 +441,9 @@ pub fn claim_one_time_key(
     }
 }
 
-pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
-    let list = e2e_one_time_keys::table
-        .filter(e2e_one_time_keys::user_id.eq(user_id))
-        .filter(e2e_one_time_keys::device_id.eq(device_id))
-        .group_by(e2e_one_time_keys::algorithm)
-        .select((e2e_one_time_keys::algorithm, diesel::dsl::count_star()))
-        .load::<(String, i64)>(&mut connect()?)?;
-    Ok(BTreeMap::from_iter(
-        list.into_iter().map(|(k, v)| (DeviceKeyAlgorithm::from(k), v as u64)),
-    ))
-}
-
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
-    let new_device_key = NewDbDeviceKey {
-        user_id: user_id.to_owned(),
-        device_id: device_id.to_owned(),
-        stream_id: 0,
-        display_name: device_keys.unsigned.device_display_name.clone(),
-        key_data: serde_json::to_value(device_keys).unwrap(),
-        created_at: UnixMillis::now(),
-    };
-    diesel::insert_into(e2e_device_keys::table)
-        .values(&new_device_key)
-        .on_conflict((e2e_device_keys::user_id, e2e_device_keys::device_id))
-        .do_update()
-        .set(&new_device_key)
-        .execute(&mut connect()?)?;
-    mark_device_key_update(user_id)?;
+    data::user::add_device_keys(user_id, device_id, device_keys)?;
+    mark_device_key_update(user_id, device_id)?;
     Ok(())
 }
 
@@ -528,7 +506,7 @@ pub fn add_cross_signing_keys(
     }
 
     if notify {
-        mark_device_key_update(user_id)?;
+        mark_signing_key_update(user_id)?;
     }
 
     Ok(())
@@ -563,12 +541,78 @@ pub fn sign_key(
             signature: signature.1,
         })
         .execute(&mut connect()?)?;
-    mark_device_key_update(target_user_id)
+    mark_signing_key_update(target_user_id)
 }
 
-pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
+pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
     let changed_at = UnixMillis::now();
-    for room_id in data::user::joined_rooms(user_id)? {
+
+    let joined_rooms = data::user::joined_rooms(user_id)?;
+    for room_id in &joined_rooms {
+        // // Don't send key updates to unencrypted rooms
+        // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
+        //     continue;
+        // }
+
+        let change = NewDbKeyChange {
+            user_id: user_id.to_owned(),
+            room_id: Some(room_id.to_owned()),
+            changed_at,
+            occur_sn: data::next_sn()?,
+        };
+
+        diesel::delete(
+            e2e_key_changes::table
+                .filter(e2e_key_changes::user_id.eq(user_id))
+                .filter(e2e_key_changes::room_id.eq(room_id)),
+        )
+        .execute(&mut connect()?)?;
+        diesel::insert_into(e2e_key_changes::table)
+            .values(&change)
+            .execute(&mut connect()?)?;
+    }
+
+    let change = NewDbKeyChange {
+        user_id: user_id.to_owned(),
+        room_id: None,
+        changed_at,
+        occur_sn: data::next_sn()?,
+    };
+
+    diesel::delete(
+        e2e_key_changes::table
+            .filter(e2e_key_changes::user_id.eq(user_id))
+            .filter(e2e_key_changes::room_id.is_null()),
+    )
+    .execute(&mut connect()?)?;
+    diesel::insert_into(e2e_key_changes::table)
+        .values(&change)
+        .execute(&mut connect()?)?;
+
+    if user_id.is_local() {
+        let remote_servers = room_servers::table
+            .filter(room_servers::room_id.eq_any(joined_rooms))
+            .select(room_servers::server_id)
+            .distinct()
+            .load::<OwnedServerName>(&mut connect()?)?;
+
+        let content = SigningKeyUpdateContent::new(user_id.to_owned());
+        let edu = Edu::SigningKeyUpdate(content);
+
+        let mut buf = EduBuf::new();
+        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::SigningKeyUpdate");
+
+        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+    }
+
+    Ok(())
+}
+
+pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
+    let changed_at = UnixMillis::now();
+
+    let joined_rooms = data::user::joined_rooms(user_id)?;
+    for room_id in &joined_rooms {
         // comment for testing
         // // Don't send key updates to unencrypted rooms
         // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
@@ -610,83 +654,21 @@ pub fn mark_device_key_update(user_id: &UserId) -> AppResult<()> {
         .values(&change)
         .execute(&mut connect()?)?;
 
+    if user_id.is_local() {
+        let remote_servers = room_servers::table
+            .filter(room_servers::room_id.eq_any(joined_rooms))
+            .select(room_servers::server_id)
+            .distinct()
+            .load::<OwnedServerName>(&mut connect()?)?;
+
+        let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
+        let edu = Edu::DeviceListUpdate(content);
+
+        let mut buf = EduBuf::new();
+        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
+
+        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+    }
+
     Ok(())
-}
-
-pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<DeviceKeys>> {
-    e2e_device_keys::table
-        .filter(e2e_device_keys::user_id.eq(user_id))
-        .filter(e2e_device_keys::device_id.eq(device_id))
-        .select(e2e_device_keys::key_data)
-        .first::<JsonValue>(&mut connect()?)
-        .optional()?
-        .map(|v| serde_json::from_value(v).map_err(Into::into))
-        .transpose()
-}
-
-pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> AppResult<Option<DeviceKeys>> {
-    let Some(mut device_keys) = get_device_keys(user_id, device_id)? else {
-        return Ok(None);
-    };
-    let signatures = e2e_cross_signing_sigs::table
-        .filter(e2e_cross_signing_sigs::origin_user_id.eq(user_id))
-        .filter(e2e_cross_signing_sigs::target_user_id.eq(user_id))
-        .filter(e2e_cross_signing_sigs::target_device_id.eq(device_id))
-        .load::<DbCrossSignature>(&mut connect()?)?;
-    for DbCrossSignature {
-        origin_key_id,
-        signature,
-        ..
-    } in signatures
-    {
-        device_keys
-            .signatures
-            .entry(user_id.to_owned())
-            .or_default()
-            .insert(origin_key_id, signature);
-    }
-    Ok(Some(device_keys))
-}
-
-pub fn keys_changed_users(sender_id: &UserId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
-    let room_ids = data::user::joined_rooms(sender_id)?;
-    if let Some(until_sn) = until_sn {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .filter(e2e_key_changes::occur_sn.le(until_sn))
-            .select(e2e_key_changes::user_id)
-            .load::<OwnedUserId>(&mut connect()?)
-            .map_err(Into::into)
-    } else {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .select(e2e_key_changes::user_id)
-            .load::<OwnedUserId>(&mut connect()?)
-            .map_err(Into::into)
-    }
-}
-
-pub fn room_keys_changed(
-    room_id: &RoomId,
-    since_sn: i64,
-    until_sn: Option<i64>,
-) -> AppResult<Vec<(OwnedUserId, Seqnum)>> {
-    if let Some(until_sn) = until_sn {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .filter(e2e_key_changes::occur_sn.le(until_sn))
-            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
-            .load::<(OwnedUserId, i64)>(&mut connect()?)
-            .map_err(Into::into)
-    } else {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
-            .load::<(OwnedUserId, i64)>(&mut connect()?)
-            .map_err(Into::into)
-    }
 }

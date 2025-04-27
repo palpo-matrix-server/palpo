@@ -269,151 +269,6 @@ pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &Dev
         .do_update()
         .set(&new_device_key)
         .execute(&mut connect()?)?;
-    mark_device_key_update(user_id)?;
-    Ok(())
-}
-
-pub fn add_cross_signing_keys(
-    user_id: &UserId,
-    master_key: &CrossSigningKey,
-    self_signing_key: &Option<CrossSigningKey>,
-    user_signing_key: &Option<CrossSigningKey>,
-    notify: bool,
-) -> DataResult<()> {
-    // TODO: Check signatures
-    diesel::insert_into(e2e_cross_signing_keys::table)
-        .values(NewDbCrossSigningKey {
-            user_id: user_id.to_owned(),
-            key_type: "master".to_owned(),
-            key_data: serde_json::to_value(master_key)?,
-        })
-        .execute(&mut connect()?)?;
-
-    // Self-signing key
-    if let Some(self_signing_key) = self_signing_key {
-        let mut self_signing_key_ids = self_signing_key.keys.values();
-
-        let self_signing_key_id = self_signing_key_ids
-            .next()
-            .ok_or(MatrixError::invalid_param("Self signing key contained no key."))?;
-
-        if self_signing_key_ids.next().is_some() {
-            return Err(MatrixError::invalid_param("Self signing key contained more than one key.").into());
-        }
-
-        diesel::insert_into(e2e_cross_signing_keys::table)
-            .values(NewDbCrossSigningKey {
-                user_id: user_id.to_owned(),
-                key_type: "self_signing".to_owned(),
-                key_data: serde_json::to_value(self_signing_key)?,
-            })
-            .execute(&mut connect()?)?;
-    }
-
-    // User-signing key
-    if let Some(user_signing_key) = user_signing_key {
-        let mut user_signing_key_ids = user_signing_key.keys.values();
-
-        let user_signing_key_id = user_signing_key_ids
-            .next()
-            .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
-
-        if user_signing_key_ids.next().is_some() {
-            return Err(MatrixError::invalid_param("User signing key contained more than one key.").into());
-        }
-
-        diesel::insert_into(e2e_cross_signing_keys::table)
-            .values(NewDbCrossSigningKey {
-                user_id: user_id.to_owned(),
-                key_type: "user_signing".to_owned(),
-                key_data: serde_json::to_value(user_signing_key)?,
-            })
-            .execute(&mut connect()?)?;
-    }
-
-    if notify {
-        mark_device_key_update(user_id)?;
-    }
-
-    Ok(())
-}
-
-pub fn sign_key(
-    target_user_id: &UserId,
-    target_device_id: &str,
-    signature: (String, String),
-    sender_id: &UserId,
-) -> DataResult<()> {
-    // let cross_signing_key = e2e_cross_signing_keys::table
-    //     .filter(e2e_cross_signing_keys::user_id.eq(target_id))
-    //     .filter(e2e_cross_signing_keys::key_type.eq("master"))
-    //     .order_by(e2e_cross_signing_keys::id.desc())
-    //     .first::<DbCrossSigningKey>(&mut connect()?)?;
-    // let mut cross_signing_key: CrossSigningKey = serde_json::from_value(cross_signing_key.key_data.clone())?;
-    let origin_key_id = DeviceKeyId::parse(&signature.0)?.to_owned();
-
-    // cross_signing_key
-    //     .signatures
-    //     .entry(sender_id.to_owned())
-    //     .or_defaut()
-    //     .insert(key_id.clone(), signature.1);
-
-    diesel::insert_into(e2e_cross_signing_sigs::table)
-        .values(NewDbCrossSignature {
-            origin_user_id: sender_id.to_owned(),
-            origin_key_id,
-            target_user_id: target_user_id.to_owned(),
-            target_device_id: OwnedDeviceId::from(target_device_id),
-            signature: signature.1,
-        })
-        .execute(&mut connect()?)?;
-    mark_device_key_update(target_user_id)
-}
-
-pub fn mark_device_key_update(user_id: &UserId) -> DataResult<()> {
-    let changed_at = UnixMillis::now();
-    for room_id in crate::user::joined_rooms(user_id)? {
-        // comment for testing
-        // // Don't send key updates to unencrypted rooms
-        // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
-        //     continue;
-        // }
-
-        let change = NewDbKeyChange {
-            user_id: user_id.to_owned(),
-            room_id: Some(room_id.to_owned()),
-            changed_at,
-            occur_sn: crate::next_sn()?,
-        };
-
-        diesel::delete(
-            e2e_key_changes::table
-                .filter(e2e_key_changes::user_id.eq(user_id))
-                .filter(e2e_key_changes::room_id.eq(room_id)),
-        )
-        .execute(&mut connect()?)?;
-        diesel::insert_into(e2e_key_changes::table)
-            .values(&change)
-            .execute(&mut connect()?)?;
-    }
-
-    let change = NewDbKeyChange {
-        user_id: user_id.to_owned(),
-        room_id: None,
-        changed_at,
-        occur_sn: crate::next_sn()?,
-    };
-
-    diesel::delete(
-        e2e_key_changes::table
-            .filter(e2e_key_changes::user_id.eq(user_id))
-            .filter(e2e_key_changes::room_id.is_null()),
-    )
-    .execute(&mut connect()?)?;
-    diesel::insert_into(e2e_key_changes::table)
-        .values(&change)
-        .execute(&mut connect()?)?;
-
     Ok(())
 }
 
@@ -456,11 +311,7 @@ pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>
     let room_ids = crate::user::joined_rooms(user_id)?;
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table
-            .filter(
-                e2e_key_changes::room_id
-                    .eq_any(&room_ids)
-                    .or(e2e_key_changes::room_id.is_null()),
-            )
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
             .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .filter(e2e_key_changes::occur_sn.le(until_sn))
             .select(e2e_key_changes::user_id)
@@ -468,11 +319,7 @@ pub fn keys_changed_users(user_id: &UserId, since_sn: i64, until_sn: Option<i64>
             .map_err(Into::into)
     } else {
         e2e_key_changes::table
-            .filter(
-                e2e_key_changes::room_id
-                    .eq_any(&room_ids)
-                    .or(e2e_key_changes::room_id.is_null()),
-            )
+            .filter(e2e_key_changes::room_id.eq_any(&room_ids))
             .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut connect()?)

@@ -72,8 +72,10 @@ async fn upload_keys(
         crate::user::add_device_keys(authed.user_id(), authed.device_id(), device_keys)?;
     }
 
+    //TODO: fallback keys. e2e_keys.py 848
+
     json_ok(UploadKeysResBody {
-        one_time_key_counts: crate::user::count_one_time_keys(authed.user_id(), authed.device_id())?,
+        one_time_key_counts: data::user::count_one_time_keys(authed.user_id(), authed.device_id())?,
     })
 }
 
@@ -88,7 +90,7 @@ async fn get_key_changes(_aa: AuthArgs, args: KeyChangesReqArgs, depot: &mut Dep
     let from_sn = args.from.parse()?;
     let to_sn = args.to.parse()?;
     let mut device_list_updates = HashSet::new();
-    device_list_updates.extend(crate::user::keys_changed_users(authed.user_id(), from_sn, Some(to_sn))?);
+    device_list_updates.extend(data::user::keys_changed_users(authed.user_id(), from_sn, Some(to_sn))?);
 
     for room_id in data::user::joined_rooms(authed.user_id())? {
         device_list_updates.extend(crate::room::keys_changed_users(&room_id, from_sn, Some(to_sn))?);
