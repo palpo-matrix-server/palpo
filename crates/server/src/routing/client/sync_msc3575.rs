@@ -116,7 +116,7 @@ pub(super) async fn sync_events_v4(
 
     if body.extensions.e2ee.enabled.unwrap_or(false) {
         // Look for device list updates of this account
-        device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
+        device_list_changes.extend(data::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
         for room_id in &all_joined_rooms {
             let Ok(current_frame_id) = state::get_room_frame_id(&room_id, None) else {
@@ -547,7 +547,7 @@ pub(super) async fn sync_events_v4(
                     changed: device_list_changes.into_iter().collect(),
                     left: device_list_left.into_iter().collect(),
                 },
-                device_one_time_keys_count: crate::user::count_one_time_keys(sender_id, authed.device_id())?,
+                device_one_time_keys_count: data::user::count_one_time_keys(sender_id, authed.device_id())?,
                 // Fallback keys are not yet supported
                 device_unused_fallback_key_types: None,
             },

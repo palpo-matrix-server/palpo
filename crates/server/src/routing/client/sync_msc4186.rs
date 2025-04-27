@@ -519,7 +519,7 @@ fn collect_e2ee<'a>(
     let mut device_list_changes = HashSet::new();
     let mut device_list_left = HashSet::new();
     // Look for device list updates of this account
-    device_list_changes.extend(crate::user::keys_changed_users(sender_id, global_since_sn, None)?);
+    device_list_changes.extend(data::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
     for room_id in all_joined_rooms {
         let Ok(current_frame_id) = crate::room::state::get_room_frame_id(room_id, None) else {
@@ -632,7 +632,7 @@ fn collect_e2ee<'a>(
             changed: device_list_changes.into_iter().collect(),
             left: device_list_left.into_iter().collect(),
         },
-        device_one_time_keys_count: crate::user::count_one_time_keys(sender_id, sender_device)?,
+        device_one_time_keys_count: data::user::count_one_time_keys(sender_id, sender_device)?,
         device_unused_fallback_key_types: None,
     })
 }

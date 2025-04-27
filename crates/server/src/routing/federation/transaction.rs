@@ -251,7 +251,7 @@ async fn handle_edu_typing(origin: &ServerName, typing: TypingContent) {
 }
 
 async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListUpdateContent) {
-    let DeviceListUpdateContent { user_id, .. } = content;
+    let DeviceListUpdateContent { user_id, device_id, .. } = content;
 
     if user_id.server_name() != origin {
         warn!(
@@ -261,7 +261,7 @@ async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListU
         return;
     }
 
-    let _ = crate::user::mark_device_key_update(&user_id);
+    let _ = crate::user::mark_device_key_update(&user_id, &device_id);
 }
 
 async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceContent) {

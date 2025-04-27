@@ -10,7 +10,7 @@ use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeys
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, json_ok};
+use crate::{AppError, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("user")
@@ -71,7 +71,7 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
         .load::<(OwnedDeviceId, Option<String>)>(&mut connect()?)?;
     for (device_id, display_name) in devices_and_names {
         devices.push(Device {
-            keys: crate::user::get_device_keys_and_sigs(&user_id, &device_id)?
+            keys: data::user::get_device_keys_and_sigs(&user_id, &device_id)?
                 .ok_or_else(|| AppError::public("server keys not found"))?,
             device_id,
             device_display_name: display_name,

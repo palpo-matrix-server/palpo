@@ -256,7 +256,7 @@ fn select_edus_device_changes(
 
     let mut device_list_changes = HashSet::<OwnedUserId>::new();
     for room_id in server_rooms {
-        let keys_changed = crate::user::room_keys_changed(&room_id, since_sn, None)?
+        let keys_changed = data::user::room_keys_changed(&room_id, since_sn, None)?
             .into_iter()
             .filter(|(user_id, _)| user_id.is_local());
 
