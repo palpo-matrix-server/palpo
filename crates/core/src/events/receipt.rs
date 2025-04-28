@@ -426,11 +426,13 @@ pub fn combine_receipt_event_contents(receipts: Vec<ReceiptEventContent>) -> Rec
 
     for receipt in receipts {
         for (event_id, receipts) in receipt.0 {
-            combined
-                .0
-                .entry(event_id)
-                .or_insert_with(Receipts::new)
-                .extend(receipts);
+            let combined_receipts = combined.0.entry(event_id).or_insert_with(Receipts::new);
+            for receipt in receipts {
+                combined_receipts
+                    .entry(receipt.0)
+                    .or_insert_with(UserReceipts::new)
+                    .extend(receipt.1);
+            }
         }
     }
 
