@@ -426,9 +426,9 @@ pub fn combine_receipt_event_contents(receipts: Vec<ReceiptEventContent>) -> Rec
 
     for receipt in receipts {
         for (event_id, receipts) in receipt.0 {
-            let combined_receipts = combined.0.entry(event_id).or_insert_with(Receipts::new);
+            let type_map = combined.0.entry(event_id).or_insert_with(Receipts::new);
             for receipt in receipts {
-                combined_receipts
+                type_map
                     .entry(receipt.0)
                     .or_insert_with(UserReceipts::new)
                     .extend(receipt.1);
