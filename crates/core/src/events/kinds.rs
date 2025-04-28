@@ -12,10 +12,11 @@ use super::{
     RedactedUnsigned, RedactionDeHelper, RoomAccountDataEventContent, StateEventContent, StateEventType,
     StaticStateEventContent, ToDeviceEventContent,
 };
-use crate::events::receipt::ReceiptEventContent;
-use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent};
-use crate::serde::{RawJson, RawJsonValue, from_raw_json_value};
-use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId};
+use crate::{
+    EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
+    events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, receipt::ReceiptEventContent},
+    serde::{RawJson, RawJsonValue, from_raw_json_value},
+};
 
 /// Enum allowing to use the same structures for global and room account data
 #[derive(Debug)]
@@ -124,8 +125,9 @@ impl SyncEphemeralRoomEvent<ReceiptEventContent> {
 
 /// An unredacted message-like event.
 ///
-/// `OriginalMessageLikeEvent` implements the comparison traits using only the `event_id` field, a
-/// sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `OriginalMessageLikeEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct OriginalMessageLikeEvent<C: MessageLikeEventContent> {
     /// Data specific to the event type.
@@ -137,7 +139,8 @@ pub struct OriginalMessageLikeEvent<C: MessageLikeEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
@@ -151,8 +154,9 @@ pub struct OriginalMessageLikeEvent<C: MessageLikeEventContent> {
 
 /// An unredacted message-like event without a `room_id`.
 ///
-/// `OriginalSyncMessageLikeEvent` implements the comparison traits using only the `event_id` field,
-/// a sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `OriginalSyncMessageLikeEvent` implements the comparison traits using only
+/// the `event_id` field, a sorted list would be sorted lexicographically based
+/// on the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct OriginalSyncMessageLikeEvent<C: MessageLikeEventContent> {
     /// Data specific to the event type.
@@ -164,7 +168,8 @@ pub struct OriginalSyncMessageLikeEvent<C: MessageLikeEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -184,8 +189,9 @@ where
 
 /// A redacted message-like event.
 ///
-/// `RedactedMessageLikeEvent` implements the comparison traits using only the `event_id` field, a
-/// sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `RedactedMessageLikeEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct RedactedMessageLikeEvent<C: RedactedMessageLikeEventContent> {
     /// Data specific to the event type.
@@ -197,7 +203,8 @@ pub struct RedactedMessageLikeEvent<C: RedactedMessageLikeEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
@@ -211,8 +218,9 @@ pub struct RedactedMessageLikeEvent<C: RedactedMessageLikeEventContent> {
 
 /// A redacted message-like event without a `room_id`.
 ///
-/// `RedactedSyncMessageLikeEvent` implements the comparison traits using only the `event_id` field,
-/// a sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `RedactedSyncMessageLikeEvent` implements the comparison traits using only
+/// the `event_id` field, a sorted list would be sorted lexicographically based
+/// on the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct RedactedSyncMessageLikeEvent<C: RedactedMessageLikeEventContent> {
     /// Data specific to the event type.
@@ -224,7 +232,8 @@ pub struct RedactedSyncMessageLikeEvent<C: RedactedMessageLikeEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -235,8 +244,9 @@ pub struct RedactedSyncMessageLikeEvent<C: RedactedMessageLikeEventContent> {
 
 /// A possibly-redacted message-like event.
 ///
-/// `MessageLikeEvent` implements the comparison traits using only the `event_id` field, a sorted
-/// list would be sorted lexicographically based on the event's `EventId`.
+/// `MessageLikeEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[allow(clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug)]
 #[salvo(schema(bound = "C: ToSchema + 'static, C::Redacted: ToSchema + 'static"))]
@@ -253,8 +263,9 @@ where
 
 /// A possibly-redacted message-like event without a `room_id`.
 ///
-/// `SyncMessageLikeEvent` implements the comparison traits using only the `event_id` field, a
-/// sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `SyncMessageLikeEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[allow(clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug)]
 #[salvo(schema(bound = "C: ToSchema + 'static, C::Redacted: ToSchema + 'static"))]
@@ -271,8 +282,9 @@ where
 
 /// An unredacted state event.
 ///
-/// `OriginalStateEvent` implements the comparison traits using only the `event_id` field, a sorted
-/// list would be sorted lexicographically based on the event's `EventId`.
+/// `OriginalStateEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct OriginalStateEvent<C: StaticStateEventContent> {
     /// Data specific to the event type.
@@ -284,16 +296,18 @@ pub struct OriginalStateEvent<C: StaticStateEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
     pub room_id: OwnedRoomId,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     pub state_key: C::StateKey,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -303,8 +317,9 @@ pub struct OriginalStateEvent<C: StaticStateEventContent> {
 
 /// An unredacted state event without a `room_id`.
 ///
-/// `OriginalSyncStateEvent` implements the comparison traits using only the `event_id` field, a
-/// sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `OriginalSyncStateEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct OriginalSyncStateEvent<C: StaticStateEventContent> {
     /// Data specific to the event type.
@@ -316,13 +331,15 @@ pub struct OriginalSyncStateEvent<C: StaticStateEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     pub state_key: C::StateKey,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -330,7 +347,8 @@ pub struct OriginalSyncStateEvent<C: StaticStateEventContent> {
     pub unsigned: C::Unsigned,
 }
 
-/// A stripped-down state event, used for previews of rooms the user has been invited to.
+/// A stripped-down state event, used for previews of rooms the user has been
+/// invited to.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct StrippedStateEvent<C: PossiblyRedactedStateEventContent> {
     /// Data specific to the event type.
@@ -339,10 +357,11 @@ pub struct StrippedStateEvent<C: PossiblyRedactedStateEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     pub state_key: C::StateKey,
 }
 
@@ -352,19 +371,22 @@ pub struct InitialStateEvent<C: StaticStateEventContent> {
     /// Data specific to the event type.
     pub content: C,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     ///
     /// Defaults to the empty string.
     pub state_key: C::StateKey,
 }
 
 impl<C: StaticStateEventContent> InitialStateEvent<C> {
-    /// Create a new `InitialStateEvent` for an event type with an empty state key.
+    /// Create a new `InitialStateEvent` for an event type with an empty state
+    /// key.
     ///
-    /// For cases where the state key is not empty, use a struct literal to create the event.
+    /// For cases where the state key is not empty, use a struct literal to
+    /// create the event.
     pub fn new(content: C) -> Self
     where
         C: StaticStateEventContent<StateKey = EmptyStateKey>,
@@ -377,22 +399,24 @@ impl<C: StaticStateEventContent> InitialStateEvent<C> {
 
     /// Shorthand for `RawJson::new(self).unwrap()`.
     ///
-    /// Since none of the content types in Palpo ever return an error in serialization, this will
-    /// never panic with `C` being a type from Palpo. However, if you use a custom content type
-    /// with a `Serialize` implementation that can error (for example because it contains an
-    /// `enum` with one or more variants that use the `#[serde(skip)]` attribute), this method
-    /// can panic.
+    /// Since none of the content types in Palpo ever return an error in
+    /// serialization, this will never panic with `C` being a type from
+    /// Palpo. However, if you use a custom content type with a `Serialize`
+    /// implementation that can error (for example because it contains an
+    /// `enum` with one or more variants that use the `#[serde(skip)]`
+    /// attribute), this method can panic.
     pub fn to_raw(&self) -> RawJson<Self> {
         RawJson::new(self).unwrap()
     }
 
     /// Shorthand for `self.to_raw().cast::<AnyInitialStateEvent>()`.
     ///
-    /// Since none of the content types in Palpo ever return an error in serialization, this will
-    /// never panic with `C` being a type from Palpo. However, if you use a custom content type
-    /// with a `Serialize` implementation that can error (for example because it contains an
-    /// `enum` with one or more variants that use the `#[serde(skip)]` attribute), this method
-    /// can panic.
+    /// Since none of the content types in Palpo ever return an error in
+    /// serialization, this will never panic with `C` being a type from
+    /// Palpo. However, if you use a custom content type with a `Serialize`
+    /// implementation that can error (for example because it contains an
+    /// `enum` with one or more variants that use the `#[serde(skip)]`
+    /// attribute), this method can panic.
     pub fn to_raw_any(&self) -> RawJson<AnyInitialStateEvent> {
         self.to_raw().cast()
     }
@@ -425,8 +449,9 @@ impl<C: StaticStateEventContent> Serialize for InitialStateEvent<C> {
 
 /// A redacted state event.
 ///
-/// `RedactedStateEvent` implements the comparison traits using only the `event_id` field, a sorted
-/// list would be sorted lexicographically based on the event's `EventId`.
+/// `RedactedStateEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct RedactedStateEvent<C: RedactedStateEventContent> {
     /// Data specific to the event type.
@@ -438,16 +463,18 @@ pub struct RedactedStateEvent<C: RedactedStateEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
     pub room_id: OwnedRoomId,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     pub state_key: C::StateKey,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -457,8 +484,9 @@ pub struct RedactedStateEvent<C: RedactedStateEventContent> {
 
 /// A redacted state event without a `room_id`.
 ///
-/// `RedactedSyncStateEvent` implements the comparison traits using only the `event_id` field, a
-/// sorted list would be sorted lexicographically based on the event's `EventId`.
+/// `RedactedSyncStateEvent` implements the comparison traits using only the
+/// `event_id` field, a sorted list would be sorted lexicographically based on
+/// the event's `EventId`.
 #[derive(ToSchema, Clone, Debug, Event)]
 pub struct RedactedSyncStateEvent<C: RedactedStateEventContent> {
     /// Data specific to the event type.
@@ -470,13 +498,15 @@ pub struct RedactedSyncStateEvent<C: RedactedStateEventContent> {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
-    /// A unique key which defines the overwriting semantics for this piece of room state.
+    /// A unique key which defines the overwriting semantics for this piece of
+    /// room state.
     ///
-    /// This is often an empty string, but some events send a `UserId` to show which user the event
-    /// affects.
+    /// This is often an empty string, but some events send a `UserId` to show
+    /// which user the event affects.
     pub state_key: C::StateKey,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -486,8 +516,9 @@ pub struct RedactedSyncStateEvent<C: RedactedStateEventContent> {
 
 /// A possibly-redacted state event.
 ///
-/// `StateEvent` implements the comparison traits using only the `event_id` field, a sorted list
-/// would be sorted lexicographically based on the event's `EventId`.
+/// `StateEvent` implements the comparison traits using only the `event_id`
+/// field, a sorted list would be sorted lexicographically based on the event's
+/// `EventId`.
 #[allow(clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug)]
 #[salvo(schema(
@@ -506,8 +537,9 @@ where
 
 /// A possibly-redacted state event without a `room_id`.
 ///
-/// `SyncStateEvent` implements the comparison traits using only the `event_id` field, a sorted list
-/// would be sorted lexicographically based on the event's `EventId`.
+/// `SyncStateEvent` implements the comparison traits using only the `event_id`
+/// field, a sorted list would be sorted lexicographically based on the event's
+/// `EventId`.
 #[allow(clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug)]
 #[salvo(schema(
@@ -585,7 +617,8 @@ pub struct DecryptedMegolmV1Event<C: MessageLikeEventContent> {
 
 /// A possibly-redacted state event content.
 ///
-/// A non-redacted content also contains the `prev_content` from the unsigned event data.
+/// A non-redacted content also contains the `prev_content` from the unsigned
+/// event data.
 #[allow(clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug)]
 #[salvo(schema(
@@ -617,12 +650,14 @@ where
         }
     }
 
-    /// Transform `self` into a redacted form (removing most or all fields) according to the spec.
+    /// Transform `self` into a redacted form (removing most or all fields)
+    /// according to the spec.
     ///
-    /// If `self` is already [`Redacted`](Self::Redacted), return the inner data unmodified.
+    /// If `self` is already [`Redacted`](Self::Redacted), return the inner data
+    /// unmodified.
     ///
-    /// A small number of events have room-version specific redaction behavior, so a version has to
-    /// be specified.
+    /// A small number of events have room-version specific redaction behavior,
+    /// so a version has to be specified.
     pub fn redact(self, version: &RoomVersionId) -> C::Redacted {
         match self {
             FullStateEventContent::Original { content, .. } => content.redact(version),

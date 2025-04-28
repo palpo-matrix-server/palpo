@@ -9,10 +9,13 @@ use itertools::Itertools;
 use serde_json::from_str as from_json_str;
 use tracing::{debug, info, trace, warn};
 
-use crate::events::StateKey;
-use crate::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::events::{StateEventType, TimelineEventType};
-use crate::{EventId, RoomVersionId, UnixMillis};
+use crate::{
+    EventId, RoomVersionId, UnixMillis,
+    events::{
+        StateEventType, StateKey, TimelineEventType,
+        room::member::{MembershipState, RoomMemberEventContent},
+    },
+};
 
 mod error;
 pub mod event_auth;
@@ -28,31 +31,33 @@ use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
 pub use state_event::Event;
 
-/// A mapping of event type and state_key to some value `T`, usually an `EventId`.
+/// A mapping of event type and state_key to some value `T`, usually an
+/// `EventId`.
 pub type StateMap<T> = HashMap<(StateEventType, String), T>;
 pub type StateMapItem<T> = (TypeStateKey, T);
 pub type TypeStateKey = (StateEventType, StateKey);
 
 /// Resolve sets of state events as they come in.
 ///
-/// Internally `StateResolution` builds a graph and an auth chain to allow for state conflict
-/// resolution.
+/// Internally `StateResolution` builds a graph and an auth chain to allow for
+/// state conflict resolution.
 ///
 /// ## Arguments
 ///
-/// * `state_sets` - The incoming state to resolve. Each `StateMap` represents a possible fork in
-///   the state of a room.
+/// * `state_sets` - The incoming state to resolve. Each `StateMap` represents a
+///   possible fork in the state of a room.
 ///
-/// * `auth_chain_sets` - The full recursive set of `auth_events` for each event in the
-///   `state_sets`.
+/// * `auth_chain_sets` - The full recursive set of `auth_events` for each event
+///   in the `state_sets`.
 ///
-/// * `fetch_event` - Any event not found in the `event_map` will defer to this closure to find the
-///   event.
+/// * `fetch_event` - Any event not found in the `event_map` will defer to this
+///   closure to find the event.
 ///
 /// ## Invariants
 ///
-/// The caller of `resolve` must ensure that all the events are from the same room. Although this
-/// function takes a `RoomId` it does not check that each event is part of the same room.
+/// The caller of `resolve` must ensure that all the events are from the same
+/// room. Although this function takes a `RoomId` it does not check that each
+/// event is part of the same room.
 pub fn resolve<'a, E, SetIter>(
     room_version: &RoomVersionId,
     state_sets: impl IntoIterator<IntoIter = SetIter>,
@@ -81,7 +86,8 @@ where
     debug!("{conflicting:?}");
 
     // `all_conflicted` contains unique items
-    // synapse says `full_set = {eid for eid in full_conflicted_set if eid in event_map}`
+    // synapse says `full_set = {eid for eid in full_conflicted_set if eid in
+    // event_map}`
     let all_conflicted: HashSet<_> = get_auth_chain_diff(auth_chain_sets)
         .chain(conflicting.into_values().flatten())
         // Don't honor events we cannot "verify"
@@ -94,14 +100,16 @@ where
     // We used to check that all events are events from the correct room
     // this is now a check the caller of `resolve` must make.
 
-    // Get only the control events with a state_key: "" or ban/kick event (sender != state_key)
+    // Get only the control events with a state_key: "" or ban/kick event (sender !=
+    // state_key)
     let control_events = all_conflicted
         .iter()
         .filter(|&id| is_power_event_id(id.borrow(), &fetch_event))
         .cloned()
         .collect::<Vec<_>>();
 
-    // Sort the control events based on power_level/clock/event_id and outgoing/incoming edges
+    // Sort the control events based on power_level/clock/event_id and
+    // outgoing/incoming edges
     let sorted_control_levels = reverse_topological_power_sort(control_events, &all_conflicted, &fetch_event)?;
 
     debug!("sorted control events: {}", sorted_control_levels.len());
@@ -118,8 +126,8 @@ where
     // sort the remaining events using the mainline of the resolved power level.
     let deduped_power_ev = sorted_control_levels.into_iter().collect::<HashSet<_>>();
 
-    // This removes the control events that passed auth and more importantly those that failed
-    // auth
+    // This removes the control events that passed auth and more importantly those
+    // that failed auth
     let events_to_resolve = all_conflicted
         .iter()
         .filter(|&id| !deduped_power_ev.contains(id.borrow()))
@@ -154,9 +162,10 @@ where
 ///
 /// The return tuple looks like `(unconflicted, conflicted)`.
 ///
-/// State is determined to be conflicting if for the given key (StateEventType, StateKey) there is
-/// not exactly one event ID. This includes missing events, if one state_set includes an event that
-/// none of the other have this is a conflicting event.
+/// State is determined to be conflicting if for the given key (StateEventType,
+/// StateKey) there is not exactly one event ID. This includes missing events,
+/// if one state_set includes an event that none of the other have this is a
+/// conflicting event.
 fn separate<'a, Id>(
     state_sets_iter: impl Iterator<Item = &'a StateMap<Id>> + Clone,
 ) -> (StateMap<Id>, StateMap<Vec<Id>>)
@@ -205,11 +214,12 @@ where
 
 /// Events are sorted from "earliest" to "latest".
 ///
-/// They are compared using the negative power level (reverse topological ordering), the origin
-/// server timestamp and in case of a tie the `EventId`s are compared lexicographically.
+/// They are compared using the negative power level (reverse topological
+/// ordering), the origin server timestamp and in case of a tie the `EventId`s
+/// are compared lexicographically.
 ///
-/// The power level is negative because a higher power level is equated to an earlier (further back
-/// in time) origin server timestamp.
+/// The power level is negative because a higher power level is equated to an
+/// earlier (further back in time) origin server timestamp.
 fn reverse_topological_power_sort<E: Event>(
     events_to_sort: Vec<E::Id>,
     auth_diff: &HashSet<E::Id>,
@@ -250,8 +260,8 @@ fn reverse_topological_power_sort<E: Event>(
 
 /// Sorts the event graph based on number of outgoing/incoming edges.
 ///
-/// `key_fn` is used as to obtain the power level and age of an event for breaking ties (together
-/// with the event ID).
+/// `key_fn` is used as to obtain the power level and age of an event for
+/// breaking ties (together with the event ID).
 pub fn lexicographical_topological_sort<Id, F>(graph: &HashMap<Id, HashSet<Id>>, key_fn: F) -> StateResult<Vec<Id>>
 where
     F: Fn(&EventId) -> StateResult<(i64, UnixMillis)>,
@@ -337,11 +347,12 @@ where
     Ok(sorted)
 }
 
-/// Find the power level for the sender of `event_id` or return a default value of zero.
+/// Find the power level for the sender of `event_id` or return a default value
+/// of zero.
 ///
-/// Do NOT use this any where but topological sort, we find the power level for the eventId
-/// at the eventId's generation (we walk backwards to `EventId`s most recent previous power level
-/// event).
+/// Do NOT use this any where but topological sort, we find the power level for
+/// the eventId at the eventId's generation (we walk backwards to `EventId`s
+/// most recent previous power level event).
 fn get_power_level_for_sender<E: Event>(
     event_id: &EventId,
     fetch_event: impl Fn(&EventId) -> Option<E>,
@@ -379,11 +390,13 @@ fn get_power_level_for_sender<E: Event>(
 ///
 /// ## Returns
 ///
-/// The `unconflicted_state` combined with the newly auth'ed events. So any event that fails the
-/// `event_auth::auth_check` will be excluded from the returned state map.
+/// The `unconflicted_state` combined with the newly auth'ed events. So any
+/// event that fails the `event_auth::auth_check` will be excluded from the
+/// returned state map.
 ///
-/// For each `events_to_check` event we gather the events needed to auth it from the the
-/// `fetch_event` closure and verify each event using the `event_auth::auth_check` function.
+/// For each `events_to_check` event we gather the events needed to auth it from
+/// the the `fetch_event` closure and verify each event using the
+/// `event_auth::auth_check` function.
 fn iterative_auth_check<E: Event + Clone>(
     room_version: &RoomVersion,
     events_to_check: &[E::Id],
@@ -431,8 +444,8 @@ fn iterative_auth_check<E: Event + Clone>(
 
         debug!("event to check {:?}", event.event_id());
 
-        // The key for this is (eventType + a state_key of the signed token not sender) so
-        // search for it
+        // The key for this is (eventType + a state_key of the signed token not sender)
+        // so search for it
         let current_third_party = auth_events
             .iter()
             .find_map(|(_, pdu)| (*pdu.event_type() == TimelineEventType::RoomThirdPartyInvite).then_some(pdu));
@@ -454,13 +467,15 @@ fn iterative_auth_check<E: Event + Clone>(
     Ok(resolved_state)
 }
 
-/// Returns the sorted `to_sort` list of `EventId`s based on a mainline sort using the depth of
-/// `resolved_power_level`, the server timestamp, and the eventId.
+/// Returns the sorted `to_sort` list of `EventId`s based on a mainline sort
+/// using the depth of `resolved_power_level`, the server timestamp, and the
+/// eventId.
 ///
-/// The depth of the given event is calculated based on the depth of it's closest "parent"
-/// power_level event. If there have been two power events the after the most recent are depth 0,
-/// the events before (with the first power level as a parent) will be marked as depth 1. depth 1 is
-/// "older" than depth 0.
+/// The depth of the given event is calculated based on the depth of it's
+/// closest "parent" power_level event. If there have been two power events the
+/// after the most recent are depth 0, the events before (with the first power
+/// level as a parent) will be marked as depth 1. depth 1 is "older" than depth
+/// 0.
 fn mainline_sort<E: Event>(
     to_sort: &[E::Id],
     resolved_power_level: Option<E::Id>,
@@ -527,8 +542,8 @@ fn mainline_sort<E: Event>(
     Ok(sort_event_ids)
 }
 
-/// Get the mainline depth from the `mainline_map` or finds a power_level event that has an
-/// associated mainline depth.
+/// Get the mainline depth from the `mainline_map` or finds a power_level event
+/// that has an associated mainline depth.
 fn get_mainline_depth<E: Event>(
     mut event: Option<E>,
     mainline_map: &HashMap<E::Id, usize>,
@@ -658,19 +673,22 @@ where
 //         is_power_event,
 //         room_version::RoomVersion,
 //         test_utils::{
-//             alice, bob, charlie, do_check, ella, event_id, member_content_ban, member_content_join, room_id,
-//             to_init_pdu_event, to_pdu_event, zara, PduEvent, TestStore, INITIAL_EVENTS,
+//             alice, bob, charlie, do_check, ella, event_id,
+// member_content_ban, member_content_join, room_id,
+// to_init_pdu_event, to_pdu_event, zara, PduEvent, TestStore, INITIAL_EVENTS,
 //         },
 //         Event, EventTypeExt, StateMap,
 //     };
 
 //     fn test_event_sort() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let events = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let events = INITIAL_EVENTS();
 
 //         let event_map = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), ev.clone()))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), ev.clone()))
 //             .collect::<StateMap<_>>();
 
 //         let auth_chain: HashSet<OwnedEventId> = HashSet::new();
@@ -682,8 +700,8 @@ where
 //             .collect::<Vec<_>>();
 
 //         let sorted_power_events =
-//             crate::state::reverse_topological_power_sort(power_events, &auth_chain, |id| events.get(id).map(Arc::clone))
-//                 .unwrap();
+//             crate::state::reverse_topological_power_sort(power_events,
+// &auth_chain, |id| events.get(id).map(Arc::clone))                 .unwrap();
 
 //         let resolved_power = crate::state::iterative_auth_check(
 //             &RoomVersion::V6,
@@ -703,7 +721,8 @@ where
 //             .cloned();
 
 //         let sorted_event_ids =
-//             crate::state::mainline_sort(&events_to_sort, power_level, |id| events.get(id).map(Arc::clone)).unwrap();
+//             crate::state::mainline_sort(&events_to_sort, power_level, |id|
+// events.get(id).map(Arc::clone)).unwrap();
 
 //         assert_eq!(
 //             vec![
@@ -716,22 +735,24 @@ where
 //                 "$START:foo",
 //                 "$END:foo"
 //             ],
-//             sorted_event_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>()
-//         );
+//             sorted_event_ids.iter().map(|id|
+// id.to_string()).collect::<Vec<_>>()         );
 //     }
 
 //     #[test]
 //     fn test_sort() {
 //         for _ in 0..20 {
-//             // since we shuffle the eventIds before we sort them introducing randomness
-//             // seems like we should test this a few times
+//             // since we shuffle the eventIds before we sort them introducing
+// randomness             // seems like we should test this a few times
 //             test_event_sort();
 //         }
 //     }
 
 //     #[test]
 //     fn ban_vs_power_level() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -739,8 +760,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "MA",
 //                 alice(),
@@ -760,23 +781,26 @@ where
 //                 bob(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //         ];
 
-//         let edges = vec![vec!["END", "MB", "MA", "PA", "START"], vec!["END", "PA", "PB"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "MB", "MA", "PA", "START"], vec!["END",
+// "PA", "PB"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["PA", "MA", "MB"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids = vec!["PA", "MA",
+// "MB"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(events, edges, expected_state_ids);
 //     }
 
 //     #[test]
 //     fn topic_basic() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -791,8 +815,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "T2",
 //                 alice(),
@@ -805,15 +829,15 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 0 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 0
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "PB",
 //                 bob(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "T3",
 //                 bob(),
@@ -831,14 +855,17 @@ where
 //         .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //         .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["PA2", "T2"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids = vec!["PA2",
+// "T2"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(events, edges, expected_state_ids);
 //     }
 
 //     #[test]
 //     fn topic_reset() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -853,8 +880,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "T2",
 //                 bob(),
@@ -871,19 +898,22 @@ where
 //             ),
 //         ];
 
-//         let edges = vec![vec!["END", "MB", "T2", "PA", "T1", "START"], vec!["END", "T1"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "MB", "T2", "PA", "T1", "START"],
+// vec!["END", "T1"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["T1", "MB", "PA"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids = vec!["T1", "MB",
+// "PA"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(events, edges, expected_state_ids);
 //     }
 
 //     #[test]
 //     fn join_rule_evasion() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -891,8 +921,9 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomJoinRules,
 //                 Some(""),
-//                 to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Private)).unwrap(),
-//             ),
+//
+// to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Private)).
+// unwrap(),             ),
 //             to_init_pdu_event(
 //                 "ME",
 //                 ella(),
@@ -902,8 +933,8 @@ where
 //             ),
 //         ];
 
-//         let edges = vec![vec!["END", "JR", "START"], vec!["END", "ME", "START"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "JR", "START"], vec!["END", "ME",
+// "START"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
@@ -914,7 +945,9 @@ where
 
 //     #[test]
 //     fn offtopic_power_level() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -922,37 +955,40 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "PB",
 //                 bob(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50, charlie(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob():
+// 50, charlie(): 50 } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "PC",
 //                 charlie(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50, charlie(): 0 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob():
+// 50, charlie(): 0 } })).unwrap(),             ),
 //         ];
 
-//         let edges = vec![vec!["END", "PC", "PB", "PA", "START"], vec!["END", "PA"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "PC", "PB", "PA", "START"], vec!["END",
+// "PA"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["PC"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids =
+// vec!["PC"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(events, edges, expected_state_ids);
 //     }
 
 //     #[test]
 //     fn topic_setting() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let events = &[
 //             to_init_pdu_event(
@@ -967,8 +1003,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "T2",
 //                 alice(),
@@ -981,15 +1017,15 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 0 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 0
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "PB",
 //                 bob(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//             ),
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),             ),
 //             to_init_pdu_event(
 //                 "T3",
 //                 bob(),
@@ -1021,14 +1057,17 @@ where
 //         .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //         .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["T4", "PA2"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids = vec!["T4",
+// "PA2"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(events, edges, expected_state_ids);
 //     }
 
 //     #[test]
 //     fn test_event_map_none() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let mut store = TestStore::<PduEvent>(hashmap! {});
 
@@ -1044,8 +1083,8 @@ where
 //                 .iter()
 //                 .map(|map| {
 //                     store
-//                         .auth_event_ids(room_id(), map.values().cloned().collect())
-//                         .unwrap()
+//                         .auth_event_ids(room_id(),
+// map.values().cloned().collect())                         .unwrap()
 //                 })
 //                 .collect(),
 //             |id| ev_map.get(id).map(Arc::clone),
@@ -1059,17 +1098,20 @@ where
 
 //     #[test]
 //     fn test_lexicographical_sort() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());
 
 //         let graph = hashmap! {
 //             event_id("l") => hashset![event_id("o")],
 //             event_id("m") => hashset![event_id("n"), event_id("o")],
 //             event_id("n") => hashset![event_id("o")],
-//             event_id("o") => hashset![], // "o" has zero outgoing edges but 4 incoming edges
-//             event_id("p") => hashset![event_id("o")],
+//             event_id("o") => hashset![], // "o" has zero outgoing edges but 4
+// incoming edges             event_id("p") => hashset![event_id("o")],
 //         };
 
-//         let res = crate::lexicographical_topological_sort(&graph, |_id| Ok((0, UnixMillis(u0)))).unwrap();
+//         let res = crate::lexicographical_topological_sort(&graph, |_id|
+// Ok((0, UnixMillis(u0)))).unwrap();
 
 //         assert_eq!(
 //             vec!["o", "l", "n", "m", "p"],
@@ -1082,23 +1124,26 @@ where
 
 //     #[test]
 //     fn ban_with_auth_chains() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let ban = BAN_STATE_SET();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let ban = BAN_STATE_SET();
 
-//         let edges = vec![vec!["END", "MB", "PA", "START"], vec!["END", "IME", "MB"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "MB", "PA", "START"], vec!["END", "IME",
+// "MB"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["PA", "MB"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids = vec!["PA",
+// "MB"].into_iter().map(event_id).collect::<Vec<_>>();
 
-//         do_check(&ban.values().cloned().collect::<Vec<_>>(), edges, expected_state_ids);
-//     }
+//         do_check(&ban.values().cloned().collect::<Vec<_>>(), edges,
+// expected_state_ids);     }
 
 //     #[test]
 //     fn ban_with_auth_chains2() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let init = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let init = INITIAL_EVENTS();
 //         let ban = BAN_STATE_SET();
 
 //         let mut inner = init.clone();
@@ -1150,8 +1195,8 @@ where
 //                 .iter()
 //                 .map(|map| {
 //                     store
-//                         .auth_event_ids(room_id(), map.values().cloned().collect())
-//                         .unwrap()
+//                         .auth_event_ids(room_id(),
+// map.values().cloned().collect())                         .unwrap()
 //                 })
 //                 .collect(),
 //             |id| ev_map.get(id).map(Arc::clone),
@@ -1181,8 +1226,8 @@ where
 //         for id in expected.iter().map(|i| event_id(i)) {
 //             // make sure our resolved events are equal to the expected list
 //             assert!(
-//                 resolved.values().any(|eid| eid == &id) || init.contains_key(&id),
-//                 "{id}"
+//                 resolved.values().any(|eid| eid == &id) ||
+// init.contains_key(&id),                 "{id}"
 //             );
 //         }
 //         assert_eq!(expected.len(), resolved.len());
@@ -1192,12 +1237,13 @@ where
 //     fn join_rule_with_auth_chain() {
 //         let join_rule = JOIN_RULE();
 
-//         let edges = vec![vec!["END", "JR", "START"], vec!["END", "IMZ", "START"]]
-//             .into_iter()
+//         let edges = vec![vec!["END", "JR", "START"], vec!["END", "IMZ",
+// "START"]]             .into_iter()
 //             .map(|list| list.into_iter().map(event_id).collect::<Vec<_>>())
 //             .collect::<Vec<_>>();
 
-//         let expected_state_ids = vec!["JR"].into_iter().map(event_id).collect::<Vec<_>>();
+//         let expected_state_ids =
+// vec!["JR"].into_iter().map(event_id).collect::<Vec<_>>();
 
 //         do_check(
 //             &join_rule.values().cloned().collect::<Vec<_>>(),
@@ -1214,8 +1260,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//                 &["CREATE", "IMA", "IPOWER"], // auth_events
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),                 &["CREATE", "IMA", "IPOWER"], // auth_events
 //                 &["START"],                   // prev_events
 //             ),
 //             to_pdu_event(
@@ -1223,8 +1269,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomPowerLevels,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50 } })).unwrap(),
-//                 &["CREATE", "IMA", "IPOWER"],
+//                 to_raw_json_value(&json!({ "users": { alice(): 100, bob(): 50
+// } })).unwrap(),                 &["CREATE", "IMA", "IPOWER"],
 //                 &["END"],
 //             ),
 //             to_pdu_event(
@@ -1259,8 +1305,8 @@ where
 //                 alice(),
 //                 TimelineEventType::RoomJoinRules,
 //                 Some(""),
-//                 to_raw_json_value(&json!({ "join_rule": "invite" })).unwrap(),
-//                 &["CREATE", "IMA", "IPOWER"],
+//                 to_raw_json_value(&json!({ "join_rule": "invite"
+// })).unwrap(),                 &["CREATE", "IMA", "IPOWER"],
 //                 &["START"],
 //             ),
 //             to_pdu_event(

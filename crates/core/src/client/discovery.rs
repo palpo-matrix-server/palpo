@@ -1,12 +1,14 @@
 //! `GET /_matrix/client/*/capabilities`
 //!
-//! Get information about the server's supported feature set and other relevant capabilities
-//! ([spec]).
+//! Get information about the server's supported feature set and other relevant
+//! capabilities ([spec]).
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
-use std::borrow::Cow;
-use std::collections::{BTreeMap, btree_map};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, btree_map},
+};
 
 use maplit::btreemap;
 use salvo::prelude::*;
@@ -46,8 +48,8 @@ pub struct Capabilities {
     )]
     pub set_avatar_url: SetAvatarUrlCapability,
 
-    /// Capability to indicate if the user can change the third-party identifiers associated with
-    /// their account.
+    /// Capability to indicate if the user can change the third-party
+    /// identifiers associated with their account.
     #[serde(
         rename = "m.3pid_changes",
         default,
@@ -55,8 +57,9 @@ pub struct Capabilities {
     )]
     pub thirdparty_id_changes: ThirdPartyIdChangesCapability,
 
-    /// Any other custom capabilities that the server supports outside of the specification,
-    /// labeled using the Java package naming convention and stored as arbitrary JSON values.
+    /// Any other custom capabilities that the server supports outside of the
+    /// specification, labeled using the Java package naming convention and
+    /// stored as arbitrary JSON values.
     #[serde(flatten)]
     #[salvo(schema(skip))]
     #[salvo(schema(value_type = Object, additional_properties = true))]
@@ -71,8 +74,8 @@ impl Capabilities {
 
     /// Returns the value of the given capability.
     ///
-    /// Prefer to use the public fields of `Capabilities` where possible; this method is meant to be
-    /// used for unsupported capabilities only.
+    /// Prefer to use the public fields of `Capabilities` where possible; this
+    /// method is meant to be used for unsupported capabilities only.
     pub fn get(&self, capability: &str) -> Option<Cow<'_, JsonValue>> {
         fn serialize<T: Serialize>(cap: &T) -> JsonValue {
             to_json_value(cap).expect("capability serialization to succeed")
@@ -90,9 +93,9 @@ impl Capabilities {
 
     /// Sets a capability to the given value.
     ///
-    /// Prefer to use the public fields of `Capabilities` where possible; this method is meant to be
-    /// used for unsupported capabilities only and does not allow setting arbitrary data for
-    /// supported ones.
+    /// Prefer to use the public fields of `Capabilities` where possible; this
+    /// method is meant to be used for unsupported capabilities only and
+    /// does not allow setting arbitrary data for supported ones.
     pub fn set(&mut self, capability: &str, value: JsonValue) -> serde_json::Result<()> {
         match capability {
             "m.change_password" => self.change_password = from_json_value(value)?,
@@ -159,8 +162,8 @@ pub struct RoomVersionsCapability {
 }
 
 impl RoomVersionsCapability {
-    /// Creates a new `RoomVersionsCapability` with the given default room version ID and room
-    /// version descriptions.
+    /// Creates a new `RoomVersionsCapability` with the given default room
+    /// version ID and room version descriptions.
     pub fn new(default: RoomVersionId, available: BTreeMap<RoomVersionId, RoomVersionStability>) -> Self {
         Self { default, available }
     }
@@ -256,13 +259,14 @@ impl Default for SetAvatarUrlCapability {
 /// Information about the `m.3pid_changes` capability
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct ThirdPartyIdChangesCapability {
-    /// `true` if the user can change the third-party identifiers associated with their account,
-    /// `false` otherwise.
+    /// `true` if the user can change the third-party identifiers associated
+    /// with their account, `false` otherwise.
     pub enabled: bool,
 }
 
 impl ThirdPartyIdChangesCapability {
-    /// Creates a new `ThirdPartyIdChangesCapability` with the given enabled flag.
+    /// Creates a new `ThirdPartyIdChangesCapability` with the given enabled
+    /// flag.
     pub fn new(enabled: bool) -> Self {
         Self { enabled }
     }
@@ -411,7 +415,8 @@ pub struct ClientWellKnownResBody {
     )]
     pub tile_server: Option<TileServerInfo>,
 
-    /// Information about the authentication server to connect to when using OpenID Connect.
+    /// Information about the authentication server to connect to when using
+    /// OpenID Connect.
     #[serde(
         default,
         rename = "org.matrix.msc2965.authentication",
@@ -420,7 +425,8 @@ pub struct ClientWellKnownResBody {
     )]
     pub authentication: Option<AuthenticationServerInfo>,
 
-    /// Information about the homeserver's trusted proxy to use for sliding sync development.
+    /// Information about the homeserver's trusted proxy to use for sliding sync
+    /// development.
     #[serde(
         default,
         rename = "org.matrix.msc3575.proxy",
@@ -499,7 +505,8 @@ pub struct AuthenticationServerInfo {
 }
 
 impl AuthenticationServerInfo {
-    /// Creates an `AuthenticationServerInfo` with the given `issuer` and an optional `account`.
+    /// Creates an `AuthenticationServerInfo` with the given `issuer` and an
+    /// optional `account`.
     pub fn new(issuer: String, account: Option<String>) -> Self {
         Self { issuer, account }
     }
@@ -523,7 +530,8 @@ impl SlidingSyncProxyInfo {
 
 #[derive(ToSchema, Serialize, Debug)]
 pub struct VersionsResBody {
-    /// A list of Matrix client API protocol versions supported by the homeserver.
+    /// A list of Matrix client API protocol versions supported by the
+    /// homeserver.
     pub versions: Vec<String>,
 
     /// Experimental features supported by the server.
@@ -542,11 +550,13 @@ impl VersionsResBody {
 
     /// Extracts known Matrix versions from this response.
     ///
-    /// Matrix versions that Palpo cannot parse, or does not know about, are discarded.
+    /// Matrix versions that Palpo cannot parse, or does not know about, are
+    /// discarded.
     ///
-    /// The versions returned will be sorted from oldest to latest. Use [`.find()`][Iterator::find]
-    /// or [`.rfind()`][DoubleEndedIterator::rfind] to look for a minimum or maximum version to use
-    /// given some constraint.
+    /// The versions returned will be sorted from oldest to latest. Use
+    /// [`.find()`][Iterator::find]
+    /// or [`.rfind()`][DoubleEndedIterator::rfind] to look for a minimum or
+    /// maximum version to use given some constraint.
     pub fn known_versions(&self) -> impl Iterator<Item = MatrixVersion> + DoubleEndedIterator {
         self.versions
             .iter()
@@ -610,30 +620,35 @@ impl CapabilitiesResBody {
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.change_password");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true })));
+//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
+// })));
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.room_versions");
 //         assert_eq!(
 //             iter_res.value(),
-//             Cow::Borrowed(&json!({ "available": { "1": "stable" },"default" :"1" }))
-//         );
+//             Cow::Borrowed(&json!({ "available": { "1": "stable" },"default"
+// :"1" }))         );
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.set_display_name");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true })));
+//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
+// })));
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.set_avatar_url");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true })));
+//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
+// })));
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.3pid_changes");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true })));
+//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
+// })));
 
 //         let iter_res = caps_iter.next().unwrap();
 //         assert_eq!(iter_res.name(), "m.some_random_capability");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "key": "value" })));
+//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "key": "value"
+// })));
 
 //         assert_matches!(caps_iter.next(), None);
 //         Ok(())
@@ -666,8 +681,8 @@ impl CapabilitiesResBody {
 //         ]);
 //         assert_eq!(
 //             sorted.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1, MatrixVersion::V1_2],
-//         );
+//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
+// MatrixVersion::V1_2],         );
 
 //         let sorted_reverse = Response::new(vec![
 //             "v1.2".to_owned(),
@@ -679,8 +694,8 @@ impl CapabilitiesResBody {
 //         ]);
 //         assert_eq!(
 //             sorted_reverse.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1, MatrixVersion::V1_2],
-//         );
+//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
+// MatrixVersion::V1_2],         );
 
 //         let random_order = Response::new(vec![
 //             "v1.1".to_owned(),
@@ -692,7 +707,7 @@ impl CapabilitiesResBody {
 //         ]);
 //         assert_eq!(
 //             random_order.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1, MatrixVersion::V1_2],
-//         );
+//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
+// MatrixVersion::V1_2],         );
 //     }
 // }

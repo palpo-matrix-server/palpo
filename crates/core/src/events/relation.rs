@@ -5,13 +5,11 @@
 use std::fmt::Debug;
 
 use salvo::oapi::ToSchema;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::DeserializeOwned};
 
 use super::AnyMessageLikeEvent;
-use crate::PrivOwnedStr;
 use crate::{
-    OwnedEventId,
+    OwnedEventId, PrivOwnedStr,
     serde::{JsonObject, RawJson, StringEnum},
 };
 
@@ -42,10 +40,11 @@ pub struct Annotation {
 
     /// A string that indicates the annotation being applied.
     ///
-    /// When sending emoji reactions, this field should include the colourful variation-16 when
-    /// applicable.
+    /// When sending emoji reactions, this field should include the colourful
+    /// variation-16 when applicable.
     ///
-    /// Clients should render reactions that have a long `key` field in a sensible manner.
+    /// Clients should render reactions that have a long `key` field in a
+    /// sensible manner.
     pub key: String,
 }
 
@@ -89,24 +88,26 @@ pub struct Thread {
 
     /// A reply relation.
     ///
-    /// If this event is a reply and belongs to a thread, this points to the message that is being
-    /// replied to, and `is_falling_back` must be set to `false`.
+    /// If this event is a reply and belongs to a thread, this points to the
+    /// message that is being replied to, and `is_falling_back` must be set
+    /// to `false`.
     ///
-    /// If this event is not a reply, this is used as a fallback mechanism for clients that do not
-    /// support threads. This should point to the latest message-like event in the thread and
-    /// `is_falling_back` must be set to `true`.
+    /// If this event is not a reply, this is used as a fallback mechanism for
+    /// clients that do not support threads. This should point to the latest
+    /// message-like event in the thread and `is_falling_back` must be set
+    /// to `true`.
     #[serde(rename = "m.in_reply_to", skip_serializing_if = "Option::is_none")]
     pub in_reply_to: Option<InReplyTo>,
 
-    /// Whether the `m.in_reply_to` field is a fallback for older clients or a genuine reply in a
-    /// thread.
+    /// Whether the `m.in_reply_to` field is a fallback for older clients or a
+    /// genuine reply in a thread.
     #[serde(default, skip_serializing_if = "palpo_core::serde::is_default")]
     pub is_falling_back: bool,
 }
 
 impl Thread {
-    /// Convenience method to create a regular `Thread` relation with the given root event ID and
-    /// latest message-like event ID.
+    /// Convenience method to create a regular `Thread` relation with the given
+    /// root event ID and latest message-like event ID.
     pub fn plain(event_id: OwnedEventId, latest_event_id: OwnedEventId) -> Self {
         Self {
             event_id,
@@ -115,8 +116,8 @@ impl Thread {
         }
     }
 
-    /// Convenience method to create a regular `Thread` relation with the given root event ID and
-    /// *without* the recommended reply fallback.
+    /// Convenience method to create a regular `Thread` relation with the given
+    /// root event ID and *without* the recommended reply fallback.
     pub fn without_fallback(event_id: OwnedEventId) -> Self {
         Self {
             event_id,
@@ -125,8 +126,8 @@ impl Thread {
         }
     }
 
-    /// Convenience method to create a reply `Thread` relation with the given root event ID and
-    /// replied-to event ID.
+    /// Convenience method to create a reply `Thread` relation with the given
+    /// root event ID and replied-to event ID.
     pub fn reply(event_id: OwnedEventId, reply_to_event_id: OwnedEventId) -> Self {
         Self {
             event_id,
@@ -150,7 +151,8 @@ pub struct BundledThread {
 }
 
 impl BundledThread {
-    /// Creates a new `BundledThread` with the given event, count and user participated flag.
+    /// Creates a new `BundledThread` with the given event, count and user
+    /// participated flag.
     pub fn new(latest_event: RawJson<AnyMessageLikeEvent>, count: u64, current_user_participated: bool) -> Self {
         Self {
             latest_event,
@@ -242,10 +244,12 @@ impl<E> BundledMessageLikeRelations<E> {
 
     /// Whether this bundle contains a replacement relation.
     ///
-    /// This may be `true` even if the `replace` field is `None`, because Matrix versions prior to
-    /// 1.7 had a different incompatible format for bundled replacements. Use this method to check
-    /// whether an event was replaced. If this returns `true` but `replace` is `None`, use one of
-    /// the endpoints from `palpo::api::client::relations` to fetch the relation details.
+    /// This may be `true` even if the `replace` field is `None`, because Matrix
+    /// versions prior to 1.7 had a different incompatible format for
+    /// bundled replacements. Use this method to check whether an event was
+    /// replaced. If this returns `true` but `replace` is `None`, use one of
+    /// the endpoints from `palpo::api::client::relations` to fetch the relation
+    /// details.
     pub fn has_replacement(&self) -> bool {
         self.replace.is_some() || self.has_invalid_replacement
     }
@@ -255,8 +259,9 @@ impl<E> BundledMessageLikeRelations<E> {
         self.replace.is_none() && self.thread.is_none() && self.reference.is_none()
     }
 
-    /// Transform `BundledMessageLikeRelations<E>` to `BundledMessageLikeRelations<T>` using the
-    /// given closure to convert the `replace` field if it is `Some(_)`.
+    /// Transform `BundledMessageLikeRelations<E>` to
+    /// `BundledMessageLikeRelations<T>` using the given closure to convert
+    /// the `replace` field if it is `Some(_)`.
     pub(crate) fn map_replace<T>(self, f: impl FnOnce(E) -> T) -> BundledMessageLikeRelations<T> {
         let Self {
             replace,

@@ -2,16 +2,16 @@
 //!
 //! [`m.room.pinned_events`]: https://spec.matrix.org/latest/client-server-api/#mroompinned_events
 
-use crate::OwnedEventId;
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::EmptyStateKey;
+use crate::{OwnedEventId, events::EmptyStateKey};
 
 /// The content of an `m.room.pinned_events` event.
 ///
-/// Used to "pin" particular events in a room for other participants to review later.
+/// Used to "pin" particular events in a room for other participants to review
+/// later.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room.pinned_events", kind = State, state_key_type = EmptyStateKey)]
 pub struct RoomPinnedEventsEventContent {
@@ -28,9 +28,8 @@ impl RoomPinnedEventsEventContent {
 
 #[cfg(test)]
 mod tests {
-    use crate::owned_event_id;
-
     use super::RoomPinnedEventsEventContent;
+    use crate::owned_event_id;
 
     #[test]
     fn serialization_deserialization() {

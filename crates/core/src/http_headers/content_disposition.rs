@@ -5,23 +5,24 @@ use std::{fmt, ops::Deref, str::FromStr};
 use salvo::oapi::ToSchema;
 use serde::Serialize;
 
-use crate::macros::{AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr};
-
 use super::{
     is_tchar, is_token, quote_ascii_string_if_required, rfc8187, sanitize_for_ascii_quoted_string, unescape_string,
 };
+use crate::macros::{AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr};
 
 /// The value of a `Content-Disposition` HTTP header.
 ///
-/// This implementation supports the `Content-Disposition` header format as defined for HTTP in [RFC
-/// 6266].
+/// This implementation supports the `Content-Disposition` header format as
+/// defined for HTTP in [RFC 6266].
 ///
-/// The only supported parameter is `filename`. It is encoded or decoded as needed, using a quoted
-/// string or the `ext-token = ext-value` format, with the encoding defined in [RFC 8187].
+/// The only supported parameter is `filename`. It is encoded or decoded as
+/// needed, using a quoted string or the `ext-token = ext-value` format, with
+/// the encoding defined in [RFC 8187].
 ///
-/// This implementation does not support serializing to the format defined for the
-/// `multipart/form-data` content type in [RFC 7578]. It should however manage to parse the
-/// disposition type and filename parameter of the body parts.
+/// This implementation does not support serializing to the format defined for
+/// the `multipart/form-data` content type in [RFC 7578]. It should however
+/// manage to parse the disposition type and filename parameter of the body
+/// parts.
 ///
 /// [RFC 6266]: https://datatracker.ietf.org/doc/html/rfc6266
 /// [RFC 8187]: https://datatracker.ietf.org/doc/html/rfc8187
@@ -98,13 +99,14 @@ impl TryFrom<&[u8]> for ContentDisposition {
 
         let disposition_type = ContentDispositionType::try_from(&value[disposition_type_start..pos])?;
 
-        // The `filename*` parameter (`filename_ext` here) using UTF-8 encoding should be used, but
-        // it is likely to be after the `filename` parameter containing only ASCII
-        // characters if both are present.
+        // The `filename*` parameter (`filename_ext` here) using UTF-8 encoding should
+        // be used, but it is likely to be after the `filename` parameter
+        // containing only ASCII characters if both are present.
         let mut filename_ext = None;
         let mut filename = None;
 
-        // Parse the parameters. We ignore parameters that fail to parse for maximum compatibility.
+        // Parse the parameters. We ignore parameters that fail to parse for maximum
+        // compatibility.
         while pos != value.len() {
             if let Some(param) = RawParam::parse_next(value, &mut pos) {
                 if param.name.eq_ignore_ascii_case(b"filename*") {
@@ -144,12 +146,13 @@ struct RawParam<'a> {
 }
 
 impl<'a> RawParam<'a> {
-    /// Parse the next `RawParam` in the given bytes, starting at the given position.
+    /// Parse the next `RawParam` in the given bytes, starting at the given
+    /// position.
     ///
     /// The position is updated during the parsing.
     ///
-    /// Returns `None` if no parameter was found or if an error occurred when parsing the
-    /// parameter.
+    /// Returns `None` if no parameter was found or if an error occurred when
+    /// parsing the parameter.
     fn parse_next(bytes: &'a [u8], pos: &mut usize) -> Option<Self> {
         let name = parse_param_name(bytes, pos)?;
 
@@ -160,8 +163,8 @@ impl<'a> RawParam<'a> {
             return None;
         }
         if bytes[*pos] != b'=' {
-            // We should have an equal sign, there is a problem with the bytes and we can't recover
-            // from it.
+            // We should have an equal sign, there is a problem with the bytes and we can't
+            // recover from it.
             // Skip to the end to stop the parsing.
             *pos = bytes.len();
             return None;
@@ -216,7 +219,8 @@ fn skip_ascii_whitespaces(bytes: &[u8], pos: &mut usize) {
 ///
 /// The position is updated while parsing.
 ///
-/// Returns `None` if the end of the bytes was reached, or if an error was encountered.
+/// Returns `None` if the end of the bytes was reached, or if an error was
+/// encountered.
 fn parse_param_name<'a>(bytes: &'a [u8], pos: &mut usize) -> Option<&'a [u8]> {
     skip_ascii_whitespaces(bytes, pos);
 
@@ -241,8 +245,8 @@ fn parse_param_name<'a>(bytes: &'a [u8], pos: &mut usize) -> Option<&'a [u8]> {
         return None;
     }
     if bytes[*pos] == b';' {
-        // We are at the end of the parameter and only have the parameter name, skip the `;` and
-        // parse the next parameter.
+        // We are at the end of the parameter and only have the parameter name, skip the
+        // `;` and parse the next parameter.
         *pos += 1;
         return None;
     }
@@ -263,7 +267,8 @@ fn parse_param_name<'a>(bytes: &'a [u8], pos: &mut usize) -> Option<&'a [u8]> {
 /// The position is updated while parsing.
 ///
 /// Returns a `(value, is_quoted_string)` tuple if parsing succeeded.
-/// Returns `None` if the end of the bytes was reached, or if an error was encountered.
+/// Returns `None` if the end of the bytes was reached, or if an error was
+/// encountered.
 fn parse_param_value<'a>(bytes: &'a [u8], pos: &mut usize) -> Option<(&'a [u8], bool)> {
     skip_ascii_whitespaces(bytes, pos);
 
@@ -283,8 +288,8 @@ fn parse_param_value<'a>(bytes: &'a [u8], pos: &mut usize) -> Option<(&'a [u8], 
     // Keep track of whether the next byte is escaped with a backslash.
     let mut escape_next = false;
 
-    // Find the end of the value, it's a whitespace or a semi-colon, or a double quote if the string
-    // is quoted.
+    // Find the end of the value, it's a whitespace or a semi-colon, or a double
+    // quote if the string is quoted.
     while let Some(byte) = bytes.get(*pos) {
         if !is_quoted_string && (byte.is_ascii_whitespace() || *byte == b';') {
             break;
@@ -338,13 +343,13 @@ pub enum ContentDispositionParseError {
     InvalidDispositionType(#[from] TokenStringParseError),
 }
 
-/// A disposition type in the `Content-Disposition` HTTP header as defined in [Section 4.2 of RFC
-/// 6266].
+/// A disposition type in the `Content-Disposition` HTTP header as defined in
+/// [Section 4.2 of RFC 6266].
 ///
-/// This type can hold an arbitrary [`TokenString`]. To build this with a custom value, convert it
-/// from a `TokenString` with `::from()` / `.into()`. To check for values that are not available as
-/// a documented variant here, use its string representation, obtained through
-/// [`.as_str()`](Self::as_str()).
+/// This type can hold an arbitrary [`TokenString`]. To build this with a custom
+/// value, convert it from a `TokenString` with `::from()` / `.into()`. To check
+/// for values that are not available as a documented variant here, use its
+/// string representation, obtained through [`.as_str()`](Self::as_str()).
 ///
 /// Comparisons with other string types are done case-insensitively.
 ///
@@ -439,7 +444,8 @@ impl<'a> PartialEq<&'a str> for ContentDispositionType {
     }
 }
 
-/// A non-empty string consisting only of `token`s as defined in [RFC 9110 Section 3.2.6].
+/// A non-empty string consisting only of `token`s as defined in [RFC 9110
+/// Section 3.2.6].
 ///
 /// This is a string that can only contain a limited character set.
 ///
@@ -557,7 +563,8 @@ mod tests {
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Attachment);
         assert_eq!(content_disposition.filename.unwrap(), "foo-a.html");
 
-        // filename could be UTF-8 for extra compatibility (with `form-data` for example).
+        // filename could be UTF-8 for extra compatibility (with `form-data` for
+        // example).
         let content_disposition =
             ContentDisposition::from_str(r#"form-data; name=upload; filename="文件.webp""#).unwrap();
         assert_eq!(content_disposition.disposition_type.as_str(), "form-data");
@@ -585,7 +592,8 @@ mod tests {
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename.unwrap(), "my_file");
 
-        // Missing `;` between parameters, filename parameter is not parsed successfully.
+        // Missing `;` between parameters, filename parameter is not parsed
+        // successfully.
         let content_disposition = ContentDisposition::from_str("inline; filename=my_file foo=bar").unwrap();
         assert_eq!(content_disposition.disposition_type, ContentDispositionType::Inline);
         assert_eq!(content_disposition.filename, None);
@@ -671,7 +679,8 @@ mod tests {
 
     #[test]
     fn rfc8187_examples() {
-        // Those examples originate from RFC 8187, but are changed to fit the expectations here:
+        // Those examples originate from RFC 8187, but are changed to fit the
+        // expectations here:
         //
         // - A disposition type is added
         // - The title parameter is renamed to filename

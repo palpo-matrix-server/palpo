@@ -6,8 +6,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedRoomAliasId;
-use crate::events::EmptyStateKey;
+use crate::{OwnedRoomAliasId, events::EmptyStateKey};
 
 /// The content of an `m.room.canonical_alias` event.
 ///
@@ -44,7 +43,8 @@ impl RoomCanonicalAliasEventContent {
 // #[cfg(test)]
 // mod tests {
 //     use crate::owned_room_alias_id;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::RoomCanonicalAliasEventContent;
 //     use crate::OriginalStateEvent;
@@ -77,7 +77,8 @@ impl RoomCanonicalAliasEventContent {
 //         });
 
 //         assert_eq!(
-//             from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
+//
+// from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
 //                 .unwrap()
 //                 .content
 //                 .alias,
@@ -99,7 +100,8 @@ impl RoomCanonicalAliasEventContent {
 //             "type": "m.room.canonical_alias"
 //         });
 //         assert_eq!(
-//             from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
+//
+// from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
 //                 .unwrap()
 //                 .content
 //                 .alias,
@@ -121,7 +123,8 @@ impl RoomCanonicalAliasEventContent {
 //             "type": "m.room.canonical_alias"
 //         });
 //         assert_eq!(
-//             from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
+//
+// from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
 //                 .unwrap()
 //                 .content
 //                 .alias,
@@ -144,7 +147,8 @@ impl RoomCanonicalAliasEventContent {
 //             "type": "m.room.canonical_alias"
 //         });
 //         assert_eq!(
-//             from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
+//
+// from_json_value::<OriginalStateEvent<RoomCanonicalAliasEventContent>>(json_data)
 //                 .unwrap()
 //                 .content
 //                 .alias,

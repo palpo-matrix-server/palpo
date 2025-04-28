@@ -10,7 +10,8 @@ use crate::{OwnedVoipId, VoipVersionId};
 
 /// **Added in VoIP version 1.** The content of an `m.call.reject` event.
 ///
-/// Starting from VoIP version 1, this event is sent by the callee to reject an invite.
+/// Starting from VoIP version 1, this event is sent by the callee to reject an
+/// invite.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.call.reject", kind = MessageLike)]
 pub struct CallRejectEventContent {
@@ -27,7 +28,8 @@ pub struct CallRejectEventContent {
 }
 
 impl CallRejectEventContent {
-    /// Creates a `CallRejectEventContent` with the given call ID, VoIP version and party ID.
+    /// Creates a `CallRejectEventContent` with the given call ID, VoIP version
+    /// and party ID.
     pub fn new(call_id: OwnedVoipId, party_id: OwnedVoipId, version: VoipVersionId) -> Self {
         Self {
             call_id,
@@ -36,8 +38,8 @@ impl CallRejectEventContent {
         }
     }
 
-    /// Convenience method to create a version 1 `CallRejectEventContent` with all the required
-    /// fields.
+    /// Convenience method to create a version 1 `CallRejectEventContent` with
+    /// all the required fields.
     pub fn version_1(call_id: OwnedVoipId, party_id: OwnedVoipId) -> Self {
         Self::new(call_id, party_id, VoipVersionId::V1)
     }

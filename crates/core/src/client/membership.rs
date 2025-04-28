@@ -4,14 +4,15 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::room::member::RoomMemberEvent;
-use crate::serde::{RawJson, StringEnum};
 use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr, third_party::Medium,
+    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
+    events::room::member::RoomMemberEvent,
+    serde::{RawJson, StringEnum},
+    third_party::Medium,
 };
 
-/// A signature of an `m.third_party_invite` token to prove that this user owns a third party
-/// identity which has been invited to the room.
+/// A signature of an `m.third_party_invite` token to prove that this user owns
+/// a third party identity which has been invited to the room.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct ThirdPartySigned {
     /// The Matrix ID of the user who issued the invite.
@@ -28,8 +29,8 @@ pub struct ThirdPartySigned {
 }
 
 impl ThirdPartySigned {
-    /// Creates a new `ThirdPartySigned` from the given sender and invitee user IDs, state key token
-    /// and signatures.
+    /// Creates a new `ThirdPartySigned` from the given sender and invitee user
+    /// IDs, state key token and signatures.
     pub fn new(
         sender: OwnedUserId,
         mxid: OwnedUserId,
@@ -47,8 +48,8 @@ impl ThirdPartySigned {
 
 /// Represents third party IDs to invite to the room.
 ///
-/// To create an instance of this type, first create a `InviteThreepidInit` and convert it via
-/// `InviteThreepid::from` / `.into()`.
+/// To create an instance of this type, first create a `InviteThreepidInit` and
+/// convert it via `InviteThreepid::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct InviteThreepid {
     /// Hostname and port of identity server to be used for account lookups.
@@ -66,8 +67,9 @@ pub struct InviteThreepid {
 
 /// Initial set of fields of `InviteThreepid`.
 ///
-/// This struct will not be updated even if additional fields are added to `InviteThreepid` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `InviteThreepid` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct InviteThreepidInit {
@@ -253,7 +255,8 @@ pub struct InviteUserReqBody {
 /// Request type for the `leave_room` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct LeaveRoomReqBody {
-    /// Optional reason to be included as the `reason` on the subsequent membership event.
+    /// Optional reason to be included as the `reason` on the subsequent
+    /// membership event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
@@ -281,8 +284,8 @@ pub struct MutualRoomsReqBody {
     #[salvo(parameter(parameter_in = Query))]
     pub user_id: OwnedUserId,
 
-    /// The `next_batch_token` returned from a previous response, to get the next batch of
-    /// rooms.
+    /// The `next_batch_token` returned from a previous response, to get the
+    /// next batch of rooms.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub batch_token: Option<String>,
@@ -308,7 +311,8 @@ impl MutualRoomsResBody {
         }
     }
 
-    /// Creates a `Response` with the given room ids, together with a batch token.
+    /// Creates a `Response` with the given room ids, together with a batch
+    /// token.
     pub fn with_token(joined: Vec<OwnedRoomId>, token: String) -> Self {
         Self {
             joined,
@@ -391,8 +395,8 @@ impl JoinedRoomsResBody {
 /// Request type for the `join_room_by_id` endpoint.
 #[derive(ToSchema, Deserialize, Default, Debug)]
 pub struct JoinRoomByIdReqBody {
-    /// The signature of a `m.third_party_invite` token to prove that this user owns a third
-    /// party identity which has been invited to the room.
+    /// The signature of a `m.third_party_invite` token to prove that this user
+    /// owns a third party identity which has been invited to the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub third_party_signed: Option<ThirdPartySigned>,
 
@@ -414,8 +418,8 @@ pub struct JoinRoomByIdReqBody {
 /// Request type for the `join_room_by_id_or_alias` endpoint.
 #[derive(ToSchema, Default, Deserialize, Debug)]
 pub struct JoinRoomByIdOrAliasReqBody {
-    /// The signature of a `m.third_party_invite` token to prove that this user owns a third
-    /// party identity which has been invited to the room.
+    /// The signature of a `m.third_party_invite` token to prove that this user
+    /// owns a third party identity which has been invited to the room.
     pub third_party_signed: Option<ThirdPartySigned>,
 
     /// Optional reason for joining the room.
@@ -462,17 +466,18 @@ pub struct MembersReqArgs {
 
     /// The point in time (pagination token) to return members for in the room.
     ///
-    /// This token can be obtained from a prev_batch token returned for each room by the sync
-    /// API.
+    /// This token can be obtained from a prev_batch token returned for each
+    /// room by the sync API.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub at: Option<String>,
 
     /// The kind of memberships to filter for.
     ///
-    /// Defaults to no filtering if unspecified. When specified alongside not_membership, the
-    /// two parameters create an 'or' condition: either the membership is the same as
-    /// membership or is not the same as not_membership.
+    /// Defaults to no filtering if unspecified. When specified alongside
+    /// not_membership, the two parameters create an 'or' condition: either
+    /// the membership is the same as membership or is not the same as
+    /// not_membership.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub membership: Option<MembershipEventFilter>,
@@ -526,8 +531,8 @@ pub enum MembershipEventFilter {
 
 /// `GET /_matrix/client/*/rooms/{room_id}/joined_members`
 ///
-/// Get a map of user IDs to member info objects for members of the room. Primarily for use in
-/// Application Services.
+/// Get a map of user IDs to member info objects for members of the room.
+/// Primarily for use in Application Services.
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidjoined_members

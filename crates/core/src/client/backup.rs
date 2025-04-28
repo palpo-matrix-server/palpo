@@ -4,8 +4,10 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::{Base64, RawJson, RawJsonValue};
-use crate::{OwnedDeviceKeyId, OwnedRoomId, OwnedSessionId, OwnedUserId};
+use crate::{
+    OwnedDeviceKeyId, OwnedRoomId, OwnedSessionId, OwnedUserId,
+    serde::{Base64, RawJson, RawJsonValue},
+};
 
 /// A wrapper around a mapping of session IDs to key data.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
@@ -28,7 +30,8 @@ pub enum BackupAlgorithm {
     /// `m.megolm_backup.v1.curve25519-aes-sha2` backup algorithm.
     #[serde(rename = "m.megolm_backup.v1.curve25519-aes-sha2")]
     MegolmBackupV1Curve25519AesSha2 {
-        /// The curve25519 public key used to encrypt the backups, encoded in unpadded base64.
+        /// The curve25519 public key used to encrypt the backups, encoded in
+        /// unpadded base64.
         #[salvo(schema(value_type = String))]
         public_key: Base64,
 
@@ -39,17 +42,19 @@ pub enum BackupAlgorithm {
 
 /// Information about the backup key.
 ///
-/// To create an instance of this type, first create a [`KeyBackupDataInit`] and convert it via
-/// `KeyBackupData::from` / `.into()`.
+/// To create an instance of this type, first create a [`KeyBackupDataInit`] and
+/// convert it via `KeyBackupData::from` / `.into()`.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct KeyBackupData {
     /// The index of the first message in the session that the key can decrypt.
     pub first_message_index: u64,
 
-    /// The number of times this key has been forwarded via key-sharing between devices.
+    /// The number of times this key has been forwarded via key-sharing between
+    /// devices.
     pub forwarded_count: u64,
 
-    /// Whether the device backing up the key verified the device that the key is from.
+    /// Whether the device backing up the key verified the device that the key
+    /// is from.
     pub is_verified: bool,
 
     /// Encrypted data about the session.
@@ -65,7 +70,8 @@ pub struct EncryptedSessionData {
     #[salvo(schema(value_type = String))]
     pub ephemeral: Base64,
 
-    /// Ciphertext, encrypted using AES-CBC-256 with PKCS#7 padding, encoded in base64.
+    /// Ciphertext, encrypted using AES-CBC-256 with PKCS#7 padding, encoded in
+    /// base64.
     #[salvo(schema(value_type = String))]
     pub ciphertext: Base64,
 
@@ -98,8 +104,8 @@ pub struct EncryptedSessionData {
 pub struct ModifyKeysResBody {
     /// An opaque string representing stored keys in the backup.
     ///
-    /// Clients can compare it with the etag value they received in the request of their last
-    /// key storage request.
+    /// Clients can compare it with the etag value they received in the request
+    /// of their last key storage request.
     pub etag: String,
 
     /// The number of keys stored in the backup.
@@ -306,15 +312,16 @@ pub struct VersionResBody {
 
     /// An opaque string representing stored keys in the backup.
     ///
-    /// Clients can compare it with the etag value they received in the request of their last
-    /// key storage request.
+    /// Clients can compare it with the etag value they received in the request
+    /// of their last key storage request.
     pub etag: String,
 
     /// The backup version.
     pub version: String,
 }
 impl VersionResBody {
-    /// Creates a new `Response` with the given algorithm, key count, etag and version.
+    /// Creates a new `Response` with the given algorithm, key count, etag and
+    /// version.
     pub fn new(algorithm: RawJson<BackupAlgorithm>, count: u64, etag: String, version: String) -> Self {
         Self {
             algorithm,
@@ -362,7 +369,9 @@ pub(crate) struct AlgorithmWithData {
 //             version,
 //         } = ResponseBodyRepr::deserialize(deserializer)?;
 
-//         let algorithm = RawJson::from_json(to_raw_json_value(&AlgorithmWithData { algorithm, auth_data }).unwrap());
+//         let algorithm =
+// RawJson::from_json(to_raw_json_value(&AlgorithmWithData { algorithm,
+// auth_data }).unwrap());
 
 //         Ok(Self {
 //             algorithm,
@@ -384,7 +393,8 @@ pub(crate) struct AlgorithmWithData {
 //             etag,
 //             version,
 //         } = self;
-//         let AlgorithmWithData { algorithm, auth_data } = algorithm.deserialize_as().map_err(ser::Error::custom)?;
+//         let AlgorithmWithData { algorithm, auth_data } =
+// algorithm.deserialize_as().map_err(ser::Error::custom)?;
 
 //         let repr = RefResponseBodyRepr {
 //             algorithm: &algorithm,

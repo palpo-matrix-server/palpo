@@ -7,8 +7,10 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
-use crate::events::{EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType};
-use crate::serde::RawJsonValue;
+use crate::{
+    events::{EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType},
+    serde::RawJsonValue,
+};
 
 /// The content of an `m.policy.rule.server` event.
 ///
@@ -20,7 +22,8 @@ pub struct PolicyRuleServerEventContent(pub PolicyRuleEventContent);
 
 /// The possibly redacted form of [`PolicyRuleServerEventContent`].
 ///
-/// This type is used when it's not obvious whether the content is redacted or not.
+/// This type is used when it's not obvious whether the content is redacted or
+/// not.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PossiblyRedactedPolicyRuleServerEventContent(pub PossiblyRedactedPolicyRuleEventContent);

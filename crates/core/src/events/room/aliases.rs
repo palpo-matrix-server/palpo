@@ -4,9 +4,11 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{EventContent, EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType};
-use crate::serde::RawJsonValue;
-use crate::{OwnedRoomAliasId, OwnedServerName, RoomVersionId};
+use crate::{
+    OwnedRoomAliasId, OwnedServerName, RoomVersionId,
+    events::{EventContent, EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType},
+    serde::RawJsonValue,
+};
 
 /// The content of an `m.room.aliases` event.
 ///
@@ -47,8 +49,8 @@ impl RedactContent for RoomAliasesEventContent {
 pub struct RedactedRoomAliasesEventContent {
     /// A list of room aliases.
     ///
-    /// According to the Matrix spec version 1 redaction rules allowed this field to be
-    /// kept after redaction, this was changed in version 6.
+    /// According to the Matrix spec version 1 redaction rules allowed this
+    /// field to be kept after redaction, this was changed in version 6.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub aliases: Option<Vec<OwnedRoomAliasId>>,
 }

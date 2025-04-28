@@ -8,11 +8,10 @@ mod state;
 pub mod summary;
 mod tag;
 mod thread;
-pub(crate) use membership::knock_room;
-
 use std::cmp::max;
 use std::collections::BTreeMap;
 
+pub(crate) use membership::knock_room;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
@@ -135,7 +134,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     let room_id = &args.room_id;
 
     if !crate::room::state::user_can_see_state_events(sender_id, room_id)? {
-        return Err(MatrixError::forbidden("No room preview available.").into());
+        return Err(MatrixError::forbidden(None, "No room preview available.").into());
     }
 
     let limit = LIMIT_MAX;
@@ -246,7 +245,7 @@ async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut
     let authed = depot.authed_info()?;
 
     if !crate::room::is_joined(authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     json_ok(AliasesResBody {
@@ -499,7 +498,7 @@ pub(super) async fn create_room(
     crate::room::ensure_room(&room_id, &crate::default_room_version())?;
 
     if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
-        return Err(MatrixError::forbidden("Room creation has been disabled.").into());
+        return Err(MatrixError::forbidden(None, "Room creation has been disabled.").into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {

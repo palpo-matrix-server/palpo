@@ -45,7 +45,8 @@ where
     }
 }
 
-/// Take either a floating point number or a string and deserialize to an floating-point number.
+/// Take either a floating point number or a string and deserialize to an
+/// floating-point number.
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "deserialize_as_f64_or_string")]`
@@ -95,7 +96,8 @@ where
     Ok(Option::<F64OrStringWrapper>::deserialize(deserializer)?.map(|w| w.0))
 }
 
-/// Take either an integer number or a string and deserialize to an integer number.
+/// Take either an integer number or a string and deserialize to an integer
+/// number.
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "deserialize_v1_powerlevel")]`
@@ -165,8 +167,8 @@ where
     de.deserialize_any(IntOrStringVisitor)
 }
 
-/// Take a BTreeMap with values of either an integer number or a string and deserialize
-/// those to integer numbers.
+/// Take a BTreeMap with values of either an integer number or a string and
+/// deserialize those to integer numbers.
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "btreemap_deserialize_v1_powerlevel_values")]`
@@ -221,8 +223,8 @@ where
     de.deserialize_map(IntMapVisitor::new())
 }
 
-/// Take a Map with values of either an integer number or a string and deserialize
-/// those to integer numbers in a Vec of sorted pairs.
+/// Take a Map with values of either an integer number or a string and
+/// deserialize those to integer numbers in a Vec of sorted pairs.
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "vec_deserialize_v1_powerlevel_values")]`
@@ -283,7 +285,8 @@ where
     de.deserialize_map(IntMapVisitor::new())
 }
 
-/// Take a Map with integer values and deserialize those to a Vec of sorted pairs
+/// Take a Map with integer values and deserialize those to a Vec of sorted
+/// pairs
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "vec_deserialize_int_powerlevel_values")]`

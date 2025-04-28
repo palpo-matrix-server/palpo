@@ -1,8 +1,10 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedMxcUri;
-use crate::events::room::{EncryptedFile, ImageInfo, MediaSource};
+use crate::{
+    OwnedMxcUri,
+    events::room::{EncryptedFile, ImageInfo, MediaSource},
+};
 
 /// The payload for an image message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -10,8 +12,9 @@ use crate::events::room::{EncryptedFile, ImageInfo, MediaSource};
 pub struct ImageMessageEventContent {
     /// A textual representation of the image.
     ///
-    /// Could be the alt text of the image, the filename of the image, or some kind of content
-    /// description for accessibility e.g. "image attachment".
+    /// Could be the alt text of the image, the filename of the image, or some
+    /// kind of content description for accessibility e.g. "image
+    /// attachment".
     pub body: String,
 
     /// The source of the image.
@@ -33,22 +36,24 @@ impl ImageMessageEventContent {
         }
     }
 
-    /// Creates a new non-encrypted `ImageMessageEventContent` with the given body and url.
+    /// Creates a new non-encrypted `ImageMessageEventContent` with the given
+    /// body and url.
     pub fn plain(body: String, url: OwnedMxcUri) -> Self {
         Self::new(body, MediaSource::Plain(url))
     }
 
-    /// Creates a new encrypted `ImageMessageEventContent` with the given body and encrypted
-    /// file.
+    /// Creates a new encrypted `ImageMessageEventContent` with the given body
+    /// and encrypted file.
     pub fn encrypted(body: String, file: EncryptedFile) -> Self {
         Self::new(body, MediaSource::Encrypted(Box::new(file)))
     }
 
-    /// Creates a new `ImageMessageEventContent` from `self` with the `info` field set to the given
-    /// value.
+    /// Creates a new `ImageMessageEventContent` from `self` with the `info`
+    /// field set to the given value.
     ///
-    /// Since the field is public, you can also assign to it directly. This method merely acts
-    /// as a shorthand for that, because it is very common to set this field.
+    /// Since the field is public, you can also assign to it directly. This
+    /// method merely acts as a shorthand for that, because it is very
+    /// common to set this field.
     pub fn info(self, info: impl Into<Option<Box<ImageInfo>>>) -> Self {
         Self {
             info: info.into(),

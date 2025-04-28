@@ -14,7 +14,8 @@ use crate::events::{EmptyStateKey, EventEncryptionAlgorithm};
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room.encryption", kind = State, state_key_type = EmptyStateKey)]
 pub struct RoomEncryptionEventContent {
-    /// The encryption algorithm to be used to encrypt messages sent in this room.
+    /// The encryption algorithm to be used to encrypt messages sent in this
+    /// room.
     ///
     /// Must be `m.megolm.v1.aes-sha2`.
     pub algorithm: EventEncryptionAlgorithm,
@@ -42,11 +43,11 @@ impl RoomEncryptionEventContent {
         }
     }
 
-    /// Creates a new `RoomEncryptionEventContent` with the mandatory algorithm and the recommended
-    /// defaults.
+    /// Creates a new `RoomEncryptionEventContent` with the mandatory algorithm
+    /// and the recommended defaults.
     ///
-    /// Note that changing the values of the fields is not a breaking change and you shouldn't rely
-    /// on those specific values.
+    /// Note that changing the values of the fields is not a breaking change and
+    /// you shouldn't rely on those specific values.
     pub fn with_recommended_defaults() -> Self {
         // Defaults defined at <https://spec.matrix.org/latest/client-server-api/#mroomencryption>
         Self {

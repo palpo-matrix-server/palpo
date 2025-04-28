@@ -89,8 +89,6 @@ mod types {
 }
 
 pub mod configuration {
-    use crate::full_text_search::RegConfig;
-
     use diesel::backend::Backend;
     use diesel::deserialize::{self, FromSql, FromSqlRow};
     use diesel::expression::{ValidGrouping, is_aggregate};
@@ -99,6 +97,8 @@ pub mod configuration {
     use diesel::serialize::{self, Output, ToSql};
     use diesel::sql_types::Integer;
     use diesel::{AppearsOnTable, Expression, QueryResult, SelectableExpression};
+
+    use crate::full_text_search::RegConfig;
 
     #[derive(Debug, PartialEq, Eq, diesel::expression::AsExpression, FromSqlRow)]
     #[diesel(sql_type = RegConfig)]
@@ -175,9 +175,10 @@ pub mod configuration {
 
 #[allow(deprecated)]
 mod functions {
-    use crate::full_text_search::types::*;
     use diesel::define_sql_function;
     use diesel::sql_types::*;
+
+    use crate::full_text_search::types::*;
 
     define_sql_function!(fn length(x: TsVector) -> Integer);
     define_sql_function!(fn numnode(x: TsQuery) -> Integer);
@@ -227,12 +228,14 @@ mod functions {
 }
 
 mod dsl {
-    use crate::full_text_search::types::*;
     use diesel::expression::{AsExpression, Expression};
 
+    use crate::full_text_search::types::*;
+
     mod predicates {
-        use crate::full_text_search::types::*;
         use diesel::pg::Pg;
+
+        use crate::full_text_search::types::*;
 
         diesel::infix_operator!(Matches, " @@ ", backend: Pg);
         diesel::infix_operator!(Concat, " || ", TsVector, backend: Pg);

@@ -2,17 +2,23 @@
 //!
 //! [`m.room.join_rules`]: https://spec.matrix.org/latest/client-server-api/#mroomjoin_rules
 
-use std::borrow::{Borrow, Cow};
-use std::collections::BTreeMap;
+use std::{
+    borrow::{Borrow, Cow},
+    collections::BTreeMap,
+};
 
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
-use serde::de::{Deserializer, Error};
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize, Serialize,
+    de::{Deserializer, Error},
+};
 
-use crate::events::EmptyStateKey;
-use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
-use crate::{OwnedRoomId, PrivOwnedStr, RoomId};
+use crate::{
+    OwnedRoomId, PrivOwnedStr, RoomId,
+    events::EmptyStateKey,
+    serde::{JsonValue, RawJsonValue, from_raw_json_value},
+};
 
 /// The content of an `m.room.join_rules` event.
 ///
@@ -32,16 +38,16 @@ impl RoomJoinRulesEventContent {
         Self { join_rule }
     }
 
-    /// Creates a new `RoomJoinRulesEventContent` with the restricted rule and the given set of
-    /// allow rules.
+    /// Creates a new `RoomJoinRulesEventContent` with the restricted rule and
+    /// the given set of allow rules.
     pub fn restricted(allow: Vec<AllowRule>) -> Self {
         Self {
             join_rule: JoinRule::Restricted(Restricted::new(allow)),
         }
     }
 
-    /// Creates a new `RoomJoinRulesEventContent` with the knock restricted rule and the given set
-    /// of allow rules.
+    /// Creates a new `RoomJoinRulesEventContent` with the knock restricted rule
+    /// and the given set of allow rules.
     pub fn knock_restricted(allow: Vec<AllowRule>) -> Self {
         Self {
             join_rule: JoinRule::KnockRestricted(Restricted::new(allow)),
@@ -81,16 +87,18 @@ impl SyncRoomJoinRulesEvent {
 
 /// The rule used for users wishing to join this room.
 ///
-/// This type can hold an arbitrary string. To check for values that are not available as a
-/// documented variant here, use its string representation, obtained through `.as_str()`.
+/// This type can hold an arbitrary string. To check for values that are not
+/// available as a documented variant here, use its string representation,
+/// obtained through `.as_str()`.
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "join_rule", rename_all = "snake_case")]
 pub enum JoinRule {
-    /// A user who wishes to join the room must first receive an invite to the room from someone
-    /// already inside of the room.
+    /// A user who wishes to join the room must first receive an invite to the
+    /// room from someone already inside of the room.
     Invite,
 
-    /// Users can join the room if they are invited, or they can request an invite to the room.
+    /// Users can join the room if they are invited, or they can request an
+    /// invite to the room.
     ///
     /// They can be allowed (invited) or denied (kicked/banned) access.
     Knock,
@@ -98,12 +106,13 @@ pub enum JoinRule {
     /// Reserved but not yet implemented by the Matrix specification.
     Private,
 
-    /// Users can join the room if they are invited, or if they meet any of the conditions
-    /// described in a set of [`AllowRule`]s.
+    /// Users can join the room if they are invited, or if they meet any of the
+    /// conditions described in a set of [`AllowRule`]s.
     Restricted(Restricted),
 
-    /// Users can join the room if they are invited, or if they meet any of the conditions
-    /// described in a set of [`AllowRule`]s, or they can request an invite to the room.
+    /// Users can join the room if they are invited, or if they meet any of the
+    /// conditions described in a set of [`AllowRule`]s, or they can request
+    /// an invite to the room.
     KnockRestricted(Restricted),
 
     /// Anyone can join the room without any prior action.
@@ -196,7 +205,8 @@ impl Restricted {
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 pub enum AllowRule {
-    /// Joining is allowed if a user is already a member of the room with the id `room_id`.
+    /// Joining is allowed if a user is already a member of the room with the id
+    /// `room_id`.
     RoomMembership(RoomMembership),
 
     #[doc(hidden)]
@@ -204,17 +214,20 @@ pub enum AllowRule {
 }
 
 impl AllowRule {
-    /// Constructs an `AllowRule` with membership of the room with the given id as its predicate.
+    /// Constructs an `AllowRule` with membership of the room with the given id
+    /// as its predicate.
     pub fn room_membership(room_id: OwnedRoomId) -> Self {
         Self::RoomMembership(RoomMembership::new(room_id))
     }
 }
 
-/// Allow rule which grants permission to join based on the membership of another room.
+/// Allow rule which grants permission to join based on the membership of
+/// another room.
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename = "m.room_membership")]
 pub struct RoomMembership {
-    /// The id of the room which being a member of grants permission to join another room.
+    /// The id of the room which being a member of grants permission to join
+    /// another room.
     pub room_id: OwnedRoomId,
 }
 
@@ -267,13 +280,14 @@ impl<'de> Deserialize<'de> for AllowRule {
 //     use crate::owned_room_id;
 //     use assert_matches2::assert_matches;
 
-//     use super::{AllowRule, JoinRule, OriginalSyncRoomJoinRulesEvent, RoomJoinRulesEventContent};
+//     use super::{AllowRule, JoinRule, OriginalSyncRoomJoinRulesEvent,
+// RoomJoinRulesEventContent};
 
 //     #[test]
 //     fn deserialize() {
 //         let json = r#"{"join_rule": "public"}"#;
-//         let event: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
-//         assert_matches!(
+//         let event: RoomJoinRulesEventContent =
+// serde_json::from_str(json).unwrap();         assert_matches!(
 //             event,
 //             RoomJoinRulesEventContent {
 //                 join_rule: JoinRule::Public
@@ -296,15 +310,15 @@ impl<'de> Deserialize<'de> for AllowRule {
 //                 }
 //             ]
 //         }"#;
-//         let event: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
-//         match event.join_rule {
+//         let event: RoomJoinRulesEventContent =
+// serde_json::from_str(json).unwrap();         match event.join_rule {
 //             JoinRule::Restricted(restricted) => assert_eq!(
 //                 restricted.allow,
 //                 &[
-//                     AllowRule::room_membership(owned_room_id!("!mods:example.org")),
-//                     AllowRule::room_membership(owned_room_id!("!users:example.org"))
-//                 ]
-//             ),
+//
+// AllowRule::room_membership(owned_room_id!("!mods:example.org")),
+// AllowRule::room_membership(owned_room_id!("!users:example.org"))
+// ]             ),
 //             rule => panic!("Deserialized to wrong variant: {rule:?}"),
 //         }
 //     }
@@ -317,8 +331,8 @@ impl<'de> Deserialize<'de> for AllowRule {
 //             "content": {
 //                 "join_rule": "restricted",
 //                 "allow": [
-//                     { "type": "m.room_membership","room_id": "!KqeUnzmXPIhHRaWMTs:mccarty.io" }
-//                 ]
+//                     { "type": "m.room_membership","room_id":
+// "!KqeUnzmXPIhHRaWMTs:mccarty.io" }                 ]
 //             },
 //             "state_key": "",
 //             "origin_server_ts":1630508835342,
@@ -328,8 +342,8 @@ impl<'de> Deserialize<'de> for AllowRule {
 //             "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
 //         }"#;
 
-//         assert_matches!(serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json), Ok(_));
-//     }
+//         assert_matches!
+// (serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json), Ok(_));     }
 
 //     #[test]
 //     fn roundtrip_custom_allow_rule() {

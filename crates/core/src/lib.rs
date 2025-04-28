@@ -9,6 +9,8 @@ pub mod directory;
 pub mod encryption;
 pub mod events;
 pub mod federation;
+#[cfg(feature = "html")]
+pub mod html;
 pub mod identifiers;
 mod percent_encode;
 pub mod power_levels;
@@ -32,9 +34,9 @@ pub mod media;
 pub mod state;
 pub mod user;
 
-pub use crate::state::RoomVersion;
-
 pub use palpo_macros as macros;
+
+pub use crate::state::RoomVersion;
 
 // https://github.com/bkchr/proc-macro-crate/issues/10
 extern crate self as palpo_core;
@@ -45,8 +47,10 @@ use ::serde::{Deserialize, Serialize};
 use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 
-pub use self::identifiers::*;
-pub use self::time::{UnixMillis, UnixSeconds};
+pub use self::{
+    identifiers::*,
+    time::{UnixMillis, UnixSeconds},
+};
 pub type Seqnum = i64;
 pub type MatrixResult<T> = Result<T, MatrixError>;
 
@@ -68,17 +72,18 @@ impl ToSchema for PrivOwnedStr {
     }
 }
 
-/// Core types used to define the requests and responses for each endpoint in the various
-/// [Matrix API specifications][apis].
+/// Core types used to define the requests and responses for each endpoint in
+/// the various [Matrix API specifications][apis].
 ///
 /// [apis]: https://spec.matrix.org/latest/#matrix-apis
 
-/// An enum to control whether an access token should be added to outgoing requests
+/// An enum to control whether an access token should be added to outgoing
+/// requests
 #[derive(Clone, Copy, Debug)]
 #[allow(clippy::exhaustive_enums)]
 pub enum SendAccessToken<'a> {
-    /// Add the given access token to the request only if the `METADATA` on the request requires
-    /// it.
+    /// Add the given access token to the request only if the `METADATA` on the
+    /// request requires it.
     IfRequired(&'a str),
 
     /// Always add the access token.
@@ -86,7 +91,8 @@ pub enum SendAccessToken<'a> {
 
     /// Don't add an access token.
     ///
-    /// This will lead to an error if the request endpoint requires authentication
+    /// This will lead to an error if the request endpoint requires
+    /// authentication
     None,
 }
 
@@ -113,14 +119,14 @@ pub enum AuthScheme {
     /// No authentication is performed.
     None,
 
-    /// Authentication is performed by including an access token in the `Authentication` http
-    /// header, or an `access_token` query parameter.
+    /// Authentication is performed by including an access token in the
+    /// `Authentication` http header, or an `access_token` query parameter.
     ///
     /// It is recommended to use the header over the query parameter.
     AccessToken,
 
-    /// Authentication is performed by including X-Matrix signatures in the request headers,
-    /// as defined in the federation API.
+    /// Authentication is performed by including X-Matrix signatures in the
+    /// request headers, as defined in the federation API.
     ServerSignatures,
 }
 

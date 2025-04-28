@@ -11,12 +11,13 @@ use reqwest::Url;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::events::AnyTimelineEvent;
-use crate::events::receipt::ReceiptContent;
-use crate::presence::PresenceContent;
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::{JsonValue, RawJson, RawJsonValue, from_raw_json_value};
-use crate::{OwnedRoomId, OwnedUserId};
+use crate::{
+    OwnedRoomId, OwnedUserId,
+    events::{AnyTimelineEvent, receipt::ReceiptContent},
+    presence::PresenceContent,
+    sending::{SendRequest, SendResult},
+    serde::{JsonValue, RawJson, RawJsonValue, from_raw_json_value},
+};
 
 /// `PUT /_matrix/app/*/transactions/{txn_id}`
 ///
@@ -44,7 +45,8 @@ pub fn push_events_request(origin: &str, txn_id: &str, body: PushEventsReqBody) 
 pub struct PushEventsReqBody {
     /// The transaction ID for this set of events.
     ///
-    /// HomeServers generate these IDs and they are used to ensure idempotency of results.
+    /// HomeServers generate these IDs and they are used to ensure idempotency
+    /// of results.
     // #[salvo(parameter(parameter_in = Path))]
     // pub txn_id: OwnedTransactionId,
 
@@ -65,7 +67,8 @@ pub struct PushEventsReqBody {
     //     skip_serializing_if = "BTreeMap::is_empty",
     //     rename = "org.matrix.msc3202.device_one_time_keys_count"
     // )]
-    // pub device_one_time_keys_count: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<DeviceKeyAlgorithm, u64>>>,
+    // pub device_one_time_keys_count: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<DeviceKeyAlgorithm,
+    // u64>>>,
 
     // /// A list of key algorithms for which the server has an unused fallback key for the
     // /// device.
@@ -100,7 +103,8 @@ crate::json_body_modifier!(PushEventsReqBody);
 #[derive(ToSchema, Clone, Debug, Serialize)]
 #[non_exhaustive]
 pub enum Edu {
-    /// An EDU representing presence updates for users of the sending homeserver.
+    /// An EDU representing presence updates for users of the sending
+    /// homeserver.
     Presence(PresenceContent),
 
     /// An EDU representing receipt updates for users of the sending homeserver.

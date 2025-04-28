@@ -52,12 +52,14 @@ impl AnyPushRule {
         self.as_ref().triggers_highlight()
     }
 
-    /// Whether an event that matches the push rule should trigger a notification.
+    /// Whether an event that matches the push rule should trigger a
+    /// notification.
     pub fn triggers_notification(&self) -> bool {
         self.as_ref().triggers_notification()
     }
 
-    /// The sound that should be played when an event matches the push rule, if any.
+    /// The sound that should be played when an event matches the push rule, if
+    /// any.
     pub fn triggers_sound(&self) -> Option<&str> {
         self.as_ref().triggers_sound()
     }
@@ -200,12 +202,14 @@ impl<'a> AnyPushRuleRef<'a> {
         self.actions().iter().any(|a| a.is_highlight())
     }
 
-    /// Whether an event that matches the push rule should trigger a notification.
+    /// Whether an event that matches the push rule should trigger a
+    /// notification.
     pub fn triggers_notification(self) -> bool {
         self.actions().iter().any(|a| a.should_notify())
     }
 
-    /// The sound that should be played when an event matches the push rule, if any.
+    /// The sound that should be played when an event matches the push rule, if
+    /// any.
     pub fn triggers_sound(self) -> Option<&'a str> {
         self.actions().iter().find_map(|a| a.sound())
     }

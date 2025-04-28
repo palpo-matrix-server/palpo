@@ -1,13 +1,16 @@
 //! (De)serialization helpers for other Palpo  use   crate::s.
 //!
-//! Part of that is a fork of [serde_urlencoded], with support for sequences in `Deserialize` /
-//! `Serialize` structs (e.g. `Vec<Something>`) that are (de)serialized as `field=val1&field=val2`.
+//! Part of that is a fork of [serde_urlencoded], with support for sequences in
+//! `Deserialize` / `Serialize` structs (e.g. `Vec<Something>`) that are
+//! (de)serialized as `field=val1&field=val2`.
 //!
 //! [serde_urlencoded]: https://github.com/nox/serde_urlencoded
 
 use serde::{Deserialize, Deserializer, de};
-pub use serde_json::json;
-pub use serde_json::value::{RawValue as RawJsonValue, Value as JsonValue, to_raw_value as to_raw_json_value};
+pub use serde_json::{
+    json,
+    value::{RawValue as RawJsonValue, Value as JsonValue, to_raw_value as to_raw_json_value},
+};
 
 pub mod base64;
 mod buf;

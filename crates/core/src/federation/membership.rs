@@ -5,11 +5,13 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::UnixMillis;
-use crate::events::{AnyStrippedStateEvent, StateEventType, room::member::RoomMemberEventContent};
-use crate::identifiers::*;
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::{RawJson, RawJsonValue};
+use crate::{
+    UnixMillis,
+    events::{AnyStrippedStateEvent, StateEventType, room::member::RoomMemberEventContent},
+    identifiers::*,
+    sending::{SendRequest, SendResult},
+    serde::{RawJson, RawJsonValue},
+};
 
 pub fn invite_user_request_v2(
     origin: &str,
@@ -51,11 +53,12 @@ pub struct InviteUserReqBodyV2 {
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub event: Box<RawJsonValue>,
 
-    /// An optional list of simplified events to help the receiver of the invite identify the room.
+    /// An optional list of simplified events to help the receiver of the invite
+    /// identify the room.
     pub invite_room_state: Vec<RawJson<AnyStrippedStateEvent>>,
 
-    /// An optional list of servers the invited homeserver should attempt to join or leave via,
-    /// according to [MSC4125](https://github.com/matrix-org/matrix-spec-proposals/pull/4125).
+    /// An optional list of servers the invited homeserver should attempt to
+    /// join or leave via, according to [MSC4125](https://github.com/matrix-org/matrix-spec-proposals/pull/4125).
     ///
     /// If present, it must not be empty.
     #[serde(skip_serializing_if = "Option::is_none", rename = "org.matrix.msc4125.via")]
@@ -65,7 +68,8 @@ crate::json_body_modifier!(InviteUserReqBodyV2);
 
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct InviteUserReqBodyV1 {
-    /// The matrix ID of the user who sent the original `m.room.third_party_invite`.
+    /// The matrix ID of the user who sent the original
+    /// `m.room.third_party_invite`.
     pub sender: OwnedUserId,
 
     /// The name of the inviting homeserver.
@@ -143,17 +147,18 @@ pub struct RoomStateV2 {
     /// The full set of authorization events that make up the state of the room,
     /// and their authorization events, recursively.
     ///
-    /// If the request had `omit_members` set to `true`, then any events that are returned in
-    /// `state` may be omitted from `auth_chain`, whether or not membership events are omitted
-    /// from `state`.
+    /// If the request had `omit_members` set to `true`, then any events that
+    /// are returned in `state` may be omitted from `auth_chain`, whether or
+    /// not membership events are omitted from `state`.
     #[salvo(schema(value_type = Vec<Object>))]
     pub auth_chain: Vec<Box<RawJsonValue>>,
 
     /// The room state.
     ///
-    /// If the request had `omit_members` set to `true`, events of type `m.room.member` may be
-    /// omitted from the response to reduce the size of the response. If this is done,
-    /// `members_omitted` must be set to `true`.
+    /// If the request had `omit_members` set to `true`, events of type
+    /// `m.room.member` may be omitted from the response to reduce the size
+    /// of the response. If this is done, `members_omitted` must be set to
+    /// `true`.
     #[salvo(schema(value_type = Object))]
     pub state: Vec<Box<RawJsonValue>>,
 
@@ -165,7 +170,8 @@ pub struct RoomStateV2 {
     #[salvo(schema(value_type = Object))]
     pub event: Option<Box<RawJsonValue>>,
 
-    /// A list of the servers active in the room (ie, those with joined members) before the join.
+    /// A list of the servers active in the room (ie, those with joined members)
+    /// before the join.
     ///
     /// Required if `members_omitted` is set to `true`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -175,8 +181,8 @@ pub struct RoomStateV2 {
 impl RoomStateV2 {
     /// Creates an empty `RoomState` with the given `origin`.
     ///
-    /// With the `unstable-unspecified` feature, this method doesn't take any parameters.
-    /// See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
+    /// With the `unstable-unspecified` feature, this method doesn't take any
+    /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
         Self {
             auth_chain: Vec::new(),
@@ -211,8 +217,8 @@ pub struct RoomStateV1 {
 impl RoomStateV1 {
     /// Creates an empty `RoomState` with the given `origin`.
     ///
-    /// With the `unstable-unspecified` feature, this method doesn't take any parameters.
-    /// See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
+    /// With the `unstable-unspecified` feature, this method doesn't take any
+    /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
         Self {
             auth_chain: Vec::new(),
@@ -225,9 +231,9 @@ impl RoomStateV1 {
 /// Information included alongside an event that is not signed.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct UnsignedEventContentV1 {
-    /// An optional list of simplified events to help the receiver of the invite identify the room.
-    /// The recommended events to include are the join rules, canonical alias, avatar, and name of
-    /// the room.
+    /// An optional list of simplified events to help the receiver of the invite
+    /// identify the room. The recommended events to include are the join
+    /// rules, canonical alias, avatar, and name of the room.
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     #[salvo(schema(value_type = Vec<Object>))]
     pub invite_room_state: Vec<RawJson<AnyStrippedStateEvent>>,
@@ -282,8 +288,8 @@ pub struct MakeLeaveResBody {
 
     /// An unsigned template event.
     ///
-    /// Note that events have a different format depending on the room version - check the room
-    /// version specification for precise event formats.
+    /// Note that events have a different format depending on the room version -
+    /// check the room version specification for precise event formats.
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub event: Box<RawJsonValue>,
 }
@@ -372,15 +378,17 @@ pub struct SendJoinArgs {
 
     /// Indicates whether the calling server can accept a reduced response.
     ///
-    /// If `true`, membership events are omitted from `state` and redundant events are omitted from
-    /// `auth_chain` in the response.
+    /// If `true`, membership events are omitted from `state` and redundant
+    /// events are omitted from `auth_chain` in the response.
     ///
-    /// If the room to be joined has no `m.room.name` nor `m.room.canonical_alias` events in its
-    /// current state, the resident server should determine the room members who would be
-    /// included in the `m.heroes` property of the room summary as defined in the [Client-Server
-    /// `/sync` response]. The resident server should include these members' membership events in
-    /// the response `state` field, and include the auth chains for these membership events in
-    /// the response `auth_chain` field.
+    /// If the room to be joined has no `m.room.name` nor
+    /// `m.room.canonical_alias` events in its current state, the resident
+    /// server should determine the room members who would be included in
+    /// the `m.heroes` property of the room summary as defined in the
+    /// [Client-Server `/sync` response]. The resident server should include
+    /// these members' membership events in the response `state` field, and
+    /// include the auth chains for these membership events in the response
+    /// `auth_chain` field.
     ///
     /// [Client-Server `/sync` response]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3sync
     #[salvo(parameter(parameter_in = Query))]

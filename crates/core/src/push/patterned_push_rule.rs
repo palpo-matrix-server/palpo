@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -20,18 +21,18 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::condition;
-use crate::push::{Action, FlattenedJson, MissingPatternError, PushConditionRoomCtx, PushRule};
+use crate::push::{Action, FlattenedJson, MissingPatternError, PushConditionRoomCtx, PushRule, condition};
 
 /// Like `SimplePushRule`, but with an additional `pattern` field.
 ///
 /// Only applicable to content rules.
 ///
-/// To create an instance of this type, first create a `PatternedPushRuleInit` and convert it via
-/// `PatternedPushRule::from` / `.into()`.
+/// To create an instance of this type, first create a `PatternedPushRuleInit`
+/// and convert it via `PatternedPushRule::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PatternedPushRule {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -70,12 +71,14 @@ impl PatternedPushRule {
 
 /// Initial set of fields of `PatterenedPushRule`.
 ///
-/// This struct will not be updated even if additional fields are added to `PatterenedPushRule` in a
-/// new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `PatterenedPushRule` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PatternedPushRuleInit {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -142,8 +145,8 @@ pub struct NewPatternedPushRule {
     /// The glob-style pattern to match against.
     pub pattern: String,
 
-    /// Actions to determine if and how a notification is delivered for events matching this
-    /// rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 }
 

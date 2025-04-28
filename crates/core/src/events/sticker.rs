@@ -6,8 +6,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedMxcUri;
-use crate::events::room::ImageInfo;
+use crate::{OwnedMxcUri, events::room::ImageInfo};
 
 /// The content of an `m.sticker` event.
 ///
@@ -17,11 +16,12 @@ use crate::events::room::ImageInfo;
 pub struct StickerEventContent {
     /// A textual representation or associated description of the sticker image.
     ///
-    /// This could be the alt text of the original image, or a message to accompany and further
-    /// describe the sticker.
+    /// This could be the alt text of the original image, or a message to
+    /// accompany and further describe the sticker.
     pub body: String,
 
-    /// Metadata about the image referred to in `url` including a thumbnail representation.
+    /// Metadata about the image referred to in `url` including a thumbnail
+    /// representation.
     pub info: ImageInfo,
 
     /// The URL to the sticker image.
@@ -29,7 +29,8 @@ pub struct StickerEventContent {
 }
 
 impl StickerEventContent {
-    /// Creates a new `StickerEventContent` with the given body, image info and URL.
+    /// Creates a new `StickerEventContent` with the given body, image info and
+    /// URL.
     pub fn new(body: String, info: ImageInfo, url: OwnedMxcUri) -> Self {
         Self { body, info, url }
     }

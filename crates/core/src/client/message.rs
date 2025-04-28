@@ -1,9 +1,12 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::client::filter::RoomEventFilter;
-use crate::events::{AnyStateEvent, AnyTimelineEvent, MessageLikeEventType};
-use crate::{Direction, OwnedEventId, OwnedRoomId, OwnedTransactionId, UnixMillis, serde::RawJson};
+use crate::{
+    Direction, OwnedEventId, OwnedRoomId, OwnedTransactionId, UnixMillis,
+    client::filter::RoomEventFilter,
+    events::{AnyStateEvent, AnyTimelineEvent, MessageLikeEventType},
+    serde::RawJson,
+};
 
 /// `GET /_matrix/client/*/rooms/{room_id}/messages`
 ///
@@ -30,21 +33,22 @@ pub struct MessagesReqArgs {
 
     /// The token to start returning events from.
     ///
-    /// This token can be obtained from a `prev_batch` token returned for each room by the
-    /// sync endpoint, or from a `start` or `end` token returned by a previous request to
-    /// this endpoint.
+    /// This token can be obtained from a `prev_batch` token returned for each
+    /// room by the sync endpoint, or from a `start` or `end` token returned
+    /// by a previous request to this endpoint.
     ///
-    /// If this is `None`, the server will return messages from the start or end of the
-    /// history visible to the user, depending on the value of [`dir`][Self::dir].
+    /// If this is `None`, the server will return messages from the start or end
+    /// of the history visible to the user, depending on the value of
+    /// [`dir`][Self::dir].
     #[serde(default)]
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 
     /// The token to stop returning events at.
     ///
-    /// This token can be obtained from a `prev_batch` token returned for each room by the
-    /// sync endpoint, or from a `start` or `end` token returned by a previous request to
-    /// this endpoint.
+    /// This token can be obtained from a `prev_batch` token returned for each
+    /// room by the sync endpoint, or from a `start` or `end` token returned
+    /// by a previous request to this endpoint.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[salvo(parameter(parameter_in = Query))]
     pub to: Option<String>,
@@ -146,9 +150,11 @@ pub struct CreateMessageWithTxnReqArgs {
     // pub body: RawJson<AnyMessageLikeEventContent>,
     /// Timestamp to use for the `origin_server_ts` of the event.
     ///
-    /// This is called [timestamp massaging] and can only be used by Appservices.
+    /// This is called [timestamp massaging] and can only be used by
+    /// Appservices.
     ///
-    /// Note that this does not change the position of the event in the timeline.
+    /// Note that this does not change the position of the event in the
+    /// timeline.
     ///
     /// [timestamp massaging]: https://spec.matrix.org/latest/application-service-api/#timestamp-massaging
     #[salvo(parameter(parameter_in = Query))]
@@ -172,9 +178,11 @@ pub struct CreateMessageReqArgs {
     // pub body: RawJson<AnyMessageLikeEventContent>,
     /// Timestamp to use for the `origin_server_ts` of the event.
     ///
-    /// This is called [timestamp massaging] and can only be used by Appservices.
+    /// This is called [timestamp massaging] and can only be used by
+    /// Appservices.
     ///
-    /// Note that this does not change the position of the event in the timeline.
+    /// Note that this does not change the position of the event in the
+    /// timeline.
     ///
     /// [timestamp massaging]: https://spec.matrix.org/latest/application-service-api/#timestamp-massaging
     #[salvo(parameter(parameter_in = Query))]

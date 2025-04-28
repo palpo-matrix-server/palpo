@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 
 use diesel::prelude::*;
 
+use super::LazyRwLock;
 use crate::SESSION_ID_LENGTH;
 use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
@@ -12,8 +13,6 @@ use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::{AppResult, MatrixError, data, utils};
-
-use super::LazyRwLock;
 
 static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), CanonicalJsonValue>> =
     LazyLock::new(Default::default);
@@ -113,7 +112,7 @@ pub fn try_auth(
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
             if user_id != &auth_user_id {
-                return Err(MatrixError::forbidden("User ID does not match.").into());
+                return Err(MatrixError::forbidden(None, "User ID does not match.").into());
             }
 
             let Some(user) = data::user::get_user(&auth_user_id)? else {
@@ -125,7 +124,7 @@ pub fn try_auth(
             if Some(t.token.trim()) == conf.registration_token.as_deref() {
                 uiaa_info.completed.push(AuthType::RegistrationToken);
             } else {
-                uiaa_info.auth_error = Some(AuthError::forbidden("Invalid registration token."));
+                uiaa_info.auth_error = Some(AuthError::forbidden(None, "Invalid registration token."));
                 return Ok((false, uiaa_info));
             }
         }

@@ -4,17 +4,19 @@
 
 use std::fmt;
 
-use crate::OwnedTransactionId;
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::OwnedTransactionId;
+
 /// The content of an `m.secret.send` event.
 ///
-/// An event sent by a client to share a secret with another device, in response to an
-/// `m.secret.request` event.
+/// An event sent by a client to share a secret with another device, in response
+/// to an `m.secret.request` event.
 ///
-/// It must be encrypted as an `m.room.encrypted` event, then sent as a to-device event.
+/// It must be encrypted as an `m.room.encrypted` event, then sent as a
+/// to-device event.
 #[derive(ToSchema, Clone, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "m.secret.send", kind = ToDevice)]
 pub struct ToDeviceSecretSendEventContent {
@@ -26,7 +28,8 @@ pub struct ToDeviceSecretSendEventContent {
 }
 
 impl ToDeviceSecretSendEventContent {
-    /// Creates a new `SecretSendEventContent` with the given request ID and secret.
+    /// Creates a new `SecretSendEventContent` with the given request ID and
+    /// secret.
     pub fn new(request_id: OwnedTransactionId, secret: String) -> Self {
         Self { request_id, secret }
     }

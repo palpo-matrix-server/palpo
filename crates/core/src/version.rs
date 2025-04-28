@@ -10,11 +10,11 @@ use serde::Serialize;
 use super::error::UnknownVersionError;
 use crate::RoomVersionId;
 
-// /// The complete history of this endpoint as far as Palpo knows, together with all variants on
-// /// versions stable and unstable.
+// /// The complete history of this endpoint as far as Palpo knows, together
+// with all variants on /// versions stable and unstable.
 // ///
-// /// The amount and positioning of path variables are the same over all path variants.
-// #[derive(Clone, Debug)]
+// /// The amount and positioning of path variables are the same over all path
+// variants. #[derive(Clone, Debug)]
 // #[allow(clippy::exhaustive_structs)]
 // pub struct VersionHistory {
 //     /// A list of unstable paths over this endpoint's history.
@@ -31,30 +31,32 @@ use crate::RoomVersionId;
 //     ///
 //     /// Deprecation often precedes one Matrix version before removal.
 //     ///
-//     /// This will make [`try_into_http_request`](super::OutgoingRequest::try_into_http_request)
-//     /// emit a warning, see the corresponding documentation for more information.
-//     deprecated: Option<MatrixVersion>,
+//     /// This will make
+// [`try_into_http_request`](super::OutgoingRequest::try_into_http_request)
+//     /// emit a warning, see the corresponding documentation for more
+// information.     deprecated: Option<MatrixVersion>,
 
 //     /// The Matrix version that removed this endpoint.
 //     ///
-//     /// This will make [`try_into_http_request`](super::OutgoingRequest::try_into_http_request)
-//     /// emit an error, see the corresponding documentation for more information.
-//     removed: Option<MatrixVersion>,
+//     /// This will make
+// [`try_into_http_request`](super::OutgoingRequest::try_into_http_request)
+//     /// emit an error, see the corresponding documentation for more
+// information.     removed: Option<MatrixVersion>,
 // }
 
 // impl VersionHistory {
-//     /// Constructs an instance of [`VersionHistory`], erroring on compilation if it does not pass
-//     /// invariants.
+//     /// Constructs an instance of [`VersionHistory`], erroring on compilation
+// if it does not pass     /// invariants.
 //     ///
 //     /// Specifically, this checks the following invariants:
-//     /// - Path Arguments are equal (in order, amount, and argument name) in all path strings
-//     /// - In stable_paths:
+//     /// - Path Arguments are equal (in order, amount, and argument name) in
+// all path strings     /// - In stable_paths:
 //     ///   - matrix versions are in ascending order
 //     ///   - no matrix version is referenced twice
-//     /// - deprecated's version comes after the latest version mentioned in stable_paths, except for
-//     ///   version 1.0, and only if any stable path is defined
-//     /// - removed comes after deprecated, or after the latest referenced stable_paths, like
-//     ///   deprecated
+//     /// - deprecated's version comes after the latest version mentioned in
+// stable_paths, except for     ///   version 1.0, and only if any stable path
+// is defined     /// - removed comes after deprecated, or after the latest
+// referenced stable_paths, like     ///   deprecated
 //     pub const fn new(
 //         unstable_paths: &'static [&'static str],
 //         stable_paths: &'static [(MatrixVersion, &'static str)],
@@ -67,13 +69,13 @@ use crate::RoomVersionId;
 //             iter::for_each!(path_b in slice::iter(path.as_bytes()) => {
 //                 match *path_b {
 //                     0x21..=0x7E => {},
-//                     _ => panic!("path contains invalid (non-ascii or whitespace) characters")
-//                 }
+//                     _ => panic!("path contains invalid (non-ascii or
+// whitespace) characters")                 }
 //             });
 //         }
 
-//         const fn check_path_args_equal(first: &'static str, second: &'static str) {
-//             let mut second_iter = string::split(second, "/").next();
+//         const fn check_path_args_equal(first: &'static str, second: &'static
+// str) {             let mut second_iter = string::split(second, "/").next();
 
 //             iter::for_each!(first_s in string::split(first, "/") => {
 //                 if let Some(first_arg) = string::strip_prefix(first_s, ":") {
@@ -83,7 +85,8 @@ use crate::RoomVersionId;
 //                             None => break None,
 //                         };
 
-//                         let maybe_second_arg = string::strip_prefix(second_s, ":");
+//                         let maybe_second_arg = string::strip_prefix(second_s,
+// ":");
 
 //                         second_iter = second_n_iter.next();
 
@@ -134,7 +137,8 @@ use crate::RoomVersionId;
 //             let current_version = stable_path.0;
 
 //             if let Some(prev_seen_version) = prev_seen_version {
-//                 let cmp_result = current_version.const_ord(&prev_seen_version);
+//                 let cmp_result =
+// current_version.const_ord(&prev_seen_version);
 
 //                 if cmp_result.is_eq() {
 //                     // Found a duplicate, current == previous
@@ -153,16 +157,16 @@ use crate::RoomVersionId;
 //                 let ord_result = prev_seen_version.const_ord(&deprecated);
 //                 if !deprecated.is_legacy() && ord_result.is_eq() {
 //                     // prev_seen_version == deprecated, except for 1.0.
-//                     // It is possible that an endpoint was both made stable and deprecated in the
-//                     // legacy versions.
-//                     panic!("deprecated version is equal to latest stable path version")
-//                 } else if ord_result.is_gt() {
+//                     // It is possible that an endpoint was both made stable
+// and deprecated in the                     // legacy versions.
+//                     panic!("deprecated version is equal to latest stable path
+// version")                 } else if ord_result.is_gt() {
 //                     // prev_seen_version > deprecated
-//                     panic!("deprecated version is older than latest stable path version")
-//                 }
+//                     panic!("deprecated version is older than latest stable
+// path version")                 }
 //             } else {
-//                 panic!("Defined deprecated version while no stable path exists")
-//             }
+//                 panic!("Defined deprecated version while no stable path
+// exists")             }
 //         }
 
 //         if let Some(removed) = removed {
@@ -173,11 +177,11 @@ use crate::RoomVersionId;
 //                     panic!("removed version is equal to deprecated version")
 //                 } else if ord_result.is_gt() {
 //                     // deprecated > removed
-//                     panic!("removed version is older than deprecated version")
-//                 }
+//                     panic!("removed version is older than deprecated
+// version")                 }
 //             } else {
-//                 panic!("Defined removed version while no deprecated version exists")
-//             }
+//                 panic!("Defined removed version while no deprecated version
+// exists")             }
 //         }
 
 //         VersionHistory {
@@ -188,12 +192,13 @@ use crate::RoomVersionId;
 //         }
 //     }
 
-//     // This function helps picks the right path (or an error) from a set of Matrix versions.
-//     fn select_path(&self, versions: &[MatrixVersion]) -> Result<&'static str, IntoHttpError> {
-//         match self.versioning_decision_for(versions) {
-//             VersioningDecision::Removed => Err(IntoHttpError::EndpointRemoved(
-//                 self.removed.expect("VersioningDecision::Removed implies metadata.removed"),
-//             )),
+//     // This function helps picks the right path (or an error) from a set of
+// Matrix versions.     fn select_path(&self, versions: &[MatrixVersion]) ->
+// Result<&'static str, IntoHttpError> {         match
+// self.versioning_decision_for(versions) {
+// VersioningDecision::Removed => Err(IntoHttpError::EndpointRemoved(
+//                 self.removed.expect("VersioningDecision::Removed implies
+// metadata.removed"),             )),
 //             VersioningDecision::Stable {
 //                 any_deprecated,
 //                 all_deprecated,
@@ -202,50 +207,52 @@ use crate::RoomVersionId;
 //                 if any_removed {
 //                     if all_deprecated {
 //                         warn!(
-//                             "endpoint is removed in some (and deprecated in ALL) \
-//                              of the following versions: {versions:?}",
+//                             "endpoint is removed in some (and deprecated in
+// ALL) \                              of the following versions: {versions:?}",
 //                         );
 //                     } else if any_deprecated {
 //                         warn!(
-//                             "endpoint is removed (and deprecated) in some of the \
-//                              following versions: {versions:?}",
+//                             "endpoint is removed (and deprecated) in some of
+// the \                              following versions: {versions:?}",
 //                         );
 //                     } else {
 //                         unreachable!("any_removed implies *_deprecated");
 //                     }
 //                 } else if all_deprecated {
 //                     warn!(
-//                         "endpoint is deprecated in ALL of the following versions: \
-//                          {versions:?}",
+//                         "endpoint is deprecated in ALL of the following
+// versions: \                          {versions:?}",
 //                     );
 //                 } else if any_deprecated {
 //                     warn!(
-//                         "endpoint is deprecated in some of the following versions: \
-//                          {versions:?}",
+//                         "endpoint is deprecated in some of the following
+// versions: \                          {versions:?}",
 //                     );
 //                 }
 
 //                 Ok(self
 //                     .stable_endpoint_for(versions)
-//                     .expect("VersioningDecision::Stable implies that a stable path exists"))
-//             }
-//             VersioningDecision::Unstable => self.unstable().ok_or(IntoHttpError::NoUnstablePath),
-//         }
+//                     .expect("VersioningDecision::Stable implies that a stable
+// path exists"))             }
+//             VersioningDecision::Unstable =>
+// self.unstable().ok_or(IntoHttpError::NoUnstablePath),         }
 //     }
 
 //     /// Will decide how a particular set of Matrix versions sees an endpoint.
 //     ///
-//     /// It will only return `Deprecated` or `Removed` if all versions denote it.
+//     /// It will only return `Deprecated` or `Removed` if all versions denote
+// it.     ///
+//     /// In other words, if in any version it tells it supports the endpoint
+// in a stable fashion,     /// this will return `Stable`, even if some versions
+// in this set will denote deprecation or     /// removal.
 //     ///
-//     /// In other words, if in any version it tells it supports the endpoint in a stable fashion,
-//     /// this will return `Stable`, even if some versions in this set will denote deprecation or
-//     /// removal.
-//     ///
-//     /// If resulting [`VersioningDecision`] is `Stable`, it will also detail if any version denoted
-//     /// deprecation or removal.
-//     pub fn versioning_decision_for(&self, versions: &[MatrixVersion]) -> VersioningDecision {
-//         let greater_or_equal_any = |version: MatrixVersion| versions.iter().any(|v| v.is_superset_of(version));
-//         let greater_or_equal_all = |version: MatrixVersion| versions.iter().all(|v| v.is_superset_of(version));
+//     /// If resulting [`VersioningDecision`] is `Stable`, it will also detail
+// if any version denoted     /// deprecation or removal.
+//     pub fn versioning_decision_for(&self, versions: &[MatrixVersion]) ->
+// VersioningDecision {         let greater_or_equal_any = |version:
+// MatrixVersion| versions.iter().any(|v| v.is_superset_of(version));
+//         let greater_or_equal_all = |version: MatrixVersion|
+// versions.iter().all(|v| v.is_superset_of(version));
 
 //         // Check if all versions removed this endpoint.
 //         if self.removed.is_some_and(greater_or_equal_all) {
@@ -254,13 +261,14 @@ use crate::RoomVersionId;
 
 //         // Check if *any* version marks this endpoint as stable.
 //         if self.added_in().is_some_and(greater_or_equal_any) {
-//             let all_deprecated = self.deprecated.is_some_and(greater_or_equal_all);
+//             let all_deprecated =
+// self.deprecated.is_some_and(greater_or_equal_all);
 
 //             return VersioningDecision::Stable {
-//                 any_deprecated: all_deprecated || self.deprecated.is_some_and(greater_or_equal_any),
-//                 all_deprecated,
-//                 any_removed: self.removed.is_some_and(greater_or_equal_any),
-//             };
+//                 any_deprecated: all_deprecated ||
+// self.deprecated.is_some_and(greater_or_equal_any),
+// all_deprecated,                 any_removed:
+// self.removed.is_some_and(greater_or_equal_any),             };
 //         }
 
 //         VersioningDecision::Unstable
@@ -290,34 +298,34 @@ use crate::RoomVersionId;
 
 //     /// Returns all path variants in canon form, for use in server routers.
 //     pub fn all_paths(&self) -> impl Iterator<Item = &'static str> {
-//         self.unstable_paths().chain(self.stable_paths().map(|(_, path)| path))
-//     }
+//         self.unstable_paths().chain(self.stable_paths().map(|(_, path)|
+// path))     }
 
 //     /// Returns all unstable path variants in canon form.
 //     pub fn unstable_paths(&self) -> impl Iterator<Item = &'static str> {
 //         self.unstable_paths.iter().copied()
 //     }
 
-//     /// Returns all stable path variants in canon form, with corresponding Matrix version.
-//     pub fn stable_paths(&self) -> impl Iterator<Item = (MatrixVersion, &'static str)> {
-//         self.stable_paths.iter().map(|(version, data)| (*version, *data))
-//     }
+//     /// Returns all stable path variants in canon form, with corresponding
+// Matrix version.     pub fn stable_paths(&self) -> impl Iterator<Item =
+// (MatrixVersion, &'static str)> {         self.stable_paths.iter().
+// map(|(version, data)| (*version, *data))     }
 
-//     /// The path that should be used to query the endpoint, given a series of versions.
-//     ///
+//     /// The path that should be used to query the endpoint, given a series of
+// versions.     ///
 //     /// This will pick the latest path that the version accepts.
 //     ///
 //     /// This will return an endpoint in the following format;
 //     ///
 //     /// Note: This will not keep in mind endpoint removals, check with
-//     /// [`versioning_decision_for`](VersionHistory::versioning_decision_for) to see if this endpoint
-//     /// is still available.
-//     pub fn stable_endpoint_for(&self, versions: &[MatrixVersion]) -> Option<&'static str> {
-//         // Go reverse, to check the "latest" version first.
-//         for (ver, path) in self.stable_paths.iter().rev() {
-//             // Check if any of the versions are equal or greater than the version the path needs.
-//             if versions.iter().any(|v| v.is_superset_of(*ver)) {
-//                 return Some(path);
+//     /// [`versioning_decision_for`](VersionHistory::versioning_decision_for)
+// to see if this endpoint     /// is still available.
+//     pub fn stable_endpoint_for(&self, versions: &[MatrixVersion]) ->
+// Option<&'static str> {         // Go reverse, to check the "latest" version
+// first.         for (ver, path) in self.stable_paths.iter().rev() {
+//             // Check if any of the versions are equal or greater than the
+// version the path needs.             if versions.iter().any(|v|
+// v.is_superset_of(*ver)) {                 return Some(path);
 //             }
 //         }
 
@@ -350,16 +358,17 @@ use crate::RoomVersionId;
 
 /// The Matrix versions Palpo currently understands to exist.
 ///
-/// Matrix, since fall 2021, has a quarterly release schedule, using a global `vX.Y` versioning
-/// scheme.
+/// Matrix, since fall 2021, has a quarterly release schedule, using a global
+/// `vX.Y` versioning scheme.
 ///
-/// Every new minor version denotes stable support for endpoints in a *relatively*
-/// backwards-compatible manner.
+/// Every new minor version denotes stable support for endpoints in a
+/// *relatively* backwards-compatible manner.
 ///
 /// Matrix has a deprecation policy, read more about it here: <https://spec.matrix.org/latest/#deprecation-policy>.
 ///
-/// Palpo keeps track of when endpoints are added, deprecated, and removed. It'll automatically
-/// select the right endpoint stability variation to use depending on which Matrix versions you
+/// Palpo keeps track of when endpoints are added, deprecated, and removed.
+/// It'll automatically select the right endpoint stability variation to use
+/// depending on which Matrix versions you
 /// pass to [`try_into_http_request`](super::OutgoingRequest::try_into_http_request), see its
 /// respective documentation for more information.
 #[derive(ToSchema, Serialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -450,19 +459,21 @@ impl FromStr for MatrixVersion {
 impl MatrixVersion {
     /// Checks whether a version is compatible with another.
     ///
-    /// A is compatible with B as long as B is equal or less, so long as A and B have the same
-    /// major versions.
+    /// A is compatible with B as long as B is equal or less, so long as A and B
+    /// have the same major versions.
     ///
-    /// For example, v1.2 is compatible with v1.1, as it is likely only some additions of
-    /// endpoints on top of v1.1, but v1.1 would not be compatible with v1.2, as v1.1
-    /// cannot represent all of v1.2, in a manner similar to set theory.
+    /// For example, v1.2 is compatible with v1.1, as it is likely only some
+    /// additions of endpoints on top of v1.1, but v1.1 would not be
+    /// compatible with v1.2, as v1.1 cannot represent all of v1.2, in a
+    /// manner similar to set theory.
     ///
-    /// Warning: Matrix has a deprecation policy, and Matrix versioning is not as
-    /// straight-forward as this function makes it out to be. This function only exists
-    /// to prune major version differences, and versions too new for `self`.
+    /// Warning: Matrix has a deprecation policy, and Matrix versioning is not
+    /// as straight-forward as this function makes it out to be. This
+    /// function only exists to prune major version differences, and
+    /// versions too new for `self`.
     ///
-    /// This (considering if major versions are the same) is equivalent to a `self >= other`
-    /// check.
+    /// This (considering if major versions are the same) is equivalent to a
+    /// `self >= other` check.
     pub fn is_superset_of(self, other: Self) -> bool {
         let (major_l, minor_l) = self.into_parts();
         let (major_r, minor_r) = other.into_parts();
@@ -485,7 +496,8 @@ impl MatrixVersion {
         }
     }
 
-    /// Try to turn a pair of (major, minor) version components back into a `MatrixVersion`.
+    /// Try to turn a pair of (major, minor) version components back into a
+    /// `MatrixVersion`.
     pub const fn from_parts(major: u8, minor: u8) -> Result<Self, UnknownVersionError> {
         match (major, minor) {
             (1, 0) => Ok(MatrixVersion::V1_0),
@@ -516,7 +528,8 @@ impl MatrixVersion {
         }
     }
 
-    // Internal function to check if this version is the legacy (v1.0) version in const-fn contexts
+    // Internal function to check if this version is the legacy (v1.0) version in
+    // const-fn contexts
     const fn is_legacy(&self) -> bool {
         let self_parts = self.into_parts();
 

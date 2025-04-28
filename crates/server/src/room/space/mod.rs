@@ -203,7 +203,7 @@ async fn get_room_summary(
     let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
 
     if !is_accessible_child {
-        return Err(MatrixError::forbidden("User is not allowed to see the room").into());
+        return Err(MatrixError::forbidden(None, "User is not allowed to see the room").into());
     }
 
     let name = state::get_name(room_id).ok();
@@ -327,8 +327,8 @@ fn cache_insert(mut cache: MutexGuard<'_, CacheItem>, current_room: &RoomId, chi
     cache.insert(current_room.to_owned(), Some(CachedSpaceHierarchySummary { summary }));
 }
 
-// Here because cannot implement `From` across ruma-federation-api and
-// ruma-client-api types
+// Here because cannot implement `From` across palpo-federation-api and
+// palpo-client-api types
 impl From<CachedSpaceHierarchySummary> for SpaceHierarchyRoomsChunk {
     fn from(value: CachedSpaceHierarchySummary) -> Self {
         let SpaceHierarchyParentSummary {
@@ -367,8 +367,8 @@ impl From<CachedSpaceHierarchySummary> for SpaceHierarchyRoomsChunk {
     }
 }
 
-/// Here because cannot implement `From` across ruma-federation-api and
-/// ruma-client-api types
+/// Here because cannot implement `From` across palpo-federation-api and
+/// palpo-client-api types
 #[must_use]
 pub fn summary_to_chunk(summary: SpaceHierarchyParentSummary) -> SpaceHierarchyRoomsChunk {
     let SpaceHierarchyParentSummary {

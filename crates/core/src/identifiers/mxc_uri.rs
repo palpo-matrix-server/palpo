@@ -2,8 +2,7 @@
 //!
 //! [MXC URI]: https://spec.matrix.org/latest/client-server-api/#matrix-content-mxc-uris
 
-use std::fmt;
-use std::num::NonZeroU8;
+use std::{fmt, num::NonZeroU8};
 
 use palpo_identifiers_validation::{error::MxcUriError, mxc_uri::validate};
 use palpo_macros::IdZst;
@@ -31,8 +30,8 @@ impl MxcUri {
         self.parts().map(|mxc| mxc.server_name)
     }
 
-    /// If this is a valid MXC URI, returns a `(server_name, media_id)` tuple, else it returns the
-    /// error.
+    /// If this is a valid MXC URI, returns a `(server_name, media_id)` tuple,
+    /// else it returns the error.
     pub fn parts(&self) -> Result<Mxc<'_>> {
         self.extract_slash_idx().map(|idx| Mxc::<'_> {
             server_name: ServerName::from_borrowed(&self.as_str()[6..idx.get() as usize]),
@@ -58,7 +57,8 @@ impl MxcUri {
     }
 }
 
-/// Structured MXC URI which may reference strings from separate sources without serialization
+/// Structured MXC URI which may reference strings from separate sources without
+/// serialization
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::exhaustive_structs)]
 pub struct Mxc<'a> {

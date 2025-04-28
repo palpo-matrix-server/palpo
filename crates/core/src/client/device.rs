@@ -1,10 +1,9 @@
-/// Endpoints for managing devices.
-use crate::{OwnedDeviceId, UnixMillis};
+use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use salvo::prelude::*;
-
 use crate::client::uiaa::AuthData;
+/// Endpoints for managing devices.
+use crate::{OwnedDeviceId, UnixMillis};
 
 /// Information about a registered device.
 #[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
@@ -55,7 +54,8 @@ impl Device {
 /// Request type for the `delete_device` endpoint.
 #[derive(ToSchema, Deserialize, Default, Debug)]
 pub struct DeleteDeviceReqBody {
-    /// Additional authentication information for the user-interactive authentication API.
+    /// Additional authentication information for the user-interactive
+    /// authentication API.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
@@ -83,7 +83,8 @@ pub struct DeleteDevicesReqBody {
     /// List of devices to delete.
     pub devices: Vec<OwnedDeviceId>,
 
-    /// Additional authentication information for the user-interactive authentication API.
+    /// Additional authentication information for the user-interactive
+    /// authentication API.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }

@@ -14,7 +14,8 @@ use crate::{OwnedRoomAliasId, OwnedRoomId, OwnedServerName};
 //     rate_limited: true,
 //     authentication: AccessToken,
 //     history: {
-//         unstable => "/_matrix/client/unstable/org.matrix.msc2432/rooms/:room_id/aliases",
+//         unstable =>
+// "/_matrix/client/unstable/org.matrix.msc2432/rooms/:room_id/aliases",
 //         1.0 => "/_matrix/client/r0/rooms/:room_id/aliases",
 //         1.1 => "/_matrix/client/v3/rooms/:room_id/aliases",
 //     }

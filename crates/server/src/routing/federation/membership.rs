@@ -207,7 +207,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden("Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
     }
 
     // ACL check origin
@@ -275,7 +275,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     let body = body.into_inner();
 
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden("Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
     }
     crate::event::handler::acl_check(origin, &args.room_id)?;
 

@@ -11,8 +11,8 @@ use crate::{OwnedRoomAliasId, OwnedUserId, PrivOwnedStr, UnixMillis, serde::Stri
 
 /// Metadata about a third party protocol.
 ///
-/// To create an instance of this type, first create a `ProtocolInit` and convert it via
-/// `Protocol::from` / `.into()`.
+/// To create an instance of this type, first create a `ProtocolInit` and
+/// convert it via `Protocol::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Default, Debug)]
 pub struct Protocol {
     /// Fields which may be used to identify a third party user.
@@ -25,7 +25,8 @@ pub struct Protocol {
     #[serde(default)]
     pub icon: String,
 
-    /// The type definitions for the fields defined in `user_fields` and `location_fields`.
+    /// The type definitions for the fields defined in `user_fields` and
+    /// `location_fields`.
     pub field_types: BTreeMap<String, FieldType>,
 
     /// A list of objects representing independent instances of configuration.
@@ -34,8 +35,8 @@ pub struct Protocol {
 
 /// Initial set of fields of `Protocol`.
 ///
-/// This struct will not be updated even if additional fields are added to `Prococol` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `Prococol` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct ProtocolInit {
@@ -48,7 +49,8 @@ pub struct ProtocolInit {
     /// A content URI representing an icon for the third party protocol.
     pub icon: String,
 
-    /// The type definitions for the fields defined in `user_fields` and `location_fields`.
+    /// The type definitions for the fields defined in `user_fields` and
+    /// `location_fields`.
     pub field_types: BTreeMap<String, FieldType>,
 
     /// A list of objects representing independent instances of configuration.
@@ -76,8 +78,8 @@ impl From<ProtocolInit> for Protocol {
 
 /// Metadata about an instance of a third party protocol.
 ///
-/// To create an instance of this type, first create a `ProtocolInstanceInit` and convert it via
-/// `ProtocolInstance::from` / `.into()`.
+/// To create an instance of this type, first create a `ProtocolInstanceInit`
+/// and convert it via `ProtocolInstance::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct ProtocolInstance {
     /// A human-readable description for the protocol, such as the name.
@@ -102,8 +104,8 @@ pub struct ProtocolInstance {
 
 /// Initial set of fields of `Protocol`.
 ///
-/// This struct will not be updated even if additional fields are added to `Prococol` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `Prococol` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct ProtocolInstanceInit {
@@ -143,10 +145,11 @@ impl From<ProtocolInstanceInit> for ProtocolInstance {
     }
 }
 
-/// A type definition for a field used to identify third party users or locations.
+/// A type definition for a field used to identify third party users or
+/// locations.
 ///
-/// To create an instance of this type, first create a `FieldTypeInit` and convert it via
-/// `FieldType::from` / `.into()`.
+/// To create an instance of this type, first create a `FieldTypeInit` and
+/// convert it via `FieldType::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct FieldType {
     /// A regular expression for validation of a field's value.
@@ -158,8 +161,8 @@ pub struct FieldType {
 
 /// Initial set of fields of `FieldType`.
 ///
-/// This struct will not be updated even if additional fields are added to `FieldType` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `FieldType` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct FieldTypeInit {
@@ -244,8 +247,9 @@ pub enum Medium {
 
 /// An identifier external to Matrix.
 ///
-/// To create an instance of this type, first create a `ThirdPartyIdentifierInit` and convert it to
-/// this type using `ThirdPartyIdentifier::Init` / `.into()`.
+/// To create an instance of this type, first create a
+/// `ThirdPartyIdentifierInit` and convert it to this type using
+/// `ThirdPartyIdentifier::Init` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ThirdPartyIdentifier {
@@ -258,14 +262,16 @@ pub struct ThirdPartyIdentifier {
     /// The time when the identifier was validated by the identity server.
     pub validated_at: UnixMillis,
 
-    /// The time when the homeserver associated the third party identifier with the user.
+    /// The time when the homeserver associated the third party identifier with
+    /// the user.
     pub added_at: UnixMillis,
 }
 
 /// Initial set of fields of `ThirdPartyIdentifier`.
 ///
-/// This struct will not be updated even if additional fields are added to `ThirdPartyIdentifier`
-/// in a new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `ThirdPartyIdentifier` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct ThirdPartyIdentifierInit {
@@ -278,7 +284,8 @@ pub struct ThirdPartyIdentifierInit {
     /// The time when the identifier was validated by the identity server.
     pub validated_at: UnixMillis,
 
-    /// The time when the homeserver associated the third party identifier with the user.
+    /// The time when the homeserver associated the third party identifier with
+    /// the user.
     pub added_at: UnixMillis,
 }
 
@@ -333,8 +340,8 @@ impl ProtocolsResBody {
 
 // `GET /_matrix/client/*/thirdparty/protocol/{protocol}`
 //
-// Fetches the metadata from the homeserver about a particular third party protocol.
-// `/v3/` ([spec])
+// Fetches the metadata from the homeserver about a particular third party
+// protocol. `/v3/` ([spec])
 //
 // [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3thirdpartyprotocolprotocol
 // const METADATA: Metadata = metadata! {

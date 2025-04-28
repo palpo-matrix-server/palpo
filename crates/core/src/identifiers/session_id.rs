@@ -7,8 +7,8 @@ use super::IdParseError;
 
 /// A session ID.
 ///
-/// Session IDs in Matrix are opaque character sequences of `[0-9a-zA-Z.=_-]`. Their length must
-/// must not exceed 255 characters.
+/// Session IDs in Matrix are opaque character sequences of `[0-9a-zA-Z.=_-]`.
+/// Their length must must not exceed 255 characters.
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst, AsExpression)]
 #[diesel(not_sized, sql_type = diesel::sql_types::Text)]

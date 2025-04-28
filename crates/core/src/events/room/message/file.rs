@@ -1,8 +1,10 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedMxcUri;
-use crate::events::room::{EncryptedFile, MediaSource, ThumbnailInfo};
+use crate::{
+    OwnedMxcUri,
+    events::room::{EncryptedFile, MediaSource, ThumbnailInfo},
+};
 
 /// The payload for a file message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -37,22 +39,24 @@ impl FileMessageEventContent {
         }
     }
 
-    /// Creates a new non-encrypted `FileMessageEventContent` with the given body and url.
+    /// Creates a new non-encrypted `FileMessageEventContent` with the given
+    /// body and url.
     pub fn plain(body: String, url: OwnedMxcUri) -> Self {
         Self::new(body, MediaSource::Plain(url))
     }
 
-    /// Creates a new encrypted `FileMessageEventContent` with the given body and encrypted
-    /// file.
+    /// Creates a new encrypted `FileMessageEventContent` with the given body
+    /// and encrypted file.
     pub fn encrypted(body: String, file: EncryptedFile) -> Self {
         Self::new(body, MediaSource::Encrypted(Box::new(file)))
     }
 
-    /// Creates a new `FileMessageEventContent` from `self` with the `filename` field set to the
-    /// given value.
+    /// Creates a new `FileMessageEventContent` from `self` with the `filename`
+    /// field set to the given value.
     ///
-    /// Since the field is public, you can also assign to it directly. This method merely acts
-    /// as a shorthand for that, because it is very common to set this field.
+    /// Since the field is public, you can also assign to it directly. This
+    /// method merely acts as a shorthand for that, because it is very
+    /// common to set this field.
     pub fn filename(self, filename: impl Into<Option<String>>) -> Self {
         Self {
             filename: filename.into(),
@@ -60,11 +64,12 @@ impl FileMessageEventContent {
         }
     }
 
-    /// Creates a new `FileMessageEventContent` from `self` with the `info` field set to the given
-    /// value.
+    /// Creates a new `FileMessageEventContent` from `self` with the `info`
+    /// field set to the given value.
     ///
-    /// Since the field is public, you can also assign to it directly. This method merely acts
-    /// as a shorthand for that, because it is very common to set this field.
+    /// Since the field is public, you can also assign to it directly. This
+    /// method merely acts as a shorthand for that, because it is very
+    /// common to set this field.
     pub fn info(self, info: impl Into<Option<Box<FileInfo>>>) -> Self {
         Self {
             info: info.into(),

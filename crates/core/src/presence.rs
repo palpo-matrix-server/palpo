@@ -37,7 +37,8 @@ impl Default for &'_ PresenceState {
 
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PresenceContent {
-    /// A list of presence updates that the receiving server is likely to be interested in.
+    /// A list of presence updates that the receiving server is likely to be
+    /// interested in.
     pub push: Vec<PresenceUpdate>,
 }
 
@@ -62,7 +63,8 @@ pub struct PresenceUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_msg: Option<String>,
 
-    /// The number of milliseconds that have elapsed since the user last did something.
+    /// The number of milliseconds that have elapsed since the user last did
+    /// something.
     pub last_active_ago: u64,
 
     /// Whether or not the user is currently active.
@@ -73,7 +75,8 @@ pub struct PresenceUpdate {
 }
 
 impl PresenceUpdate {
-    /// Creates a new `PresenceUpdate` with the given `user_id`, `presence` and `last_activity`.
+    /// Creates a new `PresenceUpdate` with the given `user_id`, `presence` and
+    /// `last_activity`.
     pub fn new(user_id: OwnedUserId, presence: PresenceState, last_activity: u64) -> Self {
         Self {
             user_id,

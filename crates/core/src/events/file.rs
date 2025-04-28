@@ -16,8 +16,9 @@ use crate::{OwnedMxcUri, serde::Base64};
 
 /// The payload for an extensible file message.
 ///
-/// This is the new primary type introduced in [MSC3551] and should only be sent in rooms with a
-/// version that supports it. See the documentation of the [`message`] module for more information.
+/// This is the new primary type introduced in [MSC3551] and should only be sent
+/// in rooms with a version that supports it. See the documentation of the
+/// [`message`] module for more information.
 ///
 /// [MSC3551]: https://github.com/matrix-org/matrix-spec-proposals/pull/3551
 /// [`message`]: super::message
@@ -55,8 +56,8 @@ pub struct FileEventContent {
 }
 
 impl FileEventContent {
-    /// Creates a new non-encrypted `FileEventContent` with the given fallback representation, url
-    /// and file info.
+    /// Creates a new non-encrypted `FileEventContent` with the given fallback
+    /// representation, url and file info.
     pub fn plain(text: TextContentBlock, url: OwnedMxcUri, name: String) -> Self {
         Self {
             text,
@@ -68,8 +69,8 @@ impl FileEventContent {
         }
     }
 
-    /// Creates a new non-encrypted `FileEventContent` with the given plain text fallback
-    /// representation, url and name.
+    /// Creates a new non-encrypted `FileEventContent` with the given plain text
+    /// fallback representation, url and name.
     pub fn plain_with_plain_text(plain_text: impl Into<String>, url: OwnedMxcUri, name: String) -> Self {
         Self {
             text: TextContentBlock::plain(plain_text),
@@ -81,8 +82,8 @@ impl FileEventContent {
         }
     }
 
-    /// Creates a new encrypted `FileEventContent` with the given fallback representation, url,
-    /// name and encryption info.
+    /// Creates a new encrypted `FileEventContent` with the given fallback
+    /// representation, url, name and encryption info.
     pub fn encrypted(
         text: TextContentBlock,
         url: OwnedMxcUri,
@@ -99,8 +100,8 @@ impl FileEventContent {
         }
     }
 
-    /// Creates a new encrypted `FileEventContent` with the given plain text fallback
-    /// representation, url, name and encryption info.
+    /// Creates a new encrypted `FileEventContent` with the given plain text
+    /// fallback representation, url, name and encryption info.
     pub fn encrypted_with_plain_text(
         plain_text: impl Into<String>,
         url: OwnedMxcUri,
@@ -143,7 +144,8 @@ pub struct FileContentBlock {
 }
 
 impl FileContentBlock {
-    /// Creates a new non-encrypted `FileContentBlock` with the given url and name.
+    /// Creates a new non-encrypted `FileContentBlock` with the given url and
+    /// name.
     pub fn plain(url: OwnedMxcUri, name: String) -> Self {
         Self {
             url,
@@ -154,7 +156,8 @@ impl FileContentBlock {
         }
     }
 
-    /// Creates a new encrypted `FileContentBlock` with the given url, name and encryption info.
+    /// Creates a new encrypted `FileContentBlock` with the given url, name and
+    /// encryption info.
     pub fn encrypted(url: OwnedMxcUri, name: String, encryption_info: EncryptedContent) -> Self {
         Self {
             url,
@@ -171,19 +174,22 @@ impl FileContentBlock {
     }
 }
 
-/// The encryption info of a file sent to a room with end-to-end encryption enabled.
+/// The encryption info of a file sent to a room with end-to-end encryption
+/// enabled.
 ///
-/// To create an instance of this type, first create a `EncryptedContentInit` and convert it via
-/// `EncryptedContent::from` / `.into()`.
+/// To create an instance of this type, first create a `EncryptedContentInit`
+/// and convert it via `EncryptedContent::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct EncryptedContent {
     /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
     pub key: JsonWebKey,
 
-    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded base64.
+    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded
+    /// base64.
     pub iv: Base64,
 
-    /// A map from an algorithm name to a hash of the ciphertext, encoded as unpadded base64.
+    /// A map from an algorithm name to a hash of the ciphertext, encoded as
+    /// unpadded base64.
     ///
     /// Clients should support the SHA-256 hash, which uses the key sha256.
     pub hashes: BTreeMap<String, Base64>,
@@ -196,18 +202,21 @@ pub struct EncryptedContent {
 
 /// Initial set of fields of `EncryptedContent`.
 ///
-/// This struct will not be updated even if additional fields are added to `EncryptedContent` in a
-/// new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `EncryptedContent` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct EncryptedContentInit {
     /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
     pub key: JsonWebKey,
 
-    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded base64.
+    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded
+    /// base64.
     pub iv: Base64,
 
-    /// A map from an algorithm name to a hash of the ciphertext, encoded as unpadded base64.
+    /// A map from an algorithm name to a hash of the ciphertext, encoded as
+    /// unpadded base64.
     ///
     /// Clients should support the SHA-256 hash, which uses the key sha256.
     pub hashes: BTreeMap<String, Base64>,
@@ -239,10 +248,11 @@ impl From<&EncryptedFile> for EncryptedContent {
 
 /// A block for caption content.
 ///
-/// A caption is usually a text message that should be displayed next to some media content.
+/// A caption is usually a text message that should be displayed next to some
+/// media content.
 ///
-/// To construct a `CaptionContentBlock` with a custom [`TextContentBlock`], convert it with
-/// `CaptionContentBlock::from()` / `.into()`.
+/// To construct a `CaptionContentBlock` with a custom [`TextContentBlock`],
+/// convert it with `CaptionContentBlock::from()` / `.into()`.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct CaptionContentBlock {
     /// The text message of the caption.
@@ -265,10 +275,11 @@ impl CaptionContentBlock {
         }
     }
 
-    /// A convenience constructor to create a caption content block from Markdown.
+    /// A convenience constructor to create a caption content block from
+    /// Markdown.
     ///
-    /// The content includes an HTML message if some Markdown formatting was detected, otherwise
-    /// only a plain text message is included.
+    /// The content includes an HTML message if some Markdown formatting was
+    /// detected, otherwise only a plain text message is included.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
         Self {

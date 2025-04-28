@@ -155,7 +155,7 @@ pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> DataResult<
             user_devices::table.filter(user_devices::device_id.eq(device_id)),
             &mut connect()?
         )? {
-            return Err(MatrixError::forbidden("Device not owned by user.").into());
+            return Err(MatrixError::forbidden(None, "Device not owned by user.").into());
         } else {
             return Err(MatrixError::not_found("Device not found.").into());
         }

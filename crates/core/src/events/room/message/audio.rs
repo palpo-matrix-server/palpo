@@ -3,8 +3,10 @@ use std::time::Duration;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedMxcUri;
-use crate::events::room::{EncryptedFile, MediaSource};
+use crate::{
+    OwnedMxcUri,
+    events::room::{EncryptedFile, MediaSource},
+};
 
 /// The payload for an audio message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -52,22 +54,24 @@ impl AudioMessageEventContent {
         }
     }
 
-    /// Creates a new non-encrypted `AudioMessageEventContent` with the given bod and url.
+    /// Creates a new non-encrypted `AudioMessageEventContent` with the given
+    /// bod and url.
     pub fn plain(body: String, url: OwnedMxcUri) -> Self {
         Self::new(body, MediaSource::Plain(url))
     }
 
-    /// Creates a new encrypted `AudioMessageEventContent` with the given body and encrypted
-    /// file.
+    /// Creates a new encrypted `AudioMessageEventContent` with the given body
+    /// and encrypted file.
     pub fn encrypted(body: String, file: EncryptedFile) -> Self {
         Self::new(body, MediaSource::Encrypted(Box::new(file)))
     }
 
-    /// Creates a new `AudioMessageEventContent` from `self` with the `info` field set to the given
-    /// value.
+    /// Creates a new `AudioMessageEventContent` from `self` with the `info`
+    /// field set to the given value.
     ///
-    /// Since the field is public, you can also assign to it directly. This method merely acts
-    /// as a shorthand for that, because it is very common to set this field.
+    /// Since the field is public, you can also assign to it directly. This
+    /// method merely acts as a shorthand for that, because it is very
+    /// common to set this field.
     pub fn info(self, info: impl Into<Option<Box<AudioInfo>>>) -> Self {
         Self {
             info: info.into(),
@@ -107,12 +111,12 @@ impl AudioInfo {
 /// [first version of MSC3245][msc].
 ///
 /// [msc]: https://github.com/matrix-org/matrix-spec-proposals/blob/83f6c5b469c1d78f714e335dcaa25354b255ffa5/proposals/3245-voice-messages.md
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub struct UnstableAudioDetailsContentBlock {
     /// The duration of the audio in milliseconds.
     ///
-    /// Note that the MSC says this should be in seconds but for compatibility with the Element
-    /// clients, this uses milliseconds.
+    /// Note that the MSC says this should be in seconds but for compatibility
+    /// with the Element clients, this uses milliseconds.
     #[serde(with = "palpo_core::serde::duration::ms")]
     pub duration: Duration,
 
@@ -124,7 +128,8 @@ pub struct UnstableAudioDetailsContentBlock {
 }
 
 impl UnstableAudioDetailsContentBlock {
-    /// Creates a new `UnstableAudioDetailsContentBlock ` with the given duration and waveform.
+    /// Creates a new `UnstableAudioDetailsContentBlock ` with the given
+    /// duration and waveform.
     pub fn new(duration: Duration, waveform: Vec<UnstableAmplitude>) -> Self {
         Self { duration, waveform }
     }
@@ -134,7 +139,7 @@ impl UnstableAudioDetailsContentBlock {
 /// [first version of MSC3245][msc].
 ///
 /// [msc]: https://github.com/matrix-org/matrix-spec-proposals/blob/83f6c5b469c1d78f714e335dcaa25354b255ffa5/proposals/3245-voice-messages.md
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UnstableVoiceContentBlock {}
 
 impl UnstableVoiceContentBlock {
@@ -147,7 +152,7 @@ impl UnstableVoiceContentBlock {
 /// The unstable version of the amplitude of a waveform sample.
 ///
 /// Must be an integer between 0 and 1024.
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(ToSchema, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct UnstableAmplitude(u64);
 
 impl UnstableAmplitude {

@@ -1,12 +1,11 @@
 use diesel::prelude::*;
 
+use super::DbUser;
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::{AppResult, MatrixError, utils};
-
-use super::DbUser;
 
 #[derive(Identifiable, Debug, Clone)]
 #[diesel(table_name = user_passwords)]

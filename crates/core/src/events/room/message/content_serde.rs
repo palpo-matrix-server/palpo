@@ -5,8 +5,10 @@ use serde::{Deserialize, de};
 use super::{
     MessageType, RoomMessageEventContent, RoomMessageEventContentWithoutRelation, relation_serde::deserialize_relation,
 };
-use crate::events::Mentions;
-use crate::serde::{RawJsonValue, from_raw_json_value};
+use crate::{
+    events::Mentions,
+    serde::{RawJsonValue, from_raw_json_value},
+};
 
 impl<'de> Deserialize<'de> for RoomMessageEventContent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -81,17 +83,22 @@ impl<'de> Deserialize<'de> for MessageType {
     }
 }
 
+#[allow(unreachable_pub)] // https://github.com/rust-lang/rust/issues/112615
+#[cfg(feature = "unstable-msc3488")]
 pub(in super::super) mod msc3488 {
-    use crate::UnixMillis;
     use serde::{Deserialize, Serialize};
 
     use crate::{
-        events::location::{AssetContent, LocationContent},
-        events::message::MessageContentBlock,
-        events::room::message::{LocationInfo, LocationMessageEventContent},
+        UnixMillis,
+        events::{
+            location::{AssetContent, LocationContent},
+            message::MessageContentBlock,
+            room::message::{LocationInfo, LocationMessageEventContent},
+        },
     };
 
-    /// Deserialize helper type for `LocationMessageEventContent` with unstable fields from msc3488.
+    /// Deserialize helper type for `LocationMessageEventContent` with unstable
+    /// fields from msc3488.
     #[derive(Serialize, Deserialize)]
     #[serde(tag = "msgtype", rename = "m.location")]
     pub(in super::super) struct LocationMessageEventContentSerDeHelper {

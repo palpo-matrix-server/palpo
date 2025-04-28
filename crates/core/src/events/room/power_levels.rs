@@ -8,13 +8,16 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{
-    EmptyStateKey, EventContent, EventContentFromType, MessageLikeEventType, RedactContent, RedactedStateEventContent,
-    StateEventType, StaticEventContent, TimelineEventType,
+use crate::{
+    OwnedUserId, RoomVersionId, UserId,
+    events::{
+        EmptyStateKey, EventContent, EventContentFromType, MessageLikeEventType, RedactContent,
+        RedactedStateEventContent, StateEventType, StaticEventContent, TimelineEventType,
+    },
+    power_levels::{NotificationPowerLevels, default_power_level},
+    push::PushConditionPowerLevelsCtx,
+    serde::RawJsonValue,
 };
-use crate::power_levels::{NotificationPowerLevels, default_power_level};
-use crate::serde::RawJsonValue;
-use crate::{OwnedUserId, RoomVersionId, UserId, push::PushConditionPowerLevelsCtx};
 
 /// The content of an `m.room.power_levels` event.
 ///
@@ -109,8 +112,9 @@ pub struct RoomPowerLevelsEventContent {
 impl RoomPowerLevelsEventContent {
     /// Creates a new `RoomPowerLevelsEventContent` with all-default values.
     pub fn new() -> Self {
-        // events_default, users_default and invite having a default of 0 while the others have a
-        // default of 50 is not an oversight, these defaults are from the Matrix specification.
+        // events_default, users_default and invite having a default of 0 while the
+        // others have a default of 50 is not an oversight, these defaults are
+        // from the Matrix specification.
         Self {
             ban: default_power_level(),
             events: BTreeMap::new(),
@@ -184,7 +188,8 @@ fn is_default_power_level(l: &i64) -> bool {
 }
 
 impl RoomPowerLevelsEvent {
-    /// Obtain the effective power levels, regardless of whether this event is redacted.
+    /// Obtain the effective power levels, regardless of whether this event is
+    /// redacted.
     pub fn power_levels(&self) -> RoomPowerLevels {
         match self {
             Self::Original(ev) => ev.content.clone().into(),
@@ -194,7 +199,8 @@ impl RoomPowerLevelsEvent {
 }
 
 impl SyncRoomPowerLevelsEvent {
-    /// Obtain the effective power levels, regardless of whether this event is redacted.
+    /// Obtain the effective power levels, regardless of whether this event is
+    /// redacted.
     pub fn power_levels(&self) -> RoomPowerLevels {
         match self {
             Self::Original(ev) => ev.content.clone().into(),
@@ -241,8 +247,8 @@ pub struct RedactedRoomPowerLevelsEventContent {
 
     /// The level required to invite a user.
     ///
-    /// This field was redacted in room versions 1 through 10. Starting from room version 11 it is
-    /// preserved.
+    /// This field was redacted in room versions 1 through 10. Starting from
+    /// room version 11 it is preserved.
     #[serde(
         default,
         skip_serializing_if = "palpo_core::serde::is_default",
@@ -317,11 +323,11 @@ impl EventContentFromType for RedactedRoomPowerLevelsEventContent {
 
 /// The effective power levels of a room.
 ///
-/// This struct contains the same fields as [`RoomPowerLevelsEventContent`] and be created from that
-/// using a `From` trait implementation, but it is also implements
-/// `From<`[`RedactedRoomPowerLevelsEventContent`]`>`, so can be used when wanting to inspect the
-/// power levels of a room, regardless of whether the most recent power-levels event is redacted or
-/// not.
+/// This struct contains the same fields as [`RoomPowerLevelsEventContent`] and
+/// be created from that using a `From` trait implementation, but it is also
+/// implements `From<`[`RedactedRoomPowerLevelsEventContent`]`>`, so can be used
+/// when wanting to inspect the power levels of a room, regardless of whether
+/// the most recent power-levels event is redacted or not.
 #[derive(Clone, Debug)]
 pub struct RoomPowerLevels {
     /// The level required to ban a user.
@@ -369,18 +375,21 @@ impl RoomPowerLevels {
 
     /// Whether the given user can ban other users based on the power levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Ban)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::Ban)`.
     pub fn user_can_ban(&self, user_id: &UserId) -> bool {
         self.for_user(user_id) >= self.ban
     }
 
-    /// Whether the acting user can ban the target user based on the power levels.
+    /// Whether the acting user can ban the target user based on the power
+    /// levels.
     ///
-    /// On top of `power_levels.user_can_ban(acting_user_id)`, this performs an extra check
-    /// to make sure the acting user has at greater power level than the target user.
+    /// On top of `power_levels.user_can_ban(acting_user_id)`, this performs an
+    /// extra check to make sure the acting user has at greater power level
+    /// than the target user.
     ///
-    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
-    /// PowerLevelUserAction::Ban)`.
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id,
+    /// target_user_id, PowerLevelUserAction::Ban)`.
     pub fn user_can_ban_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
         let acting_pl = self.for_user(acting_user_id);
         let target_pl = self.for_user(target_user_id);
@@ -391,21 +400,24 @@ impl RoomPowerLevels {
     ///
     /// This action requires to be allowed to ban and to kick.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Unban)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::Unban)`.
     pub fn user_can_unban(&self, user_id: &UserId) -> bool {
         let pl = self.for_user(user_id);
         pl >= self.ban && pl >= self.kick
     }
 
-    /// Whether the acting user can unban the target user based on the power levels.
+    /// Whether the acting user can unban the target user based on the power
+    /// levels.
     ///
     /// This action requires to be allowed to ban and to kick.
     ///
-    /// On top of `power_levels.user_can_unban(acting_user_id)`, this performs an extra check
-    /// to make sure the acting user has at greater power level than the target user.
+    /// On top of `power_levels.user_can_unban(acting_user_id)`, this performs
+    /// an extra check to make sure the acting user has at greater power
+    /// level than the target user.
     ///
-    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
-    /// PowerLevelUserAction::Unban)`.
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id,
+    /// target_user_id, PowerLevelUserAction::Unban)`.
     pub fn user_can_unban_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
         let acting_pl = self.for_user(acting_user_id);
         let target_pl = self.for_user(target_user_id);
@@ -414,48 +426,58 @@ impl RoomPowerLevels {
 
     /// Whether the given user can invite other users based on the power levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::Invite)`.
     pub fn user_can_invite(&self, user_id: &UserId) -> bool {
         self.for_user(user_id) >= self.invite
     }
 
     /// Whether the given user can kick other users based on the power levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Kick)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::Kick)`.
     pub fn user_can_kick(&self, user_id: &UserId) -> bool {
         self.for_user(user_id) >= self.kick
     }
 
-    /// Whether the acting user can kick the target user based on the power levels.
+    /// Whether the acting user can kick the target user based on the power
+    /// levels.
     ///
-    /// On top of `power_levels.user_can_kick(acting_user_id)`, this performs an extra check
-    /// to make sure the acting user has at least the same power level as the target user.
+    /// On top of `power_levels.user_can_kick(acting_user_id)`, this performs an
+    /// extra check to make sure the acting user has at least the same power
+    /// level as the target user.
     ///
-    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
-    /// PowerLevelUserAction::Kick)`.
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id,
+    /// target_user_id, PowerLevelUserAction::Kick)`.
     pub fn user_can_kick_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
         let acting_pl = self.for_user(acting_user_id);
         let target_pl = self.for_user(target_user_id);
         acting_pl >= self.kick && target_pl < acting_pl
     }
 
-    /// Whether the given user can redact their own events based on the power levels.
+    /// Whether the given user can redact their own events based on the power
+    /// levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::RedactOwn)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::RedactOwn)`.
     pub fn user_can_redact_own_event(&self, user_id: &UserId) -> bool {
         self.user_can_send_message(user_id, MessageLikeEventType::RoomRedaction)
     }
 
-    /// Whether the given user can redact events of other users based on the power levels.
+    /// Whether the given user can redact events of other users based on the
+    /// power levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::RedactOthers)`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::RedactOthers)`.
     pub fn user_can_redact_event_of_other(&self, user_id: &UserId) -> bool {
         self.user_can_redact_own_event(user_id) && self.for_user(user_id) >= self.redact
     }
 
-    /// Whether the given user can send message events based on the power levels.
+    /// Whether the given user can send message events based on the power
+    /// levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendMessage(msg_type))`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::SendMessage(msg_type))`.
     pub fn user_can_send_message(&self, user_id: &UserId, msg_type: MessageLikeEventType) -> bool {
         self.for_user(user_id)
             >= self
@@ -467,7 +489,8 @@ impl RoomPowerLevels {
 
     /// Whether the given user can send state events based on the power levels.
     ///
-    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendState(state_type))`.
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::SendState(state_type))`.
     pub fn user_can_send_state(&self, user_id: &UserId, state_type: StateEventType) -> bool {
         self.for_user(user_id)
             >= self
@@ -477,7 +500,8 @@ impl RoomPowerLevels {
                 .unwrap_or(self.state_default)
     }
 
-    /// Whether the given user can notify everybody in the room by writing `@room` in a message.
+    /// Whether the given user can notify everybody in the room by writing
+    /// `@room` in a message.
     ///
     /// Shorthand for `power_levels.user_can_do(user_id,
     /// PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room))`.
@@ -487,8 +511,8 @@ impl RoomPowerLevels {
 
     /// Whether the acting user can change the power level of the target user.
     ///
-    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
-    /// PowerLevelUserAction::ChangePowerLevel`.
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id,
+    /// target_user_id, PowerLevelUserAction::ChangePowerLevel`.
     pub fn user_can_change_user_power_level(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
         // Check that the user can change the power levels first.
         if !self.user_can_send_state(acting_user_id, StateEventType::RoomPowerLevels) {
@@ -500,8 +524,8 @@ impl RoomPowerLevels {
             return true;
         }
 
-        // The permission is different whether the target user is added or changed/removed, so
-        // we need to check that.
+        // The permission is different whether the target user is added or
+        // changed/removed, so we need to check that.
         if let Some(target_pl) = self.users.get(target_user_id).copied() {
             self.for_user(acting_user_id) > target_pl
         } else {
@@ -509,7 +533,8 @@ impl RoomPowerLevels {
         }
     }
 
-    /// Whether the given user can do the given action based on the power levels.
+    /// Whether the given user can do the given action based on the power
+    /// levels.
     pub fn user_can_do(&self, user_id: &UserId, action: PowerLevelAction) -> bool {
         match action {
             PowerLevelAction::Ban => self.user_can_ban(user_id),
@@ -526,8 +551,8 @@ impl RoomPowerLevels {
         }
     }
 
-    /// Whether the acting user can do the given action to the target user based on the power
-    /// levels.
+    /// Whether the acting user can do the given action to the target user based
+    /// on the power levels.
     pub fn user_can_do_to_user(
         &self,
         acting_user_id: &UserId,
@@ -683,7 +708,8 @@ pub enum PowerLevelUserAction {
 //     use maplit::btreemap;
 //     use serde_json::{json, to_value as to_json_value};
 
-//     use super::{default_power_level, NotificationPowerLevels, RoomPowerLevelsEventContent};
+//     use super::{default_power_level, NotificationPowerLevels,
+// RoomPowerLevelsEventContent};
 
 //     #[test]
 //     fn serialization_with_optional_fields_as_none() {
@@ -725,8 +751,8 @@ pub enum PowerLevelUserAction {
 //                 user.to_owned() => 23
 //             },
 //             users_default: 23,
-//             notifications: assign!(NotificationPowerLevels::new(), { room: 23 }),
-//         };
+//             notifications: assign!(NotificationPowerLevels::new(), { room: 23
+// }),         };
 
 //         let actual = to_json_value(&power_levels_event).unwrap();
 //         let expected = json!({

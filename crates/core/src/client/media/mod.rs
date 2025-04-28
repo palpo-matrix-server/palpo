@@ -1,25 +1,27 @@
 /// Endpoints for the media repository.
 mod content;
-pub use content::*;
-
 use std::time::Duration;
 
+pub use content::*;
 use reqwest::Url;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::media::Method;
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::{RawJsonValue, to_raw_json_value};
-use crate::{OwnedMxcUri, OwnedServerName, ServerName, UnixMillis};
+use crate::{
+    OwnedMxcUri, OwnedServerName, ServerName, UnixMillis,
+    media::Method,
+    sending::{SendRequest, SendResult},
+    serde::{RawJsonValue, to_raw_json_value},
+};
 
-/// The default duration that the client should be willing to wait to start receiving data.
+/// The default duration that the client should be willing to wait to start
+/// receiving data.
 pub(crate) fn default_download_timeout() -> Duration {
     Duration::from_secs(20)
 }
 
-/// Whether the given duration is the default duration that the client should be willing to wait to
-/// start receiving data.
+/// Whether the given duration is the default duration that the client should be
+/// willing to wait to start receiving data.
 pub(crate) fn is_default_download_timeout(timeout: &Duration) -> bool {
     timeout.as_secs() == 20
 }
@@ -127,8 +129,9 @@ pub struct MediaPreviewReqArgs {
 pub struct MediaPreviewResBody(
     /// OpenGraph-like data for the URL.
     ///
-    /// Differences from OpenGraph: the image size in bytes is added to the `matrix:image:size`
-    /// field, and `og:image` returns the MXC URI to the image, if any.
+    /// Differences from OpenGraph: the image size in bytes is added to the
+    /// `matrix:image:size` field, and `og:image` returns the MXC URI to the
+    /// image, if any.
     pub Option<Box<RawJsonValue>>,
 );
 impl MediaPreviewResBody {
@@ -143,8 +146,8 @@ impl MediaPreviewResBody {
         Self(Some(data))
     }
 
-    /// Creates a new `Response` with the given OpenGraph data (in any kind of serializable
-    /// object).
+    /// Creates a new `Response` with the given OpenGraph data (in any kind of
+    /// serializable object).
     pub fn from_serialize<T: Serialize>(data: &T) -> serde_json::Result<Self> {
         Ok(Self(Some(to_raw_json_value(data)?)))
     }
@@ -204,8 +207,9 @@ pub struct ThumbnailReqArgs {
     )]
     pub allow_remote: bool,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -216,10 +220,11 @@ pub struct ThumbnailReqArgs {
     )]
     pub timeout_ms: Duration,
 
-    /// Whether the server may return a 307 or 308 redirect response that points at the
-    /// relevant media content.
+    /// Whether the server may return a 307 or 308 redirect response that points
+    /// at the relevant media content.
     ///
-    /// Unless explicitly set to `true`, the server must return the media content itself.
+    /// Unless explicitly set to `true`, the server must return the media
+    /// content itself.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allow_redirect: bool,
@@ -261,18 +266,19 @@ pub struct ThumbnailReqArgs {
 // mod tests {
 //     use crate::RawJsonValue;
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, value::to_raw_value as to_raw_json_value};
+//     use serde_json::{from_value as from_json_value, json, value::to_raw_value
+// as to_raw_json_value};
 
-//     // Since BTreeMap<String, Box<RawJsonValue>> deserialization doesn't seem to
-//     // work, test that Option<RawJsonValue> works
+//     // Since BTreeMap<String, Box<RawJsonValue>> deserialization doesn't seem
+// to     // work, test that Option<RawJsonValue> works
 //     #[test]
 //     fn raw_json_deserialize() {
 //         type OptRawJson = Option<Box<RawJsonValue>>;
 
-//         assert_matches!(from_json_value::<OptRawJson>(json!(null)).unwrap(), None);
-//         from_json_value::<OptRawJson>(json!("test")).unwrap().unwrap();
-//         from_json_value::<OptRawJson>(json!({ "a": "b" })).unwrap().unwrap();
-//     }
+//         assert_matches!(from_json_value::<OptRawJson>(json!(null)).unwrap(),
+// None);         from_json_value::<OptRawJson>(json!("test")).unwrap().
+// unwrap();         from_json_value::<OptRawJson>(json!({ "a": "b"
+// })).unwrap().unwrap();     }
 
 //     // For completeness sake, make sure serialization works too
 //     #[test]

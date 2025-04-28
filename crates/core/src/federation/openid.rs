@@ -2,8 +2,8 @@
 
 //! `GET /_matrix/federation/*/openid/userinfo`
 //!
-//! Exchange an OpenID access token for information about the user who generated the token.
-//! `/v1/` ([spec])
+//! Exchange an OpenID access token for information about the user who generated
+//! the token. `/v1/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1openiduserinfo
 use salvo::prelude::*;

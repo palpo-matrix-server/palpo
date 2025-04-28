@@ -2,19 +2,19 @@
 //!
 //! [`m.room.guest_access`]: https://spec.matrix.org/latest/client-server-api/#mroomguest_access
 
-use crate::serde::StringEnum;
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{PrivOwnedStr, events::EmptyStateKey};
+use crate::{PrivOwnedStr, events::EmptyStateKey, serde::StringEnum};
 
 /// The content of an `m.room.guest_access` event.
 ///
 /// Controls whether guest users are allowed to join rooms.
 ///
-/// This event controls whether guest users are allowed to join rooms. If this event is absent,
-/// servers should act as if it is present and has the value `GuestAccess::Forbidden`.
+/// This event controls whether guest users are allowed to join rooms. If this
+/// event is absent, servers should act as if it is present and has the value
+/// `GuestAccess::Forbidden`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room.guest_access", kind = State, state_key_type = EmptyStateKey)]
 pub struct RoomGuestAccessEventContent {
@@ -30,7 +30,8 @@ impl RoomGuestAccessEventContent {
 }
 
 impl RoomGuestAccessEvent {
-    /// Obtain the guest access policy, regardless of whether this event is redacted.
+    /// Obtain the guest access policy, regardless of whether this event is
+    /// redacted.
     pub fn guest_access(&self) -> &GuestAccess {
         match self {
             Self::Original(ev) => &ev.content.guest_access,
@@ -40,7 +41,8 @@ impl RoomGuestAccessEvent {
 }
 
 impl SyncRoomGuestAccessEvent {
-    /// Obtain the guest access policy, regardless of whether this event is redacted.
+    /// Obtain the guest access policy, regardless of whether this event is
+    /// redacted.
     pub fn guest_access(&self) -> &GuestAccess {
         match self {
             Self::Original(ev) => &ev.content.guest_access,

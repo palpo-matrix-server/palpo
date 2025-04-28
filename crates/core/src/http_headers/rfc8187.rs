@@ -31,7 +31,8 @@ pub(super) fn encode(s: &str) -> String {
 
 /// Decode the given bytes according to [RFC 8187].
 ///
-/// Only the UTF-8 character set is supported, all other character sets return an error.
+/// Only the UTF-8 character set is supported, all other character sets return
+/// an error.
 ///
 /// [RFC 8187]: https://datatracker.ietf.org/doc/html/rfc8187
 pub(super) fn decode(bytes: &[u8]) -> Result<Cow<'_, str>, Rfc8187DecodeError> {
@@ -56,7 +57,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<Cow<'_, str>, Rfc8187DecodeError> {
     Ok(percent_encoding::percent_decode(encoded).decode_utf8_lossy())
 }
 
-/// All errors encountered when trying to decode a string according to [RFC 8187].
+/// All errors encountered when trying to decode a string according to [RFC
+/// 8187].
 ///
 /// [RFC 8187]: https://datatracker.ietf.org/doc/html/rfc8187
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]

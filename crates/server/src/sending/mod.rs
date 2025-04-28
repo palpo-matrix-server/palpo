@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
@@ -9,7 +10,6 @@ use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use std::sync::atomic::AtomicUsize;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
 use crate::core::appservice::Registration;

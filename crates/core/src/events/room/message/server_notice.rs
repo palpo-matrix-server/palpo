@@ -1,8 +1,7 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
-use crate::serde::StringEnum;
+use crate::{PrivOwnedStr, serde::StringEnum};
 
 /// The payload for a server notice message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -28,7 +27,8 @@ pub struct ServerNoticeMessageEventContent {
 }
 
 impl ServerNoticeMessageEventContent {
-    /// Creates a new `ServerNoticeMessageEventContent` with the given body and notice type.
+    /// Creates a new `ServerNoticeMessageEventContent` with the given body and
+    /// notice type.
     pub fn new(body: String, server_notice_type: ServerNoticeType) -> Self {
         Self {
             body,
@@ -44,7 +44,8 @@ impl ServerNoticeMessageEventContent {
 #[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 #[non_exhaustive]
 pub enum ServerNoticeType {
-    /// The server has exceeded some limit which requires the server administrator to intervene.
+    /// The server has exceeded some limit which requires the server
+    /// administrator to intervene.
     #[palpo_enum(rename = "m.server_notice.usage_limit_reached")]
     UsageLimitReached,
 
@@ -59,10 +60,12 @@ pub enum ServerNoticeType {
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum LimitType {
-    /// The server's number of active users in the last 30 days has exceeded the maximum.
+    /// The server's number of active users in the last 30 days has exceeded the
+    /// maximum.
     ///
-    /// New connections are being refused by the server. What defines "active" is left as an
-    /// implementation detail, however servers are encouraged to treat syncing users as "active".
+    /// New connections are being refused by the server. What defines "active"
+    /// is left as an implementation detail, however servers are encouraged
+    /// to treat syncing users as "active".
     MonthlyActiveUser,
 
     #[doc(hidden)]

@@ -1,46 +1,51 @@
 //! Digital signatures according to the [Matrix](https://matrix.org/) specification.
 //!
-//! Digital signatures are used by Matrix homeservers to verify the authenticity of events in the
-//! Matrix system, as well as requests between homeservers for federation. Each homeserver has one
-//! or more signing key pairs (sometimes referred to as "verify keys") which it uses to sign all
-//! events and federation requests. Matrix clients and other Matrix homeservers can ask the
+//! Digital signatures are used by Matrix homeservers to verify the authenticity
+//! of events in the Matrix system, as well as requests between homeservers for
+//! federation. Each homeserver has one or more signing key pairs (sometimes
+//! referred to as "verify keys") which it uses to sign all events and
+//! federation requests. Matrix clients and other Matrix homeservers can ask the
 //! homeserver for its public keys and use those keys to verify the signed data.
 //!
-//! Each signing key pair has an identifier, which consists of the name of the digital signature
-//! algorithm it uses and a "version" string, separated by a colon. The version is an arbitrary
-//! identifier used to distinguish key pairs using the same algorithm from the same homeserver.
+//! Each signing key pair has an identifier, which consists of the name of the
+//! digital signature algorithm it uses and a "version" string, separated by a
+//! colon. The version is an arbitrary identifier used to distinguish key pairs
+//! using the same algorithm from the same homeserver.
 //!
-//! Arbitrary JSON objects can be signed as well as JSON representations of Matrix events. In both
-//! cases, the signatures are stored within the JSON object itself under a `signatures` key. Events
-//! are also required to contain hashes of their content, which are similarly stored within the
-//! hashed JSON object under a `hashes` key.
+//! Arbitrary JSON objects can be signed as well as JSON representations of
+//! Matrix events. In both cases, the signatures are stored within the JSON
+//! object itself under a `signatures` key. Events are also required to contain
+//! hashes of their content, which are similarly stored within the hashed JSON
+//! object under a `hashes` key.
 //!
-//! In JSON representations, both signatures and hashes appear as base64-encoded strings, using the
-//! standard character set, without padding.
+//! In JSON representations, both signatures and hashes appear as base64-encoded
+//! strings, using the standard character set, without padding.
 //!
 //! # Signing and hashing
 //!
-//! To sign an arbitrary JSON object, use the `sign_json` function. See the documentation of this
-//! function for more details and a full example of use.
-//!
-//! Signing an event uses a more complicated process than signing arbitrary JSON, because events can
-//! be redacted, and signatures need to remain valid even if data is removed from an event later.
-//! HomeServers are required to generate hashes of event contents as well as signing events before
-//! exchanging them with other homeservers. Although the algorithm for hashing and signing an event
-//! is more complicated than for signing arbitrary JSON, the interface to a user of palpo-signatures
-//! is the same. To hash and sign an event, use the `hash_and_sign_event` function. See the
+//! To sign an arbitrary JSON object, use the `sign_json` function. See the
 //! documentation of this function for more details and a full example of use.
+//!
+//! Signing an event uses a more complicated process than signing arbitrary
+//! JSON, because events can be redacted, and signatures need to remain valid
+//! even if data is removed from an event later. HomeServers are required to
+//! generate hashes of event contents as well as signing events before
+//! exchanging them with other homeservers. Although the algorithm for hashing
+//! and signing an event is more complicated than for signing arbitrary JSON,
+//! the interface to a user of palpo-signatures is the same. To hash and sign an
+//! event, use the `hash_and_sign_event` function. See the documentation of this
+//! function for more details and a full example of use.
 //!
 //! # Verifying signatures and hashes
 //!
-//! When a homeserver receives data from another homeserver via the federation, it's necessary to
-//! verify the authenticity and integrity of the data by verifying their signatures.
+//! When a homeserver receives data from another homeserver via the federation,
+//! it's necessary to verify the authenticity and integrity of the data by
+//! verifying their signatures.
 //!
-//! To verify a signature on arbitrary JSON, use the `verify_json` function. To verify the
-//! signatures and hashes on an event, use the `verify_event` function. See the documentation for
-//! these respective functions for more details and full examples of use.
-use crate::serde::{AsRefStr, DisplayAsRefStr};
-
+//! To verify a signature on arbitrary JSON, use the `verify_json` function. To
+//! verify the signatures and hashes on an event, use the `verify_event`
+//! function. See the documentation for these respective functions for more
+//! details and full examples of use.
 pub use self::{
     error::{Error, JsonError, ParseError, VerificationError},
     functions::{
@@ -51,6 +56,7 @@ pub use self::{
     signatures::Signature,
     verification::Verified,
 };
+use crate::serde::{AsRefStr, DisplayAsRefStr};
 
 mod error;
 mod functions;
@@ -103,14 +109,14 @@ fn split_id(id: &str) -> Result<(Algorithm, String), Error> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::{
-        RoomVersionId,
-        serde::{Base64, base64::Standard},
-    };
     use pkcs8::{PrivateKeyInfo, der::Decode};
     use serde_json::{from_str as from_json_str, to_string as to_json_string};
 
     use super::{Ed25519KeyPair, canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json};
+    use crate::{
+        RoomVersionId,
+        serde::{Base64, base64::Standard},
+    };
 
     fn pkcs8() -> Vec<u8> {
         const ENCODED: &str = "\

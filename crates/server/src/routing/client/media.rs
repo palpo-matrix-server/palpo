@@ -309,7 +309,7 @@ pub async fn preview_url(
         Url::parse(&args.url).map_err(|e| MatrixError::invalid_param(format!("Requested URL is not valid: {e}")))?;
 
     if !crate::media::url_preview_allowed(&url) {
-        return Err(MatrixError::forbidden("URL is not allowed to be previewed").into());
+        return Err(MatrixError::forbidden(None, "URL is not allowed to be previewed").into());
     }
 
     let preview = crate::media::get_url_preview(&url).await?;

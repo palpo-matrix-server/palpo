@@ -2,39 +2,45 @@
 //!
 //! # Extensible events
 //!
-//! [MSC1767] defines a new structure for events that is made of two parts: a type and zero or more
-//! reusable content blocks.
+//! [MSC1767] defines a new structure for events that is made of two parts: a
+//! type and zero or more reusable content blocks.
 //!
-//! This allows to construct new event types from a list of known content blocks that allows in turn
-//! clients to be able to render unknown event types by using the known content blocks as a
-//! fallback. When a new type is defined, all the content blocks it can or must contain are defined
-//! too.
+//! This allows to construct new event types from a list of known content blocks
+//! that allows in turn clients to be able to render unknown event types by
+//! using the known content blocks as a fallback. When a new type is defined,
+//! all the content blocks it can or must contain are defined too.
 //!
-//! There are also some content blocks called "mixins" that can apply to any event when they are
-//! defined.
+//! There are also some content blocks called "mixins" that can apply to any
+//! event when they are defined.
 //!
 //! # MSCs
 //!
-//! This is a list of MSCs defining the extensible events and deprecating the corresponding legacy
-//! types. Note that "primary type" means the `type` field at the root of the event and "message
-//! type" means the `msgtype` field in the content of the `m.room.message` primary type.
+//! This is a list of MSCs defining the extensible events and deprecating the
+//! corresponding legacy types. Note that "primary type" means the `type` field
+//! at the root of the event and "message type" means the `msgtype` field in the
+//! content of the `m.room.message` primary type.
 //!
-//! - [MSC1767]: Text messages, where the `m.message` primary type replaces the `m.text` message
-//!   type.
-//! - [MSC3954]: Emotes, where the `m.emote` primary type replaces the `m.emote` message type.
-//! - [MSC3955]: Automated events, where the `m.automated` mixin replaces the `m.notice` message
-//!   type.
-//! - [MSC3956]: Encrypted events, where the `m.encrypted` primary type replaces the
-//!   `m.room.encrypted` primary type.
-//! - [MSC3551]: Files, where the `m.file` primary type replaces the `m.file` message type.
-//! - [MSC3552]: Images and Stickers, where the `m.image` primary type replaces the `m.image`
-//!   message type and the `m.sticker` primary type.
-//! - [MSC3553]: Videos, where the `m.video` primary type replaces the `m.video` message type.
-//! - [MSC3927]: Audio, where the `m.audio` primary type replaces the `m.audio` message type.
-//! - [MSC3488]: Location, where the `m.location` primary type replaces the `m.location` message
-//!   type.
+//! - [MSC1767]: Text messages, where the `m.message` primary type replaces the
+//!   `m.text` message type.
+//! - [MSC3954]: Emotes, where the `m.emote` primary type replaces the `m.emote`
+//!   message type.
+//! - [MSC3955]: Automated events, where the `m.automated` mixin replaces the
+//!   `m.notice` message type.
+//! - [MSC3956]: Encrypted events, where the `m.encrypted` primary type replaces
+//!   the `m.room.encrypted` primary type.
+//! - [MSC3551]: Files, where the `m.file` primary type replaces the `m.file`
+//!   message type.
+//! - [MSC3552]: Images and Stickers, where the `m.image` primary type replaces
+//!   the `m.image` message type and the `m.sticker` primary type.
+//! - [MSC3553]: Videos, where the `m.video` primary type replaces the `m.video`
+//!   message type.
+//! - [MSC3927]: Audio, where the `m.audio` primary type replaces the `m.audio`
+//!   message type.
+//! - [MSC3488]: Location, where the `m.location` primary type replaces the
+//!   `m.location` message type.
 //!
-//! There are also the following MSCs that introduce new features with extensible events:
+//! There are also the following MSCs that introduce new features with
+//! extensible events:
 //!
 //! - [MSC3245]: Voice Messages.
 //! - [MSC3246]: Audio Waveform.
@@ -42,30 +48,33 @@
 //!
 //! # How to use them in Matrix
 //!
-//! The extensible events types are meant to be used separately than the legacy types. As such,
-//! their use is reserved for room versions that support it.
+//! The extensible events types are meant to be used separately than the legacy
+//! types. As such, their use is reserved for room versions that support it.
 //!
-//! Currently no stable room version supports extensible events so they can only be sent with
-//! unstable room versions that support them.
+//! Currently no stable room version supports extensible events so they can only
+//! be sent with unstable room versions that support them.
 //!
-//! An exception is made for some new extensible events types that don't have a legacy type. They
-//! can be used with stable room versions without support for extensible types, but they might be
-//! ignored by clients that have no support for extensible events. The types that support this must
-//! advertise it in their MSC.
+//! An exception is made for some new extensible events types that don't have a
+//! legacy type. They can be used with stable room versions without support for
+//! extensible types, but they might be ignored by clients that have no support
+//! for extensible events. The types that support this must advertise it in
+//! their MSC.
 //!
-//! Note that if a room version supports extensible events, it doesn't support the legacy types
-//! anymore and those should be ignored. There is not yet a definition of the deprecated legacy
-//! types in extensible events rooms.
+//! Note that if a room version supports extensible events, it doesn't support
+//! the legacy types anymore and those should be ignored. There is not yet a
+//! definition of the deprecated legacy types in extensible events rooms.
 //!
 //! # How to use them in Palpo
 //!
-//! First, you can enable the `unstable-extensible-events` feature from the `palpo` crate, that
-//! will enable all the MSCs for the extensible events that correspond to the legacy types. It
-//! is also possible to enable only the MSCs you want with the `unstable-mscXXXX` features (where
-//! `XXXX` is the number of the MSC). When enabling an MSC, all MSC dependencies are enabled at the
-//! same time to avoid issues.
+//! First, you can enable the `unstable-extensible-events` feature from the
+//! `palpo` crate, that will enable all the MSCs for the extensible events that
+//! correspond to the legacy types. It is also possible to enable only the MSCs
+//! you want with the `unstable-mscXXXX` features (where `XXXX` is the number of
+//! the MSC). When enabling an MSC, all MSC dependencies are enabled at the same
+//! time to avoid issues.
 //!
-//! Currently the extensible events use the unstable prefixes as defined in the corresponding MSCs.
+//! Currently the extensible events use the unstable prefixes as defined in the
+//! corresponding MSCs.
 //!
 //! [MSC1767]: https://github.com/matrix-org/matrix-spec-proposals/pull/1767
 //! [MSC3954]: https://github.com/matrix-org/matrix-spec-proposals/pull/3954
@@ -93,11 +102,12 @@ pub use historical_serde::MessageContentBlock;
 
 /// The payload for an extensible text message.
 ///
-/// This is the new primary type introduced in [MSC1767] and should only be sent in rooms with a
-/// version that supports it. See the documentation of the [`message`] module for more information.
+/// This is the new primary type introduced in [MSC1767] and should only be sent
+/// in rooms with a version that supports it. See the documentation of the
+/// [`message`] module for more information.
 ///
-/// To construct a `MessageEventContent` with a custom [`TextContentBlock`], convert it with
-/// `MessageEventContent::from()` / `.into()`.
+/// To construct a `MessageEventContent` with a custom [`TextContentBlock`],
+/// convert it with `MessageEventContent::from()` / `.into()`.
 ///
 /// [MSC1767]: https://github.com/matrix-org/matrix-spec-proposals/pull/1767
 /// [`message`]: super::message
@@ -149,8 +159,8 @@ impl MessageEventContent {
 
     /// A convenience constructor to create a message from Markdown.
     ///
-    /// The content includes an HTML message if some Markdown formatting was detected, otherwise
-    /// only a plain text message is included.
+    /// The content includes an HTML message if some Markdown formatting was
+    /// detected, otherwise only a plain text message is included.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
         Self {
@@ -177,8 +187,9 @@ impl From<TextContentBlock> for MessageEventContent {
 ///
 /// This is an array of [`TextRepresentation`].
 ///
-/// To construct a `TextContentBlock` with custom MIME types, construct a `Vec<TextRepresentation>`
-/// first and use its `::from()` / `.into()` implementation.
+/// To construct a `TextContentBlock` with custom MIME types, construct a
+/// `Vec<TextRepresentation>` first and use its `::from()` / `.into()`
+/// implementation.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TextContentBlock(Vec<TextRepresentation>);
 
@@ -188,7 +199,8 @@ impl TextContentBlock {
         Self(vec![TextRepresentation::plain(body)])
     }
 
-    /// A convenience constructor to create an HTML message with a plain text fallback.
+    /// A convenience constructor to create an HTML message with a plain text
+    /// fallback.
     pub fn html(body: impl Into<String>, html_body: impl Into<String>) -> Self {
         Self(vec![
             TextRepresentation::html(html_body),
@@ -198,8 +210,8 @@ impl TextContentBlock {
 
     /// A convenience constructor to create a message from Markdown.
     ///
-    /// The content includes an HTML message if some Markdown formatting was detected, otherwise
-    /// only a plain text message is included.
+    /// The content includes an HTML message if some Markdown formatting was
+    /// detected, otherwise only a plain text message is included.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
         let mut message = Vec::with_capacity(2);
@@ -304,7 +316,8 @@ impl TextRepresentation {
         Self::new("text/html", body)
     }
 
-    /// Creates a new HTML-formatted message body by parsing the Markdown in `body`.
+    /// Creates a new HTML-formatted message body by parsing the Markdown in
+    /// `body`.
     ///
     /// Returns `None` if no Markdown formatting was found.
     #[cfg(feature = "markdown")]

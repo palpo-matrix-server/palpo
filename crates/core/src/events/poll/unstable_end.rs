@@ -1,23 +1,23 @@
-//! Types for the `org.matrix.msc3381.poll.end` event, the unstable version of `m.poll.end`.
+//! Types for the `org.matrix.msc3381.poll.end` event, the unstable version of
+//! `m.poll.end`.
 
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedEventId;
-use crate::events::relation::Reference;
+use crate::{OwnedEventId, events::relation::Reference};
 
 /// The payload for an unstable poll end event.
 ///
-/// This type can be generated from the unstable poll start and poll response events with
-/// [`OriginalSyncUnstablePollStartEvent::compile_results()`].
+/// This type can be generated from the unstable poll start and poll response
+/// events with [`OriginalSyncUnstablePollStartEvent::compile_results()`].
 ///
-/// This is the event content that should be sent for room versions that don't support extensible
-/// events. As of Matrix 1.7, none of the stable room versions (1 through 10) support extensible
-/// events.
+/// This is the event content that should be sent for room versions that don't
+/// support extensible events. As of Matrix 1.7, none of the stable room
+/// versions (1 through 10) support extensible events.
 ///
-/// To send a poll end event for a room version that supports extensible events, use
-/// [`PollEndEventContent`].
+/// To send a poll end event for a room version that supports extensible events,
+/// use [`PollEndEventContent`].
 ///
 /// [`OriginalSyncUnstablePollStartEvent::compile_results()`]: super::unstable_start::OriginalSyncUnstablePollStartEvent::compile_results
 /// [`PollEndEventContent`]: super::end::PollEndEventContent
@@ -38,8 +38,8 @@ pub struct UnstablePollEndEventContent {
 }
 
 impl UnstablePollEndEventContent {
-    /// Creates a new `PollEndEventContent` with the given fallback representation and
-    /// that responds to the given poll start event ID.
+    /// Creates a new `PollEndEventContent` with the given fallback
+    /// representation and that responds to the given poll start event ID.
     pub fn new(text: impl Into<String>, poll_start_id: OwnedEventId) -> Self {
         Self {
             text: text.into(),

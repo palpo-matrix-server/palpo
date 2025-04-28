@@ -1,4 +1,5 @@
-//! De-/serialization functions for `Option<MediaSource>` objects representing a thumbnail source.
+//! De-/serialization functions for `Option<MediaSource>` objects representing a
+//! thumbnail source.
 
 use serde::{
     Deserialize, Deserializer,
@@ -64,8 +65,8 @@ where
 
 //     #[derive(Clone, Debug, Deserialize, Serialize)]
 //     struct ThumbnailSourceTest {
-//         #[serde(flatten, with = "super", skip_serializing_if = "Option::is_none")]
-//         source: Option<MediaSource>,
+//         #[serde(flatten, with = "super", skip_serializing_if =
+// "Option::is_none")]         source: Option<MediaSource>,
 //     }
 
 //     #[test]
@@ -143,7 +144,8 @@ where
 //     #[test]
 //     fn serialize_plain() {
 //         let request = ThumbnailSourceTest {
-//             source: Some(MediaSource::Plain(mxc_uri!("mxc://notareal.hs/abcdef").into())),
+//             source:
+// Some(MediaSource::Plain(mxc_uri!("mxc://notareal.hs/abcdef").into())),
 //         };
 //         assert_eq!(
 //             serde_json::to_value(&request).unwrap(),
@@ -159,16 +161,18 @@ where
 //                     url: mxc_uri!("mxc://notareal.hs/abcdef").to_owned(),
 //                     key: JsonWebKeyInit {
 //                         kty: "oct".to_owned(),
-//                         key_ops: vec!["encrypt".to_owned(), "decrypt".to_owned()],
-//                         alg: "A256CTR".to_owned(),
-//                         k: Base64::parse("TLlG_OpX807zzQuuwv4QZGJ21_u7weemFGYJFszMn9A").unwrap(),
+//                         key_ops: vec!["encrypt".to_owned(),
+// "decrypt".to_owned()],                         alg: "A256CTR".to_owned(),
+//                         k:
+// Base64::parse("TLlG_OpX807zzQuuwv4QZGJ21_u7weemFGYJFszMn9A").unwrap(),
 //                         ext: true,
 //                     }
 //                     .into(),
 //                     iv: Base64::parse("S22dq3NAX8wAAAAAAAAAAA").unwrap(),
 //                     hashes: [(
 //                         "sha256".to_owned(),
-//                         Base64::parse("aWOHudBnDkJ9IwaR1Nd8XKoI7DOrqDTwt6xDPfVGN6Q").unwrap(),
+//
+// Base64::parse("aWOHudBnDkJ9IwaR1Nd8XKoI7DOrqDTwt6xDPfVGN6Q").unwrap(),
 //                     )]
 //                     .into(),
 //                     v: "v2".to_owned(),
@@ -190,8 +194,8 @@ where
 //                     },
 //                     "iv": "S22dq3NAX8wAAAAAAAAAAA",
 //                     "hashes": {
-//                         "sha256": "aWOHudBnDkJ9IwaR1Nd8XKoI7DOrqDTwt6xDPfVGN6Q"
-//                     },
+//                         "sha256":
+// "aWOHudBnDkJ9IwaR1Nd8XKoI7DOrqDTwt6xDPfVGN6Q"                     },
 //                     "v": "v2",
 //                 },
 //             })

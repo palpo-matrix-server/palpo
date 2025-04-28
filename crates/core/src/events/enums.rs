@@ -3,10 +3,25 @@ use salvo::prelude::*;
 use serde::{Deserialize, de};
 
 use super::room::encrypted;
-use crate::events::beacon::BeaconEventContent;
-use crate::identifiers::*;
-use crate::serde::RawJsonValue;
-use crate::{UnixMillis, serde::from_raw_json_value};
+use crate::{
+    UnixMillis,
+    identifiers::*,
+    serde::{RawJsonValue, from_raw_json_value},
+};
+
+/// Event types that servers should send as [stripped state] to help clients
+/// identify a room when they can't access the full room state.
+///
+/// [stripped state]: https://spec.matrix.org/latest/client-server-api/#stripped-state
+pub const RECOMMENDED_STRIPPED_STATE_EVENT_TYPES: &[StateEventType] = &[
+    StateEventType::RoomCreate,
+    StateEventType::RoomName,
+    StateEventType::RoomAvatar,
+    StateEventType::RoomTopic,
+    StateEventType::RoomJoinRules,
+    StateEventType::RoomCanonicalAlias,
+    StateEventType::RoomEncryption,
+];
 
 event_enum! {
     /// Any global account data event.
@@ -17,23 +32,33 @@ event_enum! {
         "m.push_rules" => super::push_rules,
         "m.secret_storage.default_key" => super::secret_storage::default_key,
         "m.secret_storage.key.*" => super::secret_storage::key,
+        #[cfg(feature = "unstable-msc2545")]
+        #[palpo_enum(ident = AccountImagePack, alias = "m.image_pack")]
+        "im.ponies.user_emotes" => super::image_pack,
+        #[cfg(feature = "unstable-msc2545")]
+        #[palpo_enum(ident = ImagePackRooms, alias = "m.image_pack.rooms")]
+        "im.ponies.emote_rooms" => super::image_pack,
     }
 
     /// Any room account data event.
     enum RoomAccountData {
         "m.fully_read" => super::fully_read,
         "m.tag" => super::tag,
+        "m.marked_unread" => super::marked_unread,
+        #[cfg(feature = "unstable-msc2867")]
+        #[palpo_enum(ident = UnstableMarkedUnread)]
+        "com.famedly.marked_unread" => super::marked_unread,
     }
 
     /// Any ephemeral room event.
     enum EphemeralRoom {
-        "m.receipt" => crate::events::receipt,
-        "m.typing" => crate::events::typing,
+        "m.receipt" => super::receipt,
+        "m.typing" => super::typing,
     }
 
     /// Any message-like event.
     enum MessageLike {
-        // #[cfg(feature = "unstable-msc3927")]
+        #[cfg(feature = "unstable-msc3927")]
         #[palpo_enum(alias = "m.audio")]
         "org.matrix.msc1767.audio" => super::audio,
         "m.call.answer" => super::call::answer,
@@ -42,17 +67,19 @@ event_enum! {
         "m.call.candidates" => super::call::candidates,
         "m.call.negotiate" => super::call::negotiate,
         "m.call.reject" => super::call::reject,
+        #[palpo_enum(alias = "org.matrix.call.sdp_stream_metadata_changed")]
+        "m.call.sdp_stream_metadata_changed" => super::call::sdp_stream_metadata_changed,
         "m.call.select_answer" => super::call::select_answer,
-        // #[cfg(feature = "unstable-msc3954")]
+        #[cfg(feature = "unstable-msc3954")]
         #[palpo_enum(alias = "m.emote")]
         "org.matrix.msc1767.emote" => super::emote,
-        // #[cfg(feature = "unstable-msc3956")]
+        #[cfg(feature = "unstable-msc3956")]
         #[palpo_enum(alias = "m.encrypted")]
         "org.matrix.msc1767.encrypted" => super::encrypted,
-        // #[cfg(feature = "unstable-msc3551")]
+        #[cfg(feature = "unstable-msc3551")]
         #[palpo_enum(alias = "m.file")]
         "org.matrix.msc1767.file" => super::file,
-        // #[cfg(feature = "unstable-msc3552")]
+        #[cfg(feature = "unstable-msc3552")]
         #[palpo_enum(alias = "m.image")]
         "org.matrix.msc1767.image" => super::image,
         "m.key.verification.ready" => super::key::verification::ready,
@@ -62,26 +89,27 @@ event_enum! {
         "m.key.verification.key" => super::key::verification::key,
         "m.key.verification.mac" => super::key::verification::mac,
         "m.key.verification.done" => super::key::verification::done,
-        // #[cfg(feature = "unstable-msc3488")]
+        #[cfg(feature = "unstable-msc3488")]
         "m.location" => super::location,
-        // #[cfg(feature = "unstable-msc1767")]
+        #[cfg(feature = "unstable-msc1767")]
         #[palpo_enum(alias = "m.message")]
         "org.matrix.msc1767.message" => super::message,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         "m.poll.start" => super::poll::start,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         #[palpo_enum(ident = UnstablePollStart)]
         "org.matrix.msc3381.poll.start" => super::poll::unstable_start,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         "m.poll.response" => super::poll::response,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         #[palpo_enum(ident = UnstablePollResponse)]
         "org.matrix.msc3381.poll.response" => super::poll::unstable_response,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         "m.poll.end" => super::poll::end,
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         #[palpo_enum(ident = UnstablePollEnd)]
         "org.matrix.msc3381.poll.end" => super::poll::unstable_end,
+        #[cfg(feature = "unstable-msc3489")]
         #[palpo_enum(alias = "m.beacon")]
         "org.matrix.msc3672.beacon" => super::beacon,
         "m.reaction" => super::reaction,
@@ -89,13 +117,13 @@ event_enum! {
         "m.room.message" => super::room::message,
         "m.room.redaction" => super::room::redaction,
         "m.sticker" => super::sticker,
-        // #[cfg(feature = "unstable-msc3553")]
+        #[cfg(feature = "unstable-msc3553")]
         #[palpo_enum(alias = "m.video")]
         "org.matrix.msc1767.video" => super::video,
-        // #[cfg(feature = "unstable-msc3245")]
+        #[cfg(feature = "unstable-msc3245")]
         #[palpo_enum(alias = "m.voice")]
         "org.matrix.msc3245.voice.v2" => super::voice,
-        // #[cfg(feature = "unstable-msc4075")]
+        #[cfg(feature = "unstable-msc4075")]
         #[palpo_enum(alias = "m.call.notify")]
         "org.matrix.msc4075.call.notify" => super::call::notify,
     }
@@ -123,9 +151,18 @@ event_enum! {
         "m.room.topic" => super::room::topic,
         "m.space.child" => super::space::child,
         "m.space.parent" => super::space::parent,
+        #[cfg(feature = "unstable-msc2545")]
+        #[palpo_enum(ident = RoomImagePack, alias = "m.image_pack")]
+        "im.ponies.room_emotes" => super::image_pack,
+        #[cfg(feature = "unstable-msc3489")]
+        #[palpo_enum(alias = "m.beacon_info")]
+        "org.matrix.msc3672.beacon_info" => super::beacon_info,
         #[cfg(feature = "unstable-msc3401")]
         #[palpo_enum(alias = "m.call.member")]
         "org.matrix.msc3401.call.member" => super::call::member,
+        #[cfg(feature = "unstable-msc4171")]
+        #[palpo_enum(alias = "m.member_hints")]
+        "io.element.functional_members" => super::member_hints,
     }
 
     /// Any to-device event.
@@ -207,7 +244,8 @@ impl AnyTimelineEvent {
 
 /// Any sync room event.
 ///
-/// Sync room events are room event without a `room_id`, as returned in `/sync` responses.
+/// Sync room events are room event without a `room_id`, as returned in `/sync`
+/// responses.
 #[allow(clippy::large_enum_variant, clippy::exhaustive_enums)]
 #[derive(ToSchema, Clone, Debug, EventEnumFromEvent)]
 pub enum AnySyncTimelineEvent {
@@ -300,16 +338,19 @@ impl<'de> Deserialize<'de> for AnySyncTimelineEvent {
 impl AnyMessageLikeEventContent {
     /// Get a copy of the event's `m.relates_to` field, if any.
     ///
-    /// This is a helper function intended for encryption. There should not be a reason to access
-    /// `m.relates_to` without first destructuring an `AnyMessageLikeEventContent` otherwise.
+    /// This is a helper function intended for encryption. There should not be a
+    /// reason to access `m.relates_to` without first destructuring an
+    /// `AnyMessageLikeEventContent` otherwise.
     pub fn relation(&self) -> Option<encrypted::Relation> {
+        #[cfg(feature = "unstable-msc3489")]
+        use super::beacon::BeaconEventContent;
         use super::key::verification::{
             accept::KeyVerificationAcceptEventContent, cancel::KeyVerificationCancelEventContent,
             done::KeyVerificationDoneEventContent, key::KeyVerificationKeyEventContent,
             mac::KeyVerificationMacEventContent, ready::KeyVerificationReadyEventContent,
             start::KeyVerificationStartEventContent,
         };
-        // #[cfg(feature = "unstable-msc3381")]
+        #[cfg(feature = "unstable-msc3381")]
         use super::poll::{
             end::PollEndEventContent, response::PollResponseEventContent, unstable_end::UnstablePollEndEventContent,
             unstable_response::UnstablePollResponseEventContent,
@@ -329,39 +370,41 @@ impl AnyMessageLikeEventContent {
             Self::Reaction(ev) => Some(encrypted::Relation::Annotation(ev.relates_to.clone())),
             Self::RoomEncrypted(ev) => ev.relates_to.clone(),
             Self::RoomMessage(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc1767")]
+            #[cfg(feature = "unstable-msc1767")]
             Self::Message(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3954")]
+            #[cfg(feature = "unstable-msc3954")]
             Self::Emote(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3956")]
+            #[cfg(feature = "unstable-msc3956")]
             Self::Encrypted(ev) => ev.relates_to.clone(),
-            // #[cfg(feature = "unstable-msc3245")]
+            #[cfg(feature = "unstable-msc3245")]
             Self::Voice(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3927")]
+            #[cfg(feature = "unstable-msc3927")]
             Self::Audio(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3488")]
+            #[cfg(feature = "unstable-msc3488")]
             Self::Location(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3551")]
+            #[cfg(feature = "unstable-msc3551")]
             Self::File(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3552")]
+            #[cfg(feature = "unstable-msc3552")]
             Self::Image(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3553")]
+            #[cfg(feature = "unstable-msc3553")]
             Self::Video(ev) => ev.relates_to.clone().map(Into::into),
-            // #[cfg(feature = "unstable-msc3381")]
+            #[cfg(feature = "unstable-msc3381")]
             Self::PollResponse(PollResponseEventContent { relates_to, .. })
             | Self::UnstablePollResponse(UnstablePollResponseEventContent { relates_to, .. })
             | Self::PollEnd(PollEndEventContent { relates_to, .. })
             | Self::UnstablePollEnd(UnstablePollEndEventContent { relates_to, .. }) => {
                 Some(encrypted::Relation::Reference(relates_to.clone()))
             }
+            #[cfg(feature = "unstable-msc3489")]
             Self::Beacon(BeaconEventContent { relates_to, .. }) => {
                 Some(encrypted::Relation::Reference(relates_to.clone()))
             }
-            // #[cfg(feature = "unstable-msc3381")]
+            #[cfg(feature = "unstable-msc3381")]
             Self::PollStart(_) | Self::UnstablePollStart(_) => None,
-            // #[cfg(feature = "unstable-msc4075")]
+            #[cfg(feature = "unstable-msc4075")]
             Self::CallNotify(_) => None,
-            Self::CallNegotiate(_)
+            Self::CallSdpStreamMetadataChanged(_)
+            | Self::CallNegotiate(_)
             | Self::CallReject(_)
             | Self::CallSelectAnswer(_)
             | Self::CallAnswer(_)

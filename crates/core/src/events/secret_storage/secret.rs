@@ -2,15 +2,17 @@
 
 use std::collections::BTreeMap;
 
-use crate::serde::Base64;
 use serde::{Deserialize, Serialize};
+
+use crate::serde::Base64;
 
 /// A secret and its encrypted contents.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretEventContent {
     /// Map from key ID to the encrypted data.
     ///
-    /// The exact format for the encrypted data is dependent on the key algorithm.
+    /// The exact format for the encrypted data is dependent on the key
+    /// algorithm.
     pub encrypted: BTreeMap<String, SecretEncryptedData>,
 }
 
@@ -44,7 +46,8 @@ pub enum SecretEncryptedData {
 
 //     use crate::serde::Base64;
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{SecretEncryptedData, SecretEventContent};
 
@@ -52,8 +55,9 @@ pub enum SecretEncryptedData {
 //     fn test_secret_serialization() {
 //         let key_one_data = SecretEncryptedData::AesHmacSha2EncryptedData {
 //             iv: Base64::parse("YWJjZGVmZ2hpamtsbW5vcA").unwrap(),
-//             ciphertext: Base64::parse("dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ").unwrap(),
-//             mac: Base64::parse("aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U").unwrap(),
+//             ciphertext:
+// Base64::parse("dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ").unwrap(),
+// mac: Base64::parse("aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U").unwrap(),
 //         };
 
 //         let mut encrypted = BTreeMap::<String, SecretEncryptedData>::new();
@@ -86,15 +90,16 @@ pub enum SecretEncryptedData {
 //             }
 //         });
 
-//         let deserialized: SecretEventContent = from_json_value(json).unwrap();
-//         let secret_data = deserialized.encrypted.get("key_one").unwrap();
+//         let deserialized: SecretEventContent =
+// from_json_value(json).unwrap();         let secret_data =
+// deserialized.encrypted.get("key_one").unwrap();
 
 //         assert_matches!(
 //             secret_data,
-//             SecretEncryptedData::AesHmacSha2EncryptedData { iv, ciphertext, mac }
-//         );
+//             SecretEncryptedData::AesHmacSha2EncryptedData { iv, ciphertext,
+// mac }         );
 //         assert_eq!(iv.encode(), "YWJjZGVmZ2hpamtsbW5vcA");
-//         assert_eq!(ciphertext.encode(), "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ");
-//         assert_eq!(mac.encode(), "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U");
-//     }
+//         assert_eq!(ciphertext.encode(),
+// "dGhpc2lzZGVmaW5pdGVseWNpcGhlcnRleHQ");         assert_eq!(mac.encode(),
+// "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U");     }
 // }

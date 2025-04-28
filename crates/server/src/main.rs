@@ -45,14 +45,14 @@ pub mod sync_v3;
 pub mod sync_v4;
 pub mod sync_v5;
 pub mod watcher;
-pub use signing_keys::SigningKeys;
-
 pub use event::{PduBuilder, PduEvent};
+pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;
 
 pub mod error;
 pub use core::error::MatrixError;
+
 pub use error::AppError;
 pub use palpo_core as core;
 pub use palpo_data as data;
@@ -61,14 +61,13 @@ mod macros;
 
 use std::time::Duration;
 
+pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
+use salvo::catcher::Catcher;
+use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::cors::{self, AllowHeaders, Cors};
 use salvo::http::Method;
 use salvo::logging::Logger;
-
-pub use diesel::result::Error as DieselError;
-use salvo::catcher::Catcher;
-use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::prelude::*;
 use tracing_futures::Instrument;
 use tracing_subscriber::fmt::format::FmtSpan;

@@ -1,11 +1,12 @@
 use std::{collections::BTreeMap, fmt};
 
-use crate::OwnedEventId;
 use serde::{
     Deserialize, Serialize,
     de::{Deserializer, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
 };
+
+use crate::OwnedEventId;
 
 #[derive(Deserialize, Serialize)]
 struct WrappedError {
@@ -68,10 +69,10 @@ where
 mod tests {
     use std::collections::BTreeMap;
 
-    use ruma_common::{OwnedEventId, event_id, owned_event_id};
     use serde_json::{json, value::Serializer as JsonSerializer};
 
     use super::{deserialize, serialize};
+    use crate::{OwnedEventId, event_id, owned_event_id};
 
     #[test]
     fn serialize_error() {

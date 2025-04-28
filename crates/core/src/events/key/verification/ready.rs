@@ -7,8 +7,7 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::VerificationMethod;
-use crate::events::relation::Reference;
-use crate::{OwnedDeviceId, OwnedTransactionId};
+use crate::{OwnedDeviceId, OwnedTransactionId, events::relation::Reference};
 
 /// The content of a to-device `m.m.key.verification.ready` event.
 ///
@@ -24,15 +23,15 @@ pub struct ToDeviceKeyVerificationReadyEventContent {
 
     /// An opaque identifier for the verification process.
     ///
-    /// Must be unique with respect to the devices involved. Must be the same as the
-    /// `transaction_id` given in the `m.key.verification.request` from a
-    /// request.
+    /// Must be unique with respect to the devices involved. Must be the same as
+    /// the `transaction_id` given in the `m.key.verification.request` from
+    /// a request.
     pub transaction_id: OwnedTransactionId,
 }
 
 impl ToDeviceKeyVerificationReadyEventContent {
-    /// Creates a new `ToDeviceKeyVerificationReadyEventContent` with the given device ID,
-    /// verification methods and transaction ID.
+    /// Creates a new `ToDeviceKeyVerificationReadyEventContent` with the given
+    /// device ID, verification methods and transaction ID.
     pub fn new(
         from_device: OwnedDeviceId,
         methods: Vec<VerificationMethod>,
@@ -65,8 +64,8 @@ pub struct KeyVerificationReadyEventContent {
 }
 
 impl KeyVerificationReadyEventContent {
-    /// Creates a new `KeyVerificationReadyEventContent` with the given device ID, methods and
-    /// reference.
+    /// Creates a new `KeyVerificationReadyEventContent` with the given device
+    /// ID, methods and reference.
     pub fn new(from_device: OwnedDeviceId, methods: Vec<VerificationMethod>, relates_to: Reference) -> Self {
         Self {
             from_device,
@@ -79,9 +78,11 @@ impl KeyVerificationReadyEventContent {
 // #[cfg(test)]
 // mod tests {
 //     use crate::{owned_event_id, OwnedDeviceId};
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
-//     use super::{KeyVerificationReadyEventContent, ToDeviceKeyVerificationReadyEventContent};
+//     use super::{KeyVerificationReadyEventContent,
+// ToDeviceKeyVerificationReadyEventContent};
 //     use crate::{key::verification::VerificationMethod, relation::Reference};
 
 //     #[test]
@@ -132,10 +133,12 @@ impl KeyVerificationReadyEventContent {
 //             }
 //         });
 
-//         let content = from_json_value::<KeyVerificationReadyEventContent>(json_data).unwrap();
+//         let content =
+// from_json_value::<KeyVerificationReadyEventContent>(json_data).unwrap();
 //         assert_eq!(content.from_device, "123");
 //         assert_eq!(content.methods, vec![VerificationMethod::SasV1]);
-//         assert_eq!(content.relates_to.event_id, "$1598361704261elfgc:localhost");
+//         assert_eq!(content.relates_to.event_id,
+// "$1598361704261elfgc:localhost");
 
 //         let json_data = json!({
 //             "from_device": "123",
@@ -143,8 +146,9 @@ impl KeyVerificationReadyEventContent {
 //             "transaction_id": "456",
 //         });
 
-//         let content = from_json_value::<ToDeviceKeyVerificationReadyEventContent>(json_data).unwrap();
-//         assert_eq!(content.from_device, "123");
+//         let content =
+// from_json_value::<ToDeviceKeyVerificationReadyEventContent>(json_data).
+// unwrap();         assert_eq!(content.from_device, "123");
 //         assert_eq!(content.methods, vec![VerificationMethod::SasV1]);
 //         assert_eq!(content.transaction_id, "456");
 //     }

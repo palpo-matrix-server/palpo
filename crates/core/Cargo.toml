@@ -13,9 +13,9 @@ rust-version.workspace = true
 [features]
 html = []
 html-matrix = []
-markdown = []
+markdown = ["dep:pulldown-cmark"]
 
-ring-compat = []
+ring-compat = ["dep:subslice"]
 
 # unstable: by using any of these, you opt out of all semver guarantees Ruma
 #           otherwise provides!
@@ -28,8 +28,8 @@ unstable-extensible-events = [
     "unstable-msc3955",
 ]
 unstable-msc1767 = []
-unstable-msc2409 = []
 unstable-msc2448 = []
+unstable-msc2545 = []
 unstable-msc2654 = []
 unstable-msc2666 = []
 unstable-msc2747 = []
@@ -39,22 +39,21 @@ unstable-msc2965 = []
 unstable-msc2967 = []
 unstable-msc3061 = []
 unstable-msc3202 = []
-unstable-msc3245 = []
+unstable-msc3245 = ["unstable-msc3246"]
 # Support the m.room.message fallback fields from the first version of MSC3245,
 # implemented in Element Web and documented at
 # https://github.com/matrix-org/matrix-spec-proposals/blob/83f6c5b469c1d78f714e335dcaa25354b255ffa5/proposals/3245-voice-messages.md
 unstable-msc3245-v1-compat = []
-unstable-msc3246 = []
+unstable-msc3246 = ["unstable-msc3927"]
 unstable-msc3266 = []
-unstable-msc3381 = []
+unstable-msc3381 = ["unstable-msc1767"]
 unstable-msc3401 = []
-unstable-msc3488 = []
-unstable-msc3489 = []
-unstable-msc3551 = []
-unstable-msc3552 = []
-unstable-msc3553 = []
-unstable-msc3554 = []
-unstable-msc3575 = []
+unstable-msc3488 = ["unstable-msc1767"]
+unstable-msc3489 = ["unstable-msc3488"]
+unstable-msc3551 = ["unstable-msc3956"]
+unstable-msc3552 = ["unstable-msc3551"]
+unstable-msc3553 = ["unstable-msc3552"]
+unstable-msc3554 = ["unstable-msc1767"]
 unstable-msc3618 = []
 unstable-msc3723 = []
 unstable-msc3814 = []
@@ -63,21 +62,28 @@ unstable-msc3927 = []
 unstable-msc3930 = []
 unstable-msc3931 = []
 unstable-msc3932 = []
-unstable-msc3954 = []
-unstable-msc3955 = []
-unstable-msc3956 = []
+unstable-msc3954 = ["unstable-msc1767"]
+unstable-msc3955 = ["unstable-msc1767"]
+unstable-msc3956 = ["unstable-msc1767"]
 unstable-msc3983 = []
-unstable-msc4075 = []
+unstable-msc4075 = ["unstable-msc3401"]
+unstable-msc4095 = []
 unstable-msc4108 = []
 unstable-msc4121 = []
 unstable-msc4125 = []
 unstable-msc4140 = []
+unstable-msc4171 = []
+unstable-msc4186 = []
+unstable-msc4203 = []
+unstable-msc4230 = []
+unstable-msc4274 = []
 unstable-pdu = []
 unstable-unspecified = []
 
 [dependencies]
 palpo-macros = { workspace = true }
 palpo-identifiers-validation = { workspace = true }
+
 
 as_variant = { workspace = true }
 async-trait = { workspace = true }
@@ -89,12 +95,14 @@ bigdecimal = { workspace = true, features = ["serde"] }
 chrono = { workspace = true, features = ["serde"] }
 config = { workspace = true }
 cookie = { workspace = true }
+date_header = { workspace = true }
 diesel = { workspace = true }
 dotenvy = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["pkcs8", "rand_core"] }
 futures-util = { workspace = true, features = ["io"] }
 form_urlencoded = { workspace = true }
 globwalk = { workspace = true }
+html5ever = { workspace = true }
 http = { workspace = true }
 http-auth = { version = "0.1.9", default-features = false }
 indexmap = { workspace = true }
@@ -107,7 +115,9 @@ mime = { workspace = true }
 # oauth2 = { workspace = true }
 path-slash = { workspace = true }
 percent-encoding = { workspace = true }
+phf = { workspace = true, features = ["macros"] }
 pkcs8 = { workspace = true, features = ["alloc"] }
+pulldown-cmark = { workspace = true, optional = true, features = ["html"]}
 rand = { workspace = true }
 rand_core = { workspace = true }
 # redis = { workspace = true }
@@ -122,17 +132,22 @@ sha2 = { workspace = true }
 smallstr = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+subslice = { workspace = true, optional = true }
 tempfile = { workspace = true }
 textnonce = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }
-tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
+tracing = { workspace = true, features = ["release_max_level_debug", "attributes", "max_level_debug"] }
 tracing-futures = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 serde_with = { workspace = true }
 ulid = { workspace = true }
+web-time = { workspace = true }
 wildmatch = { workspace = true }
+
+[dev-dependencies]
+assert_matches2 = { workspace = true }

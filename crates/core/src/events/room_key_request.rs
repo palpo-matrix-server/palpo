@@ -6,14 +6,16 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
-use crate::{EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId, serde::StringEnum};
+use crate::{
+    EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId, PrivOwnedStr, serde::StringEnum,
+};
 
 /// The content of an `m.room_key_request` event.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room_key_request", kind = ToDevice)]
 pub struct ToDeviceRoomKeyRequestEventContent {
-    /// Whether this is a new key request or a cancellation of a previous request.
+    /// Whether this is a new key request or a cancellation of a previous
+    /// request.
     pub action: Action,
 
     /// Information about the requested key.
@@ -26,14 +28,14 @@ pub struct ToDeviceRoomKeyRequestEventContent {
 
     /// A random string uniquely identifying the request for a key.
     ///
-    /// If the key is requested multiple times, it should be reused. It should also reused
-    /// in order to cancel a request.
+    /// If the key is requested multiple times, it should be reused. It should
+    /// also reused in order to cancel a request.
     pub request_id: OwnedTransactionId,
 }
 
 impl ToDeviceRoomKeyRequestEventContent {
-    /// Creates a new `ToDeviceRoomKeyRequestEventContent` with the given action, boyd, device ID
-    /// and request ID.
+    /// Creates a new `ToDeviceRoomKeyRequestEventContent` with the given
+    /// action, boyd, device ID and request ID.
     pub fn new(
         action: Action,
         body: Option<RequestedKeyInfo>,
@@ -69,7 +71,8 @@ pub enum Action {
 /// Information about a requested key.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct RequestedKeyInfo {
-    /// The encryption algorithm the requested key in this event is to be used with.
+    /// The encryption algorithm the requested key in this event is to be used
+    /// with.
     pub algorithm: EventEncryptionAlgorithm,
 
     /// The room where the key is used.
@@ -80,8 +83,8 @@ pub struct RequestedKeyInfo {
 }
 
 impl RequestedKeyInfo {
-    /// Creates a new `RequestedKeyInfo` with the given algorithm, room ID, sender key and session
-    /// ID.
+    /// Creates a new `RequestedKeyInfo` with the given algorithm, room ID,
+    /// sender key and session ID.
     pub fn new(algorithm: EventEncryptionAlgorithm, room_id: OwnedRoomId, session_id: String) -> Self {
         Self {
             algorithm,

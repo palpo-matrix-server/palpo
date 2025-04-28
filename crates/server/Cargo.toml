@@ -16,7 +16,62 @@ rust-version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-palpo-core = { workspace = true, features = ["unstable-msc2654"] }
+palpo-core = { workspace = true, features = [
+    "markdown",
+    "html",
+    "html-matrix",
+    "unstable-exhaustive-types",
+    "unstable-extensible-events",
+    "unstable-msc1767",
+    "unstable-msc2448",
+    "unstable-msc2545",
+    "unstable-msc2654",
+    "unstable-msc2666",
+    "unstable-msc2747",
+    "unstable-msc2867",
+    "unstable-msc2870",
+    "unstable-msc2965",
+    "unstable-msc2967",
+    "unstable-msc3061",
+    "unstable-msc3202",
+    "unstable-msc3245",
+    "unstable-msc3245-v1-compat",
+    "unstable-msc3246",
+    "unstable-msc3266",
+    "unstable-msc3381",
+    "unstable-msc3401",
+    "unstable-msc3488",
+    "unstable-msc3489",
+    "unstable-msc3551",
+    "unstable-msc3552",
+    "unstable-msc3553",
+    "unstable-msc3554",
+    "unstable-msc3618",
+    "unstable-msc3723",
+    "unstable-msc3814",
+    "unstable-msc3843",
+    "unstable-msc3927",
+    "unstable-msc3930",
+    "unstable-msc3931",
+    "unstable-msc3932",
+    "unstable-msc3954",
+    "unstable-msc3955",
+    "unstable-msc3956",
+    "unstable-msc3983",
+    "unstable-msc4075",
+    "unstable-msc4095",
+    "unstable-msc4108",
+    "unstable-msc4121",
+    "unstable-msc4125",
+    "unstable-msc4140",
+    "unstable-msc4171",
+    "unstable-msc4186",
+    "unstable-msc4203",
+    "unstable-msc4230",
+    "unstable-msc4274",
+    "unstable-pdu",
+    "unstable-unspecified",
+] }
 palpo-macros = { workspace = true }
 palpo-data = { workspace = true }
 
@@ -39,7 +94,7 @@ data-encoding = { workspace = true }
 dotenvy = { workspace = true }
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
 diesel_migrations = { workspace = true }
-either = { workspace = true, features = ["serde"]}
+either = { workspace = true, features = ["serde"] }
 fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml"] }
 futures-util = { workspace = true, features = ["io"] }
@@ -71,7 +126,7 @@ serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_regex = { workspace = true }
 sha1 = { workspace = true }
-smallvec ={ workspace = true }
+smallvec = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tempfile = { workspace = true }

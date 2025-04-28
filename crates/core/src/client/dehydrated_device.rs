@@ -1,9 +1,8 @@
 //! Endpoints for managing dehydrated devices.
 
-use crate::serde::StringEnum;
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
+use crate::{PrivOwnedStr, serde::StringEnum};
 
 /// Data for a dehydrated device.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -27,8 +26,8 @@ impl DehydratedDeviceData {
 pub struct DehydratedDeviceV1 {
     /// The pickle of the `Olm` account of the device.
     ///
-    /// The pickle will contain the private parts of the long-term identity keys of the device as
-    /// well as a collection of one-time keys.
+    /// The pickle will contain the private parts of the long-term identity keys
+    /// of the device as well as a collection of one-time keys.
     pub device_pickle: String,
 }
 

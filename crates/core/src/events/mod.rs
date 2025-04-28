@@ -2,30 +2,33 @@
 //! These types are used by other Palpo  use   crate::s.
 //!
 //! All data exchanged over Matrix is expressed as an event.
-//! Different event types represent different actions, such as joining a room or sending a message.
-//! Events are stored and transmitted as simple JSON structures.
-//! While anyone can create a new event type for their own purposes, the Matrix specification
-//! defines a number of event types which are considered core to the protocol.
-//! This module contains Rust types for all of the event types defined by the specification and
-//! facilities for extending the event system for custom event types.
+//! Different event types represent different actions, such as joining a room or
+//! sending a message. Events are stored and transmitted as simple JSON
+//! structures. While anyone can create a new event type for their own purposes,
+//! the Matrix specification defines a number of event types which are
+//! considered core to the protocol. This module contains Rust types for all of
+//! the event types defined by the specification and facilities for extending
+//! the event system for custom event types.
 //!
 //! # Core event types
 //!
-//! This module includes Rust types for all event types in the Matrix specification.
-//! To better organize the crate, these types live in separate modules with a hierarchy that matches
-//! the reverse domain name notation of the event type. For example, the `m.room.message` event
-//! lives at `palpo::events::room::message::RoomMessageEvent`. Each type's module also contains a
-//! Rust type for that event type's `content` field, and any other supporting types required by the
-//! event's other fields.
+//! This module includes Rust types for all event types in the Matrix
+//! specification. To better organize the crate, these types live in separate
+//! modules with a hierarchy that matches the reverse domain name notation of
+//! the event type. For example, the `m.room.message` event
+//! lives at `palpo::events::room::message::RoomMessageEvent`. Each type's
+//! module also contains a Rust type for that event type's `content` field, and
+//! any other supporting types required by the event's other fields.
 //!
 //! # Extending Palpo with custom events
 //!
-//! For our examples we will start with a simple custom state event. `palpo_event`
-//! specifies the state event's `type` and its `kind`.
+//! For our examples we will start with a simple custom state event.
+//! `palpo_event` specifies the state event's `type` and its `kind`.
 //!
 //! ```rust
-//! use crate::events::macros::EventContent;
 //! use serde::{Deserialize, Serialize};
+//!
+//! use crate::events::macros::EventContent;
 //!
 //! #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 //! #[palpo_event(type = "org.example.event", kind = State, state_key_type = String)]
@@ -37,8 +40,9 @@
 //! This can be used with events structs, such as passing it into
 //! `palpo::api::client::state::send_state_event`'s `Request`.
 //!
-//! As a more advanced example we create a reaction message event. For this event we will use a
-//! [`OriginalSyncMessageLikeEvent`] struct but any [`OriginalMessageLikeEvent`] struct would work.
+//! As a more advanced example we create a reaction message event. For this
+//! event we will use a [`OriginalSyncMessageLikeEvent`] struct but any
+//! [`OriginalMessageLikeEvent`] struct would work.
 //!
 //! ```rust
 //!  use   crate::OwnedEventId;
@@ -109,25 +113,40 @@ mod kinds;
 mod state_key;
 mod unsigned;
 
+#[cfg(feature = "unstable-msc3927")]
 pub mod audio;
+#[cfg(feature = "unstable-msc3489")]
+pub mod beacon;
+#[cfg(feature = "unstable-msc3489")]
+pub mod beacon_info;
 pub mod call;
 pub mod direct;
 pub mod dummy;
+#[cfg(feature = "unstable-msc3954")]
 pub mod emote;
+#[cfg(feature = "unstable-msc3956")]
 pub mod encrypted;
+#[cfg(feature = "unstable-msc3551")]
 pub mod file;
 pub mod forwarded_room_key;
 pub mod fully_read;
 pub mod identity_server;
 pub mod ignored_user_list;
+#[cfg(feature = "unstable-msc3552")]
 pub mod image;
+#[cfg(feature = "unstable-msc2545")]
+pub mod image_pack;
 pub mod key;
+#[cfg(feature = "unstable-msc3488")]
 pub mod location;
+pub mod marked_unread;
+#[cfg(feature = "unstable-msc4171")]
+pub mod member_hints;
+#[cfg(feature = "unstable-msc1767")]
 pub mod message;
 // pub mod pdu;
-pub mod beacon;
-pub mod beacon_info;
 pub mod policy;
+#[cfg(feature = "unstable-msc3381")]
 pub mod poll;
 pub mod presence;
 pub mod push_rules;
@@ -143,13 +162,16 @@ pub mod space;
 pub mod sticker;
 pub mod tag;
 pub mod typing;
+#[cfg(feature = "unstable-msc3553")]
 pub mod video;
+#[cfg(feature = "unstable-msc3245")]
 pub mod voice;
 
 use std::collections::BTreeSet;
 
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, Serializer, de::IgnoredAny};
+use smallstr::SmallString;
 
 pub use self::{
     content::*,
@@ -160,7 +182,6 @@ pub use self::{
     unsigned::{MessageLikeUnsigned, RedactedUnsigned, StateUnsigned, UnsignedRoomRedactionEvent},
 };
 use crate::{EventEncryptionAlgorithm, OwnedUserId, RoomVersionId};
-use smallstr::SmallString;
 
 pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
 const INLINE_SIZE: usize = 48;
@@ -170,14 +191,16 @@ pub trait RedactContent {
     /// The redacted form of the event's content.
     type Redacted;
 
-    /// Transform `self` into a redacted form (removing most or all fields) according to the spec.
+    /// Transform `self` into a redacted form (removing most or all fields)
+    /// according to the spec.
     ///
-    /// A small number of events have room-version specific redaction behavior, so a version has to
-    /// be specified.
+    /// A small number of events have room-version specific redaction behavior,
+    /// so a version has to be specified.
     fn redact(self, version: &RoomVersionId) -> Self::Redacted;
 }
 
-/// Helper struct to determine the event kind from a `serde_json::value::RawValue`.
+/// Helper struct to determine the event kind from a
+/// `serde_json::value::RawValue`.
 #[doc(hidden)]
 #[derive(Deserialize)]
 #[allow(clippy::exhaustive_structs)]
@@ -203,8 +226,9 @@ pub struct UnsignedDeHelper {
     pub redacted_because: Option<IgnoredAny>,
 }
 
-/// Helper function for erroring when trying to serialize an event enum _Custom variant that can
-/// only be created by deserializing from an unknown event type.
+/// Helper function for erroring when trying to serialize an event enum _Custom
+/// variant that can only be created by deserializing from an unknown event
+/// type.
 #[doc(hidden)]
 #[allow(clippy::ptr_arg)]
 pub fn serialize_custom_event_error<T, S: Serializer>(_: &T, _: S) -> Result<S::Ok, S::Error> {

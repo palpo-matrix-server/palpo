@@ -7,16 +7,18 @@ use super::ServerName;
 
 /// A Matrix [event ID].
 ///
-/// An `EventId` is generated randomly or converted from a string slice, and can be converted back
-/// into a string as needed.
+/// An `EventId` is generated randomly or converted from a string slice, and can
+/// be converted back into a string as needed.
 ///
 /// # Room versions
 ///
-/// Matrix specifies multiple [room versions] and the format of event identifiers differ between
-/// them. The original format used by room versions 1 and 2 uses a short pseudorandom "localpart"
-/// followed by the hostname and port of the originating homeserver. Later room versions change
-/// event identifiers to be a hash of the event encoded with Base64. Some of the methods provided by
-/// `EventId` are only relevant to the original event format.
+/// Matrix specifies multiple [room versions] and the format of event
+/// identifiers differ between them. The original format used by room versions 1
+/// and 2 uses a short pseudorandom "localpart" followed by the hostname and
+/// port of the originating homeserver. Later room versions change
+/// event identifiers to be a hash of the event encoded with Base64. Some of the
+/// methods provided by `EventId` are only relevant to the original event
+/// format.
 ///
 /// ```
 /// # crateEventId;
@@ -43,11 +45,11 @@ use super::ServerName;
 pub struct EventId(str);
 
 impl EventId {
-    /// Attempts to generate an `EventId` for the given origin server with a localpart consisting
-    /// of 18 random ASCII characters.
+    /// Attempts to generate an `EventId` for the given origin server with a
+    /// localpart consisting of 18 random ASCII characters.
     ///
-    /// This should only be used for events in the original format  as used by Matrix room versions
-    /// 1 and 2.
+    /// This should only be used for events in the original format  as used by
+    /// Matrix room versions 1 and 2.
     #[allow(clippy::new_ret_no_self)]
     pub fn new(server_name: &ServerName) -> OwnedEventId {
         Self::from_borrowed(&format!("${}:{server_name}", super::generate_localpart(18))).to_owned()
@@ -55,9 +57,9 @@ impl EventId {
 
     /// Returns the event's unique ID.
     ///
-    /// For the original event format as used by Matrix room versions 1 and 2, this is the
-    /// "localpart" that precedes the homeserver. For later formats, this is the entire ID without
-    /// the leading `$` sigil.
+    /// For the original event format as used by Matrix room versions 1 and 2,
+    /// this is the "localpart" that precedes the homeserver. For later
+    /// formats, this is the entire ID without the leading `$` sigil.
     pub fn localpart(&self) -> &str {
         let idx = self.colon_idx().unwrap_or_else(|| self.as_str().len());
         &self.as_str()[1..idx]
@@ -65,7 +67,8 @@ impl EventId {
 
     /// Returns the server name of the event ID.
     ///
-    /// Only applicable to events in the original format as used by Matrix room versions 1 and 2.
+    /// Only applicable to events in the original format as used by Matrix room
+    /// versions 1 and 2.
     pub fn server_name(&self) -> Option<&ServerName> {
         self.colon_idx()
             .map(|idx| ServerName::from_borrowed(&self.as_str()[idx + 1..]))

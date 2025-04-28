@@ -10,18 +10,19 @@ use super::IdParseError;
 
 /// A Matrix [room version] ID.
 ///
-/// A `RoomVersionId` can be or converted or deserialized from a string slice, and can be converted
-/// or serialized back into a string as needed.
+/// A `RoomVersionId` can be or converted or deserialized from a string slice,
+/// and can be converted or serialized back into a string as needed.
 ///
 /// ```
 /// # crateRoomVersionId;
 /// assert_eq!(RoomVersionId::try_from("1").unwrap().as_str(), "1");
 /// ```
 ///
-/// Any string consisting of at minimum 1, at maximum 32 unicode codepoints is a room version ID.
-/// Custom room versions or ones that were introduced into the specification after this code was
-/// written are represented by a hidden enum variant. You can still construct them the same, and
-/// check for them using one of `RoomVersionId`s `PartialEq` implementations or through `.as_str()`.
+/// Any string consisting of at minimum 1, at maximum 32 unicode codepoints is a
+/// room version ID. Custom room versions or ones that were introduced into the
+/// specification after this code was written are represented by a hidden enum
+/// variant. You can still construct them the same, and check for them using one
+/// of `RoomVersionId`s `PartialEq` implementations or through `.as_str()`.
 ///
 /// [room version]: https://spec.matrix.org/latest/rooms/
 #[derive(Clone, Debug, PartialEq, Eq, Hash, DisplayAsRefStr)]
@@ -66,8 +67,8 @@ pub enum RoomVersionId {
 impl RoomVersionId {
     /// Creates a string slice from this `RoomVersionId`.
     pub fn as_str(&self) -> &str {
-        // FIXME: Add support for non-`str`-deref'ing types for fallback to AsRefStr derive and
-        //        implement this function in terms of `AsRef<str>`
+        // FIXME: Add support for non-`str`-deref'ing types for fallback to AsRefStr
+        // derive and        implement this function in terms of `AsRef<str>`
         match &self {
             Self::V1 => "1",
             Self::V2 => "2",
@@ -122,22 +123,26 @@ impl AsRef<[u8]> for RoomVersionId {
 }
 
 impl PartialOrd for RoomVersionId {
-    /// Compare the two given room version IDs by comparing their string representations.
+    /// Compare the two given room version IDs by comparing their string
+    /// representations.
     ///
-    /// Please be aware that room version IDs don't have a defined ordering in the Matrix
-    /// specification. This implementation only exists to be able to use `RoomVersionId`s or
-    /// types containing `RoomVersionId`s as `BTreeMap` keys.
+    /// Please be aware that room version IDs don't have a defined ordering in
+    /// the Matrix specification. This implementation only exists to be able
+    /// to use `RoomVersionId`s or types containing `RoomVersionId`s as
+    /// `BTreeMap` keys.
     fn partial_cmp(&self, other: &RoomVersionId) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for RoomVersionId {
-    /// Compare the two given room version IDs by comparing their string representations.
+    /// Compare the two given room version IDs by comparing their string
+    /// representations.
     ///
-    /// Please be aware that room version IDs don't have a defined ordering in the Matrix
-    /// specification. This implementation only exists to be able to use `RoomVersionId`s or
-    /// types containing `RoomVersionId`s as `BTreeMap` keys.
+    /// Please be aware that room version IDs don't have a defined ordering in
+    /// the Matrix specification. This implementation only exists to be able
+    /// to use `RoomVersionId`s or types containing `RoomVersionId`s as
+    /// `BTreeMap` keys.
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
@@ -167,7 +172,8 @@ impl ToSchema for RoomVersionId {
     }
 }
 
-/// Attempts to create a new Matrix room version ID from a string representation.
+/// Attempts to create a new Matrix room version ID from a string
+/// representation.
 fn try_from<S>(room_version_id: S) -> Result<RoomVersionId, IdParseError>
 where
     S: AsRef<str> + Into<Box<str>>,

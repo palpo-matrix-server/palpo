@@ -1,6 +1,5 @@
-use crate::{MxcUri, UserId};
-
 use super::MembershipState;
+use crate::{MxcUri, UserId};
 
 /// The details of a member event required to calculate a [`MembershipChange`].
 #[derive(Clone, Debug)]
@@ -91,8 +90,8 @@ impl<T: PartialEq> Change<T> {
     }
 }
 
-/// Internal function so all `RoomMemberEventContent` state event kinds can share the same
-/// implementation.
+/// Internal function so all `RoomMemberEventContent` state event kinds can
+/// share the same implementation.
 ///
 /// This must match the table for [`m.room.member`] in the spec.
 ///

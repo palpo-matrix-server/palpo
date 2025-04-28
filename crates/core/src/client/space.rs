@@ -1,10 +1,10 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::space::child::HierarchySpaceChildEvent;
-use crate::serde::RawJson;
-use crate::space::SpaceRoomJoinRule;
-use crate::{EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId, room::RoomType};
+use crate::{
+    EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId,
+    events::space::child::HierarchySpaceChildEvent, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule,
+};
 
 /// Endpoints for spaces.
 ///
@@ -13,7 +13,8 @@ use crate::{EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#spaces
 /// A chunk of a space hierarchy response, describing one room.
 ///
-/// To create an instance of this type, first create a `SpaceHierarchyRoomsChunkInit` and convert it
+/// To create an instance of this type, first create a
+/// `SpaceHierarchyRoomsChunkInit` and convert it
 /// via `SpaceHierarchyRoomsChunk::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyRoomsChunk {
@@ -46,7 +47,8 @@ pub struct SpaceHierarchyRoomsChunk {
 
     /// Whether guest users may join the room and participate in it.
     ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
+    /// If they can, they will be subject to ordinary power level rules like any
+    /// other user.
     #[serde(default)]
     pub guest_can_join: bool,
 
@@ -88,16 +90,16 @@ pub struct SpaceHierarchyRoomsChunk {
     )]
     pub room_version: Option<RoomVersionId>,
 
-    /// If the room is a restricted room, these are the room IDs which are specified by the
-    /// join rules.
+    /// If the room is a restricted room, these are the room IDs which are
+    /// specified by the join rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
 /// `GET /_matrix/client/*/rooms/{room_id}/hierarchy`
 ///
-/// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.
-/// `/v1/` ([spec])
+/// Paginates over the space tree in a depth-first manner to locate child rooms
+/// of a given space. `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidhierarchy
 // const METADATA: Metadata = metadata! {
@@ -119,8 +121,8 @@ pub struct HierarchyReqArgs {
 
     /// A pagination token from a previous result.
     ///
-    /// If specified, `max_depth` and `suggested_only` cannot be changed from the first
-    /// request.
+    /// If specified, `max_depth` and `suggested_only` cannot be changed from
+    /// the first request.
     #[salvo(parameter(parameter_in = Query))]
     pub from: Option<String>,
 

@@ -1,14 +1,15 @@
 //! Matrix user identifiers.
 
-use diesel::expression::AsExpression;
 use std::{rc::Rc, sync::Arc};
+
+use diesel::expression::AsExpression;
 
 use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAction};
 
 /// A Matrix [user ID].
 ///
-/// A `UserId` is generated randomly or converted from a string slice, and can be converted back
-/// into a string as needed.
+/// A `UserId` is generated randomly or converted from a string slice, and can
+/// be converted back into a string as needed.
 ///
 /// ```
 /// # crateUserId;
@@ -23,8 +24,8 @@ use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAct
 pub struct UserId(str);
 
 impl UserId {
-    /// Attempts to generate a `UserId` for the given origin server with a localpart consisting of
-    /// 12 random ASCII characters.
+    /// Attempts to generate a `UserId` for the given origin server with a
+    /// localpart consisting of 12 random ASCII characters.
     #[allow(clippy::new_ret_no_self)]
     pub fn new(server_name: &ServerName) -> OwnedUserId {
         Self::from_borrowed(&format!(
@@ -35,12 +36,13 @@ impl UserId {
         .to_owned()
     }
 
-    /// Attempts to complete a user ID, by adding the colon + server name and `@` prefix, if not
-    /// present already.
+    /// Attempts to complete a user ID, by adding the colon + server name and
+    /// `@` prefix, if not present already.
     ///
-    /// This is a convenience function for the login API, where a user can supply either their full
-    /// user ID or just the localpart. It only supports a valid user ID or a valid user ID
-    /// localpart, not the localpart plus the `@` prefix, or the localpart plus server name without
+    /// This is a convenience function for the login API, where a user can
+    /// supply either their full user ID or just the localpart. It only
+    /// supports a valid user ID or a valid user ID localpart, not the
+    /// localpart plus the `@` prefix, or the localpart plus server name without
     /// the `@` prefix.
     pub fn parse_with_server_name(
         id: impl AsRef<str> + Into<Box<str>>,
@@ -102,8 +104,9 @@ impl UserId {
 
     /// Whether this user ID is a historical one.
     ///
-    /// A historical user ID is one that doesn't conform to the latest specification of the user ID
-    /// grammar but is still accepted because it was previously allowed.
+    /// A historical user ID is one that doesn't conform to the latest
+    /// specification of the user ID grammar but is still accepted because
+    /// it was previously allowed.
     pub fn is_historical(&self) -> bool {
         !localpart_is_fully_conforming(self.localpart()).unwrap()
     }

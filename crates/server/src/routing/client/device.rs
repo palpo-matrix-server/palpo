@@ -119,12 +119,15 @@ async fn delete_device(
 
     if let Err(e) = crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info) {
         if let AppError::Matrix(e) = e {
-            if e.kind == ErrorKind::Forbidden {
+            if let ErrorKind::Forbidden { .. } = e.kind {
                 return Err(e.into());
             }
         }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::Forbidden, "Invalid authentication data"));
+        uiaa_info.auth_error = Some(AuthError::new(
+            ErrorKind::forbidden(),
+            "Invalid authentication data",
+        ));
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }

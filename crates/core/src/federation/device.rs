@@ -7,12 +7,13 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1userdevicesuser_id
 
+use salvo::prelude::*;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     OwnedDeviceId, OwnedUserId,
     encryption::{CrossSigningKey, DeviceKeys},
 };
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -39,11 +40,11 @@ pub struct DevicesResBody {
     /// The user ID devices were requested for.
     pub user_id: OwnedUserId,
 
-    /// A unique ID for a given user_id which describes the version of the returned device
-    /// list.
+    /// A unique ID for a given user_id which describes the version of the
+    /// returned device list.
     ///
-    /// This is matched with the `stream_id` field in `m.device_list_update` EDUs in order to
-    /// incrementally update the returned device_list.
+    /// This is matched with the `stream_id` field in `m.device_list_update`
+    /// EDUs in order to incrementally update the returned device_list.
     pub stream_id: u64,
 
     /// The user's devices.

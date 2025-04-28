@@ -177,11 +177,21 @@ fn expand_deserialize_impl(
             };
             let self_variant = variant.ctor(quote! { Self });
             let content = event.to_event_path(kind, var);
-            let ev_types = event.aliases.iter().chain([&event.ev_type]);
+            let ev_types = event.aliases.iter().chain([&event.ev_type]).map(|ev_type| {
+                if event.has_type_fragment() {
+                    let ev_type = ev_type.value();
+                    let prefix = ev_type
+                        .strip_suffix('*')
+                        .expect("event type with type fragment must end with *");
+                    quote! { t if t.starts_with(#prefix) }
+                } else {
+                    quote! { #ev_type }
+                }
+            });
 
             Ok(quote! {
                 #variant_attrs #(#ev_types)|* => {
-                    let event = #serde_json::from_str::<#content>(json.get())
+                    let event = #palpo_core::__private::serde_json::from_str::<#content>(json.get())
                         .map_err(D::Error::custom)?;
                     Ok(#self_variant(event))
                 },
@@ -198,14 +208,14 @@ fn expand_deserialize_impl(
             {
                 use #serde::de::Error as _;
 
-                let json = Box::<#serde_json::value::RawValue>::deserialize(deserializer)?;
+                let json = Box::<#palpo_core::__private::serde_json::value::RawValue>::deserialize(deserializer)?;
                 let #palpo_core::events::EventTypeDeHelper { ev_type, .. } =
                 #palpo_core::serde::from_raw_json_value(&json)?;
 
                 match &*ev_type {
                     #match_arms
                     _ => {
-                        let event = #serde_json::from_str(json.get()).map_err(D::Error::custom)?;
+                        let event = #palpo_core::__private::serde_json::from_str(json.get()).map_err(D::Error::custom)?;
                         Ok(Self::_Custom(event))
                     },
                 }
@@ -332,7 +342,54 @@ fn expand_content_enum(
     let from_impl = expand_from_impl(&ident, &content, variants);
 
     let serialize_custom_event_error_path = quote! { #palpo_core::events::serialize_custom_event_error }.to_string();
+    // Generate an `EventContentFromType` implementation.
+    let serde_json = quote! { #palpo_core::exports::serde_json };
+    let event_type_match_arms: TokenStream = events
+        .iter()
+        .map(|event| {
+            let variant = event.to_variant()?;
+            let variant_attrs = {
+                let attrs = &variant.attrs;
+                quote! { #(#attrs)* }
+            };
+            let self_variant = variant.ctor(quote! { Self });
 
+            let ev_types = event.aliases.iter().chain([&event.ev_type]).map(|ev_type| {
+                if event.has_type_fragment() {
+                    let ev_type = ev_type.value();
+                    let prefix = ev_type
+                        .strip_suffix('*')
+                        .expect("event type with type fragment must end with *");
+                    quote! { t if t.starts_with(#prefix) }
+                } else {
+                    quote! { #ev_type }
+                }
+            });
+
+            let deserialize_content = if event.has_type_fragment() {
+                // If the event has a type fragment, then it implements EventContentFromType itself;
+                // see `generate_event_content_impl` which does that. In this case, forward to its
+                // implementation.
+                let content_type = event.to_event_content_path(kind, None);
+                quote! {
+                    #content_type::from_parts(event_type, json)?
+                }
+            } else {
+                // The event doesn't have a type fragment, so it *should* implement Deserialize:
+                // use that here.
+                quote! {
+                    #palpo_core::__private::serde_json::from_str(json.get())?
+                }
+            };
+
+            Ok(quote! {
+                #variant_attrs #(#ev_types)|* => {
+                    let content = #deserialize_content;
+                    Ok(#self_variant(content))
+                },
+            })
+        })
+        .collect::<syn::Result<_>>()?;
     Ok(quote! {
         #( #attrs )*
         #[derive(salvo::oapi::ToSchema, Clone, Debug, #serde::Serialize, #serde::Deserialize)]
@@ -362,6 +419,22 @@ fn expand_content_enum(
             }
         }
 
+        #[automatically_derived]
+        impl #palpo_core::events::EventContentFromType for #ident {
+            fn from_parts(event_type: &str, json: &#palpo_core::__private::serde_json::value::RawValue) -> serde_json::Result<Self> {
+                match event_type {
+                    #event_type_match_arms
+
+                    _ => {
+                        Ok(Self::_Custom {
+                            event_type: crate::PrivOwnedStr(
+                                ::std::convert::From::from(event_type.to_owned())
+                            )
+                        })
+                    }
+                }
+            }
+        }
         #[automatically_derived]
         impl #palpo_core::events::#sub_trait_name for #ident {
             #state_event_content_impl
@@ -476,6 +549,18 @@ fn expand_accessor_methods(
                             ),
                         }
                     }),
+                }
+            }
+
+            /// Returns whether this event is redacted.
+            pub fn is_redacted(&self) -> bool {
+                match self {
+                    #(
+                        #self_variants(event) => {
+                            event.as_original().is_none()
+                        }
+                    )*
+                    Self::_Custom(event) => event.as_original().is_none(),
                 }
             }
         };

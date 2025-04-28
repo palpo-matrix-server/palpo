@@ -25,7 +25,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
 
     for room_id in &room_ids {
         if !crate::room::is_joined(user_id, room_id)? {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
         }
     }
 

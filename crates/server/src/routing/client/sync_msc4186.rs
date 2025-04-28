@@ -149,6 +149,7 @@ pub(super) async fn sync_events_v5(
         receipts=?res_body.extensions.receipts.rooms.len(),
         "responding to request with"
     );
+    println!("============res_body: {}", serde_json::to_string(&res_body)?);
     json_ok(res_body)
 }
 

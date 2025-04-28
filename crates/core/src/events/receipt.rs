@@ -5,8 +5,10 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidreceiptreceipttypeeventid
-use std::collections::{BTreeMap, btree_map};
-use std::ops::{Deref, DerefMut};
+use std::{
+    collections::{BTreeMap, btree_map},
+    ops::{Deref, DerefMut},
+};
 
 use palpo_macros::EventContent;
 use salvo::prelude::*;
@@ -19,15 +21,17 @@ use crate::{
 
 /// The content of an `m.receipt` event.
 ///
-/// A mapping of event ID to a collection of receipts for this event ID. The event ID is the ID of
-/// the event being acknowledged and *not* an ID for the receipt itself.
+/// A mapping of event ID to a collection of receipts for this event ID. The
+/// event ID is the ID of the event being acknowledged and *not* an ID for the
+/// receipt itself.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[allow(clippy::exhaustive_structs)]
 #[palpo_event(type = "m.receipt", kind = EphemeralRoom)]
 pub struct ReceiptEventContent(pub BTreeMap<OwnedEventId, Receipts>);
 
 impl ReceiptEventContent {
-    /// Get the receipt for the given user ID with the given receipt type, if it exists.
+    /// Get the receipt for the given user ID with the given receipt type, if it
+    /// exists.
     pub fn user_receipt(&self, user_id: &UserId, receipt_type: ReceiptType) -> Option<(&EventId, &Receipt)> {
         self.iter().find_map(|(event_id, receipts)| {
             let receipt = receipts.get(&receipt_type)?.get(user_id)?;
@@ -102,12 +106,12 @@ impl Receipt {
 }
 /// The [thread a receipt applies to].
 ///
-/// This type can hold an arbitrary string. To build this with a custom value, convert it from an
-/// `Option<String>` with `::from()` / `.into()`. [`ReceiptThread::Unthreaded`] can be constructed
-/// from `None`.
+/// This type can hold an arbitrary string. To build this with a custom value,
+/// convert it from an `Option<String>` with `::from()` / `.into()`.
+/// [`ReceiptThread::Unthreaded`] can be constructed from `None`.
 ///
-/// To check for values that are not available as a documented variant here, use its string
-/// representation, obtained through [`.as_str()`](Self::as_str()).
+/// To check for values that are not available as a documented variant here, use
+/// its string representation, obtained through [`.as_str()`](Self::as_str()).
 ///
 /// [thread a receipt applies to]: https://spec.matrix.org/latest/client-server-api/#threaded-read-receipts
 #[derive(ToSchema, Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -269,7 +273,8 @@ impl ReceiptData {
 // mod tests {
 //     use crate::{owned_event_id, UnixMillis};
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{Receipt, ReceiptThread};
 
@@ -279,22 +284,26 @@ impl ReceiptData {
 //         assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({}));
 
 //         receipt.thread = ReceiptThread::Main;
-//         assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({ "thread_id": "main" }));
+//         assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({
+// "thread_id": "main" }));
 
-//         receipt.thread = ReceiptThread::Thread(owned_event_id!("$abcdef76543"));
-//         assert_eq!(to_json_value(receipt).unwrap(), json!({ "thread_id": "$abcdef76543" }));
+//         receipt.thread =
+// ReceiptThread::Thread(owned_event_id!("$abcdef76543"));         assert_eq!
+// (to_json_value(receipt).unwrap(), json!({ "thread_id": "$abcdef76543" }));
 
-//         let mut receipt = Receipt::new(UnixMillis(1_664_702_144_365_u64.try_into().unwrap()));
+//         let mut receipt =
+// Receipt::new(UnixMillis(1_664_702_144_365_u64.try_into().unwrap()));
 //         assert_eq!(
 //             to_json_value(receipt.clone()).unwrap(),
 //             json!({ "ts": 1_664_702_144_365_u64 })
 //         );
 
-//         receipt.thread = ReceiptThread::try_from(Some("io.palpo.unknown")).unwrap();
+//         receipt.thread =
+// ReceiptThread::try_from(Some("io.palpo.unknown")).unwrap();
 //         assert_eq!(
 //             to_json_value(receipt).unwrap(),
-//             json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" })
-//         );
+//             json!({ "ts": 1_664_702_144_365_u64, "thread_id":
+// "io.palpo.unknown" })         );
 //     }
 
 //     #[test]
@@ -303,25 +312,25 @@ impl ReceiptData {
 //         assert_eq!(receipt.ts, None);
 //         assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
 
-//         let receipt = from_json_value::<Receipt>(json!({ "thread_id": "main" })).unwrap();
-//         assert_eq!(receipt.ts, None);
+//         let receipt = from_json_value::<Receipt>(json!({ "thread_id": "main"
+// })).unwrap();         assert_eq!(receipt.ts, None);
 //         assert_eq!(receipt.thread, ReceiptThread::Main);
 
-//         let receipt = from_json_value::<Receipt>(json!({ "thread_id": "$abcdef76543" })).unwrap();
-//         assert_eq!(receipt.ts, None);
+//         let receipt = from_json_value::<Receipt>(json!({ "thread_id":
+// "$abcdef76543" })).unwrap();         assert_eq!(receipt.ts, None);
 //         assert_matches!(receipt.thread, ReceiptThread::Thread(event_id));
 //         assert_eq!(event_id, "$abcdef76543");
 
-//         let receipt = from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64 })).unwrap();
-//         assert_eq!(
+//         let receipt = from_json_value::<Receipt>(json!({ "ts":
+// 1_664_702_144_365_u64 })).unwrap();         assert_eq!(
 //             receipt.ts.unwrap(),
 //             UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
 //         );
 //         assert_eq!(receipt.thread, ReceiptThread::Unthreaded);
 
 //         let receipt =
-//             from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.palpo.unknown" }))
-//                 .unwrap();
+//             from_json_value::<Receipt>(json!({ "ts": 1_664_702_144_365_u64,
+// "thread_id": "io.palpo.unknown" }))                 .unwrap();
 //         assert_eq!(
 //             receipt.ts.unwrap(),
 //             UnixMillis(1_664_702_144_365_u64.try_into().unwrap())
@@ -336,9 +345,10 @@ impl ReceiptData {
 //     rate_limited: true,
 //     authentication: AccessToken,
 //     history: {
-//         1.0 => "/_matrix/client/r0/rooms/:room_id/receipt/:receipt_type/:event_id",
-//         1.1 => "/_matrix/client/v3/rooms/:room_id/receipt/:receipt_type/:event_id",
-//     }
+//         1.0 =>
+// "/_matrix/client/r0/rooms/:room_id/receipt/:receipt_type/:event_id",
+//         1.1 =>
+// "/_matrix/client/v3/rooms/:room_id/receipt/:receipt_type/:event_id",     }
 // };
 
 #[derive(ToParameters, Deserialize, Debug)]

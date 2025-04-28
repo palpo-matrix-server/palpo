@@ -10,8 +10,9 @@ use url::Url;
 #[macro_use]
 mod macros;
 mod config;
-pub use crate::config::DbConfig;
 pub use palpo_core as core;
+
+pub use crate::config::DbConfig;
 
 pub mod full_text_search;
 

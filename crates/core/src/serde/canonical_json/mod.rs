@@ -106,7 +106,8 @@ pub fn try_from_json_map(json: serde_json::Map<String, JsonValue>) -> Result<Can
     json.into_iter().map(|(k, v)| Ok((k, v.try_into()?))).collect()
 }
 
-/// Fallible conversion from any value that impl's `Serialize` to a `CanonicalJsonValue`.
+/// Fallible conversion from any value that impl's `Serialize` to a
+/// `CanonicalJsonValue`.
 pub fn to_canonical_value<T: Serialize>(value: T) -> Result<CanonicalJsonValue, CanonicalJsonError> {
     serde_json::to_value(value)
         .map_err(CanonicalJsonError::SerDe)?
@@ -134,21 +135,25 @@ impl RedactedBecause {
 /// Marker trait for redaction events.
 pub trait RedactionEvent {}
 
-/// Redacts an event using the rules specified in the Matrix client-server specification.
+/// Redacts an event using the rules specified in the Matrix client-server
+/// specification.
 ///
 /// This is part of the process of signing an event.
 ///
-/// Redaction is also suggested when verifying an event with `verify_event` returns
-/// `Verified::Signatures`. See the documentation for `Verified` for details.
+/// Redaction is also suggested when verifying an event with `verify_event`
+/// returns `Verified::Signatures`. See the documentation for `Verified` for
+/// details.
 ///
 /// Returns a new JSON object with all applicable fields redacted.
 ///
 /// # Parameters
 ///
 /// * `object`: A JSON object to redact.
-/// * `version`: The room version, determines which keys to keep for a few event types.
-/// * `redacted_because`: If this is set, an `unsigned` object with a `redacted_because` field set
-///   to the given value is added to the event after redaction.
+/// * `version`: The room version, determines which keys to keep for a few event
+///   types.
+/// * `redacted_because`: If this is set, an `unsigned` object with a
+///   `redacted_because` field set to the given value is added to the event
+///   after redaction.
 ///
 /// # Errors
 ///
@@ -167,7 +172,8 @@ pub fn redact(
     Ok(object)
 }
 
-/// Redacts an event using the rules specified in the Matrix client-server specification.
+/// Redacts an event using the rules specified in the Matrix client-server
+/// specification.
 ///
 /// Functionally equivalent to `redact`, only this'll redact the event in-place.
 pub fn redact_in_place(
@@ -175,8 +181,9 @@ pub fn redact_in_place(
     version: &RoomVersionId,
     redacted_because: Option<RedactedBecause>,
 ) -> Result<(), RedactionError> {
-    // Get the content keys here even if they're only needed inside the branch below, because we
-    // can't teach rust that this is a disjoint borrow with `get_mut("content")`.
+    // Get the content keys here even if they're only needed inside the branch
+    // below, because we can't teach rust that this is a disjoint borrow with
+    // `get_mut("content")`.
     let allowed_content_keys = match event.get("type") {
         Some(CanonicalJsonValue::String(event_type)) => allowed_content_keys_for(event_type, version),
         Some(_) => return Err(RedactionError::not_of_type("type", JsonType::String)),
@@ -208,7 +215,8 @@ pub fn redact_in_place(
     Ok(())
 }
 
-/// Redacts event content using the rules specified in the Matrix client-server specification.
+/// Redacts event content using the rules specified in the Matrix client-server
+/// specification.
 ///
 /// Edits the `object` in-place.
 pub fn redact_content_in_place(
@@ -266,8 +274,8 @@ fn object_retain_some_keys(
     Ok(())
 }
 
-/// The fields that are allowed to remain in an event during redaction depending on the room
-/// version.
+/// The fields that are allowed to remain in an event during redaction depending
+/// on the room version.
 fn allowed_event_keys_for(version: &RoomVersionId) -> &'static [&'static str] {
     match version {
         RoomVersionId::V1
@@ -356,8 +364,8 @@ static ROOM_MEMBER_V11: AllowedKeys = AllowedKeys::some_nested(
     &["membership", "join_authorised_via_users_server"],
     &[("third_party_invite", &ROOM_MEMBER_THIRD_PARTY_INVITE_V11)],
 );
-/// Allowed keys in the `third_party_invite` field of `m.room.member`'s content according to room
-/// version 11.
+/// Allowed keys in the `third_party_invite` field of `m.room.member`'s content
+/// according to room version 11.
 static ROOM_MEMBER_THIRD_PARTY_INVITE_V11: AllowedKeys = AllowedKeys::some(&["signed"]);
 
 /// Allowed keys in `m.room.create`'s content according to room version 1.
@@ -379,7 +387,8 @@ static ROOM_POWER_LEVELS_V1: AllowedKeys = AllowedKeys::some(&[
     "users",
     "users_default",
 ]);
-/// Allowed keys in `m.room.power_levels`'s content according to room version 11.
+/// Allowed keys in `m.room.power_levels`'s content according to room version
+/// 11.
 static ROOM_POWER_LEVELS_V11: AllowedKeys = AllowedKeys::some(&[
     "ban",
     "events",
@@ -398,7 +407,8 @@ static ROOM_ALIASES_V1: AllowedKeys = AllowedKeys::some(&["aliases"]);
 /// Allowed keys in `m.room.server_acl`'s content according to MSC2870.
 static ROOM_SERVER_ACL_MSC2870: AllowedKeys = AllowedKeys::some(&["allow", "deny", "allow_ip_literals"]);
 
-/// Allowed keys in `m.room.history_visibility`'s content according to room version 1.
+/// Allowed keys in `m.room.history_visibility`'s content according to room
+/// version 1.
 static ROOM_HISTORY_VISIBILITY_V1: AllowedKeys = AllowedKeys::some(&["history_visibility"]);
 
 /// Allowed keys in `m.room.redaction`'s content according to room version 11.
@@ -486,10 +496,11 @@ fn allowed_content_keys_for(event_type: &str, version: &RoomVersionId) -> &'stat
 //     use std::collections::BTreeMap;
 
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_str as from_json_str, json, to_string as to_json_string, to_value as to_json_value};
+//     use serde_json::{from_str as from_json_str, json, to_string as
+// to_json_string, to_value as to_json_value};
 
-//     use super::{redact_in_place, to_canonical_value, try_from_json_map, value::CanonicalJsonValue};
-//     use crate::RoomVersionId;
+//     use super::{redact_in_place, to_canonical_value, try_from_json_map,
+// value::CanonicalJsonValue};     use crate::RoomVersionId;
 
 //     #[test]
 //     fn serialize_canon() {
@@ -533,15 +544,17 @@ fn allowed_content_keys_for(event_type: &str, version: &RoomVersionId) -> &'stat
 
 //         assert_eq!(
 //             to_json_string(&json).unwrap(),
-//             r#"{"auth":{"mxid":"@john.doe:example.com","profile":{"display_name":"John Doe","three_pids":[{"address":"john.doe@example.org","medium":"email"},{"address":"123456789","medium":"msisdn"}]},"success":true}}"#
-//         );
+//
+// r#"{"auth":{"mxid":"@john.doe:example.com","profile":{"display_name":"John
+// Doe","three_pids":[{"address":"john.doe@example.org","medium":"email"},{"
+// address":"123456789","medium":"msisdn"}]},"success":true}}"#         );
 //     }
 
 //     #[test]
 //     fn serialize_map_to_canonical() {
 //         let mut expected = BTreeMap::new();
-//         expected.insert("foo".into(), CanonicalJsonValue::String("string".into()));
-//         expected.insert(
+//         expected.insert("foo".into(),
+// CanonicalJsonValue::String("string".into()));         expected.insert(
 //             "bar".into(),
 //             CanonicalJsonValue::Array(vec![
 //                 CanonicalJsonValue::Integer(0),
@@ -570,8 +583,8 @@ fn allowed_content_keys_for(event_type: &str, version: &RoomVersionId) -> &'stat
 //         };
 
 //         let mut expected = BTreeMap::new();
-//         expected.insert("foo".into(), CanonicalJsonValue::String("string".into()));
-//         expected.insert(
+//         expected.insert("foo".into(),
+// CanonicalJsonValue::String("string".into()));         expected.insert(
 //             "bar".into(),
 //             CanonicalJsonValue::Array(vec![
 //                 CanonicalJsonValue::Integer(0),
@@ -580,8 +593,8 @@ fn allowed_content_keys_for(event_type: &str, version: &RoomVersionId) -> &'stat
 //             ]),
 //         );
 
-//         assert_eq!(to_canonical_value(t).unwrap(), CanonicalJsonValue::Object(expected));
-//     }
+//         assert_eq!(to_canonical_value(t).unwrap(),
+// CanonicalJsonValue::Object(expected));     }
 
 //     #[test]
 //     fn redact_allowed_keys_some() {

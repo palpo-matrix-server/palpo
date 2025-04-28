@@ -10,9 +10,11 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::sending::{SendRequest, SendResult};
-use crate::user::ProfileField;
-use crate::{OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId};
+use crate::{
+    OwnedRoomId, OwnedServerName, OwnedUserId, RoomAliasId,
+    sending::{SendRequest, SendResult},
+    user::ProfileField,
+};
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1querydirectory
@@ -98,8 +100,8 @@ pub struct ProfileReqArgs {
 
 /// `GET /_matrix/federation/*/query/{queryType}`
 ///
-/// Performs a single query request on the receiving homeserver. The query arguments are dependent
-/// on which type of query is being made.
+/// Performs a single query request on the receiving homeserver. The query
+/// arguments are dependent on which type of query is being made.
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1queryquerytype

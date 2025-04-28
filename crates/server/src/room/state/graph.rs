@@ -4,9 +4,8 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::future::Future;
 use std::hash::{BuildHasher, Hash};
 
-use crate::core::{EventId, UnixMillis};
-
 use crate::AppResult;
+use crate::core::{EventId, UnixMillis};
 
 /// Sorts the event graph based on number of outgoing/incoming edges.
 ///

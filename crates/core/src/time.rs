@@ -3,9 +3,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use diesel::deserialize::FromSql;
-use diesel::serialize::ToSql;
-use diesel::{AsExpression, FromSqlRow, pg, sql_types};
+use diesel::{AsExpression, FromSqlRow, deserialize::FromSql, pg, serialize::ToSql, sql_types};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -36,8 +34,8 @@ impl fmt::Display for UnixMillis {
 }
 
 impl UnixMillis {
-    /// Creates a new `UnixMillis` from the given `SystemTime`, if it is not before
-    /// the unix epoch, or too large to be represented.
+    /// Creates a new `UnixMillis` from the given `SystemTime`, if it is not
+    /// before the unix epoch, or too large to be represented.
     pub fn from_system_time(time: SystemTime) -> Option<Self> {
         let duration = time.duration_since(UNIX_EPOCH).ok()?;
         let millis = duration.as_millis().try_into().ok()?;
@@ -67,8 +65,9 @@ impl UnixMillis {
 
 impl fmt::Debug for UnixMillis {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // The default Debug impl would put the inner value on its own line if the formatter's
-        // alternate mode is enabled, which bloats debug strings unnecessarily
+        // The default Debug impl would put the inner value on its own line if the
+        // formatter's alternate mode is enabled, which bloats debug strings
+        // unnecessarily
         write!(f, "UnixMillis({})", self.0)
     }
 }
@@ -95,8 +94,8 @@ impl ToSql<sql_types::BigInt, pg::Pg> for UnixMillis {
 pub struct UnixSeconds(pub u64);
 
 impl UnixSeconds {
-    /// Creates a new `UnixMillis` from the given `SystemTime`, if it is not before
-    /// the unix epoch, or too large to be represented.
+    /// Creates a new `UnixMillis` from the given `SystemTime`, if it is not
+    /// before the unix epoch, or too large to be represented.
     pub fn from_system_time(time: SystemTime) -> Option<Self> {
         let duration = time.duration_since(UNIX_EPOCH).ok()?;
         let millis = duration.as_secs().try_into().ok()?;
@@ -121,8 +120,9 @@ impl UnixSeconds {
 
 impl fmt::Debug for UnixSeconds {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // The default Debug impl would put the inner value on its own line if the formatter's
-        // alternate mode is enabled, which bloats debug strings unnecessarily
+        // The default Debug impl would put the inner value on its own line if the
+        // formatter's alternate mode is enabled, which bloats debug strings
+        // unnecessarily
         write!(f, "UnixSeconds({})", self.0)
     }
 }
@@ -163,14 +163,14 @@ impl ToSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
 //             time.millis.to_system_time(),
 //             Some(UNIX_EPOCH + Duration::from_millis(3000))
 //         );
-//         assert_eq!(time.secs.to_system_time(), Some(UNIX_EPOCH + Duration::from_secs(60)));
-//     }
+//         assert_eq!(time.secs.to_system_time(), Some(UNIX_EPOCH +
+// Duration::from_secs(60)));     }
 
 //     #[test]
 //     fn serialize() {
 //         let request = SystemTimeTest {
-//             millis: UnixMillis::from_system_time(UNIX_EPOCH + Duration::new(2, 0)).unwrap(),
-//             secs: UnixSeconds(u0),
+//             millis: UnixMillis::from_system_time(UNIX_EPOCH +
+// Duration::new(2, 0)).unwrap(),             secs: UnixSeconds(u0),
 //         };
 
 //         assert_eq!(

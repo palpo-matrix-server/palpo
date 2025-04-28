@@ -1,9 +1,10 @@
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
+use std::{
+    future::Future,
+    ops::{Deref, DerefMut},
+};
 
 use reqwest::{Client as ReqwestClient, ClientBuilder, Request as ReqwestRequest};
-use salvo::http::header::CONTENT_TYPE;
-use salvo::http::{HeaderName, HeaderValue, Method};
+use salvo::http::{HeaderName, HeaderValue, Method, header::CONTENT_TYPE};
 use serde::Deserialize;
 use thiserror::Error;
 use url::{ParseError, Url};

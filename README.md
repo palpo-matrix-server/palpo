@@ -10,7 +10,7 @@ Palpo is a cutting-edge chat server written in Rust and supporting Matrix protoc
   Based Salvo web server, Palpo leverages Rust’s safety and concurrency model, enabling a low-overhead server that is both fast and reliable.
 
 - **Open Ecosystem**  
-  Portions of our code reference or derive inspiration from the excellent work in [ruma](https://github.com/ruma/ruma) and [conduit](https://gitlab.com/famedly/conduit). By building atop established open-source projects, we aim for compatibility and rapid iteration.
+  Portions of our code reference or derive inspiration from the excellent work in [palpo](https://github.com/palpo/palpo) and [conduit](https://gitlab.com/famedly/conduit). By building atop established open-source projects, we aim for compatibility and rapid iteration.
 
 - **Federation & Standards**  
   Palpo implements the Matrix protocol to ensure **full interoperability** with other Matrix homeservers, facilitating a **truly decentralized network** of real-time communication.

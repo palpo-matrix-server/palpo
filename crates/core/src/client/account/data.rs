@@ -1,17 +1,20 @@
-use crate::events::{AnyGlobalAccountDataEventContent, AnyRoomAccountDataEventContent};
-use crate::serde::RawJson;
-
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    events::{AnyGlobalAccountDataEventContent, AnyRoomAccountDataEventContent},
+    serde::RawJson,
+};
 
 /// Response type for the `get_global_account_data` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 pub struct GlobalAccountDataResBody(
     /// Account data content for the given type.
     ///
-    /// Since the inner type of the `RawJson` does not implement `Deserialize`, you need to use
-    /// `.deserialize_as::<T>()` or `.cast_ref::<T>().deserialize_with_type()` for event
-    /// types with a variable suffix (like [`SecretStorageKeyEventContent`]) to
+    /// Since the inner type of the `RawJson` does not implement `Deserialize`,
+    /// you need to use `.deserialize_as::<T>()` or
+    /// `.cast_ref::<T>().deserialize_with_type()` for event types with a
+    /// variable suffix (like [`SecretStorageKeyEventContent`]) to
     /// deserialize it.
     ///
     /// [`SecretStorageKeyEventContent`]: palpo_core::events::secret_storage::key::SecretStorageKeyEventContent
@@ -25,9 +28,10 @@ pub struct GlobalAccountDataResBody(
 pub struct RoomAccountDataResBody(
     /// Account data content for the given type.
     ///
-    /// Since the inner type of the `RawJson` does not implement `Deserialize`, you need to use
-    /// `.deserialize_as::<T>()` or `.cast_ref::<T>().deserialize_with_type()` for event
-    /// types with a variable suffix (like [`SecretStorageKeyEventContent`]) to
+    /// Since the inner type of the `RawJson` does not implement `Deserialize`,
+    /// you need to use `.deserialize_as::<T>()` or
+    /// `.cast_ref::<T>().deserialize_with_type()` for event types with a
+    /// variable suffix (like [`SecretStorageKeyEventContent`]) to
     /// deserialize it.
     ///
     /// [`SecretStorageKeyEventContent`]: palpo_core::events::secret_storage::key::SecretStorageKeyEventContent

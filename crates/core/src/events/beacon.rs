@@ -7,8 +7,10 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{location::LocationContent, relation::Reference};
-use crate::{OwnedEventId, UnixMillis};
+use crate::{
+    OwnedEventId, UnixMillis,
+    events::{location::LocationContent, relation::Reference},
+};
 
 /// The content of a beacon.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
@@ -28,8 +30,9 @@ pub struct BeaconEventContent {
 }
 
 impl BeaconEventContent {
-    /// Creates a new `BeaconEventContent` with the given beacon_info event id, geo uri and
-    /// optional ts. If ts is None, the current time will be used.
+    /// Creates a new `BeaconEventContent` with the given beacon_info event id,
+    /// geo uri and optional ts. If ts is None, the current time will be
+    /// used.
     pub fn new(beacon_info_event_id: OwnedEventId, geo_uri: String, ts: Option<UnixMillis>) -> Self {
         Self {
             relates_to: Reference::new(beacon_info_event_id),

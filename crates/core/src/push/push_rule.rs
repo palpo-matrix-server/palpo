@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -17,12 +18,11 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::Action;
-use crate::push::NewConditionalPushRule;
-use crate::push::NewPatternedPushRule;
-use crate::push::NewSimplePushRule;
-use crate::push::PushCondition;
-use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, serde::StringEnum};
+use crate::{
+    OwnedRoomId, OwnedUserId, PrivOwnedStr,
+    push::{Action, NewConditionalPushRule, NewPatternedPushRule, NewSimplePushRule, PushCondition},
+    serde::StringEnum,
+};
 
 /// The kinds of push rules that are available.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
@@ -107,8 +107,8 @@ pub enum RuleScope {
     _Custom(PrivOwnedStr),
 }
 
-/// Like `SimplePushRule`, but may represent any kind of push rule thanks to `pattern` and
-/// `conditions` being optional.
+/// Like `SimplePushRule`, but may represent any kind of push rule thanks to
+/// `pattern` and `conditions` being optional.
 ///
 /// To create an instance of this type, use one of its `From` implementations.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
@@ -125,10 +125,11 @@ pub struct PushRule {
     /// The ID of this rule.
     pub rule_id: String,
 
-    /// The conditions that must hold true for an event in order for a rule to be applied to an
-    /// event.
+    /// The conditions that must hold true for an event in order for a rule to
+    /// be applied to an event.
     ///
-    /// A rule with no conditions always matches. Only applicable to underride and override rules.
+    /// A rule with no conditions always matches. Only applicable to underride
+    /// and override rules.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conditions: Option<Vec<PushCondition>>,
 

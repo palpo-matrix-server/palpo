@@ -12,15 +12,19 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de};
 
-use crate::device::{DeviceListUpdateContent, DirectDeviceContent};
-use crate::encryption::CrossSigningKey;
-use crate::events::receipt::{Receipt, ReceiptContent};
-use crate::events::typing::TypingContent;
-use crate::identifiers::*;
-use crate::presence::PresenceContent;
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
-use crate::{OwnedServerName, UnixMillis};
+use crate::{
+    OwnedServerName, UnixMillis,
+    device::{DeviceListUpdateContent, DirectDeviceContent},
+    encryption::CrossSigningKey,
+    events::{
+        receipt::{Receipt, ReceiptContent},
+        typing::TypingContent,
+    },
+    identifiers::*,
+    presence::PresenceContent,
+    sending::{SendRequest, SendResult},
+    serde::{JsonValue, RawJsonValue, from_raw_json_value},
+};
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -46,8 +50,8 @@ pub struct SendMessageReqBody {
     /// The server_name of the homeserver sending this transaction.
     pub origin: OwnedServerName,
 
-    /// POSIX timestamp in milliseconds on the originating homeserver when this transaction
-    /// started.
+    /// POSIX timestamp in milliseconds on the originating homeserver when this
+    /// transaction started.
     pub origin_server_ts: UnixMillis,
 
     /// List of persistent updates to rooms.
@@ -95,7 +99,8 @@ impl SendMessageResBody {
 #[derive(ToSchema, Clone, Debug, Serialize)]
 #[serde(tag = "edu_type", content = "content")]
 pub enum Edu {
-    /// An EDU representing presence updates for users of the sending homeserver.
+    /// An EDU representing presence updates for users of the sending
+    /// homeserver.
     #[serde(rename = "m.presence")]
     Presence(PresenceContent),
 
@@ -107,20 +112,21 @@ pub enum Edu {
     #[serde(rename = "m.typing")]
     Typing(TypingContent),
 
-    /// An EDU that lets servers push details to each other when one of their users adds
-    /// a new device to their account, required for E2E encryption to correctly target the
-    /// current set of devices for a given user.
+    /// An EDU that lets servers push details to each other when one of their
+    /// users adds a new device to their account, required for E2E
+    /// encryption to correctly target the current set of devices for a
+    /// given user.
     #[serde(rename = "m.device_list_update")]
     DeviceListUpdate(DeviceListUpdateContent),
 
-    /// An EDU that lets servers push send events directly to a specific device on a
-    /// remote server - for instance, to maintain an Olm E2E encrypted message channel
-    /// between a local and remote device.
+    /// An EDU that lets servers push send events directly to a specific device
+    /// on a remote server - for instance, to maintain an Olm E2E encrypted
+    /// message channel between a local and remote device.
     #[serde(rename = "m.direct_to_device")]
     DirectToDevice(DirectDeviceContent),
 
-    /// An EDU that lets servers push details to each other when one of their users updates their
-    /// cross-signing keys.
+    /// An EDU that lets servers push details to each other when one of their
+    /// users updates their cross-signing keys.
     #[serde(rename = "m.signing_key_update")]
     #[salvo(schema(value_type = Object))]
     SigningKeyUpdate(SigningKeyUpdateContent),
@@ -238,13 +244,15 @@ impl SigningKeyUpdateContent {
 //                     ],
 //                     "device_id": "JLAFKJWSCS",
 //                     "keys": {
-//                         "curve25519:JLAFKJWSCS": "3C5BFWi2Y8MaVvjM8M22DBmh24PmgR0nPvJOIArzgyI",
-//                         "ed25519:JLAFKJWSCS": "lEuiRJBit0IG6nUf5pUzWTUEsRVVe/HJkoKuEww9ULI"
+//                         "curve25519:JLAFKJWSCS":
+// "3C5BFWi2Y8MaVvjM8M22DBmh24PmgR0nPvJOIArzgyI",
+// "ed25519:JLAFKJWSCS": "lEuiRJBit0IG6nUf5pUzWTUEsRVVe/HJkoKuEww9ULI"
 //                     },
 //                     "signatures": {
 //                         "@alice:example.com": {
-//                             "ed25519:JLAFKJWSCS": "dSO80A01XiigH3uBiDVx/EjzaoycHcjq9lfQX0uWsqxl2giMIiSPR8a4d291W1ihKJL/a+myXS367WT6NAIcBA"
-//                         }
+//                             "ed25519:JLAFKJWSCS":
+// "dSO80A01XiigH3uBiDVx/EjzaoycHcjq9lfQX0uWsqxl2giMIiSPR8a4d291W1ihKJL/
+// a+myXS367WT6NAIcBA"                         }
 //                     },
 //                     "user_id": "@alice:example.com"
 //                 },
@@ -372,8 +380,9 @@ impl SigningKeyUpdateContent {
 //                         "IWHQUZUIAH": {
 //                             "algorithm": "m.megolm.v1.aes-sha2",
 //                             "room_id": "!Cuyf34gef24t:localhost",
-//                             "session_id": "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ",
-//                             "session_key": "AgAAAADxKHa9uFxcXzwYoNueL5Xqi69IkD4sni8LlfJL7qNBEY..."
+//                             "session_id":
+// "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ",
+// "session_key": "AgAAAADxKHa9uFxcXzwYoNueL5Xqi69IkD4sni8LlfJL7qNBEY..."
 //                         }
 //                     }
 //                 },
@@ -388,7 +397,8 @@ impl SigningKeyUpdateContent {
 //         assert_eq!(content.sender, "@john:example.com");
 //         assert_eq!(content.ev_type, ToDeviceEventType::RoomKeyRequest);
 //         assert_eq!(content.message_id, "hiezohf6Hoo7kaev");
-//         assert!(content.messages.get(user_id!("@alice:example.org")).is_some());
+//         assert!(content.messages.get(user_id!("@alice:example.org")).
+// is_some());
 
 //         assert_eq!(serde_json::to_value(&edu).unwrap(), json);
 //     }
@@ -399,13 +409,13 @@ impl SigningKeyUpdateContent {
 //             "content": {
 //                 "master_key": {
 //                     "keys": {
-//                         "ed25519:alice+base64+public+key": "alice+base64+public+key",
-//                         "ed25519:base64+master+public+key": "base64+master+public+key"
-//                     },
-//                     "signatures": {
+//                         "ed25519:alice+base64+public+key":
+// "alice+base64+public+key",
+// "ed25519:base64+master+public+key": "base64+master+public+key"
+// },                     "signatures": {
 //                         "@alice:example.com": {
-//                             "ed25519:alice+base64+master+key": "signature+of+key"
-//                         }
+//                             "ed25519:alice+base64+master+key":
+// "signature+of+key"                         }
 //                     },
 //                     "usage": [
 //                         "master"
@@ -414,13 +424,15 @@ impl SigningKeyUpdateContent {
 //                 },
 //                 "self_signing_key": {
 //                     "keys": {
-//                         "ed25519:alice+base64+public+key": "alice+base64+public+key",
-//                         "ed25519:base64+self+signing+public+key": "base64+self+signing+master+public+key"
-//                     },
+//                         "ed25519:alice+base64+public+key":
+// "alice+base64+public+key",
+// "ed25519:base64+self+signing+public+key":
+// "base64+self+signing+master+public+key"                     },
 //                     "signatures": {
 //                         "@alice:example.com": {
-//                             "ed25519:alice+base64+master+key": "signature+of+key",
-//                             "ed25519:base64+master+public+key": "signature+of+self+signing+key"
+//                             "ed25519:alice+base64+master+key":
+// "signature+of+key",
+// "ed25519:base64+master+public+key": "signature+of+self+signing+key"
 //                         }
 //                     },
 //                     "usage": [

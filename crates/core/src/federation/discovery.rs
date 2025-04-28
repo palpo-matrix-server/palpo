@@ -2,9 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis, serde::Base64};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis, serde::Base64};
 
 /// Public key of the homeserver for verifying digital signatures.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -54,7 +55,8 @@ pub struct ServerSigningKeys {
     /// Public keys of the homeserver for verifying digital signatures.
     pub verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey>,
 
-    /// Public keys that the homeserver used to use and when it stopped using them.
+    /// Public keys that the homeserver used to use and when it stopped using
+    /// them.
     pub old_verify_keys: BTreeMap<OwnedServerSigningKeyId, OldVerifyKey>,
 
     /// Digital signatures of this object signed using the verify_keys.
@@ -69,7 +71,8 @@ pub struct ServerSigningKeys {
 }
 
 impl ServerSigningKeys {
-    /// Creates a new `ServerSigningKeys` with the given server name and validity timestamp.
+    /// Creates a new `ServerSigningKeys` with the given server name and
+    /// validity timestamp.
     ///
     /// All other fields will be empty.
     pub fn new(server_name: OwnedServerName, valid_until_ts: UnixMillis) -> Self {
@@ -86,7 +89,8 @@ impl ServerSigningKeys {
 /// Response type for the `discover_homeserver` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 pub struct ServerWellKnownResBody {
-    /// The server name to delegate server-server communications to, with optional port.
+    /// The server name to delegate server-server communications to, with
+    /// optional port.
     #[serde(rename = "m.server")]
     pub server: OwnedServerName,
 }

@@ -6,23 +6,25 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedTransactionId;
-use crate::events::relation::Reference;
+use crate::{OwnedTransactionId, events::relation::Reference};
 
 /// The content of a to-device `m.m.key.verification.done` event.
 ///
-/// Event signaling that the interactive key verification has successfully concluded.
+/// Event signaling that the interactive key verification has successfully
+/// concluded.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.key.verification.done", kind = ToDevice)]
 pub struct ToDeviceKeyVerificationDoneEventContent {
     /// An opaque identifier for the verification process.
     ///
-    /// Must be the same as the one used for the `m.key.verification.start` message.
+    /// Must be the same as the one used for the `m.key.verification.start`
+    /// message.
     pub transaction_id: OwnedTransactionId,
 }
 
 impl ToDeviceKeyVerificationDoneEventContent {
-    /// Creates a new `ToDeviceKeyVerificationDoneEventContent` with the given transaction ID.
+    /// Creates a new `ToDeviceKeyVerificationDoneEventContent` with the given
+    /// transaction ID.
     pub fn new(transaction_id: OwnedTransactionId) -> Self {
         Self { transaction_id }
     }
@@ -30,17 +32,20 @@ impl ToDeviceKeyVerificationDoneEventContent {
 
 /// The payload for a in-room `m.key.verification.done` event.
 ///
-/// Event signaling that the interactive key verification has successfully concluded.
+/// Event signaling that the interactive key verification has successfully
+/// concluded.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.key.verification.done", kind = MessageLike)]
 pub struct KeyVerificationDoneEventContent {
-    /// Relation signaling which verification request this event is responding to.
+    /// Relation signaling which verification request this event is responding
+    /// to.
     #[serde(rename = "m.relates_to")]
     pub relates_to: Reference,
 }
 
 impl KeyVerificationDoneEventContent {
-    /// Creates a new `KeyVerificationDoneEventContent` with the given reference.
+    /// Creates a new `KeyVerificationDoneEventContent` with the given
+    /// reference.
     pub fn new(relates_to: Reference) -> Self {
         Self { relates_to }
     }
@@ -48,11 +53,10 @@ impl KeyVerificationDoneEventContent {
 
 #[cfg(test)]
 mod tests {
-    use crate::owned_event_id;
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::KeyVerificationDoneEventContent;
-    use crate::events::relation::Reference;
+    use crate::{events::relation::Reference, owned_event_id};
 
     #[test]
     fn serialization() {

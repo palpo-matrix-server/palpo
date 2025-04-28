@@ -13,20 +13,23 @@ use crate::{IdParseError, PrivOwnedStr};
 
 /// A Matrix VoIP version ID.
 ///
-/// A `VoipVersionId` representing VoIP version 0 can be converted or deserialized from a `i64`,
-/// and can be converted or serialized back into a `i64` as needed.
+/// A `VoipVersionId` representing VoIP version 0 can be converted or
+/// deserialized from a `i64`, and can be converted or serialized back into a
+/// `i64` as needed.
 ///
-/// Custom room versions or ones that were introduced into the specification after this code was
-/// written are represented by a hidden enum variant. They can be converted or deserialized from a
-/// string slice, and can be converted or serialized back into a string as needed.
+/// Custom room versions or ones that were introduced into the specification
+/// after this code was written are represented by a hidden enum variant. They
+/// can be converted or deserialized from a string slice, and can be converted
+/// or serialized back into a string as needed.
 ///
 /// ```
 /// # crateVoipVersionId;
 /// assert_eq!(VoipVersionId::try_from("1").unwrap().as_ref(), "1");
 /// ```
 ///
-/// For simplicity, version 0 has a string representation, but trying to construct a `VoipVersionId`
-/// from a `"0"` string will not result in the `V0` variant.
+/// For simplicity, version 0 has a string representation, but trying to
+/// construct a `VoipVersionId` from a `"0"` string will not result in the `V0`
+/// variant.
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Hash, DisplayAsRefStr)]
 pub enum VoipVersionId {
     /// A version 0 VoIP call.
@@ -151,7 +154,8 @@ impl From<String> for VoipVersionId {
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::VoipVersionId;
 //     use crate::IdParseError;
@@ -163,8 +167,8 @@ impl From<String> for VoipVersionId {
 
 //     #[test]
 //     fn invalid_uint_version() {
-//         assert_matches!(VoipVersionId::try_from(u1), Err(IdParseError::InvalidVoipVersionId(_)));
-//     }
+//         assert_matches!(VoipVersionId::try_from(u1),
+// Err(IdParseError::InvalidVoipVersionId(_)));     }
 
 //     #[test]
 //     fn valid_version_1() {
@@ -184,8 +188,8 @@ impl From<String> for VoipVersionId {
 
 //     #[test]
 //     fn deserialize_version_0() {
-//         assert_eq!(from_json_value::<VoipVersionId>(json!(0)).unwrap(), VoipVersionId::V0);
-//     }
+//         assert_eq!(from_json_value::<VoipVersionId>(json!(0)).unwrap(),
+// VoipVersionId::V0);     }
 
 //     #[test]
 //     fn serialize_version_1() {
@@ -194,8 +198,8 @@ impl From<String> for VoipVersionId {
 
 //     #[test]
 //     fn deserialize_version_1() {
-//         assert_eq!(from_json_value::<VoipVersionId>(json!("1")).unwrap(), VoipVersionId::V1);
-//     }
+//         assert_eq!(from_json_value::<VoipVersionId>(json!("1")).unwrap(),
+// VoipVersionId::V1);     }
 
 //     #[test]
 //     fn serialize_custom_string() {
@@ -206,6 +210,6 @@ impl From<String> for VoipVersionId {
 //     #[test]
 //     fn deserialize_custom_string() {
 //         let version = VoipVersionId::from("io.palpo.1");
-//         assert_eq!(from_json_value::<VoipVersionId>(json!("io.palpo.1")).unwrap(), version);
-//     }
+//         assert_eq!(from_json_value::<VoipVersionId>(json!("io.palpo.1")).
+// unwrap(), version);     }
 // }

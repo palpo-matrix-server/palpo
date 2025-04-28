@@ -5,22 +5,27 @@ use std::{
     mem,
 };
 
-use salvo::oapi::{Components, RefOr, Schema};
-use salvo::prelude::*;
-use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, Visitor};
-use serde::ser::{Serialize, Serializer};
+use salvo::{
+    oapi::{Components, RefOr, Schema},
+    prelude::*,
+};
+use serde::{
+    de::{self, Deserialize, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, Visitor},
+    ser::{Serialize, Serializer},
+};
 use serde_json::value::to_raw_value as to_raw_json_value;
 
 use crate::serde::{JsonValue, RawJsonValue};
 
-/// A wrapper around `Box<RawValue>`, to be used in place of any type in the Matrix endpoint
-/// definition to allow request and response types to contain that said type represented by
-/// the generic argument `Ev`.
+/// A wrapper around `Box<RawValue>`, to be used in place of any type in the
+/// Matrix endpoint definition to allow request and response types to contain
+/// that said type represented by the generic argument `Ev`.
 ///
-/// Palpo offers the `RawJson` wrapper to enable passing around JSON text that is only partially
-/// validated. This is useful when a client receives events that do not follow the spec perfectly
-/// or a server needs to generate reference hashes with the original canonical JSON string.
-/// All event structs and enums implement `Serialize` / `Deserialize`, `Raw` should be used
+/// Palpo offers the `RawJson` wrapper to enable passing around JSON text that
+/// is only partially validated. This is useful when a client receives events
+/// that do not follow the spec perfectly or a server needs to generate
+/// reference hashes with the original canonical JSON string. All event structs
+/// and enums implement `Serialize` / `Deserialize`, `Raw` should be used
 /// to pass around events in a lossless way.
 ///
 /// ```no_run
@@ -53,8 +58,9 @@ where
 impl<T> RawJson<T> {
     /// Create a `Raw` by serializing the given `T`.
     ///
-    /// Shorthand for `serde_json::value::to_raw_value(val).map(RawJson::from_json)`, but specialized to
-    /// `T`.
+    /// Shorthand for
+    /// `serde_json::value::to_raw_value(val).map(RawJson::from_json)`, but
+    /// specialized to `T`.
     ///
     /// # Errors
     ///
@@ -79,8 +85,9 @@ impl<T> RawJson<T> {
 
     /// Convert an owned `String` of JSON data to `RawJson<T>`.
     ///
-    /// This function is equivalent to `serde_json::from_str::<RawJson<T>>` except that an allocation
-    /// and copy is avoided if both of the following are true:
+    /// This function is equivalent to `serde_json::from_str::<RawJson<T>>`
+    /// except that an allocation and copy is avoided if both of the
+    /// following are true:
     ///
     /// * the input has no leading or trailing whitespace, and
     /// * the input has capacity equal to its length.
@@ -102,10 +109,11 @@ impl<T> RawJson<T> {
         self.inner
     }
 
-    /// Try to access a given field inside this `Raw`, assuming it contains an object.
+    /// Try to access a given field inside this `Raw`, assuming it contains an
+    /// object.
     ///
-    /// Returns `Err(_)` when the contained value is not an object, or the field exists but is fails
-    /// to deserialize to the expected type.
+    /// Returns `Err(_)` when the contained value is not an object, or the field
+    /// exists but is fails to deserialize to the expected type.
     ///
     /// Returns `Ok(None)` when the field doesn't exist or is `null`.
     ///
@@ -217,16 +225,20 @@ impl<T> RawJson<T> {
         serde_json::from_str(self.inner.get())
     }
 
-    /// Turns `RawJson<T>` into `RawJson<U>` without changing the underlying JSON.
+    /// Turns `RawJson<T>` into `RawJson<U>` without changing the underlying
+    /// JSON.
     ///
-    /// This is useful for turning raw specific event types into raw event enum types.
+    /// This is useful for turning raw specific event types into raw event enum
+    /// types.
     pub fn cast<U>(self) -> RawJson<U> {
         RawJson::from_raw_value(self.into_inner())
     }
 
-    /// Turns `&RawJson<T>` into `&RawJson<U>` without changing the underlying JSON.
+    /// Turns `&RawJson<T>` into `&RawJson<U>` without changing the underlying
+    /// JSON.
     ///
-    /// This is useful for turning raw specific event types into raw event enum types.
+    /// This is useful for turning raw specific event types into raw event enum
+    /// types.
     pub fn cast_ref<U>(&self) -> &RawJson<U> {
         unsafe { mem::transmute(self) }
     }

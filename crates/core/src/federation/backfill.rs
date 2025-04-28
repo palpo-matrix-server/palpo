@@ -10,9 +10,11 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::RawJsonValue;
-use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, UnixMillis};
+use crate::{
+    OwnedEventId, OwnedRoomId, OwnedServerName, UnixMillis,
+    sending::{SendRequest, SendResult},
+    serde::RawJsonValue,
+};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -56,8 +58,8 @@ pub struct BackfillResBody {
     /// The `server_name` of the homeserver sending this transaction.
     pub origin: OwnedServerName,
 
-    /// POSIX timestamp in milliseconds on originating homeserver when this transaction
-    /// started.
+    /// POSIX timestamp in milliseconds on originating homeserver when this
+    /// transaction started.
     pub origin_server_ts: UnixMillis,
 
     /// List of persistent updates to rooms.

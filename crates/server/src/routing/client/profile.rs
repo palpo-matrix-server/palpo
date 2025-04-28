@@ -116,7 +116,7 @@ async fn set_avatar_url(
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
     if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden("forbidden").into());
+        return Err(MatrixError::forbidden(None, "forbidden").into());
     }
 
     let SetAvatarUrlReqBody { avatar_url, blurhash } = body.into_inner();
@@ -242,7 +242,7 @@ async fn set_display_name(
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
     if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden("forbidden").into());
+        return Err(MatrixError::forbidden(None, "forbidden").into());
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
 

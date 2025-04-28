@@ -6,8 +6,10 @@ use js_option::JsOption;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de, ser::SerializeStruct};
 
-use crate::push::{Pusher, PusherIds};
-use crate::serde::{RawJsonValue, from_raw_json_value};
+use crate::{
+    push::{Pusher, PusherIds},
+    serde::{RawJsonValue, from_raw_json_value},
+};
 
 // `/v3/` ([spec])
 //
@@ -37,8 +39,8 @@ impl PushersResBody {
 
 // `POST /_matrix/client/*/pushers/set`
 //
-// This endpoint allows the creation, modification and deletion of pushers for this user ID.
-// `/v3/` ([spec])
+// This endpoint allows the creation, modification and deletion of pushers for
+// this user ID. `/v3/` ([spec])
 //
 // [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3pushersset
 
@@ -64,11 +66,11 @@ pub struct SetPusherReqBody(pub PusherAction);
 
 //     /// Creates a new `Request` to create or update the given pusher.
 //     pub fn post(pusher: Pusher) -> Self {
-//         Self::new(PusherAction::Post(PusherPostData { pusher, append: false }))
-//     }
+//         Self::new(PusherAction::Post(PusherPostData { pusher, append: false
+// }))     }
 
-//     /// Creates a new `Request` to delete the pusher identified by the given IDs.
-//     pub fn delete(ids: PusherIds) -> Self {
+//     /// Creates a new `Request` to delete the pusher identified by the given
+// IDs.     pub fn delete(ids: PusherIds) -> Self {
 //         Self::new(PusherAction::Delete(ids))
 //     }
 // }
@@ -128,8 +130,8 @@ pub struct PusherPostData {
     #[serde(flatten)]
     pub pusher: Pusher,
 
-    /// Controls if another pusher with the same pushkey and app id should be created, if there
-    /// are already others for other users.
+    /// Controls if another pusher with the same pushkey and app id should be
+    /// created, if there are already others for other users.
     ///
     /// Defaults to `false`. See the spec for more details.
     #[serde(skip_serializing_if = "crate::serde::is_default", default = "default_false")]

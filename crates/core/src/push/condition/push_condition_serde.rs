@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize, Serializer, de};
 
-use super::RoomVersionFeature;
-use super::{PushCondition, RoomMemberCountIs, ScalarJsonValue};
+use super::{PushCondition, RoomMemberCountIs, RoomVersionFeature, ScalarJsonValue};
 use crate::serde::{RawJsonValue, from_raw_json_value};
 
 impl Serialize for PushCondition {
@@ -59,13 +58,13 @@ enum PushConditionSerDeHelper {
 
         /// The glob-style pattern to match against.
         ///
-        /// Patterns with no special glob characters should be treated as having asterisks
-        /// prepended and appended when testing the condition.
+        /// Patterns with no special glob characters should be treated as having
+        /// asterisks prepended and appended when testing the condition.
         pattern: String,
     },
 
-    /// Matches unencrypted messages where `content.body` contains the owner's display name in that
-    /// room.
+    /// Matches unencrypted messages where `content.body` contains the owner's
+    /// display name in that room.
     ContainsDisplayName,
 
     /// Matches the current number of members in the room.
@@ -74,13 +73,15 @@ enum PushConditionSerDeHelper {
         is: RoomMemberCountIs,
     },
 
-    /// Takes into account the current power levels in the room, ensuring the sender of the event
-    /// has high enough power to trigger the notification.
+    /// Takes into account the current power levels in the room, ensuring the
+    /// sender of the event has high enough power to trigger the
+    /// notification.
     SenderNotificationPermission {
-        /// The field in the power level event the user needs a minimum power level for.
+        /// The field in the power level event the user needs a minimum power
+        /// level for.
         ///
-        /// Fields must be specified under the `notifications` property in the power level event's
-        /// `content`.
+        /// Fields must be specified under the `notifications` property in the
+        /// power level event's `content`.
         key: String,
     },
 

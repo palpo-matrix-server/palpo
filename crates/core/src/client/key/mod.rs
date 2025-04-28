@@ -1,18 +1,21 @@
 /// Endpoints for key management
 pub mod claim_key;
+use std::{
+    collections::{BTreeMap, btree_map},
+    ops::Deref,
+    time::Duration,
+};
+
 pub use claim_key::*;
-
-use std::collections::{BTreeMap, btree_map};
-use std::ops::Deref;
-use std::time::Duration;
-
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::client::uiaa::AuthData;
-use crate::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::serde::{JsonValue, RawJson, RawJsonValue, StringEnum};
-use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr};
+use crate::{
+    DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId, PrivOwnedStr,
+    client::uiaa::AuthData,
+    encryption::{CrossSigningKey, DeviceKeys, OneTimeKey},
+    serde::{JsonValue, RawJson, RawJsonValue, StringEnum},
+};
 
 /// An iterator over signed key IDs and their associated data.
 #[derive(Debug)]
@@ -45,7 +48,8 @@ impl<'a> Iterator for SignedKeysIter<'a> {
 /// Request type for the `get_keys` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct KeysReqBody {
-    /// The time (in milliseconds) to wait when downloading keys from remote servers.
+    /// The time (in milliseconds) to wait when downloading keys from remote
+    /// servers.
     ///
     /// 10 seconds is the recommended default.
     #[serde(
@@ -139,8 +143,8 @@ impl UploadKeysResBody {
 
 /// `GET /_matrix/client/*/keys/changes`
 ///
-/// Gets a list of users who have updated their device identity keys since a previous sync token.
-/// `/v3/` ([spec])
+/// Gets a list of users who have updated their device identity keys since a
+/// previous sync token. `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3keyschanges
 // const METADATA: Metadata = metadata! {
@@ -158,14 +162,15 @@ impl UploadKeysResBody {
 pub struct KeyChangesReqArgs {
     /// The desired start point of the list.
     ///
-    /// Should be the next_batch field from a response to an earlier call to /sync.
+    /// Should be the next_batch field from a response to an earlier call to
+    /// /sync.
     #[salvo(parameter(parameter_in = Query))]
     pub from: String,
 
     /// The desired end point of the list.
     ///
-    /// Should be the next_batch field from a recent call to /sync - typically the most recent
-    /// such call.
+    /// Should be the next_batch field from a recent call to /sync - typically
+    /// the most recent such call.
     #[salvo(parameter(parameter_in = Query))]
     pub to: String,
 }
@@ -207,7 +212,8 @@ impl KeyChangesResBody {
 /// Request type for the `upload_signing_keys` endpoint.
 #[derive(ToSchema, Deserialize, Clone, Debug)]
 pub struct UploadSigningKeysReqBody {
-    /// Additional authentication information for the user-interactive authentication API.
+    /// Additional authentication information for the user-interactive
+    /// authentication API.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -221,15 +227,17 @@ pub struct UploadSigningKeysReqBody {
 
     /// The user's self-signing key.
     ///
-    /// Must be signed with the accompanied master, or by the user's most recently uploaded
-    /// master key if no master key is included in the request.
+    /// Must be signed with the accompanied master, or by the user's most
+    /// recently uploaded master key if no master key is included in the
+    /// request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub self_signing_key: Option<CrossSigningKey>,
 
     /// The user's user-signing key.
     ///
-    /// Must be signed with the accompanied master, or by the user's most recently uploaded
-    /// master key if no master key is included in the request.
+    /// Must be signed with the accompanied master, or by the user's most
+    /// recently uploaded master key if no master key is included in the
+    /// request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_signing_key: Option<CrossSigningKey>,
 }

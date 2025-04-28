@@ -6,12 +6,12 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
-use crate::events::GlobalAccountDataEventType;
-use crate::{OwnedDeviceId, OwnedTransactionId, PrivOwnedStr, serde::StringEnum};
+use crate::{OwnedDeviceId, OwnedTransactionId, PrivOwnedStr, events::GlobalAccountDataEventType, serde::StringEnum};
 
 /// The content of an `m.secret.request` event.
 ///
-/// Event sent by a client to request a secret from another device or to cancel a previous request.
+/// Event sent by a client to request a secret from another device or to cancel
+/// a previous request.
 ///
 /// It is sent as an unencrypted to-device event.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
@@ -24,17 +24,18 @@ pub struct ToDeviceSecretRequestEventContent {
     /// The ID of the device requesting the event.
     pub requesting_device_id: OwnedDeviceId,
 
-    /// A random string uniquely identifying (with respect to the requester and the target) the
-    /// target for a secret.
+    /// A random string uniquely identifying (with respect to the requester and
+    /// the target) the target for a secret.
     ///
-    /// If the secret is requested from multiple devices at the same time, the same ID may be used
-    /// for every target. The same ID is also used in order to cancel a previous request.
+    /// If the secret is requested from multiple devices at the same time, the
+    /// same ID may be used for every target. The same ID is also used in
+    /// order to cancel a previous request.
     pub request_id: OwnedTransactionId,
 }
 
 impl ToDeviceSecretRequestEventContent {
-    /// Creates a new `ToDeviceRequestEventContent` with the given action, requesting device ID and
-    /// request ID.
+    /// Creates a new `ToDeviceRequestEventContent` with the given action,
+    /// requesting device ID and request ID.
     pub fn new(action: RequestAction, requesting_device_id: OwnedDeviceId, request_id: OwnedTransactionId) -> Self {
         Self {
             action,
@@ -142,10 +143,11 @@ impl From<SecretName> for GlobalAccountDataEventType {
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
-//     use super::{RequestAction, SecretName, ToDeviceSecretRequestEventContent};
-//     use crate::PrivOwnedStr;
+//     use super::{RequestAction, SecretName,
+// ToDeviceSecretRequestEventContent};     use crate::PrivOwnedStr;
 
 //     #[test]
 //     fn secret_request_serialization() {
@@ -226,7 +228,8 @@ impl From<SecretName> for GlobalAccountDataEventType {
 //             "request_id": "randomly_generated_id_9573"
 //         });
 
-//         let content = from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
+//         let content =
+// from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
 //         assert_eq!(content.requesting_device_id, "ABCDEFG");
 //         assert_eq!(content.request_id, "randomly_generated_id_9573");
 //         assert_matches!(content.action, RequestAction::Request(secret));
@@ -241,7 +244,8 @@ impl From<SecretName> for GlobalAccountDataEventType {
 //             "request_id": "randomly_generated_id_9573"
 //         });
 
-//         let content = from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
+//         let content =
+// from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
 //         assert_eq!(content.requesting_device_id, "ABCDEFG");
 //         assert_eq!(content.request_id, "randomly_generated_id_9573");
 //         assert_matches!(content.action, RequestAction::RequestCancellation);
@@ -256,7 +260,8 @@ impl From<SecretName> for GlobalAccountDataEventType {
 //             "request_id": "this_is_a_request_id"
 //         });
 
-//         let content = from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
+//         let content =
+// from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
 //         assert_eq!(content.requesting_device_id, "XYZxyz");
 //         assert_eq!(content.request_id, "this_is_a_request_id");
 //         assert_matches!(content.action, RequestAction::Request(secret));
@@ -271,7 +276,8 @@ impl From<SecretName> for GlobalAccountDataEventType {
 //             "request_id": "this_is_a_request_id"
 //         });
 
-//         let content = from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
+//         let content =
+// from_json_value::<ToDeviceSecretRequestEventContent>(json).unwrap();
 //         assert_eq!(content.requesting_device_id, "XYZxyz");
 //         assert_eq!(content.request_id, "this_is_a_request_id");
 //         assert_eq!(

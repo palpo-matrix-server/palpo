@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use super::{HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString};
-use crate::events::relation::Reference;
-use crate::{OwnedDeviceId, OwnedTransactionId, serde::Base64};
+use crate::{OwnedDeviceId, OwnedTransactionId, events::relation::Reference, serde::Base64};
 
 /// The content of a to-device `m.key.verification.start` event.
 ///
@@ -24,9 +23,9 @@ pub struct ToDeviceKeyVerificationStartEventContent {
 
     /// An opaque identifier for the verification process.
     ///
-    /// Must be unique with respect to the devices involved. Must be the same as the
-    /// `transaction_id` given in the `m.key.verification.request` if this process is originating
-    /// from a request.
+    /// Must be unique with respect to the devices involved. Must be the same as
+    /// the `transaction_id` given in the `m.key.verification.request` if
+    /// this process is originating from a request.
     pub transaction_id: OwnedTransactionId,
 
     /// Method specific content.
@@ -35,8 +34,8 @@ pub struct ToDeviceKeyVerificationStartEventContent {
 }
 
 impl ToDeviceKeyVerificationStartEventContent {
-    /// Creates a new `ToDeviceKeyVerificationStartEventContent` with the given device ID,
-    /// transaction ID and method specific content.
+    /// Creates a new `ToDeviceKeyVerificationStartEventContent` with the given
+    /// device ID, transaction ID and method specific content.
     pub fn new(from_device: OwnedDeviceId, transaction_id: OwnedTransactionId, method: StartMethod) -> Self {
         Self {
             from_device,
@@ -65,8 +64,8 @@ pub struct KeyVerificationStartEventContent {
 }
 
 impl KeyVerificationStartEventContent {
-    /// Creates a new `KeyVerificationStartEventContent` with the given device ID, method and
-    /// reference.
+    /// Creates a new `KeyVerificationStartEventContent` with the given device
+    /// ID, method and reference.
     pub fn new(from_device: OwnedDeviceId, method: StartMethod, relates_to: Reference) -> Self {
         Self {
             from_device,
@@ -76,7 +75,8 @@ impl KeyVerificationStartEventContent {
     }
 }
 
-/// An enum representing the different method specific `m.key.verification.start` content.
+/// An enum representing the different method specific
+/// `m.key.verification.start` content.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum StartMethod {
@@ -109,7 +109,8 @@ pub struct _CustomContent {
     pub data: BTreeMap<String, JsonValue>,
 }
 
-/// The payload of an `m.key.verification.start` event using the `m.sas.v1` method.
+/// The payload of an `m.key.verification.start` event using the `m.sas.v1`
+/// method.
 #[derive(ToSchema, Deserialize, Serialize, Clone)]
 #[serde(rename = "m.reciprocate.v1", tag = "method")]
 pub struct ReciprocateV1Content {
@@ -120,7 +121,8 @@ pub struct ReciprocateV1Content {
 impl ReciprocateV1Content {
     /// Create a new `ReciprocateV1Content` with the given shared secret.
     ///
-    /// The shared secret needs to come from the scanned QR code, encoded using unpadded base64.
+    /// The shared secret needs to come from the scanned QR code, encoded using
+    /// unpadded base64.
     pub fn new(secret: Base64) -> Self {
         Self { secret }
     }
@@ -132,10 +134,11 @@ impl fmt::Debug for ReciprocateV1Content {
     }
 }
 
-/// The payload of an `m.key.verification.start` event using the `m.sas.v1` method.
+/// The payload of an `m.key.verification.start` event using the `m.sas.v1`
+/// method.
 ///
-/// To create an instance of this type, first create a `SasV1ContentInit` and convert it via
-/// `SasV1Content::from` / `.into()`.
+/// To create an instance of this type, first create a `SasV1ContentInit` and
+/// convert it via `SasV1Content::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(rename = "m.sas.v1", tag = "method")]
 pub struct SasV1Content {
@@ -151,12 +154,14 @@ pub struct SasV1Content {
 
     /// The message authentication codes that the sending device understands.
     ///
-    /// Must include at least `hkdf-hmac-sha256.v2`. Should also include `hkdf-hmac-sha256` for
-    /// compatibility with older clients, though this MAC is deprecated and will be removed in a
-    /// future version of the spec.
+    /// Must include at least `hkdf-hmac-sha256.v2`. Should also include
+    /// `hkdf-hmac-sha256` for compatibility with older clients, though this
+    /// MAC is deprecated and will be removed in a future version of the
+    /// spec.
     pub message_authentication_codes: Vec<MessageAuthenticationCode>,
 
-    /// The SAS methods the sending device (and the sending device's user) understands.
+    /// The SAS methods the sending device (and the sending device's user)
+    /// understands.
     ///
     /// Must include at least `decimal`. Optionally can include `emoji`.
     pub short_authentication_string: Vec<ShortAuthenticationString>,
@@ -164,8 +169,8 @@ pub struct SasV1Content {
 
 /// Mandatory initial set of fields for creating an `SasV1Content`.
 ///
-/// This struct will not be updated even if additional fields are added to `SasV1Content` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `SasV1Content` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct SasV1ContentInit {
@@ -181,12 +186,14 @@ pub struct SasV1ContentInit {
 
     /// The message authentication codes that the sending device understands.
     ///
-    /// Must include at least `hkdf-hmac-sha256.v2`. Should also include `hkdf-hmac-sha256` for
-    /// compatibility with older clients, though this MAC is deprecated and will be removed in a
-    /// future version of the spec.
+    /// Must include at least `hkdf-hmac-sha256.v2`. Should also include
+    /// `hkdf-hmac-sha256` for compatibility with older clients, though this
+    /// MAC is deprecated and will be removed in a future version of the
+    /// spec.
     pub message_authentication_codes: Vec<MessageAuthenticationCode>,
 
-    /// The SAS methods the sending device (and the sending device's user) understands.
+    /// The SAS methods the sending device (and the sending device's user)
+    /// understands.
     ///
     /// Should include at least `decimal`.
     pub short_authentication_string: Vec<ShortAuthenticationString>,
@@ -210,26 +217,30 @@ impl From<SasV1ContentInit> for SasV1Content {
 
 //     use crate::{event_id, serde::Base64};
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value, Value as JsonValue};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value, Value as JsonValue};
 
 //     use super::{
-//         HashAlgorithm, KeyAgreementProtocol, KeyVerificationStartEventContent, MessageAuthenticationCode,
-//         ReciprocateV1Content, SasV1ContentInit, ShortAuthenticationString, StartMethod,
-//         ToDeviceKeyVerificationStartEventContent, _CustomContent,
-//     };
+//         HashAlgorithm, KeyAgreementProtocol,
+// KeyVerificationStartEventContent, MessageAuthenticationCode,
+//         ReciprocateV1Content, SasV1ContentInit, ShortAuthenticationString,
+// StartMethod,         ToDeviceKeyVerificationStartEventContent,
+// _CustomContent,     };
 //     use crate::{relation::Reference, ToDeviceEvent};
 
 //     #[test]
 //     fn serialization() {
-//         let key_verification_start_content = ToDeviceKeyVerificationStartEventContent {
-//             from_device: "123".into(),
-//             transaction_id: "456".into(),
+//         let key_verification_start_content =
+// ToDeviceKeyVerificationStartEventContent {             from_device:
+// "123".into(),             transaction_id: "456".into(),
 //             method: StartMethod::SasV1(
 //                 SasV1ContentInit {
 //                     hashes: vec![HashAlgorithm::Sha256],
-//                     key_agreement_protocols: vec![KeyAgreementProtocol::Curve25519],
-//                     message_authentication_codes: vec![MessageAuthenticationCode::HkdfHmacSha256V2],
-//                     short_authentication_string: vec![ShortAuthenticationString::Decimal],
+//                     key_agreement_protocols:
+// vec![KeyAgreementProtocol::Curve25519],
+// message_authentication_codes:
+// vec![MessageAuthenticationCode::HkdfHmacSha256V2],
+// short_authentication_string: vec![ShortAuthenticationString::Decimal],
 //                 }
 //                 .into(),
 //             ),
@@ -245,7 +256,8 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "short_authentication_string": ["decimal"]
 //         });
 
-//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
+//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);
 
 //         let json_data = json!({
 //             "from_device": "123",
@@ -254,9 +266,9 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "test": "field",
 //         });
 
-//         let key_verification_start_content = ToDeviceKeyVerificationStartEventContent {
-//             from_device: "123".into(),
-//             transaction_id: "456".into(),
+//         let key_verification_start_content =
+// ToDeviceKeyVerificationStartEventContent {             from_device:
+// "123".into(),             transaction_id: "456".into(),
 //             method: StartMethod::_Custom(_CustomContent {
 //                 method: "m.sas.custom".to_owned(),
 //                 data: vec![("test".to_owned(), JsonValue::from("field"))]
@@ -265,15 +277,18 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             }),
 //         };
 
-//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
+//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);
 
 //         {
-//             let secret = Base64::new(b"This is a secret to everybody".to_vec());
+//             let secret = Base64::new(b"This is a secret to
+// everybody".to_vec());
 
-//             let key_verification_start_content = ToDeviceKeyVerificationStartEventContent {
-//                 from_device: "123".into(),
-//                 transaction_id: "456".into(),
-//                 method: StartMethod::ReciprocateV1(ReciprocateV1Content::new(secret.clone())),
+//             let key_verification_start_content =
+// ToDeviceKeyVerificationStartEventContent {                 from_device:
+// "123".into(),                 transaction_id: "456".into(),
+//                 method:
+// StartMethod::ReciprocateV1(ReciprocateV1Content::new(secret.clone())),
 //             };
 
 //             let json_data = json!({
@@ -283,25 +298,28 @@ impl From<SasV1ContentInit> for SasV1Content {
 //                 "transaction_id": "456"
 //             });
 
-//             assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
-//         }
+//
+// assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);         }
 //     }
 
 //     #[test]
 //     fn in_room_serialization() {
 //         let event_id = event_id!("$1598361704261elfgc:localhost");
 
-//         let key_verification_start_content = KeyVerificationStartEventContent {
-//             from_device: "123".into(),
+//         let key_verification_start_content = KeyVerificationStartEventContent
+// {             from_device: "123".into(),
 //             relates_to: Reference {
 //                 event_id: event_id.to_owned(),
 //             },
 //             method: StartMethod::SasV1(
 //                 SasV1ContentInit {
 //                     hashes: vec![HashAlgorithm::Sha256],
-//                     key_agreement_protocols: vec![KeyAgreementProtocol::Curve25519],
-//                     message_authentication_codes: vec![MessageAuthenticationCode::HkdfHmacSha256V2],
-//                     short_authentication_string: vec![ShortAuthenticationString::Decimal],
+//                     key_agreement_protocols:
+// vec![KeyAgreementProtocol::Curve25519],
+// message_authentication_codes:
+// vec![MessageAuthenticationCode::HkdfHmacSha256V2],
+// short_authentication_string: vec![ShortAuthenticationString::Decimal],
 //                 }
 //                 .into(),
 //             ),
@@ -320,16 +338,18 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             }
 //         });
 
-//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
+//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);
 
 //         let secret = Base64::new(b"This is a secret to everybody".to_vec());
 
-//         let key_verification_start_content = KeyVerificationStartEventContent {
-//             from_device: "123".into(),
+//         let key_verification_start_content = KeyVerificationStartEventContent
+// {             from_device: "123".into(),
 //             relates_to: Reference {
 //                 event_id: event_id.to_owned(),
 //             },
-//             method: StartMethod::ReciprocateV1(ReciprocateV1Content::new(secret.clone())),
+//             method:
+// StartMethod::ReciprocateV1(ReciprocateV1Content::new(secret.clone())),
 //         };
 
 //         let json_data = json!({
@@ -342,8 +362,8 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             }
 //         });
 
-//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
-//     }
+//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);     }
 
 //     #[test]
 //     fn deserialization() {
@@ -357,15 +377,16 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "short_authentication_string": ["decimal"]
 //         });
 
-//         // Deserialize the content struct separately to verify `TryFromRaw` is implemented for it.
-//         let content = from_json_value::<ToDeviceKeyVerificationStartEventContent>(json).unwrap();
+//         // Deserialize the content struct separately to verify `TryFromRaw`
+// is implemented for it.         let content =
+// from_json_value::<ToDeviceKeyVerificationStartEventContent>(json).unwrap();
 //         assert_eq!(content.from_device, "123");
 //         assert_eq!(content.transaction_id, "456");
 
 //         assert_matches!(content.method, StartMethod::SasV1(sas));
 //         assert_eq!(sas.hashes, vec![HashAlgorithm::Sha256]);
-//         assert_eq!(sas.key_agreement_protocols, vec![KeyAgreementProtocol::Curve25519]);
-//         assert_eq!(
+//         assert_eq!(sas.key_agreement_protocols,
+// vec![KeyAgreementProtocol::Curve25519]);         assert_eq!(
 //             sas.message_authentication_codes,
 //             vec![MessageAuthenticationCode::HkdfHmacSha256V2]
 //         );
@@ -388,15 +409,16 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "sender": "@example:localhost",
 //         });
 
-//         let ev = from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).unwrap();
-//         assert_eq!(ev.sender, "@example:localhost");
+//         let ev =
+// from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).
+// unwrap();         assert_eq!(ev.sender, "@example:localhost");
 //         assert_eq!(ev.content.from_device, "123");
 //         assert_eq!(ev.content.transaction_id, "456");
 
 //         assert_matches!(ev.content.method, StartMethod::SasV1(sas));
 //         assert_eq!(sas.hashes, vec![HashAlgorithm::Sha256]);
-//         assert_eq!(sas.key_agreement_protocols, vec![KeyAgreementProtocol::Curve25519]);
-//         assert_eq!(
+//         assert_eq!(sas.key_agreement_protocols,
+// vec![KeyAgreementProtocol::Curve25519]);         assert_eq!(
 //             sas.message_authentication_codes,
 //             vec![MessageAuthenticationCode::HkdfHmacSha256V2]
 //         );
@@ -416,8 +438,9 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "sender": "@example:localhost",
 //         });
 
-//         let ev = from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).unwrap();
-//         assert_eq!(ev.sender, "@example:localhost");
+//         let ev =
+// from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).
+// unwrap();         assert_eq!(ev.sender, "@example:localhost");
 //         assert_eq!(ev.content.from_device, "123");
 //         assert_eq!(ev.content.transaction_id, "456");
 
@@ -436,14 +459,15 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             "sender": "@example:localhost",
 //         });
 
-//         let ev = from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).unwrap();
-//         assert_eq!(ev.sender, "@example:localhost");
+//         let ev =
+// from_json_value::<ToDeviceEvent<ToDeviceKeyVerificationStartEventContent>>(json).
+// unwrap();         assert_eq!(ev.sender, "@example:localhost");
 //         assert_eq!(ev.content.from_device, "123");
 //         assert_eq!(ev.content.transaction_id, "456");
 
-//         assert_matches!(ev.content.method, StartMethod::ReciprocateV1(reciprocate));
-//         assert_eq!(reciprocate.secret.encode(), "c2VjcmV0Cg");
-//     }
+//         assert_matches!(ev.content.method,
+// StartMethod::ReciprocateV1(reciprocate));         assert_eq!(reciprocate.
+// secret.encode(), "c2VjcmV0Cg");     }
 
 //     #[test]
 //     fn in_room_deserialization() {
@@ -460,15 +484,17 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             }
 //         });
 
-//         // Deserialize the content struct separately to verify `TryFromRaw` is implemented for it.
-//         let content = from_json_value::<KeyVerificationStartEventContent>(json).unwrap();
+//         // Deserialize the content struct separately to verify `TryFromRaw`
+// is implemented for it.         let content =
+// from_json_value::<KeyVerificationStartEventContent>(json).unwrap();
 //         assert_eq!(content.from_device, "123");
-//         assert_eq!(content.relates_to.event_id, "$1598361704261elfgc:localhost");
+//         assert_eq!(content.relates_to.event_id,
+// "$1598361704261elfgc:localhost");
 
 //         assert_matches!(content.method, StartMethod::SasV1(sas));
 //         assert_eq!(sas.hashes, vec![HashAlgorithm::Sha256]);
-//         assert_eq!(sas.key_agreement_protocols, vec![KeyAgreementProtocol::Curve25519]);
-//         assert_eq!(
+//         assert_eq!(sas.key_agreement_protocols,
+// vec![KeyAgreementProtocol::Curve25519]);         assert_eq!(
 //             sas.message_authentication_codes,
 //             vec![MessageAuthenticationCode::HkdfHmacSha256V2]
 //         );
@@ -487,11 +513,13 @@ impl From<SasV1ContentInit> for SasV1Content {
 //             }
 //         });
 
-//         let content = from_json_value::<KeyVerificationStartEventContent>(json).unwrap();
+//         let content =
+// from_json_value::<KeyVerificationStartEventContent>(json).unwrap();
 //         assert_eq!(content.from_device, "123");
-//         assert_eq!(content.relates_to.event_id, "$1598361704261elfgc:localhost");
+//         assert_eq!(content.relates_to.event_id,
+// "$1598361704261elfgc:localhost");
 
-//         assert_matches!(content.method, StartMethod::ReciprocateV1(reciprocate));
-//         assert_eq!(reciprocate.secret.encode(), "c2VjcmV0Cg");
-//     }
+//         assert_matches!(content.method,
+// StartMethod::ReciprocateV1(reciprocate));         assert_eq!(reciprocate.
+// secret.encode(), "c2VjcmV0Cg");     }
 // }

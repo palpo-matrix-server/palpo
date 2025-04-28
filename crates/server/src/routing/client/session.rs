@@ -76,16 +76,16 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
                 user_id.to_lowercase()
             } else {
                 warn!("Bad login type: {:?}", &body.login_info);
-                return Err(MatrixError::forbidden("Bad login type.").into());
+                return Err(MatrixError::forbidden(None, "Bad login type.").into());
             };
             let user_id = UserId::parse_with_server_name(username, crate::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             let Some(user) = data::user::get_user(&user_id)? else {
-                return Err(MatrixError::forbidden("User not found.").into());
+                return Err(MatrixError::forbidden(None, "User not found.").into());
             };
             if let Err(_e) = crate::user::vertify_password(&user, &password) {
                 res.status_code(StatusCode::FORBIDDEN); //for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
-                return Err(MatrixError::forbidden("Wrong username or password.").into());
+                return Err(MatrixError::forbidden(None, "Wrong username or password.").into());
             }
             user_id
         }
@@ -99,7 +99,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {
                 user_id.to_lowercase()
             } else {
-                return Err(MatrixError::forbidden("Bad login type.").into());
+                return Err(MatrixError::forbidden(None, "Bad login type.").into());
             };
             let user_id = UserId::parse_with_server_name(username, crate::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
@@ -153,7 +153,7 @@ async fn get_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonR
     let device_id = authed.device_id();
 
     if !conf.login_via_existing_session {
-        return Err(MatrixError::forbidden("Login via an existing session is not enabled").into());
+        return Err(MatrixError::forbidden(None, "Login via an existing session is not enabled").into());
     }
 
     // This route SHOULD have UIA

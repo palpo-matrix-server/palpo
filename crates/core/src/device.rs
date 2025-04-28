@@ -3,11 +3,13 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{self, Deserialize, Serialize};
 
-use crate::encryption::DeviceKeys;
-use crate::events::{AnyToDeviceEventContent, ToDeviceEventType};
-use crate::serde::RawJson;
-use crate::to_device::DeviceIdOrAllDevices;
-use crate::{OwnedDeviceId, OwnedTransactionId, OwnedUserId};
+use crate::{
+    OwnedDeviceId, OwnedTransactionId, OwnedUserId,
+    encryption::DeviceKeys,
+    events::{AnyToDeviceEventContent, ToDeviceEventType},
+    serde::RawJson,
+    to_device::DeviceIdOrAllDevices,
+};
 
 /// Information on E2E device updates.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
@@ -17,8 +19,8 @@ pub struct DeviceLists {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub changed: Vec<OwnedUserId>,
 
-    /// List of users who no longer share encrypted rooms since the previous sync
-    /// response.
+    /// List of users who no longer share encrypted rooms since the previous
+    /// sync response.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub left: Vec<OwnedUserId>,
 }
@@ -53,8 +55,8 @@ pub struct DeviceListUpdateContent {
     /// An ID sent by the server for this update, unique for a given user_id.
     pub stream_id: u64,
 
-    /// The stream_ids of any prior m.device_list_update EDUs sent for this user which have not
-    /// been referred to already in an EDU's prev_id field.
+    /// The stream_ids of any prior m.device_list_update EDUs sent for this user
+    /// which have not been referred to already in an EDU's prev_id field.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub prev_id: Vec<u64>,
 
@@ -68,8 +70,8 @@ pub struct DeviceListUpdateContent {
 }
 
 impl DeviceListUpdateContent {
-    /// Create a new `DeviceListUpdateContent` with the given `user_id`, `device_id` and
-    /// `stream_id`.
+    /// Create a new `DeviceListUpdateContent` with the given `user_id`,
+    /// `device_id` and `stream_id`.
     pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, stream_id: u64) -> Self {
         Self {
             user_id,
@@ -97,14 +99,16 @@ pub struct DirectDeviceContent {
 
     /// The contents of the messages to be sent.
     ///
-    /// These are arranged in a map of user IDs to a map of device IDs to message bodies. The
-    /// device ID may also be *, meaning all known devices for the user.
+    /// These are arranged in a map of user IDs to a map of device IDs to
+    /// message bodies. The device ID may also be *, meaning all known
+    /// devices for the user.
     #[salvo(schema(value_type = Object, additional_properties = true))]
     pub messages: DirectDeviceMessages,
 }
 
 impl DirectDeviceContent {
-    /// Creates a new `DirectDeviceContent` with the given `sender, `ev_type` and `message_id`.
+    /// Creates a new `DirectDeviceContent` with the given `sender, `ev_type`
+    /// and `message_id`.
     pub fn new(sender: OwnedUserId, ev_type: ToDeviceEventType, message_id: OwnedTransactionId) -> Self {
         Self {
             sender,

@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
-use crate::core::{DeviceKeyAlgorithm, MatrixError, Seqnum, UnixMillis};
+use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::user::clean_signatures;
 use crate::{DataResult, connect};

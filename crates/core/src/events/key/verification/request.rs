@@ -26,14 +26,14 @@ pub struct ToDeviceKeyVerificationRequestEventContent {
 
     /// The time in milliseconds for when the request was made.
     ///
-    /// If the request is in the future by more than 5 minutes or more than 10 minutes in
-    /// the past, the message should be ignored by the receiver.
+    /// If the request is in the future by more than 5 minutes or more than 10
+    /// minutes in the past, the message should be ignored by the receiver.
     pub timestamp: UnixMillis,
 }
 
 impl ToDeviceKeyVerificationRequestEventContent {
-    /// Creates a new `ToDeviceKeyVerificationRequestEventContent` with the given device ID,
-    /// transaction ID, methods and timestamp.
+    /// Creates a new `ToDeviceKeyVerificationRequestEventContent` with the
+    /// given device ID, transaction ID, methods and timestamp.
     pub fn new(
         from_device: OwnedDeviceId,
         transaction_id: OwnedTransactionId,

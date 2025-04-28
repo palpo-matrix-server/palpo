@@ -29,7 +29,7 @@ pub(super) fn get_state(
     let room_id = room_id.into_inner();
 
     if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     let frame_id = state::get_room_frame_id(&room_id, None)?;
@@ -108,7 +108,7 @@ pub(super) fn state_for_key(
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
     if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     let event = state::get_room_state(&args.room_id, &args.event_type, &args.state_key)?;
@@ -137,7 +137,7 @@ pub(super) async fn state_for_empty_key(
     let authed = depot.authed_info()?;
 
     if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     let event = state::get_room_state(&args.room_id, &args.event_type, "")?;
@@ -221,7 +221,7 @@ pub async fn send_typing(
     let authed = depot.authed_info()?;
 
     if !crate::room::is_joined(authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You are not in this room.").into());
+        return Err(MatrixError::forbidden(None, "You are not in this room.").into());
     }
 
     if let Typing::Yes(duration) = body.state {

@@ -4,14 +4,12 @@ mod filter_room_type_serde;
 mod room_network_serde;
 use salvo::prelude::*;
 
-use crate::room::RoomType;
-use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, PrivOwnedStr, UnixMillis};
+use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, PrivOwnedStr, UnixMillis, room::RoomType, serde::StringEnum};
 
 /// A chunk of a room list response, describing one room.
 ///
-/// To create an instance of this type, first create a `PublicRoomsChunkInit` and convert it via
-/// `PublicRoomsChunk::from` / `.into()`.
+/// To create an instance of this type, first create a `PublicRoomsChunkInit`
+/// and convert it via `PublicRoomsChunk::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PublicRoomsChunk {
     /// The canonical alias of the room, if any.
@@ -41,7 +39,8 @@ pub struct PublicRoomsChunk {
 
     /// Whether guest users may join the room and participate in it.
     ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
+    /// If they can, they will be subject to ordinary power level rules like any
+    /// other user.
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
@@ -63,8 +62,9 @@ pub struct PublicRoomsChunk {
 
 /// Initial set of mandatory fields of `PublicRoomsChunk`.
 ///
-/// This struct will not be updated even if additional fields are added to `PublicRoomsChunk` in a
-/// new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `PublicRoomsChunk` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PublicRoomsChunkInit {
@@ -79,7 +79,8 @@ pub struct PublicRoomsChunkInit {
 
     /// Whether guest users may join the room and participate in it.
     ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
+    /// If they can, they will be subject to ordinary power level rules like any
+    /// other user.
     pub guest_can_join: bool,
 }
 
@@ -110,7 +111,8 @@ impl From<PublicRoomsChunkInit> for PublicRoomsChunk {
 /// A filter for public rooms lists.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PublicRoomFilter {
-    /// A string to search for in the room e.g. name, topic, canonical alias etc.
+    /// A string to search for in the room e.g. name, topic, canonical alias
+    /// etc.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generic_search_term: Option<String>,
 
@@ -171,12 +173,12 @@ pub enum PublicRoomJoinRule {
 
 /// An enum of possible room types to filter.
 ///
-/// This type can hold an arbitrary string. To build this with a custom value, convert it from an
-/// `Option<string>` with `::from()` / `.into()`. [`RoomTypeFilter::Default`] can be constructed
-/// from `None`.
+/// This type can hold an arbitrary string. To build this with a custom value,
+/// convert it from an `Option<string>` with `::from()` / `.into()`.
+/// [`RoomTypeFilter::Default`] can be constructed from `None`.
 ///
-/// To check for values that are not available as a documented variant here, use its string
-/// representation, obtained through [`.as_str()`](Self::as_str()).
+/// To check for values that are not available as a documented variant here, use
+/// its string representation, obtained through [`.as_str()`](Self::as_str()).
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RoomTypeFilter {
@@ -292,7 +294,8 @@ pub struct PublicRoomsResBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prev_batch: Option<String>,
 
-    /// An estimate on the total number of public rooms, if the server has an estimate.
+    /// An estimate on the total number of public rooms, if the server has an
+    /// estimate.
     pub total_room_count_estimate: Option<u64>,
 }
 

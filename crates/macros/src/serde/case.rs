@@ -36,12 +36,16 @@ pub enum RenameRule {
     /// Rename direct children to "M_MATRIX_ERROR_CASE" style, as used for responses with error in
     /// Matrix spec.
     MatrixErrorCase,
+    /// Rename the direct children to "m.lowercase" style.
+    MatrixLowerCase,
     /// Rename the direct children to "m.snake_case" style.
     MatrixSnakeCase,
     /// Rename the direct children to "m.dotted.case" style.
     MatrixDottedCase,
     /// Rename the direct children to "m.rule.snake_case" style.
     MatrixRuleSnakeCase,
+    /// Rename the direct children to "m.role.snake_case" style.
+    MatrixRoleSnakeCase,
 }
 
 impl RenameRule {
@@ -66,9 +70,11 @@ impl RenameRule {
             KebabCase => SnakeCase.apply_to_variant(variant).replace('_', "-"),
             ScreamingKebabCase => ScreamingSnakeCase.apply_to_variant(variant).replace('_', "-"),
             MatrixErrorCase => String::from("M_") + &ScreamingSnakeCase.apply_to_variant(variant),
+            MatrixLowerCase => String::from("m.") + &LowerCase.apply_to_variant(variant),
             MatrixSnakeCase => String::from("m.") + &SnakeCase.apply_to_variant(variant),
             MatrixDottedCase => String::from("m.") + &SnakeCase.apply_to_variant(variant).replace('_', "."),
             MatrixRuleSnakeCase => String::from(".m.rule.") + &SnakeCase.apply_to_variant(variant),
+            MatrixRoleSnakeCase => String::from("m.role.") + &SnakeCase.apply_to_variant(variant),
         }
     }
 
@@ -101,9 +107,11 @@ impl RenameRule {
             KebabCase => field.replace('_', "-"),
             ScreamingKebabCase => ScreamingSnakeCase.apply_to_field(field).replace('_', "-"),
             MatrixErrorCase => String::from("M_") + &ScreamingSnakeCase.apply_to_field(field),
+            MatrixLowerCase => String::from("m.") + field,
             MatrixSnakeCase => String::from("m.") + field,
             MatrixDottedCase => String::from("m.") + &field.replace('_', "."),
             MatrixRuleSnakeCase => String::from(".m.rule.") + field,
+            MatrixRoleSnakeCase => String::from("m.role.") + field,
         }
     }
 }
@@ -123,8 +131,10 @@ impl FromStr for RenameRule {
             "SCREAMING-KEBAB-CASE" => Ok(ScreamingKebabCase),
             "M_MATRIX_ERROR_CASE" => Ok(MatrixErrorCase),
             "m.snake_case" => Ok(MatrixSnakeCase),
+            "m.lowercase" => Ok(MatrixLowerCase),
             "m.dotted.case" => Ok(MatrixDottedCase),
             ".m.rule.snake_case" => Ok(MatrixRuleSnakeCase),
+            "m.role.snake_case" => Ok(MatrixRoleSnakeCase),
             _ => Err(()),
         }
     }

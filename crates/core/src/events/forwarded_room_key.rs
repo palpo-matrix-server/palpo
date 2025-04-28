@@ -10,8 +10,9 @@ use crate::{EventEncryptionAlgorithm, OwnedRoomId};
 
 /// The content of an `m.forwarded_room_key` event.
 ///
-/// To create an instance of this type, first create a `ToDeviceForwardedRoomKeyEventContentInit`
-/// and convert it via `ToDeviceForwardedRoomKeyEventContent::from` / `.into()`.
+/// To create an instance of this type, first create a
+/// `ToDeviceForwardedRoomKeyEventContentInit` and convert it via
+/// `ToDeviceForwardedRoomKeyEventContent::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.forwarded_room_key", kind = ToDevice)]
 pub struct ToDeviceForwardedRoomKeyEventContent {
@@ -32,17 +33,18 @@ pub struct ToDeviceForwardedRoomKeyEventContent {
 
     /// The Ed25519 key of the device which initiated the session originally.
     ///
-    /// It is "claimed" because the receiving device has no way to tell that the original
-    /// room_key actually came from a device which owns the private part of this key unless
-    /// they have done device verification.
+    /// It is "claimed" because the receiving device has no way to tell that the
+    /// original room_key actually came from a device which owns the private
+    /// part of this key unless they have done device verification.
     pub sender_claimed_ed25519_key: String,
 
     /// Chain of Curve25519 keys.
     ///
-    /// It starts out empty, but each time the key is forwarded to another device, the
-    /// previous sender in the chain is added to the end of the list. For example, if the
-    /// key is forwarded from A to B to C, this field is empty between A and B, and contains
-    /// A's Curve25519 key between B and C.
+    /// It starts out empty, but each time the key is forwarded to another
+    /// device, the previous sender in the chain is added to the end of the
+    /// list. For example, if the key is forwarded from A to B to C, this
+    /// field is empty between A and B, and contains A's Curve25519 key
+    /// between B and C.
     pub forwarding_curve25519_key_chain: Vec<String>,
 
     /// Used to mark key if allowed for shared history.
@@ -59,8 +61,9 @@ pub struct ToDeviceForwardedRoomKeyEventContent {
 
 /// Initial set of fields of `ToDeviceForwardedRoomKeyEventContent`.
 ///
-/// This struct will not be updated even if additional fields are added to `ConditionalPushRule` in
-/// a new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `ConditionalPushRule` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct ToDeviceForwardedRoomKeyEventContentInit {
@@ -81,17 +84,18 @@ pub struct ToDeviceForwardedRoomKeyEventContentInit {
 
     /// The Ed25519 key of the device which initiated the session originally.
     ///
-    /// It is "claimed" because the receiving device has no way to tell that the original
-    /// room_key actually came from a device which owns the private part of this key unless
-    /// they have done device verification.
+    /// It is "claimed" because the receiving device has no way to tell that the
+    /// original room_key actually came from a device which owns the private
+    /// part of this key unless they have done device verification.
     pub sender_claimed_ed25519_key: String,
 
     /// Chain of Curve25519 keys.
     ///
-    /// It starts out empty, but each time the key is forwarded to another device, the
-    /// previous sender in the chain is added to the end of the list. For example, if the
-    /// key is forwarded from A to B to C, this field is empty between A and B, and contains
-    /// A's Curve25519 key between B and C.
+    /// It starts out empty, but each time the key is forwarded to another
+    /// device, the previous sender in the chain is added to the end of the
+    /// list. For example, if the key is forwarded from A to B to C, this
+    /// field is empty between A and B, and contains A's Curve25519 key
+    /// between B and C.
     pub forwarding_curve25519_key_chain: Vec<String>,
 }
 

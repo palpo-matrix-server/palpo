@@ -71,7 +71,7 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
 async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
     let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
         warn!("Missing or invalid Authorization header");
-        return Err(MatrixError::forbidden("Missing or invalid authorization header").into());
+        return Err(MatrixError::forbidden(None, "Missing or invalid authorization header").into());
     };
 
     let origin_signatures = BTreeMap::from_iter([(
@@ -138,7 +138,7 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
             );
         }
 
-        Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.").into())
+        Err(MatrixError::forbidden(None, "Failed to verify X-Matrix signatures.").into())
     } else {
         depot.set_origin(origin.to_owned());
         Ok(())

@@ -6,8 +6,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::relation::Reference;
-use crate::{OwnedTransactionId, PrivOwnedStr, serde::StringEnum};
+use crate::{OwnedTransactionId, PrivOwnedStr, events::relation::Reference, serde::StringEnum};
 
 /// The content of a to-device `m.key.verification.cancel` event.
 ///
@@ -20,7 +19,8 @@ pub struct ToDeviceKeyVerificationCancelEventContent {
 
     /// A human readable description of the `code`.
     ///
-    /// The client should only rely on this string if it does not understand the `code`.
+    /// The client should only rely on this string if it does not understand the
+    /// `code`.
     pub reason: String,
 
     /// The error code for why the process / request was cancelled by the user.
@@ -28,8 +28,8 @@ pub struct ToDeviceKeyVerificationCancelEventContent {
 }
 
 impl ToDeviceKeyVerificationCancelEventContent {
-    /// Creates a new `ToDeviceKeyVerificationCancelEventContent` with the given transaction ID,
-    /// reason and code.
+    /// Creates a new `ToDeviceKeyVerificationCancelEventContent` with the given
+    /// transaction ID, reason and code.
     pub fn new(transaction_id: OwnedTransactionId, reason: String, code: CancelCode) -> Self {
         Self {
             transaction_id,
@@ -47,7 +47,8 @@ impl ToDeviceKeyVerificationCancelEventContent {
 pub struct KeyVerificationCancelEventContent {
     /// A human readable description of the `code`.
     ///
-    /// The client should only rely on this string if it does not understand the `code`.
+    /// The client should only rely on this string if it does not understand the
+    /// `code`.
     pub reason: String,
 
     /// The error code for why the process/request was cancelled by the user.
@@ -59,7 +60,8 @@ pub struct KeyVerificationCancelEventContent {
 }
 
 impl KeyVerificationCancelEventContent {
-    /// Creates a new `KeyVerificationCancelEventContent` with the given reason, code and reference.
+    /// Creates a new `KeyVerificationCancelEventContent` with the given reason,
+    /// code and reference.
     pub fn new(reason: String, code: CancelCode, relates_to: Reference) -> Self {
         Self {
             reason,
@@ -93,14 +95,15 @@ pub enum CancelCode {
 
     /// The device does not know how to handle the requested method.
     ///
-    /// Should be sent for `m.key.verification.start` messages and messages defined by individual
-    /// verification processes.
+    /// Should be sent for `m.key.verification.start` messages and messages
+    /// defined by individual verification processes.
     #[palpo_enum(rename = "m.unknown_method")]
     UnknownMethod,
 
     /// The device received an unexpected message.
     ///
-    /// Typically raised when one of the parties is handling the verification out of order.
+    /// Typically raised when one of the parties is handling the verification
+    /// out of order.
     #[palpo_enum(rename = "m.unexpected_message")]
     UnexpectedMessage,
 

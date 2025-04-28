@@ -1,11 +1,10 @@
-use crate::{
-    OwnedEventId,
-    serde::{JsonObject, from_raw_json_value},
-};
 use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{InReplyTo, Relation, Thread};
-use crate::serde::{JsonValue, RawJsonValue};
+use crate::{
+    OwnedEventId,
+    serde::{JsonObject, JsonValue, RawJsonValue, from_raw_json_value},
+};
 
 impl<'de> Deserialize<'de> for Relation {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
