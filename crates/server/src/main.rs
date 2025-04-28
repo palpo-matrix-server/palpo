@@ -42,7 +42,6 @@ mod cjson;
 pub use cjson::Cjson;
 mod signing_keys;
 pub mod sync_v3;
-pub mod sync_v4;
 pub mod sync_v5;
 pub mod watcher;
 pub use event::{PduBuilder, PduEvent};

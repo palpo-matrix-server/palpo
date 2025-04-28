@@ -13,7 +13,6 @@ mod register;
 mod room;
 mod room_key;
 mod session;
-pub mod sync_msc3575;
 pub mod sync_msc4186;
 mod sync_v3;
 mod third_party;
