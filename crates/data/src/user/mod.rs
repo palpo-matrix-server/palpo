@@ -19,12 +19,11 @@ pub mod session;
 pub use key_backup::*;
 pub use session::*;
 pub mod presence;
-pub use presence::*;
-
 use std::mem;
 
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
+pub use presence::*;
 
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;

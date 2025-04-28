@@ -10,11 +10,10 @@ use std::collections::BTreeMap;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
-use crate::client::filter::RoomEventFilter;
-use crate::events::{AnyStateEvent, AnyTimelineEvent};
 use crate::{
-    OwnedEventId, OwnedMxcUri, OwnedRoomId, OwnedUserId,
+    OwnedEventId, OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr,
+    client::filter::RoomEventFilter,
+    events::{AnyStateEvent, AnyTimelineEvent},
     serde::{RawJson, StringEnum},
 };
 
@@ -32,7 +31,8 @@ use crate::{
 pub struct SearchReqArgs {
     /// The point to return events from.
     ///
-    /// If given, this should be a `next_batch` result from a previous call to this endpoint.
+    /// If given, this should be a `next_batch` result from a previous call to
+    /// this endpoint.
     #[salvo(parameter(parameter_in = Query))]
     pub next_batch: Option<String>,
 }
@@ -94,7 +94,8 @@ pub struct Criteria {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub order_by: Option<OrderBy>,
 
-    /// Configures whether any context for the events returned are included in the response.
+    /// Configures whether any context for the events returned are included in
+    /// the response.
     #[serde(default, skip_serializing_if = "EventContext::is_default")]
     pub event_context: EventContext,
 
@@ -102,7 +103,8 @@ pub struct Criteria {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_state: Option<bool>,
 
-    /// Requests that the server partitions the result set based on the provided list of keys.
+    /// Requests that the server partitions the result set based on the provided
+    /// list of keys.
     #[serde(default, skip_serializing_if = "Groupings::is_empty")]
     pub groupings: Groupings,
 }
@@ -122,7 +124,8 @@ impl Criteria {
     }
 }
 
-/// Configures whether any context for the events returned are included in the response.
+/// Configures whether any context for the events returned are included in the
+/// response.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct EventContext {
     /// How many events before the result are returned.
@@ -139,8 +142,8 @@ pub struct EventContext {
     )]
     pub after_limit: u64,
 
-    /// Requests that the server returns the historic profile information for the users that
-    /// sent the events that were returned.
+    /// Requests that the server returns the historic profile information for
+    /// the users that sent the events that were returned.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub include_profile: bool,
 }
@@ -193,7 +196,8 @@ pub struct EventContextResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events_before: Vec<RawJson<AnyTimelineEvent>>,
 
-    /// The historic profile information of the users that sent the events returned.
+    /// The historic profile information of the users that sent the events
+    /// returned.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub profile_info: BTreeMap<OwnedUserId, UserProfile>,
 
@@ -254,7 +258,8 @@ pub enum GroupingKey {
     _Custom(PrivOwnedStr),
 }
 
-/// Requests that the server partitions the result set based on the provided list of keys.
+/// Requests that the server partitions the result set based on the provided
+/// list of keys.
 #[derive(ToSchema, Clone, Default, Debug, Deserialize, Serialize)]
 pub struct Groupings {
     /// List of groups to request.
@@ -304,8 +309,8 @@ pub enum OrderBy {
     /// Prioritize recent events.
     Recent,
 
-    /// Prioritize events by a numerical ranking of how closely they matched the search
-    /// criteria.
+    /// Prioritize events by a numerical ranking of how closely they matched the
+    /// search criteria.
     Rank,
 
     #[doc(hidden)]
@@ -339,8 +344,8 @@ pub struct ResultRoomEvents {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub groups: BTreeMap<GroupingKey, BTreeMap<OwnedRoomIdOrUserId, ResultGroup>>,
 
-    /// Token that can be used to get the next batch of results, by passing as the `next_batch`
-    /// parameter to the next call.
+    /// Token that can be used to get the next batch of results, by passing as
+    /// the `next_batch` parameter to the next call.
     ///
     /// If this field is absent, there are no more results.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -353,7 +358,8 @@ pub struct ResultRoomEvents {
 
     /// The current state for every room in the results.
     ///
-    /// This is included if the request had the `include_state` key set with a value of `true`.
+    /// This is included if the request had the `include_state` key set with a
+    /// value of `true`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub state: BTreeMap<OwnedRoomId, Vec<RawJson<AnyStateEvent>>>,
 
@@ -383,8 +389,8 @@ impl ResultRoomEvents {
 /// A grouping of results, if requested.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ResultGroup {
-    /// Token that can be used to get the next batch of results in the group, by passing as the
-    /// `next_batch` parameter to the next call.
+    /// Token that can be used to get the next batch of results in the group, by
+    /// passing as the `next_batch` parameter to the next call.
     ///
     /// If this field is absent, there are no more results in this group.
     #[serde(default, skip_serializing_if = "Option::is_none")]

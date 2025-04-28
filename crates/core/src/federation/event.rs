@@ -2,9 +2,11 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::RawJsonValue;
-use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, UnixMillis};
+use crate::{
+    EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, UnixMillis,
+    sending::{SendRequest, SendResult},
+    serde::RawJsonValue,
+};
 
 /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 ///
@@ -107,7 +109,8 @@ pub struct EventResBody {
     pub pdu: Box<RawJsonValue>,
 }
 impl EventResBody {
-    /// Creates a new `Response` with the given server name, timestamp, and event.
+    /// Creates a new `Response` with the given server name, timestamp, and
+    /// event.
     pub fn new(origin: OwnedServerName, origin_server_ts: UnixMillis, pdu: Box<RawJsonValue>) -> Self {
         Self {
             origin,
@@ -154,7 +157,8 @@ pub struct MissingEventReqBody {
 
     /// The latest event IDs that the sender already has.
     ///
-    /// These are skipped when retrieving the previous events of `latest_events`.
+    /// These are skipped when retrieving the previous events of
+    /// `latest_events`.
     pub earliest_events: Vec<OwnedEventId>,
 
     /// The event IDs to retrieve the previous events for.
@@ -185,8 +189,8 @@ fn is_default_limit(val: &usize) -> bool {
 
 /// `GET /_matrix/federation/*/state_ids/{room_id}`
 ///
-/// Retrieves a snapshot of a room's state at a given event, in the form of event IDs.
-/// `/v1/` ([spec])
+/// Retrieves a snapshot of a room's state at a given event, in the form of
+/// event IDs. `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1state_idsroomid
 
@@ -228,7 +232,8 @@ pub struct RoomStateIdsResBody {
 }
 
 impl RoomStateIdsResBody {
-    /// Creates a new `Response` with the given auth chain IDs and room state IDs.
+    /// Creates a new `Response` with the given auth chain IDs and room state
+    /// IDs.
     pub fn new(auth_chain_ids: Vec<OwnedEventId>, pdu_ids: Vec<OwnedEventId>) -> Self {
         Self {
             auth_chain_ids,

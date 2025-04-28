@@ -8,25 +8,25 @@
 
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+
 //         1.0 => "/_matrix/client/r0/account/3pid/add",
 //         1.1 => "/_matrix/client/v3/account/3pid/add",
 //         1.0 => "/_matrix/client/r0/account/3pid/bind",
 //         1.1 => "/_matrix/client/v3/account/3pid/bind",
-
 use crate::client::account::IdentityServerInfo;
-use crate::client::account::ThirdPartyIdRemovalStatus;
-use crate::client::uiaa::AuthData;
-use crate::third_party::Medium;
-use crate::third_party::ThirdPartyIdentifier;
-use crate::{OwnedClientSecret, OwnedSessionId};
+use crate::{
+    OwnedClientSecret, OwnedSessionId,
+    client::{account::ThirdPartyIdRemovalStatus, uiaa::AuthData},
+    third_party::{Medium, ThirdPartyIdentifier},
+};
 
 #[derive(ToSchema, Serialize, Debug)]
 pub struct ThreepidsResBody {
-    /// A list of third party identifiers the homeserver has associated with the user's
-    /// account.
+    /// A list of third party identifiers the homeserver has associated with the
+    /// user's account.
     ///
-    /// If the `compat-get-3pids` feature is enabled, this field will always be serialized,
-    /// even if its value is an empty list.
+    /// If the `compat-get-3pids` feature is enabled, this field will always be
+    /// serialized, even if its value is an empty list.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub three_pids: Vec<ThirdPartyIdentifier>,
 }
@@ -111,7 +111,6 @@ pub struct DeleteThreepidResBody {
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3account3pidemailrequesttoken
-///
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -131,7 +130,8 @@ pub struct TokenViaEmailReqBody {
     /// The email address.
     pub email: String,
 
-    /// Used to distinguish protocol level retries from requests to re-send the email.
+    /// Used to distinguish protocol level retries from requests to re-send the
+    /// email.
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
@@ -186,7 +186,8 @@ pub struct TokenViaMsisdnReqBody {
     /// Phone number to validate.
     pub phone_number: String,
 
-    /// Used to distinguish protocol level retries from requests to re-send the SMS.
+    /// Used to distinguish protocol level retries from requests to re-send the
+    /// SMS.
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.

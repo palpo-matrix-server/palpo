@@ -7,16 +7,15 @@ pub mod user;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
-use crate::serde::StringEnum;
+use crate::{PrivOwnedStr, serde::StringEnum};
 
 /// The payload for policy rule events.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PolicyRuleEventContent {
     /// The entity affected by this rule.
     ///
-    /// Glob characters `*` and `?` can be used to match zero or more characters or exactly one
-    /// character respectively.
+    /// Glob characters `*` and `?` can be used to match zero or more characters
+    /// or exactly one character respectively.
     pub entity: String,
 
     /// The suggested action to take.
@@ -27,7 +26,8 @@ pub struct PolicyRuleEventContent {
 }
 
 impl PolicyRuleEventContent {
-    /// Creates a new `PolicyRuleEventContent` with the given entity, recommendation and reason.
+    /// Creates a new `PolicyRuleEventContent` with the given entity,
+    /// recommendation and reason.
     pub fn new(entity: String, recommendation: Recommendation, reason: String) -> Self {
         Self {
             entity,
@@ -39,13 +39,14 @@ impl PolicyRuleEventContent {
 
 /// The possibly redacted form of [`PolicyRuleEventContent`].
 ///
-/// This type is used when it's not obvious whether the content is redacted or not.
+/// This type is used when it's not obvious whether the content is redacted or
+/// not.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PossiblyRedactedPolicyRuleEventContent {
     /// The entity affected by this rule.
     ///
-    /// Glob characters `*` and `?` can be used to match zero or more characters or exactly one
-    /// character respectively.
+    /// Glob characters `*` and `?` can be used to match zero or more characters
+    /// or exactly one character respectively.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity: Option<String>,
 
@@ -63,7 +64,8 @@ pub struct PossiblyRedactedPolicyRuleEventContent {
 #[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 #[non_exhaustive]
 pub enum Recommendation {
-    /// Entities affected by the rule should be banned from participation where possible.
+    /// Entities affected by the rule should be banned from participation where
+    /// possible.
     #[palpo_enum(rename = "m.ban")]
     Ban,
 

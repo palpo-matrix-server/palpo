@@ -35,15 +35,15 @@ pub struct DeviceKeys {
     #[serde(default)]
     pub signatures: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>,
 
-    /// Additional data added to the device key information by intermediate servers, and
-    /// not covered by the signatures.
+    /// Additional data added to the device key information by intermediate
+    /// servers, and not covered by the signatures.
     #[serde(default, skip_serializing_if = "UnsignedDeviceInfo::is_empty")]
     pub unsigned: UnsignedDeviceInfo,
 }
 
 impl DeviceKeys {
-    /// Creates a new `DeviceKeys` from the given user id, device id, algorithms, keys and
-    /// signatures.
+    /// Creates a new `DeviceKeys` from the given user id, device id,
+    /// algorithms, keys and signatures.
     pub fn new(
         user_id: OwnedUserId,
         device_id: OwnedDeviceId,
@@ -156,7 +156,8 @@ pub struct CrossSigningKey {
 }
 
 impl CrossSigningKey {
-    /// Creates a new `CrossSigningKey` with the given user ID, usage, keys and signatures.
+    /// Creates a new `CrossSigningKey` with the given user ID, usage, keys and
+    /// signatures.
     pub fn new(
         user_id: OwnedUserId,
         usage: Vec<KeyUsage>,

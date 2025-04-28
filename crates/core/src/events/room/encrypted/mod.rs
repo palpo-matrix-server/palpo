@@ -9,8 +9,11 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::message;
-use crate::events::relation::{Annotation, CustomRelation, InReplyTo, Reference, RelationType, Thread};
-use crate::{OwnedDeviceId, OwnedEventId, serde::JsonObject};
+use crate::{
+    OwnedDeviceId, OwnedEventId,
+    events::relation::{Annotation, CustomRelation, InReplyTo, Reference, RelationType, Thread},
+    serde::JsonObject,
+};
 
 mod relation_serde;
 
@@ -28,7 +31,8 @@ pub struct RoomEncryptedEventContent {
 }
 
 impl RoomEncryptedEventContent {
-    /// Creates a new `RoomEncryptedEventContent` with the given scheme and relation.
+    /// Creates a new `RoomEncryptedEventContent` with the given scheme and
+    /// relation.
     pub fn new(scheme: EncryptedEventScheme, relates_to: Option<Relation>) -> Self {
         Self { scheme, relates_to }
     }
@@ -84,7 +88,8 @@ pub enum EncryptedEventScheme {
 #[derive(ToSchema, Clone, Debug)]
 #[allow(clippy::manual_non_exhaustive)]
 pub enum Relation {
-    /// An `m.in_reply_to` relation indicating that the event is a reply to another event.
+    /// An `m.in_reply_to` relation indicating that the event is a reply to
+    /// another event.
     Reply {
         /// Information about another message being replied to.
         in_reply_to: InReplyTo,
@@ -110,7 +115,8 @@ pub enum Relation {
 impl Relation {
     /// The type of this `Relation`.
     ///
-    /// Returns an `Option` because the `Reply` relation does not have a`rel_type` field.
+    /// Returns an `Option` because the `Reply` relation does not have
+    /// a`rel_type` field.
     pub fn rel_type(&self) -> Option<RelationType> {
         match self {
             Relation::Reply { .. } => None,
@@ -124,12 +130,13 @@ impl Relation {
 
     /// The associated data.
     ///
-    /// The returned JSON object holds the contents of `m.relates_to`, including `rel_type` and
-    /// `event_id` if present, but not things like `m.new_content` for `m.replace` relations that
-    /// live next to `m.relates_to`.
+    /// The returned JSON object holds the contents of `m.relates_to`, including
+    /// `rel_type` and `event_id` if present, but not things like
+    /// `m.new_content` for `m.replace` relations that live next to
+    /// `m.relates_to`.
     ///
-    /// Prefer to use the public variants of `Relation` where possible; this method is meant to
-    /// be used for custom relations only.
+    /// Prefer to use the public variants of `Relation` where possible; this
+    /// method is meant to be used for custom relations only.
     pub fn data(&self) -> Cow<'_, JsonObject> {
         if let Relation::_Custom(CustomRelation(data)) = self {
             Cow::Borrowed(data)
@@ -160,8 +167,8 @@ where
 /// The event this relation belongs to [replaces another event].
 ///
 /// In contrast to [`relation::Replacement`](crate::relation::Replacement), this
-/// struct doesn't store the new content, since that is part of the encrypted content of an
-/// `m.room.encrypted` events.
+/// struct doesn't store the new content, since that is part of the encrypted
+/// content of an `m.room.encrypted` events.
 ///
 /// [replaces another event]: https://spec.matrix.org/latest/client-server-api/#event-replacements
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
@@ -177,10 +184,12 @@ impl Replacement {
     }
 }
 
-/// The content of an `m.room.encrypted` event using the `m.olm.v1.curve25519-aes-sha2` algorithm.
+/// The content of an `m.room.encrypted` event using the
+/// `m.olm.v1.curve25519-aes-sha2` algorithm.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct OlmV1Curve25519AesSha2Content {
-    /// A map from the recipient Curve25519 identity key to ciphertext information.
+    /// A map from the recipient Curve25519 identity key to ciphertext
+    /// information.
     pub ciphertext: BTreeMap<String, CiphertextInfo>,
 
     /// The Curve25519 key of the sender.
@@ -188,7 +197,8 @@ pub struct OlmV1Curve25519AesSha2Content {
 }
 
 impl OlmV1Curve25519AesSha2Content {
-    /// Creates a new `OlmV1Curve25519AesSha2Content` with the given ciphertext and sender key.
+    /// Creates a new `OlmV1Curve25519AesSha2Content` with the given ciphertext
+    /// and sender key.
     pub fn new(ciphertext: BTreeMap<String, CiphertextInfo>, sender_key: String) -> Self {
         Self { ciphertext, sender_key }
     }
@@ -196,7 +206,8 @@ impl OlmV1Curve25519AesSha2Content {
 
 /// Ciphertext information holding the ciphertext and message type.
 ///
-/// Used for messages encrypted with the `m.olm.v1.curve25519-aes-sha2` algorithm.
+/// Used for messages encrypted with the `m.olm.v1.curve25519-aes-sha2`
+/// algorithm.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct CiphertextInfo {
     /// The encrypted payload.
@@ -214,9 +225,11 @@ impl CiphertextInfo {
     }
 }
 
-/// The content of an `m.room.encrypted` event using the `m.megolm.v1.aes-sha2` algorithm.
+/// The content of an `m.room.encrypted` event using the `m.megolm.v1.aes-sha2`
+/// algorithm.
 ///
-/// To create an instance of this type, first create a `MegolmV1AesSha2ContentInit` and convert it
+/// To create an instance of this type, first create a
+/// `MegolmV1AesSha2ContentInit` and convert it
 /// via `MegolmV1AesSha2Content::from` / `.into()`.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct MegolmV1AesSha2Content {
@@ -229,8 +242,9 @@ pub struct MegolmV1AesSha2Content {
 
 /// Mandatory initial set of fields of `MegolmV1AesSha2Content`.
 ///
-/// This struct will not be updated even if additional fields are added to `MegolmV1AesSha2Content`
-/// in a new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `MegolmV1AesSha2Content` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct MegolmV1AesSha2ContentInit {
@@ -264,9 +278,11 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 // mod tests {
 //     use crate::{owned_event_id, serde::RawJson};
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
-//     use super::{EncryptedEventScheme, InReplyTo, MegolmV1AesSha2ContentInit, Relation, RoomEncryptedEventContent};
+//     use super::{EncryptedEventScheme, InReplyTo, MegolmV1AesSha2ContentInit,
+// Relation, RoomEncryptedEventContent};
 
 //     #[test]
 //     fn serialization() {
@@ -300,8 +316,8 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 //             },
 //         });
 
-//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
-//     }
+//         assert_eq!(to_json_value(&key_verification_start_content).unwrap(),
+// json_data);     }
 
 // #[test]
 // fn deserialization() {
@@ -318,16 +334,17 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 //         },
 //     });
 
-//     let content: RoomEncryptedEventContent = from_json_value(json_data).unwrap();
+//     let content: RoomEncryptedEventContent =
+// from_json_value(json_data).unwrap();
 
-//     assert_matches!(content.scheme, EncryptedEventScheme::MegolmV1AesSha2(scheme));
-//     assert_eq!(scheme.ciphertext, "ciphertext");
-//     assert_eq!(scheme.sender_key, "sender_key");
+//     assert_matches!(content.scheme,
+// EncryptedEventScheme::MegolmV1AesSha2(scheme));     assert_eq!(scheme.
+// ciphertext, "ciphertext");     assert_eq!(scheme.sender_key, "sender_key");
 //     assert_eq!(scheme.device_id, "device_id");
 //     assert_eq!(scheme.session_id, "session_id");
 
-//     assert_matches!(content.relates_to, Some(Relation::Reply { in_reply_to }));
-//     assert_eq!(in_reply_to.event_id, "$h29iv0s8:example.com");
+//     assert_matches!(content.relates_to, Some(Relation::Reply { in_reply_to
+// }));     assert_eq!(in_reply_to.event_id, "$h29iv0s8:example.com");
 // }
 
 //     #[test]
@@ -342,11 +359,12 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 //             },
 //             "algorithm": "m.olm.v1.curve25519-aes-sha2"
 //         });
-//         let content: RoomEncryptedEventContent = from_json_value(json_data).unwrap();
+//         let content: RoomEncryptedEventContent =
+// from_json_value(json_data).unwrap();
 
-//         assert_matches!(content.scheme, EncryptedEventScheme::OlmV1Curve25519AesSha2(c));
-//         assert_eq!(c.sender_key, "test_key");
-//         assert_eq!(c.ciphertext.len(), 1);
+//         assert_matches!(content.scheme,
+// EncryptedEventScheme::OlmV1Curve25519AesSha2(c));         assert_eq!(c.
+// sender_key, "test_key");         assert_eq!(c.ciphertext.len(), 1);
 //         assert_eq!(c.ciphertext["test_curve_key"].body, "encrypted_body");
 //         assert_eq!(c.ciphertext["test_curve_key"].message_type, 1);
 
@@ -355,8 +373,8 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 
 //     #[test]
 //     fn deserialization_failure() {
-//         from_json_value::<RawJson<RoomEncryptedEventContent>>(json!({ "algorithm": "m.megolm.v1.aes-sha2" }))
-//             .unwrap()
+//         from_json_value::<RawJson<RoomEncryptedEventContent>>(json!({
+// "algorithm": "m.megolm.v1.aes-sha2" }))             .unwrap()
 //             .deserialize()
 //             .unwrap_err();
 //     }

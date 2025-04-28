@@ -10,7 +10,8 @@ use crate::events::EmptyStateKey;
 
 /// The content of an `m.room.name` event.
 ///
-/// The room name is a human-friendly string designed to be displayed to the end-user.
+/// The room name is a human-friendly string designed to be displayed to the
+/// end-user.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room.name", kind = State, state_key_type = EmptyStateKey)]
 pub struct RoomNameEventContent {
@@ -27,7 +28,8 @@ impl RoomNameEventContent {
 
 // #[cfg(test)]
 // mod tests {
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::RoomNameEventContent;
 //     use crate::OriginalStateEvent;
@@ -61,7 +63,8 @@ impl RoomNameEventContent {
 //         });
 
 //         assert_eq!(
-//             from_json_value::<OriginalStateEvent<RoomNameEventContent>>(json_data)
+//
+// from_json_value::<OriginalStateEvent<RoomNameEventContent>>(json_data)
 //                 .unwrap()
 //                 .content
 //                 .name,

@@ -1,16 +1,19 @@
 use std::fmt;
 
-use crate::serde::{CanBeEmpty, RawJson, RawJsonValue};
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::events::{
-    EphemeralRoomEventType, GlobalAccountDataEventType, MessageLikeEventType, RoomAccountDataEventType, StateEventType,
-    ToDeviceEventType,
+use crate::{
+    events::{
+        EphemeralRoomEventType, GlobalAccountDataEventType, MessageLikeEventType, RoomAccountDataEventType,
+        StateEventType, ToDeviceEventType,
+    },
+    serde::{CanBeEmpty, RawJson, RawJsonValue},
 };
 
 /// The base trait that all event content types implement.
 ///
-/// Use [`macros::EventContent`] to derive this traits. It is not meant to be implemented manually.
+/// Use [`macros::EventContent`] to derive this traits. It is not meant to be
+/// implemented manually.
 ///
 /// [`macros::EventContent`]: super::macros::EventContent
 pub trait EventContent: Sized + Serialize {
@@ -23,7 +26,8 @@ pub trait EventContent: Sized + Serialize {
 
 /// Extension trait for [`RawJson<T>`].
 pub trait RawJsonExt<T: EventContentFromType> {
-    /// Try to deserialize the JSON as an event's content with the given event type.
+    /// Try to deserialize the JSON as an event's content with the given event
+    /// type.
     fn deserialize_with_type(&self, event_type: T::EventType) -> serde_json::Result<T>;
 }
 
@@ -64,7 +68,8 @@ pub trait StateEventContent: EventContent<EventType = StateEventType> {
     type StateKey: AsRef<str> + Clone + fmt::Debug + DeserializeOwned + Serialize;
 }
 
-/// Content of a non-redacted state event with a corresponding possibly-redacted type.
+/// Content of a non-redacted state event with a corresponding possibly-redacted
+/// type.
 pub trait StaticStateEventContent: StateEventContent {
     /// The possibly redacted form of the event's content.
     type PossiblyRedacted: PossiblyRedactedStateEventContent;

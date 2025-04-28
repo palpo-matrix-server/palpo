@@ -8,13 +8,15 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::PrivOwnedStr;
-use crate::events::{
-    AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
-    PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,
+use crate::{
+    PrivOwnedStr,
+    events::{
+        AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
+        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,
+    },
+    identifiers::*,
+    serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum},
 };
-use crate::identifiers::*;
-use crate::serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum};
 
 mod change;
 
@@ -25,22 +27,24 @@ pub use self::change::{Change, MembershipChange, MembershipDetails};
 ///
 /// The current membership state of a user in the room.
 ///
-/// Adjusts the membership state for a user in a room. It is preferable to use the membership
-/// APIs (`/rooms/<room id>/invite` etc) when performing membership actions rather than
-/// adjusting the state directly as there are a restricted set of valid transformations. For
-/// example, user A cannot force user B to join a room, and trying to force this state change
-/// directly will fail.
+/// Adjusts the membership state for a user in a room. It is preferable to use
+/// the membership APIs (`/rooms/<room id>/invite` etc) when performing
+/// membership actions rather than adjusting the state directly as there are a
+/// restricted set of valid transformations. For example, user A cannot force
+/// user B to join a room, and trying to force this state change directly will
+/// fail.
 ///
-/// This event may also include an `invite_room_state` key inside the event's unsigned data, but
-/// Palpo doesn't currently expose this; see [#998](https://github.com/palpo/palpo/issues/998).
+/// This event may also include an `invite_room_state` key inside the event's
+/// unsigned data, but Palpo doesn't currently expose this; see [#998](https://github.com/palpo/palpo/issues/998).
 ///
-/// The user for which a membership applies is represented by the `state_key`. Under some
-/// conditions, the `sender` and `state_key` may not match - this may be interpreted as the
-/// `sender` affecting the membership state of the `state_key` user.
+/// The user for which a membership applies is represented by the `state_key`.
+/// Under some conditions, the `sender` and `state_key` may not match - this may
+/// be interpreted as the `sender` affecting the membership state of the
+/// `state_key` user.
 ///
-/// The membership for a given user can change over time. Previous membership can be retrieved
-/// from the `prev_content` object on an event. If not present, the user's previous membership
-/// must be assumed as leave.
+/// The membership for a given user can change over time. Previous membership
+/// can be retrieved from the `prev_content` object on an event. If not present,
+/// the user's previous membership must be assumed as leave.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(
     type = "m.room.member",
@@ -65,16 +69,16 @@ pub struct RoomMemberEventContent {
     #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 
-    /// Flag indicating whether the room containing this event was created with the intention of
-    /// being a direct chat.
+    /// Flag indicating whether the room containing this event was created with
+    /// the intention of being a direct chat.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_direct: Option<bool>,
 
     /// The membership state of this user.
     pub membership: MembershipState,
 
-    /// If this member event is the successor to a third party invitation, this field will
-    /// contain information about that invitation.
+    /// If this member event is the successor to a third party invitation, this
+    /// field will contain information about that invitation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub third_party_invite: Option<ThirdPartyInvite>,
 
@@ -87,18 +91,20 @@ pub struct RoomMemberEventContent {
 
     /// User-supplied text for why their membership has changed.
     ///
-    /// For kicks and bans, this is typically the reason for the kick or ban. For other membership
-    /// changes, this is a way for the user to communicate their intent without having to send a
-    /// message to the room, such as in a case where Bob rejects an invite from Alice about an
+    /// For kicks and bans, this is typically the reason for the kick or ban.
+    /// For other membership changes, this is a way for the user to
+    /// communicate their intent without having to send a message to the
+    /// room, such as in a case where Bob rejects an invite from Alice about an
     /// upcoming concert, but can't make it that day.
     ///
-    /// Clients are not recommended to show this reason to users when receiving an invite due to
-    /// the potential for spam and abuse. Hiding the reason behind a button or other component
-    /// is recommended.
+    /// Clients are not recommended to show this reason to users when receiving
+    /// an invite due to the potential for spam and abuse. Hiding the reason
+    /// behind a button or other component is recommended.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 
-    /// Arbitrarily chosen `UserId` (MxID) of a local user who can send an invite.
+    /// Arbitrarily chosen `UserId` (MxID) of a local user who can send an
+    /// invite.
     #[serde(rename = "join_authorised_via_users_server")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
@@ -119,10 +125,11 @@ impl RoomMemberEventContent {
         }
     }
 
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         MembershipDetails {
             avatar_url: self.avatar_url.as_deref(),
@@ -176,7 +183,8 @@ impl RedactContent for RoomMemberEventContent {
 
 /// The possibly redacted form of [`RoomMemberEventContent`].
 ///
-/// This type is used when it's not obvious whether the content is redacted or not.
+/// This type is used when it's not obvious whether the content is redacted or
+/// not.
 pub type PossiblyRedactedRoomMemberEventContent = RoomMemberEventContent;
 
 impl PossiblyRedactedStateEventContent for RoomMemberEventContent {
@@ -189,8 +197,8 @@ pub struct RedactedRoomMemberEventContent {
     /// The membership state of this user.
     pub membership: MembershipState,
 
-    /// If this member event is the successor to a third party invitation, this field will
-    /// contain information about that invitation.
+    /// If this member event is the successor to a third party invitation, this
+    /// field will contain information about that invitation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub third_party_invite: Option<RedactedThirdPartyInvite>,
 
@@ -212,10 +220,11 @@ impl RedactedRoomMemberEventContent {
         }
     }
 
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         MembershipDetails {
             avatar_url: None,
@@ -226,9 +235,9 @@ impl RedactedRoomMemberEventContent {
 
     /// Helper function for membership change.
     ///
-    /// Since redacted events don't have `unsigned.prev_content`, you have to pass the `.details()`
-    /// of the previous `m.room.member` event manually (if there is a previous `m.room.member`
-    /// event).
+    /// Since redacted events don't have `unsigned.prev_content`, you have to
+    /// pass the `.details()` of the previous `m.room.member` event manually
+    /// (if there is a previous `m.room.member` event).
     ///
     /// This also requires data from the full event:
     ///
@@ -267,7 +276,8 @@ impl EventContentFromType for RedactedRoomMemberEventContent {
 }
 
 impl RoomMemberEvent {
-    /// Obtain the membership state, regardless of whether this event is redacted.
+    /// Obtain the membership state, regardless of whether this event is
+    /// redacted.
     pub fn membership(&self) -> &MembershipState {
         match self {
             Self::Original(ev) => &ev.content.membership,
@@ -277,7 +287,8 @@ impl RoomMemberEvent {
 }
 
 impl SyncRoomMemberEvent {
-    /// Obtain the membership state, regardless of whether this event is redacted.
+    /// Obtain the membership state, regardless of whether this event is
+    /// redacted.
     pub fn membership(&self) -> &MembershipState {
         match self {
             Self::Original(ev) => &ev.content.membership,
@@ -314,26 +325,29 @@ pub enum MembershipState {
 /// Information about a third party invitation.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct ThirdPartyInvite {
-    /// A name which can be displayed to represent the user instead of their third party
-    /// identifier.
+    /// A name which can be displayed to represent the user instead of their
+    /// third party identifier.
     pub display_name: String,
 
-    /// A block of content which has been signed, which servers can use to verify the event.
+    /// A block of content which has been signed, which servers can use to
+    /// verify the event.
     ///
     /// Clients should ignore this.
     pub signed: SignedContent,
 }
 
 impl ThirdPartyInvite {
-    /// Creates a new `ThirdPartyInvite` with the given display name and signed content.
+    /// Creates a new `ThirdPartyInvite` with the given display name and signed
+    /// content.
     pub fn new(display_name: String, signed: SignedContent) -> Self {
         Self { display_name, signed }
     }
 
-    /// Transform `self` into a redacted form (removing most or all fields) according to the spec.
+    /// Transform `self` into a redacted form (removing most or all fields)
+    /// according to the spec.
     ///
-    /// Returns `None` if the field for this object was redacted in the given room version,
-    /// otherwise returns the redacted form.
+    /// Returns `None` if the field for this object was redacted in the given
+    /// room version, otherwise returns the redacted form.
     fn redact(self, version: &RoomVersionId) -> Option<RedactedThirdPartyInvite> {
         match version {
             RoomVersionId::V1
@@ -354,14 +368,15 @@ impl ThirdPartyInvite {
 /// Redacted information about a third party invitation.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct RedactedThirdPartyInvite {
-    /// A block of content which has been signed, which servers can use to verify the event.
+    /// A block of content which has been signed, which servers can use to
+    /// verify the event.
     ///
     /// Clients should ignore this.
     pub signed: SignedContent,
 }
 
-/// A block of content which has been signed, which servers can use to verify a third party
-/// invitation.
+/// A block of content which has been signed, which servers can use to verify a
+/// third party invitation.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SignedContent {
     /// The invited Matrix user ID.
@@ -369,8 +384,8 @@ pub struct SignedContent {
     /// Must be equal to the user_id property of the event.
     pub mxid: OwnedUserId,
 
-    /// A single signature from the verifying server, in the format specified by the Signing Events
-    /// section of the server-server API.
+    /// A single signature from the verifying server, in the format specified by
+    /// the Signing Events section of the server-server API.
     pub signatures: BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, String>>,
 
     /// The token property of the containing `third_party_invite` object.
@@ -393,10 +408,11 @@ impl SignedContent {
 }
 
 impl OriginalRoomMemberEvent {
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         self.content.details()
     }
@@ -423,19 +439,20 @@ impl OriginalRoomMemberEvent {
 }
 
 impl RedactedRoomMemberEvent {
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         self.content.details()
     }
 
     /// Helper function for membership change.
     ///
-    /// Since redacted events don't have `unsigned.prev_content`, you have to pass the `.details()`
-    /// of the previous `m.room.member` event manually (if there is a previous `m.room.member`
-    /// event).
+    /// Since redacted events don't have `unsigned.prev_content`, you have to
+    /// pass the `.details()` of the previous `m.room.member` event manually
+    /// (if there is a previous `m.room.member` event).
     ///
     /// Check [the specification][spec] for details.
     ///
@@ -446,10 +463,11 @@ impl RedactedRoomMemberEvent {
 }
 
 impl OriginalSyncRoomMemberEvent {
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         self.content.details()
     }
@@ -476,19 +494,20 @@ impl OriginalSyncRoomMemberEvent {
 }
 
 impl RedactedSyncRoomMemberEvent {
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         self.content.details()
     }
 
     /// Helper function for membership change.
     ///
-    /// Since redacted events don't have `unsigned.prev_content`, you have to pass the `.details()`
-    /// of the previous `m.room.member` event manually (if there is a previous `m.room.member`
-    /// event).
+    /// Since redacted events don't have `unsigned.prev_content`, you have to
+    /// pass the `.details()` of the previous `m.room.member` event manually
+    /// (if there is a previous `m.room.member` event).
     ///
     /// Check [the specification][spec] for details.
     ///
@@ -499,19 +518,20 @@ impl RedactedSyncRoomMemberEvent {
 }
 
 impl StrippedRoomMemberEvent {
-    /// Obtain the details about this event that are required to calculate a membership change.
+    /// Obtain the details about this event that are required to calculate a
+    /// membership change.
     ///
-    /// This is required when you want to calculate the change a redacted `m.room.member` event
-    /// made.
+    /// This is required when you want to calculate the change a redacted
+    /// `m.room.member` event made.
     pub fn details(&self) -> MembershipDetails<'_> {
         self.content.details()
     }
 
     /// Helper function for membership change.
     ///
-    /// Since stripped events don't have `unsigned.prev_content`, you have to pass the `.details()`
-    /// of the previous `m.room.member` event manually (if there is a previous `m.room.member`
-    /// event).
+    /// Since stripped events don't have `unsigned.prev_content`, you have to
+    /// pass the `.details()` of the previous `m.room.member` event manually
+    /// (if there is a previous `m.room.member` event).
     ///
     /// Check [the specification][spec] for details.
     ///
@@ -521,18 +541,20 @@ impl StrippedRoomMemberEvent {
     }
 }
 
-/// Extra information about a message event that is not incorporated into the event's hash.
+/// Extra information about a message event that is not incorporated into the
+/// event's hash.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize)]
 pub struct RoomMemberUnsigned {
     /// The time in milliseconds that has elapsed since the event was sent.
     ///
-    /// This field is generated by the local homeserver, and may be incorrect if the local time on
-    /// at least one of the two servers is out of sync, which can cause the age to either be
-    /// negative or greater than it actually is.
+    /// This field is generated by the local homeserver, and may be incorrect if
+    /// the local time on at least one of the two servers is out of sync,
+    /// which can cause the age to either be negative or greater than it
+    /// actually is.
     pub age: Option<i64>,
 
-    /// The client-supplied transaction ID, if the client being given the event is the same one
-    /// which sent it.
+    /// The client-supplied transaction ID, if the client being given the event
+    /// is the same one which sent it.
     pub transaction_id: Option<OwnedTransactionId>,
 
     /// Optional previous content of the event.
@@ -559,9 +581,10 @@ impl RoomMemberUnsigned {
 impl CanBeEmpty for RoomMemberUnsigned {
     /// Whether this unsigned data is empty (all fields are `None`).
     ///
-    /// This method is used to determine whether to skip serializing the `unsigned` field in room
-    /// events. Do not use it to determine whether an incoming `unsigned` field was present - it
-    /// could still have been present but contained none of the known fields.
+    /// This method is used to determine whether to skip serializing the
+    /// `unsigned` field in room events. Do not use it to determine whether
+    /// an incoming `unsigned` field was present - it could still have been
+    /// present but contained none of the known fields.
     fn is_empty(&self) -> bool {
         self.age.is_none()
             && self.transaction_id.is_none()
@@ -573,8 +596,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 
 // #[cfg(test)]
 // mod tests {
-//     use crate::{mxc_uri, owned_server_signing_key_id, serde::CanBeEmpty, server_name, user_id, UnixMillis};
-//     use assert_matches2::assert_matches;
+//     use crate::{mxc_uri, owned_server_signing_key_id, serde::CanBeEmpty,
+// server_name, user_id, UnixMillis};     use assert_matches2::assert_matches;
 //     use maplit::btreemap;
 //     use serde_json::{from_value as from_json_value, json};
 
@@ -595,7 +618,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             "state_key": "@carl:example.com"
 //         });
 
-//         let ev = from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
+//         let ev =
+// from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
 //         assert_eq!(ev.event_id, "$h29iv0s8:example.com");
 //         assert_eq!(ev.origin_server_ts, UnixMillis(u1));
 //         assert_eq!(ev.room_id, "!n8f893n9:example.com");
@@ -629,7 +653,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             },
 //         });
 
-//         let ev = from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
+//         let ev =
+// from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
 //         assert_eq!(ev.event_id, "$h29iv0s8:example.com");
 //         assert_eq!(ev.origin_server_ts, UnixMillis(1));
 //         assert_eq!(ev.room_id, "!n8f893n9:example.com");
@@ -679,7 +704,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             "state_key": "@alice:example.org"
 //         });
 
-//         let ev = from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
+//         let ev =
+// from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
 //         assert_eq!(ev.event_id, "$143273582443PhrSn:example.org");
 //         assert_eq!(ev.origin_server_ts, UnixMillis(u233));
 //         assert_eq!(ev.room_id, "!jEsUZKDJdhlrceRyVU:example.org");
@@ -691,8 +717,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             ev.content.avatar_url.as_deref(),
 //             Some(mxc_uri!("mxc://example.org/SEsfnsuifSDFSSEF"))
 //         );
-//         assert_eq!(ev.content.display_name.as_deref(), Some("Alice Margatroid"));
-//         assert_eq!(ev.content.is_direct, Some(true));
+//         assert_eq!(ev.content.display_name.as_deref(), Some("Alice
+// Margatroid"));         assert_eq!(ev.content.is_direct, Some(true));
 //         assert_eq!(ev.content.membership, MembershipState::Invite);
 
 //         let third_party_invite = ev.content.third_party_invite.unwrap();
@@ -702,8 +728,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             third_party_invite.signed.signatures,
 //             btreemap! {
 //                 server_name!("magic.forest").to_owned() => btreemap! {
-//                     owned_server_signing_key_id!("ed25519:3") => "foobar".to_owned()
-//                 }
+//                     owned_server_signing_key_id!("ed25519:3") =>
+// "foobar".to_owned()                 }
 //             }
 //         );
 //         assert_eq!(third_party_invite.signed.token, "abc123");
@@ -743,7 +769,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             },
 //         });
 
-//         let ev = from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
+//         let ev =
+// from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
 //         assert_eq!(ev.event_id, "$143273582443PhrSn:example.org");
 //         assert_eq!(ev.origin_server_ts, UnixMillis(u233));
 //         assert_eq!(ev.room_id, "!jEsUZKDJdhlrceRyVU:example.org");
@@ -761,8 +788,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             prev_content.avatar_url.as_deref(),
 //             Some(mxc_uri!("mxc://example.org/SEsfnsuifSDFSSEF"))
 //         );
-//         assert_eq!(prev_content.display_name.as_deref(), Some("Alice Margatroid"));
-//         assert_eq!(prev_content.is_direct, Some(true));
+//         assert_eq!(prev_content.display_name.as_deref(), Some("Alice
+// Margatroid"));         assert_eq!(prev_content.is_direct, Some(true));
 //         assert_eq!(prev_content.membership, MembershipState::Invite);
 
 //         let third_party_invite = prev_content.third_party_invite.unwrap();
@@ -772,8 +799,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             third_party_invite.signed.signatures,
 //             btreemap! {
 //                 server_name!("magic.forest").to_owned() => btreemap! {
-//                     owned_server_signing_key_id!("ed25519:3") => "foobar".to_owned()
-//                 }
+//                     owned_server_signing_key_id!("ed25519:3") =>
+// "foobar".to_owned()                 }
 //             }
 //         );
 //         assert_eq!(third_party_invite.signed.token, "abc123");
@@ -794,7 +821,8 @@ impl CanBeEmpty for RoomMemberUnsigned {
 //             "state_key": "@carl:example.com"
 //         });
 
-//         let ev = from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
+//         let ev =
+// from_json_value::<OriginalStateEvent<RoomMemberEventContent>>(json).unwrap();
 //         assert_eq!(ev.event_id, "$h29iv0s8:example.com");
 //         assert_eq!(ev.origin_server_ts, UnixMillis(u1));
 //         assert_eq!(ev.room_id, "!n8f893n9:example.com");

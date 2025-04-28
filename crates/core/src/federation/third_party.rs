@@ -2,9 +2,9 @@
 
 /// `PUT /_matrix/federation/*/3pid/onbind`
 ///
-/// Used by identity servers to notify the homeserver that one of its users has bound a third party
-/// identifier successfully, including any pending room invites the identity server has been made
-/// aware of.
+/// Used by identity servers to notify the homeserver that one of its users has
+/// bound a third party identifier successfully, including any pending room
+/// invites the identity server has been made aware of.
 /// `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv13pidonbind
@@ -13,8 +13,9 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::StateEventType;
-use crate::{OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, third_party::Medium};
+use crate::{
+    OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, events::StateEventType, third_party::Medium,
+};
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,
@@ -91,9 +92,10 @@ impl ThirdPartyInvite {
 
 /// `PUT /_matrix/federation/*/exchange_third_party_invite/{room_id}`
 ///
-/// The receiving server will verify the partial `m.room.member` event given in the request body.
-/// If valid, the receiving server will issue an invite as per the [Inviting to a room] section
-/// before returning a response to this request.
+/// The receiving server will verify the partial `m.room.member` event given in
+/// the request body. If valid, the receiving server will issue an invite as per
+/// the [Inviting to a room] section before returning a response to this
+/// request.
 ///
 /// [Inviting to a room]: https://spec.matrix.org/latest/server-server-api/#inviting-to-a-room
 /// `/v1/` ([spec])

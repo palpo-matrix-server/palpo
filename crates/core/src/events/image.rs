@@ -17,10 +17,11 @@ use crate::OwnedMxcUri;
 
 /// The payload for an extensible image message.
 ///
-/// This is the new primary type introduced in [MSC3552] and should only be sent in rooms with a
-/// version that supports it. This type replaces both the `m.room.message` type with `msgtype:
-/// "m.image"` and the `m.sticker` type. To replace the latter, `sticker` must be set to `true` in
-/// `image_details`. See the documentation of the [`message`] module for more information.
+/// This is the new primary type introduced in [MSC3552] and should only be sent
+/// in rooms with a version that supports it. This type replaces both the
+/// `m.room.message` type with `msgtype: "m.image"` and the `m.sticker` type. To
+/// replace the latter, `sticker` must be set to `true` in `image_details`. See
+/// the documentation of the [`message`] module for more information.
 ///
 /// [MSC3552]: https://github.com/matrix-org/matrix-spec-proposals/pull/3552
 /// [`message`]: super::message
@@ -53,7 +54,8 @@ pub struct ImageEventContent {
     #[serde(rename = "org.matrix.msc1767.caption", skip_serializing_if = "Option::is_none")]
     pub caption: Option<CaptionContentBlock>,
 
-    /// The alternative text of the image, for accessibility considerations, if any.
+    /// The alternative text of the image, for accessibility considerations, if
+    /// any.
     #[serde(rename = "org.matrix.msc1767.alt_text", skip_serializing_if = "Option::is_none")]
     pub alt_text: Option<AltTextContentBlock>,
 
@@ -76,8 +78,8 @@ pub struct ImageEventContent {
 }
 
 impl ImageEventContent {
-    /// Creates a new `ImageEventContent` with the given fallback representation and
-    /// file.
+    /// Creates a new `ImageEventContent` with the given fallback representation
+    /// and file.
     pub fn new(text: TextContentBlock, file: FileContentBlock) -> Self {
         Self {
             text,
@@ -92,8 +94,8 @@ impl ImageEventContent {
         }
     }
 
-    /// Creates a new `ImageEventContent` with the given plain text fallback representation and
-    /// file.
+    /// Creates a new `ImageEventContent` with the given plain text fallback
+    /// representation and file.
     pub fn with_plain_text(plain_text: impl Into<String>, file: FileContentBlock) -> Self {
         Self {
             text: TextContentBlock::plain(plain_text),
@@ -128,7 +130,8 @@ pub struct ImageDetailsContentBlock {
 }
 
 impl ImageDetailsContentBlock {
-    /// Creates a new `ImageDetailsContentBlock` with the given width and height.
+    /// Creates a new `ImageDetailsContentBlock` with the given width and
+    /// height.
     pub fn new(width: u64, height: u64) -> Self {
         Self {
             height,
@@ -219,7 +222,8 @@ pub struct ThumbnailFileContentBlock {
 }
 
 impl ThumbnailFileContentBlock {
-    /// Creates a new non-encrypted `ThumbnailFileContentBlock` with the given url and mimetype.
+    /// Creates a new non-encrypted `ThumbnailFileContentBlock` with the given
+    /// url and mimetype.
     pub fn plain(url: OwnedMxcUri, mimetype: String) -> Self {
         Self {
             url,
@@ -230,8 +234,8 @@ impl ThumbnailFileContentBlock {
         }
     }
 
-    /// Creates a new encrypted `ThumbnailFileContentBlock` with the given url, mimetype and
-    /// encryption info.
+    /// Creates a new encrypted `ThumbnailFileContentBlock` with the given url,
+    /// mimetype and encryption info.
     pub fn encrypted(url: OwnedMxcUri, mimetype: String, encryption_info: EncryptedContent) -> Self {
         Self {
             url,
@@ -259,7 +263,8 @@ pub struct ThumbnailImageDetailsContentBlock {
 }
 
 impl ThumbnailImageDetailsContentBlock {
-    /// Creates a new `ThumbnailImageDetailsContentBlock` with the given width and height.
+    /// Creates a new `ThumbnailImageDetailsContentBlock` with the given width
+    /// and height.
     pub fn new(width: i64, height: i64) -> Self {
         Self { height, width }
     }
@@ -267,10 +272,11 @@ impl ThumbnailImageDetailsContentBlock {
 
 /// A block for alternative text content.
 ///
-/// The content should only contain plain text messages. Non-plain text messages should be ignored.
+/// The content should only contain plain text messages. Non-plain text messages
+/// should be ignored.
 ///
-/// To construct an `AltTextContentBlock` with a custom [`TextContentBlock`], convert it with
-/// `AltTextContentBlock::from()` / `.into()`.
+/// To construct an `AltTextContentBlock` with a custom [`TextContentBlock`],
+/// convert it with `AltTextContentBlock::from()` / `.into()`.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct AltTextContentBlock {
     /// The alternative text.
@@ -279,7 +285,8 @@ pub struct AltTextContentBlock {
 }
 
 impl AltTextContentBlock {
-    /// A convenience constructor to create a plain text alternative text content block.
+    /// A convenience constructor to create a plain text alternative text
+    /// content block.
     pub fn plain(body: impl Into<String>) -> Self {
         Self {
             text: TextContentBlock::plain(body),

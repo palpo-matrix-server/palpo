@@ -15,8 +15,8 @@ pub enum LazyLoadOptions {
 
     /// Enables lazy-loading of events.
     Enabled {
-        /// If `true`, sends all membership events for all events, even if they have already been
-        /// sent to the client.
+        /// If `true`, sends all membership events for all events, even if they
+        /// have already been sent to the client.
         ///
         /// Defaults to `false`.
         include_redundant_members: bool,

@@ -8,14 +8,13 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use crate::events::{
-    BundledMessageLikeRelations, EventContent, MessageLikeEventType, RedactContent, RedactedMessageLikeEventContent,
-    RedactedUnsigned, StaticEventContent,
-};
-use crate::serde::canonical_json::RedactionEvent;
 use crate::{
     EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
-    serde::CanBeEmpty,
+    events::{
+        BundledMessageLikeRelations, EventContent, MessageLikeEventType, RedactContent,
+        RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
+    },
+    serde::{CanBeEmpty, canonical_json::RedactionEvent},
 };
 
 mod event_serde;
@@ -60,7 +59,8 @@ pub struct OriginalRoomRedactionEvent {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
@@ -107,7 +107,8 @@ pub struct RedactedRoomRedactionEvent {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// The ID of the room associated with this event.
@@ -136,7 +137,8 @@ pub struct OriginalSyncRoomRedactionEvent {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -186,7 +188,8 @@ pub struct RedactedSyncRoomRedactionEvent {
     /// The fully-qualified ID of the user who sent this event.
     pub sender: OwnedUserId,
 
-    /// Timestamp in milliseconds on originating homeserver when this event was sent.
+    /// Timestamp in milliseconds on originating homeserver when this event was
+    /// sent.
     pub origin_server_ts: UnixMillis,
 
     /// Additional key-value pairs not signed by the homeserver.
@@ -210,13 +213,14 @@ pub struct RoomRedactionEventContent {
 }
 
 impl RoomRedactionEventContent {
-    /// Creates an empty `RoomRedactionEventContent` according to room versions 1 through 10.
+    /// Creates an empty `RoomRedactionEventContent` according to room versions
+    /// 1 through 10.
     pub fn new_v1() -> Self {
         Self::default()
     }
 
-    /// Creates a `RoomRedactionEventContent` with the required `redacts` field introduced in room
-    /// version 11.
+    /// Creates a `RoomRedactionEventContent` with the required `redacts` field
+    /// introduced in room version 11.
     pub fn new_v11(redacts: OwnedEventId) -> Self {
         Self {
             redacts: Some(redacts),
@@ -318,12 +322,14 @@ impl RoomRedactionEvent {
         }
     }
 
-    /// Returns the ID of the event that this event redacts, according to the given room version.
+    /// Returns the ID of the event that this event redacts, according to the
+    /// given room version.
     ///
     /// # Panics
     ///
-    /// Panics if this is a non-redacted event and both `redacts` field are `None`, which is only
-    /// possible if the event was modified after being deserialized.
+    /// Panics if this is a non-redacted event and both `redacts` field are
+    /// `None`, which is only possible if the event was modified after being
+    /// deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> Option<&EventId> {
         match self {
             Self::Original(ev) => Some(ev.redacts(room_version)),
@@ -370,12 +376,14 @@ impl SyncRoomRedactionEvent {
         }
     }
 
-    /// Returns the ID of the event that this event redacts, according to the given room version.
+    /// Returns the ID of the event that this event redacts, according to the
+    /// given room version.
     ///
     /// # Panics
     ///
-    /// Panics if this is a non-redacted event and both `redacts` field are `None`, which is only
-    /// possible if the event was modified after being deserialized.
+    /// Panics if this is a non-redacted event and both `redacts` field are
+    /// `None`, which is only possible if the event was modified after being
+    /// deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> Option<&EventId> {
         match self {
             Self::Original(ev) => Some(ev.redacts(room_version)),
@@ -407,32 +415,32 @@ impl From<RoomRedactionEvent> for SyncRoomRedactionEvent {
 }
 
 impl OriginalRoomRedactionEvent {
-    /// Returns the ID of the event that this event redacts, according to the proper `redacts` field
-    /// for the given room version.
+    /// Returns the ID of the event that this event redacts, according to the
+    /// proper `redacts` field for the given room version.
     ///
-    /// If the `redacts` field is not the proper one for the given room version, this falls back to
-    /// the one that is available.
+    /// If the `redacts` field is not the proper one for the given room version,
+    /// this falls back to the one that is available.
     ///
     /// # Panics
     ///
-    /// Panics if both `redacts` field are `None`, which is only possible if the event was modified
-    /// after being deserialized.
+    /// Panics if both `redacts` field are `None`, which is only possible if the
+    /// event was modified after being deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> &EventId {
         redacts(room_version, self.redacts.as_deref(), self.content.redacts.as_deref())
     }
 }
 
 impl OriginalSyncRoomRedactionEvent {
-    /// Returns the ID of the event that this event redacts, according to the proper `redacts` field
-    /// for the given room version.
+    /// Returns the ID of the event that this event redacts, according to the
+    /// proper `redacts` field for the given room version.
     ///
-    /// If the `redacts` field is not the proper one for the given room version, this falls back to
-    /// the one that is available.
+    /// If the `redacts` field is not the proper one for the given room version,
+    /// this falls back to the one that is available.
     ///
     /// # Panics
     ///
-    /// Panics if both `redacts` field are `None`, which is only possible if the event was modified
-    /// after being deserialized.
+    /// Panics if both `redacts` field are `None`, which is only possible if the
+    /// event was modified after being deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> &EventId {
         redacts(room_version, self.redacts.as_deref(), self.content.redacts.as_deref())
     }
@@ -443,18 +451,20 @@ impl RedactionEvent for OriginalSyncRoomRedactionEvent {}
 impl RedactionEvent for RoomRedactionEvent {}
 impl RedactionEvent for SyncRoomRedactionEvent {}
 
-/// Extra information about a redaction that is not incorporated into the event's hash.
+/// Extra information about a redaction that is not incorporated into the
+/// event's hash.
 #[derive(ToSchema, Clone, Debug, Deserialize)]
 pub struct RoomRedactionUnsigned {
     /// The time in milliseconds that has elapsed since the event was sent.
     ///
-    /// This field is generated by the local homeserver, and may be incorrect if the local time on
-    /// at least one of the two servers is out of sync, which can cause the age to either be
-    /// negative or greater than it actually is.
+    /// This field is generated by the local homeserver, and may be incorrect if
+    /// the local time on at least one of the two servers is out of sync,
+    /// which can cause the age to either be negative or greater than it
+    /// actually is.
     pub age: Option<i64>,
 
-    /// The client-supplied transaction ID, if the client being given the event is the same one
-    /// which sent it.
+    /// The client-supplied transaction ID, if the client being given the event
+    /// is the same one which sent it.
     pub transaction_id: Option<OwnedTransactionId>,
 
     /// [Bundled aggregations] of related child events.
@@ -484,9 +494,10 @@ impl Default for RoomRedactionUnsigned {
 impl CanBeEmpty for RoomRedactionUnsigned {
     /// Whether this unsigned data is empty (all fields are `None`).
     ///
-    /// This method is used to determine whether to skip serializing the `unsigned` field in room
-    /// events. Do not use it to determine whether an incoming `unsigned` field was present - it
-    /// could still have been present but contained none of the known fields.
+    /// This method is used to determine whether to skip serializing the
+    /// `unsigned` field in room events. Do not use it to determine whether
+    /// an incoming `unsigned` field was present - it could still have been
+    /// present but contained none of the known fields.
     fn is_empty(&self) -> bool {
         self.age.is_none() && self.transaction_id.is_none() && self.relations.is_empty()
     }
@@ -494,8 +505,8 @@ impl CanBeEmpty for RoomRedactionUnsigned {
 
 /// Returns the value of the proper `redacts` field for the given room version.
 ///
-/// If the `redacts` field is not the proper one for the given room version, this falls back to
-/// the one that is available.
+/// If the `redacts` field is not the proper one for the given room version,
+/// this falls back to the one that is available.
 ///
 /// # Panics
 ///

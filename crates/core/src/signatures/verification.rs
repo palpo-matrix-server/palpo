@@ -6,11 +6,13 @@ use crate::signatures::{Error, ParseError, VerificationError};
 
 /// A digital signature verifier.
 pub(crate) trait Verifier {
-    /// Use a public key to verify a signature against the JSON object that was signed.
+    /// Use a public key to verify a signature against the JSON object that was
+    /// signed.
     ///
     /// # Parameters
     ///
-    /// * public_key: The raw bytes of the public key of the key pair used to sign the message.
+    /// * public_key: The raw bytes of the public key of the key pair used to
+    ///   sign the message.
     /// * signature: The raw bytes of the signature to verify.
     /// * message: The raw bytes of the message that was signed.
     ///
@@ -40,10 +42,11 @@ impl Verifier for Ed25519Verifier {
 
 /// A value returned when an event is successfully verified.
 ///
-/// Event verification involves verifying both signatures and a content hash. It is possible for
-/// the signatures on an event to be valid, but for the hash to be different than the one
-/// calculated during verification. This is not necessarily an error condition, as it may indicate
-/// that the event has been redacted. In this case, receiving homeservers should store a redacted
+/// Event verification involves verifying both signatures and a content hash. It
+/// is possible for the signatures on an event to be valid, but for the hash to
+/// be different than the one calculated during verification. This is not
+/// necessarily an error condition, as it may indicate that the event has been
+/// redacted. In this case, receiving homeservers should store a redacted
 /// version of the event.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[allow(clippy::exhaustive_enums)]

@@ -1,11 +1,13 @@
-//! Helper module for the Serialize / Deserialize impl's for the UserIdentifier struct
-//! in the parent module.
+//! Helper module for the Serialize / Deserialize impl's for the UserIdentifier
+//! struct in the parent module.
 
 use serde::{Deserialize, Deserializer, Serialize, de, ser::SerializeStruct};
 
 use super::{CustomThirdPartyId, UserIdentifier};
-use crate::serde::{RawJsonValue, from_raw_json_value};
-use crate::third_party::Medium;
+use crate::{
+    serde::{RawJsonValue, from_raw_json_value},
+    third_party::Medium,
+};
 
 impl Serialize for UserIdentifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -108,15 +110,17 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use crate::uiaa::UserIdentifier;
 
 //     #[test]
 //     fn serialize() {
 //         assert_eq!(
-//             to_json_value(UserIdentifier::UserIdOrLocalpart("@user:notareal.hs".to_owned())).unwrap(),
-//             json!({
+//
+// to_json_value(UserIdentifier::UserIdOrLocalpart("@user:notareal.hs".
+// to_owned())).unwrap(),             json!({
 //                 "type": "m.id.user",
 //                 "user": "@user:notareal.hs",
 //             })
@@ -160,8 +164,8 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //         );
 
 //         assert_eq!(
-//             to_json_value(UserIdentifier::third_party_id("robot".into(), "01001110".to_owned())).unwrap(),
-//             json!({
+//             to_json_value(UserIdentifier::third_party_id("robot".into(),
+// "01001110".to_owned())).unwrap(),             json!({
 //                 "type": "m.id.thirdparty",
 //                 "medium": "robot",
 //                 "address": "01001110",
@@ -175,8 +179,9 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //             "type": "m.id.user",
 //             "user": "@user:notareal.hs",
 //         });
-//         assert_matches!(from_json_value(json), Ok(UserIdentifier::UserIdOrLocalpart(user)));
-//         assert_eq!(user, "@user:notareal.hs");
+//         assert_matches!(from_json_value(json),
+// Ok(UserIdentifier::UserIdOrLocalpart(user)));         assert_eq!(user,
+// "@user:notareal.hs");
 
 //         let json = json!({
 //             "type": "m.id.phone",
@@ -195,16 +200,16 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //             "medium": "email",
 //             "address": "me@myprovider.net",
 //         });
-//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Email { address }));
-//         assert_eq!(address, "me@myprovider.net");
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Email {
+// address }));         assert_eq!(address, "me@myprovider.net");
 
 //         let json = json!({
 //             "type": "m.id.thirdparty",
 //             "medium": "msisdn",
 //             "address": "330102030405",
 //         });
-//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Msisdn { number }));
-//         assert_eq!(number, "330102030405");
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Msisdn {
+// number }));         assert_eq!(number, "330102030405");
 
 //         let json = json!({
 //             "type": "m.id.thirdparty",

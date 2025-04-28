@@ -1,18 +1,18 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::EventEncryptionAlgorithm;
-use crate::events::room::member::MembershipState;
-use crate::identifiers::*;
-use crate::room::RoomType;
-use crate::space::SpaceRoomJoinRule;
+use crate::{
+    EventEncryptionAlgorithm, events::room::member::MembershipState, identifiers::*, room::RoomType,
+    space::SpaceRoomJoinRule,
+};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
 //     authentication: AccessTokenOptional,
 //     history: {
-//         unstable => "/_matrix/client/unstable/im.nheko.summary/summary/:room_id_or_alias",
+//         unstable =>
+// "/_matrix/client/unstable/im.nheko.summary/summary/:room_id_or_alias",
 //         //1.15 => "/_matrix/client/v1/summary/:room_id_or_alias",
 //     }
 // };
@@ -79,9 +79,10 @@ pub struct SummaryMsc3266ResBody {
 
     /// The current membership of this user in the room.
     ///
-    /// This field will not be present when called unauthenticated, but is required when called
-    /// authenticated. It should be `leave` if the server doesn't know about the room, since
-    /// for all other membership states the server would know about the room already.
+    /// This field will not be present when called unauthenticated, but is
+    /// required when called authenticated. It should be `leave` if the
+    /// server doesn't know about the room, since for all other membership
+    /// states the server would know about the room already.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub membership: Option<MembershipState>,
 
@@ -93,8 +94,8 @@ pub struct SummaryMsc3266ResBody {
     )]
     pub encryption: Option<EventEncryptionAlgorithm>,
 
-    /// If the room is a restricted room, these are the room IDs which are specified by the
-    /// join rules.
+    /// If the room is a restricted room, these are the room IDs which are
+    /// specified by the join rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }

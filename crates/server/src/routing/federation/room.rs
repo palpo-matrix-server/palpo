@@ -1,6 +1,7 @@
 use palpo_core::federation::knock::{MakeKnockReqArgs, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
+use serde_json::value::to_raw_value;
 
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
@@ -15,7 +16,6 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::event::gen_event_id_canonical_json;
 use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
-use serde_json::value::to_raw_value;
 
 pub fn router() -> Router {
     Router::new()
@@ -124,7 +124,7 @@ async fn send_knock(
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(MatrixError::forbidden("Room version does not support knocking.").into());
+        return Err(MatrixError::forbidden(None, "Room version does not support knocking.").into());
     }
 
     let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
@@ -270,7 +270,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
                 "Remote user {} is banned from {} but attempted to knock",
                 &args.user_id, &args.room_id
             );
-            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
         }
     }
 

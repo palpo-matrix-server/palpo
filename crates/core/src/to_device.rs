@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 /// Common types for the Send-To-Device Messaging
 ///
 /// [send-to-device]: https://spec.matrix.org/latest/client-server-api/#send-to-device-messaging
@@ -8,12 +9,12 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{self, Unexpected},
 };
-use std::collections::BTreeMap;
 
-use crate::events::{AnyToDeviceEventContent, ToDeviceEventType};
-use crate::{OwnedTransactionId, OwnedUserId, serde::RawJson};
-
-use crate::OwnedDeviceId;
+use crate::{
+    OwnedDeviceId, OwnedTransactionId, OwnedUserId,
+    events::{AnyToDeviceEventContent, ToDeviceEventType},
+    serde::RawJson,
+};
 
 /// Represents one or all of a user's devices.
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -118,8 +119,8 @@ pub struct SendEventToDeviceReqArgs {
 pub struct SendEventToDeviceReqBody {
     /// Messages to send.
     ///
-    /// Different message events can be sent to different devices in the same request, but all
-    /// events within one request must be of the same type.
+    /// Different message events can be sent to different devices in the same
+    /// request, but all events within one request must be of the same type.
     #[salvo(schema(value_type = Object))]
     pub messages: Messages,
 }

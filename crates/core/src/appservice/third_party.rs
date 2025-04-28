@@ -2,8 +2,8 @@
 
 // `GET /_matrix/app/*/thirdparty/location/{protocol}`
 //
-// Retrieve a list of Matrix portal rooms that lead to the matched third party location.
-// `/v1/` ([spec])
+// Retrieve a list of Matrix portal rooms that lead to the matched third party
+// location. `/v1/` ([spec])
 //
 // [spec]: https://spec.matrix.org/latest/application-service-api/#get_matrixappv1thirdpartylocationprotocol
 use std::collections::BTreeMap;

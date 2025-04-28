@@ -7,8 +7,8 @@ use super::{MatrixToUri, MatrixUri, OwnedEventId, matrix_uri::UriAction, server_
 
 /// A Matrix [room alias ID].
 ///
-/// A `RoomAliasId` is converted from a string slice, and can be converted back into a string as
-/// needed.
+/// A `RoomAliasId` is converted from a string slice, and can be converted back
+/// into a string as needed.
 ///
 /// ```
 /// # crateRoomAliasId;

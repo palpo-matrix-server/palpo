@@ -39,7 +39,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let not_membership = args.not_membership.as_ref();
 
     if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     let frame_id = if let Some(at_sn) = &args.at {
@@ -127,7 +127,7 @@ pub(super) fn joined_members(
     let authed = depot.authed_info()?;
 
     if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
     }
 
     let mut joined = BTreeMap::new();
@@ -506,7 +506,7 @@ pub(super) async fn kick_user(
         event.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
-        return Err(MatrixError::forbidden(format!(
+        return Err(MatrixError::forbidden(None, format!(
             "Cannot kick a user who is not apart of the room (current membership: {})",
             event.membership
         ))

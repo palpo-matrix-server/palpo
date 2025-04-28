@@ -1,6 +1,7 @@
-use anyhow::{Context, anyhow};
 use std::error::Error;
 use std::str::FromStr;
+
+use anyhow::{Context, anyhow};
 
 /// Reads an environment variable for the current process.
 ///

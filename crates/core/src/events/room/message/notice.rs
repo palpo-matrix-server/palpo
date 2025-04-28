@@ -33,8 +33,8 @@ impl NoticeMessageEventContent {
 
     /// A convenience constructor to create a markdown notice.
     ///
-    /// Returns an html notice if some markdown formatting was detected, otherwise returns a plain
-    /// text notice.
+    /// Returns an html notice if some markdown formatting was detected,
+    /// otherwise returns a plain text notice.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
         if let Some(formatted) = FormattedBody::markdown(&body) {

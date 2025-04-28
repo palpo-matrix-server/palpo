@@ -7,6 +7,7 @@ use diesel::prelude::*;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
+use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
@@ -17,8 +18,6 @@ use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
-
-use crate::appservice::RegistrationInfo;
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -99,7 +98,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
-        return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.").into());
+        return Err(MatrixError::forbidden(None, "Not allowed to join on behalf of another server.").into());
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
@@ -247,7 +246,7 @@ pub async fn join_room(
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if user.is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
-        return Err(MatrixError::forbidden("Guests are not allowed to join this room").into());
+        return Err(MatrixError::forbidden(None, "Guests are not allowed to join this room").into());
     }
 
     if crate::room::is_joined(&user.id, room_id)? {
@@ -259,7 +258,7 @@ pub async fn join_room(
     if let Ok(membership) = crate::room::state::get_member(room_id, &user.id) {
         if membership.membership == MembershipState::Ban {
             tracing::warn!("{} is banned from {room_id} but attempted to join", user.id);
-            return Err(MatrixError::forbidden("You are banned from the room.").into());
+            return Err(MatrixError::forbidden(None, "You are banned from the room.").into());
         }
     }
 

@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -20,23 +21,25 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::Action;
-use crate::push::push_rule::PushRule;
+use crate::push::{Action, push_rule::PushRule};
 
-/// A push rule is a single rule that states under what conditions an event should be passed onto a
-/// push gateway and how the notification should be presented.
+/// A push rule is a single rule that states under what conditions an event
+/// should be passed onto a push gateway and how the notification should be
+/// presented.
 ///
-/// These rules are stored on the user's homeserver. They are manually configured by the user, who
-/// can create and view them via the Client/Server API.
+/// These rules are stored on the user's homeserver. They are manually
+/// configured by the user, who can create and view them via the Client/Server
+/// API.
 ///
-/// To create an instance of this type, first create a `SimplePushRuleInit` and convert it via
-/// `SimplePushRule::from` / `.into()`.
+/// To create an instance of this type, first create a `SimplePushRuleInit` and
+/// convert it via `SimplePushRule::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SimplePushRule<T>
 where
     T: 'static,
 {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -53,12 +56,14 @@ where
 
 /// Initial set of fields of `SimplePushRule`.
 ///
-/// This struct will not be updated even if additional fields are added to `SimplePushRule` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `SimplePushRule` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct SimplePushRuleInit<T> {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -133,8 +138,8 @@ where
     /// This is generally the Matrix ID of the entity that it applies to.
     pub rule_id: T,
 
-    /// Actions to determine if and how a notification is delivered for events matching this
-    /// rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 }
 

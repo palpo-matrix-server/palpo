@@ -10,9 +10,13 @@ use std::time::Duration;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::client::account::{LoginType, RegistrationKind};
-use crate::client::uiaa::AuthData;
-use crate::{OwnedClientSecret, OwnedDeviceId, OwnedSessionId, OwnedUserId};
+use crate::{
+    OwnedClientSecret, OwnedDeviceId, OwnedSessionId, OwnedUserId,
+    client::{
+        account::{LoginType, RegistrationKind},
+        uiaa::AuthData,
+    },
+};
 
 /// Request type for the `register` endpoint.
 #[derive(ToSchema, Deserialize, Default, Debug)]
@@ -32,8 +36,9 @@ pub struct RegisterReqBody {
 
     /// ID of the client device.
     ///
-    /// If this does not correspond to a known client device, a new device will be created.
-    /// The server will auto-generate a device_id if this is not specified.
+    /// If this does not correspond to a known client device, a new device will
+    /// be created. The server will auto-generate a device_id if this is not
+    /// specified.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_id: Option<OwnedDeviceId>,
 
@@ -43,12 +48,13 @@ pub struct RegisterReqBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initial_device_display_name: Option<String>,
 
-    /// Additional authentication information for the user-interactive authentication API.
+    /// Additional authentication information for the user-interactive
+    /// authentication API.
     ///
-    /// Note that this information is not used to define how the registered user should be
-    /// authenticated, but is instead used to authenticate the register call itself.
-    /// It should be left empty, or omitted, unless an earlier call returned an response
-    /// with status code 401.
+    /// Note that this information is not used to define how the registered user
+    /// should be authenticated, but is instead used to authenticate the
+    /// register call itself. It should be left empty, or omitted, unless an
+    /// earlier call returned an response with status code 401.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 
@@ -66,8 +72,9 @@ pub struct RegisterReqBody {
 
     /// Login `type` used by Appservices.
     ///
-    /// Appservices can [bypass the registration flows][admin] entirely by providing their
-    /// token in the header and setting this login `type` to `m.login.application_service`.
+    /// Appservices can [bypass the registration flows][admin] entirely by
+    /// providing their token in the header and setting this login `type` to
+    /// `m.login.application_service`.
     ///
     /// [admin]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
     #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
@@ -109,15 +116,16 @@ pub struct RegisterResBody {
 
     /// ID of the registered device.
     ///
-    /// Will be the same as the corresponding parameter in the request, if one was specified.
+    /// Will be the same as the corresponding parameter in the request, if one
+    /// was specified.
     ///
     /// Required if the request's `inhibit_login` was set to `false`.
     pub device_id: Option<OwnedDeviceId>,
 
     /// A [refresh token] for the account.
     ///
-    /// This token can be used to obtain a new access token when it expires by calling the
-    /// [`refresh_token`] endpoint.
+    /// This token can be used to obtain a new access token when it expires by
+    /// calling the [`refresh_token`] endpoint.
     ///
     /// Omitted if the request's `inhibit_login` was set to `true`.
     ///
@@ -128,11 +136,12 @@ pub struct RegisterResBody {
 
     /// The lifetime of the access token, in milliseconds.
     ///
-    /// Once the access token has expired, a new access token can be obtained by using the
-    /// provided refresh token. If no refresh token is provided, the client will need to
-    /// re-login to obtain a new access token.
+    /// Once the access token has expired, a new access token can be obtained by
+    /// using the provided refresh token. If no refresh token is provided,
+    /// the client will need to re-login to obtain a new access token.
     ///
-    /// If this is `None`, the client can assume that the access token will not expire.
+    /// If this is `None`, the client can assume that the access token will not
+    /// expire.
     ///
     /// Omitted if the request's `inhibit_login` was set to `true`.
     #[serde(
@@ -179,7 +188,8 @@ impl AvailableResBody {
 //     rate_limited: true,
 //     authentication: None,
 //     history: {
-//         unstable => "/_matrix/client/unstable/org.matrix.msc3231/register/org.matrix.msc3231.login.registration_token/validity",
+//         unstable =>
+// "/_matrix/client/unstable/org.matrix.msc3231/register/org.matrix.msc3231.login.registration_token/validity",
 //         1.2 => "/_matrix/client/v1/register/m.login.registration_token/validity",
 //     }
 // };
@@ -225,7 +235,8 @@ pub struct TokenVisEmailReqBody {
     /// The email address.
     pub email: String,
 
-    /// Used to distinguish protocol level retries from requests to re-send the email.
+    /// Used to distinguish protocol level retries from requests to re-send the
+    /// email.
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.
@@ -280,7 +291,8 @@ pub struct TokenVisMsisdnReqBody {
     /// Phone number to validate.
     pub phone_number: String,
 
-    /// Used to distinguish protocol level retries from requests to re-send the SMS.
+    /// Used to distinguish protocol level retries from requests to re-send the
+    /// SMS.
     pub send_attempt: u64,
 
     /// Return URL for identity server to redirect the client back to.

@@ -17,10 +17,11 @@ pub struct SecretStorageDefaultKeyEventContent {
 }
 
 impl SecretStorageDefaultKeyEventContent {
-    /// Create a new [`SecretStorageDefaultKeyEventContent`] with the given key ID.
+    /// Create a new [`SecretStorageDefaultKeyEventContent`] with the given key
+    /// ID.
     ///
-    /// Uploading this to the account data will mark the secret storage key with the given key ID as
-    /// the default key.
+    /// Uploading this to the account data will mark the secret storage key with
+    /// the given key ID as the default key.
     pub fn new(key_id: String) -> Self {
         Self { key_id }
     }

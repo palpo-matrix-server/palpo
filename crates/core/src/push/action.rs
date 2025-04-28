@@ -6,8 +6,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::serde::{JsonValue, RawJsonValue, from_raw_json_value};
 
-/// This represents the different actions that should be taken when a rule is matched, and
-/// controls how notifications are delivered to the client.
+/// This represents the different actions that should be taken when a rule is
+/// matched, and controls how notifications are delivered to the client.
 ///
 /// See [the spec](https://spec.matrix.org/latest/client-server-api/#actions) for details.
 #[derive(ToSchema, Clone, Debug)]
@@ -45,19 +45,22 @@ impl Action {
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(from = "tweak_serde::Tweak", into = "tweak_serde::Tweak")]
 pub enum Tweak {
-    /// A string representing the sound to be played when this notification arrives.
+    /// A string representing the sound to be played when this notification
+    /// arrives.
     ///
-    /// A value of "default" means to play a default sound. A device may choose to alert the user
-    /// by some other means if appropriate, eg. vibration.
+    /// A value of "default" means to play a default sound. A device may choose
+    /// to alert the user by some other means if appropriate, eg. vibration.
     Sound(String),
 
-    /// A boolean representing whether or not this message should be highlighted in the UI.
+    /// A boolean representing whether or not this message should be highlighted
+    /// in the UI.
     ///
-    /// This will normally take the form of presenting the message in a different color and/or
-    /// style. The UI might also be adjusted to draw particular attention to the room in which the
-    /// event occurred. If a `highlight` tweak is given with no value, its value is defined to be
-    /// `true`. If no highlight tweak is given at all then the value of `highlight` is defined to
-    /// be `false`.
+    /// This will normally take the form of presenting the message in a
+    /// different color and/or style. The UI might also be adjusted to draw
+    /// particular attention to the room in which the event occurred. If a
+    /// `highlight` tweak is given with no value, its value is defined to be
+    /// `true`. If no highlight tweak is given at all then the value of
+    /// `highlight` is defined to be `false`.
     Highlight(#[serde(default = "crate::serde::default_true")] bool),
 
     /// A custom tweak
@@ -183,7 +186,8 @@ mod tweak_serde {
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{Action, Tweak};
 
@@ -195,7 +199,8 @@ mod tweak_serde {
 //     #[test]
 //     fn serialize_tweak_sound() {
 //         assert_eq!(
-//             to_json_value(&Action::SetTweak(Tweak::Sound("default".into()))).unwrap(),
+//
+// to_json_value(&Action::SetTweak(Tweak::Sound("default".into()))).unwrap(),
 //             json!({ "set_tweak": "sound", "value": "default" })
 //         );
 //     }
@@ -203,20 +208,22 @@ mod tweak_serde {
 //     #[test]
 //     fn serialize_tweak_highlight() {
 //         assert_eq!(
-//             to_json_value(&Action::SetTweak(Tweak::Highlight(true))).unwrap(),
+//
+// to_json_value(&Action::SetTweak(Tweak::Highlight(true))).unwrap(),
 //             json!({ "set_tweak": "highlight" })
 //         );
 
 //         assert_eq!(
-//             to_json_value(&Action::SetTweak(Tweak::Highlight(false))).unwrap(),
+//
+// to_json_value(&Action::SetTweak(Tweak::Highlight(false))).unwrap(),
 //             json!({ "set_tweak": "highlight", "value": false })
 //         );
 //     }
 
 //     #[test]
 //     fn deserialize_string() {
-//         assert_matches!(from_json_value::<Action>(json!("notify")), Ok(Action::Notify));
-//     }
+//         assert_matches!(from_json_value::<Action>(json!("notify")),
+// Ok(Action::Notify));     }
 
 //     #[test]
 //     fn deserialize_tweak_sound() {

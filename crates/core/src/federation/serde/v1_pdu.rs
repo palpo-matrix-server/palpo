@@ -110,8 +110,8 @@ where
 //             event: None,
 //         };
 
-//         let serialized = serialize(&room_state, serde_json::value::Serializer).unwrap();
-//         let expected = json!(
+//         let serialized = serialize(&room_state,
+// serde_json::value::Serializer).unwrap();         let expected = json!(
 //             [
 //                 200,
 //                 {
@@ -152,8 +152,8 @@ where
 
 //     #[test]
 //     fn too_long_array() {
-//         let json = json!([200, { "origin": "", "auth_chain": [], "state": [] }, 200]);
-//         let RoomState {
+//         let json = json!([200, { "origin": "", "auth_chain": [], "state": []
+// }, 200]);         let RoomState {
 //             origin,
 //             auth_chain,
 //             state,

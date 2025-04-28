@@ -12,21 +12,20 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::PrivOwnedStr;
-use crate::{OwnedUserId, UnixMillis, serde::StringEnum};
+use crate::{OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum};
 
 /// The member state event for a matrixRTC session.
 ///
-/// This is the object containing all the data related to a matrix users participation in a
-/// matrixRTC session. It consists of memberships / sessions.
-#[derive(Clone, Debug, Serialize, Deserialize, EventContent)]
+/// This is the object containing all the data related to a matrix users
+/// participation in a matrixRTC session. It consists of memberships / sessions.
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, EventContent)]
 #[cfg_attr(test, derive(PartialEq))]
 #[palpo_event(type = "org.matrix.msc3401.call.member", kind = State, state_key_type = OwnedUserId)]
 pub struct CallMemberEventContent {
     /// A list of all the memberships that user currently has in this room.
     ///
-    /// There can be multiple ones in cases the user participates with multiple devices or there
-    /// are multiple RTC applications running.
+    /// There can be multiple ones in cases the user participates with multiple
+    /// devices or there are multiple RTC applications running.
     ///
     /// e.g. a call and a spacial experience.
     ///
@@ -44,14 +43,15 @@ impl CallMemberEventContent {
 
     /// All non expired memberships in this member event.
     ///
-    /// In most cases you want tu use this method instead of the public memberships field.
-    /// The memberships field will also include expired events.
+    /// In most cases you want tu use this method instead of the public
+    /// memberships field. The memberships field will also include expired
+    /// events.
     ///
     /// # Arguments
     ///
-    /// * `origin_server_ts` - optionally the `origin_server_ts` can be passed as a fallback in case
-    ///   the Membership does not contain `created_ts`. (`origin_server_ts` will be ignored if
-    ///   `created_ts` is `Some`)
+    /// * `origin_server_ts` - optionally the `origin_server_ts` can be passed
+    ///   as a fallback in case the Membership does not contain `created_ts`.
+    ///   (`origin_server_ts` will be ignored if `created_ts` is `Some`)
     pub fn active_memberships(&self, origin_server_ts: Option<UnixMillis>) -> Vec<&Membership> {
         self.memberships
             .iter()
@@ -61,12 +61,13 @@ impl CallMemberEventContent {
 
     /// Set the `created_ts` of each [Membership] in this event.
     ///
-    /// Each call member event contains the `origin_server_ts` and `content.create_ts`.
-    /// `content.create_ts` is undefined for the initial event of a session (because the
-    /// `origin_server_ts` is not known on the client).
-    /// In the rust sdk we want to copy over the `origin_server_ts` of the event into the content.
-    /// (This allows to use `MinimalStateEvents` and still be able to determine if a membership is
-    /// expired)
+    /// Each call member event contains the `origin_server_ts` and
+    /// `content.create_ts`. `content.create_ts` is undefined for the
+    /// initial event of a session (because the `origin_server_ts` is not
+    /// known on the client). In the rust sdk we want to copy over the
+    /// `origin_server_ts` of the event into the content. (This allows to
+    /// use `MinimalStateEvents` and still be able to determine if a membership
+    /// is expired)
     pub fn set_created_ts_if_none(&mut self, origin_server_ts: UnixMillis) {
         self.memberships.iter_mut().for_each(|m| {
             m.created_ts.get_or_insert(origin_server_ts);
@@ -112,8 +113,8 @@ pub struct Membership {
     /// The id of the membership.
     ///
     /// This is required to guarantee uniqueness of the event.
-    /// Sending the same state event twice to synapse makes the HS drop the second one and return
-    /// 200.
+    /// Sending the same state event twice to synapse makes the HS drop the
+    /// second one and return 200.
     #[serde(rename = "membershipID")]
     pub membership_id: String,
 }
@@ -132,8 +133,8 @@ impl Membership {
     /// Checks if the event is expired.
     ///
     /// Defaults to using `created_ts` of the `Membership`.
-    /// If no `origin_server_ts` is provided and the event does not contain `created_ts`
-    /// the event will be considered as not expired.
+    /// If no `origin_server_ts` is provided and the event does not contain
+    /// `created_ts` the event will be considered as not expired.
     /// In this case, a warning will be logged.
     ///
     /// # Arguments
@@ -185,8 +186,8 @@ pub struct MembershipInit {
     /// The id of the membership.
     ///
     /// This is required to guarantee uniqueness of the event.
-    /// Sending the same state event twice to synapse makes the HS drop the second one and return
-    /// 200.
+    /// Sending the same state event twice to synapse makes the HS drop the
+    /// second one and return 200.
     pub membership_id: String,
 }
 
@@ -218,7 +219,8 @@ impl From<MembershipInit> for Membership {
 #[cfg_attr(test, derive(PartialEq))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Focus {
-    /// Livekit is one possible type of SFU/Focus that can be used for a matrixRTC session.
+    /// Livekit is one possible type of SFU/Focus that can be used for a
+    /// matrixRTC session.
     Livekit(LivekitFocus),
 }
 
@@ -250,8 +252,8 @@ impl LivekitFocus {
 /// The type of the matrixRTC session.
 ///
 /// This is not the application/client used by the user but the
-/// type of matrixRTC session e.g. calling (`m.call`), third-room, whiteboard could be
-/// possible applications.
+/// type of matrixRTC session e.g. calling (`m.call`), third-room, whiteboard
+/// could be possible applications.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 #[serde(tag = "application")]
@@ -283,8 +285,9 @@ impl CallApplicationContent {
     ///
     /// # Arguments
     ///
-    /// * `call_id` - An identifier for calls. All members using the same `call_id` will end up in
-    ///   the same call. Does not need to be a uuid. `""` is used for room scoped calls.
+    /// * `call_id` - An identifier for calls. All members using the same
+    ///   `call_id` will end up in the same call. Does not need to be a uuid.
+    ///   `""` is used for room scoped calls.
     /// * `scope` - Who owns/joins/controls (can modify) the call.
     pub fn new(call_id: String, scope: CallScope) -> Self {
         Self { call_id, scope }
@@ -305,8 +308,8 @@ pub enum CallScope {
 
     /// A user call is owned by a user.
     ///
-    /// Each user can create one there can be multiple per room. They are started and ended by the
-    /// owning user.
+    /// Each user can create one there can be multiple per room. They are
+    /// started and ended by the owning user.
     User,
 
     #[doc(hidden)]
@@ -317,12 +320,12 @@ pub enum CallScope {
 mod tests {
     use std::time::Duration;
 
-    use crate::UnixMillis as TS;
     use serde_json::json;
 
     use super::{
         Application, CallApplicationContent, CallMemberEventContent, CallScope, Focus, LivekitFocus, Membership,
     };
+    use crate::UnixMillis as TS;
 
     fn create_call_member_event_content() -> CallMemberEventContent {
         CallMemberEventContent::new(vec![Membership {

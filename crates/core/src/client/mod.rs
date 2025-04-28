@@ -7,6 +7,7 @@ pub mod directory;
 pub mod discovery;
 pub mod event;
 pub mod filter;
+pub mod http_header;
 pub mod key;
 pub mod media;
 pub mod membership;

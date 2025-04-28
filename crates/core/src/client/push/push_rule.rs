@@ -65,8 +65,8 @@ impl RulesResBody {
 
 /// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}`
 ///
-/// This endpoint allows the creation and modification of push rules for this user ID.
-/// `/v3/` ([spec])
+/// This endpoint allows the creation and modification of push rules for this
+/// user ID. `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleid
 
@@ -144,22 +144,23 @@ pub struct ConditionalReqBody {
 // impl From<NewPushRule> for SetRuleReqBody {
 //     fn from(rule: NewPushRule) -> Self {
 //         match rule {
-//             NewPushRule::Override(r) => SetRuleReqBody::Conditional(ConditionalReqBody {
+//             NewPushRule::Override(r) =>
+// SetRuleReqBody::Conditional(ConditionalReqBody {                 actions:
+// r.actions,                 conditions: r.conditions,
+//             }),
+//             NewPushRule::Content(r) =>
+// SetRuleReqBody::Patterned(PatternedReqBody {                 actions:
+// r.actions,                 pattern: r.pattern,
+//             }),
+//             NewPushRule::Room(r) => SetRuleReqBody::Simple(SimpleReqBody {
+// actions: r.actions }),             NewPushRule::Sender(r) =>
+// SetRuleReqBody::Simple(SimpleReqBody { actions: r.actions }),
+// NewPushRule::Underride(r) => SetRuleReqBody::Conditional(ConditionalReqBody {
 //                 actions: r.actions,
 //                 conditions: r.conditions,
 //             }),
-//             NewPushRule::Content(r) => SetRuleReqBody::Patterned(PatternedReqBody {
-//                 actions: r.actions,
-//                 pattern: r.pattern,
-//             }),
-//             NewPushRule::Room(r) => SetRuleReqBody::Simple(SimpleReqBody { actions: r.actions }),
-//             NewPushRule::Sender(r) => SetRuleReqBody::Simple(SimpleReqBody { actions: r.actions }),
-//             NewPushRule::Underride(r) => SetRuleReqBody::Conditional(ConditionalReqBody {
-//                 actions: r.actions,
-//                 conditions: r.conditions,
-//             }),
-//             _ => unreachable!("variant added to NewPushRule not covered by SetRuleReqBody"),
-//         }
+//             _ => unreachable!("variant added to NewPushRule not covered by
+// SetRuleReqBody"),         }
 //     }
 // }
 
@@ -355,8 +356,8 @@ impl RuleActionsResBody {
 
 /// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/actions`
 ///
-/// This endpoint allows clients to change the actions of a push rule. This can be used to change
-/// the actions of builtin rules.
+/// This endpoint allows clients to change the actions of a push rule. This can
+/// be used to change the actions of builtin rules.
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleidactions

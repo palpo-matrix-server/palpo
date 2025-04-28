@@ -1,6 +1,7 @@
-use crate::RoomVersionId;
-
-use crate::state::{StateError, StateResult};
+use crate::{
+    RoomVersionId,
+    state::{StateError, StateResult},
+};
 
 #[derive(Debug)]
 #[allow(clippy::exhaustive_enums)]

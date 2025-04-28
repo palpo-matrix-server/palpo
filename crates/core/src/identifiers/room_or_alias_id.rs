@@ -1,4 +1,5 @@
-//! Matrix identifiers for places where a room ID or room alias ID are used interchangeably.
+//! Matrix identifiers for places where a room ID or room alias ID are used
+//! interchangeably.
 
 use std::hint::unreachable_unchecked;
 
@@ -9,9 +10,10 @@ use super::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId, server_name::Ser
 
 /// A Matrix [room ID] or a Matrix [room alias ID].
 ///
-/// `RoomOrAliasId` is useful for APIs that accept either kind of room identifier. It is converted
-/// from a string slice, and can be converted back into a string as needed. When converted from a
-/// string slice, the variant is determined by the leading sigil character.
+/// `RoomOrAliasId` is useful for APIs that accept either kind of room
+/// identifier. It is converted from a string slice, and can be converted back
+/// into a string as needed. When converted from a string slice, the variant is
+/// determined by the leading sigil character.
 ///
 /// ```
 /// # crateRoomOrAliasId;
@@ -24,7 +26,7 @@ use super::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId, server_name::Ser
 /// ```
 ///
 /// [room ID]: https://spec.matrix.org/latest/appendices/#room-ids
-/// [room alias ID]: https://spec.matrix.org/latest/appendices/#room-al iases
+/// [room alias ID]: https://spec.matrix.org/latest/appendices/#room-aliases
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst, AsExpression)]
 #[diesel(not_sized, sql_type = diesel::sql_types::Text)]

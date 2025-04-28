@@ -1,7 +1,6 @@
 /// `GET /_matrix/media/*/download/{serverName}/{mediaId}`
 ///
 /// Retrieve content from the media store.
-///
 use std::time::Duration;
 
 use reqwest::Url;
@@ -55,8 +54,9 @@ pub struct ContentReqArgs {
     )]
     pub allow_remote: bool,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -67,10 +67,11 @@ pub struct ContentReqArgs {
     )]
     pub timeout_ms: Duration,
 
-    /// Whether the server may return a 307 or 308 redirect response that points at the
-    /// relevant media content.
+    /// Whether the server may return a 307 or 308 redirect response that points
+    /// at the relevant media content.
     ///
-    /// Unless explicitly set to `true`, the server must return the media content itself.
+    /// Unless explicitly set to `true`, the server must return the media
+    /// content itself.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allow_redirect: bool,
@@ -99,8 +100,9 @@ pub struct ContentWithFileNameReqArgs {
     )]
     pub allow_remote: bool,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -111,10 +113,11 @@ pub struct ContentWithFileNameReqArgs {
     )]
     pub timeout_ms: Duration,
 
-    /// Whether the server may return a 307 or 308 redirect response that points at the
-    /// relevant media content.
+    /// Whether the server may return a 307 or 308 redirect response that points
+    /// at the relevant media content.
     ///
-    /// Unless explicitly set to `true`, the server must return the media content itself.
+    /// Unless explicitly set to `true`, the server must return the media
+    /// content itself.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allow_redirect: bool,
@@ -129,8 +132,8 @@ pub struct ContentWithFileNameReqArgs {
 //     /// The content type of the file that was previously uploaded.
 //     pub content_type: Option<String>,
 
-//     /// The value of the `Content-Disposition` HTTP header, possibly containing the name of the
-//     /// file that was previously uploaded.
+//     /// The value of the `Content-Disposition` HTTP header, possibly
+// containing the name of the     /// file that was previously uploaded.
 //     ///
 //     /// See [MDN] for the syntax.
 //     ///
@@ -172,9 +175,10 @@ pub struct ContentWithFileNameReqArgs {
 //         if let Some(content_disposition) = content_disposition {
 //             res.add_header(CONTENT_DISPOSITION, content_disposition, true);
 //         }
-//         if let Some(cross_origin_resource_policy) = cross_origin_resource_policy {
-//             res.add_header("cross-origin-resource-policy", cross_origin_resource_policy, true);
-//         }
+//         if let Some(cross_origin_resource_policy) =
+// cross_origin_resource_policy {
+// res.add_header("cross-origin-resource-policy", cross_origin_resource_policy,
+// true);         }
 //         res.write_body(data);
 //     }
 // }
@@ -326,8 +330,9 @@ pub struct ContentAsFileNameReqArgs {
     )]
     pub allow_remote: bool,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -338,10 +343,11 @@ pub struct ContentAsFileNameReqArgs {
     )]
     pub timeout_ms: Duration,
 
-    /// Whether the server may return a 307 or 308 redirect response that points at the
-    /// relevant media content.
+    /// Whether the server may return a 307 or 308 redirect response that points
+    /// at the relevant media content.
     ///
-    /// Unless explicitly set to `true`, the server must return the media content itself.
+    /// Unless explicitly set to `true`, the server must return the media
+    /// content itself.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allow_redirect: bool,
@@ -358,8 +364,8 @@ pub struct ContentAsFileNameReqArgs {
 //     #[palpo_api(header = CONTENT_TYPE)]
 //     pub content_type: Option<String>,
 
-//     /// The value of the `Content-Disposition` HTTP header, possibly containing the name of the
-//     /// file that was previously uploaded.
+//     /// The value of the `Content-Disposition` HTTP header, possibly
+// containing the name of the     /// file that was previously uploaded.
 //     ///
 //     /// See [MDN] for the syntax.
 //     ///

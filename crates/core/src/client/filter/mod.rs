@@ -35,16 +35,16 @@ pub enum EventFormat {
 pub struct RoomEventFilter {
     /// A list of event types to exclude.
     ///
-    /// If this list is absent then no event types are excluded. A matching type will be excluded
-    /// even if it is listed in the 'types' filter. A '*' can be used as a wildcard to match any
-    /// sequence of characters.
+    /// If this list is absent then no event types are excluded. A matching type
+    /// will be excluded even if it is listed in the 'types' filter. A '*'
+    /// can be used as a wildcard to match any sequence of characters.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_types: Vec<String>,
 
     /// A list of room IDs to exclude.
     ///
-    /// If this list is absent then no rooms are excluded. A matching room will be excluded even if
-    /// it is listed in the 'rooms' filter.
+    /// If this list is absent then no rooms are excluded. A matching room will
+    /// be excluded even if it is listed in the 'rooms' filter.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_rooms: Vec<OwnedRoomId>,
 
@@ -60,8 +60,8 @@ pub struct RoomEventFilter {
 
     /// A list of sender IDs to exclude.
     ///
-    /// If this list is absent then no senders are excluded. A matching sender will be excluded
-    /// even if it is listed in the 'senders' filter.
+    /// If this list is absent then no senders are excluded. A matching sender
+    /// will be excluded even if it is listed in the 'senders' filter.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_senders: Vec<OwnedUserId>,
 
@@ -73,8 +73,8 @@ pub struct RoomEventFilter {
 
     /// A list of event types to include.
     ///
-    /// If this list is absent then all event types are included. A '*' can be used as a wildcard
-    /// to match any sequence of characters.
+    /// If this list is absent then all event types are included. A '*' can be
+    /// used as a wildcard to match any sequence of characters.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
 
@@ -110,7 +110,8 @@ impl RoomEventFilter {
         Self::default()
     }
 
-    /// Creates a new `RoomEventFilter` that can be used to ignore all room events.
+    /// Creates a new `RoomEventFilter` that can be used to ignore all room
+    /// events.
     pub fn ignore_all() -> Self {
         Self {
             types: Some(vec![]),
@@ -164,8 +165,8 @@ pub struct RoomDataFilter {
     #[serde(default, skip_serializing_if = "crate::serde::is_empty")]
     pub timeline: RoomEventFilter,
 
-    /// The events that aren't recorded in the room history, e.g. typing and receipts, to include
-    /// for rooms.
+    /// The events that aren't recorded in the room history, e.g. typing and
+    /// receipts, to include for rooms.
     #[serde(default, skip_serializing_if = "crate::serde::is_empty")]
     pub ephemeral: RoomEventFilter,
 
@@ -175,16 +176,18 @@ pub struct RoomDataFilter {
 
     /// A list of room IDs to exclude.
     ///
-    /// If this list is absent then no rooms are excluded. A matching room will be excluded even if
-    /// it is listed in the 'rooms' filter. This filter is applied before the filters in
-    /// `ephemeral`, `state`, `timeline` or `account_data`.
+    /// If this list is absent then no rooms are excluded. A matching room will
+    /// be excluded even if it is listed in the 'rooms' filter. This filter
+    /// is applied before the filters in `ephemeral`, `state`, `timeline` or
+    /// `account_data`.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_rooms: Vec<OwnedRoomId>,
 
     /// A list of room IDs to include.
     ///
-    /// If this list is absent then all rooms are included. This filter is applied before the
-    /// filters in `ephemeral`, `state`, `timeline` or `account_data`.
+    /// If this list is absent then all rooms are included. This filter is
+    /// applied before the filters in `ephemeral`, `state`, `timeline` or
+    /// `account_data`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rooms: Option<Vec<OwnedRoomId>>,
 }
@@ -197,7 +200,8 @@ impl RoomDataFilter {
         Self::default()
     }
 
-    /// Creates a new `RoomDataFilter` that can be used to ignore all room events (of any type).
+    /// Creates a new `RoomDataFilter` that can be used to ignore all room
+    /// events (of any type).
     pub fn ignore_all() -> Self {
         Self {
             rooms: Some(vec![]),
@@ -234,9 +238,9 @@ impl RoomDataFilter {
 pub struct NonRoomDataFilter {
     /// A list of event types to exclude.
     ///
-    /// If this list is absent then no event types are excluded. A matching type will be excluded
-    /// even if it is listed in the 'types' filter. A '*' can be used as a wildcard to match any
-    /// sequence of characters.
+    /// If this list is absent then no event types are excluded. A matching type
+    /// will be excluded even if it is listed in the 'types' filter. A '*'
+    /// can be used as a wildcard to match any sequence of characters.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_types: Vec<String>,
 
@@ -252,15 +256,15 @@ pub struct NonRoomDataFilter {
 
     /// A list of event types to include.
     ///
-    /// If this list is absent then all event types are included. A '*' can be used as a wildcard
-    /// to match any sequence of characters.
+    /// If this list is absent then all event types are included. A '*' can be
+    /// used as a wildcard to match any sequence of characters.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
 
     /// A list of sender IDs to exclude.
     ///
-    /// If this list is absent then no senders are excluded. A matching sender will be excluded
-    /// even if it is listed in the 'senders' filter.
+    /// If this list is absent then no senders are excluded. A matching sender
+    /// will be excluded even if it is listed in the 'senders' filter.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_senders: Vec<OwnedUserId>,
 }
@@ -296,17 +300,19 @@ impl NonRoomDataFilter {
 pub struct FilterDefinition {
     /// List of event fields to include.
     ///
-    /// If this list is absent then all fields are included. The entries may include '.' characters
-    /// to indicate sub-fields. So ['content.body'] will include the 'body' field of the 'content'
-    /// object. A literal '.' or '\' character in a field name may be escaped using a '\'. A server
+    /// If this list is absent then all fields are included. The entries may
+    /// include '.' characters to indicate sub-fields. So ['content.body']
+    /// will include the 'body' field of the 'content' object. A literal '.'
+    /// or '\' character in a field name may be escaped using a '\'. A server
     /// may include more fields than were requested.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_fields: Option<Vec<String>>,
 
     /// The format to use for events.
     ///
-    /// 'client' will return the events in a format suitable for clients. 'federation' will return
-    /// the raw event as received over federation. The default is 'client'.
+    /// 'client' will return the events in a format suitable for clients.
+    /// 'federation' will return the raw event as received over federation.
+    /// The default is 'client'.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub event_format: EventFormat,
 
@@ -341,7 +347,8 @@ impl FilterDefinition {
         }
     }
 
-    /// Creates a new `FilterDefinition` with [room member lazy-loading] enabled.
+    /// Creates a new `FilterDefinition` with [room member lazy-loading]
+    /// enabled.
     ///
     /// Redundant membership events are disabled.
     ///
@@ -450,9 +457,11 @@ can_be_empty!(NonRoomDataFilter);
 
 // #[cfg(test)]
 // mod tests {
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
-//     use super::{Filter, FilterDefinition, LazyLoadOptions, RoomDataFilter, RoomEventFilter, UrlFilter};
+//     use super::{Filter, FilterDefinition, LazyLoadOptions, RoomDataFilter,
+// RoomEventFilter, UrlFilter};
 
 //     #[test]
 //     fn deserialize_request() {
@@ -483,8 +492,8 @@ can_be_empty!(NonRoomDataFilter);
 
 //         use crate::client::filter::FilterDefinition;
 
-//         let req = super::Request::new(owned_user_id!("@foo:bar.com"), FilterDefinition::default())
-//             .try_into_http_request::<Vec<u8>>(
+//         let req = super::Request::new(owned_user_id!("@foo:bar.com"),
+// FilterDefinition::default())             .try_into_http_request::<Vec<u8>>(
 //                 "https://matrix.org",
 //                 SendAccessToken::IfRequired("tok"),
 //                 &[MatrixVersion::V1_1],
@@ -508,8 +517,9 @@ can_be_empty!(NonRoomDataFilter);
 //         let filter = FilterDefinition::default();
 //         let filter_str = to_json_value(&filter)?;
 
-//         let incoming_filter = from_json_value::<FilterDefinition>(filter_str)?;
-//         assert!(incoming_filter.is_empty());
+//         let incoming_filter =
+// from_json_value::<FilterDefinition>(filter_str)?;         assert!
+// (incoming_filter.is_empty());
 
 //         Ok(())
 //     }
@@ -519,8 +529,9 @@ can_be_empty!(NonRoomDataFilter);
 //         let filter = RoomDataFilter::default();
 //         let room_filter = to_json_value(filter)?;
 
-//         let incoming_room_filter = from_json_value::<RoomDataFilter>(room_filter)?;
-//         assert!(incoming_room_filter.is_empty());
+//         let incoming_room_filter =
+// from_json_value::<RoomDataFilter>(room_filter)?;         assert!
+// (incoming_room_filter.is_empty());
 
 //         Ok(())
 //     }
@@ -529,8 +540,8 @@ can_be_empty!(NonRoomDataFilter);
 //     fn issue_366() {
 //         let obj = json!({
 //             "lazy_load_members": true,
-//             "filter_json": { "contains_url": true, "types": ["m.room.message"] },
-//             "types": ["m.room.message"],
+//             "filter_json": { "contains_url": true, "types":
+// ["m.room.message"] },             "types": ["m.room.message"],
 //             "not_types": [],
 //             "rooms": null,
 //             "not_rooms": [],

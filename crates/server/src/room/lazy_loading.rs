@@ -1,6 +1,7 @@
-use diesel::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
+
+use diesel::prelude::*;
 
 use crate::AppResult;
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};

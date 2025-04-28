@@ -12,9 +12,9 @@ use crate::events::{audio::Amplitude, file::FileContentBlock, message::TextConte
 
 /// The payload for an extensible voice message.
 ///
-/// This is the new primary type introduced in [MSC3245] and can be sent in rooms with a version
-/// that doesn't support extensible events. See the documentation of the [`message`] module for more
-/// information.
+/// This is the new primary type introduced in [MSC3245] and can be sent in
+/// rooms with a version that doesn't support extensible events. See the
+/// documentation of the [`message`] module for more information.
 ///
 /// [MSC3245]: https://github.com/matrix-org/matrix-spec-proposals/pull/3245
 /// [`message`]: super::message
@@ -51,8 +51,8 @@ pub struct VoiceEventContent {
 }
 
 impl VoiceEventContent {
-    /// Creates a new `VoiceEventContent` with the given fallback representation, file and audio
-    /// details.
+    /// Creates a new `VoiceEventContent` with the given fallback
+    /// representation, file and audio details.
     pub fn new(text: TextContentBlock, file: FileContentBlock, audio_details: VoiceAudioDetailsContentBlock) -> Self {
         Self {
             text,
@@ -63,8 +63,8 @@ impl VoiceEventContent {
         }
     }
 
-    /// Creates a new `VoiceEventContent` with the given plain text fallback representation, file
-    /// and audio details.
+    /// Creates a new `VoiceEventContent` with the given plain text fallback
+    /// representation, file and audio details.
     pub fn with_plain_text(
         plain_text: impl Into<String>,
         file: FileContentBlock,
@@ -93,8 +93,8 @@ pub struct VoiceAudioDetailsContentBlock {
 }
 
 impl VoiceAudioDetailsContentBlock {
-    /// Creates a new `AudioDetailsContentBlock` with the given duration and waveform
-    /// representation.
+    /// Creates a new `AudioDetailsContentBlock` with the given duration and
+    /// waveform representation.
     pub fn new(duration: Duration, waveform: Vec<Amplitude>) -> Self {
         Self { duration, waveform }
     }

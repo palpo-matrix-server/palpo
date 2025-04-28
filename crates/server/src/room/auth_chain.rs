@@ -127,7 +127,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
                 wrong_room_id = ?pdu.room_id,
                 "auth event for incorrect room"
             );
-            return Err(MatrixError::forbidden("auth event for incorrect room").into());
+            return Err(MatrixError::forbidden(None, "auth event for incorrect room").into());
         }
 
         for (auth_event_id, auth_event_sn) in events::table

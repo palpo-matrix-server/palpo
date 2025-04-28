@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -18,8 +19,10 @@ use salvo::prelude::ToSchema;
 use serde::{Deserialize, Serialize, de, ser::SerializeStruct};
 use serde_json::value::from_value as from_json_value;
 
-use crate::push::PushFormat;
-use crate::serde::{JsonObject, JsonValue, RawJsonValue, from_raw_json_value};
+use crate::{
+    push::PushFormat,
+    serde::{JsonObject, JsonValue, RawJsonValue, from_raw_json_value},
+};
 
 /// Information for a pusher using the Push Gateway API.
 #[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]
@@ -33,8 +36,8 @@ pub struct HttpPusherData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<PushFormat>,
 
-    /// iOS (+ macOS?) specific default payload that will be sent to apple push notification
-    /// service.
+    /// iOS (+ macOS?) specific default payload that will be sent to apple push
+    /// notification service.
     ///
     /// For more information, see [Sygnal docs][sygnal].
     ///
@@ -143,8 +146,8 @@ impl<'de> Deserialize<'de> for PusherKind {
 
 /// Defines a pusher.
 ///
-/// To create an instance of this type, first create a `PusherInit` and convert it via
-/// `Pusher::from` / `.into()`.
+/// To create an instance of this type, first create a `PusherInit` and convert
+/// it via `Pusher::from` / `.into()`.
 #[derive(ToSchema, Serialize, Clone, Debug)]
 pub struct Pusher {
     /// Identifiers for this pusher.
@@ -155,13 +158,16 @@ pub struct Pusher {
     #[serde(flatten)]
     pub kind: PusherKind,
 
-    /// A string that will allow the user to identify what application owns this pusher.
+    /// A string that will allow the user to identify what application owns this
+    /// pusher.
     pub app_display_name: String,
 
-    /// A string that will allow the user to identify what device owns this pusher.
+    /// A string that will allow the user to identify what device owns this
+    /// pusher.
     pub device_display_name: String,
 
-    /// The preferred language for receiving notifications (e.g. 'en' or 'en-US')
+    /// The preferred language for receiving notifications (e.g. 'en' or
+    /// 'en-US')
     pub lang: String,
 
     /// Determines which set of device specific rules this pusher executes.
@@ -208,8 +214,8 @@ impl<'de> Deserialize<'de> for Pusher {
 
 /// Initial set of fields of `Pusher`.
 ///
-/// This struct will not be updated even if additional fields are added to `Pusher` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `Pusher` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PusherInit {
@@ -219,16 +225,19 @@ pub struct PusherInit {
     /// The kind of the pusher.
     pub kind: PusherKind,
 
-    /// A string that will allow the user to identify what application owns this pusher.
+    /// A string that will allow the user to identify what application owns this
+    /// pusher.
     pub app_display_name: String,
 
-    /// A string that will allow the user to identify what device owns this pusher.
+    /// A string that will allow the user to identify what device owns this
+    /// pusher.
     pub device_display_name: String,
 
     /// Determines which set of device-specific rules this pusher executes.
     pub profile_tag: Option<String>,
 
-    /// The preferred language for receiving notifications (e.g. 'en' or 'en-US').
+    /// The preferred language for receiving notifications (e.g. 'en' or
+    /// 'en-US').
     pub lang: String,
 }
 
@@ -295,7 +304,8 @@ pub struct CustomPusherData {
 
 /// Information for the pusher implementation itself.
 ///
-/// This is the data dictionary passed in at pusher creation minus the `url` key.
+/// This is the data dictionary passed in at pusher creation minus the `url`
+/// key.
 ///
 /// It can be constructed from [`crate::push::HttpPusherData`] with `::from()` /
 /// `.into()`.
@@ -305,8 +315,8 @@ pub struct PusherData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<PushFormat>,
 
-    /// iOS (+ macOS?) specific default payload that will be sent to apple push notification
-    /// service.
+    /// iOS (+ macOS?) specific default payload that will be sent to apple push
+    /// notification service.
     ///
     /// For more information, see [Sygnal docs][sygnal].
     ///

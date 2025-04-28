@@ -10,11 +10,13 @@ use crate::serde::Base64;
 
 /// The content of an `m.room.third_party_invite` event.
 ///
-/// An invitation to a room issued to a third party identifier, rather than a matrix user ID.
+/// An invitation to a room issued to a third party identifier, rather than a
+/// matrix user ID.
 ///
-/// Acts as an `m.room.member` invite event, where there isn't a target user_id to invite. This
-/// event contains a token and a public key whose private key must be used to sign the token.
-/// Any user who can present that signature may use this invitation to join the target room.
+/// Acts as an `m.room.member` invite event, where there isn't a target user_id
+/// to invite. This event contains a token and a public key whose private key
+/// must be used to sign the token. Any user who can present that signature may
+/// use this invitation to join the target room.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room.third_party_invite", kind = State, state_key_type = String)]
 pub struct RoomThirdPartyInviteEventContent {
@@ -36,8 +38,8 @@ pub struct RoomThirdPartyInviteEventContent {
 }
 
 impl RoomThirdPartyInviteEventContent {
-    /// Creates a new `RoomThirdPartyInviteEventContent` with the given display name, key validity
-    /// url and public key.
+    /// Creates a new `RoomThirdPartyInviteEventContent` with the given display
+    /// name, key validity url and public key.
     pub fn new(display_name: String, key_validity_url: String, public_key: Base64) -> Self {
         Self {
             display_name,
@@ -51,10 +53,12 @@ impl RoomThirdPartyInviteEventContent {
 /// A public key for signing a third party invite token.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PublicKey {
-    /// An optional URL which can be fetched to validate whether the key has been revoked.
+    /// An optional URL which can be fetched to validate whether the key has
+    /// been revoked.
     ///
-    /// The URL must return a JSON object containing a boolean property named 'valid'.
-    /// If this URL is absent, the key must be considered valid indefinitely.
+    /// The URL must return a JSON object containing a boolean property named
+    /// 'valid'. If this URL is absent, the key must be considered valid
+    /// indefinitely.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key_validity_url: Option<String>,
 

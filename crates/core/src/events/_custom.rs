@@ -1,15 +1,17 @@
 use salvo::oapi::ToSchema;
 use serde::Serialize;
 
-use crate::RoomVersionId;
-use crate::events::{
-    EphemeralRoomEventContent, EphemeralRoomEventType, EventContent, EventContentFromType,
-    GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent, MessageLikeEventType,
-    MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent, RedactedMessageLikeEventContent,
-    RedactedStateEventContent, RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent,
-    StateEventType, StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
+use crate::{
+    RoomVersionId,
+    events::{
+        EphemeralRoomEventContent, EphemeralRoomEventType, EventContent, EventContentFromType,
+        GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent, MessageLikeEventType,
+        MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent, RedactedMessageLikeEventContent,
+        RedactedStateEventContent, RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent,
+        StateEventType, StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
+    },
+    serde::RawJsonValue,
 };
-use crate::serde::RawJsonValue;
 
 macro_rules! custom_event_content {
     ($i:ident, $evt:ident) => {
@@ -74,8 +76,8 @@ impl StateEventContent for CustomStateEventContent {
 }
 impl StaticStateEventContent for CustomStateEventContent {
     // Like `StateUnsigned`, but without `prev_content`.
-    // We don't care about `prev_content` since we'd only store the event type that is the same
-    // as in the content.
+    // We don't care about `prev_content` since we'd only store the event type that
+    // is the same as in the content.
     type Unsigned = MessageLikeUnsigned<CustomMessageLikeEventContent>;
     type PossiblyRedacted = Self;
 }

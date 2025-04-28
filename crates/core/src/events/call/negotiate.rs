@@ -2,20 +2,21 @@
 //!
 //! [`m.call.negotiate`]: https://spec.matrix.org/latest/client-server-api/#mcallnegotiate
 
-use crate::{OwnedVoipId, VoipVersionId};
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::SessionDescription;
+use crate::{OwnedVoipId, VoipVersionId};
 
 /// **Added in VoIP version 1.** The content of an `m.call.negotiate` event.
 ///
-/// This event is sent by either party after the call is established to renegotiate it. It can be
-/// used for media pause, hold/resume, ICE restarts and voice/video call up/downgrading.
+/// This event is sent by either party after the call is established to
+/// renegotiate it. It can be used for media pause, hold/resume, ICE restarts
+/// and voice/video call up/downgrading.
 ///
-/// First an event must be sent with an `offer` session description, which is replied to with an
-/// event with an `answer` session description.
+/// First an event must be sent with an `offer` session description, which is
+/// replied to with an event with an `answer` session description.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.call.negotiate", kind = MessageLike)]
 pub struct CallNegotiateEventContent {
@@ -39,8 +40,8 @@ pub struct CallNegotiateEventContent {
 }
 
 impl CallNegotiateEventContent {
-    /// Creates a `CallNegotiateEventContent` with the given call ID, party ID, lifetime and
-    /// description.
+    /// Creates a `CallNegotiateEventContent` with the given call ID, party ID,
+    /// lifetime and description.
     pub fn new(
         call_id: OwnedVoipId,
         party_id: OwnedVoipId,
@@ -57,8 +58,8 @@ impl CallNegotiateEventContent {
         }
     }
 
-    /// Convenience method to create a version 1 `CallNegotiateEventContent` with all the required
-    /// fields.
+    /// Convenience method to create a version 1 `CallNegotiateEventContent`
+    /// with all the required fields.
     pub fn version_1(
         call_id: OwnedVoipId,
         party_id: OwnedVoipId,

@@ -13,9 +13,10 @@ use crate::PrivOwnedStr;
 pub enum AuthenticateError {
     /// insufficient_scope
     ///
-    /// Encountered when authentication is handled by OpenID Connect and the current access token
-    /// isn't authorized for the proper scope for this request. It should be paired with a
-    /// `401` status code and a `M_FORBIDDEN` error.
+    /// Encountered when authentication is handled by OpenID Connect and the
+    /// current access token isn't authorized for the proper scope for this
+    /// request. It should be paired with a `401` status code and a
+    /// `M_FORBIDDEN` error.
     InsufficientScope {
         /// The new scope to request an authorization for.
         scope: String,
@@ -41,8 +42,9 @@ impl AuthenticateError {
             let mut errcode = None;
             let mut attrs = BTreeMap::new();
 
-            // Split the attributes separated by commas and optionally spaces, then split the keys
-            // and the values, with the values optionally surrounded by double quotes.
+            // Split the attributes separated by commas and optionally spaces, then split
+            // the keys and the values, with the values optionally surrounded by
+            // double quotes.
             for (key, value) in val
                 .split(',')
                 .filter_map(|attr| attr.trim().split_once('='))

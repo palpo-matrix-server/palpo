@@ -1,13 +1,17 @@
 //! Public and private key pairs.
 
-use std::collections::BTreeMap;
-use std::fmt::{Debug, Formatter, Result as FmtResult};
+use std::{
+    collections::BTreeMap,
+    fmt::{Debug, Formatter, Result as FmtResult},
+};
 
 use ed25519_dalek::{PUBLIC_KEY_LENGTH, SecretKey, Signer, SigningKey, pkcs8::ALGORITHM_OID};
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, ObjectIdentifier, PrivateKeyInfo, der::zeroize::Zeroizing};
 
-use crate::serde::Base64;
-use crate::signatures::{Algorithm, Error, ParseError, Signature};
+use crate::{
+    serde::Base64,
+    signatures::{Algorithm, Error, ParseError, Signature},
+};
 
 #[cfg(feature = "ring-compat")]
 mod compat;
@@ -35,20 +39,22 @@ pub struct Ed25519KeyPair {
 //         D: Deserializer<'de>,
 //     {
 //         let bytes =
-//             base64::decode(String::deserialize(deserializer).map_err(de::Error::custom)?).map_err(de::Error::custom)?;
-//         let mut parts = bytes.splitn(2, |&b| b == 0xff);
-//         let (version, signing_key) = match (parts.next(), parts.next()) {
-//             (Some(version), Some(signing_key)) =>{(
-//                     String::from_utf8(version.to_vec()).map_err(de::Error::custom)?,
-//                     signing_key,
-//                 )
+//
+// base64::decode(String::deserialize(deserializer).map_err(de::Error::custom)?
+// ).map_err(de::Error::custom)?;         let mut parts = bytes.splitn(2, |&b| b
+// == 0xff);         let (version, signing_key) = match (parts.next(),
+// parts.next()) {             (Some(version), Some(signing_key)) =>{(
+//
+// String::from_utf8(version.to_vec()).map_err(de::Error::custom)?,
+// signing_key,                 )
 //             } ,
 //             (Some(signing_key), None) => ("".into(), signing_key),
-//             _ => return Err(de::Error::custom("Invalid keypair format in database.")),
-//         };
+//             _ => return Err(de::Error::custom("Invalid keypair format in
+// database.")),         };
 //         Ok(Self {
 //             signing_key: SigningKey::from_bytes(
-//                 Self::correct_privkey_from_octolet(signing_key).map_err(de::Error::custom)?,
+//
+// Self::correct_privkey_from_octolet(signing_key).map_err(de::Error::custom)?,
 //             ),
 //             version,
 //         })
@@ -88,20 +94,20 @@ impl Ed25519KeyPair {
     ///
     /// # Parameters
     ///
-    /// * document: PKCS#8 v1/v2 DER-formatted document containing the private (and optionally
-    ///   public) key.
-    /// * version: The "version" of the key used for this signature. Versions are used as an
-    ///   identifier to distinguish signatures generated from different keys but using the same
-    ///   algorithm on the same homeserver.
+    /// * document: PKCS#8 v1/v2 DER-formatted document containing the private
+    ///   (and optionally public) key.
+    /// * version: The "version" of the key used for this signature. Versions
+    ///   are used as an identifier to distinguish signatures generated from
+    ///   different keys but using the same algorithm on the same homeserver.
     ///
     /// # Errors
     ///
-    /// Returns an error if the public and private keys provided are invalid for the implementing
-    /// algorithm.
+    /// Returns an error if the public and private keys provided are invalid for
+    /// the implementing algorithm.
     ///
-    /// Returns an error when the PKCS#8 document had a public key, but it doesn't match the one
-    /// generated from the private key. This is a fallback and extra validation against
-    /// corruption or
+    /// Returns an error when the PKCS#8 document had a public key, but it
+    /// doesn't match the one generated from the private key. This is a
+    /// fallback and extra validation against corruption or
     pub fn from_der(document: &[u8], version: String) -> Result<Self, Error> {
         let signing_key = SigningKey::from_pkcs8_der(document).map_err(Error::DerParse)?;
 
@@ -134,7 +140,8 @@ impl Ed25519KeyPair {
     ///
     /// # Returns
     ///
-    /// Returns a `Vec<u8>` representing a DER-encoded PKCS#8 v2 document (with public key)
+    /// Returns a `Vec<u8>` representing a DER-encoded PKCS#8 v2 document (with
+    /// public key)
     ///
     /// # Errors
     ///

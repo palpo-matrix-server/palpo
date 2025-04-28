@@ -7,13 +7,14 @@ use std::collections::BTreeMap;
 
 use reqwest::Url;
 use salvo::prelude::*;
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 
-use crate::directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server};
-use crate::federation::discovery::ServerSigningKeys;
-use crate::sending::{SendRequest, SendResult};
-use crate::{OwnedServerName, OwnedServerSigningKeyId, UnixMillis};
+use crate::{
+    OwnedServerName, OwnedServerSigningKeyId, UnixMillis,
+    directory::{PublicRoomFilter, QueryCriteria, RoomNetwork, Server},
+    federation::discovery::ServerSigningKeys,
+    sending::{SendRequest, SendResult},
+};
 
 /// `POST /_matrix/federation/*/publicRooms`
 ///
@@ -76,7 +77,8 @@ crate::json_body_modifier!(PublicRoomsReqBody);
 
 #[derive(ToSchema, Serialize, Debug)]
 pub struct ServerResBody {
-    /// The server name to delegate server-server communications to, with optional port.
+    /// The server name to delegate server-server communications to, with
+    /// optional port.
     #[serde(rename = "m.server")]
     pub server: OwnedServerName,
 }
@@ -90,8 +92,8 @@ impl ServerResBody {
 
 /// `POST /_matrix/key/*/query`
 ///
-/// Query for keys from multiple servers in a batch format. The receiving (notary) server must sign
-/// the keys returned by the queried servers.
+/// Query for keys from multiple servers in a batch format. The receiving
+/// (notary) server must sign the keys returned by the queried servers.
 /// `/v2/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixkeyv2query
@@ -116,12 +118,14 @@ pub fn remote_server_keys_batch_request(origin: &str, body: RemoteServerKeysBatc
 pub struct RemoteServerKeysBatchReqBody {
     /// The query criteria.
     ///
-    /// The outer string key on the object is the server name (eg: matrix.org). The inner
-    /// string key is the Key ID to query for the particular server. If no key IDs are given to
-    /// be queried, the notary server should query for all keys. If no servers are given, the
+    /// The outer string key on the object is the server name (eg: matrix.org).
+    /// The inner string key is the Key ID to query for the particular
+    /// server. If no key IDs are given to be queried, the notary server
+    /// should query for all keys. If no servers are given, the
     /// notary server must return an empty server_keys array in the response.
     ///
-    /// The notary server may return multiple keys regardless of the Key IDs given.
+    /// The notary server may return multiple keys regardless of the Key IDs
+    /// given.
     pub server_keys: BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>>,
 }
 crate::json_body_modifier!(RemoteServerKeysBatchReqBody);
@@ -141,8 +145,8 @@ impl RemoteServerKeysBatchResBody {
 }
 /// `GET /_matrix/key/*/query/{serverName}`
 ///
-/// Query for another server's keys. The receiving (notary) server must sign the keys returned by
-/// the queried server.
+/// Query for another server's keys. The receiving (notary) server must sign the
+/// keys returned by the queried server.
 /// `/v2/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixkeyv2queryservername
@@ -171,10 +175,12 @@ pub struct RemoteServerKeysReqArgs {
     #[salvo(parameter(parameter_in = Path))]
     pub server_name: OwnedServerName,
 
-    /// A millisecond POSIX timestamp in milliseconds indicating when the returned certificates
-    /// will need to be valid until to be useful to the requesting server.
+    /// A millisecond POSIX timestamp in milliseconds indicating when the
+    /// returned certificates will need to be valid until to be useful to
+    /// the requesting server.
     ///
-    /// If not supplied, the current time as determined by the receiving server is used.
+    /// If not supplied, the current time as determined by the receiving server
+    /// is used.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default = "UnixMillis::now")]
     pub minimum_valid_until_ts: UnixMillis,
@@ -243,7 +249,8 @@ impl ServerVersionResBody {
 #[derive(ToSchema, Serialize, Default, Debug)]
 
 pub struct ServerVersionsResBody {
-    /// A list of Matrix Server API protocol versions supported by the homeserver.
+    /// A list of Matrix Server API protocol versions supported by the
+    /// homeserver.
     pub versions: Vec<String>,
 }
 impl ServerVersionsResBody {

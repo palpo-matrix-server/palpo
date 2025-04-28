@@ -10,17 +10,20 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::AnyStrippedStateEvent;
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::{RawJson, RawJsonValue};
-use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId};
+use crate::{
+    OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
+    events::AnyStrippedStateEvent,
+    sending::{SendRequest, SendResult},
+    serde::{RawJson, RawJsonValue},
+};
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
 //     authentication: ServerSignatures,
 //     history: {
-//         unstable => "/_matrix/federation/unstable/xyz.amorgan.knock/make_knock/:room_id/:user_id",
-//         1.1 => "/_matrix/federation/v1/make_knock/:room_id/:user_id",
+//         unstable =>
+// "/_matrix/federation/unstable/xyz.amorgan.knock/make_knock/:room_id/:user_id"
+// ,         1.1 => "/_matrix/federation/v1/make_knock/:room_id/:user_id",
 //     }
 // };
 
@@ -75,8 +78,8 @@ impl MakeKnockResBody {
 
 /// `PUT /_matrix/federation/*/send_knock/{room_id}/{event_id}`
 ///
-/// Submits a signed knock event to the resident homeserver for it to accept into the room's graph.
-/// `/v1/` ([spec])
+/// Submits a signed knock event to the resident homeserver for it to accept
+/// into the room's graph. `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1send_knockroomideventid
 
@@ -85,9 +88,10 @@ impl MakeKnockResBody {
 //     rate_limited: false,
 //     authentication: ServerSignatures,
 //     history: {
-//         unstable => "/_matrix/federation/unstable/xyz.amorgan.knock/send_knock/:room_id/:event_id",
-//         1.1 => "/_matrix/federation/v1/send_knock/:room_id/:event_id",
-//     }
+//         unstable =>
+// "/_matrix/federation/unstable/xyz.amorgan.knock/send_knock/:room_id/:
+// event_id",         1.1 =>
+// "/_matrix/federation/v1/send_knock/:room_id/:event_id",     }
 // };
 
 pub fn send_knock_request(origin: &str, args: SendKnockReqArgs, body: SendKnockReqBody) -> SendResult<SendRequest> {
@@ -132,7 +136,8 @@ pub struct SendKnockResBody {
 }
 
 impl SendKnockResBody {
-    /// Creates a new `Response` with the given public room metadata state events.
+    /// Creates a new `Response` with the given public room metadata state
+    /// events.
     pub fn new(knock_room_state: Vec<RawJson<AnyStrippedStateEvent>>) -> Self {
         Self { knock_room_state }
     }

@@ -1,14 +1,12 @@
-use as_variant::as_variant;
 use salvo::oapi::ToSchema;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use super::{AddMentions, ForwardThread, MessageType, OriginalRoomMessageEvent, Relation, RoomMessageEventContent};
-use crate::events::{
-    AnySyncTimelineEvent, Mentions,
-    relation::{InReplyTo, Thread},
-    room::message::{FormattedBody, reply::OriginalEventData},
+use super::{
+    AddMentions, ForwardThread, MessageType, Relation, ReplacementMetadata, ReplyMetadata, ReplyWithinThread,
+    RoomMessageEventContent,
 };
-use crate::{OwnedEventId, OwnedUserId, RoomId, UserId, serde::RawJson};
+use crate::events::Mentions;
+use crate::events::relation::{InReplyTo, Replacement, Thread};
 
 /// Form of [`RoomMessageEventContent`] without relation.
 #[derive(ToSchema, Clone, Debug, Serialize)]
@@ -27,7 +25,8 @@ pub struct RoomMessageEventContentWithoutRelation {
 }
 
 impl RoomMessageEventContentWithoutRelation {
-    /// Creates a new `RoomMessageEventContentWithoutRelation` with the given `MessageType`.
+    /// Creates a new `RoomMessageEventContentWithoutRelation` with the given
+    /// `MessageType`.
     pub fn new(msgtype: MessageType) -> Self {
         Self {
             msgtype,
@@ -83,7 +82,8 @@ impl RoomMessageEventContentWithoutRelation {
         Self::new(MessageType::emote_markdown(body))
     }
 
-    /// Transform `self` into a `RoomMessageEventContent` with the given relation.
+    /// Transform `self` into a `RoomMessageEventContent` with the given
+    /// relation.
     pub fn with_relation(
         self,
         relates_to: Option<Relation<RoomMessageEventContentWithoutRelation>>,
@@ -96,122 +96,155 @@ impl RoomMessageEventContentWithoutRelation {
         }
     }
 
-    /// Turns `self` into a reply to the given message.
+    /// Turns `self` into a [rich reply] to the message using the given metadata.
     ///
-    /// Takes the `body` / `formatted_body` (if any) in `self` for the main text and prepends a
-    /// quoted version of `original_message`. Also sets the `in_reply_to` field inside `relates_to`,
-    /// and optionally the `rel_type` to `m.thread` if the `original_message is in a thread and
-    /// thread forwarding is enabled.
-    #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/rich_reply.md"))]
+    /// Sets the `in_reply_to` field inside `relates_to`, and optionally the `rel_type` to
+    /// `m.thread` if the metadata has a `thread` and `ForwardThread::Yes` is used.
     ///
-    /// # Panics
+    /// If `AddMentions::Yes` is used, the `sender` in the metadata is added as a user mention.
     ///
-    /// Panics if `self` has a `formatted_body` with a format other than HTML.
+    /// [rich reply]: https://spec.matrix.org/latest/client-server-api/#rich-replies
     #[track_caller]
-    pub fn make_reply_to(
+    pub fn make_reply_to<'a>(
         mut self,
-        original_message: &OriginalRoomMessageEvent,
+        metadata: impl Into<ReplyMetadata<'a>>,
         forward_thread: ForwardThread,
         add_mentions: AddMentions,
     ) -> RoomMessageEventContent {
-        self.msgtype.add_reply_fallback(original_message.into());
-        let original_event_id = original_message.event_id.clone();
+        let metadata = metadata.into();
+        let original_event_id = metadata.event_id.to_owned();
 
-        let original_thread_id = if forward_thread == ForwardThread::Yes {
-            original_message
-                .content
-                .relates_to
-                .as_ref()
-                .and_then(as_variant!(Relation::Thread))
-                .map(|thread| thread.event_id.clone())
+        let original_thread_id = metadata
+            .thread
+            .filter(|_| forward_thread == ForwardThread::Yes)
+            .map(|thread| thread.event_id.clone());
+        let relates_to = if let Some(event_id) = original_thread_id {
+            Relation::Thread(Thread::plain(event_id.to_owned(), original_event_id.to_owned()))
         } else {
-            None
+            Relation::Reply {
+                in_reply_to: InReplyTo {
+                    event_id: original_event_id.to_owned(),
+                },
+            }
         };
 
-        let sender_for_mentions = (add_mentions == AddMentions::Yes).then_some(&*original_message.sender);
+        if add_mentions == AddMentions::Yes {
+            self.mentions
+                .get_or_insert_with(Mentions::new)
+                .user_ids
+                .insert(metadata.sender.to_owned());
+        }
 
-        self.make_reply_tweaks(original_event_id, original_thread_id, sender_for_mentions)
+        self.with_relation(Some(relates_to))
     }
 
-    /// Turns `self` into a reply to the given raw event.
+    /// Turns `self` into a new message for a [thread], that is optionally a reply.
     ///
-    /// Takes the `body` / `formatted_body` (if any) in `self` for the main text and prepends a
-    /// quoted version of the `body` of `original_event` (if any). Also sets the `in_reply_to` field
-    /// inside `relates_to`, and optionally the `rel_type` to `m.thread` if the
-    /// `original_message is in a thread and thread forwarding is enabled.
+    /// Looks for the `thread` in the given metadata. If it exists, this message will be in the same
+    /// thread. If it doesn't, a new thread is created with the `event_id` in the metadata as the
+    /// root.
     ///
-    /// It is recommended to use [`Self::make_reply_to()`] for replies to `m.room.message` events,
-    /// as the generated fallback is better for some `msgtype`s.
+    /// It also sets the `in_reply_to` field inside `relates_to` to point the `event_id`
+    /// in the metadata. If `ReplyWithinThread::Yes` is used, the metadata should be constructed
+    /// from the event to make a reply to, otherwise it should be constructed from the latest
+    /// event in the thread.
     ///
-    /// Note that except for the panic below, this is infallible. Which means that if a field is
-    /// missing when deserializing the data, the changes that require it will not be applied. It
-    /// will still at least apply the `m.in_reply_to` relation to this content.
+    /// If `AddMentions::Yes` is used, the `sender` in the metadata is added as a user mention.
+    ///
+    /// [thread]: https://spec.matrix.org/latest/client-server-api/#threading
+    pub fn make_for_thread<'a>(
+        self,
+        metadata: impl Into<ReplyMetadata<'a>>,
+        is_reply: ReplyWithinThread,
+        add_mentions: AddMentions,
+    ) -> RoomMessageEventContent {
+        let metadata = metadata.into();
+
+        let mut content = if is_reply == ReplyWithinThread::Yes {
+            self.make_reply_to(metadata, ForwardThread::No, add_mentions)
+        } else {
+            self.into()
+        };
+
+        let thread_root = if let Some(Thread { event_id, .. }) = &metadata.thread {
+            event_id.to_owned()
+        } else {
+            metadata.event_id.to_owned()
+        };
+
+        content.relates_to = Some(Relation::Thread(Thread {
+            event_id: thread_root,
+            in_reply_to: Some(InReplyTo {
+                event_id: metadata.event_id.to_owned(),
+            }),
+            is_falling_back: is_reply == ReplyWithinThread::No,
+        }));
+
+        content
+    }
+
+    /// Turns `self` into a [replacement] (or edit) for a given message.
+    ///
+    /// The first argument after `self` can be `&OriginalRoomMessageEvent` or
+    /// `&OriginalSyncRoomMessageEvent` if you don't want to create `ReplacementMetadata` separately
+    /// before calling this function.
+    ///
+    /// This takes the content and sets it in `m.new_content`, and modifies the `content` to include
+    /// a fallback.
+    ///
+    /// If this message contains [`Mentions`], they are copied into `m.new_content` to keep the same
+    /// mentions, but the ones in `content` are filtered with the ones in the
+    /// [`ReplacementMetadata`] so only new mentions will trigger a notification.
     ///
     /// # Panics
     ///
     /// Panics if `self` has a `formatted_body` with a format other than HTML.
+    ///
+    /// [replacement]: https://spec.matrix.org/latest/client-server-api/#event-replacements
     #[track_caller]
-    pub fn make_reply_to_raw(
-        mut self,
-        original_event: &RawJson<AnySyncTimelineEvent>,
-        original_event_id: OwnedEventId,
-        room_id: &RoomId,
-        forward_thread: ForwardThread,
-        add_mentions: AddMentions,
-    ) -> RoomMessageEventContent {
-        #[derive(Deserialize)]
-        struct ContentDeHelper {
-            body: Option<String>,
-            #[serde(flatten)]
-            formatted: Option<FormattedBody>,
-            #[cfg(feature = "unstable-msc1767")]
-            #[serde(rename = "org.matrix.msc1767.text")]
-            text: Option<String>,
-            #[serde(rename = "m.relates_to")]
-            relates_to: Option<crate::events::room::encrypted::Relation>,
-        }
+    pub fn make_replacement(mut self, metadata: impl Into<ReplacementMetadata>) -> RoomMessageEventContent {
+        let metadata = metadata.into();
 
-        let sender = original_event.get_field::<OwnedUserId>("sender").ok().flatten();
-        let content = original_event.get_field::<ContentDeHelper>("content").ok().flatten();
-        let relates_to = content.as_ref().and_then(|c| c.relates_to.as_ref());
+        let mentions = self.mentions.take();
 
-        let content_body = content.as_ref().and_then(|c| {
-            let body = c.body.as_deref();
-            #[cfg(feature = "unstable-msc1767")]
-            let body = body.or(c.text.as_deref());
+        // Only set mentions that were not there before.
+        if let Some(mentions) = &mentions {
+            let new_mentions = metadata
+                .mentions
+                .map(|old_mentions| {
+                    let mut new_mentions = Mentions::new();
 
-            Some((c, body?))
-        });
+                    new_mentions.user_ids = mentions
+                        .user_ids
+                        .iter()
+                        .filter(|u| !old_mentions.user_ids.contains(*u))
+                        .cloned()
+                        .collect();
 
-        // Only apply fallback if we managed to deserialize raw event.
-        if let (Some(sender), Some((content, body))) = (&sender, content_body) {
-            let is_reply = matches!(
-                content.relates_to,
-                Some(crate::events::room::encrypted::Relation::Reply { .. })
-            );
-            let data = OriginalEventData {
-                body,
-                formatted: content.formatted.as_ref(),
-                is_emote: false,
-                is_reply,
-                room_id,
-                event_id: &original_event_id,
-                sender,
-            };
+                    new_mentions.room = mentions.room && !old_mentions.room;
 
-            self.msgtype.add_reply_fallback(data);
-        }
+                    new_mentions
+                })
+                .unwrap_or_else(|| mentions.clone());
 
-        let original_thread_id = if forward_thread == ForwardThread::Yes {
-            relates_to
-                .and_then(as_variant!(crate::events::room::encrypted::Relation::Thread))
-                .map(|thread| thread.event_id.clone())
-        } else {
-            None
+            self.mentions = Some(new_mentions);
         };
 
-        let sender_for_mentions = sender.as_deref().filter(|_| add_mentions == AddMentions::Yes);
-        self.make_reply_tweaks(original_event_id, original_thread_id, sender_for_mentions)
+        // Prepare relates_to with the untouched msgtype.
+        let relates_to = Relation::Replacement(Replacement {
+            event_id: metadata.event_id,
+            new_content: RoomMessageEventContentWithoutRelation {
+                msgtype: self.msgtype.clone(),
+                mentions,
+            },
+        });
+
+        self.msgtype.make_replacement_body();
+
+        let mut content = RoomMessageEventContent::from(self);
+        content.relates_to = Some(relates_to);
+
+        content
     }
 
     /// Add the given [mentions] to this event.
@@ -225,32 +258,6 @@ impl RoomMessageEventContentWithoutRelation {
         self.mentions.get_or_insert_with(Mentions::new).add(mentions);
         self
     }
-
-    fn make_reply_tweaks(
-        mut self,
-        original_event_id: OwnedEventId,
-        original_thread_id: Option<OwnedEventId>,
-        sender_for_mentions: Option<&UserId>,
-    ) -> RoomMessageEventContent {
-        let relates_to = if let Some(event_id) = original_thread_id {
-            Relation::Thread(Thread::plain(event_id.to_owned(), original_event_id.to_owned()))
-        } else {
-            Relation::Reply {
-                in_reply_to: InReplyTo {
-                    event_id: original_event_id.to_owned(),
-                },
-            }
-        };
-
-        if let Some(sender) = sender_for_mentions {
-            self.mentions
-                .get_or_insert_with(Mentions::new)
-                .user_ids
-                .insert(sender.to_owned());
-        }
-
-        self.with_relation(Some(relates_to))
-    }
 }
 
 impl From<MessageType> for RoomMessageEventContentWithoutRelation {
@@ -263,5 +270,16 @@ impl From<RoomMessageEventContent> for RoomMessageEventContentWithoutRelation {
     fn from(value: RoomMessageEventContent) -> Self {
         let RoomMessageEventContent { msgtype, mentions, .. } = value;
         Self { msgtype, mentions }
+    }
+}
+
+impl From<RoomMessageEventContentWithoutRelation> for RoomMessageEventContent {
+    fn from(value: RoomMessageEventContentWithoutRelation) -> Self {
+        let RoomMessageEventContentWithoutRelation { msgtype, mentions } = value;
+        Self {
+            msgtype,
+            relates_to: None,
+            mentions,
+        }
     }
 }

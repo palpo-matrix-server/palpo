@@ -46,8 +46,9 @@ pub enum MediaSource {
     Encrypted(Box<EncryptedFile>),
 }
 
-// Custom implementation of `Deserialize`, because serde doesn't guarantee what variant will be
-// deserialized for "externally tagged"¹ enums where multiple "tag" fields exist.
+// Custom implementation of `Deserialize`, because serde doesn't guarantee what
+// variant will be deserialized for "externally tagged"¹ enums where multiple
+// "tag" fields exist.
 //
 // ¹ https://serde.rs/enum-representations.html
 impl<'de> Deserialize<'de> for MediaSource {
@@ -142,8 +143,8 @@ impl ThumbnailInfo {
 
 /// A file sent to a room with end-to-end encryption enabled.
 ///
-/// To create an instance of this type, first create a `EncryptedFileInit` and convert it via
-/// `EncryptedFile::from` / `.into()`.
+/// To create an instance of this type, first create a `EncryptedFileInit` and
+/// convert it via `EncryptedFile::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct EncryptedFile {
     /// The URL to the file.
@@ -152,10 +153,12 @@ pub struct EncryptedFile {
     /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
     pub key: JsonWebKey,
 
-    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded base64.
+    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded
+    /// base64.
     pub iv: Base64,
 
-    /// A map from an algorithm name to a hash of the ciphertext, encoded as unpadded base64.
+    /// A map from an algorithm name to a hash of the ciphertext, encoded as
+    /// unpadded base64.
     ///
     /// Clients should support the SHA-256 hash, which uses the key sha256.
     pub hashes: BTreeMap<String, Base64>,
@@ -168,8 +171,8 @@ pub struct EncryptedFile {
 
 /// Initial set of fields of `EncryptedFile`.
 ///
-/// This struct will not be updated even if additional fields are added to `EncryptedFile` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `EncryptedFile` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct EncryptedFileInit {
@@ -179,10 +182,12 @@ pub struct EncryptedFileInit {
     /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
     pub key: JsonWebKey,
 
-    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded base64.
+    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded
+    /// base64.
     pub iv: Base64,
 
-    /// A map from an algorithm name to a hash of the ciphertext, encoded as unpadded base64.
+    /// A map from an algorithm name to a hash of the ciphertext, encoded as
+    /// unpadded base64.
     ///
     /// Clients should support the SHA-256 hash, which uses the key sha256.
     pub hashes: BTreeMap<String, Base64>,
@@ -214,8 +219,8 @@ impl From<EncryptedFileInit> for EncryptedFile {
 
 /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
 ///
-/// To create an instance of this type, first create a `JsonWebKeyInit` and convert it via
-/// `JsonWebKey::from` / `.into()`.
+/// To create an instance of this type, first create a `JsonWebKeyInit` and
+/// convert it via `JsonWebKey::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct JsonWebKey {
     /// Key type.
@@ -245,8 +250,8 @@ pub struct JsonWebKey {
 
 /// Initial set of fields of `JsonWebKey`.
 ///
-/// This struct will not be updated even if additional fields are added to `JsonWebKey` in a new
-/// (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `JsonWebKey` in a new (non-breaking) release of the Matrix specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct JsonWebKeyInit {

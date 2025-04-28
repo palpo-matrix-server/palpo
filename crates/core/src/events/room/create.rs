@@ -6,8 +6,11 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{EmptyStateKey, RedactContent, RedactedStateEventContent};
-use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId, room::RoomType};
+use crate::{
+    OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
+    events::{EmptyStateKey, RedactContent, RedactedStateEventContent},
+    room::RoomType,
+};
 
 /// The content of an `m.room.create` event.
 ///
@@ -21,13 +24,14 @@ pub struct RoomCreateEventContent {
     ///
     /// This is set by the homeserver.
     ///
-    /// This is required in room versions 1 trough 10, but is removed starting from room version
-    /// 11.
+    /// This is required in room versions 1 trough 10, but is removed starting
+    /// from room version 11.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[deprecated = "Since Matrix 1.8. This field was removed in Room version 11, clients should use the event's sender instead"]
     pub creator: Option<OwnedUserId>,
 
-    /// Whether or not this room's data should be transferred to other homeservers.
+    /// Whether or not this room's data should be transferred to other
+    /// homeservers.
     #[serde(
         rename = "m.federate",
         default = "crate::serde::default_true",
@@ -41,7 +45,8 @@ pub struct RoomCreateEventContent {
     #[serde(default = "default_room_version_id")]
     pub room_version: RoomVersionId,
 
-    /// A reference to the room this room replaces, if the previous room was upgraded.
+    /// A reference to the room this room replaces, if the previous room was
+    /// upgraded.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub predecessor: Option<PreviousRoom>,
 
@@ -53,8 +58,8 @@ pub struct RoomCreateEventContent {
 }
 
 impl RoomCreateEventContent {
-    /// Creates a new `RoomCreateEventContent` with the given creator, as required for room versions
-    /// 1 through 10.
+    /// Creates a new `RoomCreateEventContent` with the given creator, as
+    /// required for room versions 1 through 10.
     pub fn new_v1(creator: OwnedUserId) -> Self {
         Self {
             creator: Some(creator),
@@ -65,8 +70,8 @@ impl RoomCreateEventContent {
         }
     }
 
-    /// Creates a new `RoomCreateEventContent` with the default values and no creator, as introduced
-    /// in room version 11.
+    /// Creates a new `RoomCreateEventContent` with the default values and no
+    /// creator, as introduced in room version 11.
     ///
     /// The room version is set to [`RoomVersionId::V11`].
     pub fn new_v11() -> Self {
@@ -129,10 +134,10 @@ fn default_room_version_id() -> RoomVersionId {
 ///
 /// The redaction rules of this event changed with room version 11:
 ///
-/// - In room versions 1 through 10, the `creator` field was preserved during redaction, starting
-///   from room version 11 the field is removed.
-/// - In room versions 1 through 10, all the other fields were redacted, starting from room version
-///   11 all the fields are preserved.
+/// - In room versions 1 through 10, the `creator` field was preserved during
+///   redaction, starting from room version 11 the field is removed.
+/// - In room versions 1 through 10, all the other fields were redacted,
+///   starting from room version 11 all the fields are preserved.
 pub type RedactedRoomCreateEventContent = RoomCreateEventContent;
 
 impl RedactedStateEventContent for RedactedRoomCreateEventContent {
@@ -143,7 +148,8 @@ impl RedactedStateEventContent for RedactedRoomCreateEventContent {
 // mod tests {
 //     use crate::{owned_user_id, RoomVersionId};
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{RoomCreateEventContent, RoomType};
 
@@ -192,10 +198,10 @@ impl RedactedStateEventContent for RedactedRoomCreateEventContent {
 //             "room_version": "4"
 //         });
 
-//         let content = from_json_value::<RoomCreateEventContent>(json).unwrap();
-//         assert_eq!(content.creator.unwrap(), "@carl:example.com");
-//         assert!(content.federate);
-//         assert_eq!(content.room_version, RoomVersionId::V4);
+//         let content =
+// from_json_value::<RoomCreateEventContent>(json).unwrap();         assert_eq!
+// (content.creator.unwrap(), "@carl:example.com");         assert!(content.
+// federate);         assert_eq!(content.room_version, RoomVersionId::V4);
 //         assert_matches!(content.predecessor, None);
 //         assert_eq!(content.room_type, None);
 //     }
@@ -209,10 +215,10 @@ impl RedactedStateEventContent for RedactedRoomCreateEventContent {
 //             "type": "m.space"
 //         });
 
-//         let content = from_json_value::<RoomCreateEventContent>(json).unwrap();
-//         assert_eq!(content.creator.unwrap(), "@carl:example.com");
-//         assert!(content.federate);
-//         assert_eq!(content.room_version, RoomVersionId::V4);
+//         let content =
+// from_json_value::<RoomCreateEventContent>(json).unwrap();         assert_eq!
+// (content.creator.unwrap(), "@carl:example.com");         assert!(content.
+// federate);         assert_eq!(content.room_version, RoomVersionId::V4);
 //         assert_matches!(content.predecessor, None);
 //         assert_eq!(content.room_type, Some(RoomType::Space));
 //     }

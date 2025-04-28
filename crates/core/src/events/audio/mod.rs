@@ -18,8 +18,9 @@ use super::{
 
 /// The payload for an extensible audio message.
 ///
-/// This is the new primary type introduced in [MSC3927] and should only be sent in rooms with a
-/// version that supports it. See the d ocumentation of the [`message`] module for more information.
+/// This is the new primary type introduced in [MSC3927] and should only be sent
+/// in rooms with a version that supports it. See the d ocumentation of the
+/// [`message`] module for more information.
 ///
 /// [MSC3927]: https://github.com/matrix-org/matrix-spec-proposals/pull/3927
 /// [`message`]: super::message
@@ -72,8 +73,8 @@ impl AudioEventContent {
         }
     }
 
-    /// Creates a new `AudioEventContent` with the given plain text fallback representation and
-    /// file.
+    /// Creates a new `AudioEventContent` with the given plain text fallback
+    /// representation and file.
     pub fn with_plain_text(plain_text: impl Into<String>, file: FileContentBlock) -> Self {
         Self {
             text: TextContentBlock::plain(plain_text),

@@ -1,11 +1,11 @@
 //! Errors that can be sent from the homeserver.
 
-use std::error::Error as StdError;
-use std::iter::FromIterator;
-use std::{fmt, time::Duration};
+use std::{error::Error as StdError, fmt, iter::FromIterator, num::ParseIntError};
 
-use salvo::http::{Response, StatusCode, header};
-use salvo::writing::Scribe;
+use salvo::{
+    http::{Response, StatusCode, header},
+    writing::Scribe,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 
@@ -15,8 +15,10 @@ mod kind;
 /// Deserialize and Serialize implementations for ErrorKind.
 /// Separate module because it's a lot of code.
 mod kind_serde;
-use crate::RoomVersionId;
 pub use kind::*;
+use kind_serde::{ErrorCode, RetryAfter};
+
+use crate::RoomVersionId;
 
 macro_rules! simple_kind_fns {
     ($($fname:ident, $kind:ident;)+) => {
@@ -71,52 +73,72 @@ impl MatrixError {
         }
     }
     simple_kind_fns! {
-        forbidden, Forbidden;
-        missing_token, MissingToken;
-        bad_json, BadJson;
-        not_json, NotJson;
-        not_found, NotFound;
-        unknown, Unknown;
-        unrecognized, Unrecognized;
-        unauthorized, Unauthorized;
-        user_deactivated, UserDeactivated;
-        user_in_use, UserInUse;
-        invalid_username, InvalidUsername;
-        room_in_use, RoomInUse;
-        invalid_room_state, InvalidRoomState;
-        threepid_in_use, ThreepidInUse;
-        threepid_not_found, ThreepidNotFound;
-        threepid_auth_failed, ThreepidAuthFailed;
-        threepid_denied, ThreepidDenied;
-        server_not_trusted, ServerNotTrusted;
-        unsupported_room_version, UnsupportedRoomVersion;
-        bad_state, BadState;
-        guest_access_forbidden, GuestAccessForbidden;
-        captcha_needed, CaptchaNeeded;
-        captcha_invalid, CaptchaInvalid;
-        missing_param, MissingParam;
-        invalid_param, InvalidParam;
-        too_large, TooLarge;
-        exclusive, Exclusive;
-        cannot_leave_server_notice_room, CannotLeaveServerNoticeRoom;
-        weak_password, WeakPassword;
-        unable_to_authorize_join, UnableToAuthorizeJoin;
-        unable_to_grant_join, UnableToGrantJoin;
         bad_alias, BadAlias;
-        duplicate_annotation, DuplicateAnnotation;
-        not_yet_uploaded, NotYetUploaded;
+        bad_json, BadJson;
+        bad_state, BadState;
+        cannot_leave_server_notice_room, CannotLeaveServerNoticeRoom;
         cannot_overwrite_media, CannotOverwriteMedia;
-        unknown_pos, UnknownPos;
-        url_not_set, UrlNotSet;
-        bad_status, BadStatus;
+        captcha_invalid, CaptchaInvalid;
+        captcha_needed, CaptchaNeeded;
         connection_failed, ConnectionFailed;
         connection_timeout, ConnectionTimeout;
+        duplicate_annotation, DuplicateAnnotation;
+        exclusive, Exclusive;
+        guest_access_forbidden, GuestAccessForbidden;
+        invalid_param, InvalidParam;
+        invalid_room_state, InvalidRoomState;
+        invalid_username, InvalidUsername;
+        missing_param, MissingParam;
+        missing_token, MissingToken;
+        not_found, NotFound;
+        not_json, NotJson;
+        not_yet_uploaded, NotYetUploaded;
+        room_in_use, RoomInUse;
+        server_not_trusted, ServerNotTrusted;
+        threepid_auth_failed, ThreepidAuthFailed;
+        threepid_denied, ThreepidDenied;
+        threepid_in_use, ThreepidInUse;
+        threepid_medium_not_supported, ThreepidMediumNotSupported;
+        threepid_not_found, ThreepidNotFound;
+        too_large, TooLarge;
+        unable_to_authorize_join, UnableToAuthorizeJoin;
+        unable_to_grant_join, UnableToGrantJoin;
+        unauthorized, Unauthorized;
+        unknown, Unknown;
+        unrecognized, Unrecognized;
+        unsupported_room_version, UnsupportedRoomVersion;
+        url_not_set, UrlNotSet;
+        user_deactivated, UserDeactivated;
+        user_in_use, UserInUse;
+        user_locked, UserLocked;
+        user_suspended, UserSuspended;
+        weak_password, WeakPassword;
+    }
+
+    pub fn bad_status(status: Option<http::StatusCode>, body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::BadStatus { status, body: None }, body)
+    }
+    #[cfg(feature = "unstable-msc2967")]
+    pub fn forbidden(authenticate: Option<AuthenticateError>, body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::Forbidden { authenticate }, body)
+    }
+    #[cfg(not(feature = "unstable-msc2967"))]
+    pub fn forbidden(body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::Forbidden {}, body)
+    }
+    #[cfg(feature = "unstable-msc4186")]
+    pub fn unknown_pos(body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::UnknownPos, body)
+    }
+    #[cfg(feature = "unstable-msc3843")]
+    pub fn unactionable(body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::Unactionable, body)
     }
     pub fn unknown_token(soft_logout: bool, body: impl Into<ErrorBody>) -> Self {
         Self::new(ErrorKind::UnknownToken { soft_logout }, body)
     }
-    pub fn limit_exceeded(retry_after_ms: Option<Duration>, body: impl Into<ErrorBody>) -> Self {
-        Self::new(ErrorKind::LimitExceeded { retry_after_ms }, body)
+    pub fn limit_exceeded(retry_after: Option<RetryAfter>, body: impl Into<ErrorBody>) -> Self {
+        Self::new(ErrorKind::LimitExceeded { retry_after }, body)
     }
     pub fn incompatible_room_version(room_version: RoomVersionId, body: impl Into<ErrorBody>) -> Self {
         Self::new(ErrorKind::IncompatibleRoomVersion { room_version }, body)
@@ -143,7 +165,7 @@ impl Serialize for MatrixError {
 impl fmt::Display for MatrixError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let code = self.status_code.unwrap_or(StatusCode::BAD_REQUEST).as_u16();
-        write!(f, "[{code} / {}]", self.kind)
+        write!(f, "[{code} / {}]", self.kind.code())
     }
 }
 
@@ -158,7 +180,9 @@ impl Scribe for MatrixError {
             let code = self.status_code.unwrap_or_else(|| {
                 use ErrorKind::*;
                 match self.kind.clone() {
-                    Forbidden | GuestAccessForbidden | ThreepidAuthFailed | ThreepidDenied => StatusCode::FORBIDDEN,
+                    Forbidden { .. } | GuestAccessForbidden | ThreepidAuthFailed | ThreepidDenied => {
+                        StatusCode::FORBIDDEN
+                    }
                     Unauthorized | UnknownToken { .. } | MissingToken => StatusCode::UNAUTHORIZED,
                     NotFound | Unrecognized => StatusCode::NOT_FOUND,
                     LimitExceeded { .. } => StatusCode::TOO_MANY_REQUESTS,
@@ -177,7 +201,7 @@ impl Scribe for MatrixError {
         };
 
         let Self { kind, mut body, .. } = self;
-        body.0.insert("errcode".to_owned(), kind.to_string().into());
+        body.0.insert("errcode".to_owned(), kind.code().to_string().into());
 
         let bytes: Vec<u8> = crate::serde::json_to_buf(&body.0).unwrap();
         res.write_body(bytes).ok();
@@ -195,6 +219,66 @@ impl fmt::Display for UnknownVersionError {
 }
 
 impl StdError for UnknownVersionError {}
+
+/// An error when serializing the HTTP headers.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum HeaderSerializationError {
+    /// Failed to convert a header value to `http::header::HeaderValue`.
+    #[error(transparent)]
+    ToHeaderValue(#[from] http::header::InvalidHeaderValue),
+
+    /// The `SystemTime` could not be converted to a HTTP date.
+    ///
+    /// This only happens if the `SystemTime` provided is too far in the past
+    /// (before the Unix epoch) or the future (after the year 9999).
+    #[error("invalid HTTP date")]
+    InvalidHttpDate,
+}
+
+/// An error when deserializing the HTTP headers.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum HeaderDeserializationError {
+    /// Failed to convert `http::header::HeaderValue` to `str`.
+    #[error("{0}")]
+    ToStrError(#[from] http::header::ToStrError),
+
+    /// Failed to convert `http::header::HeaderValue` to an integer.
+    #[error("{0}")]
+    ParseIntError(#[from] ParseIntError),
+
+    /// Failed to parse a HTTP date from a `http::header::Value`.
+    #[error("failed to parse HTTP date")]
+    InvalidHttpDate,
+
+    /// The given required header is missing.
+    #[error("missing header `{0}`")]
+    MissingHeader(String),
+
+    /// The given header failed to parse.
+    #[error("invalid header: {0}")]
+    InvalidHeader(Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    /// A header was received with a unexpected value.
+    #[error(
+        "The {header} header was received with an unexpected value, \
+         expected {expected}, received {unexpected}"
+    )]
+    InvalidHeaderValue {
+        /// The name of the header containing the invalid value.
+        header: String,
+        /// The value the header should have been set to.
+        expected: String,
+        /// The value we instead received and rejected.
+        unexpected: String,
+    },
+
+    /// The `Content-Type` header for a `multipart/mixed` response is missing
+    /// the `boundary` attribute.
+    #[error("The `Content-Type` header for a `multipart/mixed` response is missing the `boundary` attribute")]
+    MissingMultipartBoundary,
+}
 
 // #[cfg(test)]
 // mod tests {
@@ -225,12 +309,13 @@ impl StdError for UnknownVersionError {}
 //             "errcode": "M_WRONG_ROOM_KEYS_VERSION",
 //             "error": "Wrong backup version."
 //         }))
-//         .expect("We should be able to deserialize a wrong room keys version error");
+//         .expect("We should be able to deserialize a wrong room keys version
+// error");
 
-//         assert_matches!(deserialized.kind, ErrorKind::WrongRoomKeysVersion { current_version });
-//         assert_eq!(current_version.as_deref(), Some("42"));
-//         assert_eq!(deserialized.message, "Wrong backup version.");
-//     }
+//         assert_matches!(deserialized.kind, ErrorKind::WrongRoomKeysVersion {
+// current_version });         assert_eq!(current_version.as_deref(),
+// Some("42"));         assert_eq!(deserialized.message, "Wrong backup
+// version.");     }
 
 //     #[test]
 //     fn custom_authenticate_error_sanity() {
@@ -255,8 +340,8 @@ impl StdError for UnknownVersionError {}
 
 //         assert_eq!(
 //             error_header.to_str().unwrap(),
-//             "Bearer error=\"insufficient_scope\", scope=\"something_privileged\""
-//         );
+//             "Bearer error=\"insufficient_scope\",
+// scope=\"something_privileged\""         );
 //     }
 
 //     #[test]
@@ -267,8 +352,8 @@ impl StdError for UnknownVersionError {}
 //         let response = http::Response::builder()
 //             .header(
 //                 http::header::WWW_AUTHENTICATE,
-//                 "Bearer error=\"insufficient_scope\", scope=\"something_privileged\"",
-//             )
+//                 "Bearer error=\"insufficient_scope\",
+// scope=\"something_privileged\"",             )
 //             .status(http::StatusCode::UNAUTHORIZED)
 //             .body(
 //                 serde_json::to_string(&json!({
@@ -284,7 +369,7 @@ impl StdError for UnknownVersionError {}
 //         assert_matches!(error.body, ErrorBody::Standard { kind, message });
 //         assert_eq!(kind, ErrorKind::Forbidden);
 //         assert_eq!(message, "Insufficient privilege");
-//         assert_matches!(error.authenticate, Some(AuthenticateError::InsufficientScope { scope }));
-//         assert_eq!(scope, "something_privileged");
-//     }
+//         assert_matches!(error.authenticate,
+// Some(AuthenticateError::InsufficientScope { scope }));         assert_eq!
+// (scope, "something_privileged");     }
 // }

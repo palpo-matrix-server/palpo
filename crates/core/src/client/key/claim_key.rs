@@ -7,10 +7,13 @@ use std::{collections::BTreeMap, time::Duration};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::client::key::{SignedKeys, SignedKeysIter};
-use crate::identifiers::*;
-use crate::serde::{JsonValue, RawJsonValue};
-use crate::{DeviceKeyAlgorithm, encryption::OneTimeKey};
+use crate::{
+    DeviceKeyAlgorithm,
+    client::key::{SignedKeys, SignedKeysIter},
+    encryption::OneTimeKey,
+    identifiers::*,
+    serde::{JsonValue, RawJsonValue},
+};
 
 impl<'a> IntoIterator for &'a SignedKeys {
     type Item = (&'a str, &'a RawJsonValue);
@@ -33,8 +36,8 @@ impl<'a> IntoIterator for &'a SignedKeys {
 /// Request type for the `claim_keys` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct ClaimKeysReqBody {
-    /// The time (in milliseconds) to wait when downloading keys from remote servers.
-    /// 10 seconds is the recommended default.
+    /// The time (in milliseconds) to wait when downloading keys from remote
+    /// servers. 10 seconds is the recommended default.
     #[serde(
         with = "crate::serde::duration::opt_ms",
         default,
@@ -47,7 +50,8 @@ pub struct ClaimKeysReqBody {
 }
 
 impl ClaimKeysReqBody {
-    /// Creates a new `Request` with the given key claims and the recommended 10 second timeout.
+    /// Creates a new `Request` with the given key claims and the recommended 10
+    /// second timeout.
     pub fn new(one_time_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>) -> Self {
         Self {
             timeout: Some(Duration::from_secs(10)),

@@ -12,25 +12,25 @@ use super::{
     Action, AnyPushRuleRef, ConditionalPushRule, FlattenedJson, InsertPushRuleError, NewPushRule, PatternedPushRule,
     PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter, SimplePushRule, insert_and_move_rule,
 };
-use crate::push::RemovePushRuleError;
-use crate::serde::RawJson;
-use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, push::RemovePushRuleError, serde::RawJson};
 
 /// A push ruleset scopes a set of rules according to some criteria.
 ///
-/// For example, some rules may only be applied for messages from a particular sender, a particular
-/// room, or by default. The push ruleset contains the entire set of scopes and rules.
+/// For example, some rules may only be applied for messages from a particular
+/// sender, a particular room, or by default. The push ruleset contains the
+/// entire set of scopes and rules.
 #[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct Ruleset {
-    /// These rules configure behavior for (unencrypted) messages that match certain patterns.
+    /// These rules configure behavior for (unencrypted) messages that match
+    /// certain patterns.
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     #[salvo(schema(value_type = HashSet<PatternedPushRule>))]
     pub content: IndexSet<PatternedPushRule>,
 
     /// These user-configured rules are given the highest priority.
     ///
-    /// This field is named `override_` instead of `override` because the latter is a reserved
-    /// keyword in Rust.
+    /// This field is named `override_` instead of `override` because the latter
+    /// is a reserved keyword in Rust.
     #[serde(rename = "override", default, skip_serializing_if = "IndexSet::is_empty")]
     #[salvo(schema(value_type = HashSet<ConditionalPushRule>))]
     pub override_: IndexSet<ConditionalPushRule>,
@@ -40,13 +40,14 @@ pub struct Ruleset {
     #[salvo(schema(value_type = HashSet<SimplePushRule<OwnedRoomId>>))]
     pub room: IndexSet<SimplePushRule<OwnedRoomId>>,
 
-    /// These rules configure notification behavior for messages from a specific Matrix user ID.
+    /// These rules configure notification behavior for messages from a specific
+    /// Matrix user ID.
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     #[salvo(schema(value_type = HashSet<SimplePushRule<OwnedUserId>>))]
     pub sender: IndexSet<SimplePushRule<OwnedUserId>>,
 
-    /// These rules are identical to override rules, but have a lower priority than `content`,
-    /// `room` and `sender` rules.
+    /// These rules are identical to override rules, but have a lower priority
+    /// than `content`, `room` and `sender` rules.
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     #[salvo(schema(value_type = HashSet<ConditionalPushRule>))]
     pub underride: IndexSet<ConditionalPushRule>,
@@ -68,9 +69,10 @@ impl Ruleset {
     ///
     /// If a rule with the same kind and `rule_id` exists, it will be replaced.
     ///
-    /// If `after` or `before` is set, the rule will be moved relative to the rule with the given
-    /// ID. If both are set, the rule will become the next-most important rule with respect to
-    /// `before`. If neither are set, and the rule is newly inserted, it will become the rule with
+    /// If `after` or `before` is set, the rule will be moved relative to the
+    /// rule with the given ID. If both are set, the rule will become the
+    /// next-most important rule with respect to `before`. If neither are
+    /// set, and the rule is newly inserted, it will become the rule with
     /// the highest priority of its kind.
     ///
     /// Returns an error if the parameters are invalid.
@@ -105,8 +107,8 @@ impl Ruleset {
                     rule.enabled = prev_rule.enabled;
                 }
 
-                // `m.rule.master` should always be the rule with the highest priority, so we insert
-                // this one at most at the second place.
+                // `m.rule.master` should always be the rule with the highest priority, so we
+                // insert this one at most at the second place.
                 let default_position = 1;
 
                 insert_and_move_rule(&mut self.override_, rule, default_position, after, before)
@@ -150,7 +152,8 @@ impl Ruleset {
         }
     }
 
-    /// Get the rule from the given kind and with the given `rule_id` in the rule set.
+    /// Get the rule from the given kind and with the given `rule_id` in the
+    /// rule set.
     pub fn get(&self, kind: RuleKind, rule_id: impl AsRef<str>) -> Option<AnyPushRuleRef<'_>> {
         let rule_id = rule_id.as_ref();
 
@@ -164,8 +167,8 @@ impl Ruleset {
         }
     }
 
-    /// Set whether the rule from the given kind and with the given `rule_id` in the rule set is
-    /// enabled.
+    /// Set whether the rule from the given kind and with the given `rule_id` in
+    /// the rule set is enabled.
     ///
     /// Returns an error if the rule can't be found.
     pub fn set_enabled(
@@ -208,8 +211,8 @@ impl Ruleset {
         Ok(())
     }
 
-    /// Set the actions of the rule from the given kind and with the given `rule_id` in the rule
-    /// set.
+    /// Set the actions of the rule from the given kind and with the given
+    /// `rule_id` in the rule set.
     ///
     /// Returns an error if the rule can't be found.
     pub fn set_actions(
@@ -257,7 +260,8 @@ impl Ruleset {
     /// # Arguments
     ///
     /// * `event` - The raw JSON of a room message event.
-    /// * `context` - The context of the message and room at the time of the event.
+    /// * `context` - The context of the message and room at the time of the
+    ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
     pub fn get_match<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> Option<AnyPushRuleRef<'_>> {
         let event = FlattenedJson::from_raw(event);
@@ -277,7 +281,8 @@ impl Ruleset {
     /// # Arguments
     ///
     /// * `event` - The raw JSON of a room message event.
-    /// * `context` - The context of the message and room at the time of the event.
+    /// * `context` - The context of the message and room at the time of the
+    ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
     pub fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
         self.get_match(event, context).map(|rule| rule.actions()).unwrap_or(&[])
@@ -510,8 +515,8 @@ impl PredefinedContentRuleId {
 
 //     use super::PredefinedOverrideRuleId;
 //     use crate::{
-//         push::{Action, ConditionalPushRule, ConditionalPushRuleInit, Ruleset},
-//         user_id,
+//         push::{Action, ConditionalPushRule, ConditionalPushRuleInit,
+// Ruleset},         user_id,
 //     };
 
 //     #[test]
@@ -521,8 +526,8 @@ impl PredefinedContentRuleId {
 
 //         let override_ = [
 //             // Default `.m.rule.master` push rule with non-default state.
-//             assign!(ConditionalPushRule::master(), { enabled: true, actions: vec![Action::Notify]}),
-//             // User-defined push rule.
+//             assign!(ConditionalPushRule::master(), { enabled: true, actions:
+// vec![Action::Notify]}),             // User-defined push rule.
 //             ConditionalPushRuleInit {
 //                 actions: vec![],
 //                 default: false,
@@ -548,13 +553,15 @@ impl PredefinedContentRuleId {
 //             ..Default::default()
 //         };
 
-//         let new_server_default = Ruleset::server_default(user_id!("@user:localhost"));
+//         let new_server_default =
+// Ruleset::server_default(user_id!("@user:localhost"));
 
 //         ruleset.update_with_server_default(new_server_default);
 
 //         // Master rule is in first position.
 //         let master_rule = &ruleset.override_[0];
-//         assert_eq!(master_rule.rule_id, PredefinedOverrideRuleId::Master.as_str());
+//         assert_eq!(master_rule.rule_id,
+// PredefinedOverrideRuleId::Master.as_str());
 
 //         // `enabled` and `actions` have been copied from the old rules.
 //         assert!(master_rule.enabled);

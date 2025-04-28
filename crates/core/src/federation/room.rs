@@ -2,10 +2,12 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::client::filter::RoomEventFilter;
-use crate::events::{AnyStateEvent, AnyTimelineEvent};
-use crate::serde::RawJson;
-use crate::{Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, UnixMillis};
+use crate::{
+    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, UnixMillis,
+    client::filter::RoomEventFilter,
+    events::{AnyStateEvent, AnyTimelineEvent},
+    serde::RawJson,
+};
 
 /// Request type for the `get_event_by_timestamp` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
@@ -78,8 +80,9 @@ pub struct ContextReqArgs {
 
     /// The maximum number of context events to return.
     ///
-    /// This limit applies to the sum of the `events_before` and `events_after` arrays. The
-    /// requested event ID is always returned in `event` even if the limit is `0`.
+    /// This limit applies to the sum of the `events_before` and `events_after`
+    /// arrays. The requested event ID is always returned in `event` even if
+    /// the limit is `0`.
     ///
     /// Defaults to 10.
     #[salvo(parameter(parameter_in = Query))]
@@ -145,7 +148,8 @@ impl ContextResBody {
 //     rate_limited: true,
 //     authentication: AccessToken,
 //     history: {
-//         unstable => "/_matrix/client/unstable/xyz.amorgan.knock/knock/:room_id_or_alias",
+//         unstable =>
+// "/_matrix/client/unstable/xyz.amorgan.knock/knock/:room_id_or_alias",
 //         1.1 => "/_matrix/client/v3/knock/:room_id_or_alias",
 //     }
 // };

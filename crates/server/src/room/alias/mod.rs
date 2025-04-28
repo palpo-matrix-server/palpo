@@ -222,7 +222,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
 
         Ok(())
     } else {
-        Err(MatrixError::forbidden("User is not permitted to remove this alias.").into())
+        Err(MatrixError::forbidden(None, "User is not permitted to remove this alias.").into())
     }
 }
 #[tracing::instrument]

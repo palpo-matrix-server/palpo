@@ -40,7 +40,7 @@ pub(super) async fn upsert_alias(
     }
 
     if crate::room::resolve_local_alias(&alias_id).is_ok() {
-        return Err(MatrixError::forbidden("Alias already exists.").into());
+        return Err(MatrixError::forbidden(None, "Alias already exists.").into());
     }
 
     let query = room_aliases::table

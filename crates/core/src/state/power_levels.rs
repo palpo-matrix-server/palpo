@@ -1,16 +1,15 @@
 use std::collections::BTreeMap;
 
-use crate::events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent};
-use crate::{
-    OwnedUserId, UserId,
-    power_levels::{NotificationPowerLevels, default_power_level},
-    serde::{deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values, vec_deserialize_v1_powerlevel_values},
-};
 use serde::Deserialize;
 use serde_json::{Error, from_str as from_json_str};
 use tracing::error;
 
-use crate::RoomVersion;
+use crate::{
+    OwnedUserId, RoomVersion, UserId,
+    events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent},
+    power_levels::{NotificationPowerLevels, default_power_level},
+    serde::{deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values, vec_deserialize_v1_powerlevel_values},
+};
 
 #[derive(Deserialize, Default)]
 struct IntRoomPowerLevelsEventContent {

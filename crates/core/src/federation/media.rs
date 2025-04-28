@@ -4,13 +4,17 @@ use std::time::Duration;
 
 use bytes::BytesMut;
 use reqwest::Url;
-use salvo::oapi::{ToParameters, ToSchema};
-use salvo::prelude::*;
+use salvo::{
+    oapi::{ToParameters, ToSchema},
+    prelude::*,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::http_headers::ContentDisposition;
-use crate::media::Method;
-use crate::sending::{SendRequest, SendResult};
+use crate::{
+    http_headers::ContentDisposition,
+    media::Method,
+    sending::{SendRequest, SendResult},
+};
 
 /// The `multipart/mixed` mime "essence".
 const MULTIPART_MIXED: &str = "multipart/mixed";
@@ -60,8 +64,9 @@ pub struct ThumbnailReqArgs {
     #[salvo(parameter(parameter_in = Query))]
     pub height: u32,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -74,9 +79,10 @@ pub struct ThumbnailReqArgs {
 
     /// Whether the server should return an animated thumbnail.
     ///
-    /// When `Some(true)`, the server should return an animated thumbnail if possible and
-    /// supported. When `Some(false)`, the server must not return an animated
-    /// thumbnail. When `None`, the server should not return an animated thumbnail.
+    /// When `Some(true)`, the server should return an animated thumbnail if
+    /// possible and supported. When `Some(false)`, the server must not
+    /// return an animated thumbnail. When `None`, the server should not
+    /// return an animated thumbnail.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animated: Option<bool>,
@@ -93,7 +99,8 @@ pub struct ThumbnailResBody {
 }
 
 impl Scribe for ThumbnailResBody {
-    /// Serialize the given metadata and content into a `http::Response` `multipart/mixed` body.
+    /// Serialize the given metadata and content into a `http::Response`
+    /// `multipart/mixed` body.
     ///
     /// Returns a tuple containing the boundary used
     fn render(self, res: &mut Response) {
@@ -202,8 +209,9 @@ pub struct ContentReqArgs {
     #[salvo(parameter(parameter_in = Path))]
     pub media_id: String,
 
-    /// The maximum duration that the client is willing to wait to start receiving data, in the
-    /// case that the content has not yet been uploaded.
+    /// The maximum duration that the client is willing to wait to start
+    /// receiving data, in the case that the content has not yet been
+    /// uploaded.
     ///
     /// The default value is 20 seconds.
     #[salvo(parameter(parameter_in = Query))]
@@ -244,8 +252,8 @@ pub struct Content {
     /// The content type of the file that was previously uploaded.
     pub content_type: Option<String>,
 
-    /// The value of the `Content-Disposition` HTTP header, possibly containing the name of the
-    /// file that was previously uploaded.
+    /// The value of the `Content-Disposition` HTTP header, possibly containing
+    /// the name of the file that was previously uploaded.
     pub content_disposition: Option<ContentDisposition>,
 }
 /// The metadata of a file from the content repository.

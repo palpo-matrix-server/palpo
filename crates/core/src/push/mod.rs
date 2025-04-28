@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -26,21 +27,17 @@ mod push_rule;
 mod pusher;
 mod ruleset;
 mod simple_push_rule;
-pub use conditional_push_rule::*;
-pub use error::*;
-pub use patterned_push_rule::*;
-pub use push_rule::RuleKind;
-pub use push_rule::*;
-pub use pusher::*;
-pub use ruleset::Ruleset;
-pub use simple_push_rule::*;
-
 use std::hash::Hash;
 
+pub use conditional_push_rule::*;
+pub use error::*;
 use indexmap::{Equivalent, IndexSet};
+pub use patterned_push_rule::*;
+pub use push_rule::{RuleKind, *};
+pub use pusher::*;
+pub use ruleset::Ruleset;
 use salvo::prelude::ToSchema;
-
-use crate::{PrivOwnedStr, serde::StringEnum};
+pub use simple_push_rule::*;
 
 #[cfg(feature = "unstable-msc3932")]
 pub use self::condition::RoomVersionFeature;
@@ -53,9 +50,11 @@ pub use self::{
     iter::{AnyPushRule, AnyPushRuleRef, RulesetIntoIter, RulesetIter},
     predefined::{PredefinedContentRuleId, PredefinedOverrideRuleId, PredefinedRuleId, PredefinedUnderrideRuleId},
 };
+use crate::{PrivOwnedStr, serde::StringEnum};
 
-/// A special format that the homeserver should use when sending notifications to a Push Gateway.
-/// Currently, only `event_id_only` is supported, see the [Push Gateway API][spec].
+/// A special format that the homeserver should use when sending notifications
+/// to a Push Gateway. Currently, only `event_id_only` is supported, see the
+/// [Push Gateway API][spec].
 ///
 /// [spec]: https://spec.matrix.org/latest/push-gateway-api/#homeserver-behaviour
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
@@ -114,13 +113,14 @@ where
 //     use std::collections::BTreeMap;
 
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{
 //         action::{Action, Tweak},
-//         condition::{PushCondition, PushConditionPowerLevelsCtx, PushConditionRoomCtx, RoomMemberCountIs},
-//         AnyPushRule, ConditionalPushRule, PatternedPushRule, Ruleset, SimplePushRule,
-//     };
+//         condition::{PushCondition, PushConditionPowerLevelsCtx,
+// PushConditionRoomCtx, RoomMemberCountIs},         AnyPushRule,
+// ConditionalPushRule, PatternedPushRule, Ruleset, SimplePushRule,     };
 //     use crate::{
 //         owned_room_id, owned_user_id,
 //         power_levels::NotificationPowerLevels,
@@ -137,9 +137,9 @@ where
 //                 key: "type".into(),
 //                 pattern: "m.call.invite".into(),
 //             }],
-//             actions: vec![Action::Notify, Action::SetTweak(Tweak::Highlight(true))],
-//             rule_id: ".m.rule.call".into(),
-//             enabled: true,
+//             actions: vec![Action::Notify,
+// Action::SetTweak(Tweak::Highlight(true))],             rule_id:
+// ".m.rule.call".into(),             enabled: true,
 //             default: true,
 //         });
 
@@ -211,8 +211,8 @@ where
 //     #[test]
 //     fn serialize_conditional_push_rule() {
 //         let rule = ConditionalPushRule {
-//             actions: vec![Action::Notify, Action::SetTweak(Tweak::Highlight(true))],
-//             default: true,
+//             actions: vec![Action::Notify,
+// Action::SetTweak(Tweak::Highlight(true))],             default: true,
 //             enabled: true,
 //             rule_id: ".m.rule.call".into(),
 //             conditions: vec![
@@ -224,8 +224,8 @@ where
 //                 PushCondition::RoomMemberCount {
 //                     is: RoomMemberCountIs::gt(2),
 //                 },
-//                 PushCondition::SenderNotificationPermission { key: "room".into() },
-//             ],
+//                 PushCondition::SenderNotificationPermission { key:
+// "room".into() },             ],
 //         };
 
 //         let rule_value: JsonValue = to_json_value(rule).unwrap();
@@ -461,11 +461,11 @@ where
 
 //         let mut iter = rule.actions.iter();
 //         assert_matches!(iter.next(), Some(Action::Notify));
-//         assert_matches!(iter.next(), Some(Action::SetTweak(Tweak::Sound(sound))));
-//         assert_eq!(sound, "default");
-//         assert_matches!(iter.next(), Some(Action::SetTweak(Tweak::Highlight(true))));
-//         assert_matches!(iter.next(), None);
-//     }
+//         assert_matches!(iter.next(),
+// Some(Action::SetTweak(Tweak::Sound(sound))));         assert_eq!(sound,
+// "default");         assert_matches!(iter.next(),
+// Some(Action::SetTweak(Tweak::Highlight(true))));         assert_matches!
+// (iter.next(), None);     }
 
 //     #[test]
 //     fn deserialize_ruleset() {
@@ -559,8 +559,8 @@ where
 
 //         let rule_opt = iter.next();
 //         assert!(rule_opt.is_some());
-//         assert_matches!(rule_opt.unwrap(), AnyPushRule::Room(SimplePushRule { rule_id, .. }));
-//         assert_eq!(rule_id, "!roomid:server.name");
+//         assert_matches!(rule_opt.unwrap(), AnyPushRule::Room(SimplePushRule {
+// rule_id, .. }));         assert_eq!(rule_id, "!roomid:server.name");
 
 //         let rule_opt = iter.next();
 //         assert!(rule_opt.is_some());
@@ -575,7 +575,8 @@ where
 
 //     #[test]
 //     fn default_ruleset_applies() {
-//         let set = Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
+//         let set =
+// Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
 
 //         let context_one_to_one = &PushConditionRoomCtx {
 //             room_id: owned_room_id!("!dm:server.name"),
@@ -672,7 +673,8 @@ where
 //             [Action::Notify, Action::SetTweak(Tweak::Highlight(true)),]
 //         );
 
-//         let empty = serde_json::from_str::<RawJson<JsonValue>>(r#"{}"#).unwrap();
+//         let empty =
+// serde_json::from_str::<RawJson<JsonValue>>(r#"{}"#).unwrap();
 //         assert_matches!(set.get_actions(&empty, context_one_to_one), []);
 //     }
 
@@ -713,7 +715,8 @@ where
 //         set.underride.insert(disabled);
 
 //         let test_set = set.clone();
-//         assert_matches!(test_set.get_actions(&message, context_one_to_one), []);
+//         assert_matches!(test_set.get_actions(&message, context_one_to_one),
+// []);
 
 //         let no_conditions = ConditionalPushRule {
 //             actions: vec![Action::SetTweak(Tweak::Highlight(true))],
@@ -739,7 +742,8 @@ where
 //         set.sender.insert(sender);
 
 //         let test_set = set.clone();
-//         assert_matches!(test_set.get_actions(&message, context_one_to_one), [Action::Notify]);
+//         assert_matches!(test_set.get_actions(&message, context_one_to_one),
+// [Action::Notify]);
 
 //         let room = SimplePushRule {
 //             actions: vec![Action::SetTweak(Tweak::Highlight(true))],
@@ -815,7 +819,8 @@ where
 //     }
 //     #[test]
 //     fn intentional_mentions_apply() {
-//         let set = Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
+//         let set =
+// Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
 
 //         let context = &PushConditionRoomCtx {
 //             room_id: owned_room_id!("!far_west:server.name"),
@@ -868,7 +873,8 @@ where
 
 //     #[test]
 //     fn invite_for_me_applies() {
-//         let set = Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
+//         let set =
+// Ruleset::server_default(user_id!("@jolly_jumper:server.name"));
 
 //         let context = &PushConditionRoomCtx {
 //             room_id: owned_room_id!("!far_west:server.name"),

@@ -22,7 +22,8 @@ pub struct ReactionEventContent {
 impl ReactionEventContent {
     /// Creates a new `ReactionEventContent` from the given annotation.
     ///
-    /// You can also construct a `ReactionEventContent` from an annotation using `From` / `Into`.
+    /// You can also construct a `ReactionEventContent` from an annotation using
+    /// `From` / `Into`.
     pub fn new(relates_to: Annotation) -> Self {
         Self { relates_to }
     }
@@ -38,7 +39,8 @@ impl From<Annotation> for ReactionEventContent {
 // mod tests {
 //     use crate::owned_event_id;
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::ReactionEventContent;
 //     use crate::events::relation::Annotation;
@@ -63,7 +65,9 @@ impl From<Annotation> for ReactionEventContent {
 
 //     #[test]
 //     fn serialize() {
-//         let content = ReactionEventContent::new(Annotation::new(owned_event_id!("$my_reaction"), "🏠".to_owned()));
+//         let content =
+// ReactionEventContent::new(Annotation::new(owned_event_id!("$my_reaction"),
+// "🏠".to_owned()));
 
 //         assert_eq!(
 //             to_json_value(&content).unwrap(),

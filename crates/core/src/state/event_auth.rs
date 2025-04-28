@@ -1,24 +1,30 @@
 use std::{borrow::Borrow, collections::BTreeSet};
 
-use serde::Deserialize;
-use serde::de::{Error as _, IgnoredAny};
+use serde::{
+    Deserialize,
+    de::{Error as _, IgnoredAny},
+};
 use serde_json::from_str as from_json_str;
 use tracing::{debug, error, info, warn};
 
-use crate::events::room::{
-    create::RoomCreateEventContent,
-    join_rules::{JoinRule, RoomJoinRulesEventContent},
-    member::{MembershipState, ThirdPartyInvite},
-    power_levels::RoomPowerLevelsEventContent,
-    third_party_invite::RoomThirdPartyInviteEventContent,
+use crate::{
+    OwnedUserId, RoomVersionId, UserId,
+    events::room::{
+        create::RoomCreateEventContent,
+        join_rules::{JoinRule, RoomJoinRulesEventContent},
+        member::{MembershipState, ThirdPartyInvite},
+        power_levels::RoomPowerLevelsEventContent,
+        third_party_invite::RoomThirdPartyInviteEventContent,
+    },
+    serde::{Base64, RawJson, RawJsonValue},
+    state::{
+        Event, RoomVersion, StateError, StateEventType, StateResult, TimelineEventType,
+        power_levels::{
+            deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
+            deserialize_power_levels_content_redact,
+        },
+    },
 };
-use crate::serde::{Base64, RawJson, RawJsonValue};
-use crate::state::power_levels::{
-    deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
-    deserialize_power_levels_content_redact,
-};
-use crate::state::{Event, RoomVersion, StateError, StateEventType, StateResult, TimelineEventType};
-use crate::{OwnedUserId, RoomVersionId, UserId};
 
 // FIXME: field extracting could be bundled for `content`
 #[derive(Deserialize)]
@@ -32,12 +38,13 @@ struct RoomMemberContentFields {
     join_authorised_via_users_server: Option<RawJson<OwnedUserId>>,
 }
 
-/// For the given event `kind` what are the relevant auth events that are needed to authenticate
-/// this `content`.
+/// For the given event `kind` what are the relevant auth events that are needed
+/// to authenticate this `content`.
 ///
 /// # Errors
 ///
-/// This function will return an error if the supplied `content` is not a JSON object.
+/// This function will return an error if the supplied `content` is not a JSON
+/// object.
 pub fn auth_types_for_event(
     kind: &TimelineEventType,
     sender: &UserId,
@@ -107,8 +114,9 @@ pub fn auth_types_for_event(
 /// * check that the event is being authenticated for the correct room
 /// * then there are checks for specific event types
 ///
-/// The `fetch_state` closure should gather state from a state snapshot. We need to know if the
-/// event passes auth against some state not a recursive collection of auth_events fields.
+/// The `fetch_state` closure should gather state from a state snapshot. We need
+/// to know if the event passes auth against some state not a recursive
+/// collection of auth_events fields.
 pub fn auth_check<E: Event>(
     room_version: &RoomVersion,
     incoming_event: impl Event,
@@ -126,8 +134,9 @@ pub fn auth_check<E: Event>(
     // [synapse] do_sig_check check the event has valid signatures for member events
 
     // TODO do_size_check is false when called by `iterative_auth_check`
-    // do_size_check is also mostly accomplished by palpo with the exception of checking event_type,
-    // state_key, and json are below a certain size (255 and 65_536 respectively)
+    // do_size_check is also mostly accomplished by palpo with the exception of
+    // checking event_type, state_key, and json are below a certain size (255
+    // and 65_536 respectively)
 
     let sender = incoming_event.sender();
 
@@ -221,8 +230,9 @@ pub fn auth_check<E: Event>(
         return Ok(false);
     }
 
-    // If the create event content has the field m.federate set to false and the sender domain of
-    // the event does not match the sender domain of the create event, reject.
+    // If the create event content has the field m.federate set to false and the
+    // sender domain of the event does not match the sender domain of the create
+    // event, reject.
     #[derive(Deserialize)]
     struct RoomCreateContentFederate {
         #[serde(rename = "m.federate", default = "crate::serde::default_true")]
@@ -370,8 +380,9 @@ pub fn auth_check<E: Event>(
         return Ok(true);
     }
 
-    // If the event type's required power level is greater than the sender's power level, reject
-    // If the event has a state_key that starts with an @ and does not match the sender, reject.
+    // If the event type's required power level is greater than the sender's power
+    // level, reject If the event has a state_key that starts with an @ and does
+    // not match the sender, reject.
     if !can_send_event(&incoming_event, power_levels_event.as_ref(), sender_power_level) {
         warn!("user cannot send event");
         return Ok(false);
@@ -398,11 +409,12 @@ pub fn auth_check<E: Event>(
         info!("power levels event allowed");
     }
 
-    // Room version 3: Redaction events are always accepted (provided the event is allowed by
-    // `events` and `events_default` in the power levels). However, servers should not apply or
-    // send redaction's to clients until both the redaction event and original event have been
-    // seen, and are valid. Servers should only apply redaction's to events where the sender's
-    // domains match, or the sender of the redaction has the appropriate permissions per the
+    // Room version 3: Redaction events are always accepted (provided the event is
+    // allowed by `events` and `events_default` in the power levels). However,
+    // servers should not apply or send redaction's to clients until both the
+    // redaction event and original event have been seen, and are valid. Servers
+    // should only apply redaction's to events where the sender's domains match,
+    // or the sender of the redaction has the appropriate permissions per the
     // power levels.
 
     if room_version.extra_redaction_checks && *incoming_event.event_type() == TimelineEventType::RoomRedaction {
@@ -420,15 +432,17 @@ pub fn auth_check<E: Event>(
     Ok(true)
 }
 
-// TODO deserializing the member, power, join_rules event contents is done in palpo
-// just before this is called. Could they be passed in?
-/// Does the user who sent this member event have required power levels to do so.
+// TODO deserializing the member, power, join_rules event contents is done in
+// palpo just before this is called. Could they be passed in?
+/// Does the user who sent this member event have required power levels to do
+/// so.
 ///
-/// * `user` - Information about the membership event and user making the request.
+/// * `user` - Information about the membership event and user making the
+///   request.
 /// * `auth_events` - The set of auth events that relate to a membership event.
 ///
-/// This is generated by calling `auth_types_for_event` with the membership event and the current
-/// State.
+/// This is generated by calling `auth_types_for_event` with the membership
+/// event and the current State.
 #[allow(clippy::too_many_arguments)]
 fn valid_membership_change(
     room_version: &RoomVersion,
@@ -513,7 +527,8 @@ fn valid_membership_change(
 
     Ok(match target_membership {
         MembershipState::Join => {
-            // 1. If the only previous event is an m.room.create and the state_key is the creator,
+            // 1. If the only previous event is an m.room.create and the state_key is the
+            //    creator,
             // allow
             let mut prev_events = current_event.prev_events();
 
@@ -665,7 +680,8 @@ fn valid_membership_change(
             }
         }
         MembershipState::Knock if room_version.allow_knocking => {
-            // 1. If the `join_rule` is anything other than `knock` or `knock_restricted`, reject.
+            // 1. If the `join_rule` is anything other than `knock` or `knock_restricted`,
+            //    reject.
             if !matches!(join_rules, JoinRule::KnockRestricted(_) | JoinRule::Knock) {
                 println!("DDDDDDDDDDDDDDDDDD  join_rules: {join_rules:?}");
                 warn!(
@@ -705,9 +721,11 @@ fn valid_membership_change(
     })
 }
 
-/// Is the user allowed to send a specific event based on the rooms power levels.
+/// Is the user allowed to send a specific event based on the rooms power
+/// levels.
 ///
-/// Does the event have the correct userId as its state_key if it's not the "" state_key.
+/// Does the event have the correct userId as its state_key if it's not the ""
+/// state_key.
 fn can_send_event(event: impl Event, ple: Option<impl Event>, user_level: i64) -> bool {
     let event_type_power_level = get_send_level(event.event_type(), event.state_key(), ple);
 
@@ -743,16 +761,17 @@ fn check_power_levels(
         }
     }
 
-    // - If any of the keys users_default, events_default, state_default, ban, redact, kick, or
-    //   invite in content are present and not an integer, reject.
-    // - If either of the keys events or notifications in content are present and not a dictionary
-    //   with values that are integers, reject.
-    // - If users key in content is not a dictionary with keys that are valid user IDs with values
-    //   that are integers, reject.
+    // - If any of the keys users_default, events_default, state_default, ban,
+    //   redact, kick, or invite in content are present and not an integer, reject.
+    // - If either of the keys events or notifications in content are present and
+    //   not a dictionary with values that are integers, reject.
+    // - If users key in content is not a dictionary with keys that are valid user
+    //   IDs with values that are integers, reject.
     let user_content: RoomPowerLevelsEventContent =
         deserialize_power_levels(power_event.content().get(), room_version)?;
 
-    // Validation of users is done in Palpo, synapse for loops validating user_ids and integers here
+    // Validation of users is done in Palpo, synapse for loops validating user_ids
+    // and integers here
     info!("validation of power event finished");
 
     let current_state = match previous_power_event {
@@ -786,8 +805,8 @@ fn check_power_levels(
     let old_state = &current_content;
     let new_state = &user_content;
 
-    // synapse does not have to split up these checks since we can't combine UserIds and
-    // EventTypes we do 2 loops
+    // synapse does not have to split up these checks since we can't combine UserIds
+    // and EventTypes we do 2 loops
 
     // UserId loop
     for user in user_levels_to_check {
@@ -880,7 +899,8 @@ fn get_deserialize_levels(old: &serde_json::Value, new: &serde_json::Value, name
     ))
 }
 
-/// Does the event redacting come from a user with enough power to redact the given event.
+/// Does the event redacting come from a user with enough power to redact the
+/// given event.
 fn check_redaction(
     _room_version: &RoomVersion,
     redaction_event: impl Event,
@@ -941,8 +961,8 @@ fn verify_third_party_invite(
         return false;
     }
 
-    // If there is no m.room.third_party_invite event in the current room state with state_key
-    // matching token, reject
+    // If there is no m.room.third_party_invite event in the current room state with
+    // state_key matching token, reject
     let current_threepid = match current_third_party_invite {
         Some(id) => id,
         None => return false,
@@ -956,8 +976,8 @@ fn verify_third_party_invite(
         return false;
     }
 
-    // If any signature in signed matches any public key in the m.room.third_party_invite event,
-    // allow
+    // If any signature in signed matches any public key in the
+    // m.room.third_party_invite event, allow
     let tpid_ev = match from_json_str::<RoomThirdPartyInviteEventContent>(current_threepid.content().get()) {
         Ok(ev) => ev,
         Err(_) => return false,
@@ -986,9 +1006,9 @@ fn verify_third_party_invite(
 
 //     use crate::events::{
 //         room::{
-//             join_rules::{AllowRule, JoinRule, Restricted, RoomJoinRulesEventContent, RoomMembership},
-//             member::{MembershipState, RoomMemberEventContent},
-//         },
+//             join_rules::{AllowRule, JoinRule, Restricted,
+// RoomJoinRulesEventContent, RoomMembership},
+// member::{MembershipState, RoomMemberEventContent},         },
 //         StateEventType, TimelineEventType,
 //     };
 //     use serde_json::value::to_raw_value as to_raw_json_value;
@@ -996,20 +1016,22 @@ fn verify_third_party_invite(
 //     use crate::{
 //         event_auth::valid_membership_change,
 //         test_utils::{
-//             alice, charlie, ella, event_id, member_content_ban, member_content_join, room_id, to_pdu_event, PduEvent,
-//             INITIAL_EVENTS, INITIAL_EVENTS_CREATE_ROOM,
-//         },
+//             alice, charlie, ella, event_id, member_content_ban,
+// member_content_join, room_id, to_pdu_event, PduEvent,
+// INITIAL_EVENTS, INITIAL_EVENTS_CREATE_ROOM,         },
 //         Event, EventTypeExt, RoomVersion, StateMap,
 //     };
 
 //     #[test]
 //     fn test_ban_pass() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let events = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let events = INITIAL_EVENTS();
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1045,12 +1067,15 @@ fn verify_third_party_invite(
 
 //     #[test]
 //     fn test_join_non_creator() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let events = INITIAL_EVENTS_CREATE_ROOM();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let events =
+// INITIAL_EVENTS_CREATE_ROOM();
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1086,12 +1111,15 @@ fn verify_third_party_invite(
 
 //     #[test]
 //     fn test_join_creator() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let events = INITIAL_EVENTS_CREATE_ROOM();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let events =
+// INITIAL_EVENTS_CREATE_ROOM();
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1127,12 +1155,14 @@ fn verify_third_party_invite(
 
 //     #[test]
 //     fn test_ban_fail() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let events = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let events = INITIAL_EVENTS();
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1168,15 +1198,19 @@ fn verify_third_party_invite(
 
 //     #[test]
 //     fn test_restricted_join_rule() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let mut events = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let mut events = INITIAL_EVENTS();
 //         *events.get_mut(&event_id("IJR")).unwrap() = to_pdu_event(
 //             "IJR",
 //             alice(),
 //             TimelineEventType::RoomJoinRules,
 //             Some(""),
-//             to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-//                 vec![AllowRule::RoomMembership(RoomMembership::new(room_id().to_owned()))],
+//
+// to_raw_json_value(&
+// RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
+//
+// vec![AllowRule::RoomMembership(RoomMembership::new(room_id().to_owned()))],
 //             ))))
 //             .unwrap(),
 //             &["CREATE", "IMA", "IPOWER"],
@@ -1188,7 +1222,8 @@ fn verify_third_party_invite(
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1196,8 +1231,9 @@ fn verify_third_party_invite(
 //             ella(),
 //             TimelineEventType::RoomMember,
 //             Some(ella().as_str()),
-//             to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Join)).unwrap(),
-//             &["CREATE", "IJR", "IPOWER", "new"],
+//
+// to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Join)).
+// unwrap(),             &["CREATE", "IJR", "IPOWER", "new"],
 //             &["new"],
 //         );
 
@@ -1240,21 +1276,24 @@ fn verify_third_party_invite(
 
 //     #[test]
 //     fn test_knock() {
-//         let _ = tracing::subscriber::set_default(tracing_subscriber::fmt().with_test_writer().finish());
-//         let mut events = INITIAL_EVENTS();
+//         let _ =
+// tracing::subscriber::set_default(tracing_subscriber::fmt().
+// with_test_writer().finish());         let mut events = INITIAL_EVENTS();
 //         *events.get_mut(&event_id("IJR")).unwrap() = to_pdu_event(
 //             "IJR",
 //             alice(),
 //             TimelineEventType::RoomJoinRules,
 //             Some(""),
-//             to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Knock)).unwrap(),
+//
+// to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Knock)).unwrap(),
 //             &["CREATE", "IMA", "IPOWER"],
 //             &["IPOWER"],
 //         );
 
 //         let auth_events = events
 //             .values()
-//             .map(|ev| (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
+//             .map(|ev|
+// (ev.event_type().with_state_key(ev.state_key().unwrap()), Arc::clone(ev)))
 //             .collect::<StateMap<_>>();
 
 //         let requester = to_pdu_event(
@@ -1262,8 +1301,9 @@ fn verify_third_party_invite(
 //             ella(),
 //             TimelineEventType::RoomMember,
 //             Some(ella().as_str()),
-//             to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Knock)).unwrap(),
-//             &[],
+//
+// to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Knock)).
+// unwrap(),             &[],
 //             &["IMC"],
 //         );
 

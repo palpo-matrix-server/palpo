@@ -9,10 +9,11 @@ use base64::{
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-/// A wrapper around `B` (usually `Vec<u8>`) that (de)serializes from / to a base64 string.
+/// A wrapper around `B` (usually `Vec<u8>`) that (de)serializes from / to a
+/// base64 string.
 ///
-/// The base64 character set (and miscellaneous other encoding / decoding options) can be customized
-/// through the generic parameter `C`.
+/// The base64 character set (and miscellaneous other encoding / decoding
+/// options) can be customized through the generic parameter `C`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Base64<C = Standard, B = Vec<u8>> {
     bytes: B,
@@ -70,7 +71,8 @@ impl<C: Base64Config, B> Base64<C, B> {
 }
 
 impl<C: Base64Config, B: AsRef<[u8]>> Base64<C, B> {
-    /// Create a `Base64` instance from raw bytes, to be base64-encoded in serialization.
+    /// Create a `Base64` instance from raw bytes, to be base64-encoded in
+    /// serialization.
     pub fn new(bytes: B) -> Self {
         Self {
             bytes,

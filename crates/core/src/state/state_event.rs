@@ -5,9 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::events::TimelineEventType;
-use crate::serde::RawJsonValue;
-use crate::{EventId, RoomId, UnixMillis, UserId};
+use crate::{EventId, RoomId, UnixMillis, UserId, events::TimelineEventType, serde::RawJsonValue};
 
 /// Abstraction of a PDU so users can have their own PDU types.
 pub trait Event {

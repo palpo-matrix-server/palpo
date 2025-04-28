@@ -65,7 +65,7 @@ pub fn update_sync_request_with_cache(
                 (Some(filters), Some(cached_filters)) => {
                     some_or_sticky(&mut filters.is_invite, cached_filters.is_invite);
                     // TODO (morguldir): Find out how a client can unset this, probably need
-                    // to change into an option inside ruma
+                    // to change into an option inside palpo
                     list_or_sticky(&mut filters.not_room_types, &cached_filters.not_room_types);
                 }
                 (_, Some(cached_filters)) => list.filters = Some(cached_filters),

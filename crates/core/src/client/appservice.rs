@@ -1,7 +1,7 @@
 /// `POST /_matrix/client/*/appservice/{appserviceId}/ping}`
 ///
-/// Ask the homeserver to ping the application service to ensure the connection works.
-/// `/v1/` ([spec])
+/// Ask the homeserver to ping the application service to ensure the connection
+/// works. `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/application-service-api/#post_matrixclientv1appserviceappserviceidping
 use std::time::Duration;
@@ -9,15 +9,15 @@ use std::time::Duration;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedTransactionId;
-use crate::room::Visibility;
+use crate::{OwnedTransactionId, room::Visibility};
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
 //     authentication: AccessToken,
 //     history: {
-//         unstable => "/_matrix/client/unstable/fi.mau.msc2659/appservice/:appservice_id/ping",
+//         unstable =>
+// "/_matrix/client/unstable/fi.mau.msc2659/appservice/:appservice_id/ping",
 //         1.7 => "/_matrix/client/v1/appservice/:appservice_id/ping",
 //     }
 // };
@@ -28,12 +28,13 @@ use crate::room::Visibility;
 pub struct PingReqBody {
     /// The appservice ID of the appservice to ping.
     ///
-    /// This must be the same as the appservice whose `as_token` is being used to authenticate
-    /// the request.
+    /// This must be the same as the appservice whose `as_token` is being used
+    /// to authenticate the request.
     #[salvo(parameter(parameter_in = Path))]
     pub appservice_id: String,
 
-    /// Transaction ID that is passed through to the `POST /_matrix/app/v1/ping` call.
+    /// Transaction ID that is passed through to the `POST /_matrix/app/v1/ping`
+    /// call.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_id: Option<OwnedTransactionId>,
 }
@@ -42,8 +43,8 @@ pub struct PingReqBody {
 
 #[derive(ToSchema, Serialize, Debug)]
 pub struct PingResBody {
-    /// The duration in milliseconds that the `POST /_matrix/app/v1/ping` request took from the
-    /// homeserver's point of view.
+    /// The duration in milliseconds that the `POST /_matrix/app/v1/ping`
+    /// request took from the homeserver's point of view.
     #[serde(with = "crate::serde::duration::ms", rename = "duration_ms")]
     pub duration: Duration,
 }
@@ -56,7 +57,8 @@ impl PingResBody {
 
 /// `PUT /_matrix/client/*/directory/list/appservice/{networkId}/{room_id}`
 ///
-/// Updates the visibility of a given room on the application service's room directory.
+/// Updates the visibility of a given room on the application service's room
+/// directory.
 
 /// `/v3/` ([spec])
 ///
@@ -76,6 +78,7 @@ impl PingResBody {
 
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct UpdateRoomReqBody {
-    /// Whether the room should be visible (public) in the directory or not (private).
+    /// Whether the room should be visible (public) in the directory or not
+    /// (private).
     pub visibility: Visibility,
 }

@@ -1,17 +1,18 @@
-//! Types for the `org.matrix.msc3489.beacon_info` state event, the unstable version of
-//! `m.beacon_info` ([MSC3489]).
+//! Types for the `org.matrix.msc3489.beacon_info` state event, the unstable
+//! version of `m.beacon_info` ([MSC3489]).
 //!
 //! [MSC3489]: https://github.com/matrix-org/matrix-spec-proposals/pull/3489
 
-use palpo_macros::EventContent;
-use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime};
 
-use crate::events::location::AssetContent;
-use crate::{OwnedUserId, UnixMillis};
+use palpo_macros::EventContent;
+use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::{OwnedUserId, UnixMillis, events::location::AssetContent};
 
 /// The content of a beacon_info state.
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
 #[palpo_event(
     type = "org.matrix.msc3672.beacon_info", alias = "m.beacon_info", kind = State, state_key_type = OwnedUserId
 )]
@@ -41,8 +42,9 @@ pub struct BeaconInfoEventContent {
 }
 
 impl BeaconInfoEventContent {
-    /// Creates a new `BeaconInfoEventContent` with the given description, live, timeout and
-    /// optional ts. If ts is None, the current time will be used.
+    /// Creates a new `BeaconInfoEventContent` with the given description, live,
+    /// timeout and optional ts. If ts is None, the current time will be
+    /// used.
     pub fn new(description: Option<String>, timeout: Duration, live: bool, ts: Option<UnixMillis>) -> Self {
         Self {
             description,
@@ -63,8 +65,8 @@ impl BeaconInfoEventContent {
         self.live = false;
     }
 
-    /// Start time plus its timeout, it returns `false`, indicating that the beacon is not live.
-    /// Otherwise, it returns `true`.
+    /// Start time plus its timeout, it returns `false`, indicating that the
+    /// beacon is not live. Otherwise, it returns `true`.
     pub fn is_live(&self) -> bool {
         self.live
             && self

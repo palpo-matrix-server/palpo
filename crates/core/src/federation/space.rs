@@ -3,11 +3,13 @@ use salvo::prelude::*;
 /// Spaces endpoints.
 use serde::{Deserialize, Serialize};
 
-use crate::events::space::child::HierarchySpaceChildEvent;
-use crate::sending::{SendRequest, SendResult};
 use crate::{
-    EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId, room::RoomType,
-    serde::RawJson, space::SpaceRoomJoinRule,
+    EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId,
+    events::space::child::HierarchySpaceChildEvent,
+    room::RoomType,
+    sending::{SendRequest, SendResult},
+    serde::RawJson,
+    space::SpaceRoomJoinRule,
 };
 
 /// The summary of a parent space.
@@ -40,7 +42,8 @@ pub struct SpaceHierarchyParentSummary {
 
     /// Whether guest users may join the room and participate in it.
     ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
+    /// If they can, they will be subject to ordinary power level rules like any
+    /// other user.
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
@@ -64,8 +67,8 @@ pub struct SpaceHierarchyParentSummary {
     /// If the room is not a space-room, this should be empty.
     pub children_state: Vec<RawJson<HierarchySpaceChildEvent>>,
 
-    /// If the room is a restricted room, these are the room IDs which are specified by the join
-    /// rules.
+    /// If the room is a restricted room, these are the room IDs which are
+    /// specified by the join rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
 
@@ -89,7 +92,8 @@ pub struct SpaceHierarchyParentSummary {
 
 /// The summary of a space's child.
 ///
-/// To create an instance of this type, first create a `SpaceHierarchyChildSummaryInit` and convert
+/// To create an instance of this type, first create a
+/// `SpaceHierarchyChildSummaryInit` and convert
 /// it via `SpaceHierarchyChildSummary::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyChildSummary {
@@ -120,7 +124,8 @@ pub struct SpaceHierarchyChildSummary {
 
     /// Whether guest users may join the room and participate in it.
     ///
-    /// If they can, they will be subject to ordinary power level rules like any other user.
+    /// If they can, they will be subject to ordinary power level rules like any
+    /// other user.
     pub guest_can_join: bool,
 
     /// The URL for the room's avatar, if one is set.
@@ -139,8 +144,8 @@ pub struct SpaceHierarchyChildSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub room_type: Option<RoomType>,
 
-    /// If the room is a restricted room, these are the room IDs which are specified by the join
-    /// rules.
+    /// If the room is a restricted room, these are the room IDs which are
+    /// specified by the join rules.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub allowed_room_ids: Vec<OwnedRoomId>,
 
@@ -201,8 +206,8 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
 
 /// `GET /_matrix/federation/*/hierarchy/{room_id}`
 ///
-/// Get the space tree in a depth-first manner to locate child rooms of a given space.
-/// `/v1/` ([spec])
+/// Get the space tree in a depth-first manner to locate child rooms of a given
+/// space. `/v1/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1hierarchyroomid
 // const METADATA: Metadata = metadata! {
@@ -210,7 +215,8 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
 //     rate_limited: false,
 //     authentication: ServerSignatures,
 //     history: {
-//         unstable => "/_matrix/federation/unstable/org.matrix.msc2946/hierarchy/:room_id",
+//         unstable =>
+// "/_matrix/federation/unstable/org.matrix.msc2946/hierarchy/:room_id",
 //         1.2 => "/_matrix/federation/v1/hierarchy/:room_id",
 //     }
 // };
@@ -245,10 +251,11 @@ pub struct HierarchyResBody {
     /// Rooms which the requesting server cannot peek/join will be excluded.
     pub children: Vec<SpaceHierarchyChildSummary>,
 
-    /// The list of room IDs the requesting server doesn’t have a viable way to peek/join.
+    /// The list of room IDs the requesting server doesn’t have a viable way to
+    /// peek/join.
     ///
-    /// Rooms which the responding server cannot provide details on will be outright
-    /// excluded from the response instead.
+    /// Rooms which the responding server cannot provide details on will be
+    /// outright excluded from the response instead.
     pub inaccessible_children: Vec<OwnedRoomId>,
 
     /// A summary of the requested room.

@@ -6,7 +6,6 @@ use crate::core::events::presence::{PresenceEvent, PresenceEventContent};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
 use crate::core::{MatrixError, UnixMillis};
-
 use crate::schema::*;
 use crate::{DataResult, connect};
 

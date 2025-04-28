@@ -1,8 +1,9 @@
 //! Digital signatures and collections of signatures.
 
-use crate::serde::{Base64, base64::Standard};
-
-use crate::signatures::{Algorithm, Error, split_id};
+use crate::{
+    serde::{Base64, base64::Standard},
+    signatures::{Algorithm, Error, split_id},
+};
 
 /// A digital signature.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -13,20 +14,23 @@ pub struct Signature {
     /// The signature data.
     pub(crate) signature: Vec<u8>,
 
-    /// The "version" of the key identifier for the public key used to generate this signature.
+    /// The "version" of the key identifier for the public key used to generate
+    /// this signature.
     pub(crate) version: String,
 }
 
 impl Signature {
     /// Creates a signature from raw bytes.
     ///
-    /// While a signature can be created directly using struct literal syntax, this constructor can
-    /// be used to automatically determine the algorithm and version from a key identifier in the
-    /// form *algorithm:version*, e.g. "ed25519:1".
+    /// While a signature can be created directly using struct literal syntax,
+    /// this constructor can be used to automatically determine the
+    /// algorithm and version from a key identifier in the form *algorithm:
+    /// version*, e.g. "ed25519:1".
     ///
-    /// This constructor will ensure that the version does not contain characters that violate the
-    /// guidelines in the specification. Because it may be necessary to represent signatures with
-    /// versions that don't adhere to these guidelines, it's possible to simply use the struct
+    /// This constructor will ensure that the version does not contain
+    /// characters that violate the guidelines in the specification. Because
+    /// it may be necessary to represent signatures with versions that don't
+    /// adhere to these guidelines, it's possible to simply use the struct
     /// literal syntax to construct a `Signature` with an arbitrary key.
     ///
     /// # Parameters
@@ -68,16 +72,17 @@ impl Signature {
         Base64::<Standard, _>::new(self.signature.as_slice()).encode()
     }
 
-    /// The key identifier, a string containing the signature algorithm and the key "version"
-    /// separated by a colon, e.g. "ed25519:1".
+    /// The key identifier, a string containing the signature algorithm and the
+    /// key "version" separated by a colon, e.g. "ed25519:1".
     pub fn id(&self) -> String {
         format!("{}:{}", self.algorithm, self.version)
     }
 
     /// The "version" of the key used for this signature.
     ///
-    /// Versions are used as an identifier to distinguish signatures generated from different keys
-    /// but using the same algorithm on the same homeserver.
+    /// Versions are used as an identifier to distinguish signatures generated
+    /// from different keys but using the same algorithm on the same
+    /// homeserver.
     pub fn version(&self) -> &str {
         &self.version
     }

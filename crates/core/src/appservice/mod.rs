@@ -1,5 +1,6 @@
-//! (De)serializable types for the [Matrix Application Service API][appservice-api].
-//! These types can be shared by application service and server code.
+//! (De)serializable types for the [Matrix Application Service
+//! API][appservice-api]. These types can be shared by application service and
+//! server code.
 //!
 //! [appservice-api]: https://spec.matrix.org/latest/application-service-api/
 
@@ -16,7 +17,8 @@ pub mod third_party;
 /// Used for [appservice registration](https://spec.matrix.org/latest/application-service-api/#registration).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Namespace {
-    /// Whether this application service has exclusive access to events within this namespace.
+    /// Whether this application service has exclusive access to events within
+    /// this namespace.
     pub exclusive: bool,
 
     /// A regular expression defining which values this namespace includes.
@@ -49,8 +51,8 @@ pub struct Namespaces {
 }
 
 impl Namespaces {
-    /// Creates a new `Namespaces` instance with empty namespaces for `users`,  `aliases` and
-    /// `rooms` (none of them are explicitly required)
+    /// Creates a new `Namespaces` instance with empty namespaces for `users`,
+    /// `aliases` and `rooms` (none of them are explicitly required)
     pub fn new() -> Self {
         Self::default()
     }
@@ -58,13 +60,14 @@ impl Namespaces {
 
 /// Information required in the registration yaml file that a homeserver needs.
 ///
-/// To create an instance of this type, first create a `RegistrationInit` and convert it via
-/// `Registration::from` / `.into()`.
+/// To create an instance of this type, first create a `RegistrationInit` and
+/// convert it via `Registration::from` / `.into()`.
 ///
 /// Used for [appservice registration](https://spec.matrix.org/latest/application-service-api/#registration).
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Registration {
-    /// A unique, user - defined ID of the application service which will never change.
+    /// A unique, user - defined ID of the application service which will never
+    /// change.
     pub id: String,
 
     /// The URL for the application service.
@@ -72,16 +75,19 @@ pub struct Registration {
     /// Optionally set to `null` if no traffic is required.
     pub url: Option<String>,
 
-    /// A unique token for application services to use to authenticate requests to HomeServers.
+    /// A unique token for application services to use to authenticate requests
+    /// to HomeServers.
     pub as_token: String,
 
-    /// A unique token for HomeServers to use to authenticate requests to application services.
+    /// A unique token for HomeServers to use to authenticate requests to
+    /// application services.
     pub hs_token: String,
 
     /// The localpart of the user associated with the application service.
     pub sender_localpart: String,
 
-    /// A list of users, aliases and rooms namespaces that the application service controls.
+    /// A list of users, aliases and rooms namespaces that the application
+    /// service controls.
     pub namespaces: Namespaces,
 
     /// Whether requests from masqueraded users are rate-limited.
@@ -90,7 +96,8 @@ pub struct Registration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate_limited: Option<bool>,
 
-    /// The external protocols which the application service provides (e.g. IRC).
+    /// The external protocols which the application service provides (e.g.
+    /// IRC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocols: Option<Vec<String>>,
 }

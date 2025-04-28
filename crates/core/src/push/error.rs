@@ -1,13 +1,14 @@
-use std::error::Error as StdError;
-use std::fmt;
+use std::{error::Error as StdError, fmt};
 
 use thiserror::Error;
 
-/// The error type returned when trying to insert a user-defined push rule into a `Ruleset`.
+/// The error type returned when trying to insert a user-defined push rule into
+/// a `Ruleset`.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum InsertPushRuleError {
-    /// The rule ID starts with a dot (`.`), which is reserved for server-default rules.
+    /// The rule ID starts with a dot (`.`), which is reserved for
+    /// server-default rules.
     #[error("rule IDs starting with a dot are reserved for server-default rules")]
     ServerDefaultRuleId,
 
@@ -15,7 +16,8 @@ pub enum InsertPushRuleError {
     #[error("invalid rule ID")]
     InvalidRuleId,
 
-    /// The rule is being placed relative to a server-default rule, which is forbidden.
+    /// The rule is being placed relative to a server-default rule, which is
+    /// forbidden.
     #[error("can't place rule relative to server-default rule")]
     RelativeToServerDefaultRule,
 
@@ -28,13 +30,15 @@ pub enum InsertPushRuleError {
     BeforeHigherThanAfter,
 }
 
-/// The error type returned when trying modify a push rule that could not be found in a `Ruleset`.
+/// The error type returned when trying modify a push rule that could not be
+/// found in a `Ruleset`.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 #[error("The rule could not be found")]
 pub struct RuleNotFoundError;
 
-/// The error type returned when trying to remove a user-defined push rule from a `Ruleset`.
+/// The error type returned when trying to remove a user-defined push rule from
+/// a `Ruleset`.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum RemovePushRuleError {

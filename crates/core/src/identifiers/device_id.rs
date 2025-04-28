@@ -5,16 +5,17 @@ use super::generate_localpart;
 
 /// A Matrix key ID.
 ///
-/// Device identifiers in Matrix are completely opaque character sequences. This type is provided
-/// simply for its semantic value.
+/// Device identifiers in Matrix are completely opaque character sequences. This
+/// type is provided simply for its semantic value.
 ///
 /// # Example
 ///
 /// ```
-/// use crate::{device_id, DeviceId, OwnedDeviceId};
+/// use crate::{DeviceId, OwnedDeviceId, device_id};
 ///
+/// # #[cfg(feature = "rand")] {
 /// let random_id = DeviceId::new();
-/// assert_eq!(random_id.as_str().len(), 8);
+/// assert_eq!(random_id.as_str().len(), 10);
 /// # }
 ///
 /// let static_id = device_id!("01234567");

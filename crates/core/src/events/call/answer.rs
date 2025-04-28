@@ -2,7 +2,6 @@
 //!
 //! [`m.call.answer`]: https://spec.matrix.org/latest/client-server-api/#mcallanswer
 
-use crate::{OwnedVoipId, VoipVersionId};
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
@@ -10,6 +9,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "unstable-msc2747")]
 use super::CallCapabilities;
 use super::SessionDescription;
+use crate::{OwnedVoipId, VoipVersionId};
 
 /// The content of an `m.call.answer` event.
 ///
@@ -23,7 +23,8 @@ pub struct CallAnswerEventContent {
     /// A unique identifier for the call.
     pub call_id: OwnedVoipId,
 
-    /// **Required in VoIP version 1.** A unique ID for this session for the duration of the call.
+    /// **Required in VoIP version 1.** A unique ID for this session for the
+    /// duration of the call.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub party_id: Option<OwnedVoipId>,
 
@@ -37,7 +38,8 @@ pub struct CallAnswerEventContent {
 }
 
 impl CallAnswerEventContent {
-    /// Creates an `CallAnswerEventContent` with the given answer, call ID and VoIP version.
+    /// Creates an `CallAnswerEventContent` with the given answer, call ID and
+    /// VoIP version.
     pub fn new(answer: SessionDescription, call_id: OwnedVoipId, version: VoipVersionId) -> Self {
         Self {
             answer,
@@ -49,14 +51,14 @@ impl CallAnswerEventContent {
         }
     }
 
-    /// Convenience method to create a VoIP version 0 `CallAnswerEventContent` with all the required
-    /// fields.
+    /// Convenience method to create a VoIP version 0 `CallAnswerEventContent`
+    /// with all the required fields.
     pub fn version_0(answer: SessionDescription, call_id: OwnedVoipId) -> Self {
         Self::new(answer, call_id, VoipVersionId::V0)
     }
 
-    /// Convenience method to create a VoIP version 1 `CallAnswerEventContent` with all the required
-    /// fields.
+    /// Convenience method to create a VoIP version 1 `CallAnswerEventContent`
+    /// with all the required fields.
     pub fn version_1(answer: SessionDescription, call_id: OwnedVoipId, party_id: OwnedVoipId) -> Self {
         Self {
             answer,

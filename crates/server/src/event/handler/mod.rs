@@ -1,8 +1,5 @@
 mod fetch_state;
 mod state_at_incoming;
-use fetch_state::fetch_state;
-use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
-
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
 use std::future::Future;
@@ -12,7 +9,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
+use fetch_state::fetch_state;
 use palpo_core::federation::event::EventResBody;
+use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
@@ -25,7 +24,6 @@ use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduEvent;
-
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::{AppError, AppResult, MatrixError, exts::*};
 
@@ -67,7 +65,7 @@ pub(crate) async fn handle_incoming_pdu(
 
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
-        return Err(MatrixError::forbidden("Federation of this room is currently disabled on this server.").into());
+        return Err(MatrixError::forbidden(None, "Federation of this room is currently disabled on this server.").into());
     }
 
     // 1.3.1 Check room ACL on origin field/server
@@ -438,10 +436,10 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok())
         },
     )
-    .map_err(|_e| MatrixError::forbidden("Auth check failed for event passes based on the state"))?;
+    .map_err(|_e| MatrixError::forbidden(None, "Auth check failed for event passes based on the state"))?;
 
     if !auth_checked {
-        return Err(MatrixError::forbidden("Event has failed auth check with state at the event.").into());
+        return Err(MatrixError::forbidden(None, "Event has failed auth check with state at the event.").into());
     }
     debug!("Auth check succeeded");
 
@@ -901,7 +899,7 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         Ok(())
     } else {
         info!("Server {} was denied by room ACL in {}", server_name, room_id);
-        Err(MatrixError::forbidden("Server was denied by room ACL").into())
+        Err(MatrixError::forbidden(None, "Server was denied by room ACL").into())
     }
 }
 

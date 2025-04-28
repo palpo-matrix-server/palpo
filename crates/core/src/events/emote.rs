@@ -10,11 +10,12 @@ use super::{message::TextContentBlock, room::message::Relation};
 
 /// The payload for an extensible emote message.
 ///
-/// This is the new primary type introduced in [MSC3954] and should only be sent in rooms with a
-/// version that supports it. See the documentation of the [`message`] module for more information.
+/// This is the new primary type introduced in [MSC3954] and should only be sent
+/// in rooms with a version that supports it. See the documentation of the
+/// [`message`] module for more information.
 ///
-/// To construct an `EmoteEventContent` with a custom [`TextContentBlock`], convert it with
-/// `EmoteEventContent::from()` / `.into()`.
+/// To construct an `EmoteEventContent` with a custom [`TextContentBlock`],
+/// convert it with `EmoteEventContent::from()` / `.into()`.
 ///
 /// [MSC3954]: https://github.com/matrix-org/matrix-spec-proposals/pull/3954
 /// [`message`]: super::message
@@ -66,8 +67,8 @@ impl EmoteEventContent {
 
     /// A convenience constructor to create an emote from Markdown.
     ///
-    /// The content includes an HTML message if some Markdown formatting was detected, otherwise
-    /// only a plain text message is included.
+    /// The content includes an HTML message if some Markdown formatting was
+    /// detected, otherwise only a plain text message is included.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
         Self {

@@ -19,13 +19,12 @@ pub mod session;
 pub use key_backup::*;
 pub use session::*;
 pub mod presence;
-pub use presence::*;
-
 use std::collections::BTreeMap;
 use std::mem;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+pub use presence::*;
 
 use crate::core::UnixMillis;
 use crate::core::client::sync_events;
@@ -225,13 +224,13 @@ pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
         .select((user_login_tokens::user_id, user_login_tokens::expires_at))
         .first::<(OwnedUserId, UnixMillis)>(&mut connect()?)
     else {
-        return Err(MatrixError::forbidden("Login token is unrecognised").into());
+        return Err(MatrixError::forbidden(None, "Login token is unrecognised").into());
     };
 
     if expires_at < UnixMillis::now() {
         trace!(?user_id, ?token, "Removing expired login token");
         diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
-        return Err(MatrixError::forbidden("Login token is expired").into());
+        return Err(MatrixError::forbidden(None, "Login token is expired").into());
     }
 
     diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;

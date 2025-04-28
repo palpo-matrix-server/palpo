@@ -1,6 +1,7 @@
+use salvo::prelude::*;
+
 use crate::core::third_party::*;
 use crate::{AuthArgs, JsonResult, json_ok};
-use salvo::prelude::*;
 
 pub fn router() -> Router {
     Router::with_path("thirdparty")

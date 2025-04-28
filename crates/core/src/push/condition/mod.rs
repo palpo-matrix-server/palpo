@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
-use crate::{OwnedRoomId, OwnedUserId, UserId, power_levels::NotificationPowerLevels};
-use crate::{PrivOwnedStr, RoomVersionId};
+use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId, power_levels::NotificationPowerLevels};
 
 mod flattened_json;
 mod push_condition_serde;
@@ -57,7 +56,8 @@ impl RoomVersionFeature {
     }
 }
 
-/// A condition that must apply for an associated push rule's action to be taken.
+/// A condition that must apply for an associated push rule's action to be
+/// taken.
 #[derive(ToSchema, Clone, Debug)]
 pub enum PushCondition {
     /// A glob pattern match on a field of the event.
@@ -69,13 +69,13 @@ pub enum PushCondition {
 
         /// The glob-style pattern to match against.
         ///
-        /// Patterns with no special glob characters should be treated as having asterisks
-        /// prepended and appended when testing the condition.
+        /// Patterns with no special glob characters should be treated as having
+        /// asterisks prepended and appended when testing the condition.
         pattern: String,
     },
 
-    /// Matches unencrypted messages where `content.body` contains the owner's display name in that
-    /// room.
+    /// Matches unencrypted messages where `content.body` contains the owner's
+    /// display name in that room.
     ContainsDisplayName,
 
     /// Matches the current number of members in the room.
@@ -84,13 +84,15 @@ pub enum PushCondition {
         is: RoomMemberCountIs,
     },
 
-    /// Takes into account the current power levels in the room, ensuring the sender of the event
-    /// has high enough power to trigger the notification.
+    /// Takes into account the current power levels in the room, ensuring the
+    /// sender of the event has high enough power to trigger the
+    /// notification.
     SenderNotificationPermission {
-        /// The field in the power level event the user needs a minimum power level for.
+        /// The field in the power level event the user needs a minimum power
+        /// level for.
         ///
-        /// Fields must be specified under the `notifications` property in the power level event's
-        /// `content`.
+        /// Fields must be specified under the `notifications` property in the
+        /// power level event's `content`.
         key: String,
     },
 
@@ -152,8 +154,9 @@ impl PushCondition {
     /// # Arguments
     ///
     /// * `event` - The flattened JSON representation of a room message event.
-    /// * `context` - The context of the room at the time of the event. If the power levels context
-    ///   is missing from it, conditions that depend on it will never apply.
+    /// * `context` - The context of the room at the time of the event. If the
+    ///   power levels context is missing from it, conditions that depend on it
+    ///   will never apply.
     pub fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
         if event.get_str("sender").is_some_and(|sender| sender == context.user_id) {
             return false;
@@ -220,7 +223,8 @@ pub struct _CustomPushCondition {
     data: BTreeMap<String, JsonValue>,
 }
 
-/// The context of the room associated to an event to be able to test all push conditions.
+/// The context of the room associated to an event to be able to test all push
+/// conditions.
 #[derive(Clone, Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PushConditionRoomCtx {
@@ -245,7 +249,8 @@ pub struct PushConditionRoomCtx {
     pub supported_features: Vec<RoomVersionFeature>,
 }
 
-/// The room power levels context to be able to test the corresponding push conditions.
+/// The room power levels context to be able to test the corresponding push
+/// conditions.
 #[derive(Clone, Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PushConditionPowerLevelsCtx {
@@ -281,8 +286,8 @@ trait StrExt {
     /// a char boundary.
     fn char_at(&self, index: usize) -> char;
 
-    /// Get the index of the char that is before the char at `index`. The byte index
-    /// must correspond to a char boundary.
+    /// Get the index of the char that is before the char at `index`. The byte
+    /// index must correspond to a char boundary.
     ///
     /// Returns `None` if there's no previous char. Otherwise, returns the char.
     fn find_prev_char(&self, index: usize) -> Option<char>;
@@ -293,15 +298,16 @@ trait StrExt {
     ///
     /// The match is case insensitive.
     ///
-    /// If `match_words` is `true`, checks that the pattern is separated from other words.
+    /// If `match_words` is `true`, checks that the pattern is separated from
+    /// other words.
     fn matches_pattern(&self, pattern: &str, match_words: bool) -> bool;
 
     /// Matches this string against `pattern`, with word boundaries.
     ///
     /// The pattern can be a glob with wildcards `*` and `?`.
     ///
-    /// A word boundary is defined as the start or end of the value, or any character not in the
-    /// sets `[A-Z]`, `[a-z]`, `[0-9]` or `_`.
+    /// A word boundary is defined as the start or end of the value, or any
+    /// character not in the sets `[A-Z]`, `[a-z]`, `[0-9]` or `_`.
     ///
     /// The match is case sensitive.
     fn matches_word(&self, pattern: &str) -> bool;
@@ -453,12 +459,14 @@ impl StrExt for str {
 //     use std::collections::BTreeMap;
 
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value, Value as JsonValue};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value, Value as JsonValue};
 
 //     use super::{
-//         FlattenedJson, PushCondition, PushConditionPowerLevelsCtx, PushConditionRoomCtx, RoomMemberCountIs, StrExt,
-//     };
-//     use crate::{owned_room_id, owned_user_id, power_levels::NotificationPowerLevels, serde::RawJson, OwnedUserId};
+//         FlattenedJson, PushCondition, PushConditionPowerLevelsCtx,
+// PushConditionRoomCtx, RoomMemberCountIs, StrExt,     };
+//     use crate::{owned_room_id, owned_user_id,
+// power_levels::NotificationPowerLevels, serde::RawJson, OwnedUserId};
 
 //     #[test]
 //     fn serialize_event_match_condition() {
@@ -508,8 +516,8 @@ impl StrExt for str {
 //         });
 //         assert_eq!(
 //             json_data,
-//             to_json_value(PushCondition::SenderNotificationPermission { key: "room".into() }).unwrap()
-//         );
+//             to_json_value(PushCondition::SenderNotificationPermission { key:
+// "room".into() }).unwrap()         );
 //     }
 
 //     #[test]
@@ -530,9 +538,9 @@ impl StrExt for str {
 //     #[test]
 //     fn deserialize_contains_display_name_condition() {
 //         assert_matches!(
-//             from_json_value::<PushCondition>(json!({ "kind": "contains_display_name" })).unwrap(),
-//             PushCondition::ContainsDisplayName
-//         );
+//             from_json_value::<PushCondition>(json!({ "kind":
+// "contains_display_name" })).unwrap(),
+// PushCondition::ContainsDisplayName         );
 //     }
 
 //     #[test]
@@ -774,11 +782,12 @@ impl StrExt for str {
 //         let first_event = first_flattened_event();
 //         let second_event = second_flattened_event();
 
-//         let sender_notification_permission = PushCondition::SenderNotificationPermission { key: "room".into() };
+//         let sender_notification_permission =
+// PushCondition::SenderNotificationPermission { key: "room".into() };
 
-//         assert!(!sender_notification_permission.applies(&first_event, &context));
-//         assert!(sender_notification_permission.applies(&second_event, &context));
-//     }
+//         assert!(!sender_notification_permission.applies(&first_event,
+// &context));         assert!(sender_notification_permission.applies(&
+// second_event, &context));     }
 
 //     #[cfg(feature = "unstable-msc3932")]
 //     #[test]
@@ -791,8 +800,8 @@ impl StrExt for str {
 //             user_id: owned_user_id!("@gorilla:server.name"),
 //             user_display_name: "Groovy Gorilla".into(),
 //             power_levels: context_not_matching.power_levels.clone(),
-//             supported_features: vec![super::RoomVersionFeature::ExtensibleEvents],
-//         };
+//             supported_features:
+// vec![super::RoomVersionFeature::ExtensibleEvents],         };
 
 //         let simple_event_raw = serde_json::from_str::<RawJson<JsonValue>>(
 //             r#"{
@@ -810,9 +819,9 @@ impl StrExt for str {
 //             feature: super::RoomVersionFeature::ExtensibleEvents,
 //         };
 
-//         assert!(room_version_condition.applies(&simple_event, &context_matching));
-//         assert!(!room_version_condition.applies(&simple_event, &context_not_matching));
-//     }
+//         assert!(room_version_condition.applies(&simple_event,
+// &context_matching));         assert!(!room_version_condition.applies(&
+// simple_event, &context_not_matching));     }
 
 //     #[test]
 //     fn event_property_is_applies() {

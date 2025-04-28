@@ -1,6 +1,5 @@
-//! De-/serialization functions for `Option<std::time::Duration>` objects represented as
-//! milliseconds.
-//!
+//! De-/serialization functions for `Option<std::time::Duration>` objects
+//! represented as milliseconds.
 
 use std::time::Duration;
 

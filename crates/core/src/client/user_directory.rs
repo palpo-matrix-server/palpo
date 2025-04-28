@@ -22,7 +22,8 @@ use crate::{OwnedMxcUri, OwnedUserId};
 
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct SearchUsersReqArgs {
-    /// Language tag to determine the collation to use for the (case-insensitive) search.
+    /// Language tag to determine the collation to use for the
+    /// (case-insensitive) search.
     ///
     /// See [MDN] for the syntax.
     ///

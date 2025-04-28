@@ -10,34 +10,45 @@ use base64::{Engine, alphabet};
 use serde_json::{from_str as from_json_str, to_string as to_json_string};
 use sha2::{Sha256, digest::Digest};
 
-use crate::serde::canonical_json::{CanonicalJsonObject, CanonicalJsonValue, JsonType, redact};
-use crate::serde::{Base64, base64::Standard};
-use crate::signatures::{
-    Error, JsonError, ParseError, VerificationError,
-    keys::{KeyPair, PublicKeyMap},
-    split_id,
-    verification::{Ed25519Verifier, Verified, Verifier},
+use crate::{
+    OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId,
+    serde::{
+        Base64,
+        base64::Standard,
+        canonical_json::{CanonicalJsonObject, CanonicalJsonValue, JsonType, redact},
+    },
+    signatures::{
+        Error, JsonError, ParseError, VerificationError,
+        keys::{KeyPair, PublicKeyMap},
+        split_id,
+        verification::{Ed25519Verifier, Verified, Verifier},
+    },
 };
-use crate::{OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId, UserId};
 
 const MAX_PDU_BYTES: usize = 65_535;
 
-/// The fields to remove from a JSON object when converting JSON into the "canonical" form.
+/// The fields to remove from a JSON object when converting JSON into the
+/// "canonical" form.
 static CANONICAL_JSON_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 
-/// The fields to remove from a JSON object when creating a content hash of an event.
+/// The fields to remove from a JSON object when creating a content hash of an
+/// event.
 static CONTENT_HASH_FIELDS_TO_REMOVE: &[&str] = &["hashes", "signatures", "unsigned"];
 
-/// The fields to remove from a JSON object when creating a reference hash of an event.
+/// The fields to remove from a JSON object when creating a reference hash of an
+/// event.
 static REFERENCE_HASH_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 
-/// Signs an arbitrary JSON object and adds the signature to an object under the key `signatures`.
+/// Signs an arbitrary JSON object and adds the signature to an object under the
+/// key `signatures`.
 ///
-/// If `signatures` is already present, the new signature will be appended to the existing ones.
+/// If `signatures` is already present, the new signature will be appended to
+/// the existing ones.
 ///
 /// # Parameters
 ///
-/// * entity_id: The identifier of the entity creating the signature. Generally this means a
+/// * entity_id: The identifier of the entity creating the signature. Generally
+///   this means a
 /// homeserver, e.g. "example.com".
 /// * keypair: A cryptographic key pair used to sign the JSON.
 /// * object: A JSON object to sign according and append a signature to.
@@ -154,16 +165,18 @@ pub fn canonical_json(object: &CanonicalJsonObject) -> Result<String, Error> {
 
 /// Uses a set of public keys to verify a signed JSON object.
 ///
-/// Unlike `content_hash` and `reference_hash`, this function does not report an error if the
-/// canonical JSON is larger than 65535 bytes; this function may be used for requests that are
-/// larger than just one PDU's maximum size.
+/// Unlike `content_hash` and `reference_hash`, this function does not report an
+/// error if the canonical JSON is larger than 65535 bytes; this function may be
+/// used for requests that are larger than just one PDU's maximum size.
 ///
 /// # Parameters
 ///
-/// * public_key_map: A map from entity identifiers to a map from key identifiers to public keys.
-/// Generally, entity identifiers are server names — the host/IP/port of a homeserver (e.g.
-/// "example.com") for which a signature must be verified. Key identifiers for each server (e.g.
-/// "ed25519:1") then map to their respective public keys.
+/// * public_key_map: A map from entity identifiers to a map from key
+///   identifiers to public keys.
+/// Generally, entity identifiers are server names — the host/IP/port of a
+/// homeserver (e.g. "example.com") for which a signature must be verified. Key
+/// identifiers for each server (e.g. "ed25519:1") then map to their respective
+/// public keys.
 /// * object: The JSON object that was signed.
 ///
 /// # Errors
@@ -241,7 +254,8 @@ pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) 
 ///
 /// # Parameters
 ///
-/// * verifier: A `Verifier` appropriate for the digital signature algorithm that was used.
+/// * verifier: A `Verifier` appropriate for the digital signature algorithm
+///   that was used.
 /// * public_key: The raw bytes of the public key used to sign the JSON.
 /// * signature: The raw bytes of the signature.
 /// * object: The JSON object that was signed.
@@ -263,8 +277,9 @@ where
 
 /// Creates a *content hash* for an event.
 ///
-/// The content hash of an event covers the complete event including the unredacted contents. It is
-/// used during federation and is described in the Matrix server-server specification.
+/// The content hash of an event covers the complete event including the
+/// unredacted contents. It is used during federation and is described in the
+/// Matrix server-server specification.
 ///
 /// # Parameters
 ///
@@ -286,11 +301,12 @@ pub fn content_hash(object: &CanonicalJsonObject) -> Result<Base64<Standard, [u8
 
 /// Creates a *reference hash* for an event.
 ///
-/// Returns the hash as a base64-encoded string, using the standard character set, without padding.
+/// Returns the hash as a base64-encoded string, using the standard character
+/// set, without padding.
 ///
-/// The reference hash of an event covers the essential fields of an event, including content
-/// hashes. It is used to generate event identifiers and is described in the Matrix server-server
-/// specification.
+/// The reference hash of an event covers the essential fields of an event,
+/// including content hashes. It is used to generate event identifiers and is
+/// described in the Matrix server-server specification.
 ///
 /// # Parameters
 ///
@@ -319,18 +335,20 @@ pub fn reference_hash(value: &CanonicalJsonObject, version: &RoomVersionId) -> R
     Ok(base64_engine.encode(hash))
 }
 
-/// Hashes and signs an event and adds the hash and signature to objects under the keys `hashes` and
-/// `signatures`, respectively.
+/// Hashes and signs an event and adds the hash and signature to objects under
+/// the keys `hashes` and `signatures`, respectively.
 ///
-/// If `hashes` and/or `signatures` are already present, the new data will be appended to the
-/// existing data.
+/// If `hashes` and/or `signatures` are already present, the new data will be
+/// appended to the existing data.
 ///
 /// # Parameters
 ///
-/// * entity_id: The identifier of the entity creating the signature. Generally this means a
+/// * entity_id: The identifier of the entity creating the signature. Generally
+///   this means a
 /// homeserver, e.g. "example.com".
 /// * keypair: A cryptographic key pair used to sign the event.
-/// * object: A JSON object to be hashed and signed according to the Matrix specification.
+/// * object: A JSON object to be hashed and signed according to the Matrix
+///   specification.
 ///
 /// # Errors
 ///
@@ -445,21 +463,25 @@ where
 
 /// Verifies that the signed event contains all the required valid signatures.
 ///
-/// Some room versions may require signatures from multiple homeservers, so this function takes a
-/// map from servers to sets of public keys. Signatures are verified for each required homeserver.
-/// All known public keys for a homeserver should be provided. The first one found on the given
-/// event will be used.
+/// Some room versions may require signatures from multiple homeservers, so this
+/// function takes a map from servers to sets of public keys. Signatures are
+/// verified for each required homeserver. All known public keys for a
+/// homeserver should be provided. The first one found on the given event will
+/// be used.
 ///
-/// If the `Ok` variant is returned by this function, it will contain a `Verified` value which
-/// distinguishes an event with valid signatures and a matching content hash with an event with
-/// only valid signatures. See the documentation for `Verified` for details.
+/// If the `Ok` variant is returned by this function, it will contain a
+/// `Verified` value which distinguishes an event with valid signatures and a
+/// matching content hash with an event with only valid signatures. See the
+/// documentation for `Verified` for details.
 ///
 /// # Parameters
 ///
-/// * public_key_map: A map from entity identifiers to a map from key identifiers to public keys.
-/// Generally, entity identifiers are server names—the host/IP/port of a homeserver (e.g.
-/// "example.com") for which a signature must be verified. Key identifiers for each server (e.g.
-/// "ed25519:1") then map to their respective public keys.
+/// * public_key_map: A map from entity identifiers to a map from key
+///   identifiers to public keys.
+/// Generally, entity identifiers are server names—the host/IP/port of a
+/// homeserver (e.g. "example.com") for which a signature must be verified. Key
+/// identifiers for each server (e.g. "ed25519:1") then map to their respective
+/// public keys.
 /// * object: The JSON object of the event that was signed.
 /// * version: Room version of the given event
 ///
@@ -553,8 +575,8 @@ pub fn verify_event(
 
         let mut checked = false;
         for (key_id, signature) in signature_set {
-            // Since only ed25519 is supported right now, we don't actually need to check what the
-            // algorithm is. If it split successfully, it's ed25519.
+            // Since only ed25519 is supported right now, we don't actually need to check
+            // what the algorithm is. If it split successfully, it's ed25519.
             if split_id(key_id).is_err() {
                 continue;
             }
@@ -640,11 +662,11 @@ pub fn required_keys(
 
 /// Extracts the server names to check signatures for given event.
 ///
-/// It will return the sender's server (unless it's a third party invite) and the event id server
-/// (on v1 and v2 room versions)
+/// It will return the sender's server (unless it's a third party invite) and
+/// the event id server (on v1 and v2 room versions)
 ///
-/// Starting with room version 8, if join_authorised_via_users_server is present, a signature from
-/// that user is required.
+/// Starting with room version 8, if join_authorised_via_users_server is
+/// present, a signature from that user is required.
 fn servers_to_check_signatures(
     object: &CanonicalJsonObject,
     version: &RoomVersionId,
@@ -714,14 +736,15 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 // mod tests {
 //     use std::collections::BTreeMap;
 
-//     use crate::{serde::Base64, CanonicalJsonValue, RoomVersionId, ServerSigningKeyId, SigningKeyAlgorithm};
+//     use crate::{serde::Base64, CanonicalJsonValue, RoomVersionId,
+// ServerSigningKeyId, SigningKeyAlgorithm};
 //     use assert_matches2::assert_matches;
 //     use serde_json::json;
 
 //     use super::canonical_json;
 //     use crate::{
-//         sign_json, verify_event, Ed25519KeyPair, Error, PublicKeyMap, PublicKeySet, VerificationError, Verified,
-//     };
+//         sign_json, verify_event, Ed25519KeyPair, Error, PublicKeyMap,
+// PublicKeySet, VerificationError, Verified,     };
 
 //     #[test]
 //     fn canonical_json_complex() {
@@ -745,7 +768,10 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }
 //         });
 
-//         let canonical = r#"{"auth":{"mxid":"@john.doe:example.com","profile":{"display_name":"John Doe","three_pids":[{"address":"john.doe@example.org","medium":"email"},{"address":"123456789","medium":"msisdn"}]},"success":true}}"#;
+//         let canonical =
+// r#"{"auth":{"mxid":"@john.doe:example.com","profile":{"display_name":"John
+// Doe","three_pids":[{"address":"john.doe@example.org","medium":"email"},{"
+// address":"123456789","medium":"msisdn"}]},"success":true}}"#;
 
 //         let object = match CanonicalJsonValue::try_from(data).unwrap() {
 //             CanonicalJsonValue::Object(obj) => obj,
@@ -772,7 +798,8 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //                 "sender": "@a:domain",
 //                 "signatures": {
 //                     "domain": {
-//                         "ed25519:1": "KxwGjPSDEtvnFgU00fwFz+l6d2pJM6XBIaMEn81SXPTRl16AqLAYqfIReFGZlHi5KLjAWbOoMszkwsQma+lYAg"
+//                         "ed25519:1":
+// "KxwGjPSDEtvnFgU00fwFz+l6d2pJM6XBIaMEn81SXPTRl16AqLAYqfIReFGZlHi5KLjAWbOoMszkwsQma+lYAg"
 //                     }
 //                 },
 //                 "type": "m.room.third_party_invite",
@@ -784,7 +811,8 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //         .unwrap();
 
 //         let public_key_map = BTreeMap::new();
-//         let verification = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6).unwrap();
+//         let verification = verify_event(&public_key_map, &signed_event,
+// &RoomVersionId::V6).unwrap();
 
 //         assert_eq!(verification, Verified::Signatures);
 //     }
@@ -814,14 +842,17 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
-//         sign_json("domain-event", &keypair_event, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();         sign_json("domain-event", &keypair_event,
+// &mut signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
-//         add_key_to_map(&mut public_key_map, "domain-event", &keypair_event);
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);         add_key_to_map(&mut public_key_map, "domain-event",
+// &keypair_event);
 
-//         let verification = verify_event(&public_key_map, &signed_event, &RoomVersionId::V1).unwrap();
+//         let verification = verify_event(&public_key_map, &signed_event,
+// &RoomVersionId::V1).unwrap();
 
 //         assert_eq!(verification, Verified::Signatures);
 //     }
@@ -834,8 +865,8 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             r#"{
 //                 "event_id": "$event_id:domain-event",
 //                 "auth_events": [],
-//                 "content": {"join_authorised_via_users_server": "@authorized:domain-authorized"},
-//                 "depth": 3,
+//                 "content": {"join_authorised_via_users_server":
+// "@authorized:domain-authorized"},                 "depth": 3,
 //                 "hashes": {
 //                     "sha256": "5jM4wQpv6lnBo7CLIghJuHdW+s2CMBJPUOGOC89ncos"
 //                 },
@@ -851,14 +882,17 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
-//         sign_json("domain-authorized", &keypair_authorized, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();         sign_json("domain-authorized",
+// &keypair_authorized, &mut signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
-//         add_key_to_map(&mut public_key_map, "domain-authorized", &keypair_authorized);
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);         add_key_to_map(&mut public_key_map,
+// "domain-authorized", &keypair_authorized);
 
-//         let verification = verify_event(&public_key_map, &signed_event, &RoomVersionId::V9).unwrap();
+//         let verification = verify_event(&public_key_map, &signed_event,
+// &RoomVersionId::V9).unwrap();
 
 //         assert_eq!(verification, Verified::Signatures);
 //     }
@@ -870,8 +904,8 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             r#"{
 //                 "event_id": "$event_id:domain-event",
 //                 "auth_events": [],
-//                 "content": {"join_authorised_via_users_server": "@authorized:domain-authorized"},
-//                 "depth": 3,
+//                 "content": {"join_authorised_via_users_server":
+// "@authorized:domain-authorized"},                 "depth": 3,
 //                 "hashes": {
 //                     "sha256": "5jM4wQpv6lnBo7CLIghJuHdW+s2CMBJPUOGOC89ncos"
 //                 },
@@ -887,16 +921,20 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);
 
-//         let verification_result = verify_event(&public_key_map, &signed_event, &RoomVersionId::V9);
+//         let verification_result = verify_event(&public_key_map,
+// &signed_event, &RoomVersionId::V9);
 
 //         assert_matches!(
 //             verification_result,
-//             Err(Error::Verification(VerificationError::SignatureNotFound(server)))
+//
+// Err(Error::Verification(VerificationError::SignatureNotFound(server)))
 //         );
 //         assert_eq!(server, "domain-authorized");
 //     }
@@ -925,15 +963,18 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();
 
-//         // Verify with an empty public key map should fail due to missing public keys
-//         let public_key_map = BTreeMap::new();
-//         let verification_result = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6);
+//         // Verify with an empty public key map should fail due to missing
+// public keys         let public_key_map = BTreeMap::new();
+//         let verification_result = verify_event(&public_key_map,
+// &signed_event, &RoomVersionId::V6);
 
 //         assert_matches!(
 //             verification_result,
-//             Err(Error::Verification(VerificationError::PublicKeyNotFound(entity)))
+//
+// Err(Error::Verification(VerificationError::PublicKeyNotFound(entity)))
 //         );
 //         assert_eq!(entity, "domain-sender");
 //     }
@@ -962,17 +1003,21 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();
 
 //         let mut public_key_map = PublicKeyMap::new();
 //         let mut sender_key_map = PublicKeySet::new();
 //         let newly_generated_keypair = generate_keypair("2");
-//         let encoded_public_key = Base64::new(newly_generated_keypair.public_key().to_vec());
-//         let version = ServerSigningKeyId::from_parts(SigningKeyAlgorithm::Ed25519, keypair_sender.version().into());
-//         sender_key_map.insert(version.to_string(), encoded_public_key);
-//         public_key_map.insert("domain-sender".to_owned(), sender_key_map);
+//         let encoded_public_key =
+// Base64::new(newly_generated_keypair.public_key().to_vec());         let
+// version = ServerSigningKeyId::from_parts(SigningKeyAlgorithm::Ed25519,
+// keypair_sender.version().into());         sender_key_map.insert(version.
+// to_string(), encoded_public_key);         public_key_map.insert("
+// domain-sender".to_owned(), sender_key_map);
 
-//         let verification_result = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6);
+//         let verification_result = verify_event(&public_key_map,
+// &signed_event, &RoomVersionId::V6);
 
 //         assert_matches!(
 //             verification_result,
@@ -980,8 +1025,8 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //         );
 //         // dalek doesn't expose InternalError :(
 //         // https://github.com/dalek-cryptography/ed25519-dalek/issues/174
-//         assert!(format!("{error:?}").contains("Some(Verification equation was not satisfied)"));
-//     }
+//         assert!(format!("{error:?}").contains("Some(Verification equation was
+// not satisfied)"));     }
 
 //     #[test]
 //     fn verify_event_check_signatures_for_sender_is_allowed_with_unknown_algorithms_in_key_map() {
@@ -1006,13 +1051,16 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
-//         add_invalid_key_to_map(&mut public_key_map, "domain-sender", &generate_keypair("2"));
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);         add_invalid_key_to_map(&mut public_key_map,
+// "domain-sender", &generate_keypair("2"));
 
-//         let verification = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6).unwrap();
+//         let verification = verify_event(&public_key_map, &signed_event,
+// &RoomVersionId::V6).unwrap();
 
 //         assert_eq!(verification, Verified::Signatures);
 //     }
@@ -1041,17 +1089,21 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
-//         sign_json("domain-sender", &secondary_keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();         sign_json("domain-sender",
+// &secondary_keypair_sender, &mut signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);
 
-//         let verification_result = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6);
+//         let verification_result = verify_event(&public_key_map,
+// &signed_event, &RoomVersionId::V6);
 
 //         assert_matches!(
 //             verification_result,
-//             Err(Error::Verification(VerificationError::UnknownPublicKeysForSignature))
+//
+// Err(Error::Verification(VerificationError::UnknownPublicKeysForSignature))
 //         );
 //     }
 
@@ -1079,14 +1131,17 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //             }"#,
 //         )
 //         .unwrap();
-//         sign_json("domain-sender", &keypair_sender, &mut signed_event).unwrap();
-//         sign_json("domain-sender", &secondary_keypair_sender, &mut signed_event).unwrap();
+//         sign_json("domain-sender", &keypair_sender, &mut
+// signed_event).unwrap();         sign_json("domain-sender",
+// &secondary_keypair_sender, &mut signed_event).unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
-//         add_key_to_map(&mut public_key_map, "domain-sender", &secondary_keypair_sender);
+//         add_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);         add_key_to_map(&mut public_key_map,
+// "domain-sender", &secondary_keypair_sender);
 
-//         let verification = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6).unwrap();
+//         let verification = verify_event(&public_key_map, &signed_event,
+// &RoomVersionId::V6).unwrap();
 
 //         assert_eq!(verification, Verified::Signatures);
 //     }
@@ -1113,41 +1168,48 @@ fn is_third_party_invite(object: &CanonicalJsonObject) -> Result<bool, Error> {
 //                 },
 //                 "signatures": {
 //                     "domain-sender": {
-//                         "an-unknown-algorithm:1": "pE5UT/4JiY7YZDtZDOsEaxc0wblurdoYqNQx4bCXORA3vLFOGOK10Q/xXVLPWWgIKo15LNvWwWd/2YjmdPvYCg"
-//                     }
+//                         "an-unknown-algorithm:1":
+// "pE5UT/4JiY7YZDtZDOsEaxc0wblurdoYqNQx4bCXORA3vLFOGOK10Q/xXVLPWWgIKo15LNvWwWd/
+// 2YjmdPvYCg"                     }
 //                 }
 //             }"#,
 //         )
 //         .unwrap();
 
 //         let mut public_key_map = BTreeMap::new();
-//         add_invalid_key_to_map(&mut public_key_map, "domain-sender", &keypair_sender);
+//         add_invalid_key_to_map(&mut public_key_map, "domain-sender",
+// &keypair_sender);
 
-//         let verification_result = verify_event(&public_key_map, &signed_event, &RoomVersionId::V6);
-//         assert_matches!(
+//         let verification_result = verify_event(&public_key_map,
+// &signed_event, &RoomVersionId::V6);         assert_matches!(
 //             verification_result,
-//             Err(Error::Verification(VerificationError::UnknownPublicKeysForSignature))
+//
+// Err(Error::Verification(VerificationError::UnknownPublicKeysForSignature))
 //         );
 //     }
 
 //     fn generate_keypair(name: &str) -> Ed25519KeyPair {
 //         let key_content = Ed25519KeyPair::generate().unwrap();
-//         Ed25519KeyPair::from_der(&key_content, name.to_owned()).unwrap_or_else(|_| panic!("{:?}", &key_content))
-//     }
+//         Ed25519KeyPair::from_der(&key_content,
+// name.to_owned()).unwrap_or_else(|_| panic!("{:?}", &key_content))     }
 
-//     fn add_key_to_map(public_key_map: &mut PublicKeyMap, name: &str, pair: &Ed25519KeyPair) {
-//         let sender_key_map = public_key_map.entry(name.to_owned()).or_default();
-//         let encoded_public_key = Base64::new(pair.public_key().to_vec());
-//         let version = ServerSigningKeyId::from_parts(SigningKeyAlgorithm::Ed25519, pair.version().into());
+//     fn add_key_to_map(public_key_map: &mut PublicKeyMap, name: &str, pair:
+// &Ed25519KeyPair) {         let sender_key_map =
+// public_key_map.entry(name.to_owned()).or_default();         let
+// encoded_public_key = Base64::new(pair.public_key().to_vec());         let
+// version = ServerSigningKeyId::from_parts(SigningKeyAlgorithm::Ed25519,
+// pair.version().into());
 
 //         sender_key_map.insert(version.to_string(), encoded_public_key);
 //     }
 
-//     fn add_invalid_key_to_map(public_key_map: &mut PublicKeyMap, name: &str, pair: &Ed25519KeyPair) {
-//         let sender_key_map = public_key_map.entry(name.to_owned()).or_default();
-//         let encoded_public_key = Base64::new(pair.public_key().to_vec());
-//         let version =
-//             ServerSigningKeyId::from_parts(SigningKeyAlgorithm::from("an-unknown-algorithm"), pair.version().into());
+//     fn add_invalid_key_to_map(public_key_map: &mut PublicKeyMap, name: &str,
+// pair: &Ed25519KeyPair) {         let sender_key_map =
+// public_key_map.entry(name.to_owned()).or_default();         let
+// encoded_public_key = Base64::new(pair.public_key().to_vec());         let
+// version =
+// ServerSigningKeyId::from_parts(SigningKeyAlgorithm::from("
+// an-unknown-algorithm"), pair.version().into());
 
 //         sender_key_map.insert(version.to_string(), encoded_public_key);
 //     }

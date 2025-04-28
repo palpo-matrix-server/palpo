@@ -2,8 +2,7 @@
 //!
 //! [uiaa]: https://spec.matrix.org/latest/client-server-api/#user-interactive-authentication-api
 
-use std::error::Error as StdError;
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, error::Error as StdError, fmt};
 
 use salvo::prelude::*;
 use serde::{
@@ -11,10 +10,14 @@ use serde::{
     de::{self, DeserializeOwned},
 };
 
+#[cfg(feature = "unstable-msc2967")]
+use crate::error::AuthenticateError;
 pub use crate::error::ErrorKind;
-use crate::serde::{JsonObject, JsonValue, RawJsonValue, StringEnum, from_raw_json_value};
-use crate::third_party::Medium;
-use crate::{OwnedClientSecret, OwnedSessionId, OwnedUserId, PrivOwnedStr};
+use crate::{
+    OwnedClientSecret, OwnedSessionId, OwnedUserId, PrivOwnedStr,
+    serde::{JsonObject, JsonValue, RawJsonValue, StringEnum, from_raw_json_value},
+    third_party::Medium,
+};
 
 mod user_serde;
 
@@ -49,16 +52,17 @@ pub enum AuthData {
 }
 
 impl AuthData {
-    /// Creates a new `AuthData` with the given `auth_type` string, session and data.
+    /// Creates a new `AuthData` with the given `auth_type` string, session and
+    /// data.
     ///
-    /// Prefer to use the public variants of `AuthData` where possible; this constructor is meant to
-    /// be used for unsupported authentication types only and does not allow setting arbitrary
-    /// data for supported ones.
+    /// Prefer to use the public variants of `AuthData` where possible; this
+    /// constructor is meant to be used for unsupported authentication types
+    /// only and does not allow setting arbitrary data for supported ones.
     ///
     /// # Errors
     ///
-    /// Returns an error if the `auth_type` is known and serialization of `data` to the
-    /// corresponding `AuthData` variant fails.
+    /// Returns an error if the `auth_type` is known and serialization of `data`
+    /// to the corresponding `AuthData` variant fails.
     pub fn new(auth_type: &str, session: Option<String>, data: JsonObject) -> serde_json::Result<Self> {
         fn deserialize_variant<T: DeserializeOwned>(
             session: Option<String>,
@@ -85,7 +89,8 @@ impl AuthData {
         })
     }
 
-    /// Creates a new `AuthData::FallbackAcknowledgement` with the given session key.
+    /// Creates a new `AuthData::FallbackAcknowledgement` with the given session
+    /// key.
     pub fn fallback_acknowledgement(session: String) -> Self {
         Self::FallbackAcknowledgement(FallbackAcknowledgement::new(session))
     }
@@ -120,11 +125,12 @@ impl AuthData {
 
     /// Returns the associated data.
     ///
-    /// The returned JSON object won't contain the `type` and `session` fields, use
-    /// [`.auth_type()`][Self::auth_type] / [`.session()`](Self::session) to access those.
+    /// The returned JSON object won't contain the `type` and `session` fields,
+    /// use [`.auth_type()`][Self::auth_type] /
+    /// [`.session()`](Self::session) to access those.
     ///
-    /// Prefer to use the public variants of `AuthData` where possible; this method is meant to be
-    /// used for custom auth types only.
+    /// Prefer to use the public variants of `AuthData` where possible; this
+    /// method is meant to be used for custom auth types only.
     pub fn data(&self) -> Cow<'_, JsonObject> {
         fn serialize<T: Serialize>(obj: T) -> JsonObject {
             match serde_json::to_value(obj).expect("auth data serialization to succeed") {
@@ -451,8 +457,8 @@ impl fmt::Debug for CustomAuthData {
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq)]
 #[allow(clippy::exhaustive_enums)]
 pub enum UserIdentifier {
-    /// Either a fully qualified Matrix user ID, or just the localpart (as part of the 'identifier'
-    /// field).
+    /// Either a fully qualified Matrix user ID, or just the localpart (as part
+    /// of the 'identifier' field).
     UserIdOrLocalpart(String),
 
     /// An email address.
@@ -471,7 +477,8 @@ pub enum UserIdentifier {
 
     /// A phone number as a separate country code and phone number.
     ///
-    /// The homeserver will be responsible for canonicalizing this to the MSISDN format.
+    /// The homeserver will be responsible for canonicalizing this to the MSISDN
+    /// format.
     PhoneNumber {
         /// The country that the phone number is from.
         ///
@@ -554,8 +561,8 @@ pub struct ThirdpartyIdCredentials {
 }
 
 impl ThirdpartyIdCredentials {
-    /// Creates a new `ThirdpartyIdCredentials` with the given session ID, client secret, identity
-    /// server address and access token.
+    /// Creates a new `ThirdpartyIdCredentials` with the given session ID,
+    /// client secret, identity server address and access token.
     pub fn new(
         sid: OwnedSessionId,
         client_secret: OwnedClientSecret,
@@ -587,8 +594,8 @@ impl fmt::Debug for ThirdpartyIdCredentials {
     }
 }
 
-/// Information about available authentication flows and status for User-Interactive Authenticiation
-/// API.
+/// Information about available authentication flows and status for
+/// User-Interactive Authenticiation API.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UiaaInfo {
     /// List of authentication flows available for this endpoint.
@@ -598,7 +605,8 @@ pub struct UiaaInfo {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub completed: Vec<AuthType>,
 
-    /// Authentication parameters required for the client to complete authentication.
+    /// Authentication parameters required for the client to complete
+    /// authentication.
     ///
     /// To create a `Box<RawJsonValue>`, use `serde_json::value::to_raw_value`.
     pub params: Box<RawJsonValue>,
@@ -607,7 +615,8 @@ pub struct UiaaInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<String>,
 
-    /// Authentication-related errors for previous request returned by homeserver.
+    /// Authentication-related errors for previous request returned by
+    /// homeserver.
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub auth_error: Option<AuthError>,
 }
@@ -647,15 +656,21 @@ impl AuthError {
             message: message.into(),
         }
     }
+    #[cfg(feature = "unstable-msc2967")]
+    pub fn forbidden(authenticate: Option<AuthenticateError>, message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Forbidden { authenticate }, message)
+    }
+    #[cfg(not(feature = "unstable-msc2967"))]
     pub fn forbidden(message: impl Into<String>) -> Self {
-        Self::new(ErrorKind::Forbidden, message)
+        Self::new(ErrorKind::Forbidden {}, message)
     }
     pub fn unauthorized(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Unauthorized, message)
     }
 }
 
-/// Description of steps required to authenticate via the User-Interactive Authentication API.
+/// Description of steps required to authenticate via the User-Interactive
+/// Authentication API.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct AuthFlow {
     /// Ordered list of stages required to complete authentication.

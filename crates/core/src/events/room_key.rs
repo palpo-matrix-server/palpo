@@ -10,7 +10,8 @@ use crate::{EventEncryptionAlgorithm, OwnedRoomId};
 
 /// The content of an `m.room_key` event.
 ///
-/// Typically encrypted as an `m.room.encrypted` event, then sent as a to-device event.
+/// Typically encrypted as an `m.room.encrypted` event, then sent as a to-device
+/// event.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.room_key", kind = ToDevice)]
 pub struct ToDeviceRoomKeyEventContent {
@@ -41,8 +42,8 @@ pub struct ToDeviceRoomKeyEventContent {
 }
 
 impl ToDeviceRoomKeyEventContent {
-    /// Creates a new `ToDeviceRoomKeyEventContent` with the given algorithm, room ID, session ID
-    /// and session key.
+    /// Creates a new `ToDeviceRoomKeyEventContent` with the given algorithm,
+    /// room ID, session ID and session key.
     pub fn new(
         algorithm: EventEncryptionAlgorithm,
         room_id: OwnedRoomId,
@@ -62,11 +63,10 @@ impl ToDeviceRoomKeyEventContent {
 
 #[cfg(test)]
 mod tests {
-    use crate::owned_room_id;
     use serde_json::{json, to_value as to_json_value};
 
     use super::ToDeviceRoomKeyEventContent;
-    use crate::EventEncryptionAlgorithm;
+    use crate::{EventEncryptionAlgorithm, owned_room_id};
 
     #[test]
     fn serialization() {

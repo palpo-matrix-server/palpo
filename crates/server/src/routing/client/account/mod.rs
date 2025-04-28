@@ -109,7 +109,7 @@ async fn deactivate(
     };
     if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
         res.status_code(StatusCode::UNAUTHORIZED);
-        return Err(MatrixError::forbidden("Authentication failed.").into());
+        return Err(MatrixError::forbidden(None, "Authentication failed.").into());
     }
 
     // Remove devices and mark account as deactivated

@@ -15,8 +15,8 @@ use crate::{OwnedRoomId, OwnedUserId};
 
 /// The content of an `m.direct` event.
 ///
-/// A mapping of `UserId`s to a list of `RoomId`s which are considered *direct* for that particular
-/// user.
+/// A mapping of `UserId`s to a list of `RoomId`s which are considered *direct*
+/// for that particular user.
 ///
 /// Informs the client about the rooms that are considered direct by a user.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize, EventContent)]
@@ -60,10 +60,10 @@ impl FromIterator<(OwnedUserId, Vec<OwnedRoomId>)> for DirectEventContent {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::{owned_room_id, owned_user_id};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{DirectEvent, DirectEventContent};
+    use crate::{owned_room_id, owned_user_id};
 
     #[test]
     fn serialization() {

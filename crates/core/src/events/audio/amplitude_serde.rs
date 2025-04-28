@@ -1,4 +1,5 @@
-//! `Serialize` and `Deserialize` implementations for extensible events (MSC1767).
+//! `Serialize` and `Deserialize` implementations for extensible events
+//! (MSC1767).
 
 use serde::Deserialize;
 

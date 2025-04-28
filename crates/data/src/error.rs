@@ -77,11 +77,10 @@ impl Writer for DataError {
                 if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
                     let code = if let Some(error) = &uiaa.auth_error {
                         match &error.kind {
-                            ErrorKind::Forbidden | ErrorKind::UserDeactivated => StatusCode::FORBIDDEN,
+                            ErrorKind::Forbidden { .. } | ErrorKind::UserDeactivated => StatusCode::FORBIDDEN,
                             ErrorKind::NotFound => StatusCode::NOT_FOUND,
-                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadStatus | ErrorKind::BadAlias => {
-                                StatusCode::BAD_REQUEST
-                            }
+                            ErrorKind::BadStatus { status, .. } => status.unwrap_or(StatusCode::BAD_REQUEST),
+                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadAlias => StatusCode::BAD_REQUEST,
                             ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
                             ErrorKind::CannotOverwriteMedia => StatusCode::CONFLICT,
                             ErrorKind::NotYetUploaded => StatusCode::GATEWAY_TIMEOUT,

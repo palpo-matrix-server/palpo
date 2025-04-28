@@ -5,8 +5,9 @@
 //! ## Understanding the types of this module
 //!
 //! Push rules are grouped in `RuleSet`s, and are grouped in five kinds (for
-//! more details about the different kind of rules, see the `Ruleset` documentation,
-//! or the specification). These five kinds are, by order of priority:
+//! more details about the different kind of rules, see the `Ruleset`
+//! documentation, or the specification). These five kinds are, by order of
+//! priority:
 //!
 //! - override rules
 //! - content rules
@@ -20,19 +21,21 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::FlattenedJson;
-use crate::push::condition::RoomVersionFeature;
-use crate::push::{Action, PredefinedOverrideRuleId, PushCondition, PushConditionRoomCtx, PushRule};
+use crate::push::{
+    Action, FlattenedJson, PredefinedOverrideRuleId, PushCondition, PushConditionRoomCtx, PushRule,
+    condition::RoomVersionFeature,
+};
 
 /// Like `SimplePushRule`, but with an additional `conditions` field.
 ///
 /// Only applicable to underride and override rules.
 ///
-/// To create an instance of this type, first create a `ConditionalPushRuleInit` and convert it via
-/// `ConditionalPushRule::from` / `.into()`.
+/// To create an instance of this type, first create a `ConditionalPushRuleInit`
+/// and convert it via `ConditionalPushRule::from` / `.into()`.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct ConditionalPushRule {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -44,8 +47,8 @@ pub struct ConditionalPushRule {
     /// The ID of this rule.
     pub rule_id: String,
 
-    /// The conditions that must hold true for an event in order for a rule to be applied to an
-    /// event.
+    /// The conditions that must hold true for an event in order for a rule to
+    /// be applied to an event.
     ///
     /// A rule with no conditions always matches.
     #[serde(default)]
@@ -65,9 +68,10 @@ impl ConditionalPushRule {
         }
         // These 3 rules always apply.
         if self.rule_id != PredefinedOverrideRuleId::Master.as_ref() {
-            // Push rules which don't specify a `room_version_supports` condition are assumed
-            // to not support extensible events and are therefore expected to be treated as
-            // disabled when a room version does support extensible events.
+            // Push rules which don't specify a `room_version_supports` condition are
+            // assumed to not support extensible events and are therefore
+            // expected to be treated as disabled when a room version does
+            // support extensible events.
             let room_supports_ext_ev = context
                 .supported_features
                 .contains(&RoomVersionFeature::ExtensibleEvents);
@@ -92,12 +96,14 @@ impl ConditionalPushRule {
 
 /// Initial set of fields of `ConditionalPushRule`.
 ///
-/// This struct will not be updated even if additional fields are added to `ConditionalPushRule` in
-/// a new (non-breaking) release of the Matrix specification.
+/// This struct will not be updated even if additional fields are added to
+/// `ConditionalPushRule` in a new (non-breaking) release of the Matrix
+/// specification.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct ConditionalPushRuleInit {
-    /// Actions to determine if and how a notification is delivered for events matching this rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 
     /// Whether this is a default rule, or has been set explicitly.
@@ -109,8 +115,8 @@ pub struct ConditionalPushRuleInit {
     /// The ID of this rule.
     pub rule_id: String,
 
-    /// The conditions that must hold true for an event in order for a rule to be applied to an
-    /// event.
+    /// The conditions that must hold true for an event in order for a rule to
+    /// be applied to an event.
     ///
     /// A rule with no conditions always matches.
     pub conditions: Vec<PushCondition>,
@@ -164,20 +170,21 @@ pub struct NewConditionalPushRule {
     /// The ID of this rule.
     pub rule_id: String,
 
-    /// The conditions that must hold true for an event in order for a rule to be applied to an
-    /// event.
+    /// The conditions that must hold true for an event in order for a rule to
+    /// be applied to an event.
     ///
     /// A rule with no conditions always matches.
     #[serde(default)]
     pub conditions: Vec<PushCondition>,
 
-    /// Actions to determine if and how a notification is delivered for events matching this
-    /// rule.
+    /// Actions to determine if and how a notification is delivered for events
+    /// matching this rule.
     pub actions: Vec<Action>,
 }
 
 impl NewConditionalPushRule {
-    /// Creates a `NewConditionalPushRule` with the given ID, conditions and actions.
+    /// Creates a `NewConditionalPushRule` with the given ID, conditions and
+    /// actions.
     pub fn new(rule_id: String, conditions: Vec<PushCondition>, actions: Vec<Action>) -> Self {
         Self {
             rule_id,

@@ -12,7 +12,8 @@ use crate::OwnedEventId;
 ///
 /// The current location of the user's read marker in a room.
 ///
-/// This event appears in the user's room account data for the room the marker is applicable for.
+/// This event appears in the user's room account data for the room the marker
+/// is applicable for.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.fully_read", kind = RoomAccountData)]
 pub struct FullyReadEventContent {

@@ -30,10 +30,12 @@ pub enum ComparisonOperator {
     Le,
 }
 
-/// A decimal integer optionally prefixed by one of `==`, `<`, `>`, `>=` or `<=`.
+/// A decimal integer optionally prefixed by one of `==`, `<`, `>`, `>=` or
+/// `<=`.
 ///
-/// A prefix of `<` matches rooms where the member count is strictly less than the given
-/// number and so forth. If no prefix is present, this parameter defaults to `==`.
+/// A prefix of `<` matches rooms where the member count is strictly less than
+/// the given number and so forth. If no prefix is present, this parameter
+/// defaults to `==`.
 ///
 /// Can be constructed from a number or a range:
 /// ```

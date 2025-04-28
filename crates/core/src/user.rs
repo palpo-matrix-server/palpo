@@ -1,16 +1,16 @@
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::events::GlobalAccountDataEventType;
-use crate::serde::StringEnum;
-use crate::{OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr};
+use crate::{
+    OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::GlobalAccountDataEventType, serde::StringEnum,
+};
 
 /// Profile fields to specify in query.
 ///
-/// This type can hold an arbitrary string. To build this with a custom value, convert it from a
-/// string with `::from()` / `.into()`. To check for values that are not available as a
-/// documented variant here, use its string representation, obtained through
-/// [`.as_str()`](Self::as_str()).
+/// This type can hold an arbitrary string. To build this with a custom value,
+/// convert it from a string with `::from()` / `.into()`. To check for values
+/// that are not available as a documented variant here, use its string
+/// representation, obtained through [`.as_str()`](Self::as_str()).
 #[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 #[non_exhaustive]
 pub enum ProfileField {

@@ -1,8 +1,12 @@
 use thiserror::Error;
 
-use crate::serde::Base64DecodeError;
-use crate::serde::canonical_json::{JsonType, RedactionError};
-use crate::{EventId, OwnedEventId, OwnedServerName, RoomVersionId};
+use crate::{
+    EventId, OwnedEventId, OwnedServerName, RoomVersionId,
+    serde::{
+        Base64DecodeError,
+        canonical_json::{JsonType, RedactionError},
+    },
+};
 
 /// `palpo-signature`'s error type, wraps a number of other error types.
 #[derive(Debug, Error)]
@@ -25,7 +29,8 @@ pub enum Error {
     #[error("DER Parse error: {0}")]
     DerParse(ed25519_dalek::pkcs8::Error),
 
-    /// The signature's ID does not have exactly two components separated by a colon.
+    /// The signature's ID does not have exactly two components separated by a
+    /// colon.
     #[error("malformed signature ID: expected exactly 2 segment separated by a colon, found {0}")]
     InvalidLength(usize),
 
@@ -70,8 +75,8 @@ pub enum JsonError {
         of_type: JsonType,
     },
 
-    /// Like [`JsonError::NotOfType`], only called when the `target` is a multiple;
-    /// array, set, etc.
+    /// Like [`JsonError::NotOfType`], only called when the `target` is a
+    /// multiple; array, set, etc.
     #[error("Values in {target:?} must be JSON {of_type:?}s")]
     NotMultiplesOfType {
         /// An arbitrary "target" where
@@ -87,9 +92,10 @@ pub enum JsonError {
 
     /// A key is missing from a JSON object.
     ///
-    /// Note that this is different from [`JsonError::JsonFieldMissingFromObject`],
-    /// this error talks about an expected identifying key (`"ed25519:abcd"`)
-    /// missing from a target, where the key has a specific "type"/name.
+    /// Note that this is different from
+    /// [`JsonError::JsonFieldMissingFromObject`], this error talks about an
+    /// expected identifying key (`"ed25519:abcd"`) missing from a target,
+    /// where the key has a specific "type"/name.
     #[error("JSON object {for_target:?} does not have {type_of} key {with_key:?}")]
     JsonKeyMissing {
         /// The target from which the key is missing.
@@ -184,13 +190,13 @@ pub enum ParseError {
     #[error("Could not parse Event ID: {0}")]
     EventId(#[source] palpo_core::IdParseError),
 
-    /// For when an event ID, coupled with a specific room version, doesn't have a server name
-    /// embedded.
+    /// For when an event ID, coupled with a specific room version, doesn't have
+    /// a server name embedded.
     #[error("Event Id {0:?} should have a server name for the given room version {1:?}")]
     ServerNameFromEventIdByRoomVersion(OwnedEventId, RoomVersionId),
 
-    /// For when the extracted/"parsed" public key from a PKCS#8 v2 document doesn't match the
-    /// public key derived from it's private key.
+    /// For when the extracted/"parsed" public key from a PKCS#8 v2 document
+    /// doesn't match the public key derived from it's private key.
     #[error("PKCS#8 Document public key does not match public key derived from private key; derived: {0:X?} (len {}), parsed: {1:X?} (len {})", .derived_key.len(), .parsed_key.len())]
     DerivedPublicKeyDoesNotMatchParsedKey {
         /// The parsed key.
@@ -199,9 +205,11 @@ pub enum ParseError {
         derived_key: Vec<u8>,
     },
 
-    /// For when the ASN.1 Object Identifier on a PKCS#8 document doesn't match the expected one.
+    /// For when the ASN.1 Object Identifier on a PKCS#8 document doesn't match
+    /// the expected one.
     ///
-    /// e.g. the document describes a RSA key, while an ed25519 key was expected.
+    /// e.g. the document describes a RSA key, while an ed25519 key was
+    /// expected.
     #[error("Algorithm OID does not match ed25519, expected {expected}, found {found}")]
     Oid {
         /// The expected OID.

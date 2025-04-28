@@ -20,11 +20,11 @@ async fn ping(
     let body = body.into_inner();
     let authed = depot.authed_info()?;
     let Some(appservice) = authed.appservice.as_ref() else {
-        return Err(MatrixError::forbidden("This endpoint can only be called by appservices.").into());
+        return Err(MatrixError::forbidden(None, "This endpoint can only be called by appservices.").into());
     };
 
     if appservice_id != appservice.registration.id {
-        return Err(MatrixError::forbidden("Appservices can only ping themselves (wrong appservice ID).").into());
+        return Err(MatrixError::forbidden(None, "Appservices can only ping themselves (wrong appservice ID).").into());
     }
 
     if appservice.registration.url.is_none()

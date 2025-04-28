@@ -9,8 +9,7 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::RawJsonValue;
-use crate::{OwnedEventId, OwnedRoomId};
+use crate::{OwnedEventId, OwnedRoomId, serde::RawJsonValue};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

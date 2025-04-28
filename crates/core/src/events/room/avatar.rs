@@ -2,13 +2,12 @@
 //!
 //! [`m.room.avatar`]: https://spec.matrix.org/latest/client-server-api/#mroomavatar
 
-use crate::OwnedMxcUri;
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::ThumbnailInfo;
-use crate::events::EmptyStateKey;
+use crate::{OwnedMxcUri, events::EmptyStateKey};
 
 /// The content of an `m.room.avatar` event.
 ///

@@ -1,9 +1,11 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::UnixMillis;
-
-use crate::events::room::{MediaSource, ThumbnailInfo};
+use crate::{
+    UnixMillis,
+    events::room::{MediaSource, ThumbnailInfo},
+};
+#[cfg(feature = "unstable-msc3488")]
 use crate::{
     events::location::{AssetContent, AssetType, LocationContent},
     events::message::{TextContentBlock, TextRepresentation},
@@ -12,13 +14,17 @@ use crate::{
 /// The payload for a location message.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(tag = "msgtype", rename = "m.location")]
-#[serde(
-    from = "super::content_serde::msc3488::LocationMessageEventContentSerDeHelper",
-    into = "super::content_serde::msc3488::LocationMessageEventContentSerDeHelper"
+#[cfg_attr(
+    feature = "unstable-msc3488",
+    serde(
+        from = "super::content_serde::msc3488::LocationMessageEventContentSerDeHelper",
+        into = "super::content_serde::msc3488::LocationMessageEventContentSerDeHelper"
+    )
 )]
 pub struct LocationMessageEventContent {
-    /// A description of the location e.g. "Big Ben, London, UK", or some kind of content
-    /// description for accessibility, e.g. "location attachment".
+    /// A description of the location e.g. "Big Ben, London, UK", or some kind
+    /// of content description for accessibility, e.g. "location
+    /// attachment".
     pub body: String,
 
     /// A geo URI representing the location.
@@ -31,27 +37,36 @@ pub struct LocationMessageEventContent {
     /// Extensible-event text representation of the message.
     ///
     /// If present, this should be preferred over the `body` field.
+    #[cfg(feature = "unstable-msc3488")]
     pub message: Option<TextContentBlock>,
 
     /// Extensible-event location info of the message.
     ///
     /// If present, this should be preferred over the `geo_uri` field.
+    #[cfg(feature = "unstable-msc3488")]
     pub location: Option<LocationContent>,
 
     /// Extensible-event asset this message refers to.
+    #[cfg(feature = "unstable-msc3488")]
     pub asset: Option<AssetContent>,
 
     /// Extensible-event timestamp this message refers to.
+    #[cfg(feature = "unstable-msc3488")]
     pub ts: Option<UnixMillis>,
 }
 
 impl LocationMessageEventContent {
-    /// Creates a new `LocationMessageEventContent` with the given body and geo URI.
+    /// Creates a new `LocationMessageEventContent` with the given body and geo
+    /// URI.
     pub fn new(body: String, geo_uri: String) -> Self {
         Self {
+            #[cfg(feature = "unstable-msc3488")]
             message: Some(vec![TextRepresentation::plain(&body)].into()),
+            #[cfg(feature = "unstable-msc3488")]
             location: Some(LocationContent::new(geo_uri.clone())),
+            #[cfg(feature = "unstable-msc3488")]
             asset: Some(AssetContent::default()),
+            #[cfg(feature = "unstable-msc3488")]
             ts: None,
             body,
             geo_uri,
@@ -60,12 +75,14 @@ impl LocationMessageEventContent {
     }
 
     /// Set the asset type of this `LocationMessageEventContent`.
+    #[cfg(feature = "unstable-msc3488")]
     pub fn with_asset_type(mut self, asset: AssetType) -> Self {
         self.asset = Some(AssetContent { type_: asset });
         self
     }
 
     /// Set the timestamp of this `LocationMessageEventContent`.
+    #[cfg(feature = "unstable-msc3488")]
     pub fn with_ts(mut self, ts: UnixMillis) -> Self {
         self.ts = Some(ts);
         self
@@ -73,6 +90,7 @@ impl LocationMessageEventContent {
 
     /// Get the `geo:` URI of this `LocationMessageEventContent`.
     pub fn geo_uri(&self) -> &str {
+        #[cfg(feature = "unstable-msc3488")]
         if let Some(uri) = self.location.as_ref().map(|l| &l.uri) {
             return uri;
         }
@@ -82,6 +100,7 @@ impl LocationMessageEventContent {
 
     /// Get the plain text representation of this `LocationMessageEventContent`.
     pub fn plain_text_representation(&self) -> &str {
+        #[cfg(feature = "unstable-msc3488")]
         if let Some(text) = self.message.as_ref().and_then(|m| m.find_plain()) {
             return text;
         }
@@ -90,6 +109,7 @@ impl LocationMessageEventContent {
     }
 
     /// Get the asset type of this `LocationMessageEventContent`.
+    #[cfg(feature = "unstable-msc3488")]
     pub fn asset_type(&self) -> AssetType {
         self.asset.as_ref().map(|a| a.type_.clone()).unwrap_or_default()
     }

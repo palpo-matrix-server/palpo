@@ -21,8 +21,8 @@ pub struct PushRulesEventContent {
 impl PushRulesEventContent {
     /// Creates a new `PushRulesEventContent` with the given global ruleset.
     ///
-    /// You can also construct a `PushRulesEventContent` from a global ruleset using `From` /
-    /// `Into`.
+    /// You can also construct a `PushRulesEventContent` from a global ruleset
+    /// using `From` / `Into`.
     pub fn new(global: Ruleset) -> Self {
         Self { global }
     }

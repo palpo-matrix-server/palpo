@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-use std::{fmt, time::Duration};
+use std::{borrow::Cow, fmt, time::Duration};
 
 use salvo::prelude::*;
 use serde::{
@@ -8,9 +7,11 @@ use serde::{
 };
 use serde_json::Value as JsonValue;
 
-use crate::client::uiaa::{AuthData, UserIdentifier};
-use crate::serde::{JsonObject, StringEnum};
-use crate::{OwnedDeviceId, OwnedMxcUri, OwnedUserId, PrivOwnedStr};
+use crate::{
+    OwnedDeviceId, OwnedMxcUri, OwnedUserId, PrivOwnedStr,
+    client::uiaa::{AuthData, UserIdentifier},
+    serde::{JsonObject, StringEnum},
+};
 
 /// `POST /_matrix/client/*/refresh`
 ///
@@ -61,7 +62,8 @@ pub struct RefreshTokenResBody {
     /// The new access token to use.
     pub access_token: String,
 
-    /// The new refresh token to use when the access token needs to be refreshed again.
+    /// The new refresh token to use when the access token needs to be refreshed
+    /// again.
     ///
     /// If this is `None`, the old refresh token can be re-used.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -69,7 +71,8 @@ pub struct RefreshTokenResBody {
 
     /// The lifetime of the access token, in milliseconds.
     ///
-    /// If this is `None`, the client can assume that the access token will not expire.
+    /// If this is `None`, the client can assume that the access token will not
+    /// expire.
     #[serde(
         with = "crate::serde::duration::opt_ms",
         default,
@@ -141,20 +144,21 @@ pub struct LoginResBody {
 
     /// ID of the logged-in device.
     ///
-    /// Will be the same as the corresponding parameter in the request, if one was
-    /// specified.
+    /// Will be the same as the corresponding parameter in the request, if one
+    /// was specified.
     pub device_id: OwnedDeviceId,
 
     /// Client configuration provided by the server.
     ///
-    /// If present, clients SHOULD use the provided object to reconfigure themselves.
+    /// If present, clients SHOULD use the provided object to reconfigure
+    /// themselves.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub well_known: Option<DiscoveryInfo>,
 
     /// A [refresh token] for the account.
     ///
-    /// This token can be used to obtain a new access token when it expires by calling the
-    /// [`refresh_token`] endpoint.
+    /// This token can be used to obtain a new access token when it expires by
+    /// calling the [`refresh_token`] endpoint.
     ///
     /// [refresh token]: https://spec.matrix.org/latest/client-server-api/#refreshing-access-tokens
     /// [`refresh_token`]: crate::session::refresh_token
@@ -163,11 +167,12 @@ pub struct LoginResBody {
 
     /// The lifetime of the access token, in milliseconds.
     ///
-    /// Once the access token has expired, a new access token can be obtained by using the
-    /// provided refresh token. If no refresh token is provided, the client will need to
-    /// re-login to obtain a new access token.
+    /// Once the access token has expired, a new access token can be obtained by
+    /// using the provided refresh token. If no refresh token is provided,
+    /// the client will need to re-login to obtain a new access token.
     ///
-    /// If this is `None`, the client can assume that the access token will not expire.
+    /// If this is `None`, the client can assume that the access token will not
+    /// expire.
     #[serde(
         with = "crate::serde::duration::opt_ms",
         default,
@@ -177,7 +182,8 @@ pub struct LoginResBody {
     pub expires_in: Option<Duration>,
 }
 impl LoginResBody {
-    /// Creates a new `Response` with the given user ID, access token and device ID.
+    /// Creates a new `Response` with the given user ID, access token and device
+    /// ID.
     pub fn new(user_id: OwnedUserId, access_token: String, device_id: OwnedDeviceId) -> Self {
         Self {
             user_id,
@@ -208,16 +214,18 @@ pub enum LoginInfo {
 }
 
 impl LoginInfo {
-    /// Creates a new `IncomingLoginInfo` with the given `login_type` string, session and data.
+    /// Creates a new `IncomingLoginInfo` with the given `login_type` string,
+    /// session and data.
     ///
-    /// Prefer to use the public variants of `IncomingLoginInfo` where possible; this
-    /// constructor is meant be used for unsupported authentication mechanisms only and
-    /// does not allow setting arbitrary data for supported ones.
+    /// Prefer to use the public variants of `IncomingLoginInfo` where possible;
+    /// this constructor is meant be used for unsupported authentication
+    /// mechanisms only and does not allow setting arbitrary data for
+    /// supported ones.
     ///
     /// # Errors
     ///
-    /// Returns an error if the `login_type` is known and serialization of `data` to the
-    /// corresponding `IncomingLoginInfo` variant fails.
+    /// Returns an error if the `login_type` is known and serialization of
+    /// `data` to the corresponding `IncomingLoginInfo` variant fails.
     pub fn new(login_type: &str, data: JsonObject) -> serde_json::Result<Self> {
         Ok(match login_type {
             "m.login.password" => Self::Password(serde_json::from_value(JsonValue::Object(data))?),
@@ -252,8 +260,9 @@ impl<'de> Deserialize<'de> for LoginInfo {
             serde_json::from_value(val).map_err(E::custom)
         }
 
-        // FIXME: Would be better to use serde_json::value::RawValue, but that would require
-        // implementing Deserialize manually for Request, bc. `#[serde(flatten)]` breaks things.
+        // FIXME: Would be better to use serde_json::value::RawValue, but that would
+        // require implementing Deserialize manually for Request, bc.
+        // `#[serde(flatten)]` breaks things.
         let json = JsonValue::deserialize(deserializer)?;
 
         let login_type = json["type"].as_str().ok_or_else(|| de::Error::missing_field("type"))?;
@@ -405,8 +414,8 @@ impl IdentityServerInfo {
 
 /// `GET /_matrix/client/*/login`
 ///
-/// Gets the homeserver's supported login types to authenticate users. Clients should pick one of
-/// these and supply it as the type when logging in.
+/// Gets the homeserver's supported login types to authenticate users. Clients
+/// should pick one of these and supply it as the type when logging in.
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3login
@@ -465,9 +474,9 @@ impl LoginType {
     }
     /// Creates a new `LoginType` with the given `login_type` string and data.
     ///
-    /// Prefer to use the public variants of `LoginType` where possible; this constructor is
-    /// meant be used for unsupported login types only and does not allow setting
-    /// arbitrary data for supported ones.
+    /// Prefer to use the public variants of `LoginType` where possible; this
+    /// constructor is meant be used for unsupported login types only and
+    /// does not allow setting arbitrary data for supported ones.
     pub fn new(login_type: &str, data: JsonObject) -> serde_json::Result<Self> {
         fn from_json_object<T: DeserializeOwned>(obj: JsonObject) -> serde_json::Result<T> {
             serde_json::from_value(JsonValue::Object(obj))
@@ -498,8 +507,8 @@ impl LoginType {
 
     /// Returns the associated data.
     ///
-    /// Prefer to use the public variants of `LoginType` where possible; this method is meant to
-    /// be used for unsupported login types only.
+    /// Prefer to use the public variants of `LoginType` where possible; this
+    /// method is meant to be used for unsupported login types only.
     pub fn data(&self) -> Cow<'_, JsonObject> {
         fn serialize<T: Serialize>(obj: &T) -> JsonObject {
             match serde_json::to_value(obj).expect("login type serialization to succeed") {
@@ -592,8 +601,8 @@ impl IdentityProvider {
 
 /// An SSO login identity provider brand identifier.
 ///
-/// The predefined ones can be found in the matrix-spec-proposals repo in a [separate
-/// document][matrix-spec-proposals].
+/// The predefined ones can be found in the matrix-spec-proposals repo in a
+/// [separate document][matrix-spec-proposals].
 ///
 /// [matrix-spec-proposals]: https://github.com/matrix-org/matrix-spec-proposals/blob/v1.1/informal/idp-brands.md
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
@@ -652,8 +661,8 @@ impl AppserviceLoginType {
 pub struct CustomLoginType {
     /// A custom type
     ///
-    /// This field is named `type_` instead of `type` because the latter is a reserved
-    /// keyword in Rust.
+    /// This field is named `type_` instead of `type` because the latter is a
+    /// reserved keyword in Rust.
     #[serde(rename = "type")]
     pub type_: String,
 
@@ -683,7 +692,8 @@ pub struct CustomLoginType {
 
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct TokenReqBody {
-    /// Additional authentication information for the user-interactive authentication API.
+    /// Additional authentication information for the user-interactive
+    /// authentication API.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<AuthData>,
 }
@@ -691,8 +701,8 @@ pub struct TokenReqBody {
 /// Response type for the `login` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 pub struct TokenResBody {
-    /// The time remaining in milliseconds until the homeserver will no longer accept the
-    /// token.
+    /// The time remaining in milliseconds until the homeserver will no longer
+    /// accept the token.
     ///
     /// 2 minutes is recommended as a default.
     #[serde(with = "crate::serde::duration::ms", rename = "expires_in_ms")]
@@ -702,7 +712,8 @@ pub struct TokenResBody {
     pub login_token: String,
 }
 impl TokenResBody {
-    /// Creates a new `Response` with the given expiration duration and login token.
+    /// Creates a new `Response` with the given expiration duration and login
+    /// token.
     pub fn new(expires_in: Duration, login_token: String) -> Self {
         Self {
             expires_in,
@@ -710,7 +721,8 @@ impl TokenResBody {
         }
     }
 
-    /// Creates a new `Response` with the default expiration duration and the given login token.
+    /// Creates a new `Response` with the default expiration duration and the
+    /// given login token.
     pub fn with_default_expiration_duration(login_token: String) -> Self {
         Self::new(Self::default_expiration_duration(), login_token)
     }
@@ -728,9 +740,11 @@ impl TokenResBody {
 //     use crate::uiaa::UserIdentifier;
 //     use assert_matches2::assert_matches;
 //     use serde::{Deserialize, Serialize};
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value, Value as JsonValue};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value, Value as JsonValue};
 
-//     use super::{IdentityProvider, IdentityProviderBrand, LoginType, SsoLoginType, TokenLoginType};
+//     use super::{IdentityProvider, IdentityProviderBrand, LoginType,
+// SsoLoginType, TokenLoginType};
 
 //     #[derive(Debug, Deserialize, Serialize)]
 //     struct Wrapper {
@@ -764,8 +778,8 @@ impl TokenResBody {
 //         assert_matches!(&wrapper.flows[0], LoginType::_Custom(custom));
 //         assert_eq!(custom.type_, "io.palpo.custom");
 //         assert_eq!(custom.data.len(), 1);
-//         assert_eq!(custom.data.get("color"), Some(&JsonValue::from("green")));
-//     }
+//         assert_eq!(custom.data.get("color"),
+// Some(&JsonValue::from("green")));     }
 
 //     #[test]
 //     fn deserialize_sso_login_type() {
@@ -792,14 +806,15 @@ impl TokenResBody {
 //         assert_eq!(wrapper.flows.len(), 1);
 //         let flow = &wrapper.flows[0];
 
-//         assert_matches!(flow, LoginType::Sso(SsoLoginType { identity_providers }));
-//         assert_eq!(identity_providers.len(), 2);
+//         assert_matches!(flow, LoginType::Sso(SsoLoginType {
+// identity_providers }));         assert_eq!(identity_providers.len(), 2);
 
 //         let provider = &identity_providers[0];
 //         assert_eq!(provider.id, "oidc-gitlab");
 //         assert_eq!(provider.name, "GitLab");
-//         assert_eq!(provider.icon.as_deref(), Some(mxc_uri!("mxc://localhost/gitlab-icon")));
-//         assert_eq!(provider.brand, Some(IdentityProviderBrand::GitLab));
+//         assert_eq!(provider.icon.as_deref(),
+// Some(mxc_uri!("mxc://localhost/gitlab-icon")));         assert_eq!(provider.
+// brand, Some(IdentityProviderBrand::GitLab));
 
 //         let provider = &identity_providers[1];
 //         assert_eq!(provider.id, "custom");
@@ -862,9 +877,9 @@ impl TokenResBody {
 //             .unwrap(),
 //             LoginInfo::Password(login)
 //         );
-//         assert_matches!(login.identifier, UserIdentifier::UserIdOrLocalpart(user));
-//         assert_eq!(user, "cheeky_monkey");
-//         assert_eq!(login.password, "ilovebananas");
+//         assert_matches!(login.identifier,
+// UserIdentifier::UserIdOrLocalpart(user));         assert_eq!(user,
+// "cheeky_monkey");         assert_eq!(login.password, "ilovebananas");
 
 //         assert_matches!(
 //             from_json_value(json!({

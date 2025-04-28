@@ -30,7 +30,8 @@ const RING_TEMPLATE_CONTEXT_SPECIFIC: &[u8] = &[0xA1, 0x23, 0x03, 0x21];
 // A checked well-formed context-specific[1] prefix.
 const WELL_FORMED_CONTEXT_ONE_PREFIX: &[u8] = &[0x81, 0x21];
 
-// If present, removes a malfunctioning pubkey suffix and adjusts the length at the start.
+// If present, removes a malfunctioning pubkey suffix and adjusts the length at
+// the start.
 fn fix_ring_doc(mut doc: Vec<u8>) -> Vec<u8> {
     assert!(!doc.is_empty());
     // Check if first tag is ASN.1 SEQUENCE

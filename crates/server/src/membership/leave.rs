@@ -8,7 +8,6 @@ use crate::core::federation::membership::{MakeLeaveResBody, SendLeaveReqBody, ma
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_raw_json_value};
 use crate::core::{Seqnum, UnixMillis};
-
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;

@@ -13,11 +13,12 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::encryption::OneTimeKey;
-use crate::encryption::{CrossSigningKey, DeviceKeys};
-use crate::sending::{SendRequest, SendResult};
-use crate::serde::Base64;
-use crate::{DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId};
+use crate::{
+    DeviceKeyAlgorithm, OwnedDeviceId, OwnedDeviceKeyId, OwnedUserId,
+    encryption::{CrossSigningKey, DeviceKeys, OneTimeKey},
+    sending::{SendRequest, SendResult},
+    serde::Base64,
+};
 
 pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/key/v2/server"))?;
@@ -33,8 +34,8 @@ pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
 //     }
 // };
 
-// pub fn claim_keys_request(txn_id: &str, body: ClaimKeysReqBody) -> SendRequest {
-//     let url = registration
+// pub fn claim_keys_request(txn_id: &str, body: ClaimKeysReqBody) ->
+// SendRequest {     let url = registration
 //         .build_url(&format!("/app/v1/transactions/{}", txn_id))
 //     crate::sending::post(url)
 //         .stuff(req_body)

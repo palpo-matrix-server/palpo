@@ -1,27 +1,31 @@
 //! `POST /_matrix/client/unstable/org.matrix.msc3575/sync` ([MSC])
 //!
-//! Get all new events in a sliding window of rooms since the last sync or a given point in time.
+//! Get all new events in a sliding window of rooms since the last sync or a
+//! given point in time.
 //!
 //! [MSC]: https://github.com/matrix-org/matrix-doc/blob/kegan/sync-v3/proposals/3575-sync.md
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize, de::Error as _};
-
-use crate::events::{AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType};
-use crate::identifiers::*;
-use crate::serde::{RawJson, deserialize_cow_str, duration::opt_ms};
-use crate::state::TypeStateKey;
-use crate::{OwnedMxcUri, Seqnum};
 
 use super::UnreadNotificationsCount;
 pub use super::v4::{
     AccountData, AccountDataConfig, E2ee, E2eeConfig, Extensions, ExtensionsConfig, Receipts, ReceiptsConfig,
     SyncRoomHero, ToDevice, ToDeviceConfig, Typing, TypingConfig,
 };
-use crate::directory::RoomTypeFilter;
+use crate::{
+    OwnedMxcUri, Seqnum,
+    directory::RoomTypeFilter,
+    events::{AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType},
+    identifiers::*,
+    serde::{RawJson, deserialize_cow_str, duration::opt_ms},
+    state::TypeStateKey,
+};
 
 pub type SyncInfo<'a> = (&'a UserId, &'a DeviceId, Seqnum, &'a SyncEventsReqBody);
 
@@ -33,9 +37,9 @@ pub type TodoRooms = BTreeMap<OwnedRoomId, (BTreeSet<TypeStateKey>, usize, Seqnu
 //     rate_limited: false,
 //     authentication: AccessToken,
 //     history: {
-//        unstable => "/_matrix/client/unstable/org.matrix.simplified_msc3575/sync",
-//        // 1.4 => "/_matrix/client/v5/sync",
-//     }
+//        unstable =>
+// "/_matrix/client/unstable/org.matrix.simplified_msc3575/sync",        // 1.4
+// => "/_matrix/client/v5/sync",     }
 // };
 
 #[derive(ToParameters, Deserialize, Debug)]
@@ -58,13 +62,15 @@ pub struct SyncEventsReqArgs {
 pub struct SyncEventsReqBody {
     /// A unique string identifier for this connection to the server.
     ///
-    /// Optional. If this is missing, only one sliding sync connection can be made to the server at
-    /// any one time. Clients need to set this to allow more than one connection concurrently,
-    /// so the server can distinguish between connections. This is NOT STICKY and must be
-    /// provided with every request, if your client needs more than one concurrent connection.
+    /// Optional. If this is missing, only one sliding sync connection can be
+    /// made to the server at any one time. Clients need to set this to
+    /// allow more than one connection concurrently, so the server can
+    /// distinguish between connections. This is NOT STICKY and must be
+    /// provided with every request, if your client needs more than one
+    /// concurrent connection.
     ///
-    /// Limitation: it must not contain more than 16 chars, due to it being required with every
-    /// request.
+    /// Limitation: it must not contain more than 16 chars, due to it being
+    /// required with every request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conn_id: Option<String>,
 
@@ -94,7 +100,8 @@ pub struct SyncEventsReqBody {
 /// Response type for the `sync` endpoint.
 #[derive(ToSchema, Serialize, Default, Debug)]
 pub struct SyncEventsResBody {
-    /// Matches the `txn_id` sent by the request. Please see [`Request::txn_id`].
+    /// Matches the `txn_id` sent by the request. Please see
+    /// [`Request::txn_id`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub txn_id: Option<String>,
 
@@ -206,26 +213,29 @@ pub struct SyncRoom {
 
 /// Filter for a sliding sync list, set at request.
 ///
-/// All fields are applied with AND operators, hence if `is_dm`  is `true` and `is_encrypted` is
-/// `true` then only encrypted DM rooms will be returned. The absence of fields implies no filter
-/// on that criteria: it does NOT imply `false`.
+/// All fields are applied with AND operators, hence if `is_dm`  is `true` and
+/// `is_encrypted` is `true` then only encrypted DM rooms will be returned. The
+/// absence of fields implies no filter on that criteria: it does NOT imply
+/// `false`.
 ///
-/// Filters are considered _sticky_, meaning that the filter only has to be provided once and their
-/// parameters 'sticks' for future requests until a new filter overwrites them.
+/// Filters are considered _sticky_, meaning that the filter only has to be
+/// provided once and their parameters 'sticks' for future requests until a new
+/// filter overwrites them.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReqListFilters {
     /// Whether to return invited Rooms, only joined rooms or both.
     ///
-    /// Flag which only returns rooms the user is currently invited to. If unset, both
-    /// invited and joined rooms are returned. If false, no invited rooms are returned. If
-    /// true, only invited rooms are returned.
+    /// Flag which only returns rooms the user is currently invited to. If
+    /// unset, both invited and joined rooms are returned. If false, no
+    /// invited rooms are returned. If true, only invited rooms are
+    /// returned.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_invite: Option<bool>,
 
     /// Only list rooms that are not of these create-types, or all.
     ///
-    /// Same as "room_types" but inverted. This can be used to filter out spaces from the room
-    /// list.
+    /// Same as "room_types" but inverted. This can be used to filter out spaces
+    /// from the room list.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub not_room_types: Vec<RoomTypeFilter>,
 }
@@ -253,10 +263,11 @@ pub struct ReqList {
 /// Configuration for requesting room details.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RoomDetailsConfig {
-    /// Required state for each room returned. An array of event type and state key tuples.
+    /// Required state for each room returned. An array of event type and state
+    /// key tuples.
     ///
-    /// Note that elements of this array are NOT sticky so they must be specified in full when they
-    /// are changed. Sticky.
+    /// Note that elements of this array are NOT sticky so they must be
+    /// specified in full when they are changed. Sticky.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub required_state: Vec<(StateEventType, String)>,
 
@@ -267,10 +278,11 @@ pub struct RoomDetailsConfig {
 /// Configuration for old rooms to include
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct IncludeOldRooms {
-    /// Required state for each room returned. An array of event type and state key tuples.
+    /// Required state for each room returned. An array of event type and state
+    /// key tuples.
     ///
-    /// Note that elements of this array are NOT sticky so they must be specified in full when they
-    /// are changed. Sticky.
+    /// Note that elements of this array are NOT sticky so they must be
+    /// specified in full when they are changed. Sticky.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub required_state: Vec<(StateEventType, String)>,
 
@@ -279,7 +291,8 @@ pub struct IncludeOldRooms {
     pub timeline_limit: Option<usize>,
 }
 
-/// Sliding sync request room subscription (see [`super::Request::room_subscriptions`]).
+/// Sliding sync request room subscription (see
+/// [`super::Request::room_subscriptions`]).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RoomSubscription {
     /// Required state for each returned room. An array of event type and

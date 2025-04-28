@@ -32,12 +32,12 @@ pub async fn knock_room_by_id(
 
     if crate::room::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.").into());
+        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already invited/accepted to.").into());
     }
 
     if crate::room::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.").into());
+        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already joined in.").into());
     }
 
     if crate::room::is_knocked(sender_id, room_id)? {
@@ -48,7 +48,7 @@ pub async fn knock_room_by_id(
     if let Ok(memeber) = state::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
-            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
         }
     }
 
@@ -84,7 +84,7 @@ async fn knock_room_local(
             | RoomVersionId::V5
             | RoomVersionId::V6
     ) {
-        return Err(MatrixError::forbidden("This room does not support knocking.").into());
+        return Err(MatrixError::forbidden(None, "This room does not support knocking.").into());
     }
 
     let content = RoomMemberEventContent {
@@ -117,7 +117,7 @@ async fn knock_room_local(
     let room_version_id = make_knock_body.room_version;
 
     if !crate::supports_room_version(&room_version_id) {
-        return Err(MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo").into());
+        return Err(MatrixError::forbidden(None, "Remote room version {room_version_id} is not supported by palpo").into());
     }
     let mut knock_event_stub =
         serde_json::from_str::<CanonicalJsonObject>(make_knock_body.event.get()).map_err(|e| {

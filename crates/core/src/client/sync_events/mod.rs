@@ -1,6 +1,7 @@
 //! `GET /_matrix/client/*/sync`
 //!
-//! Get all new events from all rooms since the last sync or a given point in time.
+//! Get all new events from all rooms since the last sync or a given point in
+//! time.
 
 use salvo::prelude::*;
 use serde::{self, Deserialize, Serialize};

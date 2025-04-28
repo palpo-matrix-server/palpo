@@ -610,7 +610,7 @@ pub fn create_hash_and_sign_event(
     })?;
 
     if !auth_checked {
-        return Err(MatrixError::forbidden("Event is not authorized.").into());
+        return Err(MatrixError::forbidden(None, "Event is not authorized.").into());
     }
 
     // Hash and sign
@@ -658,7 +658,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
     match pdu.event_type() {
         TimelineEventType::RoomEncryption => {
             warn!("Encryption is not allowed in the admins room");
-            return Err(MatrixError::forbidden("Encryption is not allowed in the admins room.").into());
+            return Err(MatrixError::forbidden(None, "Encryption is not allowed in the admins room.").into());
         }
         TimelineEventType::RoomMember => {
             #[derive(Deserialize)]
@@ -679,7 +679,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
             if content.membership == MembershipState::Leave {
                 if target == server_user {
                     warn!("Palpo user cannot leave from admins room");
-                    return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.").into());
+                    return Err(MatrixError::forbidden(None, "Palpo user cannot leave from admins room.").into());
                 }
 
                 let count = crate::room::get_joined_users(pdu.room_id(), None)?
@@ -689,14 +689,14 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     .count();
                 if count < 2 {
                     warn!("Last admin cannot leave from admins room");
-                    return Err(MatrixError::forbidden("Last admin cannot leave from admins room.").into());
+                    return Err(MatrixError::forbidden(None, "Last admin cannot leave from admins room.").into());
                 }
             }
 
             if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
                 if target == server_user {
                     warn!("Palpo user cannot be banned in admins room");
-                    return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.").into());
+                    return Err(MatrixError::forbidden(None, "Palpo user cannot be banned in admins room.").into());
                 }
 
                 let count = crate::room::get_joined_users(pdu.room_id(), None)?
@@ -706,7 +706,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     .count();
                 if count < 2 {
                     warn!("Last admin cannot be banned in admins room");
-                    return Err(MatrixError::forbidden("Last admin cannot be banned in admins room.").into());
+                    return Err(MatrixError::forbidden(None, "Last admin cannot be banned in admins room.").into());
                 }
             }
         }

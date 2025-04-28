@@ -1,15 +1,14 @@
 mod acquire;
 mod request;
 mod verify;
-pub use acquire::*;
-pub use request::*;
-pub use verify::*;
-
 use std::borrow::Borrow;
 use std::{collections::BTreeMap, time::Duration};
 
+pub use acquire::*;
 use diesel::prelude::*;
+pub use request::*;
 use serde_json::value::RawValue as RawJsonValue;
+pub use verify::*;
 
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};

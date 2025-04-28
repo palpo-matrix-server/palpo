@@ -3,25 +3,21 @@ mod alias;
 mod summary;
 mod thread;
 pub use alias::*;
+use salvo::prelude::*;
+use serde::{Deserialize, Serialize};
 pub use summary::*;
 pub use thread::*;
 
-use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
-
-use crate::client::filter::RoomEventFilter;
-use crate::client::membership::InviteThreepid;
-use crate::events::AnyRoomAccountDataEvent;
-use crate::events::room::member::MembershipState;
-use crate::events::{
-    AnyInitialStateEvent, AnyStateEvent, AnyTimelineEvent,
-    room::{create::PreviousRoom, power_levels::RoomPowerLevelsEventContent},
-};
-use crate::room::{RoomType, Visibility};
-use crate::serde::{RawJson, StringEnum};
 use crate::{
     Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
     RoomVersionId, UnixMillis,
+    client::{filter::RoomEventFilter, membership::InviteThreepid},
+    events::{
+        AnyInitialStateEvent, AnyRoomAccountDataEvent, AnyStateEvent, AnyTimelineEvent,
+        room::{create::PreviousRoom, member::MembershipState, power_levels::RoomPowerLevelsEventContent},
+    },
+    room::{RoomType, Visibility},
+    serde::{RawJson, StringEnum},
 };
 
 /// `POST /_matrix/client/*/createRoom`
@@ -53,13 +49,15 @@ pub struct CreateRoomReqBody {
 
     /// List of state events to send to the new room.
     ///
-    /// Takes precedence over events set by preset, but gets overridden by name and topic keys.
+    /// Takes precedence over events set by preset, but gets overridden by name
+    /// and topic keys.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub initial_state: Vec<RawJson<AnyInitialStateEvent>>,
 
     /// A list of user IDs to invite to the room.
     ///
-    /// This will tell the server to invite everyone in the list to the newly created room.
+    /// This will tell the server to invite everyone in the list to the newly
+    /// created room.
     #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
     pub invite: Vec<OwnedUserId>,
 
@@ -71,8 +69,8 @@ pub struct CreateRoomReqBody {
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub is_direct: bool,
 
-    /// If this is included, an `m.room.name` event will be sent into the room to indicate the
-    /// name of the room.
+    /// If this is included, an `m.room.name` event will be sent into the room
+    /// to indicate the name of the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
@@ -80,7 +78,8 @@ pub struct CreateRoomReqBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub power_level_content_override: Option<RawJson<RoomPowerLevelsEventContent>>,
 
-    /// Convenience parameter for setting various default state events based on a preset.
+    /// Convenience parameter for setting various default state events based on
+    /// a preset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preset: Option<RoomPreset>,
 
@@ -94,15 +93,16 @@ pub struct CreateRoomReqBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_version: Option<RoomVersionId>,
 
-    /// If this is included, an `m.room.topic` event will be sent into the room to indicate
-    /// the topic for the room.
+    /// If this is included, an `m.room.topic` event will be sent into the room
+    /// to indicate the topic for the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
 
-    /// A public visibility indicates that the room will be shown in the published room list.
+    /// A public visibility indicates that the room will be shown in the
+    /// published room list.
     ///
-    /// A private visibility will hide the room from the published room list. Defaults to
-    /// `Private`.
+    /// A private visibility will hide the room from the published room list.
+    /// Defaults to `Private`.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub visibility: Visibility,
 }
@@ -116,8 +116,8 @@ pub struct CreateRoomResBody {
 
 /// Extra options to be added to the `m.room.create` event.
 ///
-/// This is the same as the event content struct for `m.room.create`, but without some fields
-/// that servers are supposed to ignore.
+/// This is the same as the event content struct for `m.room.create`, but
+/// without some fields that servers are supposed to ignore.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct CreationContent {
     /// Whether users on other servers can join this room.
@@ -130,7 +130,8 @@ pub struct CreationContent {
     )]
     pub federate: bool,
 
-    /// A reference to the room this room replaces, if the previous room was upgraded.
+    /// A reference to the room this room replaces, if the previous room was
+    /// upgraded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub predecessor: Option<PreviousRoom>,
 
@@ -151,12 +152,12 @@ impl CreationContent {
         }
     }
 
-    // /// Given a `CreationContent` and the other fields that a homeserver has to fill, construct
-    // /// a `RoomCreateEventContent`.
-    // pub fn into_event_content(self, creator: OwnedUserId, room_version: RoomVersionId) -> RoomCreateEventContent {
-    //     assign!(RoomCreateEventContent::new_v1(creator), {
-    //         federate: self.federate,
-    //         room_version: room_version,
+    // /// Given a `CreationContent` and the other fields that a homeserver has to
+    // fill, construct /// a `RoomCreateEventContent`.
+    // pub fn into_event_content(self, creator: OwnedUserId, room_version:
+    // RoomVersionId) -> RoomCreateEventContent {     assign!
+    // (RoomCreateEventContent::new_v1(creator), {         federate:
+    // self.federate,         room_version: room_version,
     //         predecessor: self.predecessor,
     //         room_type: self.room_type
     //     })
@@ -180,14 +181,16 @@ impl Default for CreationContent {
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum RoomPreset {
-    /// `join_rules` is set to `invite` and `history_visibility` is set to `shared`.
+    /// `join_rules` is set to `invite` and `history_visibility` is set to
+    /// `shared`.
     PrivateChat,
 
-    /// `join_rules` is set to `public` and `history_visibility` is set to `shared`.
+    /// `join_rules` is set to `public` and `history_visibility` is set to
+    /// `shared`.
     PublicChat,
 
-    /// Same as `PrivateChat`, but all initial invitees get the same power level as the
-    /// creator.
+    /// Same as `PrivateChat`, but all initial invitees get the same power level
+    /// as the creator.
     TrustedPrivateChat,
 
     #[doc(hidden)]
@@ -417,8 +420,9 @@ pub struct ContextReqArgs {
 
     /// The maximum number of context events to return.
     ///
-    /// This limit applies to the sum of the `events_before` and `events_after` arrays. The
-    /// requested event ID is always returned in `event` even if the limit is `0`.
+    /// This limit applies to the sum of the `events_before` and `events_after`
+    /// arrays. The requested event ID is always returned in `event` even if
+    /// the limit is `0`.
     ///
     /// Defaults to 10.
     #[salvo(parameter(parameter_in = Query))]
@@ -484,7 +488,8 @@ impl ContextResBody {
 //     rate_limited: true,
 //     authentication: AccessToken,
 //     history: {
-//         unstable => "/_matrix/client/unstable/xyz.amorgan.knock/knock/:room_id_or_alias",
+//         unstable =>
+// "/_matrix/client/unstable/xyz.amorgan.knock/knock/:room_id_or_alias",
 //         1.1 => "/_matrix/client/v3/knock/:room_id_or_alias",
 //     }
 // };
@@ -556,7 +561,8 @@ pub struct InitialSyncResBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_data: Option<Vec<RawJson<AnyRoomAccountDataEvent>>>,
 
-    /// The user’s membership state in this room. One of: [invite, join, leave, ban].
+    /// The user’s membership state in this room. One of: [invite, join, leave,
+    /// ban].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub membership: Option<MembershipState>,
 
@@ -567,9 +573,9 @@ pub struct InitialSyncResBody {
     /// The ID of this room.
     pub room_id: OwnedRoomId,
 
-    /// If the user is a member of the room this will be the current state of the room as a
-    /// list of events. If the user has left the room this will be the state of the room when
-    /// they left it.
+    /// If the user is a member of the room this will be the current state of
+    /// the room as a list of events. If the user has left the room this
+    /// will be the state of the room when they left it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<Vec<RawJson<AnyStateEvent>>>,
 
@@ -582,9 +588,10 @@ pub struct InitialSyncResBody {
 /// Page of timeline events
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PaginationChunk {
-    /// If the user is a member of the room this will be a list of the most recent messages
-    /// for this room. If the user has left the room this will be the messages that preceded
-    /// them leaving. This array will consist of at most limit elements.
+    /// If the user is a member of the room this will be a list of the most
+    /// recent messages for this room. If the user has left the room this
+    /// will be the messages that preceded them leaving. This array will
+    /// consist of at most limit elements.
     pub chunk: Vec<RawJson<AnyTimelineEvent>>,
 
     /// A token which correlates to the end of chunk. Can be passed to
@@ -592,8 +599,9 @@ pub struct PaginationChunk {
     pub end: String,
 
     /// A token which correlates to the start of chunk. Can be passed to
-    /// /rooms/<room_id>/messages to retrieve earlier events. If no earlier events are
-    /// available, this property may be omitted from the response.
+    /// /rooms/<room_id>/messages to retrieve earlier events. If no earlier
+    /// events are available, this property may be omitted from the
+    /// response.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<String>,
 }

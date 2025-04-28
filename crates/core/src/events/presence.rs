@@ -84,16 +84,17 @@ impl PresenceEventContent {
 // #[cfg(test)]
 // mod tests {
 //     use crate::{mxc_uri, presence::PresenceState};
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::{PresenceEvent, PresenceEventContent};
 
 //     #[test]
 //     fn serialization() {
 //         let content = PresenceEventContent {
-//             avatar_url: Some(mxc_uri!("mxc://localhost/wefuiwegh8742w").to_owned()),
-//             currently_active: Some(false),
-//             display_name: None,
+//             avatar_url:
+// Some(mxc_uri!("mxc://localhost/wefuiwegh8742w").to_owned()),
+// currently_active: Some(false),             display_name: None,
 //             last_active_ago: Some(uint!(2_478_593)),
 //             presence: PresenceState::Online,
 //             status_msg: Some("Making cupcakes".into()),
@@ -133,8 +134,8 @@ impl PresenceEventContent {
 //         assert_eq!(ev.content.display_name, None);
 //         assert_eq!(ev.content.last_active_ago, Some(uint!(2_478_593)));
 //         assert_eq!(ev.content.presence, PresenceState::Online);
-//         assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
-//         assert_eq!(ev.sender, "@example:localhost");
+//         assert_eq!(ev.content.status_msg.as_deref(), Some("Making
+// cupcakes"));         assert_eq!(ev.sender, "@example:localhost");
 
 //         let json = json!({
 //             "content": {
@@ -154,7 +155,7 @@ impl PresenceEventContent {
 //         assert_eq!(ev.content.display_name, None);
 //         assert_eq!(ev.content.last_active_ago, Some(uint!(2_478_593)));
 //         assert_eq!(ev.content.presence, PresenceState::Online);
-//         assert_eq!(ev.content.status_msg.as_deref(), Some("Making cupcakes"));
-//         assert_eq!(ev.sender, "@example:localhost");
+//         assert_eq!(ev.content.status_msg.as_deref(), Some("Making
+// cupcakes"));         assert_eq!(ev.sender, "@example:localhost");
 //     }
 // }

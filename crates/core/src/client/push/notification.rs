@@ -1,16 +1,13 @@
 //! `GET /_matrix/client/*/notifications`
 //!
-//! Paginate through the list of events that the user has been, or would have been notified about.
-//! `/v3/` ([spec])
+//! Paginate through the list of events that the user has been, or would have
+//! been notified about. `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3notifications
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::AnySyncTimelineEvent;
-use crate::push::Action;
-use crate::serde::RawJson;
-use crate::{OwnedRoomId, UnixMillis};
+use crate::{OwnedRoomId, UnixMillis, events::AnySyncTimelineEvent, push::Action, serde::RawJson};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -36,8 +33,8 @@ pub struct NotificationsReqBody {
 
     /// Allows basic filtering of events returned.
     ///
-    /// Supply "highlight" to return only events where the notification had the 'highlight'
-    /// tweak set.
+    /// Supply "highlight" to return only events where the notification had the
+    /// 'highlight' tweak set.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub only: Option<String>,
@@ -59,8 +56,8 @@ pub struct NotificationsReqBody {
 
 //     /// Allows basic filtering of events returned.
 //     ///
-//     /// Supply "highlight" to return only events where the notification had the 'highlight'
-//     /// tweak set.
+//     /// Supply "highlight" to return only events where the notification had
+// the 'highlight'     /// tweak set.
 //     #[salvo(parameter(parameter_in = Query))]
 //     #[serde(skip_serializing_if = "Option::is_none")]
 //     pub only: Option<String>,
@@ -69,8 +66,8 @@ pub struct NotificationsReqBody {
 /// Response type for the `get_notifications` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 pub struct NotificationsResBody {
-    /// The token to supply in the from param of the next /notifications request in order to
-    /// request more events.
+    /// The token to supply in the from param of the next /notifications request
+    /// in order to request more events.
     ///
     /// If this is absent, there are no more results.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -102,8 +99,8 @@ pub struct Notification {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile_tag: Option<String>,
 
-    /// Indicates whether the user has sent a read receipt indicating that they have read this
-    /// message.
+    /// Indicates whether the user has sent a read receipt indicating that they
+    /// have read this message.
     pub read: bool,
 
     /// The ID of the room in which the event was posted.

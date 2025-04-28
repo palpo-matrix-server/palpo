@@ -6,17 +6,19 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::OwnedRoomId;
-use crate::events::{
-    EmptyStateKey, EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
-    StaticEventContent,
+use crate::{
+    OwnedRoomId,
+    events::{
+        EmptyStateKey, EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+        StaticEventContent,
+    },
+    serde::RawJsonValue,
 };
-use crate::serde::RawJsonValue;
 
 /// The content of an `m.room.tombstone` event.
 ///
-/// A state event signifying that a room has been upgraded to a different room version, and that
-/// clients should go there.
+/// A state event signifying that a room has been upgraded to a different room
+/// version, and that clients should go there.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(
     type = "m.room.tombstone",
@@ -34,7 +36,8 @@ pub struct RoomTombstoneEventContent {
 }
 
 impl RoomTombstoneEventContent {
-    /// Creates a new `RoomTombstoneEventContent` with the given body and replacement room ID.
+    /// Creates a new `RoomTombstoneEventContent` with the given body and
+    /// replacement room ID.
     pub fn new(body: String, replacement_room: OwnedRoomId) -> Self {
         Self { body, replacement_room }
     }
@@ -42,7 +45,8 @@ impl RoomTombstoneEventContent {
 
 /// The possibly redacted form of [`RoomTombstoneEventContent`].
 ///
-/// This type is used when it's not obvious whether the content is redacted or not.
+/// This type is used when it's not obvious whether the content is redacted or
+/// not.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PossiblyRedactedRoomTombstoneEventContent {
     /// A server-defined message.

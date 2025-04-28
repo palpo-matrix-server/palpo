@@ -1,6 +1,7 @@
 //! `PUT /_matrix/client/*/rooms/{room_id}/redact/{event_id}/{txn_id}`
 //!
-//! Redact an event, stripping all information not critical to the event graph integrity.
+//! Redact an event, stripping all information not critical to the event graph
+//! integrity.
 
 //! `/v3/` ([spec])
 //!

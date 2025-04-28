@@ -24,12 +24,14 @@ pub struct IgnoredUserListEventContent {
 }
 
 impl IgnoredUserListEventContent {
-    /// Creates a new `IgnoredUserListEventContent` from the given map of ignored user.
+    /// Creates a new `IgnoredUserListEventContent` from the given map of
+    /// ignored user.
     pub fn new(ignored_users: BTreeMap<OwnedUserId, IgnoredUser>) -> Self {
         Self { ignored_users }
     }
 
-    /// Creates a new `IgnoredUserListEventContent` from the given list of users.
+    /// Creates a new `IgnoredUserListEventContent` from the given list of
+    /// users.
     pub fn users(ignored_users: impl IntoIterator<Item = OwnedUserId>) -> Self {
         Self::new(ignored_users.into_iter().map(|id| (id, IgnoredUser {})).collect())
     }
@@ -52,14 +54,17 @@ impl IgnoredUser {
 // mod tests {
 //     use crate::{owned_user_id, user_id};
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::IgnoredUserListEventContent;
 //     use crate::AnyGlobalAccountDataEvent;
 
 //     #[test]
 //     fn serialization() {
-//         let ignored_user_list = IgnoredUserListEventContent::users(vec![owned_user_id!("@carl:example.com")]);
+//         let ignored_user_list =
+// IgnoredUserListEventContent::users(vec![owned_user_id!("@carl:example.com"
+// )]);
 
 //         let json = json!({
 //             "ignored_users": {

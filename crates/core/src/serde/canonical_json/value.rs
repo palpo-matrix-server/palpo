@@ -82,27 +82,32 @@ impl CanonicalJsonValue {
         as_variant!(self, Self::Integer).copied()
     }
 
-    /// If the `CanonicalJsonValue` is a `String`, return a reference to the inner value.
+    /// If the `CanonicalJsonValue` is a `String`, return a reference to the
+    /// inner value.
     pub fn as_str(&self) -> Option<&str> {
         as_variant!(self, Self::String)
     }
 
-    /// If the `CanonicalJsonValue` is an `Array`, return a reference to the inner value.
+    /// If the `CanonicalJsonValue` is an `Array`, return a reference to the
+    /// inner value.
     pub fn as_array(&self) -> Option<&[CanonicalJsonValue]> {
         as_variant!(self, Self::Array)
     }
 
-    /// If the `CanonicalJsonValue` is an `Object`, return a reference to the inner value.
+    /// If the `CanonicalJsonValue` is an `Object`, return a reference to the
+    /// inner value.
     pub fn as_object(&self) -> Option<&CanonicalJsonObject> {
         as_variant!(self, Self::Object)
     }
 
-    /// If the `CanonicalJsonValue` is an `Array`, return a mutable reference to the inner value.
+    /// If the `CanonicalJsonValue` is an `Array`, return a mutable reference to
+    /// the inner value.
     pub fn as_array_mut(&mut self) -> Option<&mut Vec<CanonicalJsonValue>> {
         as_variant!(self, Self::Array)
     }
 
-    /// If the `CanonicalJsonValue` is an `Object`, return a mutable reference to the inner value.
+    /// If the `CanonicalJsonValue` is an `Object`, return a mutable reference
+    /// to the inner value.
     pub fn as_object_mut(&mut self) -> Option<&mut CanonicalJsonObject> {
         as_variant!(self, Self::Object)
     }
@@ -157,12 +162,13 @@ impl fmt::Debug for CanonicalJsonValue {
 impl fmt::Display for CanonicalJsonValue {
     /// Display this value as a string.
     ///
-    /// This `Display` implementation is intentionally unaffected by any formatting parameters,
-    /// because adding extra whitespace or otherwise pretty-printing it would make it not the
-    /// canonical form anymore.
+    /// This `Display` implementation is intentionally unaffected by any
+    /// formatting parameters, because adding extra whitespace or otherwise
+    /// pretty-printing it would make it not the canonical form anymore.
     ///
-    /// If you want to pretty-print a `CanonicalJsonValue` for debugging purposes, use
-    /// one of `serde_json::{to_string_pretty, to_vec_pretty, to_writer_pretty}`.
+    /// If you want to pretty-print a `CanonicalJsonValue` for debugging
+    /// purposes, use one of `serde_json::{to_string_pretty, to_vec_pretty,
+    /// to_writer_pretty}`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", to_json_string(&self).map_err(|_| fmt::Error)?)
     }

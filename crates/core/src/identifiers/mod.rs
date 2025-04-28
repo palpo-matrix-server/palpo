@@ -74,7 +74,8 @@ fn generate_localpart(length: usize) -> Box<str> {
 
 /// Deserializes any type of id using the provided `TryFrom` implementation.
 ///
-/// This is a helper function to reduce the boilerplate of the `Deserialize` implementations.
+/// This is a helper function to reduce the boilerplate of the `Deserialize`
+/// implementations.
 fn deserialize_id<'de, D, T>(deserializer: D, expected_str: &str) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,

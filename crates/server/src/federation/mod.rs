@@ -52,7 +52,7 @@ pub(crate) async fn send_request(
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
 
     signatures::sign_json(crate::server_name().as_str(), crate::keypair(), &mut request_json)
-        .expect("our request json is what ruma expects");
+        .expect("our request json is what palpo expects");
 
     let request_json: serde_json::Map<String, serde_json::Value> =
         serde_json::from_slice(&serde_json::to_vec(&request_json).unwrap()).unwrap();

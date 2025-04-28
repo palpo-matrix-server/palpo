@@ -7,15 +7,18 @@ use std::{collections::BTreeMap, time::Duration};
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::events::{
-    AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncEphemeralRoomEvent,
-    AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent, presence::PresenceEvent,
-};
-use crate::{DeviceKeyAlgorithm, OwnedEventId, OwnedRoomId, presence::PresenceState, serde::RawJson};
-
 use super::UnreadNotificationsCount;
-use crate::client::filter::FilterDefinition;
-use crate::device::DeviceLists;
+use crate::{
+    DeviceKeyAlgorithm, OwnedEventId, OwnedRoomId,
+    client::filter::FilterDefinition,
+    device::DeviceLists,
+    events::{
+        AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncEphemeralRoomEvent,
+        AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent, presence::PresenceEvent,
+    },
+    presence::PresenceState,
+    serde::RawJson,
+};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -30,23 +33,27 @@ use crate::device::DeviceLists;
 /// Request type for the `sync` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct SyncEventsReqArgs {
-    /// A filter represented either as its full JSON definition or the ID of a saved filter.
+    /// A filter represented either as its full JSON definition or the ID of a
+    /// saved filter.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter: Option<Filter>,
 
     /// A point in time to continue a sync from.
     ///
-    /// Should be a token from the `next_batch` field of a previous `/sync` request.
+    /// Should be a token from the `next_batch` field of a previous `/sync`
+    /// request.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
 
-    /// Controls whether to include the full state for all rooms the user is a member of.
+    /// Controls whether to include the full state for all rooms the user is a
+    /// member of.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub full_state: bool,
 
-    /// Controls whether the client is automatically marked as online by polling this API.
+    /// Controls whether the client is automatically marked as online by polling
+    /// this API.
     ///
     /// Defaults to `PresenceState::Online`.
     #[salvo(parameter(parameter_in = Query))]
@@ -66,7 +73,8 @@ pub struct SyncEventsReqArgs {
 /// Response type for the `sync` endpoint.
 #[derive(ToSchema, Serialize, Clone, Debug)]
 pub struct SyncEventsResBody {
-    /// The batch token to supply in the `since` param of the next `/sync` request.
+    /// The batch token to supply in the `since` param of the next `/sync`
+    /// request.
     pub next_batch: String,
 
     /// Updates to rooms.
@@ -120,7 +128,8 @@ impl SyncEventsResBody {
     }
 }
 
-/// A filter represented either as its full JSON definition or the ID of a saved filter.
+/// A filter represented either as its full JSON definition or the ID of a saved
+/// filter.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 #[serde(untagged)]
@@ -190,8 +199,8 @@ impl Rooms {
 /// Historical updates to left rooms.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct LeftRoom {
-    /// The timeline of messages and state changes in the room up to the point when the user
-    /// left.
+    /// The timeline of messages and state changes in the room up to the point
+    /// when the user left.
     #[serde(default)]
     pub timeline: Timeline,
 
@@ -226,8 +235,9 @@ pub struct JoinedRoom {
 
     /// Counts of [unread notifications] for this room.
     ///
-    /// If `unread_thread_notifications` was set to `true` in the [`RoomEventFilter`], these
-    /// include only the unread notifications for the main timeline.
+    /// If `unread_thread_notifications` was set to `true` in the
+    /// [`RoomEventFilter`], these include only the unread notifications for
+    /// the main timeline.
     ///
     /// [unread notifications]: https://spec.matrix.org/latest/client-server-api/#receiving-notifications
     /// [`RoomEventFilter`]: crate::filter::RoomEventFilter
@@ -238,7 +248,8 @@ pub struct JoinedRoom {
     ///
     /// This is a map from thread root ID to unread notifications in the thread.
     ///
-    /// Only set if `unread_thread_notifications` was set to `true` in the [`RoomEventFilter`].
+    /// Only set if `unread_thread_notifications` was set to `true` in the
+    /// [`RoomEventFilter`].
     ///
     /// [unread notifications]: https://spec.matrix.org/latest/client-server-api/#receiving-notifications
     /// [`RoomEventFilter`]: crate::filter::RoomEventFilter
@@ -249,9 +260,10 @@ pub struct JoinedRoom {
     #[serde(default, skip_serializing_if = "Timeline::is_empty")]
     pub timeline: Timeline,
 
-    /// Updates to the state, between the time indicated by the `since` parameter, and the
-    /// start of the `timeline` (or all state up to the start of the `timeline`, if
-    /// `since` is not given, or `full_state` is true).
+    /// Updates to the state, between the time indicated by the `since`
+    /// parameter, and the start of the `timeline` (or all state up to the
+    /// start of the `timeline`, if `since` is not given, or `full_state` is
+    /// true).
     #[serde(default, skip_serializing_if = "State::is_empty")]
     pub state: State,
 
@@ -259,8 +271,8 @@ pub struct JoinedRoom {
     #[serde(default, skip_serializing_if = "RoomAccountData::is_empty")]
     pub account_data: RoomAccountData,
 
-    /// The ephemeral events in the room that aren't recorded in the timeline or state of the
-    /// room.
+    /// The ephemeral events in the room that aren't recorded in the timeline or
+    /// state of the room.
     #[serde(default, skip_serializing_if = "Ephemeral::is_empty")]
     pub ephemeral: Ephemeral,
 
@@ -314,7 +326,8 @@ pub struct KnockState {
 /// Events in the room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Timeline {
-    /// True if the number of events returned was limited by the `limit` on the filter.
+    /// True if the number of events returned was limited by the `limit` on the
+    /// filter.
     ///
     /// Default to `false`.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
@@ -439,7 +452,8 @@ impl Ephemeral {
 /// Information about room for rendering to clients.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RoomSummary {
-    /// Users which can be used to generate a room name if the room does not have one.
+    /// Users which can be used to generate a room name if the room does not
+    /// have one.
     ///
     /// Required if room name or canonical aliases are not set or empty.
     #[serde(rename = "m.heroes", default, skip_serializing_if = "Vec::is_empty")]
@@ -571,7 +585,8 @@ impl ToDevice {
 // #[cfg(test)]
 // mod tests {
 //     use assign::assign;
-//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value};
 
 //     use super::Timeline;
 
@@ -581,15 +596,16 @@ impl ToDevice {
 //         let timeline_serialized = json!({ "limited": true });
 //         assert_eq!(to_json_value(timeline).unwrap(), timeline_serialized);
 
-//         let timeline_deserialized = from_json_value::<Timeline>(timeline_serialized).unwrap();
-//         assert!(timeline_deserialized.limited);
+//         let timeline_deserialized =
+// from_json_value::<Timeline>(timeline_serialized).unwrap();         assert!
+// (timeline_deserialized.limited);
 
 //         let timeline_default = Timeline::default();
 //         assert_eq!(to_json_value(timeline_default).unwrap(), json!({}));
 
-//         let timeline_default_deserialized = from_json_value::<Timeline>(json!({})).unwrap();
-//         assert!(!timeline_default_deserialized.limited);
-//     }
+//         let timeline_default_deserialized =
+// from_json_value::<Timeline>(json!({})).unwrap();         assert!(!
+// timeline_default_deserialized.limited);     }
 // }
 
 // #[cfg(all(test))]

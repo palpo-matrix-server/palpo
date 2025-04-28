@@ -1,8 +1,11 @@
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{AnyStateEvent, AnyStateEventContent, StateEventType};
-use crate::{OwnedEventId, OwnedRoomId, UnixMillis, serde::RawJson};
+use crate::{
+    OwnedEventId, OwnedRoomId, UnixMillis,
+    events::{AnyStateEvent, AnyStateEventContent, StateEventType},
+    serde::RawJson,
+};
 
 /// `GET /_matrix/client/*/rooms/{room_id}/state/{eventType}/{stateKey}`
 ///
@@ -63,15 +66,15 @@ pub struct StateEventsForEmptyKeyReqArgs {
 pub struct StateEventsForKeyResBody {
     /// The content of the state event.
     ///
-    /// This is `serde_json::Value` due to complexity issues with returning only the
-    /// actual JSON content without a top level key.
+    /// This is `serde_json::Value` due to complexity issues with returning only
+    /// the actual JSON content without a top level key.
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub content: Option<serde_json::Value>,
 
     /// The full state event
     ///
-    /// This is `serde_json::Value` due to complexity issues with returning only the
-    /// actual JSON content without a top level key.
+    /// This is `serde_json::Value` due to complexity issues with returning only
+    /// the actual JSON content without a top level key.
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub event: Option<serde_json::Value>,
 }
@@ -114,11 +117,11 @@ impl StateEventsForKeyResBody {
 #[derive(ToSchema, Serialize, Debug)]
 
 pub struct StateEventsResBody(
-    /// If the user is a member of the room this will be the current state of the room as a
-    /// list of events.
+    /// If the user is a member of the room this will be the current state of
+    /// the room as a list of events.
     ///
-    /// If the user has left the room then this will be the state of the room when they left as
-    /// a list of events.
+    /// If the user has left the room then this will be the state of the room
+    /// when they left as a list of events.
     #[salvo(schema(value_type = Vec<Object>, additional_properties = true))]
     Vec<RawJson<AnyStateEvent>>,
 );

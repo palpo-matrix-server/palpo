@@ -1,5 +1,5 @@
-//! De-/serialization functions to and from json strings, allows the type to be used as a query
-//! string.
+//! De-/serialization functions to and from json strings, allows the type to be
+//! used as a query string.
 
 use serde::{
     de::{DeserializeOwned, Deserializer, Error as _},
