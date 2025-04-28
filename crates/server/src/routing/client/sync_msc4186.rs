@@ -9,7 +9,7 @@ use salvo::prelude::*;
 use crate::core::Seqnum;
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
-use crate::core::events::receipt::ReceiptEventContent;
+use crate::core::events::receipt::{ReceiptEventContent, SyncReceiptEvent, combine_receipt_event_contents};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
@@ -149,7 +149,6 @@ pub(super) async fn sync_events_v5(
         receipts=?res_body.extensions.receipts.rooms.len(),
         "responding to request with"
     );
-    println!("============res_body: {}", serde_json::to_string(&res_body)?);
     json_ok(res_body)
 }
 
@@ -327,16 +326,16 @@ async fn process_rooms(
             None
         };
 
-        let mut receipts: Vec<ReceiptEventContent> = crate::room::receipt::read_receipts(room_id, *room_since_sn)?
+        let mut receipts = crate::room::receipt::read_receipts(room_id, *room_since_sn)?
             .into_iter()
-            .filter_map(|(read_user, value)| {
+            .filter_map(|(read_user, content)| {
                 if !crate::user::user_is_ignored(&read_user, sender_id) {
-                    Some(value)
+                    Some(content)
                 } else {
                     None
                 }
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         if let Some(private_read_event) = private_read_event {
             receipts.push(private_read_event);
@@ -345,11 +344,12 @@ async fn process_rooms(
         let receipt_size = receipts.len();
 
         if receipt_size > 0 {
-            response
-                .extensions
-                .receipts
-                .rooms
-                .insert(room_id.clone(), RawJson::new(&receipts)?.cast());
+            response.extensions.receipts.rooms.insert(
+                room_id.clone(),
+                SyncReceiptEvent {
+                    content: combine_receipt_event_contents(receipts),
+                },
+            );
         }
 
         if room_since_sn != &0

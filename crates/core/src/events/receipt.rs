@@ -420,3 +420,19 @@ pub enum ReceiptType {
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
 }
+
+pub fn combine_receipt_event_contents(receipts: Vec<ReceiptEventContent>) -> ReceiptEventContent {
+    let mut combined = ReceiptEventContent(BTreeMap::new());
+
+    for receipt in receipts {
+        for (event_id, receipts) in receipt.0 {
+            combined
+                .0
+                .entry(event_id)
+                .or_insert_with(Receipts::new)
+                .extend(receipts);
+        }
+    }
+
+    combined
+}

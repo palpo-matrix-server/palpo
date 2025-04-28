@@ -698,7 +698,7 @@ pub struct Receipts {
     /// The ephemeral receipt room event for each room
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub rooms: BTreeMap<OwnedRoomId, RawJson<SyncReceiptEvent>>,
+    pub rooms: BTreeMap<OwnedRoomId, SyncReceiptEvent>,
 }
 
 impl Receipts {
@@ -754,7 +754,7 @@ pub struct Typing {
     /// The ephemeral typing event for each room
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub rooms: BTreeMap<OwnedRoomId, RawJson<SyncTypingEvent>>,
+    pub rooms: BTreeMap<OwnedRoomId, SyncTypingEvent>,
 }
 
 impl Typing {
