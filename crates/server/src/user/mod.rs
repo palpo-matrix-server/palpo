@@ -38,10 +38,10 @@ use crate::data::{self, connect};
 use crate::{AppError, AppResult, MatrixError, PduBuilder};
 
 pub struct SlidingSyncCache {
-    lists: BTreeMap<String, sync_events::v4::ReqList>,
-    subscriptions: BTreeMap<OwnedRoomId, sync_events::v4::RoomSubscription>,
+    lists: BTreeMap<String, sync_events::v5::ReqList>,
+    subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
     known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
-    extensions: sync_events::v4::ExtensionsConfig,
+    extensions: sync_events::v5::ExtensionsConfig,
 }
 
 pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
