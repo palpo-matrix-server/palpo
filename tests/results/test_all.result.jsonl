@@ -15,7 +15,6 @@
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
-{"Action":"fail","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
 {"Action":"fail","Test":"TestFederationKeyUploadQuery"}
@@ -188,6 +187,7 @@
 {"Action":"pass","Test":"TestDeactivateAccount/Can't_deactivate_account_with_wrong_password"}
 {"Action":"pass","Test":"TestDeactivateAccount/Password_flow_is_available"}
 {"Action":"pass","Test":"TestDemotingUsersViaUsersDefault"}
+{"Action":"pass","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"pass","Test":"TestDeviceListUpdates"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_local_user"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_remote_user"}
