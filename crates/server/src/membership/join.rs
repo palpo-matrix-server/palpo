@@ -4,16 +4,20 @@ use std::iter::once;
 use std::sync::Arc;
 
 use diesel::prelude::*;
+use palpo_data::diesel_exists;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
+use tracing_subscriber::fmt::format;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
+use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{MakeJoinReqArgs, SendJoinArgs, SendJoinResBodyV2};
+use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
@@ -27,7 +31,8 @@ use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
+use crate::sending::{send_edu_server, EduBuf};
+use crate::{AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -237,7 +242,7 @@ pub async fn send_join_v2(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     Ok(room_state)
 }
 pub async fn join_room(
-    user: &DbUser,
+    authed: &AuthedInfo,
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
@@ -245,34 +250,35 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
-    if user.is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
+    if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
         return Err(MatrixError::forbidden(None, "Guests are not allowed to join this room").into());
     }
 
-    if crate::room::is_joined(&user.id, room_id)? {
+    let sender_id = authed.user_id();
+    if crate::room::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
         });
     }
 
-    if let Ok(membership) = crate::room::state::get_member(room_id, &user.id) {
+    if let Ok(membership) = crate::room::state::get_member(room_id, sender_id) {
         if membership.membership == MembershipState::Ban {
-            tracing::warn!("{} is banned from {room_id} but attempted to join", user.id);
+            tracing::warn!("{} is banned from {room_id} but attempted to join", sender_id);
             return Err(MatrixError::forbidden(None, "You are banned from the room.").into());
         }
     }
 
     // Ask a remote server if we are not participating in this room
     if crate::room::local_work_for_room(room_id, servers)? {
-        local_join_room(&user.id, room_id, reason, servers, third_party_signed).await?;
+        join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
     } else {
-        remote_join_room(&user.id, room_id, reason, servers, third_party_signed).await?;
+        join_room_remote(authed, room_id, reason, servers, third_party_signed).await?;
     }
 
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 
-async fn local_join_room(
+async fn join_room_local(
     user_id: &UserId,
     room_id: &RoomId,
     reason: Option<String>,
@@ -450,8 +456,8 @@ async fn local_join_room(
     Ok(())
 }
 
-async fn remote_join_room(
-    user_id: &UserId,
+async fn join_room_remote(
+    authed: &AuthedInfo,
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
@@ -459,7 +465,8 @@ async fn remote_join_room(
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
 
-    let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
+    let sender_id = authed.user_id();
+    let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;
 
     info!("make_join finished");
 
@@ -489,11 +496,11 @@ async fn remote_join_room(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
             membership: MembershipState::Join,
-            display_name: data::user::display_name(user_id)?,
-            avatar_url: data::user::avatar_url(user_id)?,
+            display_name: data::user::display_name(sender_id)?,
+            avatar_url: data::user::avatar_url(sender_id)?,
             is_direct: None,
             third_party_invite: None,
-            blurhash: data::user::blurhash(user_id)?,
+            blurhash: data::user::blurhash(sender_id)?,
             reason,
             join_authorized_via_users_server,
         })
@@ -751,6 +758,26 @@ async fn remote_join_room(
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     state::set_room_state(room_id, frame_id_after_join)?;
+
+    let room_server_id = room_id
+        .server_name()
+        .map_err(|e| AppError::public(format!("bad server name: {e}")))?;
+    let query = room_users::table
+        .filter(room_users::room_id.ne(room_id))
+        .filter(room_users::user_id.eq(sender_id))
+        .filter(room_users::room_server_id.eq(room_server_id));
+    if !diesel_exists!(query, &mut connect()?)? {
+        let content = DeviceListUpdateContent::new(
+            sender_id.to_owned(),
+            authed.device_id().to_owned(),
+            data::next_sn()? as u64,
+        );
+        let edu = Edu::DeviceListUpdate(content);
+
+        let mut buf = EduBuf::new();
+        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
+        send_edu_server(room_server_id, &buf)?;
+    }
     Ok(())
 }
 
