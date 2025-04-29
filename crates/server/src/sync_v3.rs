@@ -39,6 +39,7 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
+    println!("DDDDDDDDDDDDDDDDDDDDD  sync_events 0");
     let curr_sn = data::curr_sn()?;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
     let next_batch = curr_sn + 1;
@@ -385,6 +386,7 @@ async fn load_joined_room(
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
+    println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 0");
     if since_sn > data::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
@@ -408,9 +410,11 @@ async fn load_joined_room(
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
     {
+        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 1");
         // No state changes
         (Vec::new(), None, None, false, Vec::new())
     } else {
+        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 2");
         // Calculates joined_member_count, invited_member_count and heroes
         let calculate_counts = || {
             let joined_member_count = crate::room::joined_member_count(&room_id).unwrap_or(0);
@@ -422,7 +426,6 @@ async fn load_joined_room(
             if joined_member_count + invited_member_count <= 5 {
                 // Go through all PDUs and for each member event, check if the user is still joined or
                 // invited until we have 5 or we reach the end
-
                 for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
@@ -464,8 +467,9 @@ async fn load_joined_room(
         };
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
-
+        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 3");
         if since_sn == 0 || joined_since_last_sync {
+            println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 4");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -513,27 +517,25 @@ async fn load_joined_room(
             // Reset lazy loading because this is an initial sync
             crate::room::lazy_loading::lazy_load_reset(sender_id, device_id, &room_id)?;
 
-            // The state_events above should contain all timeline_users, let's mark them as lazy
-            // loaded.
+            // The state_events above should contain all timeline_users, let's mark them as lazy loaded.
             crate::room::lazy_loading::lazy_load_mark_sent(sender_id, device_id, &room_id, lazy_loaded, next_batch);
 
-            if joined_since_last_sync {
-                // && encrypted_room || new_encrypted_room {
-                // If the user is in a new encrypted room, give them all joined users
-                device_list_updates.extend(
-                    crate::room::get_joined_users(&room_id, None)?
-                        .into_iter()
-                        .filter(|user_id| {
-                            // Don't send key updates from the sender to the sender
-                            sender_id != user_id
-                        }), // .filter(|user_id| {
-                            // Only send keys if the sender doesn't share an encrypted room with the target already
-                            // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
-                            // }),
-                );
-            }
+            // && encrypted_room || new_encrypted_room {
+            // If the user is in a new encrypted room, give them all joined users
+            device_list_updates.extend(
+                crate::room::get_joined_users(&room_id, None)?
+                    .into_iter()
+                    .filter(|user_id| {
+                        // Don't send key updates from the sender to the sender
+                        sender_id != user_id
+                    }), // .filter(|user_id| {
+                        // Only send keys if the sender doesn't share an encrypted room with the target already
+                        // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                        // }),
+            );
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
+            println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 5");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();

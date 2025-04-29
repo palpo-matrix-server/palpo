@@ -507,8 +507,21 @@ pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, seriali
         .collect::<Vec<_>>();
     let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
     for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
-        sender().send((outgoing_kind.to_owned(), event, key)).unwrap();
+        sender()
+            .send((outgoing_kind.to_owned(), event, key))
+            .map_err(|e| AppError::internal(e.to_string()))?;
     }
+
+    Ok(())
+}
+#[tracing::instrument(skip(server, serialized), level = "debug")]
+pub fn send_edu_server(server: &ServerName, serialized: &EduBuf) -> AppResult<()> {
+    let outgoing_kind = OutgoingKind::Normal(server.to_owned());
+    let event = SendingEventType::Edu(serialized.to_owned());
+    let key = queue_request(&outgoing_kind, &event)?;
+    sender()
+        .send((outgoing_kind, event, key))
+        .map_err(|e| AppError::internal(e.to_string()))?;
 
     Ok(())
 }
@@ -545,7 +558,6 @@ async fn send_events(
     match &kind {
         OutgoingKind::Appservice(id) => {
             let mut pdu_jsons = Vec::new();
-
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
@@ -825,41 +837,44 @@ fn delete_all_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
 fn queue_requests(requests: &[(&OutgoingKind, SendingEventType)]) -> AppResult<Vec<i64>> {
     let mut ids = Vec::new();
     for (outgoing_kind, event) in requests {
-        let appservice_id = if let OutgoingKind::Appservice(service_id) = outgoing_kind {
-            Some(service_id.clone())
-        } else {
-            None
-        };
-        let (user_id, pushkey) = if let OutgoingKind::Push(user_id, pushkey) = outgoing_kind {
-            (Some(user_id.clone()), Some(pushkey.clone()))
-        } else {
-            (None, None)
-        };
-        let server_id = if let OutgoingKind::Normal(server_id) = outgoing_kind {
-            Some(server_id.clone())
-        } else {
-            None
-        };
-        let (pdu_id, edu_json) = match event {
-            SendingEventType::Pdu(pdu_id) => (Some(pdu_id.to_owned()), None),
-            SendingEventType::Edu(edu_json) => (None, Some(edu_json.clone())),
-            SendingEventType::Flush => (None, None),
-        };
-        let id = diesel::insert_into(outgoing_requests::table)
-            .values(&NewDbOutgoingRequest {
-                kind: outgoing_kind.name().to_owned(),
-                appservice_id,
-                user_id,
-                pushkey,
-                server_id,
-                pdu_id,
-                edu_json,
-            })
-            .returning(outgoing_requests::id)
-            .get_result::<i64>(&mut connect()?)?;
-        ids.push(id);
+        ids.push(queue_request(outgoing_kind, event)?);
     }
     Ok(ids)
+}
+fn queue_request(outgoing_kind: &OutgoingKind, event: &SendingEventType) -> AppResult<i64> {
+    let appservice_id = if let OutgoingKind::Appservice(service_id) = outgoing_kind {
+        Some(service_id.clone())
+    } else {
+        None
+    };
+    let (user_id, pushkey) = if let OutgoingKind::Push(user_id, pushkey) = outgoing_kind {
+        (Some(user_id.clone()), Some(pushkey.clone()))
+    } else {
+        (None, None)
+    };
+    let server_id = if let OutgoingKind::Normal(server_id) = outgoing_kind {
+        Some(server_id.clone())
+    } else {
+        None
+    };
+    let (pdu_id, edu_json) = match event {
+        SendingEventType::Pdu(pdu_id) => (Some(pdu_id.to_owned()), None),
+        SendingEventType::Edu(edu_json) => (None, Some(edu_json.clone())),
+        SendingEventType::Flush => (None, None),
+    };
+    let id = diesel::insert_into(outgoing_requests::table)
+        .values(&NewDbOutgoingRequest {
+            kind: outgoing_kind.name().to_owned(),
+            appservice_id,
+            user_id,
+            pushkey,
+            server_id,
+            pdu_id,
+            edu_json,
+        })
+        .returning(outgoing_requests::id)
+        .get_result::<i64>(&mut connect()?)?;
+    Ok(id)
 }
 
 fn active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<Vec<(i64, SendingEventType)>> {
