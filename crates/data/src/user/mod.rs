@@ -29,7 +29,6 @@ use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};
-use crate::schema::device_inboxes::created_at;
 use crate::schema::*;
 use crate::{DataError, DataResult, connect, diesel_exists};
 
@@ -157,7 +156,6 @@ pub fn invited_rooms(
         .filter(user_ignores::user_id.eq(user_id))
         .select(user_ignores::ignored_id)
         .load::<OwnedUserId>(&mut connect()?)?;
-    println!("iiiiiiiiiiiignored_ids: {:?}", ingored_ids);
     let list = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("invite"))
