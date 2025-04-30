@@ -654,21 +654,33 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         .values(&change)
         .execute(&mut connect()?)?;
 
-    if user_id.is_local() {
-        let remote_servers = room_servers::table
-            .filter(room_servers::room_id.eq_any(joined_rooms))
-            .select(room_servers::server_id)
-            .distinct()
-            .load::<OwnedServerName>(&mut connect()?)?;
+    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+}
 
-        let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
-        let edu = Edu::DeviceListUpdate(content);
+pub fn mark_device_list_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
+    let joined_rooms = data::user::joined_rooms(user_id)?;
+    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+}
 
-        let mut buf = EduBuf::new();
-        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
-
-        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+fn mark_device_list_update_with_joined_rooms(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    joined_rooms: &[OwnedRoomId],
+) -> AppResult<()> {
+    if user_id.is_remote() {
+        return Ok(());
     }
+    let remote_servers = room_servers::table
+        .filter(room_servers::room_id.eq_any(joined_rooms))
+        .select(room_servers::server_id)
+        .distinct()
+        .load::<OwnedServerName>(&mut connect()?)?;
 
-    Ok(())
+    let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
+    let edu = Edu::DeviceListUpdate(content);
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
+
+    sending::send_edu_servers(remote_servers.into_iter(), &buf)
 }

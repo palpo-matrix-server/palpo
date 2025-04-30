@@ -29,7 +29,6 @@
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_world_readable_visibility"}
 {"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
 {"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
-{"Action":"fail","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser"}
 {"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser/join_remote_federated_room_as_application_service_user"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint"}
@@ -252,6 +251,7 @@
 {"Action":"pass","Test":"TestInboundFederationProfile/Non-numeric_ports_in_server_names_are_rejected"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
+{"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagFederation"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
 {"Action":"pass","Test":"TestJoinFederatedRoomFailOver"}
