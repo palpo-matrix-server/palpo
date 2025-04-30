@@ -29,6 +29,7 @@ use crate::core::events::AnyStrippedStateEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{OwnedMxcUri, UnixMillis};
+use crate::schema::device_inboxes::created_at;
 use crate::schema::*;
 use crate::{DataError, DataResult, connect, diesel_exists};
 
@@ -68,6 +69,14 @@ impl DbUser {
     pub fn is_deactivated(&self) -> bool {
         self.deactivated_at.is_some()
     }
+}
+
+#[derive(Insertable, AsChangeset, Debug, Clone)]
+#[diesel(table_name = user_ignores)]
+pub struct NewDbUserIgnore {
+    pub user_id: OwnedUserId,
+    pub ignored_id: OwnedUserId,
+    pub created_at: UnixMillis,
 }
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -144,10 +153,16 @@ pub fn invited_rooms(
     user_id: &UserId,
     since_sn: i64,
 ) -> DataResult<Vec<(OwnedRoomId, Vec<RawJson<AnyStrippedStateEvent>>)>> {
+    let ingored_ids = user_ignores::table
+        .filter(user_ignores::user_id.eq(user_id))
+        .select(user_ignores::ignored_id)
+        .load::<OwnedUserId>(&mut connect()?)?;
+    println!("iiiiiiiiiiiignored_ids: {:?}", ingored_ids);
     let list = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("invite"))
         .filter(room_users::event_sn.ge(since_sn))
+        .filter(room_users::sender_id.ne_all(&ingored_ids))
         .select((room_users::room_id, room_users::state_data))
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
@@ -319,5 +334,20 @@ pub fn deactivate(user_id: &UserId) -> DataResult<()> {
     diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
         .execute(&mut connect()?)?;
 
+    Ok(())
+}
+
+pub fn set_ignored_users(user_id: &UserId, ignored_ids: &[OwnedUserId]) -> DataResult<()> {
+    diesel::delete(user_ignores::table.filter(user_ignores::user_id.eq(user_id))).execute(&mut connect()?)?;
+    for ignored_id in ignored_ids {
+        diesel::insert_into(user_ignores::table)
+            .values(NewDbUserIgnore {
+                user_id: user_id.to_owned(),
+                ignored_id: ignored_id.to_owned(),
+                created_at: UnixMillis::now(),
+            })
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+    }
     Ok(())
 }
