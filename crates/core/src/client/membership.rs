@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
     events::room::member::RoomMemberEvent,
-    serde::{RawJson, StringEnum},
+    serde::{RawJson, RawJsonValue, StringEnum},
     third_party::Medium,
 };
 
@@ -394,7 +394,7 @@ impl JoinedRoomsResBody {
 
 /// Request type for the `join_room_by_id` endpoint.
 #[derive(ToSchema, Deserialize, Default, Debug)]
-pub struct JoinRoomByIdReqBody {
+pub struct JoinRoomReqBody {
     /// The signature of a `m.third_party_invite` token to prove that this user
     /// owns a third party identity which has been invited to the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -403,6 +403,10 @@ pub struct JoinRoomByIdReqBody {
     /// Optional reason for joining the room.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+
+    /// Optional extra parameters to be sent to the server.
+    #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
 }
 
 // const METADATA: Metadata = metadata! {
@@ -416,16 +420,16 @@ pub struct JoinRoomByIdReqBody {
 // };
 
 /// Request type for the `join_room_by_id_or_alias` endpoint.
-#[derive(ToSchema, Default, Deserialize, Debug)]
-pub struct JoinRoomByIdOrAliasReqBody {
-    /// The signature of a `m.third_party_invite` token to prove that this user
-    /// owns a third party identity which has been invited to the room.
-    pub third_party_signed: Option<ThirdPartySigned>,
+// #[derive(ToSchema, Default, Deserialize, Debug)]
+// pub struct JoinRoomByIdOrAliasReqBody {
+//     /// The signature of a `m.third_party_invite` token to prove that this user
+//     /// owns a third party identity which has been invited to the room.
+//     pub third_party_signed: Option<ThirdPartySigned>,
 
-    /// Optional reason for joining the room.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-}
+//     /// Optional reason for joining the room.
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub reason: Option<String>,
+// }
 
 /// Response type for the `join_room_by_id` endpoint.
 #[derive(ToSchema, Serialize, Debug)]

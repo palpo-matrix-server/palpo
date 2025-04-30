@@ -7,7 +7,7 @@ use serde_json::value::to_raw_value;
 
 use crate::core::client::membership::MembershipEventFilter;
 use crate::core::client::membership::{
-    BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomByIdOrAliasReqBody, JoinRoomByIdReqBody,
+    BanUserReqBody, InvitationRecipient, InviteUserReqBody, JoinRoomReqBody,
     JoinRoomResBody, JoinedMembersResBody, JoinedRoomsResBody, KickUserReqBody, LeaveRoomReqBody, MembersReqArgs,
     MembersResBody, RoomMember, UnbanUserReqBody,
 };
@@ -199,7 +199,7 @@ pub(super) async fn leave_room(
 pub(super) async fn join_room_by_id(
     _aa: AuthArgs,
     room_id: PathParam<OwnedRoomId>,
-    body: JsonBody<Option<JoinRoomByIdReqBody>>,
+    body: JsonBody<Option<JoinRoomReqBody>>,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
     let authed = depot.authed_info()?;
@@ -227,6 +227,7 @@ pub(super) async fn join_room_by_id(
         &servers,
         body.as_ref().map(|body| body.third_party_signed.as_ref()).flatten(),
         authed.appservice.as_ref(),
+        body.as_ref().map(|body| body.extra_data.as_ref()).flatten(),
     )
     .await?;
     json_ok(JoinRoomResBody { room_id })
@@ -268,7 +269,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
     via: QueryParam<Vec<OwnedServerName>, false>,
-    body: JsonBody<Option<JoinRoomByIdOrAliasReqBody>>,
+    body: JsonBody<Option<JoinRoomReqBody>>,
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
@@ -355,6 +356,7 @@ pub(crate) async fn join_room_by_id_or_alias(
         &servers,
         body.third_party_signed.as_ref(),
         authed.appservice.as_ref(),
+        body.extra_data.as_ref(),
     )
     .await?;
 

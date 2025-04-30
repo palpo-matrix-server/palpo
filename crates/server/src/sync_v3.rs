@@ -130,6 +130,7 @@ pub async fn sync_events(
                 redacts: None,
                 hashes: EventHash { sha256: String::new() },
                 signatures: None,
+                extra_data: None,
             };
             left_rooms.insert(
                 room_id.to_owned(),

@@ -31,7 +31,7 @@ use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::sending::{send_edu_server, EduBuf};
+use crate::sending::{EduBuf, send_edu_server};
 use crate::{AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
@@ -248,6 +248,7 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
+    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
@@ -270,9 +271,9 @@ pub async fn join_room(
 
     // Ask a remote server if we are not participating in this room
     if crate::room::local_work_for_room(room_id, servers)? {
-        join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
+        join_room_local(sender_id, room_id, reason, servers, third_party_signed, extra_data).await?;
     } else {
-        join_room_remote(authed, room_id, reason, servers, third_party_signed).await?;
+        join_room_remote(authed, room_id, reason, servers, third_party_signed, extra_data).await?;
     }
 
     Ok(JoinRoomResBody::new(room_id.to_owned()))
@@ -284,6 +285,7 @@ async fn join_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
+    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
@@ -334,6 +336,7 @@ async fn join_room_local(
         blurhash: data::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
+        extra_data: extra_data.clone(),
     };
 
     // Try normal join first
@@ -374,20 +377,18 @@ async fn join_room_local(
             "origin_server_ts".to_owned(),
             CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
         );
-        join_event_stub.insert(
-            "content".to_owned(),
-            to_canonical_value(RoomMemberEventContent {
-                membership: MembershipState::Join,
-                display_name: data::user::display_name(user_id).ok().flatten(),
-                avatar_url: data::user::avatar_url(user_id).ok().flatten(),
-                is_direct: None,
-                third_party_invite: None,
-                blurhash: data::user::blurhash(user_id).ok().flatten(),
-                reason,
-                join_authorized_via_users_server,
-            })
-            .expect("event is valid, we just created it"),
-        );
+
+        join_event_stub.insert("content".to_owned(), to_canonical_value(RoomMemberEventContent {
+            membership: MembershipState::Join,
+            display_name: data::user::display_name(user_id).ok().flatten(),
+            avatar_url: data::user::avatar_url(user_id).ok().flatten(),
+            is_direct: None,
+            third_party_invite: None,
+            blurhash: data::user::blurhash(user_id).ok().flatten(),
+            reason,
+            join_authorized_via_users_server,
+        })
+        .expect("event is valid, we just created it"));
 
         // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
         join_event_stub.remove("event_id");
@@ -404,6 +405,15 @@ async fn join_room_local(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
+
+        println!("LLLLLLLLLLLLLLocal extra : {extra_data:?}");
+        if let Some(extra_data) = extra_data {
+            for (key, value) in extra_data {
+                if let Ok(value) = serde_json::from_str(value.get()) {
+                    join_event_stub.insert(key.to_owned(), value);
+                }
+            }
+        }
 
         // It has enough fields to be called a proper event now
         let join_event = join_event_stub;
@@ -462,6 +472,7 @@ async fn join_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
+    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
 
@@ -522,6 +533,13 @@ async fn join_room_remote(
         "event_id".to_owned(),
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
+    if let Some(extra_data) = extra_data {
+        for (key, value) in extra_data {
+            if let Ok(value) = serde_json::from_str(value.get()) {
+                join_event_stub.insert(key.to_owned(), value);
+            }
+        }
+    }
 
     // It has enough fields to be called a proper event now
     let mut join_event = join_event_stub;

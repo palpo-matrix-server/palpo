@@ -59,7 +59,7 @@ pub struct RoomMemberEventContent {
     #[serde(
         skip_serializing_if = "Option::is_none",
         default,
-        deserialize_with = "palpo_core::serde::empty_string_as_none"
+        deserialize_with = "crate::serde::empty_string_as_none"
     )]
     pub avatar_url: Option<OwnedMxcUri>,
 
@@ -108,6 +108,9 @@ pub struct RoomMemberEventContent {
     #[serde(rename = "join_authorised_via_users_server")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
+
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
 }
 
 impl RoomMemberEventContent {
@@ -122,6 +125,7 @@ impl RoomMemberEventContent {
             blurhash: None,
             reason: None,
             join_authorized_via_users_server: None,
+            extra_data: None,
         }
     }
 
