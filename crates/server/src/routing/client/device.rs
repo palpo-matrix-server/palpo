@@ -78,6 +78,8 @@ fn update_device(
         .set(user_devices::display_name.eq(&body.display_name))
         .execute(&mut connect()?)?;
 
+    crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+
     empty_ok()
 }
 
@@ -124,10 +126,7 @@ async fn delete_device(
             }
         }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        uiaa_info.auth_error = Some(AuthError::new(
-            ErrorKind::forbidden(),
-            "Invalid authentication data",
-        ));
+        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::forbidden(), "Invalid authentication data"));
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
@@ -135,7 +134,7 @@ async fn delete_device(
     empty_ok()
 }
 
-/// #PUT /_matrix/client/r0/devices/{deviceId}
+/// #DELETE /_matrix/client/r0/devices/{deviceId}
 /// Deletes the given device.
 ///
 /// - Requires UIAA to verify user password
