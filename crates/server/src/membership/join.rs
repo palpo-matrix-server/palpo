@@ -327,6 +327,7 @@ async fn join_room_local(
         None
     };
 
+    println!("LLLLLLLLLL000ocal extra : {extra_data:?}");
     let event = RoomMemberEventContent {
         membership: MembershipState::Join,
         display_name: data::user::display_name(user_id).ok().flatten(),
@@ -387,6 +388,7 @@ async fn join_room_local(
             blurhash: data::user::blurhash(user_id).ok().flatten(),
             reason,
             join_authorized_via_users_server,
+            extra_data: extra_data.clone(),
         })
         .expect("event is valid, we just created it"));
 
@@ -405,15 +407,6 @@ async fn join_room_local(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
-
-        println!("LLLLLLLLLLLLLLocal extra : {extra_data:?}");
-        if let Some(extra_data) = extra_data {
-            for (key, value) in extra_data {
-                if let Ok(value) = serde_json::from_str(value.get()) {
-                    join_event_stub.insert(key.to_owned(), value);
-                }
-            }
-        }
 
         // It has enough fields to be called a proper event now
         let join_event = join_event_stub;
@@ -514,6 +507,7 @@ async fn join_room_remote(
             blurhash: data::user::blurhash(sender_id)?,
             reason,
             join_authorized_via_users_server,
+            extra_data: extra_data.clone(),
         })
         .expect("event is valid, we just created it"),
     );
@@ -533,13 +527,6 @@ async fn join_room_remote(
         "event_id".to_owned(),
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
-    if let Some(extra_data) = extra_data {
-        for (key, value) in extra_data {
-            if let Ok(value) = serde_json::from_str(value.get()) {
-                join_event_stub.insert(key.to_owned(), value);
-            }
-        }
-    }
 
     // It has enough fields to be called a proper event now
     let mut join_event = join_event_stub;
