@@ -29,6 +29,7 @@ use std::collections::BTreeMap;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
+use crate::config;
 use crate::core::client::discovery::{
     Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
 };
@@ -128,16 +129,16 @@ fn search(
 #[endpoint]
 async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     let mut available = BTreeMap::new();
-    for room_version in &*crate::UNSTABLE_ROOM_VERSIONS {
+    for room_version in &*config::UNSTABLE_ROOM_VERSIONS {
         available.insert(room_version.clone(), RoomVersionStability::Unstable);
     }
-    for room_version in &*crate::STABLE_ROOM_VERSIONS {
+    for room_version in &*config::STABLE_ROOM_VERSIONS {
         available.insert(room_version.clone(), RoomVersionStability::Stable);
     }
     json_ok(CapabilitiesResBody {
         capabilities: Capabilities {
             room_versions: RoomVersionsCapability {
-                default: crate::default_room_version(),
+                default: config::default_room_version(),
                 available,
             },
             ..Default::default()

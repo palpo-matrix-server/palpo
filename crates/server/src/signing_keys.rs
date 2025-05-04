@@ -3,6 +3,7 @@ use std::time::{Duration, SystemTime};
 
 use serde::Deserialize;
 
+use crate::config;
 use crate::core::UnixMillis;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys, VerifyKey};
 use crate::core::serde::Base64;
@@ -26,9 +27,9 @@ impl SigningKeys {
         };
 
         keys.verify_keys.insert(
-            format!("ed25519:{}", crate::keypair().version()),
+            format!("ed25519:{}", config::keypair().version()),
             VerifyKey {
-                key: Base64::new(crate::keypair().public_key().to_vec()),
+                key: Base64::new(config::keypair().public_key().to_vec()),
             },
         );
 

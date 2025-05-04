@@ -169,7 +169,6 @@ async fn set_avatar_url(
     crate::data::user::set_presence(
         NewDbPresence {
             user_id: user_id.clone(),
-            // room_id: Some(room_id),
             stream_id: None,
             state: None,
             status_msg: None,

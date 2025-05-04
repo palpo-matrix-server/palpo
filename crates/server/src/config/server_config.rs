@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -6,11 +7,15 @@ use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
+use serde::de::IgnoredAny;
 
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
 use crate::env_vars::required_var;
+use crate::{AppError, AppResult};
+
+const DEPRECATED_KEYS: &[&str; 0] = &[];
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct WellKnownConfig {
@@ -69,8 +74,8 @@ pub struct ServerConfig {
     pub allow_room_creation: bool,
     #[serde(default = "default_true")]
     pub allow_unstable_room_versions: bool,
-    #[serde(default = "default_room_version")]
-    pub room_version: RoomVersionId,
+    #[serde(default = "default_default_room_version")]
+    pub default_room_version: RoomVersionId,
     pub well_known_client: Option<String>,
     #[serde(default = "default_false")]
     pub allow_jaeger: bool,
@@ -201,14 +206,41 @@ pub struct ServerConfig {
 
     pub emergency_password: Option<String>,
 
+    /// Allow local (your server only) presence updates/requests.
+    ///
+    /// Note that presence on conduwuit is very fast unlike Synapse's. If using
+    /// outgoing presence, this MUST be enabled.
     #[serde(default = "default_false")]
     pub allow_local_presence: bool,
+
+    /// Allow incoming federated presence updates/requests.
+    ///
+    /// This option receives presence updates from other servers, but does not
+    /// send any unless `allow_outgoing_presence` is true. Note that presence on
+    /// conduwuit is very fast unlike Synapse's.
     #[serde(default = "default_false")]
     pub allow_incoming_presence: bool,
+
+    /// Allow outgoing presence updates/requests.
+    ///
+    /// This option sends presence updates to other servers, but does not
+    /// receive any unless `allow_incoming_presence` is true. Note that presence
+    /// on conduwuit is very fast unlike Synapse's. If using outgoing presence,
+    /// you MUST enable `allow_local_presence` as well.
     #[serde(default = "default_false")]
     pub allow_outgoing_presence: bool,
+
+    /// How many seconds without presence updates before you become idle.
+    /// Defaults to 5 minutes.
+    ///
+    /// default: 300
     #[serde(default = "default_presence_idle_timeout_s")]
     pub presence_idle_timeout_s: u64,
+
+    /// How many seconds without presence updates before you become offline.
+    /// Defaults to 30 minutes.
+    ///
+    /// default: 1800
     #[serde(default = "default_presence_offline_timeout_s")]
     pub presence_offline_timeout_s: u64,
 
@@ -582,6 +614,273 @@ pub struct ServerConfig {
     /// default: 50
     #[serde(default = "default_startup_netburst_keep")]
     pub startup_netburst_keep: i64,
+
+    #[serde(flatten)]
+    #[allow(clippy::zero_sized_map_values)]
+    // this is a catchall, the map shouldn't be zero at runtime
+    catch_others: BTreeMap<String, IgnoredAny>,
+}
+impl ServerConfig {
+    pub fn check(&self) -> AppResult<()> {
+        if cfg!(debug_assertions) {
+            tracing::warn!("Note: conduwuit was built without optimisations (i.e. debug build)");
+        }
+
+        // if self
+        //     .allow_invalid_tls_certificates_yes_i_know_what_the_fuck_i_am_doing_with_this_and_i_know_this_is_insecure
+        // {
+        //     tracing::warn!(
+        //         "\n\nWARNING: \n\nTLS CERTIFICATE VALIDATION IS DISABLED, THIS IS HIGHLY INSECURE AND SHOULD NOT BE USED IN PRODUCTION.\n\n"
+        //     );
+        // }
+
+        self.warn_deprecated();
+        self.warn_unknown_key();
+
+        // if self.sentry && self.sentry_endpoint.is_none() {
+        //     return Err!(AppError::internal(
+        //         "sentry_endpoint",
+        //         "Sentry cannot be enabled without an endpoint set"
+        //     ));
+        // }
+
+        // if cfg!(all(
+        //     feature = "hardened_malloc",
+        //     feature = "jemalloc",
+        //     not(target_env = "msvc")
+        // )) {
+        //     tracing::warn!(
+        //         "hardened_malloc and jemalloc compile-time features are both enabled, this causes \
+        //          jemalloc to be used."
+        //     );
+        // }
+
+        // if cfg!(not(unix)) && self.unix_socket_path.is_some() {
+        //     return Err(AppError::internal(
+        //         "UNIX socket support is only available on *nix platforms. Please remove \
+        //          'unix_socket_path' from your config.",
+        //     ));
+        // }
+
+        // if self.unix_socket_path.is_none() && self.get_bind_hosts().is_empty() {
+        //     return Err(AppError::internal("No TCP addresses were specified to listen on"));
+        // }
+
+        // if self.unix_socket_path.is_none() && self.get_bind_ports().is_empty() {
+        //     return EErr(AppError::internal("No ports were specified to listen on"));
+        // }
+
+        // if self.unix_socket_path.is_none() {
+        //     self.get_bind_addrs().iter().for_each(|addr| {
+        //         use std::path::Path;
+
+        //         if addr.ip().is_loopback() {
+        //             tracing::info!(
+        //                 "Found loopback listening address {addr}, running checks if we're in a \
+        //                  container."
+        //             );
+
+        //             if Path::new("/proc/vz").exists() /* Guest */ && !Path::new("/proc/bz").exists()
+        //             /* Host */
+        //             {
+        //                 error!(
+        //                     "You are detected using OpenVZ with a loopback/localhost listening \
+        //                      address of {addr}. If you are using OpenVZ for containers and you use \
+        //                      NAT-based networking to communicate with the host and guest, this will \
+        //                      NOT work. Please change this to \"0.0.0.0\". If this is expected, you \
+        //                      can ignore.",
+        //                 );
+        //             } else if Path::new("/.dockerenv").exists() {
+        //                 error!(
+        //                     "You are detected using Docker with a loopback/localhost listening \
+        //                      address of {addr}. If you are using a reverse proxy on the host and \
+        //                      require communication to conduwuit in the Docker container via \
+        //                      NAT-based networking, this will NOT work. Please change this to \
+        //                      \"0.0.0.0\". If this is expected, you can ignore.",
+        //                 );
+        //             } else if Path::new("/run/.containerenv").exists() {
+        //                 error!(
+        //                     "You are detected using Podman with a loopback/localhost listening \
+        //                      address of {addr}. If you are using a reverse proxy on the host and \
+        //                      require communication to conduwuit in the Podman container via \
+        //                      NAT-based networking, this will NOT work. Please change this to \
+        //                      \"0.0.0.0\". If this is expected, you can ignore.",
+        //                 );
+        //             }
+        //         }
+        //     });
+        // }
+
+        // yeah, unless the user built a debug build hopefully for local testing only
+        if cfg!(not(debug_assertions)) && self.server_name == "your.server.name" {
+            return Err(AppError::internal(
+                "You must specify a valid server name for production usage of conduwuit.",
+            ));
+        }
+
+        if self.emergency_password == Some(String::from("F670$2CP@Hw8mG7RY1$%!#Ic7YA")) {
+            return Err(AppError::internal(
+                "The public example emergency password is being used, this is insecure. Please \
+                 change this.",
+            ));
+        }
+
+        if self.emergency_password == Some(String::new()) {
+            return Err(AppError::internal(
+                "Emergency password was set to an empty string, this is not valid. Unset \
+                 emergency_password to disable it or set it to a real password.",
+            ));
+        }
+
+        // check if the user specified a registration token as `""`
+        if self.registration_token == Some(String::new()) {
+            return Err(AppError::internal(
+                "Registration token was specified but is empty (\"\")",
+            ));
+        }
+
+        // // check if we can read the token file path, and check if the file is empty
+        // if self.registration_token_file.as_ref().is_some_and(|path| {
+        //     let Ok(token) = std::fs::read_to_string(path).inspect_err(|e| {
+        //         error!("Failed to read the registration token file: {e}");
+        //     }) else {
+        //         return true;
+        //     };
+
+        //     token == String::new()
+        // }) {
+        //     return Err(AppError::internal(
+        //         "Registration token file was specified but is empty or failed to be read",
+        //     ));
+        // }
+
+        if self.max_request_size < 10_000_000 {
+            return Err(AppError::internal(
+                "Max request size is less than 10MB. Please increase it as this is too low for \
+                 operable federation.",
+            ));
+        }
+
+        // check if user specified valid IP CIDR ranges on startup
+        for cidr in &self.ip_range_denylist {
+            if let Err(e) = ipaddress::IPAddress::parse(cidr) {
+                return Err(AppError::internal(
+                    "Parsing specified IP CIDR range from string failed: {e}.",
+                ));
+            }
+        }
+
+        //     if self.allow_registration
+        //         && !self.yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse
+        //         && self.registration_token.is_none()
+        //         && self.registration_token_file.is_none()
+        //     {
+        //         return Err(AppError::internal(
+        //             "!! You have `allow_registration` enabled without a token configured in your config \
+        //              which means you are allowing ANYONE to register on your conduwuit instance without \
+        //              any 2nd-step (e.g. registration token). If this is not the intended behaviour, \
+        //              please set a registration token. For security and safety reasons, conduwuit will \
+        //              shut down. If you are extra sure this is the desired behaviour you want, please \
+        //              set the following config option to true:
+        // `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`",
+        //         ));
+        //     }
+
+        // if self.allow_registration
+        //     && self.yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse
+        //     && self.registration_token.is_none()
+        //     && self.registration_token_file.is_none()
+        // {
+        //     warn!(
+        //         "Open registration is enabled via setting \
+        //          `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse` and \
+        //          `allow_registration` to true without a registration token configured. You are \
+        //          expected to be aware of the risks now. If this is not the desired behaviour, \
+        //          please set a registration token."
+        //     );
+        // }
+
+        if self.allow_outgoing_presence && !self.allow_local_presence {
+            return Err(AppError::internal(
+                "Outgoing presence requires allowing local presence. Please enable \
+                 'allow_local_presence' or disable outgoing presence.",
+            ));
+        }
+
+        if self.url_preview_domain_contains_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview_domain_contains_allowlist\" to \"*\". This opens up significant \
+                 attack surface to your server. You are expected to be aware of the risks by doing \
+                 this."
+            );
+        }
+        if self.url_preview_domain_explicit_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview_domain_explicit_allowlist\" to \"*\". This opens up significant \
+                 attack surface to your server. You are expected to be aware of the risks by doing \
+                 this."
+            );
+        }
+        if self.url_preview_url_contains_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview_url_contains_allowlist\" to \"*\". This opens up significant attack \
+                 surface to your server. You are expected to be aware of the risks by doing this."
+            );
+        }
+
+        // if let Some(Either::Right(_)) = self.url_preview_bound_interface.as_ref() {
+        //     if !matches!(OS, "android" | "fuchsia" | "linux") {
+        //         return Err(AppError::internal(
+        //             "url_preview_bound_interface",
+        //             "Not a valid IP address. Interface names not supported on {OS}."
+        //         ));
+        //     }
+        // }
+
+        // if !Server::available_room_versions().any(|(version, _)| version == self.default_room_version) {
+        //     return Err(AppError::internal(formmat!(
+        //         "Room version {:?} is not available",
+        //         self.default_room_version
+        //     )));
+        // }
+
+        Ok(())
+    }
+    /// Iterates over all the keys in the config file and warns if there is a
+    /// deprecated key specified
+    fn warn_deprecated(&self) {
+        debug!("Checking for deprecated config keys");
+        let mut was_deprecated = false;
+        for key in self
+            .catch_others
+            .keys()
+            .filter(|key| DEPRECATED_KEYS.iter().any(|s| s == key))
+        {
+            warn!("Config parameter \"{}\" is deprecated, ignoring.", key);
+            was_deprecated = true;
+        }
+
+        if was_deprecated {
+            warn!(
+                "Read conduwuit config documentation at https://conduwuit.puppyirl.gay/configuration.html and check your \
+                 configuration if any new configuration parameters should be adjusted"
+            );
+        }
+    }
+
+    /// iterates over all the catchall keys (unknown config options) and warns
+    /// if there are any.
+    fn warn_unknown_key(&self) {
+        debug!("Checking for unknown config keys");
+        for key in self.catch_others.keys().filter(
+            |key| "config".to_owned().ne(key.to_owned()), /* "config" is expected */
+        ) {
+            warn!("Config parameter \"{}\" is unknown to conduwuit, ignoring.", key);
+        }
+    }
 }
 
 impl fmt::Display for ServerConfig {
@@ -765,7 +1064,7 @@ fn default_typing_client_timeout_max_s() -> u64 {
     45
 }
 
-pub fn default_room_version() -> RoomVersionId {
+fn default_default_room_version() -> RoomVersionId {
     RoomVersionId::V11
 }
 

@@ -6,7 +6,7 @@ use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -39,7 +39,7 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
 
     crate::federation::access_check(origin, room_id, Some(&event_id))?;
     json_ok(EventResBody {
-        origin: crate::server_name().to_owned(),
+        origin: config::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdu: crate::sending::convert_to_outgoing_federation_event(event),
     })

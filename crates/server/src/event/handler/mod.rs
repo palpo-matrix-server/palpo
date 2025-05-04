@@ -25,7 +25,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduEvent;
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
-use crate::{AppError, AppResult, MatrixError, exts::*};
+use crate::{AppError, AppResult, MatrixError, config, exts::*};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -65,7 +65,9 @@ pub(crate) async fn handle_incoming_pdu(
 
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
-        return Err(MatrixError::forbidden(None, "Federation of this room is currently disabled on this server.").into());
+        return Err(
+            MatrixError::forbidden(None, "Federation of this room is currently disabled on this server.").into(),
+        );
     }
 
     // 1.3.1 Check room ACL on origin field/server
@@ -220,7 +222,7 @@ fn handle_outlier_pdu<'a>(
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     println!(
         ">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}  {auth_events_known}",
-        crate::server_name(),
+        config::server_name(),
         event_id
     );
     Box::pin(async move {

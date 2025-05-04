@@ -8,6 +8,7 @@ use futures_util::{StreamExt, stream::FuturesUnordered};
 use tokio::time::{Instant, timeout_at};
 
 use super::{add_signing_keys, batch_notary_request, key_exists, server_request, verify_key_exists};
+use crate::config;
 use crate::core::federation::discovery::ServerSigningKeys;
 use crate::core::serde::{CanonicalJsonObject, RawJson, RawJsonValue};
 use crate::core::{OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId};
@@ -175,7 +176,7 @@ where
     I: Iterator<Item = (OwnedServerName, Vec<OwnedServerSigningKeyId>)> + Send,
 {
     let mut missing: Batch = batch.collect();
-    for notary in crate::trusted_servers() {
+    for notary in config::trusted_servers() {
         let missing_keys = keys_count(&missing);
         let missing_servers = missing.len();
         debug!("Asking notary {notary} for {missing_keys} missing keys from {missing_servers} servers");

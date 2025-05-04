@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use base64::{Engine as _, engine::general_purpose};
@@ -12,6 +12,10 @@ use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
+use super::{
+    EduBuf, EduVec, MPSC_RECEIVER, MPSC_SENDER, OutgoingKind, SELECT_EDU_LIMIT, SELECT_PRESENCE_LIMIT,
+    SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus,
+};
 use crate::core::appservice::Registration;
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
@@ -27,114 +31,358 @@ use crate::core::{Seqnum, UnixMillis, device_id, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
-use crate::sending::resolver::Resolver;
-use crate::{AppError, AppResult, TlsNameMap, config, ServerConfig, data, exts::*, utils};
+use crate::{AppError, AppResult, config, data, exts::*, utils};
+use super::sender;
 
-mod dest;
-pub use dest::*;
-pub mod guard;
-pub mod resolver;
-
-const SELECT_PRESENCE_LIMIT: usize = 256;
-const SELECT_RECEIPT_LIMIT: usize = 256;
-const SELECT_EDU_LIMIT: usize = EDU_LIMIT - 2;
-const DEQUEUE_LIMIT: usize = 48;
-
-const EDU_BUF_CAP: usize = 128;
-const EDU_VEC_CAP: usize = 1;
-
-pub type EduBuf = Vec<u8>;
-pub type EduVec = Vec<EduBuf>;
-
-pub const PDU_LIMIT: usize = 50;
-pub const EDU_LIMIT: usize = 100;
-
-// pub(super) type OutgoingItem = (Key, SendingEvent, Destination);
-// pub(super) type SendingItem = (Key, SendingEvent);
-// pub(super) type QueueItem = (Key, SendingEvent);
-// pub(super) type Key = Vec<u8>;
-pub static MPSC_SENDER: OnceLock<mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)>> = OnceLock::new();
-pub static MPSC_RECEIVER: OnceLock<Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, i64)>>> =
-    OnceLock::new();
-
-pub fn sender() -> mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)> {
-    MPSC_SENDER.get().expect("sender should set").clone()
+pub fn start() {
+    let (sender, receiver) = mpsc::unbounded_channel();
+    let _ = MPSC_SENDER.set(sender);
+    let _ = MPSC_RECEIVER.set(Mutex::new(receiver));
+    tokio::spawn(async move {
+        process().await.unwrap();
+    });
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum OutgoingKind {
-    Appservice(String),
-    Push(OwnedUserId, String), // user and pushkey
-    Normal(OwnedServerName),
-}
+async fn process() -> AppResult<()> {
+    let mut receiver = MPSC_RECEIVER.get().expect("receiver should exist").lock().await;
+    let mut futures = FuturesUnordered::new();
+    let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
 
-impl OutgoingKind {
-    pub fn name(&self) -> &'static str {
-        match self {
-            OutgoingKind::Appservice(_) => "appservice",
-            OutgoingKind::Push(_, _) => "push",
-            OutgoingKind::Normal(_) => "normal",
+    // Retry requests we could not finish yet
+    let mut initial_transactions = HashMap::<OutgoingKind, Vec<SendingEventType>>::new();
+
+    for (id, outgoing_kind, event) in active_requests()? {
+        let entry = initial_transactions
+            .entry(outgoing_kind.clone())
+            .or_insert_with(Vec::new);
+
+        if entry.len() > 30 {
+            warn!("Dropping some current events: {:?} {:?} {:?}", id, outgoing_kind, event);
+            delete_request(id)?;
+            continue;
+        }
+
+        entry.push(event);
+    }
+
+    for (outgoing_kind, events) in initial_transactions {
+        current_transaction_status.insert(outgoing_kind.clone(), TransactionStatus::Running);
+        futures.push(send_events(outgoing_kind.clone(), events));
+    }
+
+    loop {
+        tokio::select! {
+            Some(response) = futures.next() => {
+                match response {
+                    Ok(outgoing_kind) => {
+                        delete_all_active_requests_for(&outgoing_kind)?;
+
+                        // Find events that have been added since starting the last request
+                        let new_events = queued_requests(&outgoing_kind).unwrap_or_default().into_iter().take(30).collect::<Vec<_>>();
+
+                        if !new_events.is_empty() {
+                            // Insert pdus we found
+                            mark_as_active(&new_events)?;
+
+                            futures.push(
+                                send_events(
+                                    outgoing_kind.clone(),
+                                    new_events.into_iter().map(|(_, event)| event).collect(),
+                                )
+                            );
+                        } else {
+                            current_transaction_status.remove(&outgoing_kind);
+                        }
+                    }
+                    Err((outgoing_kind, event)) => {
+                        tracing::error!("Failed to send event: {:?}", event);
+                        current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
+                            TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
+                            TransactionStatus::Retrying(n) => TransactionStatus::Failed(n.saturating_add(1), Instant::now()),
+                            TransactionStatus::Failed(_, _) => {
+                                error!("Request that was not even running failed?!");
+                                return
+                            },
+                        });
+                    }
+                };
+            },
+            Some((outgoing_kind, event, id)) = receiver.recv() => {
+                if let Ok(Some(events)) = select_events(
+                    &outgoing_kind,
+                    vec![(id, event)],
+                    &mut current_transaction_status,
+                ) {
+                    futures.push(send_events(outgoing_kind, events));
+                }
+            }
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SendingEventType {
-    Pdu(OwnedEventId), // pduid
-    Edu(EduBuf),       // pdu json
-    Flush,             // none
-}
+#[tracing::instrument(skip_all)]
+fn select_events(
+    outgoing_kind: &OutgoingKind,
+    new_events: Vec<(i64, SendingEventType)>, // Events we want to send: event and full key
+    current_transaction_status: &mut HashMap<OutgoingKind, TransactionStatus>,
+) -> AppResult<Option<Vec<SendingEventType>>> {
+    let mut retry = false;
+    let mut allow = true;
 
-/// The state for a given state hash.
-pub fn max_request() -> Arc<Semaphore> {
-    static MAX_REQUESTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
-    MAX_REQUESTS
-        .get_or_init(|| Arc::new(Semaphore::new(crate::config().max_concurrent_requests as usize)))
-        .clone()
-}
+    let entry = current_transaction_status.entry(outgoing_kind.clone());
 
-enum TransactionStatus {
-    Running,
-    Failed(u32, Instant), // number of times failed, time of last failure
-    Retrying(u32),        // number of times failed
-}
+    entry
+        .and_modify(|e| match e {
+            TransactionStatus::Running | TransactionStatus::Retrying(_) => {
+                allow = false; // already running
+            }
+            TransactionStatus::Failed(tries, time) => {
+                // Fail if a request has failed recently (exponential backoff)
+                let mut min_elapsed_duration = Duration::from_secs(30) * (*tries) * (*tries);
+                if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
+                    min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
+                }
 
-/// Returns a reqwest client which can be used to send requests
-pub fn default_client() -> reqwest::Client {
-    // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-    static DEFAULT_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    DEFAULT_CLIENT
-        .get_or_init(|| {
-            reqwest_client_builder(crate::config())
-                .expect("failed to build request clinet")
-                .build()
-                .expect("failed to build request clinet")
+                if time.elapsed() < min_elapsed_duration {
+                    allow = false;
+                } else {
+                    retry = true;
+                    *e = TransactionStatus::Retrying(*tries);
+                }
+            }
         })
-        .clone()
+        .or_insert(TransactionStatus::Running);
+
+    if !allow {
+        return Ok(None);
+    }
+
+    let mut events = Vec::new();
+
+    if retry {
+        // We retry the previous transaction
+        for (_, e) in active_requests_for(outgoing_kind)? {
+            events.push(e);
+        }
+    } else {
+        mark_as_active(&new_events)?;
+        for (_, e) in new_events {
+            events.push(e);
+        }
+
+        if let OutgoingKind::Normal(server_name) = outgoing_kind {
+            if let Ok((select_edus, last_count)) = select_edus(server_name) {
+                events.extend(select_edus.into_iter().map(SendingEventType::Edu));
+            }
+        }
+    }
+
+    Ok(Some(events))
 }
 
-/// Returns a client used for resolving .well-knowns
-pub fn federation_client() -> reqwest::Client {
-    static FEDERATION_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    FEDERATION_CLIENT
-        .get_or_init(|| {
-            let conf = crate::config();
-            // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-            let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
+/// Look for device changes
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
+fn select_edus_device_changes(
+    server_name: &ServerName,
+    since_sn: Seqnum,
+    max_edu_sn: &Seqnum,
+    events_len: &AtomicUsize,
+) -> AppResult<EduVec> {
+    let mut events = EduVec::new();
+    let server_rooms = crate::room::server_rooms(server_name)?;
 
-            // let jwt_decoding_key = conf
-            //     .jwt_secret
-            //     .as_ref()
-            //     .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
+    let mut device_list_changes = HashSet::<OwnedUserId>::new();
+    for room_id in server_rooms {
+        let keys_changed = data::user::room_keys_changed(&room_id, since_sn, None)?
+            .into_iter()
+            .filter(|(user_id, _)| user_id.is_local());
 
-            reqwest_client_builder(conf)
-                .expect("build reqwest client failed")
-                .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
-                .timeout(Duration::from_secs(2 * 60))
-                .build()
-                .expect("build reqwest client failed")
+        for (user_id, event_sn) in keys_changed {
+            // max_edu_sn.fetch_max(event_sn, Ordering::Relaxed);
+            if !device_list_changes.insert(user_id.clone()) {
+                continue;
+            }
+
+            // Empty prev id forces synapse to resync; because synapse resyncs,
+            // we can just insert placeholder data
+            let edu = Edu::DeviceListUpdate(DeviceListUpdateContent {
+                user_id,
+                device_id: device_id!("placeholder").to_owned(),
+                device_display_name: Some("Placeholder".to_owned()),
+                stream_id: 1,
+                prev_id: Vec::new(),
+                deleted: None,
+                keys: None,
+            });
+
+            let mut buf = EduBuf::new();
+            serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
+
+            events.push(buf);
+            if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
+                return Ok(events);
+            }
+        }
+    }
+
+    Ok(events)
+}
+
+/// Look for read receipts in this room
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
+fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
+    let mut num = 0;
+    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_rooms(server_name)?
+        .into_iter()
+        .filter_map(|room_id| {
+            let receipt_map = select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
+
+            receipt_map.read.is_empty().eq(&false).then_some((room_id, receipt_map))
         })
-        .clone()
+        .collect();
+
+    if receipts.is_empty() {
+        return Ok(None);
+    }
+
+    let receipt_content = Edu::Receipt(ReceiptContent::new(receipts));
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &receipt_content).expect("Failed to serialize Receipt EDU to JSON vec");
+
+    Ok(Some(buf))
+}
+/// Look for read receipts in this room
+#[tracing::instrument(level = "trace", skip(since_sn, max_edu_sn))]
+fn select_edus_receipts_room(
+    room_id: &RoomId,
+    since_sn: Seqnum,
+    max_edu_sn: &Seqnum,
+    num: &mut usize,
+) -> AppResult<ReceiptMap> {
+    let receipts = crate::room::receipt::read_receipts(room_id, since_sn)?;
+
+    let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
+    for (user_id, read_receipt) in receipts {
+        // if count > since_sn {
+        //     break;
+        // }
+
+        // max_edu_sn.fetch_max(occur_sn, Ordering::Relaxed);
+        if !user_id.is_local() {
+            continue;
+        }
+
+        // let Ok(event) = serde_json::from_str(read_receipt.inner().get()) else {
+        //     error!(
+        //         ?user_id,
+        //         ?read_receipt,
+        //         "Invalid edu event in read_receipts."
+        //     );
+        //     continue;
+        // };
+
+        // let AnySyncEphemeralRoomEvent::Receipt(r) = event else {
+        //     error!(?user_id, ?event, "Invalid event type in read_receipts");
+        //     continue;
+        // };
+
+        let (event_id, mut receipt) = read_receipt
+            .0
+            .into_iter()
+            .next()
+            .expect("we only use one event per read receipt");
+
+        let receipt = receipt
+            .remove(&ReceiptType::Read)
+            .expect("our read receipts always set this")
+            .remove(&user_id)
+            .expect("our read receipts always have the user here");
+
+        let receipt_data = ReceiptData {
+            data: receipt,
+            event_ids: vec![event_id.clone()],
+        };
+
+        if read.insert(user_id.to_owned(), receipt_data).is_none() {
+            *num = num.saturating_add(1);
+            if *num >= SELECT_RECEIPT_LIMIT {
+                break;
+            }
+        }
+    }
+
+    Ok(ReceiptMap { read })
+}
+
+/// Look for presence
+#[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
+fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
+    let presences_since = crate::data::user::presences_since(since_sn)?;
+
+    let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();
+    for (user_id, presence_event) in presences_since {
+        // max_edu_sn.fetch_max(occur_sn, Ordering::Relaxed);
+        if !user_id.is_local() {
+            continue;
+        }
+
+        if !crate::room::state::server_can_see_user(server_name, &user_id)? {
+            continue;
+        }
+
+        let update = PresenceUpdate {
+            user_id: user_id.clone(),
+            presence: presence_event.content.presence,
+            currently_active: presence_event.content.currently_active.unwrap_or(false),
+            status_msg: presence_event.content.status_msg,
+            last_active_ago: presence_event.content.last_active_ago.unwrap_or(0),
+        };
+
+        presence_updates.insert(user_id, update);
+        if presence_updates.len() >= SELECT_PRESENCE_LIMIT {
+            break;
+        }
+    }
+
+    if presence_updates.is_empty() {
+        return Ok(None);
+    }
+
+    let presence_content = Edu::Presence(PresenceContent {
+        push: presence_updates.into_values().collect(),
+    });
+
+    let mut buf = EduBuf::new();
+    serde_json::to_writer(&mut buf, &presence_content).expect("failed to serialize Presence EDU to JSON");
+
+    Ok(Some(buf))
+}
+
+#[tracing::instrument(skip(server_name))]
+pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
+    let max_edu_sn = data::curr_sn()?;
+    let conf = crate::config();
+
+    let since_sn = data::curr_sn()?;
+
+    let events_len = AtomicUsize::default();
+    let device_changes = select_edus_device_changes(server_name, since_sn, &max_edu_sn, &events_len)?;
+
+    let mut events = device_changes;
+    if conf.allow_outgoing_read_receipts {
+        if let Some(receipts) = select_edus_receipts(server_name, since_sn, &max_edu_sn)? {
+            events.push(receipts);
+        }
+    }
+
+    if conf.allow_outgoing_presence {
+        if let Some(presence) = select_edus_presence(server_name, since_sn, &max_edu_sn)? {
+            events.push(presence);
+        }
+    }
+
+    Ok((events, max_edu_sn))
 }
 
 #[tracing::instrument(skip(pdu_id, user, pushkey))]
@@ -437,7 +685,7 @@ pub async fn send_federation_request(
     request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
     debug!("Waiting for permit");
-    let max_request = max_request();
+    let max_request = super::max_request();
     let permit = max_request.acquire().await;
     debug!("Got permit");
     let url = request.url().clone();
@@ -646,18 +894,4 @@ pub fn convert_to_outgoing_federation_event(mut pdu_json: CanonicalJsonObject) -
     // .expect("RawJson::from_value always works")
 
     to_raw_value(&pdu_json).expect("CanonicalJson is valid serde_json::Value")
-}
-
-fn reqwest_client_builder(config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
-    let reqwest_client_builder = reqwest::Client::builder()
-        .pool_max_idle_per_host(0)
-        .connect_timeout(Duration::from_secs(30))
-        .timeout(Duration::from_secs(60 * 3));
-
-    // TODO: add proxy support
-    // if let Some(proxy) = config.to_proxy()? {
-    //     reqwest_client_builder = reqwest_client_builder.proxy(proxy);
-    // }
-
-    Ok(reqwest_client_builder)
 }

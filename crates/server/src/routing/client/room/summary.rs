@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::core::space::SpaceRoomJoinRule;
 use crate::room::state;
 use crate::routing::prelude::*;
-use crate::{GetUrlOrigin, data, sending};
+use crate::{GetUrlOrigin, config, data, sending};
 
 /// # `GET /_matrix/client/unstable/im.nheko.summary/summary/{roomIdOrAlias}`
 ///
@@ -34,7 +34,7 @@ pub async fn get_summary_msc_3266(
         return Err(MatrixError::forbidden(None, "This room is banned on this homeserver.").into());
     }
 
-    if crate::room::is_server_in_room(crate::server_name(), &room_id)? {
+    if crate::room::is_server_in_room(config::server_name(), &room_id)? {
         let res_body = local_room_summary(&room_id, sender_id).await?;
         json_ok(res_body)
     } else {
@@ -134,7 +134,11 @@ async fn remote_room_summary_hierarchy(
     }
 
     if crate::room::is_disabled(room_id)? {
-        return Err(MatrixError::forbidden(None, "Federaton of room {room_id} is currently disabled on this server.").into());
+        return Err(MatrixError::forbidden(
+            None,
+            "Federaton of room {room_id} is currently disabled on this server.",
+        )
+        .into());
     }
 
     let mut requests: FuturesUnordered<_> = FuturesUnordered::new();
@@ -214,7 +218,8 @@ where
                 return Ok(());
             }
 
-            Err(MatrixError::forbidden(None, 
+            Err(MatrixError::forbidden(
+                None,
                 "Room is not world readable, not publicly accessible/joinable, restricted room \
 				 conditions not met, and guest access is forbidden. Not allowed to see details \
 				 of this room.",
@@ -226,7 +231,8 @@ where
                 return Ok(());
             }
 
-            Err(MatrixError::forbidden(None, 
+            Err(MatrixError::forbidden(
+                None,
                 "Room is not world readable or publicly accessible/joinable, authentication is \
 				 required",
             )

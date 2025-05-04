@@ -39,13 +39,12 @@ fn send_to_device(
                 let message_id = Ulid::new();
                 crate::sending::send_reliable_edu(
                     target_user_id.server_name(),
-                    serde_json::to_vec(&Edu::DirectToDevice(DirectDeviceContent {
+                    &Edu::DirectToDevice(DirectDeviceContent {
                         sender: authed.user_id().clone(),
                         ev_type: args.event_type.clone(),
                         message_id: message_id.to_string().into(),
                         messages,
-                    }))
-                    .expect("DirectToDevice EDU can be serialized"),
+                    }),
                     &message_id.to_string(),
                 )?;
 

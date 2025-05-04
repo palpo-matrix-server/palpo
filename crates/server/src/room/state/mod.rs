@@ -502,7 +502,8 @@ pub async fn user_can_redact(
         .as_ref()
         .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomServerAcl)
     {
-        return Err(MatrixError::forbidden(None, 
+        return Err(MatrixError::forbidden(
+            None,
             "Redacting m.room.server_acl will result in the room being inaccessible for \
     			 everyone (empty allow key), forbidding.",
         )

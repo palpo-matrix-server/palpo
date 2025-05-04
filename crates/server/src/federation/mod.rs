@@ -7,7 +7,7 @@ use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEv
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::{MatrixError, signatures};
-use crate::{AppError, AppResult};
+use crate::{AppError, AppResult, sending, config};
 
 mod access_check;
 pub use access_check::access_check;
@@ -21,7 +21,7 @@ pub(crate) async fn send_request(
         return Err(AppError::public("Federation is disabled."));
     }
 
-    if destination == crate::server_name() {
+    if destination == config::server_name() {
         return Err(AppError::public("Won't send federation request to ourselves"));
     }
 
@@ -46,12 +46,12 @@ pub(crate) async fn send_request(
         )
         .into(),
     );
-    request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
+    request_map.insert("origin".to_owned(), config::server_name().as_str().into());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
 
-    signatures::sign_json(crate::server_name().as_str(), crate::keypair(), &mut request_json)
+    signatures::sign_json(config::server_name().as_str(), config::keypair(), &mut request_json)
         .expect("our request json is what palpo expects");
 
     let request_json: serde_json::Map<String, serde_json::Value> =
@@ -69,7 +69,7 @@ pub(crate) async fn send_request(
                 AUTHORIZATION,
                 XMatrix::parse(&format!(
                     "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
-                    crate::server_name(),
+                    config::server_name(),
                     destination,
                     s.0,
                     s.1
@@ -83,7 +83,7 @@ pub(crate) async fn send_request(
     let url = request.url().clone();
 
     debug!("Sending request to {destination} at {url}");
-    let response = crate::federation_client().execute(request).await;
+    let response = sending::federation_client().execute(request).await;
 
     match response {
         Ok(response) => {

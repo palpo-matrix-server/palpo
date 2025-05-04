@@ -15,7 +15,7 @@ use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, config, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -33,7 +33,7 @@ async fn send_message(
     let body = body.into_inner();
     println!(
         "==========send_message===={}======body:{:#?}",
-        crate::server_name(),
+        config::server_name(),
         body
     );
     if &body.origin != origin {
@@ -41,11 +41,19 @@ async fn send_message(
     }
 
     if body.pdus.len() > PDU_LIMIT {
-        return Err(MatrixError::forbidden(None, "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction").into());
+        return Err(MatrixError::forbidden(
+            None,
+            "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction",
+        )
+        .into());
     }
 
     if body.edus.len() > EDU_LIMIT {
-        return Err(MatrixError::forbidden(None, "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction").into());
+        return Err(MatrixError::forbidden(
+            None,
+            "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction",
+        )
+        .into());
     }
 
     let txn_start_time = Instant::now();
@@ -67,7 +75,7 @@ async fn handle_pdus(
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
     println!(
         "================handle_pdus====server {}   pdus: {:#?}",
-        crate::server_name(),
+        config::server_name(),
         pdus
     );
     let mut parsed_pdus = Vec::with_capacity(pdus.len());

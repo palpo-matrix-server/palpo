@@ -31,8 +31,10 @@ use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::sending::{send_edu_server, EduBuf};
-use crate::{AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, data};
+use crate::sending::{EduBuf, send_edu_server};
+use crate::{
+    AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data,
+};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !crate::room::room_exists(room_id)? {
@@ -313,7 +315,7 @@ async fn join_room_local(
     {
         let mut auth_user = None;
         for joined_user in crate::room::get_joined_users(room_id, None)? {
-            if joined_user.server_name() == crate::server_name()
+            if joined_user.server_name() == config::server_name()
                 && state::user_can_invite(room_id, &joined_user, user_id).unwrap_or(false)
             {
                 auth_user = Some(joined_user);
@@ -351,12 +353,12 @@ async fn join_room_local(
         Err(e) => e,
     };
 
-    if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != crate::server_name()).count() > 0 {
+    if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != config::server_name()).count() > 0 {
         info!("We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements");
         let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
 
         let room_version_id = match make_join_response.room_version {
-            Some(room_version_id) if crate::supported_room_versions().contains(&room_version_id) => room_version_id,
+            Some(room_version_id) if config::supported_room_versions().contains(&room_version_id) => room_version_id,
             _ => return Err(AppError::public("Room version is not supported")),
         };
         let mut join_event_stub: CanonicalJsonObject = serde_json::from_str(make_join_response.event.get())
@@ -368,7 +370,7 @@ async fn join_room_local(
         // TODO: Is origin needed?
         join_event_stub.insert(
             "origin".to_owned(),
-            CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+            CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
         );
         join_event_stub.insert(
             "origin_server_ts".to_owned(),
@@ -471,7 +473,7 @@ async fn join_room_remote(
     info!("make_join finished");
 
     let room_version_id = match make_join_response.room_version {
-        Some(room_version) if crate::supported_room_versions().contains(&room_version) => room_version,
+        Some(room_version) if config::supported_room_versions().contains(&room_version) => room_version,
         _ => return Err(AppError::public("Room version is not supported")),
     };
 
@@ -486,7 +488,7 @@ async fn join_room_remote(
     // TODO: Is origin needed?
     join_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     join_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -773,10 +775,7 @@ async fn join_room_remote(
             data::next_sn()? as u64,
         );
         let edu = Edu::DeviceListUpdate(content);
-
-        let mut buf = EduBuf::new();
-        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
-        send_edu_server(room_server_id, &buf)?;
+        send_edu_server(room_server_id, &edu)?;
     }
     Ok(())
 }
@@ -791,7 +790,7 @@ async fn make_join_request(
         .into());
 
     for remote_server in servers {
-        if remote_server == crate::server_name() {
+        if remote_server == config::server_name() {
             continue;
         }
         info!("Asking {remote_server} for make_join");
@@ -801,7 +800,7 @@ async fn make_join_request(
             MakeJoinReqArgs {
                 room_id: room_id.to_owned(),
                 user_id: user_id.to_owned(),
-                ver: crate::supported_room_versions(),
+                ver: config::supported_room_versions(),
             },
         )?
         .into_inner();

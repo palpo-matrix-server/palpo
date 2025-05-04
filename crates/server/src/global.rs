@@ -32,6 +32,7 @@ use crate::core::signatures::Ed25519KeyPair;
 use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
+use crate::sending::resolver::Resolver;
 use crate::{AppResult, MatrixError, ServerConfig, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
@@ -41,37 +42,11 @@ pub const SESSION_ID_LENGTH: usize = 32;
 pub const AUTO_GEN_PASSWORD_LENGTH: usize = 15;
 pub const RANDOM_USER_ID_LENGTH: usize = 10;
 
-type SyncHandle = (
-    Option<String>,                                                  // since
-    Receiver<Option<AppResult<sync_events::v3::SyncEventsResBody>>>, // rx
-);
-type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
+pub type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries
-// type SyncHandle = (
-//     Option<String>,                                         // since
-//     Receiver<Option<AppResult<sync_events::v3::Response>>>, // rx
-// );
 
 pub type LazyRwLock<T> = LazyLock<RwLock<T>>;
 pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);
-pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
-    vec![
-        RoomVersionId::V6,
-        RoomVersionId::V7,
-        RoomVersionId::V8,
-        RoomVersionId::V9,
-        RoomVersionId::V10,
-        RoomVersionId::V11,
-    ]
-});
-pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {
-    vec![
-        RoomVersionId::V2,
-        RoomVersionId::V3,
-        RoomVersionId::V4,
-        RoomVersionId::V5,
-    ]
-});
 pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
 pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> =
     LazyLock::new(Default::default);
@@ -120,201 +95,8 @@ impl Default for RotationHandler {
     }
 }
 
-pub struct Resolver {
-    inner: GaiResolver,
-    overrides: Arc<RwLock<TlsNameMap>>,
-}
-
-impl Resolver {
-    pub fn new(overrides: Arc<RwLock<TlsNameMap>>) -> Self {
-        Resolver {
-            inner: GaiResolver::new(),
-            overrides,
-        }
-    }
-}
-
-impl Resolve for Resolver {
-    fn resolve(&self, name: Name) -> Resolving {
-        self.overrides
-            .read()
-            .unwrap()
-            .get(name.as_str())
-            .and_then(|(override_name, port)| {
-                override_name.first().map(|first_name| {
-                    let x: Box<dyn Iterator<Item = SocketAddr> + Send> =
-                        Box::new(iter::once(SocketAddr::new(*first_name, *port)));
-                    let x: Resolving = Box::pin(future::ready(Ok(x)));
-                    x
-                })
-            })
-            .unwrap_or_else(|| {
-                let this = &mut self.inner.clone();
-                Box::pin(
-                    TowerService::<HyperName>::call(
-                        this,
-                        // Beautiful hack, please remove this in the future.
-                        HyperName::from_str(name.as_str()).expect("reqwest Name is just wrapper for hyper-util Name"),
-                    )
-                    .map(|result| {
-                        result
-                            .map(|addrs| -> Addrs { Box::new(addrs) })
-                            .map_err(|err| -> Box<dyn StdError + Send + Sync> { Box::new(err) })
-                    }),
-                )
-            })
-    }
-}
-
 pub fn config() -> &'static crate::config::ServerConfig {
     crate::config::get()
-}
-
-pub fn server_user() -> String {
-    format!("@palpo:{}", crate::server_name())
-}
-
-/// Returns this server's keypair.
-pub fn keypair() -> &'static Ed25519KeyPair {
-    static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
-    KEYPAIR.get_or_init(|| {
-        if let Some(keypair) = &crate::config().keypair {
-            let bytes = base64::decode(&keypair.document).expect("server keypair is invalid base64 string");
-            Ed25519KeyPair::from_der(&bytes, keypair.version.clone()).expect("invalid server Ed25519KeyPair")
-        } else {
-            crate::utils::generate_keypair()
-        }
-    })
-}
-
-pub fn well_known_client() -> String {
-    let config = crate::config();
-    if let Some(url) = &config.well_known.client {
-        url.to_string()
-    } else {
-        format!("https://{}", config.server_name)
-    }
-}
-
-pub fn well_known_server() -> OwnedServerName {
-    let config = crate::config();
-    match &config.well_known.server {
-        Some(server_name) => server_name.to_owned(),
-        None => {
-            if config.server_name.port().is_some() {
-                config.server_name.to_owned()
-            } else {
-                format!("{}:443", config.server_name.host())
-                    .try_into()
-                    .expect("Host from valid hostname + :443 must be valid")
-            }
-        }
-    }
-}
-
-pub fn cidr_range_denylist() -> &'static [IPAddress] {
-    static CIDR_RANGE_DENYLIST: OnceLock<Vec<IPAddress>> = OnceLock::new();
-    CIDR_RANGE_DENYLIST.get_or_init(|| {
-        let conf = crate::config();
-        conf.ip_range_denylist
-            .iter()
-            .map(IPAddress::parse)
-            .inspect(|cidr| trace!("Denied CIDR range: {cidr:?}"))
-            .collect::<Result<_, String>>()
-            .expect("Invalid CIDR range in config")
-    })
-}
-/// Returns a reqwest client which can be used to send requests
-pub fn default_client() -> reqwest::Client {
-    // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-    static DEFAULT_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    DEFAULT_CLIENT
-        .get_or_init(|| {
-            reqwest_client_builder(crate::config())
-                .expect("failed to build request clinet")
-                .build()
-                .expect("failed to build request clinet")
-        })
-        .clone()
-}
-
-/// Returns a client used for resolving .well-knowns
-pub fn federation_client() -> reqwest::Client {
-    static FEDERATION_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    FEDERATION_CLIENT
-        .get_or_init(|| {
-            let conf = config();
-            // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
-            let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
-
-            // let jwt_decoding_key = conf
-            //     .jwt_secret
-            //     .as_ref()
-            //     .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
-
-            reqwest_client_builder(conf)
-                .expect("build reqwest client failed")
-                .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
-                .timeout(Duration::from_secs(2 * 60))
-                .build()
-                .expect("build reqwest client failed")
-        })
-        .clone()
-}
-
-pub fn valid_cidr_range(ip: &IPAddress) -> bool {
-    cidr_range_denylist().iter().all(|cidr| !cidr.includes(ip))
-}
-
-pub fn server_name() -> &'static ServerName {
-    config().server_name.as_ref()
-}
-pub fn listen_addr() -> &'static str {
-    config().listen_addr.deref()
-}
-
-pub fn max_request_size() -> u32 {
-    config().max_request_size
-}
-
-pub fn max_fetch_prev_events() -> u16 {
-    config().max_fetch_prev_events
-}
-
-pub fn allow_registration() -> bool {
-    config().allow_registration
-}
-
-pub fn allow_encryption() -> bool {
-    config().allow_encryption
-}
-
-pub fn allow_federation() -> bool {
-    config().allow_federation
-}
-
-pub fn allow_room_creation() -> bool {
-    config().allow_room_creation
-}
-
-pub fn allow_unstable_room_versions() -> bool {
-    config().allow_unstable_room_versions
-}
-
-pub fn default_room_version() -> RoomVersionId {
-    config().room_version.clone()
-}
-
-pub fn enable_lightning_bolt() -> bool {
-    config().enable_lightning_bolt
-}
-
-pub fn allow_check_for_updates() -> bool {
-    config().allow_check_for_updates
-}
-
-pub fn trusted_servers() -> &'static [OwnedServerName] {
-    &config().trusted_servers
 }
 
 pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
@@ -322,75 +104,6 @@ pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
     DNS_RESOLVER.get_or_init(|| {
         HickoryResolver::builder_with_config(ResolverConfig::default(), TokioConnectionProvider::default()).build()
     })
-}
-
-pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
-    static JWT_DECODING_KEY: OnceLock<Option<jsonwebtoken::DecodingKey>> = OnceLock::new();
-    JWT_DECODING_KEY
-        .get_or_init(|| {
-            config()
-                .jwt_secret
-                .as_ref()
-                .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()))
-        })
-        .as_ref()
-}
-
-pub fn turn_password() -> &'static str {
-    &config().turn_password
-}
-
-pub fn turn_ttl() -> u64 {
-    config().turn_ttl
-}
-
-pub fn turn_uris() -> &'static [String] {
-    &config().turn_uris
-}
-
-pub fn turn_username() -> &'static str {
-    &config().turn_username
-}
-
-pub fn turn_secret() -> &'static String {
-    &config().turn_secret
-}
-
-pub fn emergency_password() -> Option<&'static str> {
-    config().emergency_password.as_deref()
-}
-
-pub fn allow_local_presence() -> bool {
-    config().allow_local_presence
-}
-
-pub fn allow_incoming_presence() -> bool {
-    config().allow_incoming_presence
-}
-
-pub fn allow_outcoming_presence() -> bool {
-    config().allow_outgoing_presence
-}
-
-pub fn presence_idle_timeout_s() -> u64 {
-    config().presence_idle_timeout_s
-}
-
-pub fn presence_offline_timeout_s() -> u64 {
-    config().presence_offline_timeout_s
-}
-
-pub fn supported_room_versions() -> Vec<RoomVersionId> {
-    let mut room_versions: Vec<RoomVersionId> = vec![];
-    room_versions.extend(STABLE_ROOM_VERSIONS.clone());
-    if config().allow_unstable_room_versions {
-        room_versions.extend(UNSTABLE_ROOM_VERSIONS.clone());
-    };
-    room_versions
-}
-
-pub fn supports_room_version(room_version: &RoomVersionId) -> bool {
-    supported_room_versions().contains(room_version)
 }
 
 pub fn add_signing_key_from_trusted_server(
@@ -574,48 +287,11 @@ pub fn filter_keys_single_server(
     }
 }
 
-pub fn space_path() -> &'static str {
-    config().space_path.deref()
-}
-
-pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
-    let server_name = if server_name == crate::server_name().as_str() {
-        "_"
-    } else {
-        server_name.as_str()
-    };
-    let mut r = PathBuf::new();
-    r.push(space_path());
-    r.push("media");
-    r.push(server_name);
-    // let extension = extension.unwrap_or_default();
-    // if !extension.is_empty() {
-    //     r.push(format!("{media_id}.{extension}"));
-    // } else {
-    r.push(media_id);
-    // }
-    r
-}
-
 pub fn shutdown() {
     SHUTDOWN.store(true, std::sync::atomic::Ordering::Relaxed);
     // On shutdown
     info!(target: "shutdown-sync", "Received shutdown notification, notifying sync helpers...");
     ROTATE.fire();
-}
-
-fn reqwest_client_builder(config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
-    let reqwest_client_builder = reqwest::Client::builder()
-        .pool_max_idle_per_host(0)
-        .connect_timeout(Duration::from_secs(30))
-        .timeout(Duration::from_secs(60 * 3));
-
-    // TODO: add proxy support
-    // if let Some(proxy) = config.to_proxy()? {
-    //     reqwest_client_builder = reqwest_client_builder.proxy(proxy);
-    // }
-
-    Ok(reqwest_client_builder)
 }
 
 pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId)> {

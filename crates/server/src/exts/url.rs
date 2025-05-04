@@ -9,6 +9,7 @@ use salvo::http::headers::{CacheControl, Header};
 
 use crate::LazyRwLock;
 use crate::core::identifiers::*;
+use crate::sending;
 
 type WellKnownMap = HashMap<OwnedServerName, DestinationResponse>;
 pub static ACTUAL_DESTINATION_CACHE: LazyRwLock<WellKnownMap> = LazyLock::new(Default::default); // actual_destination, host
@@ -374,7 +375,7 @@ async fn query_srv_record(hostname: &'_ str) -> Option<(FedDest, Instant)> {
 }
 
 async fn request_well_known(destination: &str) -> Option<(String, Instant)> {
-    let response = crate::default_client()
+    let response = sending::default_client()
         .get(&format!("https://{destination}/.well-known/matrix/server"))
         .send()
         .await;

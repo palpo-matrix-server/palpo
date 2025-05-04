@@ -30,7 +30,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -225,7 +225,7 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
         Ok(b)
     } else {
         let bridge_user_id =
-            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), crate::server_name())
+            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), config::server_name())
                 .ok();
 
         let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id).unwrap_or(false)) || {
@@ -256,7 +256,7 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     .map_err(Into::into)
 }
 pub fn local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
-    let local = is_server_in_room(crate::server_name(), room_id)?
+    let local = is_server_in_room(config::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0].is_local());
     Ok(local)
@@ -429,7 +429,7 @@ pub async fn room_available_servers(
     match servers.iter().position(|server_name| server_name.is_local()) {
         Some(server_index) => {
             servers.swap_remove(server_index);
-            servers.insert(0, crate::server_name().to_owned());
+            servers.insert(0, config::server_name().to_owned());
         }
         _ => match servers.iter().position(|server| server == room_alias.server_name()) {
             Some(alias_server_index) => {

@@ -12,7 +12,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbAccessToken, DbUser, DbUserDevice};
 use crate::exts::DepotExt;
 use crate::server_key::{PubKeyMap, PubKeys};
-use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError};
+use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, config};
 
 #[handler]
 pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
@@ -88,7 +88,7 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
     let mut authorization = BTreeMap::from_iter([
         (
             "destination".to_owned(),
-            CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+            CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
         ),
         (
             "method".to_owned(),

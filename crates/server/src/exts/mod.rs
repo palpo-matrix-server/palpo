@@ -1,7 +1,7 @@
 use salvo::prelude::*;
 
 use crate::core::identifiers::*;
-use crate::{AppResult, AuthedInfo};
+use crate::{AppResult, AuthedInfo, config};
 
 mod url;
 pub use url::*;
@@ -36,32 +36,32 @@ pub trait IsRemoteOrLocal {
 }
 impl IsRemoteOrLocal for UserId {
     fn is_remote(&self) -> bool {
-        self.server_name() != crate::server_name()
+        self.server_name() != config::server_name()
     }
     fn is_local(&self) -> bool {
-        self.server_name() == crate::server_name()
+        self.server_name() == config::server_name()
     }
 }
 impl IsRemoteOrLocal for OwnedUserId {
     fn is_remote(&self) -> bool {
-        self.server_name() != crate::server_name()
+        self.server_name() != config::server_name()
     }
     fn is_local(&self) -> bool {
-        self.server_name() == crate::server_name()
+        self.server_name() == config::server_name()
     }
 }
 
 impl IsRemoteOrLocal for RoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
-            server_name != crate::server_name()
+            server_name != config::server_name()
         } else {
             false
         }
     }
     fn is_local(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
-            server_name == crate::server_name()
+            server_name == config::server_name()
         } else {
             false
         }
@@ -70,14 +70,14 @@ impl IsRemoteOrLocal for RoomId {
 impl IsRemoteOrLocal for OwnedRoomId {
     fn is_remote(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
-            server_name != crate::server_name()
+            server_name != config::server_name()
         } else {
             false
         }
     }
     fn is_local(&self) -> bool {
         if let Ok(server_name) = self.server_name() {
-            server_name == crate::server_name()
+            server_name == config::server_name()
         } else {
             false
         }
@@ -86,27 +86,27 @@ impl IsRemoteOrLocal for OwnedRoomId {
 
 impl IsRemoteOrLocal for RoomAliasId {
     fn is_remote(&self) -> bool {
-        self.server_name() != crate::server_name()
+        self.server_name() != config::server_name()
     }
     fn is_local(&self) -> bool {
-        self.server_name() == crate::server_name()
+        self.server_name() == config::server_name()
     }
 }
 
 impl IsRemoteOrLocal for OwnedRoomAliasId {
     fn is_remote(&self) -> bool {
-        self.server_name() != crate::server_name()
+        self.server_name() != config::server_name()
     }
     fn is_local(&self) -> bool {
-        self.server_name() == crate::server_name()
+        self.server_name() == config::server_name()
     }
 }
 
 impl IsRemoteOrLocal for ServerName {
     fn is_remote(&self) -> bool {
-        self != crate::server_name()
+        self != config::server_name()
     }
     fn is_local(&self) -> bool {
-        self == crate::server_name()
+        self == config::server_name()
     }
 }
