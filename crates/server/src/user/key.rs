@@ -426,7 +426,7 @@ pub fn claim_one_time_key(
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))
         .filter(e2e_one_time_keys::algorithm.eq(key_algorithm.as_ref()))
-        .order(e2e_one_time_keys::id.desc())
+        .order(e2e_one_time_keys::id.asc())
         .first::<DbOneTimeKey>(&mut connect()?)
         .optional()?;
     if let Some(DbOneTimeKey {
