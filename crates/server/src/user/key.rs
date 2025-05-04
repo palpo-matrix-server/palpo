@@ -283,7 +283,7 @@ pub async fn claim_one_time_keys(
     let mut get_over_federation = BTreeMap::new();
 
     for (user_id, map) in one_time_keys_input {
-        if user_id.server_name() != crate::server_name() {
+        if user_id.server_name().is_remote() {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -427,7 +427,7 @@ pub fn claim_one_time_key(
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))
         .filter(e2e_one_time_keys::algorithm.eq(key_algorithm.as_ref()))
-        .order(e2e_one_time_keys::id.desc())
+        .order(e2e_one_time_keys::id.asc())
         .first::<DbOneTimeKey>(&mut connect()?)
         .optional()?;
     if let Some(DbOneTimeKey {
