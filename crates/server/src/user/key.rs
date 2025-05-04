@@ -279,11 +279,10 @@ pub async fn claim_one_time_keys(
     one_time_keys_input: &BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>,
 ) -> AppResult<ClaimKeysResBody> {
     let mut one_time_keys = BTreeMap::new();
-
     let mut get_over_federation = BTreeMap::new();
 
     for (user_id, map) in one_time_keys_input {
-        if user_id.server_name() != crate::server_name() {
+        if user_id.server_name().is_remote() {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -331,7 +330,7 @@ pub async fn claim_one_time_keys(
                     failures.insert(server.to_string(), json!({}));
                 }
             },
-            Err(_e) => {
+            Err(e) => {
                 failures.insert(server.to_string(), json!({}));
             }
         }

@@ -42,7 +42,7 @@ pub fn get_server_key_request(origin: &str) -> SendResult<SendRequest> {
 // }
 
 pub fn claim_keys_request(origin: &str, body: ClaimKeysReqBody) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!("{origin}/_matrix/client/v1/user/keys/claim"))?;
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/user/keys/claim"))?;
     crate::sending::post(url).stuff(body)
 }
 
