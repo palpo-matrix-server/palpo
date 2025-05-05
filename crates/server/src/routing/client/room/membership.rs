@@ -35,12 +35,19 @@ use crate::{
 #[endpoint]
 pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let membership = args.membership.as_ref();
     let not_membership = args.not_membership.as_ref();
 
-    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
-    }
+    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
+        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
+            Some(leave_sn)
+        } else {
+            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        }
+    } else {
+        None
+    };
 
     let frame_id = if let Some(at_sn) = &args.at {
         if let Ok(at_sn) = at_sn.parse::<i64>() {
@@ -56,7 +63,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        state::get_room_frame_id(&args.room_id, None)?
+        state::get_room_frame_id(&args.room_id, until_sn)?
     };
     let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
