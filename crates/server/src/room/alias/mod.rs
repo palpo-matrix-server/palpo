@@ -245,11 +245,11 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     } else if let Ok(content) = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "",
+        "", None
     ) {
         Ok(RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "") {
+    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None) {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);

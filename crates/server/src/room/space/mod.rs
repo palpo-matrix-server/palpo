@@ -194,7 +194,7 @@ async fn get_room_summary(
     identifier: &Identifier<'_>,
 ) -> AppResult<SpaceHierarchyParentSummary> {
     let join_rule =
-        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "")
+        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
             .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
 
     let allowed_room_ids = state::allowed_room_ids(join_rule.clone());

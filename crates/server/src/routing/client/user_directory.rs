@@ -52,7 +52,7 @@ fn search(
             crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
                 &room,
                 &StateEventType::RoomJoinRules,
-                "",
+                "", None,
             )
             .map(|r| r.join_rule == JoinRule::Public)
             .unwrap_or(false)

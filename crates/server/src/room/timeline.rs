@@ -214,7 +214,7 @@ where
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
-        "",
+        "", None,
     )
     .unwrap_or_default();
 
@@ -427,7 +427,7 @@ where
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(pdu) =
-                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "")
+                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
                 {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
@@ -528,7 +528,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Ok(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key) {
+        if let Ok(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None) {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -955,7 +955,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "",
+        "",None
     )?;
     let mut admin_servers = power_levels
         .users

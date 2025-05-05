@@ -140,6 +140,15 @@ pub fn knock_count(room_id: &RoomId) -> AppResult<i64> {
         .get_result(&mut connect()?)?;
     Ok(count)
 }
+pub fn leave_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("leave"))
+        .select(room_users::event_sn)
+        .first::<i64>(&mut connect()?)
+        .map_err(Into::into)
+}
 
 #[tracing::instrument]
 pub fn is_invited(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {

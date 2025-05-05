@@ -17,7 +17,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::room::RoomEventReqArgs;
 use crate::room::state::DbRoomStateField;
 use crate::utils::HtmlEscape;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
 /// Gets a single event.

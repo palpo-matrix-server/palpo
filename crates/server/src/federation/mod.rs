@@ -127,7 +127,7 @@ pub(crate) async fn user_can_perform_restricted_join(
     let Ok(join_rules_event_content) = crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
         room_id,
         &StateEventType::RoomJoinRules,
-        "",
+        "", None,
     ) else {
         return Ok(false);
     };

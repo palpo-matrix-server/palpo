@@ -149,7 +149,7 @@ pub(super) async fn get_messages(
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
         if let Ok(member_event) =
-            crate::room::state::get_room_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str())
+            crate::room::state::get_room_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)
         {
             resp.state.push(member_event.to_state_event());
         }

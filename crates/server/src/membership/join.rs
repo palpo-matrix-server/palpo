@@ -289,7 +289,7 @@ async fn join_room_local(
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
-        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "").ok();
+        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None).ok();
     // let power_levels_event = state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
     let restriction_rooms = match join_rules_event_content {

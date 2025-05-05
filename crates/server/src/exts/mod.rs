@@ -53,34 +53,18 @@ impl IsRemoteOrLocal for OwnedUserId {
 
 impl IsRemoteOrLocal for RoomId {
     fn is_remote(&self) -> bool {
-        if let Ok(server_name) = self.server_name() {
-            server_name != config::server_name()
-        } else {
-            false
-        }
+        self.server_name().map(|s| s != config::server_name()).unwrap_or(false)
     }
     fn is_local(&self) -> bool {
-        if let Ok(server_name) = self.server_name() {
-            server_name == config::server_name()
-        } else {
-            false
-        }
+        self.server_name().map(|s| s == config::server_name()).unwrap_or(false)
     }
 }
 impl IsRemoteOrLocal for OwnedRoomId {
     fn is_remote(&self) -> bool {
-        if let Ok(server_name) = self.server_name() {
-            server_name != config::server_name()
-        } else {
-            false
-        }
+        self.server_name().map(|s| s != config::server_name()).unwrap_or(false)
     }
     fn is_local(&self) -> bool {
-        if let Ok(server_name) = self.server_name() {
-            server_name == config::server_name()
-        } else {
-            false
-        }
+        self.server_name().map(|s| s == config::server_name()).unwrap_or(false)
     }
 }
 
