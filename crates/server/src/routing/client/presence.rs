@@ -63,20 +63,8 @@ async fn set_status(
     if authed.user_id() != &user_id {
         return Err(MatrixError::forbidden(None, "You cannot set the presence state of another user").into());
     }
-    crate::data::user::set_presence(
-        NewDbPresence {
-            user_id: authed.user_id().to_owned(),
-            stream_id: None,
-            state: Some(body.presence.to_string()),
-            status_msg: body.status_msg.clone(),
-            last_active_at: None,
-            last_federation_update_at: None,
-            last_user_sync_at: None,
-            currently_active: Some(body.presence == PresenceState::Online),
-            occur_sn: None,
-        },
-        true,
-    )?;
+    let SetPresenceReqBody { presence, status_msg } = body.into_inner();
+    crate::user::set_presence(authed.user_id(), Some(presence), status_msg.clone(), true)?;
 
     empty_ok()
 }

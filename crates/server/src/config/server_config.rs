@@ -210,7 +210,7 @@ pub struct ServerConfig {
     ///
     /// Note that presence on conduwuit is very fast unlike Synapse's. If using
     /// outgoing presence, this MUST be enabled.
-    #[serde(default = "default_false")]
+    #[serde(default = "default_true")]
     pub allow_local_presence: bool,
 
     /// Allow incoming federated presence updates/requests.
@@ -218,7 +218,7 @@ pub struct ServerConfig {
     /// This option receives presence updates from other servers, but does not
     /// send any unless `allow_outgoing_presence` is true. Note that presence on
     /// conduwuit is very fast unlike Synapse's.
-    #[serde(default = "default_false")]
+    #[serde(default = "default_true")]
     pub allow_incoming_presence: bool,
 
     /// Allow outgoing presence updates/requests.
@@ -227,7 +227,7 @@ pub struct ServerConfig {
     /// receive any unless `allow_incoming_presence` is true. Note that presence
     /// on conduwuit is very fast unlike Synapse's. If using outgoing presence,
     /// you MUST enable `allow_local_presence` as well.
-    #[serde(default = "default_false")]
+    #[serde(default = "default_true")]
     pub allow_outgoing_presence: bool,
 
     /// How many seconds without presence updates before you become idle.
