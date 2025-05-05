@@ -375,7 +375,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref()).ok();
+    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None).ok();
 
     let event = if let Some(room_state) = room_state {
         let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
@@ -465,7 +465,7 @@ pub(super) async fn unban_user(
     let mut event = state::get_room_state_content::<RoomMemberEventContent>(
         &room_id,
         &StateEventType::RoomMember,
-        body.user_id.as_ref(),
+        body.user_id.as_ref(), None,
     )?;
 
     event.membership = MembershipState::Leave;

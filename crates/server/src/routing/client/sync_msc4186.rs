@@ -386,7 +386,7 @@ async fn process_rooms(
         let required_state = required_state_request
             .iter()
             .filter_map(|state| {
-                crate::room::state::get_room_state(room_id, &state.0, &state.1)
+                crate::room::state::get_room_state(room_id, &state.0, &state.1, None)
                     .map(|s| s.to_sync_state_event())
                     .ok()
             })

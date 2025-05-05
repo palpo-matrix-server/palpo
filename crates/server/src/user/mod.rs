@@ -139,13 +139,13 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
         let room_power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
             room_id,
             &StateEventType::RoomPowerLevels,
-            "",
+            "", None,
         )
         .ok();
 
         let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
             RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
-        }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")
+        }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)
             .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {

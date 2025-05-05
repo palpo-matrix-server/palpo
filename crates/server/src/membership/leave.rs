@@ -57,7 +57,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         }
     } else {
         let member_event =
-            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str()).ok();
+            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {

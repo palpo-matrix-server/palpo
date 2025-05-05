@@ -301,7 +301,7 @@ async fn upgrade(
 
     // Get the old room creation event
     let mut create_event_content =
-        crate::room::state::get_room_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "")?;
+        crate::room::state::get_room_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "", None)?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -388,7 +388,7 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "") {
+        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "", None) {
             Ok(v) => v.content.clone(),
             _ => continue, // Skipping missing events.
         };
@@ -414,7 +414,7 @@ async fn upgrade(
     let mut power_levels_event_content = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "",
+        "", None,
     )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1

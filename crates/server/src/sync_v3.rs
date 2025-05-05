@@ -254,7 +254,7 @@ pub async fn sync_events(
                 crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                     .into_iter()
                     .map(|other_room_id| {
-                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
                     })
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need
@@ -269,7 +269,7 @@ pub async fn sync_events(
             crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                 .into_iter()
                 .map(|other_room_id| {
-                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
                 })
                 .all(|encrypted| !encrypted);
         // If the user doesn't share an encrypted room with the target anymore, we need to tell
@@ -570,7 +570,7 @@ async fn load_joined_room(
                     || lazy_load_send_redundant
                 {
                     if let Ok(member_event) =
-                        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, event.sender.as_str())
+                        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, event.sender.as_str(), None)
                     {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
@@ -776,7 +776,7 @@ pub(crate) fn share_encrypted_room(
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)
         .map(|other_room_id| {
-            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
         })
         .any(|encrypted| encrypted);
 

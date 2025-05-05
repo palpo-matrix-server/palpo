@@ -138,7 +138,7 @@ pub fn update_membership(
                 if let Ok(Some(predecessor)) = crate::room::state::get_room_state_content::<RoomCreateEventContent>(
                     room_id,
                     &StateEventType::RoomCreate,
-                    "",
+                    "", None
                 )
                 .map(|c| c.predecessor)
                 {
