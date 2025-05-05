@@ -330,7 +330,7 @@ pub struct Timeline {
     /// filter.
     ///
     /// Default to `false`.
-    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
+    #[serde(default)]
     pub limited: bool,
 
     /// A token that can be supplied to to the `from` parameter of the

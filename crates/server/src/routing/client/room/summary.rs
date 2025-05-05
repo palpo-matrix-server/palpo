@@ -78,21 +78,13 @@ async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> App
     .await?;
 
     let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
-
     let name = state::get_name(room_id).ok();
-
     let topic = state::get_room_topic(room_id).ok();
-
     let room_type = state::get_room_type(room_id).ok().flatten();
-
     let avatar_url = state::get_avatar_url(room_id).ok().flatten();
-
     let room_version = state::get_room_version(room_id).ok();
-
     let encryption = state::get_room_encryption(room_id).ok();
-
     let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
-
     let membership = sender_id
         .map(|sender_id| {
             state::get_member(room_id, sender_id).map_or(MembershipState::Leave, |content| content.membership)
