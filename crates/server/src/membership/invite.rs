@@ -95,7 +95,9 @@ pub async fn invite_user(
     }
 
     if !crate::room::is_joined(inviter_id, room_id)? {
-        return Err(MatrixError::forbidden(None, "You must be joined in the room you are trying to invite from.").into());
+        return Err(
+            MatrixError::forbidden(None, "You must be joined in the room you are trying to invite from.").into(),
+        );
     }
 
     crate::room::timeline::build_and_append_pdu(

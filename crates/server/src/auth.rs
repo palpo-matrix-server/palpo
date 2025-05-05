@@ -27,9 +27,6 @@ impl AuthedInfo {
     pub fn access_token_id(&self) -> Option<i64> {
         self.access_token_id
     }
-    pub fn server_name(&self) -> &ServerName {
-        self.user.id.server_name()
-    }
     pub fn is_admin(&self) -> bool {
         self.user.is_admin
     }

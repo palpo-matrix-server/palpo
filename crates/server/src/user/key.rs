@@ -18,7 +18,7 @@ use crate::data::schema::*;
 use crate::exts::*;
 use crate::sending::EduBuf;
 use crate::user::clean_signatures;
-use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, data, sending};
+use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = e2e_cross_signing_keys)]
@@ -162,7 +162,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut get_over_federation = HashMap::new();
 
     for (user_id, device_ids) in device_keys_input {
-        if user_id.server_name() != crate::server_name() {
+        if user_id.server_name() != config::server_name() {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -598,10 +598,7 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
         let content = SigningKeyUpdateContent::new(user_id.to_owned());
         let edu = Edu::SigningKeyUpdate(content);
 
-        let mut buf = EduBuf::new();
-        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::SigningKeyUpdate");
-
-        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+        sending::send_edu_servers(remote_servers.into_iter(), &edu);
     }
 
     Ok(())
@@ -678,8 +675,5 @@ fn mark_device_list_update_with_joined_rooms(
     let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
     let edu = Edu::DeviceListUpdate(content);
 
-    let mut buf = EduBuf::new();
-    serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
-
-    sending::send_edu_servers(remote_servers.into_iter(), &buf)
+    sending::send_edu_servers(remote_servers.into_iter(), &edu)
 }

@@ -11,7 +11,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, exts::*, json_ok};
+use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -187,7 +187,7 @@ pub(super) async fn send_message(
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
         return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
     }
 
@@ -245,7 +245,7 @@ pub(super) async fn post_message(
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
         return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
     }
 

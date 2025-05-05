@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 
 use crate::core::events::presence::{PresenceEvent, PresenceEventContent};
+use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
+use crate::core::presence::{PresenceContent, PresenceState, PresenceUpdate};
 use crate::core::{MatrixError, UnixMillis};
 use crate::schema::*;
-use crate::{DataResult, connect};
+use crate::{DataResult, config, connect};
 
 /// Represents data required to be kept in order to implement the presence specification.
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -79,39 +80,27 @@ pub fn last_presence(user_id: &UserId) -> DataResult<PresenceEvent> {
 }
 
 /// Adds a presence event which will be saved until a new event replaces it.
-pub fn set_presence(presence: NewDbPresence, force: bool) -> DataResult<()> {
-    if force {
-        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-            .execute(&mut connect()?)?;
+pub fn set_presence(db_presence: NewDbPresence, force: bool) -> DataResult<bool> {
+    let mut state_changed = false;
+    let sender_id = &db_presence.user_id;
+    let old_state = user_presences::table
+        .filter(user_presences::user_id.eq(sender_id))
+        .select(user_presences::state)
+        .first::<Option<String>>(&mut connect()?)
+        .optional()?
+        .flatten();
+
+    if old_state.as_ref() != db_presence.state.as_ref() || force {
+        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(sender_id))).execute(&mut connect()?)?;
         diesel::insert_into(user_presences::table)
-            .values(&presence)
+            .values(&db_presence)
             .on_conflict(user_presences::user_id)
             .do_update()
-            .set(&presence)
+            .set(&db_presence)
             .execute(&mut connect()?)?;
-    } else {
-        let old_state = user_presences::table
-            .filter(user_presences::user_id.eq(&presence.user_id))
-            .select(user_presences::state)
-            .first::<Option<String>>(&mut connect()?)
-            .optional()?
-            .flatten();
-        if old_state != presence.state && presence.state.is_some() {
-            diesel::delete(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-                .execute(&mut connect()?)?;
-            diesel::insert_into(user_presences::table)
-                .values(&presence)
-                .on_conflict(user_presences::user_id)
-                .do_update()
-                .set(&presence)
-                .execute(&mut connect()?)?;
-        } else {
-            diesel::update(user_presences::table.filter(user_presences::user_id.eq(&presence.user_id)))
-                .set(&presence)
-                .execute(&mut connect()?)?;
-        }
+        state_changed = true;
     }
-    Ok(())
+    Ok(state_changed)
 }
 
 /// Removes the presence record for the given user from the database.
@@ -133,4 +122,10 @@ pub fn presences_since(since_sn: i64) -> DataResult<HashMap<OwnedUserId, Presenc
                 .map(|event| (presence.user_id, event))
         })
         .collect()
+}
+
+// Unset online/unavailable presence to offline on startup
+pub fn unset_all_presences() -> DataResult<()> {
+    diesel::delete(user_presences::table).execute(&mut connect()?)?;
+    Ok(())
 }

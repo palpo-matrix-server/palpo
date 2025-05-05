@@ -120,7 +120,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     crate::config::init();
-    let config = crate::config::get();
+    let config = crate::config();
+    config.check().expect("config is not valid!");
     match &*config.log_format {
         "json" => {
             tracing_subscriber::fmt()
@@ -148,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     crate::data::init(&config.db);
 
-    crate::sending::start_handler();
+    crate::sending::guard::start();
 
     let router = routing::router();
     let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
@@ -180,22 +181,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         )
         .hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
+    crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
-    println!("Listening on {}", crate::listen_addr());
+    println!("Listening on {}", config::listen_addr());
     if config.enable_tls {
         let config = RustlsConfig::new(
             Keycert::new()
                 .cert_from_path("./certs/cert.pem")?
                 .key_from_path("./certs/key.pem")?,
         );
-        let acceptor = TcpListener::new(crate::listen_addr()).rustls(config).bind().await;
+        let acceptor = TcpListener::new(config::listen_addr()).rustls(config).bind().await;
         Server::new(acceptor)
             .serve(service)
             .instrument(tracing::info_span!("server.serve"))
             .await
     } else {
-        let acceptor = TcpListener::new(crate::listen_addr()).bind().await;
+        let acceptor = TcpListener::new(config::listen_addr()).bind().await;
         Server::new(acceptor)
             .serve(service)
             .instrument(tracing::info_span!("server.serve"))

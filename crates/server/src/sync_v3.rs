@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
 use crate::room::timeline;
-use crate::{AppError, AppResult, data, extract_variant};
+use crate::{AppError, AppResult, config, data, extract_variant};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
     TimelineEventType::CallInvite,
@@ -113,7 +113,7 @@ pub async fn sync_events(
 
         if !crate::room::room_exists(room_id)? {
             let event = PduEvent {
-                event_id: EventId::new(crate::server_name()).into(),
+                event_id: EventId::new(config::server_name()).into(),
                 event_sn: 0,
                 sender: sender_id.to_owned(),
                 origin_server_ts: UnixMillis::now(),
@@ -298,7 +298,7 @@ pub async fn sync_events(
         },
     );
 
-    if crate::allow_local_presence() {
+    if config::allow_local_presence() {
         // Take presence updates from this room
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {

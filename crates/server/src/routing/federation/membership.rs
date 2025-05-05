@@ -12,7 +12,8 @@ use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
+    utils,
 };
 
 pub fn router_v1() -> Router {
@@ -116,7 +117,7 @@ async fn invite_user(
     let origin = depot.origin()?;
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
-    if !crate::supported_room_versions().contains(&body.room_version) {
+    if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
             body.room_version.clone(),
             "Server does not support this room version.",
@@ -182,7 +183,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !crate::room::is_server_in_room(crate::server_name(), &args.room_id)? {
+    if !crate::room::is_server_in_room(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,

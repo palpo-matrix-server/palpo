@@ -18,7 +18,7 @@ use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::utils::timepoint_from_now;
-use crate::{AppError, AppResult, exts::*};
+use crate::{AppError, AppResult, config, exts::*};
 
 pub type VerifyKeys = BTreeMap<OwnedServerSigningKeyId, VerifyKey>;
 pub type PubKeyMap = PublicKeyMap;
@@ -112,7 +112,7 @@ pub fn verify_keys_for(server: &ServerName) -> VerifyKeys {
         .unwrap_or(BTreeMap::new());
 
     if !server.is_remote() {
-        let keypair = crate::keypair();
+        let keypair = config::keypair();
         let verify_key = VerifyKey {
             key: Base64::new(keypair.public_key().to_vec()),
         };
@@ -264,12 +264,12 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
 pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
-    signatures::sign_json(crate::server_name().as_str(), crate::keypair(), object).map_err(Into::into)
+    signatures::sign_json(config::server_name().as_str(), config::keypair(), object).map_err(Into::into)
 }
 
 pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
     room_version: &RoomVersionId,
 ) -> Result<(), crate::core::signatures::Error> {
-    signatures::hash_and_sign_event(crate::server_name().as_str(), crate::keypair(), object, room_version)
+    signatures::hash_and_sign_event(config::server_name().as_str(), config::keypair(), object, room_version)
 }

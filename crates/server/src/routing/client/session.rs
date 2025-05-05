@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH,
-    TOKEN_LENGTH, data, empty_ok, hoops, json_ok, utils,
+    TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, utils,
 };
 
 #[derive(Debug, Deserialize)]
@@ -78,7 +78,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
                 warn!("Bad login type: {:?}", &body.login_info);
                 return Err(MatrixError::forbidden(None, "Bad login type.").into());
             };
-            let user_id = UserId::parse_with_server_name(username, crate::server_name())
+            let user_id = UserId::parse_with_server_name(username, config::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             let Some(user) = data::user::get_user(&user_id)? else {
                 return Err(MatrixError::forbidden(None, "User not found.").into());
@@ -101,7 +101,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             } else {
                 return Err(MatrixError::forbidden(None, "Bad login type.").into());
             };
-            let user_id = UserId::parse_with_server_name(username, crate::server_name())
+            let user_id = UserId::parse_with_server_name(username, config::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             user_id
         }

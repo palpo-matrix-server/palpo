@@ -20,7 +20,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
 use crate::room::state::{self, DeltaInfo};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, config, data};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,
@@ -32,7 +32,9 @@ pub async fn knock_room_by_id(
 
     if crate::room::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already invited/accepted to.").into());
+        return Err(
+            MatrixError::forbidden(None, "You cannot knock on a room you are already invited/accepted to.").into(),
+        );
     }
 
     if crate::room::is_joined(sender_id, room_id)? {
@@ -52,7 +54,7 @@ pub async fn knock_room_by_id(
         }
     }
 
-    let server_in_room = crate::room::is_server_in_room(crate::server_name(), room_id)?;
+    let server_in_room = crate::room::is_server_in_room(config::server_name(), room_id)?;
     let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
 
     if local_knock {
@@ -116,8 +118,10 @@ async fn knock_room_local(
 
     let room_version_id = make_knock_body.room_version;
 
-    if !crate::supports_room_version(&room_version_id) {
-        return Err(MatrixError::forbidden(None, "Remote room version {room_version_id} is not supported by palpo").into());
+    if !config::supports_room_version(&room_version_id) {
+        return Err(
+            MatrixError::forbidden(None, "Remote room version {room_version_id} is not supported by palpo").into(),
+        );
     }
     let mut knock_event_stub =
         serde_json::from_str::<CanonicalJsonObject>(make_knock_body.event.get()).map_err(|e| {
@@ -127,7 +131,7 @@ async fn knock_room_local(
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -219,7 +223,7 @@ async fn knock_room_remote(
 
     let room_version_id = make_knock_response.room_version;
 
-    if !crate::supports_room_version(&room_version_id) {
+    if !config::supports_room_version(&room_version_id) {
         return Err(StatusError::internal_server_error()
             .brief("Remote room version {room_version_id} is not supported by palpo")
             .into());
@@ -233,7 +237,7 @@ async fn knock_room_remote(
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -423,7 +427,7 @@ async fn make_knock_request(
             MakeKnockReqArgs {
                 room_id: room_id.to_owned(),
                 user_id: sender_id.to_owned(),
-                ver: crate::supported_room_versions(),
+                ver: config::supported_room_versions(),
             },
         )?
         .into_inner();

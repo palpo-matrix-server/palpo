@@ -506,10 +506,13 @@ pub(super) async fn kick_user(
         event.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
-        return Err(MatrixError::forbidden(None, format!(
-            "Cannot kick a user who is not apart of the room (current membership: {})",
-            event.membership
-        ))
+        return Err(MatrixError::forbidden(
+            None,
+            format!(
+                "Cannot kick a user who is not apart of the room (current membership: {})",
+                event.membership
+            ),
+        )
         .into());
     }
 

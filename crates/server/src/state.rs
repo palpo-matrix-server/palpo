@@ -8,7 +8,7 @@ use crate::core::events::{AnyStateEventContent, StateEventType};
 use crate::core::serde::RawJson;
 use crate::core::{EventId, RoomId, UserId};
 use crate::event::PduBuilder;
-use crate::{AppResult, IsRemoteOrLocal, MatrixError};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, config};
 
 pub async fn send_state_event_for_key(
     user_id: &UserId,
@@ -45,7 +45,7 @@ fn allowed_to_send_state_event(
         }
         // Forbid m.room.encryption if encryption is disabled
         StateEventType::RoomEncryption => {
-            if !crate::allow_encryption() {
+            if !config::allow_encryption() {
                 return Err(MatrixError::forbidden(None, "Encryption is disabled on this homeserver.").into());
             }
         }
@@ -54,9 +54,11 @@ fn allowed_to_send_state_event(
             if crate::room::is_admin_room(room_id) {
                 if let Ok(join_rule) = serde_json::from_str::<RoomJoinRulesEventContent>(json.inner().get()) {
                     if join_rule.join_rule == JoinRule::Public {
-                        return Err(
-                            MatrixError::forbidden(None, "Admin room is a sensitive room, it cannot be made public").into(),
-                        );
+                        return Err(MatrixError::forbidden(
+                            None,
+                            "Admin room is a sensitive room, it cannot be made public",
+                        )
+                        .into());
                     }
                 }
             }
@@ -69,7 +71,8 @@ fn allowed_to_send_state_event(
                 if crate::room::is_admin_room(room_id)
                     && visibility_content.history_visibility == HistoryVisibility::WorldReadable
                 {
-                    return Err(MatrixError::forbidden(None, 
+                    return Err(MatrixError::forbidden(
+                        None,
                         "Admin room is a sensitive room, it cannot be made world readable \
 							 (public room history).",
                     )

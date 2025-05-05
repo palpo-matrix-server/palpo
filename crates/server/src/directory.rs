@@ -3,7 +3,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsCh
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
-use crate::{AppError, AppResult, MatrixError, exts::*};
+use crate::{AppError, AppResult, MatrixError, config, exts::*};
 
 pub async fn get_public_rooms(
     server: Option<&ServerName>,
@@ -12,7 +12,7 @@ pub async fn get_public_rooms(
     filter: &PublicRoomFilter,
     network: &RoomNetwork,
 ) -> AppResult<PublicRoomsResBody> {
-    if let Some(other_server) = server.filter(|server| *server != crate::server_name().as_str()) {
+    if let Some(other_server) = server.filter(|server| *server != config::server_name().as_str()) {
         let body = public_rooms_request(
             &other_server.origin().await,
             PublicRoomsReqBody {

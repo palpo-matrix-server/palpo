@@ -12,7 +12,7 @@ use url::Url;
 use crate::core::identifiers::*;
 use crate::core::{MatrixError, UnixMillis};
 use crate::data::media::{DbUrlPreview, NewDbMetadata, NewDbUrlPreview};
-use crate::{AppResult, data, utils};
+use crate::{AppResult, config, data, utils};
 
 static URL_PREVIEW_MUTEX: LazyLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = LazyLock::new(Default::default);
 async fn get_url_preview_mutex(url: &str) -> Arc<Mutex<()>> {
@@ -240,7 +240,7 @@ pub async fn get_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
 async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
     let client = client();
     if let Ok(ip) = IPAddress::parse(url.host_str().expect("URL previously validated")) {
-        if !crate::valid_cidr_range(&ip) {
+        if !config::valid_cidr_range(&ip) {
             return Err(MatrixError::forbidden(None, "Requesting from this address is forbidden").into());
         }
     }
@@ -251,7 +251,7 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
     if let Some(remote_addr) = response.remote_addr() {
         debug!(?url, "URL preview response remote address: {:?}", remote_addr);
         if let Ok(ip) = IPAddress::parse(remote_addr.ip().to_string()) {
-            if !crate::valid_cidr_range(&ip) {
+            if !config::valid_cidr_range(&ip) {
                 return Err(MatrixError::forbidden(None, "Requesting from this address is forbidden").into());
             }
         }
@@ -283,11 +283,11 @@ async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
     let content_type = content_type.and_then(|ct| ct.to_str().ok()).map(|c| c.to_owned());
     let image = image.bytes().await?;
     let mxc = Mxc {
-        server_name: crate::server_name(),
+        server_name: &conf.server_name,
         media_id: &utils::random_string(crate::MXC_LENGTH),
     };
 
-    let dest_path = crate::media_path(&conf.server_name, &mxc.media_id);
+    let dest_path = config::media_path(&conf.server_name, &mxc.media_id);
     let dest_path = Path::new(&dest_path);
     if !dest_path.exists() {
         let parent_dir = utils::fs::get_parent_dir(&dest_path);
