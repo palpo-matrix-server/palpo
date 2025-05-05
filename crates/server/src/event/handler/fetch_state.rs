@@ -15,11 +15,6 @@ pub(super) async fn fetch_state(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
-    println!(
-        ">>>>>>>>>>>>>>>>fetch_state, {} event_id: {}",
-        config::server_name(),
-        event_id
-    );
     debug!("Calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
