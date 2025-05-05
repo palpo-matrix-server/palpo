@@ -430,15 +430,25 @@ where
     Ok(serde_json::from_str(state.content.get())?)
 }
 
-pub fn get_room_state(room_id: &RoomId, event_type: &StateEventType, state_key: &str, until_sn: Option<Seqnum>) -> AppResult<PduEvent> {
+pub fn get_room_state(
+    room_id: &RoomId,
+    event_type: &StateEventType,
+    state_key: &str,
+    until_sn: Option<Seqnum>,
+) -> AppResult<PduEvent> {
     let frame_id = get_room_frame_id(room_id, until_sn)?;
     get_state(frame_id, event_type, state_key)
 }
-pub fn get_room_state_content<T>(room_id: &RoomId, event_type: &StateEventType, state_key: &str, until_sn: Option<Seqnum>) -> AppResult<T>
+pub fn get_room_state_content<T>(
+    room_id: &RoomId,
+    event_type: &StateEventType,
+    state_key: &str,
+    until_sn: Option<Seqnum>,
+) -> AppResult<T>
 where
     T: DeserializeOwned,
 {
-    let frame_id = get_room_frame_id(room_id, None)?;
+    let frame_id = get_room_frame_id(room_id, until_sn)?;
     get_state_content(frame_id, event_type, state_key)
 }
 // /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
@@ -651,11 +661,14 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
 pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    if crate::room::is_joined(&user_id, &room_id)? {
+        return Ok(true);
+    }
+
     let history_visibility = get_history_visibility(&room_id)?;
     match history_visibility {
         HistoryVisibility::Invited => crate::room::user::is_invited(user_id, room_id),
         HistoryVisibility::WorldReadable => Ok(true),
-        HistoryVisibility::Joined => crate::room::user::is_joined(user_id, room_id),
         _ => Ok(false),
     }
 }
@@ -763,12 +776,18 @@ pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
 }
 
 pub fn get_room_type(room_id: &RoomId) -> AppResult<Option<RoomType>> {
-    get_room_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None).map(|c| c.room_type)
+    get_room_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
+        .map(|c| c.room_type)
 }
 
 pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> {
-    get_room_state_content::<RoomHistoryVisibilityEventContent>(&room_id, &StateEventType::RoomHistoryVisibility, "", None)
-        .map(|c| c.history_visibility)
+    get_room_state_content::<RoomHistoryVisibilityEventContent>(
+        &room_id,
+        &StateEventType::RoomHistoryVisibility,
+        "",
+        None,
+    )
+    .map(|c| c.history_visibility)
 }
 
 pub fn is_world_readable(room_id: &RoomId) -> AppResult<bool> {

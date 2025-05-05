@@ -26,11 +26,18 @@ pub(super) fn get_state(
     depot: &mut Depot,
 ) -> JsonResult<StateEventsResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
 
-    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
-    }
+    let until_sn = if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
+        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
+            Some(leave_sn)
+        } else {
+            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        }
+    } else {
+        None
+    };
 
     let frame_id = state::get_room_frame_id(&room_id, None)?;
 
@@ -96,6 +103,7 @@ pub fn report(
     ));
     empty_ok()
 }
+
 /// #GET /_matrix/client/r0/rooms/{room_id}/state/{event_type}/{state_key}
 /// Get single state event of a room.
 ///
@@ -107,12 +115,19 @@ pub(super) fn state_for_key(
     depot: &mut Depot,
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
-    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
-    }
+    let sender_id = authed.user_id();
 
-    let event = state::get_room_state(&args.room_id, &args.event_type, &args.state_key, None)?;
+    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
+        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
+            Some(leave_sn)
+        } else {
+            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        }
+    } else {
+        None
+    };
 
+    let event = state::get_room_state(&args.room_id, &args.event_type, &args.state_key, until_sn)?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
@@ -136,16 +151,17 @@ pub(super) async fn state_for_empty_key(
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let event = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
+    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
-            state::get_room_state(&args.room_id, &args.event_type, "", Some(leave_sn))?
+            Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
         }
     } else {
-        state::get_room_state(&args.room_id, &args.event_type, "", None)?
+        None
     };
 
+    let event = state::get_room_state(&args.room_id, &args.event_type, "", until_sn)?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),

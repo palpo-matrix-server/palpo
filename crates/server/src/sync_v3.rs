@@ -254,7 +254,8 @@ pub async fn sync_events(
                 crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                     .into_iter()
                     .map(|other_room_id| {
-                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
+                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                            .is_ok()
                     })
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need
@@ -269,7 +270,8 @@ pub async fn sync_events(
             crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                 .into_iter()
                 .map(|other_room_id| {
-                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
+                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                        .is_ok()
                 })
                 .all(|encrypted| !encrypted);
         // If the user doesn't share an encrypted room with the target anymore, we need to tell
@@ -569,9 +571,12 @@ async fn load_joined_room(
                 if !crate::room::lazy_loading::lazy_load_was_sent_before(sender_id, device_id, &room_id, &event.sender)?
                     || lazy_load_send_redundant
                 {
-                    if let Ok(member_event) =
-                        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, event.sender.as_str(), None)
-                    {
+                    if let Ok(member_event) = crate::room::state::get_room_state(
+                        &room_id,
+                        &StateEventType::RoomMember,
+                        event.sender.as_str(),
+                        None,
+                    ) {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
                     }
@@ -688,9 +693,20 @@ async fn load_joined_room(
         None
     };
 
-    let prev_batch = timeline_pdus.first().map(|(sn, _)| sn.to_string());
-
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
+    let mut limited = limited || joined_since_last_sync;
+    if let Some(first_event) = room_events.first() {
+        if let Ok(first_event) = first_event.deserialize() {
+            if first_event.event_type() == TimelineEventType::RoomCreate {
+                limited = false;
+            }
+        }
+    }
+    let prev_batch = if limited {
+        timeline_pdus.first().map(|(sn, _)| sn.to_string())
+    } else {
+        timeline_pdus.last().map(|(sn, _)| sn.to_string())
+    };
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
@@ -726,7 +742,7 @@ async fn load_joined_room(
             notification_count,
         },
         timeline: Timeline {
-            limited: limited || joined_since_last_sync,
+            limited,
             prev_batch,
             events: room_events,
         },
@@ -760,8 +776,10 @@ pub(crate) fn load_timeline(
 
     if timeline_pdus.len() > limit {
         timeline_pdus.remove(0);
+        println!("lllllload timeline   remmove 0 limited");
         Ok((timeline_pdus, true))
     } else {
+        println!("lllllload timeline limited false");
         Ok((timeline_pdus, false))
     }
 }
