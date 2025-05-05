@@ -27,7 +27,7 @@ pub struct EventHash {
 pub struct PduEvent {
     pub event_id: Arc<EventId>,
     #[serde(skip_serializing)]
-    pub event_sn: i64,
+    pub event_sn: Seqnum,
     #[serde(rename = "type")]
     pub event_ty: TimelineEventType,
     pub room_id: OwnedRoomId,

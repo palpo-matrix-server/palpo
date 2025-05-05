@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -39,7 +40,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let membership = args.membership.as_ref();
     let not_membership = args.not_membership.as_ref();
 
-    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
+    let mut until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
@@ -50,7 +51,12 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     };
 
     let frame_id = if let Some(at_sn) = &args.at {
-        if let Ok(at_sn) = at_sn.parse::<i64>() {
+        if let Ok(at_sn) = at_sn.parse::<Seqnum>() {
+            if let Some(usn) = until_sn {
+                until_sn = Some(usn.min(at_sn));
+            } else {
+                until_sn = Some(at_sn);
+            }
             event_points::table
                 .filter(event_points::room_id.eq(&args.room_id))
                 .filter(event_points::event_sn.le(at_sn))
@@ -68,7 +74,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
-        .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership))
+        .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership, until_sn))
         .map(|pdu| pdu.to_member_event())
         .collect();
 
@@ -78,7 +84,13 @@ fn membership_filter(
     pdu: PduEvent,
     for_membership: Option<&MembershipEventFilter>,
     not_membership: Option<&MembershipEventFilter>,
+    until_sn: Option<Seqnum>,
 ) -> Option<PduEvent> {
+    if let Some(until_sn) = until_sn {
+        if pdu.event_sn > until_sn {
+            return None;
+        }
+    }
     let membership_state_filter = match for_membership {
         Some(MembershipEventFilter::Ban) => MembershipState::Ban,
         Some(MembershipEventFilter::Invite) => MembershipState::Invite,
@@ -132,13 +144,21 @@ pub(super) fn joined_members(
     depot: &mut Depot,
 ) -> JsonResult<JoinedMembersResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
+    let room_id = room_id.into_inner();
 
-    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
-    }
+    let until_sn = if !state::user_can_see_state_events(sender_id, &room_id)? {
+        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
+            Some(leave_sn)
+        } else {
+            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        }
+    } else {
+        None
+    };
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id, None)? {
+    for user_id in crate::room::get_joined_users(&room_id, until_sn)? {
         if let Some(DbProfile {
             display_name,
             avatar_url,
@@ -279,7 +299,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!("\n\n\n ======================= join_room_by_id_or_alias");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
@@ -472,7 +491,8 @@ pub(super) async fn unban_user(
     let mut event = state::get_room_state_content::<RoomMemberEventContent>(
         &room_id,
         &StateEventType::RoomMember,
-        body.user_id.as_ref(), None,
+        body.user_id.as_ref(),
+        None,
     )?;
 
     event.membership = MembershipState::Leave;
