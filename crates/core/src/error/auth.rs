@@ -37,7 +37,7 @@ impl AuthenticateError {
     /// Construct an `AuthenticateError` from a string.
     ///
     /// Returns `None` if the string doesn't contain an error.
-    fn from_str(s: &str) -> Option<Self> {
+    pub fn from_str(s: &str) -> Option<Self> {
         if let Some(val) = s.strip_prefix("Bearer").map(str::trim) {
             let mut errcode = None;
             let mut attrs = BTreeMap::new();

@@ -119,7 +119,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let room_id = base_event.room_id.clone();
 
     if !crate::room::state::user_can_see_event(authed.user_id(), &room_id, &args.event_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this event.").into());
+        return Err(MatrixError::forbidden("You don't have permission to view this event.", None).into());
     }
 
     if !crate::room::lazy_loading::lazy_load_was_sent_before(

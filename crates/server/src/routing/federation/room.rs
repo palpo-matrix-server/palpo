@@ -124,7 +124,7 @@ async fn send_knock(
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(MatrixError::forbidden(None, "Room version does not support knocking.").into());
+        return Err(MatrixError::forbidden("Room version does not support knocking.", None).into());
     }
 
     let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
@@ -233,6 +233,7 @@ async fn send_knock(
 /// Creates a knock template.
 #[endpoint]
 async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) -> JsonResult<MakeKnockResBody> {
+    println!("QQQQQQQQQQQQQQQQQQQQQQmake_knock: {args:?}");
     use crate::core::RoomVersionId::*;
 
     let origin = depot.origin()?;
@@ -251,7 +252,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(
-            MatrixError::incompatible_room_version(room_version_id, "Room version does not support knocking.").into(),
+            MatrixError::incompatible_room_version("Room version does not support knocking.", room_version_id).into(),
         );
     }
 
@@ -270,7 +271,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
                 "Remote user {} is banned from {} but attempted to knock",
                 &args.user_id, &args.room_id
             );
-            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
         }
     }
 

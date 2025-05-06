@@ -46,7 +46,7 @@ fn allowed_to_send_state_event(
         // Forbid m.room.encryption if encryption is disabled
         StateEventType::RoomEncryption => {
             if !config::allow_encryption() {
-                return Err(MatrixError::forbidden(None, "Encryption is disabled on this homeserver.").into());
+                return Err(MatrixError::forbidden("Encryption is disabled on this homeserver.", None).into());
             }
         }
         // admin room is a sensitive room, it should not ever be made public
@@ -55,8 +55,8 @@ fn allowed_to_send_state_event(
                 if let Ok(join_rule) = serde_json::from_str::<RoomJoinRulesEventContent>(json.inner().get()) {
                     if join_rule.join_rule == JoinRule::Public {
                         return Err(MatrixError::forbidden(
-                            None,
                             "Admin room is a sensitive room, it cannot be made public",
+                            None,
                         )
                         .into());
                     }
@@ -72,9 +72,9 @@ fn allowed_to_send_state_event(
                     && visibility_content.history_visibility == HistoryVisibility::WorldReadable
                 {
                     return Err(MatrixError::forbidden(
-                        None,
                         "Admin room is a sensitive room, it cannot be made world readable \
 							 (public room history).",
+                        None,
                     )
                     .into());
                 }
@@ -90,7 +90,7 @@ fn allowed_to_send_state_event(
 
                 for alias in aliases {
                     if !alias.server_name().is_local() {
-                        return Err(MatrixError::forbidden(None, "Canonical_alias must be for this server.").into());
+                        return Err(MatrixError::forbidden("Canonical_alias must be for this server.", None).into());
                     }
 
                     if !crate::room::resolve_local_alias(&alias).is_ok_and(|room| room == room_id)

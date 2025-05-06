@@ -1,7 +1,4 @@
-use crate::{
-    RoomVersionId,
-    state::{StateError, StateResult},
-};
+use crate::{MatrixError, MatrixResult, RoomVersionId};
 
 #[derive(Debug)]
 #[allow(clippy::exhaustive_enums)]
@@ -147,7 +144,7 @@ impl RoomVersion {
         ..Self::V10
     };
 
-    pub fn new(version: &RoomVersionId) -> StateResult<Self> {
+    pub fn new(version: &RoomVersionId) -> MatrixResult<Self> {
         Ok(match version {
             RoomVersionId::V1 => Self::V1,
             RoomVersionId::V2 => Self::V2,
@@ -160,7 +157,7 @@ impl RoomVersion {
             RoomVersionId::V9 => Self::V9,
             RoomVersionId::V10 => Self::V10,
             RoomVersionId::V11 => Self::V11,
-            ver => return Err(StateError::Unsupported(format!("found version `{ver}`"))),
+            ver => return Err(MatrixError::unsupported_room_version(format!("found version `{ver}`"))),
         })
     }
 }

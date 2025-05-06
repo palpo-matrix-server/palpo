@@ -37,21 +37,23 @@ async fn send_message(
         body
     );
     if &body.origin != origin {
-        return Err(MatrixError::forbidden(None, "Not allowed to send transactions on behalf of other servers").into());
+        return Err(
+            MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
+        );
     }
 
     if body.pdus.len() > PDU_LIMIT {
         return Err(MatrixError::forbidden(
-            None,
             "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction",
+            None,
         )
         .into());
     }
 
     if body.edus.len() > EDU_LIMIT {
         return Err(MatrixError::forbidden(
-            None,
             "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction",
+            None,
         )
         .into());
     }

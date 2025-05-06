@@ -203,7 +203,7 @@ async fn get_room_summary(
     let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
 
     if !is_accessible_child {
-        return Err(MatrixError::forbidden(None, "User is not allowed to see the room").into());
+        return Err(MatrixError::forbidden("User is not allowed to see the room", None).into());
     }
 
     let name = state::get_name(room_id).ok();

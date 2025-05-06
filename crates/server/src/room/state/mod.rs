@@ -506,7 +506,7 @@ pub async fn user_can_redact(
         .as_ref()
         .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomCreate)
     {
-        return Err(MatrixError::forbidden(None, "Redacting m.room.create is not safe, forbidding.").into());
+        return Err(MatrixError::forbidden("Redacting m.room.create is not safe, forbidding.", None).into());
     }
 
     if redacting_event
@@ -514,9 +514,9 @@ pub async fn user_can_redact(
         .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomServerAcl)
     {
         return Err(MatrixError::forbidden(
-            None,
             "Redacting m.room.server_acl will result in the room being inaccessible for \
     			 everyone (empty allow key), forbidding.",
+            None,
         )
         .into());
     }

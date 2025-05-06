@@ -33,7 +33,7 @@ pub(super) fn get_state(
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     } else {
         None
@@ -121,7 +121,7 @@ pub(super) fn state_for_key(
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     } else {
         None
@@ -155,7 +155,7 @@ pub(super) async fn state_for_empty_key(
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     } else {
         None
@@ -242,7 +242,7 @@ pub async fn send_typing(
     let authed = depot.authed_info()?;
 
     if !crate::room::is_joined(authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden(None, "You are not in this room.").into());
+        return Err(MatrixError::forbidden("You are not in this room.", None).into());
     }
 
     if let Typing::Yes(duration) = body.state {

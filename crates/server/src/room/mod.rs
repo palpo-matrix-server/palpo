@@ -123,8 +123,13 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
 }
 
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    self::state::get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
-        .map(|c| c.guest_access == GuestAccess::CanJoin)
+    self::state::get_room_state_content::<RoomGuestAccessEventContent>(
+        &room_id,
+        &StateEventType::RoomGuestAccess,
+        "",
+        None,
+    )
+    .map(|c| c.guest_access == GuestAccess::CanJoin)
 }
 
 pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {

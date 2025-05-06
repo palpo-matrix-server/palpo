@@ -241,7 +241,8 @@ pub async fn send_push_notice(
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
-        "", None,
+        "",
+        None,
     )
     .unwrap_or_default();
 

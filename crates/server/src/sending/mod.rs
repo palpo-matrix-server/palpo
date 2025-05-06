@@ -28,7 +28,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::sending::resolver::Resolver;
-use crate::{AppError, AppResult, TlsNameMap, config, ServerConfig, data, exts::*, utils};
+use crate::{AppError, AppResult, ServerConfig, TlsNameMap, config, data, exts::*, utils};
 
 mod dest;
 pub use dest::*;

@@ -33,13 +33,13 @@ pub async fn knock_room_by_id(
     if crate::room::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
-            MatrixError::forbidden(None, "You cannot knock on a room you are already invited/accepted to.").into(),
+            MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.", None).into(),
         );
     }
 
     if crate::room::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already joined in.").into());
+        return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.", None).into());
     }
 
     if crate::room::is_knocked(sender_id, room_id)? {
@@ -50,7 +50,7 @@ pub async fn knock_room_by_id(
     if let Ok(memeber) = state::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
-            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
         }
     }
 
@@ -72,23 +72,19 @@ async fn knock_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
+    use RoomVersionId::*;
     info!("We can knock locally");
     let room_version_id = crate::room::state::get_room_version(room_id)?;
-    if matches!(
-        room_version_id,
-        RoomVersionId::V1
-            | RoomVersionId::V2
-            | RoomVersionId::V3
-            | RoomVersionId::V4
-            | RoomVersionId::V5
-            | RoomVersionId::V6
-    ) {
-        return Err(MatrixError::forbidden(None, "This room version does not support knocking.").into());
+    if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
+        return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
     }
 
     let join_rule = crate::room::state::get_join_rule(room_id)?;
-    if !matches!(join_rule, JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)) {
-        return Err(MatrixError::forbidden(None, "This room does not support knocking.").into());
+    if !matches!(
+        join_rule,
+        JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
+    ) {
+        return Err(MatrixError::forbidden("This room does not support knocking.", None).into());
     }
 
     let content = RoomMemberEventContent {
@@ -122,7 +118,7 @@ async fn knock_room_local(
 
     if !config::supports_room_version(&room_version_id) {
         return Err(
-            MatrixError::forbidden(None, "Remote room version {room_version_id} is not supported by palpo").into(),
+            MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo", None).into(),
         );
     }
     let mut knock_event_stub =

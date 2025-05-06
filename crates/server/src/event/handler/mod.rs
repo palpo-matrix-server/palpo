@@ -66,7 +66,7 @@ pub(crate) async fn handle_incoming_pdu(
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(
-            MatrixError::forbidden(None, "Federation of this room is currently disabled on this server.").into(),
+            MatrixError::forbidden("Federation of this room is currently disabled on this server.", None).into(),
         );
     }
 
@@ -427,7 +427,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
-    let auth_checked = event_auth::auth_check(
+    event_auth::auth_check(
         &room_version,
         &incoming_pdu,
         None::<PduEvent>, // TODO: third party invite
@@ -437,12 +437,8 @@ pub async fn upgrade_outlier_to_timeline_pdu(
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
                 .and_then(|event_id| crate::room::timeline::get_pdu(event_id).ok())
         },
-    )
-    .map_err(|_e| MatrixError::forbidden(None, "Auth check failed for event passes based on the state"))?;
+    )?;
 
-    if !auth_checked {
-        return Err(MatrixError::forbidden(None, "Event has failed auth check with state at the event.").into());
-    }
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
@@ -454,17 +450,15 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
-    let auch_checked = event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
+    event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
-    })
-    .map_err(|_e| MatrixError::invalid_param("Auth check failed before doing state"))?;
+    })?;
 
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
-    let soft_fail = match (auch_checked, incoming_pdu.redacts_id(&room_version_id)) {
-        (false, _) => true,
-        (true, None) => false,
-        (true, Some(redact_id)) => {
+    let soft_fail = match incoming_pdu.redacts_id(&room_version_id) {
+        None => false,
+        Some(redact_id) => {
             !crate::room::state::user_can_redact(&redact_id, &incoming_pdu.sender, &incoming_pdu.room_id, true).await?
         }
     };
@@ -901,7 +895,7 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         Ok(())
     } else {
         info!("Server {} was denied by room ACL in {}", server_name, room_id);
-        Err(MatrixError::forbidden(None, "Server was denied by room ACL").into())
+        Err(MatrixError::forbidden("Server was denied by room ACL", None).into())
     }
 }
 

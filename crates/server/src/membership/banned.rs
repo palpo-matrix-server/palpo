@@ -48,7 +48,7 @@ pub async fn banned_room_check(
                 crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
-            return Err(MatrixError::forbidden(None, "This room is banned on this homeserver.").into());
+            return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
         }
     } else if let Some(server_name) = server_name {
         if conf.forbidden_remote_server_names.is_match(server_name.host()) {
@@ -71,7 +71,7 @@ pub async fn banned_room_check(
                 crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
-            return Err(MatrixError::forbidden(None, "This remote server is banned on this homeserver.").into());
+            return Err(MatrixError::forbidden("This remote server is banned on this homeserver.", None).into());
         }
     }
     Ok(())

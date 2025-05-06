@@ -44,7 +44,7 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     } else {
         None
@@ -151,7 +151,7 @@ pub(super) fn joined_members(
         if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     } else {
         None
@@ -534,11 +534,11 @@ pub(super) async fn kick_user(
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
         return Err(MatrixError::forbidden(
-            None,
             format!(
                 "Cannot kick a user who is not apart of the room (current membership: {})",
                 event.membership
             ),
+            None,
         )
         .into());
     }

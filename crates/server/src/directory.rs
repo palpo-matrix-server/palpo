@@ -81,7 +81,8 @@ fn get_local_public_rooms(
                 join_rule: crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
                     &room_id,
                     &StateEventType::RoomJoinRules,
-                    "", None
+                    "",
+                    None,
                 )
                 .map(|c| match c.join_rule {
                     JoinRule::Public => Some(PublicRoomJoinRule::Public),

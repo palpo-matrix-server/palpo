@@ -42,10 +42,10 @@ pub(super) async fn get_messages(
             .first::<(i64, bool)>(&mut connect()?)
             .optional()?
         else {
-            return Err(MatrixError::forbidden(None, "You aren’t a member of the room.").into());
+            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
         };
         if forgotten {
-            return Err(MatrixError::forbidden(None, "You aren’t a member of the room.").into());
+            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
         }
         Some(until_sn)
     } else {
@@ -188,7 +188,7 @@ pub(super) async fn send_message(
 
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
-        return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
+        return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
     let payload = req.payload().await?;
@@ -246,7 +246,7 @@ pub(super) async fn post_message(
 
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
-        return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
+        return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
     let payload = req.payload().await?;

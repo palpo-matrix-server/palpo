@@ -49,12 +49,12 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
         let user = users::table
             .find(&access_token.user_id)
             .first::<DbUser>(conn)
-            .map_err(|_| MatrixError::unknown_token(true, "User not found"))?;
+            .map_err(|_| MatrixError::unknown_token("User not found", true))?;
         let user_device = user_devices::table
             .filter(user_devices::device_id.eq(&access_token.device_id))
             .filter(user_devices::user_id.eq(&user.id))
             .first::<DbUserDevice>(conn)
-            .map_err(|_| MatrixError::unknown_token(true, "User device not found"))?;
+            .map_err(|_| MatrixError::unknown_token("User device not found", true))?;
 
         depot.inject(AuthedInfo {
             user,
@@ -64,14 +64,14 @@ async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResul
         });
         Ok(())
     } else {
-        Err(MatrixError::unknown_token(true, "Unknown access token").into())
+        Err(MatrixError::unknown_token("Unknown access token", true).into())
     }
 }
 
 async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppResult<()> {
     let Some(Authorization(x_matrix)) = req.headers().typed_get::<Authorization<XMatrix>>() else {
         warn!("Missing or invalid Authorization header");
-        return Err(MatrixError::forbidden(None, "Missing or invalid authorization header").into());
+        return Err(MatrixError::forbidden("Missing or invalid authorization header", None).into());
     };
 
     let origin_signatures = BTreeMap::from_iter([(
@@ -138,7 +138,7 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
             );
         }
 
-        Err(MatrixError::forbidden(None, "Failed to verify X-Matrix signatures.").into())
+        Err(MatrixError::forbidden("Failed to verify X-Matrix signatures.", None).into())
     } else {
         depot.set_origin(origin.to_owned());
         Ok(())

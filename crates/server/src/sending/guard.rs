@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
+use super::sender;
 use super::{
     EduBuf, EduVec, MPSC_RECEIVER, MPSC_SENDER, OutgoingKind, SELECT_EDU_LIMIT, SELECT_PRESENCE_LIMIT,
     SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus,
@@ -32,7 +33,6 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::{AppError, AppResult, config, data, exts::*, utils};
-use super::sender;
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();

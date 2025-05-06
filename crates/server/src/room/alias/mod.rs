@@ -222,7 +222,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
 
         Ok(())
     } else {
-        Err(MatrixError::forbidden(None, "User is not permitted to remove this alias.").into())
+        Err(MatrixError::forbidden("User is not permitted to remove this alias.", None).into())
     }
 }
 #[tracing::instrument]
@@ -245,7 +245,8 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     } else if let Ok(content) = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "", None
+        "",
+        None,
     ) {
         Ok(RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
