@@ -73,10 +73,7 @@ async fn knock_room_local(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     info!("We can knock locally");
-    println!("We can knock locally");
-
     let room_version_id = crate::room::state::get_room_version(room_id)?;
-
     if matches!(
         room_version_id,
         RoomVersionId::V1
@@ -86,11 +83,11 @@ async fn knock_room_local(
             | RoomVersionId::V5
             | RoomVersionId::V6
     ) {
-        return Err(MatrixError::forbidden(None, "This room does not support knocking.").into());
+        return Err(MatrixError::forbidden(None, "This room version does not support knocking.").into());
     }
 
     let join_rule = crate::room::state::get_join_rule(room_id)?;
-    if join_rule != JoinRule::Knock {
+    if !matches!(join_rule, JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)) {
         return Err(MatrixError::forbidden(None, "This room does not support knocking.").into());
     }
 

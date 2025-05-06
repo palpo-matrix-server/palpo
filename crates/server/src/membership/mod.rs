@@ -138,7 +138,8 @@ pub fn update_membership(
                 if let Ok(Some(predecessor)) = crate::room::state::get_room_state_content::<RoomCreateEventContent>(
                     room_id,
                     &StateEventType::RoomCreate,
-                    "", None
+                    "",
+                    None,
                 )
                 .map(|c| c.predecessor)
                 {
@@ -250,7 +251,6 @@ pub fn update_membership(
             if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());
             }
-
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
