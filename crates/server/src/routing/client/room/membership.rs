@@ -26,7 +26,7 @@ use crate::room::state;
 use crate::sending::send_federation_request;
 use crate::user::DbProfile;
 use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, utils, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -328,7 +328,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             )
             .await?;
             let mut servers = via;
-            servers.extend(state::servers_invite_via(&room_id)?);
+            servers.extend(crate::room::lookup_servers(&room_id)?);
 
             let state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
             let state_servers = state_servers
@@ -352,7 +352,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via)).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
-            let addl_via_servers = state::servers_invite_via(&room_id)?;
+            let addl_via_servers = crate::room::lookup_servers(&room_id)?;
 
             let addl_state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
@@ -570,6 +570,7 @@ pub(crate) async fn knock_room(
     req: &mut Request,
     depot: &mut Depot,
 ) -> EmptyResult {
+    println!("Kkkkkkkkkkkkkkkkkkknock room {args:#?} body {body:#?}");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
@@ -583,8 +584,8 @@ pub(crate) async fn knock_room(
             .await?;
 
             let mut servers = body.via.clone();
-            servers.extend(state::servers_invite_via(&room_id).unwrap_or_default());
-
+            servers.extend(crate::room::lookup_servers(&room_id).unwrap_or_default());
+			println!("=========================servers 1 : {:?}", servers);
             servers.extend(
                 state::get_user_state(sender_id, &room_id)
                     .unwrap_or_default()
@@ -594,11 +595,14 @@ pub(crate) async fn knock_room(
                     .filter_map(|sender: &str| UserId::parse(sender).ok())
                     .map(|user| user.server_name().to_owned()),
             );
+			println!("=========================servers 2 : {:?}", servers);
 
             if let Ok(server) = room_id.server_name() {
                 servers.push(server.to_owned());
+				println!("=========================servers 3 : {:?}", servers);
             }
             servers.dedup();
+			utils::shuffle(&mut servers);
 
             (room_id, servers)
         }
@@ -613,7 +617,7 @@ pub(crate) async fn knock_room(
             )
             .await?;
 
-            let addl_via_servers = state::servers_invite_via(&room_id)?;
+            let addl_via_servers = crate::room::lookup_servers(&room_id)?;
             let addl_state_servers = state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
@@ -628,7 +632,10 @@ pub(crate) async fn knock_room(
 
             addl_servers.sort_unstable();
             addl_servers.dedup();
+			utils::shuffle(&mut addl_servers);
+			println!("=========================addl_servers 4 : {:?}", addl_servers);
             servers.append(&mut addl_servers);
+			println!("=========================servers 5 : {:?}", servers);
 
             (room_id, servers)
         }

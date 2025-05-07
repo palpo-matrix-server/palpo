@@ -220,11 +220,6 @@ fn handle_outlier_pdu<'a>(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
-    println!(
-        ">>>>>>>>>>>>>>>>handle_outlier_pdu, {} event_id: {}  {auth_events_known}",
-        config::server_name(),
-        event_id
-    );
     Box::pin(async move {
         // 1.1. Remove unsigned field
         value.remove("unsigned");

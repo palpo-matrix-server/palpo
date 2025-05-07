@@ -54,9 +54,10 @@ pub async fn knock_room_by_id(
         }
     }
 
-    let server_in_room = crate::room::is_server_in_room(config::server_name(), room_id)?;
+    let server_in_room = crate::room::is_server_joined_room(config::server_name(), room_id)?;
     let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
 
+    println!("sssssssssssserver_in_room: {server_in_room}   server_name:{}, room_id: {room_id}  servers: {servers:?}", config::server_name());
     if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
@@ -103,19 +104,16 @@ async fn knock_room_local(
     ) else {
         return Ok(());
     };
-
+    println!("xxxxxxxxxxxxxsservers: {servers:?}   server_name:{}", config::server_name());
     if servers.is_empty() || (servers.len() == 1 && servers[0].is_local()) {
+		println!("WWWWWWWWWWWWWWWWWWWWWreturn error  {error:?}");
         return Err(error);
     }
 
     warn!("We couldn't do the knock locally, maybe federation can help to satisfy the knock");
-
     let (make_knock_body, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
-
     info!("make_knock finished");
-
     let room_version_id = make_knock_body.room_version;
-
     if !config::supports_room_version(&room_version_id) {
         return Err(
             MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo", None).into(),

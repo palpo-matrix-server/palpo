@@ -30,7 +30,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, utils, IsRemoteOrLocal, config};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -180,7 +180,7 @@ pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
     Ok(())
 }
 
-pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
+pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
@@ -192,17 +192,17 @@ pub fn update_room_servers(room_id: &RoomId) -> AppResult<()> {
         .collect::<Vec<OwnedServerName>>();
 
     diesel::delete(
-        room_servers::table
-            .filter(room_servers::room_id.eq(room_id))
-            .filter(room_servers::server_id.ne_all(&joined_servers)),
+        room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq(room_id))
+            .filter(room_joined_servers::server_id.ne_all(&joined_servers)),
     )
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
-        diesel::insert_into(room_servers::table)
+        diesel::insert_into(room_joined_servers::table)
             .values((
-                room_servers::room_id.eq(room_id),
-                room_servers::server_id.eq(&joined_server),
+                room_joined_servers::room_id.eq(room_id),
+                room_joined_servers::server_id.eq(&joined_server),
             ))
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
@@ -261,12 +261,12 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     .map_err(Into::into)
 }
 pub fn local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
-    let local = is_server_in_room(config::server_name(), room_id)?
+    let local = is_server_joined_room(config::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0].is_local());
     Ok(local)
 }
-pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
+pub fn is_server_joined_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     // if server
     //     == room_id
     //         .server_name()
@@ -274,15 +274,23 @@ pub fn is_server_in_room(server: &ServerName, room_id: &RoomId) -> AppResult<boo
     // {
     //     return Ok(true);
     // }
-    let query = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.eq(server));
+    let query = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.eq(server));
     diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
-pub fn room_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .select(room_servers::server_id)
+pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .select(room_joined_servers::server_id)
+        .load::<OwnedServerName>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+#[tracing::instrument(level = "trace")]
+pub fn lookup_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
+    room_lookup_servers::table.filter(room_lookup_servers::room_id.eq(room_id))
+        .select(room_lookup_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)
         .map_err(Into::into)
 }
@@ -361,9 +369,9 @@ pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Ve
 
 /// Returns an iterator of all servers participating in this room.
 pub fn participating_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .select(room_servers::server_id)
+    room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .select(room_joined_servers::server_id)
         .load(&mut connect()?)
         .map_err(Into::into)
 }
@@ -376,10 +384,10 @@ pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
         .map_err(Into::into)
 }
 
-pub fn server_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
-    room_servers::table
-        .filter(room_servers::server_id.eq(server_name))
-        .select(room_servers::room_id)
+pub fn server_joined_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
+    room_joined_servers::table
+        .filter(room_joined_servers::server_id.eq(server_name))
+        .select(room_joined_servers::room_id)
         .load::<OwnedRoomId>(&mut connect()?)
         .map_err(Into::into)
 }
@@ -417,7 +425,7 @@ pub async fn room_available_servers(
     pre_servers: Vec<OwnedServerName>,
 ) -> AppResult<Vec<OwnedServerName>> {
     // find active servers in room state cache to suggest
-    let mut servers: Vec<OwnedServerName> = room_servers(room_id)?;
+    let mut servers: Vec<OwnedServerName> = joined_servers(room_id)?;
 
     // push any servers we want in the list already (e.g. responded remote alias
     // servers, room alias server itself)
@@ -426,8 +434,8 @@ pub async fn room_available_servers(
     servers.sort_unstable();
     servers.dedup();
 
-    // shuffle list of servers randomly after sort and dedupe
-    servers.shuffle(&mut rand::rng());
+    // shuffle list of servers randomly after sort and dedup
+    utils::shuffle(&mut servers);
 
     // insert our server as the very first choice if in list, else check if we can
     // prefer the room alias server first

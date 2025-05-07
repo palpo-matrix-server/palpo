@@ -151,10 +151,10 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 
 #[tracing::instrument(level = "debug")]
 pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
-    let servers = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.ne(config::server_name()))
-        .select(room_servers::server_id)
+    let servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
@@ -175,10 +175,10 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id:
 
 #[tracing::instrument(skip(room_id, edu), level = "debug")]
 pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
-    let servers = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.ne(config::server_name()))
-        .select(room_servers::server_id)
+    let servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_edu_servers(servers.into_iter(), edu)
 }

@@ -183,7 +183,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !crate::room::is_server_in_room(config::server_name(), &args.room_id)? {
+    if !crate::room::is_server_joined_room(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,

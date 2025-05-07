@@ -189,7 +189,7 @@ fn select_edus_device_changes(
     events_len: &AtomicUsize,
 ) -> AppResult<EduVec> {
     let mut events = EduVec::new();
-    let server_rooms = crate::room::server_rooms(server_name)?;
+    let server_rooms = crate::room::server_joined_rooms(server_name)?;
 
     let mut device_list_changes = HashSet::<OwnedUserId>::new();
     for room_id in server_rooms {
@@ -232,7 +232,7 @@ fn select_edus_device_changes(
 #[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
 fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
     let mut num = 0;
-    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_rooms(server_name)?
+    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_joined_rooms(server_name)?
         .into_iter()
         .filter_map(|room_id| {
             let receipt_map = select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
@@ -399,10 +399,10 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 
 #[tracing::instrument(level = "debug")]
 pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
-    let servers = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.ne(config::server_name()))
-        .select(room_servers::server_id)
+    let servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
@@ -423,10 +423,10 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id:
 
 #[tracing::instrument(skip(room_id, edu), level = "debug")]
 pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
-    let servers = room_servers::table
-        .filter(room_servers::room_id.eq(room_id))
-        .filter(room_servers::server_id.ne(config::server_name()))
-        .select(room_servers::server_id)
+    let servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_edu_servers(servers.into_iter(), edu)
 }
