@@ -99,9 +99,9 @@ pub fn set_presence(
         });
 
         let joined_rooms = data::user::joined_rooms(sender_id)?;
-        let remote_servers = room_servers::table
-            .filter(room_servers::room_id.eq_any(joined_rooms))
-            .select(room_servers::server_id)
+        let remote_servers = room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq_any(joined_rooms))
+            .select(room_joined_servers::server_id)
             .distinct()
             .load::<OwnedServerName>(&mut connect()?)?;
 

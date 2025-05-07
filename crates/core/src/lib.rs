@@ -47,10 +47,9 @@ use ::serde::{Deserialize, Serialize};
 use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 
-pub use self::{
-    identifiers::*,
-    time::{UnixMillis, UnixSeconds},
-};
+pub use self::identifiers::*;
+pub use self::time::{UnixMillis, UnixSeconds};
+
 pub type Seqnum = i64;
 pub type MatrixResult<T> = Result<T, MatrixError>;
 

@@ -589,9 +589,9 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
         .execute(&mut connect()?)?;
 
     if user_id.is_local() {
-        let remote_servers = room_servers::table
-            .filter(room_servers::room_id.eq_any(joined_rooms))
-            .select(room_servers::server_id)
+        let remote_servers = room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq_any(joined_rooms))
+            .select(room_joined_servers::server_id)
             .distinct()
             .load::<OwnedServerName>(&mut connect()?)?;
 
@@ -666,9 +666,9 @@ fn mark_device_list_update_with_joined_rooms(
     if user_id.is_remote() {
         return Ok(());
     }
-    let remote_servers = room_servers::table
-        .filter(room_servers::room_id.eq_any(joined_rooms))
-        .select(room_servers::server_id)
+    let remote_servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq_any(joined_rooms))
+        .select(room_joined_servers::server_id)
         .distinct()
         .load::<OwnedServerName>(&mut connect()?)?;
 

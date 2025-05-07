@@ -9,15 +9,10 @@ use itertools::Itertools;
 use serde_json::from_str as from_json_str;
 use tracing::{debug, info, trace, warn};
 
-use crate::{
-    EventId, RoomVersionId, UnixMillis,
-    events::{
-        StateEventType, StateKey, TimelineEventType,
-        room::member::{MembershipState, RoomMemberEventContent},
-    },
-};
+use crate::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::events::{StateEventType, StateKey, TimelineEventType};
+use crate::{EventId, MatrixError, MatrixResult, RoomVersionId, UnixMillis};
 
-mod error;
 pub mod event_auth;
 mod power_levels;
 pub mod room_version;
@@ -25,7 +20,6 @@ mod state_event;
 #[cfg(test)]
 mod test_utils;
 
-pub use error::{StateError, StateResult};
 pub use event_auth::{auth_check, auth_types_for_event};
 use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
@@ -63,7 +57,7 @@ pub fn resolve<'a, E, SetIter>(
     state_sets: impl IntoIterator<IntoIter = SetIter>,
     auth_chain_sets: Vec<HashSet<E::Id>>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> StateResult<StateMap<E::Id>>
+) -> MatrixResult<StateMap<E::Id>>
 where
     E: Event + Clone,
     E::Id: 'a,
@@ -224,7 +218,7 @@ fn reverse_topological_power_sort<E: Event>(
     events_to_sort: Vec<E::Id>,
     auth_diff: &HashSet<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> StateResult<Vec<E::Id>> {
+) -> MatrixResult<Vec<E::Id>> {
     debug!("reverse topological sort of power events");
 
     let mut graph = HashMap::new();
@@ -250,10 +244,11 @@ fn reverse_topological_power_sort<E: Event>(
     }
 
     lexicographical_topological_sort(&graph, |event_id| {
-        let ev = fetch_event(event_id).ok_or_else(|| StateError::NotFound("".into()))?;
+        let ev =
+            fetch_event(event_id).ok_or_else(|| MatrixError::not_found(format!("event `{event_id}` is not found.")))?;
         let pl = *event_to_pl
             .get(event_id)
-            .ok_or_else(|| StateError::NotFound("".into()))?;
+            .ok_or_else(|| MatrixError::not_found(format!("event `{event_id}` is not found.")))?;
         Ok((pl, ev.origin_server_ts()))
     })
 }
@@ -262,9 +257,9 @@ fn reverse_topological_power_sort<E: Event>(
 ///
 /// `key_fn` is used as to obtain the power level and age of an event for
 /// breaking ties (together with the event ID).
-pub fn lexicographical_topological_sort<Id, F>(graph: &HashMap<Id, HashSet<Id>>, key_fn: F) -> StateResult<Vec<Id>>
+pub fn lexicographical_topological_sort<Id, F>(graph: &HashMap<Id, HashSet<Id>>, key_fn: F) -> MatrixResult<Vec<Id>>
 where
-    F: Fn(&EventId) -> StateResult<(i64, UnixMillis)>,
+    F: Fn(&EventId) -> MatrixResult<(i64, UnixMillis)>,
     Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
 {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -402,7 +397,7 @@ fn iterative_auth_check<E: Event + Clone>(
     events_to_check: &[E::Id],
     unconflicted_state: StateMap<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> StateResult<StateMap<E::Id>> {
+) -> MatrixResult<StateMap<E::Id>> {
     info!("starting iterative auth check");
 
     debug!("performing auth checks on {events_to_check:?}");
@@ -410,11 +405,11 @@ fn iterative_auth_check<E: Event + Clone>(
     let mut resolved_state = unconflicted_state;
 
     for event_id in events_to_check {
-        let event =
-            fetch_event(event_id.borrow()).ok_or_else(|| StateError::NotFound(format!("Failed to find {event_id}")))?;
+        let event = fetch_event(event_id.borrow())
+            .ok_or_else(|| MatrixError::not_found(format!("Failed to find {event_id}")))?;
         let state_key = event
             .state_key()
-            .ok_or_else(|| StateError::InvalidPdu("State event had no state key".to_owned()))?;
+            .ok_or_else(|| MatrixError::bad_state("State event had no state key".to_owned()))?;
 
         let mut auth_events = StateMap::new();
         for aid in event.auth_events() {
@@ -424,7 +419,7 @@ fn iterative_auth_check<E: Event + Clone>(
                 auth_events.insert(
                     ev.event_type().with_state_key(
                         ev.state_key()
-                            .ok_or_else(|| StateError::InvalidPdu("State event had no state key".to_owned()))?,
+                            .ok_or_else(|| MatrixError::bad_state("State event had no state key".to_owned()))?,
                     ),
                     ev,
                 );
@@ -452,7 +447,9 @@ fn iterative_auth_check<E: Event + Clone>(
 
         if auth_check(room_version, &event, current_third_party, |ty, key| {
             auth_events.get(&ty.with_state_key(key))
-        })? {
+        })
+        .is_ok()
+        {
             // add event to resolved state map
             resolved_state.insert(event.event_type().with_state_key(state_key), event_id.clone());
         } else {
@@ -480,7 +477,7 @@ fn mainline_sort<E: Event>(
     to_sort: &[E::Id],
     resolved_power_level: Option<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> StateResult<Vec<E::Id>> {
+) -> MatrixResult<Vec<E::Id>> {
     debug!("mainline sort of events");
 
     // There are no EventId's to sort, bail.
@@ -493,10 +490,11 @@ fn mainline_sort<E: Event>(
     while let Some(p) = pl {
         mainline.push(p.clone());
 
-        let event = fetch_event(p.borrow()).ok_or_else(|| StateError::NotFound(format!("Failed to find {p}")))?;
+        let event = fetch_event(p.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {p}")))?;
         pl = None;
         for aid in event.auth_events() {
-            let ev = fetch_event(aid.borrow()).ok_or_else(|| StateError::NotFound(format!("Failed to find {aid}")))?;
+            let ev =
+                fetch_event(aid.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
             if is_type_and_key(&ev, &TimelineEventType::RoomPowerLevels, "") {
                 pl = Some(aid.to_owned());
                 break;
@@ -548,7 +546,7 @@ fn get_mainline_depth<E: Event>(
     mut event: Option<E>,
     mainline_map: &HashMap<E::Id, usize>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> StateResult<usize> {
+) -> MatrixResult<usize> {
     while let Some(sort_ev) = event {
         debug!("mainline event_id {}", sort_ev.event_id());
         let id = sort_ev.event_id();
@@ -558,7 +556,8 @@ fn get_mainline_depth<E: Event>(
 
         event = None;
         for aid in sort_ev.auth_events() {
-            let aev = fetch_event(aid.borrow()).ok_or_else(|| StateError::NotFound(format!("Failed to find {aid}")))?;
+            let aev =
+                fetch_event(aid.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
             if is_type_and_key(&aev, &TimelineEventType::RoomPowerLevels, "") {
                 event = Some(aev);
                 break;

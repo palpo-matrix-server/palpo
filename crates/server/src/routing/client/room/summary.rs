@@ -31,10 +31,10 @@ pub async fn get_summary_msc_3266(
         crate::room::alias::resolve_with_servers(&args.room_id_or_alias, Some(args.via.clone())).await?;
 
     if data::room::is_disabled(&room_id)? {
-        return Err(MatrixError::forbidden(None, "This room is banned on this homeserver.").into());
+        return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
     }
 
-    if crate::room::is_server_in_room(config::server_name(), &room_id)? {
+    if crate::room::is_server_joined_room(config::server_name(), &room_id)? {
         let res_body = local_room_summary(&room_id, sender_id).await?;
         json_ok(res_body)
     } else {
@@ -122,13 +122,13 @@ async fn remote_room_summary_hierarchy(
     );
     let conf = crate::config();
     if !conf.allow_federation {
-        return Err(MatrixError::forbidden(None, "Federation is disabled.").into());
+        return Err(MatrixError::forbidden("Federation is disabled.", None).into());
     }
 
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden(
-            None,
             "Federaton of room {room_id} is currently disabled on this server.",
+            None,
         )
         .into());
     }
@@ -211,10 +211,10 @@ where
             }
 
             Err(MatrixError::forbidden(
-                None,
                 "Room is not world readable, not publicly accessible/joinable, restricted room \
 				 conditions not met, and guest access is forbidden. Not allowed to see details \
 				 of this room.",
+                None,
             )
             .into())
         }
@@ -224,9 +224,9 @@ where
             }
 
             Err(MatrixError::forbidden(
-                None,
                 "Room is not world readable or publicly accessible/joinable, authentication is \
 				 required",
+                None,
             )
             .into())
         }

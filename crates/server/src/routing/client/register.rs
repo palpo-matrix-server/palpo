@@ -64,7 +64,7 @@ async fn register(
 
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
-        return Err(MatrixError::forbidden(None, "Registration has been disabled.").into());
+        return Err(MatrixError::forbidden("Registration has been disabled.", None).into());
     }
 
     let is_guest = body.kind == RegistrationKind::Guest;

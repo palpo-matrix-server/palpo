@@ -136,7 +136,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     let room_id = &args.room_id;
 
     if !crate::room::state::user_can_see_state_events(sender_id, room_id)? {
-        return Err(MatrixError::forbidden(None, "No room preview available.").into());
+        return Err(MatrixError::forbidden("No room preview available.", None).into());
     }
 
     let limit = LIMIT_MAX;
@@ -247,7 +247,7 @@ async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut
     let authed = depot.authed_info()?;
 
     if !crate::room::is_joined(authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
     }
 
     json_ok(AliasesResBody {
@@ -300,8 +300,12 @@ async fn upgrade(
     .event_id;
 
     // Get the old room creation event
-    let mut create_event_content =
-        crate::room::state::get_room_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "", None)?;
+    let mut create_event_content = crate::room::state::get_room_state_content::<CanonicalJsonObject>(
+        &room_id,
+        &StateEventType::RoomCreate,
+        "",
+        None,
+    )?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -414,7 +418,8 @@ async fn upgrade(
     let mut power_levels_event_content = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "", None,
+        "",
+        None,
     )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
@@ -500,7 +505,7 @@ pub(super) async fn create_room(
     crate::room::ensure_room(&room_id, &config::default_room_version())?;
 
     if !config::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
-        return Err(MatrixError::forbidden(None, "Room creation has been disabled.").into());
+        return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {

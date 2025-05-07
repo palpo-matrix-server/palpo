@@ -203,7 +203,7 @@ async fn get_room_summary(
     let is_accessible_child = is_accessible_child(room_id, &join_rule, identifier, &allowed_room_ids);
 
     if !is_accessible_child {
-        return Err(MatrixError::forbidden(None, "User is not allowed to see the room").into());
+        return Err(MatrixError::forbidden("User is not allowed to see the room", None).into());
     }
 
     let name = state::get_name(room_id).ok();
@@ -263,7 +263,7 @@ fn is_accessible_child(
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
             Identifier::UserId(user) => crate::room::is_joined(user, room).unwrap_or(false),
-            Identifier::ServerName(server) => crate::room::is_server_in_room(server, room).unwrap_or(false),
+            Identifier::ServerName(server) => crate::room::is_server_joined_room(server, room).unwrap_or(false),
         }),
 
         // Invite only, Private, or Custom join rule

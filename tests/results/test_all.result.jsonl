@@ -1,3 +1,4 @@
+{"Action":"fail","Test":"TestACLs"}
 {"Action":"fail","Test":"TestArchivedRoomsHistory"}
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_has_events"}
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_has_events/incremental_sync"}
@@ -7,7 +8,6 @@
 {"Action":"fail","Test":"TestCannotKickNonPresentUser"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
 {"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
-{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -18,7 +18,6 @@
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
 {"Action":"fail","Test":"TestGetMissingEventsGapFilling"}
-{"Action":"fail","Test":"TestGetRoomMembersAtPoint"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_invited_visibility"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_joined_visibility"}
@@ -45,16 +44,8 @@
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/Attempting_to_join_a_room_with_join_rule_'knock'_without_an_invite_should_fail#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason#01"}
-{"Action":"fail","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
-{"Action":"fail","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
-{"Action":"fail","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
-{"Action":"fail","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectory"}
 {"Action":"fail","Test":"TestKnockRoomsInPublicRoomsDirectoryInMSC3787Room"}
-{"Action":"fail","Test":"TestLeftRoomFixture"}
-{"Action":"fail","Test":"TestLeftRoomFixture/Can_get_'m.room.name'_state_for_a_departed_room"}
-{"Action":"fail","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/members_for_a_departed_room"}
-{"Action":"fail","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/state_for_a_departed_room"}
 {"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestMembersLocal"}
 {"Action":"fail","Test":"TestMembersLocal/Parallel"}
@@ -87,6 +78,9 @@
 {"Action":"fail","Test":"TestRoomMembers/Parallel"}
 {"Action":"fail","Test":"TestRoomMembers/Parallel/POST_/join/:room_alias_can_join_a_room_with_custom_content"}
 {"Action":"fail","Test":"TestRoomMembers/Parallel/POST_/join/:room_id_can_join_a_room_with_custom_content"}
+{"Action":"fail","Test":"TestRoomState"}
+{"Action":"fail","Test":"TestRoomState/Parallel"}
+{"Action":"fail","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/joined_members_is_forbidden_after_leaving_room"}
 {"Action":"fail","Test":"TestSearch"}
 {"Action":"fail","Test":"TestSearch/parallel"}
 {"Action":"fail","Test":"TestSearch/parallel/Can_get_context_around_search_results"}
@@ -104,7 +98,6 @@
 {"Action":"fail","Test":"TestTxnIdWithRefreshToken"}
 {"Action":"fail","Test":"TestUnbanViaInvite"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
-{"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_room_account_data"}
@@ -169,6 +162,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -241,6 +235,7 @@
 {"Action":"pass","Test":"TestGetFilteredRoomMembers/membership/leave"}
 {"Action":"pass","Test":"TestGetFilteredRoomMembers/not_membership"}
 {"Action":"pass","Test":"TestGetRoomMembers"}
+{"Action":"pass","Test":"TestGetRoomMembersAtPoint"}
 {"Action":"pass","Test":"TestInboundFederationKeys"}
 {"Action":"pass","Test":"TestInboundFederationProfile"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Inbound_federation_can_query_profile_data"}
@@ -303,10 +298,14 @@
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_is_banned_from_a_room_cannot_knock_on_it#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Change_the_join_rule_of_a_room_from_'invite'_to_'knock'"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Change_the_join_rule_of_a_room_from_'invite'_to_'knock'#01"}
+{"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
+{"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
+{"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
+{"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
@@ -314,7 +313,11 @@
 {"Action":"pass","Test":"TestLeakyTyping"}
 {"Action":"pass","Test":"TestLeaveEventInviteRejection"}
 {"Action":"pass","Test":"TestLeaveEventVisibility"}
+{"Action":"pass","Test":"TestLeftRoomFixture"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Can_get_'m.room.name'_state_for_a_departed_room"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/members_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Getting_messages_going_forward_is_limited_for_a_departed_room"}
 {"Action":"pass","Test":"TestLocalPngThumbnail"}
 {"Action":"pass","Test":"TestLocalPngThumbnail/test_/_matrix/client/v1/media_endpoint"}
@@ -528,13 +531,10 @@
 {"Action":"pass","Test":"TestRoomSpecificUsernameChange/Eve_can_find_Alice_by_mxid"}
 {"Action":"pass","Test":"TestRoomSpecificUsernameChange/Eve_can_find_Alice_by_profile_display_name"}
 {"Action":"pass","Test":"TestRoomSpecificUsernameChange/Eve_cannot_find_Alice_by_room-specific_name_that_Eve_is_not_privy_to"}
-{"Action":"pass","Test":"TestRoomState"}
-{"Action":"pass","Test":"TestRoomState/Parallel"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/directory/room/:room_alias_yields_room_ID"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/joined_rooms_lists_newly-created_room"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/publicRooms_lists_newly-created_room"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/joined_members_fetches_my_membership"}
-{"Action":"pass","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/joined_members_is_forbidden_after_leaving_room"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/state_fetches_entire_room_state"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/state/m.room.member/:user_id_fetches_my_membership"}
 {"Action":"pass","Test":"TestRoomState/Parallel/GET_/rooms/:room_id/state/m.room.member/:user_id?format=event_fetches_my_membership_event"}

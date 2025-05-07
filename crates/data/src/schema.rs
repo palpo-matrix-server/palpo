@@ -464,9 +464,22 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    room_servers (id) {
+    room_joined_servers (id) {
         id -> Int8,
         room_id -> Text,
+        server_id -> Text,
+        occur_sn -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    room_lookup_servers (id) {
+        id -> Int8,
+        room_id -> Text,
+        alias_id -> Text,
         server_id -> Text,
     }
 }
@@ -965,7 +978,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     outgoing_requests,
     pushers,
     room_aliases,
-    room_servers,
+    room_joined_servers,
+    room_lookup_servers,
     room_state_deltas,
     room_state_fields,
     room_state_frames,

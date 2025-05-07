@@ -214,7 +214,8 @@ where
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
-        "", None,
+        "",
+        None,
     )
     .unwrap_or_default();
 
@@ -528,7 +529,9 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Ok(prev_pdu) = crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None) {
+        if let Ok(prev_pdu) =
+            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)
+        {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -598,20 +601,12 @@ pub fn create_hash_and_sign_event(
         signatures: None,
     };
 
-    let auth_checked = crate::core::state::event_auth::auth_check(
+    crate::core::state::event_auth::auth_check(
         &room_version,
         &pdu,
         None::<PduEvent>, // TODO: third_party_invite
         |k, s| auth_events.get(&(k.clone(), s.to_owned())),
-    )
-    .map_err(|e| {
-        error!("{:?}", e);
-        AppError::internal("Auth check failed when hash and sign event")
-    })?;
-
-    if !auth_checked {
-        return Err(MatrixError::forbidden(None, "Event is not authorized.").into());
-    }
+    )?;
 
     // Hash and sign
     let mut pdu_json = utils::to_canonical_object(&pdu).expect("event is valid, we just created it");
@@ -658,7 +653,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
     match pdu.event_type() {
         TimelineEventType::RoomEncryption => {
             warn!("Encryption is not allowed in the admins room");
-            return Err(MatrixError::forbidden(None, "Encryption is not allowed in the admins room.").into());
+            return Err(MatrixError::forbidden("Encryption is not allowed in the admins room.", None).into());
         }
         TimelineEventType::RoomMember => {
             #[derive(Deserialize)]
@@ -679,7 +674,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
             if content.membership == MembershipState::Leave {
                 if target == server_user {
                     warn!("Palpo user cannot leave from admins room");
-                    return Err(MatrixError::forbidden(None, "Palpo user cannot leave from admins room.").into());
+                    return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.", None).into());
                 }
 
                 let count = crate::room::get_joined_users(pdu.room_id(), None)?
@@ -689,14 +684,14 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     .count();
                 if count < 2 {
                     warn!("Last admin cannot leave from admins room");
-                    return Err(MatrixError::forbidden(None, "Last admin cannot leave from admins room.").into());
+                    return Err(MatrixError::forbidden("Last admin cannot leave from admins room.", None).into());
                 }
             }
 
             if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
                 if target == server_user {
                     warn!("Palpo user cannot be banned in admins room");
-                    return Err(MatrixError::forbidden(None, "Palpo user cannot be banned in admins room.").into());
+                    return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.", None).into());
                 }
 
                 let count = crate::room::get_joined_users(pdu.room_id(), None)?
@@ -706,7 +701,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     .count();
                 if count < 2 {
                     warn!("Last admin cannot be banned in admins room");
-                    return Err(MatrixError::forbidden(None, "Last admin cannot be banned in admins room.").into());
+                    return Err(MatrixError::forbidden("Last admin cannot be banned in admins room.", None).into());
                 }
             }
         }
@@ -955,7 +950,8 @@ pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> 
     let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
-        "",None
+        "",
+        None,
     )?;
     let mut admin_servers = power_levels
         .users

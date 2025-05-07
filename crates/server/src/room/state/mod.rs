@@ -120,7 +120,7 @@ pub fn force_state(
         }
     }
 
-    crate::room::update_room_servers(room_id)?;
+    crate::room::update_joined_servers(room_id)?;
     crate::room::update_room_currents(room_id)?;
 
     set_room_state(room_id, frame_id)?;
@@ -506,7 +506,7 @@ pub async fn user_can_redact(
         .as_ref()
         .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomCreate)
     {
-        return Err(MatrixError::forbidden(None, "Redacting m.room.create is not safe, forbidding.").into());
+        return Err(MatrixError::forbidden("Redacting m.room.create is not safe, forbidding.", None).into());
     }
 
     if redacting_event
@@ -514,9 +514,9 @@ pub async fn user_can_redact(
         .is_ok_and(|pdu| pdu.event_ty == TimelineEventType::RoomServerAcl)
     {
         return Err(MatrixError::forbidden(
-            None,
             "Redacting m.room.server_acl will result in the room being inaccessible for \
     			 everyone (empty allow key), forbidding.",
+            None,
         )
         .into());
     }
@@ -601,7 +601,7 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 
 #[tracing::instrument(skip(origin, user_id))]
 pub fn server_can_see_user(origin: &ServerName, user_id: &UserId) -> AppResult<bool> {
-    Ok(super::server_rooms(origin)?
+    Ok(crate::room::server_joined_rooms(origin)?
         .iter()
         .any(|room_id| super::user::is_joined(user_id, room_id).unwrap_or(false)))
 }
@@ -875,7 +875,7 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
         .and_then(|x| (*x.1 >= 50).then_some(x))
         .map(|(user, _power)| user.server_name().to_owned());
 
-    let mut servers: Vec<OwnedServerName> = crate::room::room_servers(room_id)?.into_iter().take(5).collect();
+    let mut servers: Vec<OwnedServerName> = crate::room::joined_servers(room_id)?.into_iter().take(5).collect();
 
     if let Some(server) = most_powerful_user_server {
         servers.insert(0, server);
@@ -885,30 +885,6 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     Ok(servers)
 }
 
-// TODO: Implement, current just copy servers_route_via
-#[tracing::instrument(level = "trace")]
-pub fn servers_invite_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Ok(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None) else {
-        return Ok(Vec::new());
-    };
-
-    let most_powerful_user_server = pdu
-        .get_content::<RoomPowerLevelsEventContent>()?
-        .users
-        .iter()
-        .max_by_key(|(_, power)| *power)
-        .and_then(|x| (*x.1 >= 50).then_some(x))
-        .map(|(user, _power)| user.server_name().to_owned());
-
-    let mut servers: Vec<OwnedServerName> = crate::room::room_servers(room_id)?.into_iter().take(5).collect();
-
-    if let Some(server) = most_powerful_user_server {
-        servers.insert(0, server);
-        servers.truncate(5);
-    }
-
-    Ok(servers)
-}
 
 /// Returns an empty vec if not a restricted room
 pub fn allowed_room_ids(join_rule: JoinRule) -> Vec<OwnedRoomId> {

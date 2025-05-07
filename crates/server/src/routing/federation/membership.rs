@@ -50,7 +50,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
 
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     if !args.ver.contains(&room_version_id) {
-        return Err(MatrixError::incompatible_room_version(room_version_id, "Room version not supported.").into());
+        return Err(MatrixError::incompatible_room_version("Room version not supported.", room_version_id).into());
     }
 
     let join_authorized_via_users_server: Option<OwnedUserId> = {
@@ -119,8 +119,8 @@ async fn invite_user(
 
     if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
-            body.room_version.clone(),
             "Server does not support this room version.",
+            body.room_version.clone(),
         )
         .into());
     }
@@ -183,7 +183,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !crate::room::is_server_in_room(config::server_name(), &args.room_id)? {
+    if !crate::room::is_server_joined_room(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -208,7 +208,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
     }
 
     // ACL check origin
@@ -276,7 +276,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     let body = body.into_inner();
 
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
     }
     crate::event::handler::acl_check(origin, &args.room_id)?;
 

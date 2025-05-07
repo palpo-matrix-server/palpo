@@ -139,14 +139,16 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
         let room_power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
             room_id,
             &StateEventType::RoomPowerLevels,
-            "", None,
+            "",
+            None,
         )
         .ok();
 
-        let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
-            RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
-        }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)
-            .is_ok_and(|event| event.sender == user_id);
+        let user_can_demote_self =
+            room_power_levels.as_ref().is_some_and(|power_levels_content| {
+                RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
+            }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)
+                .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
             let mut power_levels_content = room_power_levels.unwrap_or_default();
@@ -224,13 +226,13 @@ pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
         .select((user_login_tokens::user_id, user_login_tokens::expires_at))
         .first::<(OwnedUserId, UnixMillis)>(&mut connect()?)
     else {
-        return Err(MatrixError::forbidden(None, "Login token is unrecognised").into());
+        return Err(MatrixError::forbidden("Login token is unrecognised.", None).into());
     };
 
     if expires_at < UnixMillis::now() {
         trace!(?user_id, ?token, "Removing expired login token");
         diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
-        return Err(MatrixError::forbidden(None, "Login token is expired").into());
+        return Err(MatrixError::forbidden("Login token is expired.", None).into());
     }
 
     diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;

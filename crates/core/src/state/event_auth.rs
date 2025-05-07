@@ -8,7 +8,7 @@ use serde_json::from_str as from_json_str;
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    OwnedUserId, RoomVersionId, UserId,
+    MatrixError, MatrixResult, OwnedUserId, RoomVersionId, UserId,
     events::room::{
         create::RoomCreateEventContent,
         join_rules::{JoinRule, RoomJoinRulesEventContent},
@@ -18,7 +18,7 @@ use crate::{
     },
     serde::{Base64, RawJson, RawJsonValue},
     state::{
-        Event, RoomVersion, StateError, StateEventType, StateResult, TimelineEventType,
+        Event, RoomVersion, StateEventType, TimelineEventType,
         power_levels::{
             deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
             deserialize_power_levels_content_redact,
@@ -122,7 +122,7 @@ pub fn auth_check<E: Event>(
     incoming_event: impl Event,
     current_third_party_invite: Option<impl Event>,
     fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
-) -> StateResult<bool> {
+) -> MatrixResult<()> {
     info!(
         "auth_check beginning for {} ({})",
         incoming_event.event_id(),
@@ -154,38 +154,45 @@ pub fn auth_check<E: Event>(
 
         // If it has any previous events, reject
         if incoming_event.prev_events().next().is_some() {
-            warn!("the room creation event had previous events");
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "The room creation event had previous events.",
+                None,
+            ));
         }
 
         // If the domain of the room_id does not match the domain of the sender, reject
         let Ok(room_id_server_name) = incoming_event.room_id().server_name() else {
-            warn!("room ID has no servername");
-            return Ok(false);
+            return Err(MatrixError::forbidden("Room ID has no servername.", None));
         };
 
         if room_id_server_name != sender.server_name() {
-            warn!("servername of room ID does not match servername of sender");
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "Servername of room ID does not match servername of sender.",
+                None,
+            ));
         }
 
         // If content.room_version is present and is not a recognized version, reject
         let content: RoomCreateContentFields = from_json_str(incoming_event.content().get())?;
         if content.room_version.map(|v| v.deserialize().is_err()).unwrap_or(false) {
-            warn!("invalid room version found in m.room.create event");
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "Invalid room version found in m.room.create event.",
+                None,
+            ));
         }
 
         if !room_version.use_room_create_sender {
             // If content has no creator field, reject
             if content.creator.is_none() {
-                warn!("no creator field found in m.room.create content");
-                return Ok(false);
+                return Err(MatrixError::forbidden(
+                    "No creator field found in m.room.create content.",
+                    None,
+                ));
             }
         }
 
         info!("m.room.create event was allowed");
-        return Ok(true);
+        return Ok(());
     }
 
     /*
@@ -215,8 +222,7 @@ pub fn auth_check<E: Event>(
 
     let room_create_event = match fetch_state(&StateEventType::RoomCreate, "") {
         None => {
-            warn!("no m.room.create event in auth chain");
-            return Ok(false);
+            return Err(MatrixError::forbidden("No m.room.create event in auth chain.", None));
         }
         Some(e) => e,
     };
@@ -226,8 +232,7 @@ pub fn auth_check<E: Event>(
         .auth_events()
         .any(|id| id.borrow() == room_create_event.event_id().borrow())
     {
-        warn!("no m.room.create event in auth events");
-        return Ok(false);
+        return Err(MatrixError::forbidden("No m.room.create event in auth events.", None));
     }
 
     // If the create event content has the field m.federate set to false and the
@@ -242,8 +247,10 @@ pub fn auth_check<E: Event>(
     if !room_create_content.federate
         && room_create_event.sender().server_name() != incoming_event.sender().server_name()
     {
-        warn!("room is not federated and event's sender domain does not match create event's sender domain");
-        return Ok(false);
+        return Err(MatrixError::forbidden(
+            "Room is not federated and event's sender domain does not match create event's sender domain.",
+            None,
+        ));
     }
 
     // Only in some room versions 6 and below
@@ -254,12 +261,11 @@ pub fn auth_check<E: Event>(
 
             // If sender's domain doesn't matches state_key, reject
             if incoming_event.state_key() != Some(sender.server_name().as_str()) {
-                warn!("state_key does not match sender");
-                return Ok(false);
+                return Err(MatrixError::forbidden("State_key does not match sender.", None));
             }
 
             info!("m.room.aliases event was allowed");
-            return Ok(true);
+            return Ok(());
         }
     }
 
@@ -271,19 +277,20 @@ pub fn auth_check<E: Event>(
         info!("starting m.room.member check");
         let state_key = match incoming_event.state_key() {
             None => {
-                warn!("no statekey in member event");
-                return Ok(false);
+                return Err(MatrixError::forbidden("No state key in member event.", None));
             }
             Some(s) => s,
         };
 
         let content: RoomMemberContentFields = from_json_str(incoming_event.content().get())?;
         if content.membership.as_ref().and_then(|m| m.deserialize().ok()).is_none() {
-            warn!("no valid membership field found for m.room.member event content");
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "No valid membership field found for m.room.member event content.",
+                None,
+            ));
         }
 
-        let target_user = <&UserId>::try_from(state_key).map_err(|e| StateError::InvalidPdu(format!("{e}")))?;
+        let target_user = <&UserId>::try_from(state_key).map_err(|e| MatrixError::bad_state(format!("{e}")))?;
 
         let user_for_join_auth = content
             .join_authorised_via_users_server
@@ -311,19 +318,24 @@ pub fn auth_check<E: Event>(
             &user_for_join_auth_membership,
             room_create_event,
         )? {
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "Change membership to this new value is not allowed.",
+                None,
+            ));
         }
 
         info!("m.room.member event was allowed");
-        return Ok(true);
+        return Ok(());
     }
 
     // If the sender's current membership state is not join, reject
     let sender_member_event = match sender_member_event {
         Some(mem) => mem,
         None => {
-            warn!("sender `{}`, not found in room", sender);
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                format!("Sender `{}`, not found in room.", sender),
+                None,
+            ));
         }
     };
 
@@ -334,11 +346,13 @@ pub fn auth_check<E: Event>(
         .deserialize()?;
 
     if !matches!(membership_state, MembershipState::Join) {
-        warn!(
-            "sender's membership is not join, current state is `{}`",
-            membership_state
-        );
-        return Ok(false);
+        return Err(MatrixError::forbidden(
+            format!(
+                "Sender's membership is not join, current state is `{}`.",
+                membership_state
+            ),
+            None,
+        ));
     }
 
     // If type is m.room.third_party_invite
@@ -372,20 +386,21 @@ pub fn auth_check<E: Event>(
         };
 
         if sender_power_level < invite_level {
-            warn!("sender's cannot send invites in this room");
-            return Ok(false);
+            return Err(MatrixError::forbidden(
+                "Sender's cannot send invites in this room.",
+                None,
+            ));
         }
 
         info!("m.room.third_party_invite event was allowed");
-        return Ok(true);
+        return Ok(());
     }
 
     // If the event type's required power level is greater than the sender's power
     // level, reject If the event has a state_key that starts with an @ and does
     // not match the sender, reject.
     if !can_send_event(&incoming_event, power_levels_event.as_ref(), sender_power_level) {
-        warn!("user cannot send event");
-        return Ok(false);
+        return Err(MatrixError::forbidden("User cannot send event.", None));
     }
 
     // If type is m.room.power_levels
@@ -399,12 +414,10 @@ pub fn auth_check<E: Event>(
             sender_power_level,
         ) {
             if !required_pwr_lvl {
-                warn!("power level was not allowed");
-                return Ok(false);
+                return Err(MatrixError::forbidden("Power level was not allowed.", None));
             }
         } else {
-            warn!("power level was not allowed");
-            return Ok(false);
+            return Err(MatrixError::forbidden("Power level was not allowed.", None));
         }
         info!("power levels event allowed");
     }
@@ -424,12 +437,12 @@ pub fn auth_check<E: Event>(
         };
 
         if !check_redaction(room_version, incoming_event, sender_power_level, redact_level)? {
-            return Ok(false);
+            return Err(MatrixError::forbidden("Check redaction failed.", None));
         }
     }
 
     info!("allowing event passed all checks");
-    Ok(true)
+    Ok(())
 }
 
 // TODO deserializing the member, power, join_rules event contents is done in
@@ -457,7 +470,7 @@ fn valid_membership_change(
     user_for_join_auth: Option<&UserId>,
     user_for_join_auth_membership: &MembershipState,
     create_room: impl Event,
-) -> StateResult<bool> {
+) -> MatrixResult<bool> {
     #[derive(Deserialize)]
     struct GetThirdPartyInvite {
         third_party_invite: Option<RawJson<ThirdPartyInvite>>,
@@ -683,7 +696,6 @@ fn valid_membership_change(
             // 1. If the `join_rule` is anything other than `knock` or `knock_restricted`,
             //    reject.
             if !matches!(join_rules, JoinRule::KnockRestricted(_) | JoinRule::Knock) {
-                println!("DDDDDDDDDDDDDDDDDD  join_rules: {join_rules:?}");
                 warn!(
                     ?join_rules,
                     "Join rule is not set to knock or knock_restricted, knocking is not allowed"
@@ -906,7 +918,7 @@ fn check_redaction(
     redaction_event: impl Event,
     user_level: i64,
     redact_level: i64,
-) -> StateResult<bool> {
+) -> MatrixResult<bool> {
     if user_level >= redact_level {
         info!("redaction allowed via power levels");
         return Ok(true);

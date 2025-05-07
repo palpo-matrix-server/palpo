@@ -23,7 +23,7 @@ pub fn authed_router() -> Router {
 #[endpoint]
 fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<PresenceResBody> {
     if !crate::config().allow_local_presence {
-        return Err(MatrixError::forbidden(None, "Presence is disabled on this server").into());
+        return Err(MatrixError::forbidden("Presence is disabled on this server", None).into());
     }
 
     let authed = depot.authed_info()?;
@@ -55,13 +55,13 @@ async fn set_status(
     depot: &mut Depot,
 ) -> EmptyResult {
     if !config::allow_local_presence() {
-        return Err(MatrixError::forbidden(None, "Presence is disabled on this server").into());
+        return Err(MatrixError::forbidden("Presence is disabled on this server", None).into());
     }
 
     let authed = depot.authed_info()?;
     let user_id = user_id.into_inner();
     if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden(None, "You cannot set the presence state of another user").into());
+        return Err(MatrixError::forbidden("You cannot set the presence state of another user", None).into());
     }
     let SetPresenceReqBody { presence, status_msg } = body.into_inner();
     crate::user::set_presence(authed.user_id(), Some(presence), status_msg.clone(), true)?;

@@ -105,7 +105,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
 
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
-        return Err(MatrixError::forbidden(None, "Not allowed to join on behalf of another server.").into());
+        return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.", None).into());
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
@@ -253,7 +253,7 @@ pub async fn join_room(
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
-        return Err(MatrixError::forbidden(None, "Guests are not allowed to join this room").into());
+        return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
 
     let sender_id = authed.user_id();
@@ -266,7 +266,7 @@ pub async fn join_room(
     if let Ok(membership) = crate::room::state::get_member(room_id, sender_id) {
         if membership.membership == MembershipState::Ban {
             tracing::warn!("{} is banned from {room_id} but attempted to join", sender_id);
-            return Err(MatrixError::forbidden(None, "You are banned from the room.").into());
+            return Err(MatrixError::forbidden("You are banned from the room.", None).into());
         }
     }
 
@@ -289,7 +289,8 @@ async fn join_room_local(
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
-        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None).ok();
+        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
+            .ok();
     // let power_levels_event = state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
     let restriction_rooms = match join_rules_event_content {
@@ -746,7 +747,7 @@ async fn join_room_remote(
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
-    crate::room::update_room_servers(room_id)?;
+    crate::room::update_joined_servers(room_id)?;
     // crate::room::update_room_currents(room_id)?;
 
     // We append to state before appending the pdu, so we don't have a moment in time with the

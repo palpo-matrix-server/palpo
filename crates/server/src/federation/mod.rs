@@ -1,13 +1,18 @@
+use std::collections::BTreeMap;
+
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
 use crate::core::authorization::XMatrix;
+use crate::core::error::AuthenticateError;
+use crate::core::error::ErrorKind;
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
+use crate::core::serde::JsonValue;
 use crate::core::{MatrixError, signatures};
-use crate::{AppError, AppResult, sending, config};
+use crate::{AppError, AppResult, auth, config, sending};
 
 mod access_check;
 pub use access_check::access_check;
@@ -88,15 +93,32 @@ pub(crate) async fn send_request(
     match response {
         Ok(response) => {
             let status = response.status();
-
             if status == 200 {
                 Ok(response)
             } else {
+                let authenticate = if let Some(header) = response.headers().get("WWW-Authenticate") {
+                    if let Ok(header) = header.to_str() {
+                        AuthenticateError::from_str(header)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
                 let body = response.text().await.unwrap_or_default();
-                warn!("{} {}: {}", url, status, body);
-                let err_msg = format!("Answer from {destination}: {body}");
-                debug!("Returning error from {destination}");
-                Err(MatrixError::unknown(err_msg).into())
+                warn!("Answer from {destination}({url}) {status}: {body}");
+                let mut extra = serde_json::from_str::<serde_json::Map<String, JsonValue>>(&body).unwrap_or_default();
+                let msg = extra
+                    .remove("error")
+                    .map(|v| v.as_str().unwrap_or_default().to_owned())
+                    .unwrap_or("Unknown error".to_owned());
+                Err(MatrixError {
+                    status_code: Some(status),
+                    authenticate,
+                    kind: serde_json::from_value(JsonValue::Object(extra)).unwrap_or(ErrorKind::Unknown),
+                    body: msg.into(),
+                }
+                .into())
             }
         }
         Err(e) => {
@@ -127,7 +149,8 @@ pub(crate) async fn user_can_perform_restricted_join(
     let Ok(join_rules_event_content) = crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
         room_id,
         &StateEventType::RoomJoinRules,
-        "", None,
+        "",
+        None,
     ) else {
         return Ok(false);
     };
