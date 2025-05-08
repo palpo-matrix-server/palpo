@@ -143,6 +143,16 @@ pub enum Direction {
     Forward,
 }
 
+pub enum ReasonBool<T> {
+    True,
+    False(T),
+}
+impl<T> ReasonBool<T> {
+    fn value(&self) -> bool {
+        matches!(self, Self::True)
+    }
+}
+
 /// Re-__private used by macro-generated code.
 ///
 /// It is not considered part of this module's public API.

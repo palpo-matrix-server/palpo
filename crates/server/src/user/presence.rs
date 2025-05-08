@@ -64,11 +64,9 @@ pub fn set_presence(
     force: bool,
 ) -> AppResult<bool> {
     if !config::allow_local_presence() {
-        println!("================set_presence 0");
         return Ok(false);
     }
 
-    println!("================set_presence 1");
     let Some(presence_state) = presence_state else {
         data::user::remove_presence(sender_id)?;
         return Ok(false);
@@ -86,7 +84,6 @@ pub fn set_presence(
     };
 
     let mut state_changed = data::user::set_presence(db_presence, force)?;
-    println!("================state_changed  {state_changed}");
     if state_changed {
         let edu = Edu::Presence(PresenceContent {
             push: vec![PresenceUpdate {
@@ -105,7 +102,6 @@ pub fn set_presence(
             .distinct()
             .load::<OwnedServerName>(&mut connect()?)?;
 
-        println!("================remote_servers  {remote_servers:?}");
         sending::send_edu_servers(remote_servers.into_iter(), &edu)?;
     }
 

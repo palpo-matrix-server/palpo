@@ -98,7 +98,6 @@ pub(crate) async fn handle_incoming_pdu(
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
-    println!(" check_room_id");
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
@@ -145,7 +144,6 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // Done with prev events, now handling the incoming event
-    println!(" after handle incoming");
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()

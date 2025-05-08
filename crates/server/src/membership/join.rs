@@ -786,7 +786,7 @@ async fn make_join_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
-    let mut make_join_res_body_and_server = Err(StatusError::bad_request()
+    let mut last_join_error = Err(StatusError::bad_request()
         .brief("No server available to assist in joining.")
         .into());
 
@@ -809,17 +809,18 @@ async fn make_join_request(
         match make_join_response {
             Ok(make_join_response) => {
                 let res_body = make_join_response.json::<MakeJoinResBody>().await;
-                make_join_res_body_and_server = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
+                last_join_error = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
             }
             Err(e) => {
                 tracing::error!("make_join_request failed: {e:?}");
+                last_join_error = Err(e);
             }
         }
 
-        if make_join_res_body_and_server.is_ok() {
+        if last_join_error.is_ok() {
             break;
         }
     }
 
-    make_join_res_body_and_server
+    last_join_error
 }

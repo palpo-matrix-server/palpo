@@ -57,7 +57,10 @@ pub async fn knock_room_by_id(
     let server_in_room = crate::room::is_server_joined_room(config::server_name(), room_id)?;
     let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
 
-    println!("sssssssssssserver_in_room: {server_in_room}   server_name:{}, room_id: {room_id}  servers: {servers:?}", config::server_name());
+    println!(
+        "sssssssssssserver_in_room: {server_in_room}   server_name:{}, room_id: {room_id}  servers: {servers:?}",
+        config::server_name()
+    );
     if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
@@ -104,9 +107,7 @@ async fn knock_room_local(
     ) else {
         return Ok(());
     };
-    println!("xxxxxxxxxxxxxsservers: {servers:?}   server_name:{}", config::server_name());
     if servers.is_empty() || (servers.len() == 1 && servers[0].is_local()) {
-		println!("WWWWWWWWWWWWWWWWWWWWWreturn error  {error:?}");
         return Err(error);
     }
 

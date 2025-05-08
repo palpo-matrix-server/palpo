@@ -30,7 +30,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, utils, IsRemoteOrLocal, config};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -289,7 +289,8 @@ pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
 
 #[tracing::instrument(level = "trace")]
 pub fn lookup_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_lookup_servers::table.filter(room_lookup_servers::room_id.eq(room_id))
+    room_lookup_servers::table
+        .filter(room_lookup_servers::room_id.eq(room_id))
         .select(room_lookup_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)
         .map_err(Into::into)

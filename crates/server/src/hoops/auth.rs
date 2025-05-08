@@ -23,7 +23,6 @@ pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request,
             auth_by_signatures_inner(req, depot).await
         }
     } else {
-        println!("Missing or invalid Authorization header  {req:#?}");
         Err(MatrixError::missing_token("Missing token.").into())
     }
 }

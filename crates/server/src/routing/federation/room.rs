@@ -233,7 +233,6 @@ async fn send_knock(
 /// Creates a knock template.
 #[endpoint]
 async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) -> JsonResult<MakeKnockResBody> {
-    println!("QQQQQQQQQQQQQQQQQQQQQQmake_knock: {args:?}");
     use crate::core::RoomVersionId::*;
 
     let origin = depot.origin()?;
