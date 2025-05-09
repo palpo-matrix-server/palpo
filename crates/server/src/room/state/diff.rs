@@ -28,9 +28,9 @@ pub type CompressedState = BTreeSet<CompressedEvent>;
 #[derive(Eq, Ord, Hash, PartialEq, PartialOrd, Copy, Debug, Clone)]
 pub struct CompressedEvent([u8; 2 * size_of::<i64>()]);
 impl CompressedEvent {
-    pub fn new(field_id: i64, point_id: i64) -> Self {
+    pub fn new(field_id: i64, event_sn: Seqnum) -> Self {
         let mut v = field_id.to_be_bytes().to_vec();
-        v.extend_from_slice(&point_id.to_be_bytes());
+        v.extend_from_slice(&event_sn.to_be_bytes());
         Self(v.try_into().expect("we checked the size above"))
     }
     pub fn field_id(&self) -> i64 {

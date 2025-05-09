@@ -16,7 +16,7 @@ use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved
 use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
-use crate::core::federation::event::get_events_request;
+use crate::core::federation::event::{EventReqArgs, event_request};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, canonical_json};
 use crate::core::state::{RoomVersion, StateMap, event_auth};
@@ -691,7 +691,7 @@ pub(crate) async fn fetch_and_handle_outliers(
             }
 
             info!("Fetching {} over federation.", next_id);
-            let request = get_events_request(&origin.origin().await, &next_id, None)?.into_inner();
+            let request = event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?.into_inner();
 
             match crate::sending::send_federation_request(&origin, request)
                 .await?

@@ -30,7 +30,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config, utils};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult,data, IsRemoteOrLocal, config, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -203,6 +203,7 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
             .values((
                 room_joined_servers::room_id.eq(room_id),
                 room_joined_servers::server_id.eq(&joined_server),
+                room_joined_servers::occur_sn.eq(data::next_sn()?),
             ))
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
@@ -260,7 +261,7 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     )
     .map_err(Into::into)
 }
-pub fn local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
+pub fn can_local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
     let local = is_server_joined_room(config::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0].is_local());

@@ -299,13 +299,13 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
         tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         MatrixError::bad_json("Invalid PDU in server response")
     })?;
-
     let room_id: OwnedRoomId = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
         .ok_or(MatrixError::invalid_param("Invalid room id in pdu"))?;
 
-    let room_version_id = crate::room::state::get_room_version(&room_id)?;
+    let room_version_id = crate::room::state::get_room_version(&room_id)
+        .map_err(|_| MatrixError::invalid_param(format!("Server is not in room {room_id}")))?;
 
     let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
         Ok(t) => t,

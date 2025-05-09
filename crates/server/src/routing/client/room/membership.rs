@@ -530,9 +530,8 @@ pub(super) async fn kick_user(
         return empty_ok();
     };
 
-    if !matches!(event.membership, MembershipState::Leave) {
-        return empty_ok();
-    } else if !matches!(
+    println!("[[[[[[[[[[KICK] {:?}", event.membership);
+    if !matches!(
         event.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {

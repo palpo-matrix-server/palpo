@@ -2,6 +2,7 @@ use palpo_core::federation::knock::{MakeKnockReqArgs, SendKnockReqArgs, SendKnoc
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
+use diesel::prelude::*;
 
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
@@ -11,11 +12,13 @@ use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
+use crate::data::schema::*;
 use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
+use crate::data::connect;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, data, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -112,7 +115,7 @@ async fn send_knock(
     use crate::core::RoomVersionId::*;
 
     let origin = depot.origin()?;
-    let body = body.into_inner();
+    let body: SendKnockReqBody = body.into_inner();
 
     if args.room_id.is_remote() {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
@@ -221,6 +224,14 @@ async fn send_knock(
 
     // drop(mutex_lock);
 
+    diesel::insert_into(room_joined_servers::table)
+        .values((
+            room_joined_servers::room_id.eq(&args.room_id),
+            room_joined_servers::server_id.eq(&origin),
+            room_joined_servers::occur_sn.eq(data::next_sn()?),
+        ))
+        .on_conflict_do_nothing()
+        .execute(&mut connect()?)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
     let knock_room_state = crate::room::state::summary_stripped(&pdu)?;
