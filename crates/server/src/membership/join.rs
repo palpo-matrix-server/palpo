@@ -271,7 +271,7 @@ pub async fn join_room(
     }
 
     // Ask a remote server if we are not participating in this room
-    if crate::room::local_work_for_room(room_id, servers)? {
+    if crate::room::can_local_work_for_room(room_id, servers)? {
         join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
     } else {
         join_room_remote(authed, room_id, reason, servers, third_party_signed).await?;
@@ -542,14 +542,14 @@ async fn join_room_remote(
     )?
     .into_inner();
 
-    let send_join_response = crate::sending::send_federation_request(&remote_server, send_join_request)
+    let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request)
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
 
     info!("send_join finished");
 
-    if let Some(signed_raw) = &send_join_response.0.event {
+    if let Some(signed_raw) = &send_join_body.0.event {
         info!("There is a signed event. This room is probably using restricted joins. Adding signature to our event");
         let (signed_event_id, signed_value) = match gen_event_id_canonical_json(signed_raw, &room_version_id) {
             Ok(t) => t,
@@ -611,13 +611,13 @@ async fn join_room_remote(
     let pub_key_map = RwLock::new(BTreeMap::new());
 
     info!("Acquiring server signing keys for response events");
-    let resp_events = &send_join_response.0;
+    let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
     info!("Going through send_join response room_state");
-    for result in send_join_response
+    for result in send_join_body
         .0
         .state
         .iter()
@@ -670,7 +670,7 @@ async fn join_room_remote(
     }
 
     info!("Going through send_join response auth_chain");
-    for result in send_join_response
+    for result in send_join_body
         .0
         .auth_chain
         .iter()
@@ -786,7 +786,7 @@ async fn make_join_request(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
-    let mut make_join_res_body_and_server = Err(StatusError::bad_request()
+    let mut last_join_error = Err(StatusError::bad_request()
         .brief("No server available to assist in joining.")
         .into());
 
@@ -809,17 +809,18 @@ async fn make_join_request(
         match make_join_response {
             Ok(make_join_response) => {
                 let res_body = make_join_response.json::<MakeJoinResBody>().await;
-                make_join_res_body_and_server = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
+                last_join_error = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
             }
             Err(e) => {
                 tracing::error!("make_join_request failed: {e:?}");
+                last_join_error = Err(e);
             }
         }
 
-        if make_join_res_body_and_server.is_ok() {
+        if last_join_error.is_ok() {
             break;
         }
     }
 
-    make_join_res_body_and_server
+    last_join_error
 }

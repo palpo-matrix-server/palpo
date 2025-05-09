@@ -776,10 +776,8 @@ pub(crate) fn load_timeline(
 
     if timeline_pdus.len() > limit {
         timeline_pdus.remove(0);
-        println!("lllllload timeline   remmove 0 limited");
         Ok((timeline_pdus, true))
     } else {
-        println!("lllllload timeline limited false");
         Ok((timeline_pdus, false))
     }
 }

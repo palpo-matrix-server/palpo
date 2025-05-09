@@ -9,18 +9,21 @@ use salvo::http::StatusError;
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::federation::event::{EventReqArgs, EventResBody, event_request};
 use crate::core::federation::knock::{
     MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
 };
 use crate::core::identifiers::*;
+use crate::core::serde::JsonValue;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
+use crate::room::state::CompressedEvent;
 use crate::room::state::{self, DeltaInfo};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, config, data};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,
@@ -30,6 +33,10 @@ pub async fn knock_room_by_id(
 ) -> AppResult<()> {
     // let state_lock = services.rooms.state.mutex.lock(room_id).await;
 
+    println!(
+        "LLLLLLLLLLLLLLLLL {} Lock room by id {room_id}  reason:{reason:?} servers: {servers:?}",
+        crate::config::server_name()
+    );
     if crate::room::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
@@ -54,10 +61,12 @@ pub async fn knock_room_by_id(
         }
     }
 
-    let server_in_room = crate::room::is_server_joined_room(config::server_name(), room_id)?;
-    let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
-
-    println!("sssssssssssserver_in_room: {server_in_room}   server_name:{}, room_id: {room_id}  servers: {servers:?}", config::server_name());
+    let local_knock = crate::room::can_local_work_for_room(room_id, servers)?;
+    println!(
+        "sssssssssssserver_in_room  server_name:{}, room_id: {room_id}  servers: {servers:?}  reason:{:?}",
+        config::server_name(),
+        reason
+    );
     if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
@@ -75,6 +84,7 @@ async fn knock_room_local(
 ) -> AppResult<()> {
     use RoomVersionId::*;
     info!("We can knock locally");
+    println!("We can knock locally");
     let room_version_id = crate::room::state::get_room_version(room_id)?;
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
@@ -104,9 +114,7 @@ async fn knock_room_local(
     ) else {
         return Ok(());
     };
-    println!("xxxxxxxxxxxxxsservers: {servers:?}   server_name:{}", config::server_name());
     if servers.is_empty() || (servers.len() == 1 && servers[0].is_local()) {
-		println!("WWWWWWWWWWWWWWWWWWWWWreturn error  {error:?}");
         return Err(error);
     }
 
@@ -224,6 +232,7 @@ async fn knock_room_remote(
             .brief("Remote room version {room_version_id} is not supported by palpo")
             .into());
     }
+    crate::room::ensure_room(room_id, &room_version_id)?;
 
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
@@ -289,81 +298,80 @@ async fn knock_room_remote(
 
     info!("Parsing knock event");
     let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
+    let mut parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");
-    let state = send_knock_body
+
+    // TODO: how to handle this? snpase save this state to unsigned field.
+    let knock_state = send_knock_body
         .knock_room_state
         .iter()
         .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
         .filter_map(Result::ok);
 
-    let mut state_map: HashMap<i64, Seqnum> = HashMap::new();
+    let mut state_map = HashMap::new();
 
-    for event in state {
-        let Some(state_key) = event.get("state_key") else {
-            warn!("send_knock stripped state event missing state_key: {event:?}");
+    for value in knock_state {
+        println!("==============99==event: {value:#?}");
+        let Some(state_key) = value.get("state_key") else {
+            warn!("send_knock stripped state event missing state_key: {value:?}");
             continue;
         };
-        let Some(event_type) = event.get("type") else {
-            warn!("send_knock stripped state event missing event type: {event:?}");
+        let Some(event_type) = value.get("type") else {
+            warn!("send_knock stripped state event missing event type: {value:?}");
             continue;
         };
 
         let Ok(state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
-            warn!("send_knock stripped state event has invalid state_key: {event:?}");
+            warn!("send_knock stripped state event has invalid state_key: {value:?}");
             continue;
         };
         let Ok(event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into()) else {
-            warn!("send_knock stripped state event has invalid event type: {event:?}");
+            warn!("send_knock stripped state event has invalid event type: {value:?}");
             continue;
         };
 
-        let event_id = gen_event_id(&event, &room_version_id)?;
-        let event_sn = ensure_event_sn(room_id, &event_id)?;
-        let new_db_event = NewDbEvent {
-            id: event_id.clone(),
-            sn: event_sn,
-            ty: MembershipState::Leave.to_string(),
-            room_id: room_id.to_owned(),
-            unrecognized_keys: None,
-            depth: 0,
-            topological_ordering: 0,
-            stream_ordering: 0,
-            origin_server_ts: UnixMillis::now(),
-            received_at: None,
-            sender_id: Some(sender_id.to_owned()),
-            contains_url: false,
-            worker_id: None,
-            state_key: Some(sender_id.to_string()),
-            is_outlier: true,
-            soft_failed: false,
-            rejection_reason: None,
+        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id).optional()? {
+            pdu
+        } else {
+            let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
+            let res_body = crate::sending::send_federation_request(&remote_server, request)
+                .await?
+                .json::<EventResBody>()
+                .await?;
+            crate::event::handler::handle_incoming_pdu(
+                &remote_server,
+                &event_id,
+                &room_id,
+                serde_json::from_str(res_body.pdu.get())?,
+                true,
+            )
+            .await
+            .map(|_| ());
+            crate::room::timeline::get_pdu(&event_id)?
+            // let pdu = PduEvent::from_json_value(
+            //     &event_id,
+            //     data::next_sn()?,
+            //     serde_json::from_str::<JsonValue>(res_body.pdu.get())?,
+            // )
+            // .map_err(|e| {
+            //     tracing::error!("Failed to parse event: {res_body:#?}");
+            //     StatusError::internal_server_error().brief(format!("Invalid event json received from server: {e:?}"))
+            // })?;
         };
-        diesel::insert_into(events::table)
-            .values(&new_db_event)
-            .on_conflict_do_nothing()
-            .execute(&mut connect()?)?;
-        let event_data = DbEventData {
-            event_id: event_id.clone(),
-            event_sn,
-            room_id: room_id.to_owned(),
-            internal_metadata: None,
-            json_data: serde_json::to_value(&event)?,
-            format_version: None,
-        };
-        diesel::insert_into(event_datas::table)
-            .values(&event_data)
-            .on_conflict_do_nothing()
-            .execute(&mut connect()?)?;
 
-        let field_id = crate::room::state::ensure_field_id(&event_type, &state_key)?;
-        state_map.insert(field_id, event_sn);
+        if let Some(state_key) = &pdu.state_key {
+            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
+        }
     }
 
     info!("Compressing state from send_knock");
-    let compressed = state::compress_events(room_id, state_map.into_iter())?;
+    let compressed = state_map
+        .into_iter()
+        .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
+        .collect::<AppResult<_>>()?;
 
     debug!("Saving compressed state");
     let DeltaInfo {

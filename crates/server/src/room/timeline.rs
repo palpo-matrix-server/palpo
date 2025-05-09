@@ -935,7 +935,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 }
 
 #[tracing::instrument(skip(room_id))]
-pub async fn backfill_if_required(room_id: &RoomId, from: i64) -> AppResult<()> {
+pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
     let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
     let first_pdu = pdus.first();
 

@@ -885,7 +885,6 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     Ok(servers)
 }
 
-
 /// Returns an empty vec if not a restricted room
 pub fn allowed_room_ids(join_rule: JoinRule) -> Vec<OwnedRoomId> {
     let mut room_ids = Vec::with_capacity(1);

@@ -16,7 +16,7 @@ use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved
 use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
-use crate::core::federation::event::get_events_request;
+use crate::core::federation::event::{EventReqArgs, event_request};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, canonical_json};
 use crate::core::state::{RoomVersion, StateMap, event_auth};
@@ -98,7 +98,6 @@ pub(crate) async fn handle_incoming_pdu(
     let (incoming_pdu, val) = handle_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
-    println!(" check_room_id");
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
@@ -145,7 +144,6 @@ pub(crate) async fn handle_incoming_pdu(
     }
 
     // Done with prev events, now handling the incoming event
-    println!(" after handle incoming");
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -693,7 +691,7 @@ pub(crate) async fn fetch_and_handle_outliers(
             }
 
             info!("Fetching {} over federation.", next_id);
-            let request = get_events_request(&origin.origin().await, &next_id, None)?.into_inner();
+            let request = event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?.into_inner();
 
             match crate::sending::send_federation_request(&origin, request)
                 .await?

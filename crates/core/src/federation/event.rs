@@ -86,14 +86,29 @@ impl EventByTimestampResBody {
 //     pub event_id: OwnedEventId,
 // }
 
-pub fn get_events_request(
-    origin: &str,
-    event_id: &EventId,
-    include_unredacted_content: Option<bool>,
-) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/event/{event_id}"))?;
+pub fn event_request(origin: &str, args: EventReqArgs) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/event/{}", args.event_id))?;
     Ok(crate::sending::get(url))
 }
+
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct EventReqArgs {
+    #[salvo(parameter(parameter_in = Path))]
+    pub event_id: OwnedEventId,
+
+    /// Event to report.
+    #[salvo(parameter(parameter_in = Path))]
+    pub include_unredacted_content: Option<bool>,
+}
+impl EventReqArgs {
+    pub fn new(event_id: impl Into<OwnedEventId>) -> Self {
+        Self {
+            event_id: event_id.into(),
+            include_unredacted_content: None,
+        }
+    }
+}
+
 /// Response type for the `get_event` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct EventResBody {

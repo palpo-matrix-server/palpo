@@ -60,7 +60,7 @@ pub struct RoomVersion {
     /// Adds support for the restricted join rule.
     ///
     /// See: [MSC3289](https://github.com/matrix-org/matrix-spec-proposals/pull/3289) for more information.
-    pub restricted_join_rules: bool,
+    pub restricted_join_rule: bool,
     /// Adds support for the knock_restricted join rule.
     ///
     /// See: [MSC3787](https://github.com/matrix-org/matrix-spec-proposals/pull/3787) for more information.
@@ -87,7 +87,7 @@ impl RoomVersion {
         limit_notifications_power_levels: false,
         extra_redaction_checks: false,
         allow_knocking: false,
-        restricted_join_rules: false,
+        restricted_join_rule: false,
         knock_restricted_join_rule: false,
         integer_power_levels: false,
         use_room_create_sender: false,
@@ -127,7 +127,7 @@ impl RoomVersion {
     };
 
     pub const V8: Self = Self {
-        restricted_join_rules: true,
+        restricted_join_rule: true,
         ..Self::V7
     };
 
