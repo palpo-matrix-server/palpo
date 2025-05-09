@@ -527,10 +527,9 @@ pub(super) async fn kick_user(
 
     // TODO: state lock
     let Ok(event) = state::get_member(&room_id, &body.user_id) else {
-        return empty_ok();
+        return Err(MatrixError::forbidden("Users cannot kick users from a room they are not in", None).into());
     };
 
-    println!("[[[[[[[[[[KICK] {:?}", event.membership);
     if !matches!(
         event.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
