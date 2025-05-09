@@ -87,6 +87,7 @@ fn get_local_public_rooms(
                 .map(|c| match c.join_rule {
                     JoinRule::Public => Some(PublicRoomJoinRule::Public),
                     JoinRule::Knock => Some(PublicRoomJoinRule::Knock),
+                    JoinRule::KnockRestricted(..) => Some(PublicRoomJoinRule::KnockRestricted),
                     _ => None,
                 })?
                 .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
