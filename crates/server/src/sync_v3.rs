@@ -51,13 +51,9 @@ pub async fn sync_events(
             crate::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
         }
     };
-
-    let (lazy_load_enabled, lazy_load_send_redundant) = match filter.room.state.lazy_load_options {
-        LazyLoadOptions::Enabled {
-            include_redundant_members: redundant,
-        } => (true, redundant),
-        _ => (false, false),
-    };
+    let lazy_load_enabled =
+        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
+    println!("FFFFFFFFFFFFilter: {filter:#?}");
 
     let full_state = args.full_state;
 
@@ -79,9 +75,8 @@ pub async fn sync_events(
             since_sn,
             Some(curr_sn),
             next_batch,
-            lazy_load_enabled,
-            lazy_load_send_redundant,
             full_state,
+            &filter,
             &mut device_list_updates,
             &mut left_users,
         )
@@ -381,15 +376,23 @@ async fn load_joined_room(
     since_sn: i64,
     until_sn: Option<i64>,
     next_batch: i64,
-    lazy_load_enabled: bool,
-    lazy_load_send_redundant: bool,
     full_state: bool,
+    filter: &FilterDefinition,
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
     if since_sn > data::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
+    let lazy_load_enabled =
+        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
+
+    let lazy_load_send_redundant = match filter.room.state.lazy_load_options {
+        LazyLoadOptions::Enabled {
+            include_redundant_members: redundant,
+        } => redundant,
+        _ => false,
+    };
 
     let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, Some(next_batch), 10)?;
 
