@@ -12,7 +12,6 @@ pub mod timeline;
 pub mod typing;
 pub mod user;
 pub use current::*;
-pub use user::*;
 pub mod thread;
 
 use std::collections::HashMap;
@@ -234,7 +233,7 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
             UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), config::server_name())
                 .ok();
 
-        let in_room = bridge_user_id.map_or(false, |id| is_joined(&id, room_id).unwrap_or(false)) || {
+        let in_room = bridge_user_id.map_or(false, |id| user::is_joined(&id, room_id).unwrap_or(false)) || {
             let user_ids = room_users::table
                 .filter(room_users::room_id.eq(room_id))
                 .select(room_users::user_id)

@@ -241,7 +241,7 @@ pub async fn send_typing(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_joined(authed.user_id(), &args.room_id)? {
+    if !crate::room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not in this room.", None).into());
     }
 

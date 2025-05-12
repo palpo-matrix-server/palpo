@@ -3,14 +3,15 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::core::OwnedEventId;
+use crate::core::events::room::join_rules::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
+use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
+use crate::room::state;
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
     utils,
@@ -37,45 +38,68 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
+    println!("TTTTTTTTTTTRy make join   {:?}", args);
     if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
 
+    println!("TTTTTTTTTTT    0");
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to join on behalf of another server/user.").into());
     }
 
+    println!("TTTTTTTTTTT    1");
     crate::event::handler::acl_check(args.user_id.server_name(), &args.room_id)?;
 
+    println!("TTTTTTTTTTT    2");
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     if !args.ver.contains(&room_version_id) {
         return Err(MatrixError::incompatible_room_version("Room version not supported.", room_version_id).into());
     }
 
+    println!("TTTTTTTTTTT    3");
     let join_authorized_via_users_server: Option<OwnedUserId> = {
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
             None
-        } else if crate::federation::user_can_perform_restricted_join(&args.user_id, &args.room_id, &room_version_id)
-            .await?
-        {
-            let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
-                .into_iter()
-                .filter(|user| crate::room::state::user_can_invite(&args.room_id, user, &args.user_id).unwrap_or(false))
-                .next()
-            else {
-                return Err(
-                    MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),
-                );
-            };
-            Some(auth_user)
         } else {
-            None
+            let join_rule = state::get_join_rule(&args.room_id)?;
+            let guest_can_join = state::guest_can_join(&args.room_id)?;
+            println!(
+                "jjjjjjjjjjjjjjoin_rule: {:?}          guest_can_join: {guest_can_join}",
+                join_rule
+            );
+            if join_rule == JoinRule::Public || guest_can_join {
+                None
+            } else if crate::federation::user_can_perform_restricted_join(
+                &args.user_id,
+                &args.room_id,
+                &room_version_id,
+            )
+            .await?
+            {
+                let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
+                    .into_iter()
+                    .filter(|user| {
+                        crate::room::state::user_can_invite(&args.room_id, user, &args.user_id)
+                    })
+                    .next()
+                else {
+                    return Err(MatrixError::unable_to_grant_join(
+                        "No user on this server is able to assist in joining.",
+                    )
+                    .into());
+                };
+                Some(auth_user)
+            } else {
+                None
+            }
         }
     };
 
+    println!("TTTTTTTTTTT    4");
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
         blurhash: None,
@@ -97,7 +121,9 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         &args.user_id,
         &args.room_id,
     )?;
+    println!("TTTTTTTTTTT    5");
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
+    println!("TTTTTTTTTTT    5");
     let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
@@ -113,6 +139,7 @@ async fn invite_user(
     body: JsonBody<InviteUserReqBodyV2>,
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
+    println!("federation invite_user: {} {body:?}", crate::config::server_name());
     let body = body.into_inner();
     let origin = depot.origin()?;
     crate::event::handler::acl_check(origin, &args.room_id)?;
@@ -245,6 +272,7 @@ async fn send_join_v2(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV2> {
+    println!("SSSSSSSSSSSend join v2");
     let body = body.into_inner();
     // let server_name = args.room_id.server_name().map_err(AppError::public)?;
     // crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -262,6 +290,7 @@ async fn send_join_v1(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV1> {
+    println!("SSSSSSSSSSSend join v1");
     let body = body.into_inner();
     let room_state = crate::membership::send_join_v1(depot.origin()?, &args.room_id, &body.0).await?;
     json_ok(SendJoinResBodyV1(room_state))

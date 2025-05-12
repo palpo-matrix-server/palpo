@@ -23,7 +23,7 @@ use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
+use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_message_request};
 use crate::core::identifiers::*;
 use crate::core::presence::{PresenceContent, PresenceUpdate};
 pub use crate::core::sending::*;
@@ -409,6 +409,7 @@ pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
 
 #[tracing::instrument(skip(servers, pdu_id), level = "debug")]
 pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
+    println!("sssSending pdu to servers pdu_id: {pdu_id}");
     let requests = servers
         .into_iter()
         .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
@@ -645,7 +646,8 @@ async fn send_events(
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
                 })));
-            let request = send_messages_request(
+            println!("============{}  ===================send_message_request 0", crate::config::server_name());
+            let request = send_message_request(
                 &server.origin().await,
                 txn_id,
                 SendMessageReqBody {

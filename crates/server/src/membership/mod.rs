@@ -130,7 +130,7 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !crate::room::once_joined(user_id, room_id)? {
+            if !crate::room::user::once_joined(user_id, room_id)? {
                 // Add the user ID to the join list then
                 // db::mark_as_once_joined(user_id, room_id)?;
 

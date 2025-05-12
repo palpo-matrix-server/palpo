@@ -37,11 +37,14 @@ use crate::{
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
+    println!("============send join 0");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
+    println!("============send join 1");
 
     crate::event::handler::acl_check(origin, room_id)?;
+    println!("============send join 2");
 
     // We need to return the state prior to joining, let's keep a reference to that here
     let frame_id = state::get_room_frame_id(room_id, None)?;
@@ -52,6 +55,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
         .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
 
+    println!("============send join 3");
     let event_room_id: OwnedRoomId = serde_json::from_value(
         value
             .get("room_id")
@@ -61,6 +65,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
+    println!("============send join 4");
     if event_room_id != room_id {
         return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());
     }
@@ -74,6 +79,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("Event has invalid state event type: {e}")))?;
 
+    println!("============send join 5");
     if event_type != StateEventType::RoomMember {
         return Err(MatrixError::bad_json("Not allowed to send non-membership state event to join endpoint.").into());
     }
@@ -87,6 +93,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("Event content is empty or invalid: {e}")))?;
 
+    println!("============send join 5");
     if content.membership != MembershipState::Join {
         return Err(MatrixError::bad_json("Not allowed to send a non-join membership event to join endpoint.").into());
     }
@@ -101,6 +108,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user ID: {e}")))?;
 
+    println!("============send join 6");
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
     // check if origin server is trying to send for another server
@@ -120,6 +128,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
 
+    println!("============send join 7");
     if let Some(authorising_user) = content.join_authorized_via_users_server {
         use crate::core::RoomVersionId::*;
 
@@ -139,7 +148,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
-        if !crate::room::is_joined(&authorising_user, room_id)? {
+        if !crate::room::user::is_joined(&authorising_user, room_id)? {
             return Err(MatrixError::invalid_param(
                 "Authorising user {authorising_user} is not in the room you are trying to join, \
 				 they cannot authorise your join.",
@@ -154,6 +163,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         }
     }
 
+    println!("============send join 8");
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
         .map_err(|e| MatrixError::invalid_param(format!("Failed to sign send_join event: {e}")))?;
 
@@ -178,6 +188,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value.clone(), true).await?;
     // drop(mutex_lock);
 
+    println!("============send join 9");
     let state_ids = state::get_full_state_ids(frame_id)?;
 
     let state = state_ids
@@ -193,6 +204,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
 
+    println!("============send join 10");
     //     let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
 
     //     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
@@ -218,6 +230,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     //     // let mut auth_cache = EventMap::new();
 
     crate::sending::send_pdu_room(room_id, &event_id)?;
+    println!("============send join 11");
     Ok(RoomStateV1 {
         auth_chain,
         state,
@@ -251,13 +264,17 @@ pub async fn join_room(
     third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
 ) -> AppResult<JoinRoomResBody> {
+    println!(
+        "\n\n\n========join_room==========user_id:{:?} room_id: {room_id} reason: {reason:?} servers: {servers:?}", authed.user_id()
+    );
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
-
+    println!("========join_room========1");
     let sender_id = authed.user_id();
-    if crate::room::is_joined(sender_id, room_id)? {
+    if crate::room::user::is_joined(sender_id, room_id)? {
+        println!("========AAAAAAAAAAll ready joined==========sender_id: {sender_id} room_id: {room_id}");
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
         });
@@ -270,6 +287,7 @@ pub async fn join_room(
         }
     }
 
+    println!("========join_room========2");
     // Ask a remote server if we are not participating in this room
     if crate::room::can_local_work_for_room(room_id, servers)? {
         join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
@@ -288,6 +306,7 @@ async fn join_room_local(
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<()> {
     info!("We can join locally");
+    println!("We can join locally  user_id: {user_id} room_id: {room_id}  servers: {servers:?}");
     let join_rules_event_content =
         state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
             .ok();
@@ -312,12 +331,12 @@ async fn join_room_local(
 
     let authorized_user = if restriction_rooms
         .iter()
-        .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id).unwrap_or(false))
+        .any(|restriction_room_id| crate::room::user::is_joined(user_id, restriction_room_id).unwrap_or(false))
     {
         let mut auth_user = None;
         for joined_user in crate::room::get_joined_users(room_id, None)? {
             if joined_user.server_name() == config::server_name()
-                && state::user_can_invite(room_id, &joined_user, user_id).unwrap_or(false)
+                && state::user_can_invite(room_id, &joined_user, user_id)
             {
                 auth_user = Some(joined_user);
                 break;
@@ -466,12 +485,15 @@ async fn join_room_remote(
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
 ) -> AppResult<()> {
-    info!("Joining {room_id} over federation.");
+    info!("jjjjjjjjjjJoining {room_id} over federation.");
+    println!("Joining {room_id} over federation.  user {:?}", authed.user_id());
 
     let sender_id = authed.user_id();
+    println!("ssssssssssSender id: {sender_id} room id: {room_id}  servers: {servers:?}");
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;
 
     info!("make_join finished");
+    println!("make_join finished");
 
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => room_version,

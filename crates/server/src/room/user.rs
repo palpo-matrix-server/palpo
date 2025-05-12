@@ -194,6 +194,15 @@ pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    println!(
+        "=======###====user id: {user_id:?}  room_id: {room_id:?}  membership: {:?}",
+        room_users::table
+            .filter(room_users::user_id.eq(user_id))
+            .filter(room_users::room_id.eq(room_id))
+            .order_by(room_users::id.desc())
+            .select(room_users::membership)
+            .first::<String>(&mut connect()?)
+    );
     let joined = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))

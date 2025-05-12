@@ -243,7 +243,7 @@ async fn handle_edu_typing(origin: &ServerName, typing: TypingContent) {
         return;
     }
 
-    if crate::room::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
+    if crate::room::user::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
         if typing.typing {
             let timeout = UnixMillis::now()
                 .get()

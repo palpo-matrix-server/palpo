@@ -34,7 +34,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             .server_name()
             .map_err(|name| AppError::public(format!("Bad room id, server name is invalid: `{name}`.")))?
             != config::server_name()
-        && !crate::room::is_knocked(user_id, room_id)?
+        && !crate::room::user::is_knocked(user_id, room_id)?
     {
         match leave_room_remote(user_id, room_id).await {
             Err(e) => {

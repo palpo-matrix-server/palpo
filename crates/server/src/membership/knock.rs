@@ -37,19 +37,19 @@ pub async fn knock_room_by_id(
         "LLLLLLLLLLLLLLLLL {} Lock room by id {room_id}  reason:{reason:?} servers: {servers:?}",
         crate::config::server_name()
     );
-    if crate::room::is_invited(sender_id, room_id)? {
+    if crate::room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
             MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.", None).into(),
         );
     }
 
-    if crate::room::is_joined(sender_id, room_id)? {
+    if crate::room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.", None).into());
     }
 
-    if crate::room::is_knocked(sender_id, room_id)? {
+    if crate::room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
         return Ok(());
     }

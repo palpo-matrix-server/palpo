@@ -35,7 +35,7 @@ use crate::{
 //     }
 // };
 
-pub fn send_messages_request(origin: &str, txn_id: &str, body: SendMessageReqBody) -> SendResult<SendRequest> {
+pub fn send_message_request(origin: &str, txn_id: &str, body: SendMessageReqBody) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/federation/v1/send/{txn_id}"))?;
     crate::sending::put(url).stuff(body)
 }

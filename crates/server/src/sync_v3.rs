@@ -53,8 +53,7 @@ pub async fn sync_events(
     };
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
-    println!("FFFFFFFFFFFFilter: {filter:#?}");
-
+   
     let full_state = args.full_state;
 
     let mut joined_rooms = BTreeMap::new();
@@ -440,8 +439,8 @@ async fn load_joined_room(
 
                             // The membership was and still is invite or join
                             if matches!(content.membership, MembershipState::Join | MembershipState::Invite)
-                                && (crate::room::is_joined(&user_id, &room_id)?
-                                    || crate::room::is_invited(&user_id, &room_id)?)
+                                && (crate::room::user::is_joined(&user_id, &room_id)?
+                                    || crate::room::user::is_invited(&user_id, &room_id)?)
                             {
                                 Ok::<_, AppError>(Some(state_key.clone()))
                             } else {
@@ -674,7 +673,7 @@ async fn load_joined_room(
     };
 
     // Look for device list updates in this room
-    device_list_updates.extend(crate::room::keys_changed_users(room_id, since_sn, None)?);
+    device_list_updates.extend(crate::room::user::keys_changed_users(room_id, since_sn, None)?);
 
     let notification_count = if send_notification_counts {
         Some(

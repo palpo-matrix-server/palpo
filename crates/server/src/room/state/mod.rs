@@ -634,7 +634,7 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,
-        HistoryVisibility::Shared => crate::room::is_joined(&user_id, &room_id)?,
+        HistoryVisibility::Shared => crate::room::user::is_joined(&user_id, &room_id)?,
         HistoryVisibility::Invited => {
             // Allow if any member on requesting server was AT LEAST invited, else deny
             user_was_invited(frame_id, &user_id)
@@ -661,7 +661,7 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
 pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    if crate::room::is_joined(&user_id, &room_id)? {
+    if crate::room::user::is_joined(&user_id, &room_id)? {
         return Ok(true);
     }
 
@@ -774,6 +774,12 @@ pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
     get_room_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
         .map(|c| c.join_rule)
 }
+pub fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
+    get_power_levels_event_content(room_id).map(|content| RoomPowerLevels::from(content))
+}
+pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
+    get_room_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)
+}
 
 pub fn get_room_type(room_id: &RoomId) -> AppResult<Option<RoomType>> {
     get_room_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
@@ -819,16 +825,30 @@ pub fn get_user_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Ve
     }
 }
 
-pub fn user_can_invite(room_id: &RoomId, sender: &UserId, target_user: &UserId) -> AppResult<bool> {
-    let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
+pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &UserId) -> bool {
+    // let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
 
-    let new_event = PduBuilder {
-        event_type: TimelineEventType::RoomMember,
-        content,
-        state_key: Some(target_user.into()),
-        ..Default::default()
-    };
-    Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
+    // let new_event = PduBuilder {
+    //     event_type: TimelineEventType::RoomMember,
+    //     content,
+    //     state_key: Some(target_user.into()),
+    //     ..Default::default()
+    // };
+    // Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
+
+    if let Ok(power_levels) = get_power_levels(room_id) {
+        println!("========user_can_invite======pwer_levels: {:#?}", power_levels);
+        power_levels.user_can_invite(sender_id)
+    } else {
+        println!("user_can_invite ???????????????");
+        let create_content =
+            get_room_state_content::<RoomCreateEventContent>(&room_id, &StateEventType::RoomCreate, "", None);
+        if let Ok(create_content) = create_content {
+            create_content.creator.as_deref() == Some(sender_id)
+        } else {
+            false
+        }
+    }
 }
 pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
     get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
