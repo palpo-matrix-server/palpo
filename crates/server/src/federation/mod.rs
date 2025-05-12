@@ -168,16 +168,12 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    println!("++++++++++++++room_id: {:?}  user_id: {user_id:?}", room_id);
     if r.allow
         .iter()
         .filter_map(|rule| {
-            println!("========================rule: {:?}", rule);
             if let AllowRule::RoomMembership(membership) = rule {
-                println!("========================membership: {:?}", membership);
                 Some(membership)
             } else {
-                println!("========================other: {:?}", rule);
                 None
             }
         })

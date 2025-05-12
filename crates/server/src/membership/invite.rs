@@ -14,10 +14,6 @@ pub async fn invite_user(
     reason: Option<String>,
     is_direct: bool,
 ) -> AppResult<()> {
-    println!(
-        "invite_user: {} inviter_id: {inviter_id}, invitee_id: {invitee_id}, room_id: {room_id}, reason: {reason:?}, is_direct: {is_direct}",
-        crate::config::server_name()
-    );
     if !crate::room::user::is_joined(inviter_id, room_id)? {
         return Err(
             MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
@@ -30,7 +26,6 @@ pub async fn invite_user(
     }
 
     if invitee_id.server_name().is_remote() {
-        println!("invite_user: invitee_id is remote");
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
                 avatar_url: None,

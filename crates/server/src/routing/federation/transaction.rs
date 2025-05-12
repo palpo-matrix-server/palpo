@@ -31,11 +31,6 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!(
-        "==========send_message===={}======body:{:#?}",
-        config::server_name(),
-        body
-    );
     if &body.origin != origin {
         return Err(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
@@ -75,11 +70,6 @@ async fn handle_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
-    println!(
-        "================handle_pdus====server {}   pdus: {:#?}",
-        config::server_name(),
-        pdus
-    );
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {

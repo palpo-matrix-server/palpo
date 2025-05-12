@@ -32,11 +32,6 @@ pub async fn knock_room_by_id(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     // let state_lock = services.rooms.state.mutex.lock(room_id).await;
-
-    println!(
-        "LLLLLLLLLLLLLLLLL {} Lock room by id {room_id}  reason:{reason:?} servers: {servers:?}",
-        crate::config::server_name()
-    );
     if crate::room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
@@ -62,11 +57,6 @@ pub async fn knock_room_by_id(
     }
 
     let local_knock = crate::room::can_local_work_for_room(room_id, servers)?;
-    println!(
-        "sssssssssssserver_in_room  server_name:{}, room_id: {room_id}  servers: {servers:?}  reason:{:?}",
-        config::server_name(),
-        reason
-    );
     if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
@@ -84,7 +74,6 @@ async fn knock_room_local(
 ) -> AppResult<()> {
     use RoomVersionId::*;
     info!("We can knock locally");
-    println!("We can knock locally");
     let room_version_id = crate::room::state::get_room_version(room_id)?;
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
@@ -313,7 +302,6 @@ async fn knock_room_remote(
     let mut state_map = HashMap::new();
 
     for value in knock_state {
-        println!("==============99==event: {value:#?}");
         let Some(state_key) = value.get("state_key") else {
             warn!("send_knock stripped state event missing state_key: {value:?}");
             continue;

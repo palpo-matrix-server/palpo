@@ -218,7 +218,6 @@ where
         None,
     )
     .unwrap_or_default();
-println!("Pppppppppppppower levels: {power_levels:?}");
 
     let sync_pdu = pdu.to_sync_room_event();
 
@@ -722,7 +721,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     if crate::room::is_admin_room(room_id) {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
-    println!("bbbbbbbbbbuild_and_append_pdu: {sender:?}    room_id: {room_id:?}");
 
     append_pdu(
         &pdu,
@@ -740,7 +738,6 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
 
-    println!("cccccccccccccccccccccccccccccservers: {servers:?}");
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.event_ty == TimelineEventType::RoomMember {
         if let Some(state_key_uid) = &pdu

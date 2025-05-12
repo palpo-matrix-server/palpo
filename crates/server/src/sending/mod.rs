@@ -253,7 +253,6 @@ async fn send_events(
     kind: OutgoingKind,
     events: Vec<SendingEventType>,
 ) -> Result<OutgoingKind, (OutgoingKind, AppError)> {
-    println!("===========send_events 0");
     match &kind {
         OutgoingKind::Appservice(id) => {
             let mut pdu_jsons = Vec::new();
@@ -398,10 +397,6 @@ async fn send_events(
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
                 })));
-            println!(
-                "============{}  ===================send_message_request 1",
-                crate::config::server_name()
-            );
 
             let request = send_message_request(
                 &server.origin().await,

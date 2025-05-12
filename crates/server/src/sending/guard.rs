@@ -33,6 +33,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::{AppError, AppResult, config, data, exts::*, utils};
+use crate::room::{timeline, state};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -189,7 +190,7 @@ fn select_edus_device_changes(
     events_len: &AtomicUsize,
 ) -> AppResult<EduVec> {
     let mut events = EduVec::new();
-    let server_rooms = crate::room::server_joined_rooms(server_name)?;
+    let server_rooms = state::server_joined_rooms(server_name)?;
 
     let mut device_list_changes = HashSet::<OwnedUserId>::new();
     for room_id in server_rooms {
@@ -232,7 +233,7 @@ fn select_edus_device_changes(
 #[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
 fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
     let mut num = 0;
-    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_joined_rooms(server_name)?
+    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = state::server_joined_rooms(server_name)?
         .into_iter()
         .filter_map(|room_id| {
             let receipt_map = select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
@@ -327,7 +328,7 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
             continue;
         }
 
-        if !crate::room::state::server_can_see_user(server_name, &user_id)? {
+        if !state::server_can_see_user(server_name, &user_id)? {
             continue;
         }
 
@@ -409,7 +410,6 @@ pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
 
 #[tracing::instrument(skip(servers, pdu_id), level = "debug")]
 pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
-    println!("sssSending pdu to servers pdu_id: {pdu_id}");
     let requests = servers
         .into_iter()
         .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
@@ -508,7 +508,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
-                        crate::room::timeline::get_pdu(event_id)
+                        timeline::get_pdu(event_id)
                             .map_err(|e| (kind.clone(), e))?
                             .to_room_event(),
                     ),
@@ -555,7 +555,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(crate::room::timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
+                        pdus.push(timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)
@@ -614,7 +614,7 @@ async fn send_events(
                     SendingEventType::Pdu(pdu_id) => {
                         // TODO: check room version and remove event_id if needed
                         let raw = crate::sending::convert_to_outgoing_federation_event(
-                            crate::room::timeline::get_pdu_json(pdu_id)
+                            timeline::get_pdu_json(pdu_id)
                                 .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?
                                 .ok_or_else(|| {
                                     error!("event not found: {server} {pdu_id:?}");
@@ -646,7 +646,6 @@ async fn send_events(
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
                 })));
-            println!("============{}  ===================send_message_request 0  server: {:?}", crate::config::server_name(), server);
             let request = send_message_request(
                 &server.origin().await,
                 txn_id,

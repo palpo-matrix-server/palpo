@@ -33,8 +33,7 @@ use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{PduBuilder, PduEvent};
-use crate::event::{update_frame_id, update_frame_id_by_sn};
+use crate::event::{PduBuilder, PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::{AppError, AppResult, MatrixError, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
@@ -60,6 +59,22 @@ pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
 pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
+
+pub fn server_joined_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
+    room_joined_servers::table
+        .filter(room_joined_servers::server_id.eq(server_name))
+        .select(room_joined_servers::room_id)
+        .load::<OwnedRoomId>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    let room_version = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .select(rooms::version)
+        .first::<String>(&mut connect()?)?;
+    Ok(RoomVersionId::try_from(room_version)?)
+}
 
 /// Set the room to the given state_hash and update caches.
 pub fn force_state(
@@ -601,7 +616,7 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 
 #[tracing::instrument(skip(origin, user_id))]
 pub fn server_can_see_user(origin: &ServerName, user_id: &UserId) -> AppResult<bool> {
-    Ok(crate::room::server_joined_rooms(origin)?
+    Ok(server_joined_rooms(origin)?
         .iter()
         .any(|room_id| super::user::is_joined(user_id, room_id).unwrap_or(false)))
 }
@@ -796,8 +811,8 @@ pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> 
     .map(|c| c.history_visibility)
 }
 
-pub fn is_world_readable(room_id: &RoomId) -> AppResult<bool> {
-    get_history_visibility(room_id).map(|visibility| visibility == HistoryVisibility::WorldReadable)
+pub fn is_world_readable(room_id: &RoomId) -> bool {
+    get_history_visibility(room_id).map(|visibility| visibility == HistoryVisibility::WorldReadable).unwrap_or(false)
 }
 
 pub fn get_room_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {
@@ -837,10 +852,8 @@ pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &User
     // Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 
     if let Ok(power_levels) = get_power_levels(room_id) {
-        println!("========user_can_invite======pwer_levels: {:#?}", power_levels);
         power_levels.user_can_invite(sender_id)
     } else {
-        println!("user_can_invite ???????????????");
         let create_content =
             get_room_state_content::<RoomCreateEventContent>(&room_id, &StateEventType::RoomCreate, "", None);
         if let Ok(create_content) = create_content {
@@ -850,9 +863,10 @@ pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &User
         }
     }
 }
-pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
+pub fn guest_can_join(room_id: &RoomId) -> bool {
     get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
         .map(|c| c.guest_access == GuestAccess::CanJoin)
+        .unwrap_or(false)
 }
 
 /// Returns an iterator of all our local users in the room, even if they're

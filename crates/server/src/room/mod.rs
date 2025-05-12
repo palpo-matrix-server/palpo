@@ -121,16 +121,6 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
         .map_err(Into::into)
 }
 
-pub fn guest_can_join(room_id: &RoomId) -> AppResult<bool> {
-    self::state::get_room_state_content::<RoomGuestAccessEventContent>(
-        &room_id,
-        &StateEventType::RoomGuestAccess,
-        "",
-        None,
-    )
-    .map(|c| c.guest_access == GuestAccess::CanJoin)
-}
-
 pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
     let joined_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
@@ -383,22 +373,6 @@ pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
         .select(rooms::id)
         .load(&mut connect()?)
         .map_err(Into::into)
-}
-
-pub fn server_joined_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
-    room_joined_servers::table
-        .filter(room_joined_servers::server_id.eq(server_name))
-        .select(room_joined_servers::room_id)
-        .load::<OwnedRoomId>(&mut connect()?)
-        .map_err(Into::into)
-}
-
-pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
-    let room_version = rooms::table
-        .filter(rooms::id.eq(room_id))
-        .select(rooms::version)
-        .first::<String>(&mut connect()?)?;
-    Ok(RoomVersionId::try_from(room_version)?)
 }
 
 pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
