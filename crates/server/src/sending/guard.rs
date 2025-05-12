@@ -646,7 +646,7 @@ async fn send_events(
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
                 })));
-            println!("============{}  ===================send_message_request 0", crate::config::server_name());
+            println!("============{}  ===================send_message_request 0  server: {:?}", crate::config::server_name(), server);
             let request = send_message_request(
                 &server.origin().await,
                 txn_id,
