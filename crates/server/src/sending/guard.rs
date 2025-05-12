@@ -23,7 +23,7 @@ use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_messages_request};
+use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_message_request};
 use crate::core::identifiers::*;
 use crate::core::presence::{PresenceContent, PresenceUpdate};
 pub use crate::core::sending::*;
@@ -33,6 +33,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::{AppError, AppResult, config, data, exts::*, utils};
+use crate::room::{timeline, state};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -189,7 +190,7 @@ fn select_edus_device_changes(
     events_len: &AtomicUsize,
 ) -> AppResult<EduVec> {
     let mut events = EduVec::new();
-    let server_rooms = crate::room::server_joined_rooms(server_name)?;
+    let server_rooms = state::server_joined_rooms(server_name)?;
 
     let mut device_list_changes = HashSet::<OwnedUserId>::new();
     for room_id in server_rooms {
@@ -232,7 +233,7 @@ fn select_edus_device_changes(
 #[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
 fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
     let mut num = 0;
-    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = crate::room::server_joined_rooms(server_name)?
+    let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = state::server_joined_rooms(server_name)?
         .into_iter()
         .filter_map(|room_id| {
             let receipt_map = select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
@@ -327,7 +328,7 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
             continue;
         }
 
-        if !crate::room::state::server_can_see_user(server_name, &user_id)? {
+        if !state::server_can_see_user(server_name, &user_id)? {
             continue;
         }
 
@@ -507,7 +508,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
-                        crate::room::timeline::get_pdu(event_id)
+                        timeline::get_pdu(event_id)
                             .map_err(|e| (kind.clone(), e))?
                             .to_room_event(),
                     ),
@@ -554,7 +555,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(crate::room::timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
+                        pdus.push(timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)
@@ -613,7 +614,7 @@ async fn send_events(
                     SendingEventType::Pdu(pdu_id) => {
                         // TODO: check room version and remove event_id if needed
                         let raw = crate::sending::convert_to_outgoing_federation_event(
-                            crate::room::timeline::get_pdu_json(pdu_id)
+                            timeline::get_pdu_json(pdu_id)
                                 .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?
                                 .ok_or_else(|| {
                                     error!("event not found: {server} {pdu_id:?}");
@@ -645,7 +646,7 @@ async fn send_events(
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
                 })));
-            let request = send_messages_request(
+            let request = send_message_request(
                 &server.origin().await,
                 txn_id,
                 SendMessageReqBody {

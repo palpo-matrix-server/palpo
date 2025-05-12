@@ -28,6 +28,10 @@ impl LazyLoadOptions {
     pub fn is_disabled(&self) -> bool {
         matches!(self, Self::Disabled)
     }
+
+    pub fn is_enabled(&self) -> bool {
+        !self.is_disabled()
+    }
 }
 
 impl Serialize for LazyLoadOptions {

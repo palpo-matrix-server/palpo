@@ -139,7 +139,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
-        if !crate::room::is_joined(&authorising_user, room_id)? {
+        if !crate::room::user::is_joined(&authorising_user, room_id)? {
             return Err(MatrixError::invalid_param(
                 "Authorising user {authorising_user} is not in the room you are trying to join, \
 				 they cannot authorise your join.",
@@ -193,7 +193,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
 
-    //     let join_rules_event = crate::room::state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
+    // TODO: check if allow join
+    //     let join_rules_event = state::get_state(room_id, &StateEventType::RoomJoinRules, "", None)?;
 
     //     let join_rules_event_content: Option<RoomJoinRulesEventContent> = join_rules_event
     //         .as_ref()
@@ -252,18 +253,17 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
-    if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id)? {
+    if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
-
     let sender_id = authed.user_id();
-    if crate::room::is_joined(sender_id, room_id)? {
+    if crate::room::user::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
         });
     }
 
-    if let Ok(membership) = crate::room::state::get_member(room_id, sender_id) {
+    if let Ok(membership) = state::get_member(room_id, sender_id) {
         if membership.membership == MembershipState::Ban {
             tracing::warn!("{} is banned from {room_id} but attempted to join", sender_id);
             return Err(MatrixError::forbidden("You are banned from the room.", None).into());
@@ -312,12 +312,12 @@ async fn join_room_local(
 
     let authorized_user = if restriction_rooms
         .iter()
-        .any(|restriction_room_id| crate::room::is_joined(user_id, restriction_room_id).unwrap_or(false))
+        .any(|restriction_room_id| crate::room::user::is_joined(user_id, restriction_room_id).unwrap_or(false))
     {
         let mut auth_user = None;
         for joined_user in crate::room::get_joined_users(room_id, None)? {
             if joined_user.server_name() == config::server_name()
-                && state::user_can_invite(room_id, &joined_user, user_id).unwrap_or(false)
+                && state::user_can_invite(room_id, &joined_user, user_id)
             {
                 auth_user = Some(joined_user);
                 break;
@@ -714,7 +714,7 @@ async fn join_room_remote(
     //     None::<PduEvent>, // TODO: third party invite
     //     |k, s| {
     //         crate::room::timeline::get_pdu(
-    //             state.get(&crate::room::state::ensure_field_id(&k.to_string().into(), s).ok()?)?,
+    //             state.get(&state::ensure_field_id(&k.to_string().into(), s).ok()?)?,
     //         )
     //         .ok()?
     //     },

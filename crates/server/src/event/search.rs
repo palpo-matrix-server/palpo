@@ -24,7 +24,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let limit = filter.limit.unwrap_or(10).min(100) as usize;
 
     for room_id in &room_ids {
-        if !crate::room::is_joined(user_id, room_id)? {
+        if !crate::room::user::is_joined(user_id, room_id)? {
             return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     }

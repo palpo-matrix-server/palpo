@@ -246,7 +246,7 @@ fn set_read_markers(
 async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_joined(authed.user_id(), &room_id)? {
+    if !crate::room::user::is_joined(authed.user_id(), &room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
     }
 

@@ -14,6 +14,17 @@ pub async fn invite_user(
     reason: Option<String>,
     is_direct: bool,
 ) -> AppResult<()> {
+    if !crate::room::user::is_joined(inviter_id, room_id)? {
+        return Err(
+            MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
+        );
+    }
+    if !crate::room::state::user_can_invite(room_id, inviter_id, invitee_id) {
+        return Err(
+            MatrixError::forbidden("You are not allowed to invite this user.", None).into(),
+        );
+    }
+
     if invitee_id.server_name().is_remote() {
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
@@ -92,12 +103,6 @@ pub async fn invite_user(
 
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
         return crate::sending::send_pdu_room(room_id, &event_id);
-    }
-
-    if !crate::room::is_joined(inviter_id, room_id)? {
-        return Err(
-            MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
-        );
     }
 
     crate::room::timeline::build_and_append_pdu(
