@@ -146,5 +146,5 @@ pub fn delete_device_pushers(user_id: &UserId, device_id: &DeviceId) -> DataResu
             .filter(user_pushers::device_id.eq(device_id)),
     )
     .execute(&mut connect()?)?;
-Ok(())
+    Ok(())
 }

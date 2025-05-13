@@ -27,7 +27,7 @@ macro_rules! extract_variant {
 }
 
 pub fn shuffle<T>(vec: &mut [T]) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     vec.shuffle(&mut rng);
 }
 

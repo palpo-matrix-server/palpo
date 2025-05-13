@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use diesel::prelude::*;
 use palpo_core::push::PusherIds;
 use url::Url;
@@ -14,13 +12,10 @@ use crate::core::identifiers::*;
 use crate::core::push::push_gateway::{
     Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,
 };
-use crate::core::push::{
-    Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, PushFormat, Pusher, PusherKind, Ruleset, Tweak,
-};
-use crate::core::serde::{JsonValue, RawJson};
+use crate::core::push::{Action, PushFormat, Pusher, PusherKind, Ruleset, Tweak};
 use crate::data::schema::*;
+use crate::data::user::pusher::NewDbPusher;
 use crate::data::{self, connect};
-use crate::data::user::pusher::{DbPusher, NewDbPusher};
 use crate::event::PduEvent;
 use crate::{AppError, AppResult, AuthedInfo};
 
@@ -160,7 +155,9 @@ pub async fn send_push_notice(
     )
     .unwrap_or_default();
 
-    for action in data::user::pusher::get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)? {
+    for action in
+        data::user::pusher::get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)?
+    {
         let n = match action {
             Action::Notify => true,
             Action::SetTweak(tweak) => {

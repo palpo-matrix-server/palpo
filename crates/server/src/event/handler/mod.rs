@@ -26,7 +26,7 @@ use crate::data::schema::*;
 use crate::event::PduEvent;
 use crate::room::state::{self, CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::timeline;
-use crate::{AppError, AppResult, MatrixError, config, exts::*};
+use crate::{AppError, AppResult, MatrixError, exts::*};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room

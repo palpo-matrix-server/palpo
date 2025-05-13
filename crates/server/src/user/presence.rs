@@ -1,13 +1,12 @@
 use diesel::prelude::*;
 
-use crate::core::client::presence;
 use crate::core::federation::transaction::Edu;
 use crate::core::presence::{PresenceContent, PresenceState, PresenceUpdate};
 use crate::core::{OwnedServerName, UnixMillis, UserId};
+use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::{NewDbPresence, last_presence};
-use crate::data::{DataResult, connect};
-use crate::{AppResult, IsRemoteOrLocal, config, data, sending};
+use crate::{AppResult, config, data, sending};
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {
@@ -83,7 +82,7 @@ pub fn set_presence(
         occur_sn: None,
     };
 
-    let mut state_changed = data::user::set_presence(db_presence, force)?;
+    let state_changed = data::user::set_presence(db_presence, force)?;
     if state_changed {
         let edu = Edu::Presence(PresenceContent {
             push: vec![PresenceUpdate {

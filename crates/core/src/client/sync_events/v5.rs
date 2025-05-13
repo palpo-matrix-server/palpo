@@ -19,7 +19,7 @@ use crate::events::receipt::SyncReceiptEvent;
 use crate::events::typing::SyncTypingEvent;
 use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyToDeviceEvent};
 use crate::{
-    OwnedMxcUri, Seqnum, UnixMillis,
+    OwnedMxcUri, Seqnum,
     directory::RoomTypeFilter,
     events::{AnyStrippedStateEvent, AnySyncStateEvent, AnySyncTimelineEvent, StateEventType},
     identifiers::*,

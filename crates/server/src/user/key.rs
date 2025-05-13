@@ -1,22 +1,21 @@
-use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, HashMap, hash_map};
 use std::time::Instant;
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::json;
 
-use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
+use crate::core::client::key::ClaimKeysResBody;
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
-use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis, client, federation};
+use crate::core::{DeviceKeyAlgorithm, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::*;
-use crate::sending::EduBuf;
 use crate::user::clean_signatures;
 use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
 

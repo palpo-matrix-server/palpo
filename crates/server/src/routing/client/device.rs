@@ -12,7 +12,7 @@ use crate::core::error::ErrorKind;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
-use crate::{AppError, AuthArgs, DepotExt, data, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, data, empty_ok, json_ok, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")

@@ -5,7 +5,7 @@ use crate::core::client::push::SetPusherReqBody;
 use crate::core::client::push::pusher::PushersResBody;
 use crate::core::push::Pusher;
 use crate::data::DataError;
-use crate::{AppError, DepotExt, EmptyResult,data, JsonResult, empty_ok, hoops, json_ok};
+use crate::{DepotExt, EmptyResult, JsonResult, data, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushers")

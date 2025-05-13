@@ -1,13 +1,11 @@
 use std::time::Duration;
 
-use palpo_core::presence::PresenceState;
 use salvo::oapi::extract::JsonBody;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::OwnedUserId;
 use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
-use crate::data::user::NewDbPresence;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {

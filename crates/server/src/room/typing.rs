@@ -8,7 +8,6 @@ use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::events::typing::{TypingContent, TypingEventContent};
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::sending::EduBuf;
 use crate::{AppResult, IsRemoteOrLocal, data, sending};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 
-use diesel::prelude::*;
 use salvo::http::StatusError;
 
+use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -14,12 +14,7 @@ use crate::core::federation::knock::{
     MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
 };
 use crate::core::identifiers::*;
-use crate::core::serde::JsonValue;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
-use crate::core::{Seqnum, UnixMillis};
-use crate::data::connect;
-use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
 use crate::room::state::CompressedEvent;
 use crate::room::state::{self, DeltaInfo};

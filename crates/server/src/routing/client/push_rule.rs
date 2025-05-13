@@ -9,7 +9,7 @@ use crate::core::client::push::{
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
 use crate::core::push::{NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind};
-use crate::{DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
+use crate::{DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushrules")

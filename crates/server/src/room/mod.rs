@@ -17,11 +17,9 @@ pub mod thread;
 use std::collections::HashMap;
 
 use diesel::prelude::*;
-use rand::seq::SliceRandom;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::directory::RoomTypeFilter;
-use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{AnySyncStateEvent, StateEventType};
 use crate::core::identifiers::*;

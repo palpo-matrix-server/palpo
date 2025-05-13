@@ -124,7 +124,12 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
     if data::user::is_device_exists(&user_id, &device_id)? {
         data::user::set_access_token(&user_id, &device_id, &access_token)?;
     } else {
-        data::user::create_device(&user_id, &device_id, &access_token, body.initial_device_display_name.clone())?;
+        data::user::create_device(
+            &user_id,
+            &device_id,
+            &access_token,
+            body.initial_device_display_name.clone(),
+        )?;
     }
 
     tracing::info!("{} logged in", user_id);

@@ -3,7 +3,6 @@ use std::{borrow::Borrow, collections::BTreeSet};
 use serde::Deserialize;
 use serde::de::{Error as _, IgnoredAny};
 
-use crate::events::call::hangup::Reason;
 use crate::events::room::{
     create::RoomCreateEventContent,
     join_rules::{JoinRule, RoomJoinRulesEventContent},

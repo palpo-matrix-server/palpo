@@ -7,7 +7,6 @@ use diesel::prelude::*;
 use palpo_data::diesel_exists;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
-use tracing_subscriber::fmt::format;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
@@ -25,13 +24,12 @@ use crate::core::serde::{
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::user::DbUser;
 use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::membership::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinReqBody};
 use crate::membership::state::DeltaInfo;
 use crate::room::state::{self, CompressedEvent};
-use crate::sending::{EduBuf, send_edu_server};
+use crate::sending::send_edu_server;
 use crate::{
     AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data,
 };
