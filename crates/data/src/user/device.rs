@@ -160,33 +160,16 @@ pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> DataResult<
             return Err(MatrixError::not_found("Device not found.").into());
         }
     }
-    diesel::delete(
-        user_access_tokens::table
-            .filter(user_access_tokens::user_id.eq(user_id))
-            .filter(user_access_tokens::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
-    diesel::delete(
-        user_refresh_tokens::table
-            .filter(user_refresh_tokens::user_id.eq(user_id))
-            .filter(user_refresh_tokens::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
-    diesel::delete(
-        pushers::table
-            .filter(pushers::user_id.eq(user_id))
-            .filter(pushers::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
+
+    super::delete_device_access_tokens(user_id, device_id)?;
+    super::delete_device_refresh_tokens(user_id, device_id)?;
+    super::pusher::delete_device_pushers(user_id, device_id)?;
     Ok(())
 }
 pub fn remove_all_devices(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_devices::table.filter(user_devices::user_id.eq(user_id))).execute(&mut connect()?)?;
-    diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    Ok(())
+    super::delete_user_access_tokens(user_id)?;
+    super::delete_user_refresh_tokens(user_id)?;
+    super::pusher::delete_user_pushers(user_id)
 }
 
 pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
@@ -195,7 +178,7 @@ pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
     Ok(())
 }
 
-pub fn set_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> DataResult<()> {
+pub fn set_access_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> DataResult<()> {
     diesel::insert_into(user_access_tokens::table)
         .values(NewDbAccessToken::new(
             user_id.to_owned(),

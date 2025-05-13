@@ -1,6 +1,6 @@
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
+use std::sync::{LazyLock, OnceLock};
 
 use figment::Figment;
 use figment::providers::{Env, Format, Toml};
@@ -9,16 +9,9 @@ use ipaddress::IPAddress;
 mod server_config;
 pub use server_config::*;
 
-use crate::core::UnixMillis;
-use crate::core::client::sync_events;
-use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
 pub use crate::data::DbConfig;
-use crate::data::connect;
-use crate::data::misc::DbServerSigningKeys;
-use crate::data::schema::*;
-use crate::{AppResult, MatrixError, SigningKeys};
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 

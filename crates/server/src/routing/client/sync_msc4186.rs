@@ -9,11 +9,10 @@ use salvo::prelude::*;
 use crate::core::Seqnum;
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
-use crate::core::events::receipt::{ReceiptEventContent, SyncReceiptEvent, combine_receipt_event_contents};
+use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_contents};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
 use crate::data;
 use crate::event::ignored_filter;
 use crate::extract_variant;
@@ -646,11 +645,11 @@ fn collect_to_device(
         return None;
     }
 
-    crate::user::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
+    data::user::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
 
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
-        events: crate::user::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
+        events: data::user::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
     })
 }
 

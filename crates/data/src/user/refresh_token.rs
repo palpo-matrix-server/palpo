@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
 use crate::schema::*;
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_refresh_tokens)]
@@ -26,4 +27,20 @@ pub struct NewDbRefreshToken {
     pub expired_at: Option<i64>,
     pub ultimate_session_expired_at: Option<i64>,
     pub created_at: UnixMillis,
+}
+
+pub fn delete_user_refresh_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_device_refresh_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
+    diesel::delete(
+        user_refresh_tokens::table
+            .filter(user_refresh_tokens::user_id.eq(user_id))
+            .filter(user_refresh_tokens::device_id.eq(device_id)),
+    )
+    .execute(&mut connect()?)?;
+    Ok(())
 }

@@ -5,7 +5,6 @@ use diesel::prelude::*;
 
 use super::LazyRwLock;
 use crate::SESSION_ID_LENGTH;
-use crate::core::client::key::UploadSigningKeysReqBody;
 use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;

@@ -1,5 +1,3 @@
-mod device;
-pub use device::*;
 mod password;
 pub use password::*;
 mod profile;
@@ -12,7 +10,6 @@ mod refresh_token;
 pub use refresh_token::*;
 pub mod key;
 pub mod pusher;
-// pub mod push_rule;
 pub use key::*;
 pub mod key_backup;
 pub mod session;

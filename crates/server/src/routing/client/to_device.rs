@@ -7,7 +7,7 @@ use ulid::Ulid;
 use crate::core::device::DirectDeviceContent;
 use crate::core::federation::transaction::Edu;
 use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
-use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, empty_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, data, empty_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/{event_type}/{txn_id}").put(send_to_device)
@@ -52,7 +52,7 @@ fn send_to_device(
             }
 
             match target_device_id_maybe {
-                DeviceIdOrAllDevices::DeviceId(target_device_id) => crate::user::add_to_device_event(
+                DeviceIdOrAllDevices::DeviceId(target_device_id) => data::user::add_to_device_event(
                     authed.user_id(),
                     target_user_id,
                     target_device_id,
@@ -63,8 +63,8 @@ fn send_to_device(
                 )?,
 
                 DeviceIdOrAllDevices::AllDevices => {
-                    for target_device_id in crate::user::all_device_ids(target_user_id)? {
-                        crate::user::add_to_device_event(
+                    for target_device_id in data::user::all_device_ids(target_user_id)? {
+                        data::user::add_to_device_event(
                             authed.user_id(),
                             target_user_id,
                             &target_device_id,

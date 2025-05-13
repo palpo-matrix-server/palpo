@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
@@ -12,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::JsonValue;
 use crate::core::{MatrixError, signatures};
-use crate::{AppError, AppResult, auth, config, sending};
+use crate::{AppError, AppResult, config, sending};
 
 mod access_check;
 pub use access_check::access_check;

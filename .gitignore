@@ -6,6 +6,7 @@ debug.log
 .idea
 /tests/results/__**
 /tests/results/*.log
+/tests/__**
 sytestout
 __test*
 /deploy/docker/data

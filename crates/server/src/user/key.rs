@@ -1,22 +1,21 @@
-use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, HashMap, hash_map};
 use std::time::Instant;
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::json;
 
-use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
+use crate::core::client::key::ClaimKeysResBody;
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
-use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis, client, federation};
+use crate::core::{DeviceKeyAlgorithm, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::exts::*;
-use crate::sending::EduBuf;
 use crate::user::clean_signatures;
 use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
 
@@ -172,9 +171,9 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
 
         if device_ids.is_empty() {
             let mut container = BTreeMap::new();
-            for device_id in crate::user::all_device_ids(user_id)? {
+            for device_id in data::user::all_device_ids(user_id)? {
                 if let Some(mut keys) = data::user::get_device_keys_and_sigs(user_id, &device_id)? {
-                    let device = crate::user::get_device(user_id, &device_id)?;
+                    let device = data::user::get_device(user_id, &device_id)?;
                     if let Some(display_name) = &device.display_name {
                         keys.unsigned.device_display_name = display_name.to_owned().into();
                     }

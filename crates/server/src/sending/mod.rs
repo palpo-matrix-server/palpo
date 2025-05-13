@@ -1,29 +1,22 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
 use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
-use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, Semaphore, mpsc};
 
 use crate::core::appservice::Registration;
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
-use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
 use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_message_request};
 use crate::core::identifiers::*;
-use crate::core::presence::{PresenceContent, PresenceUpdate};
 pub use crate::core::sending::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::{Seqnum, UnixMillis, device_id, push};
+use crate::core::{UnixMillis, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
@@ -324,8 +317,8 @@ async fn send_events(
                         }
                     }
                 }
-                let pusher = match crate::user::pusher::get_pusher(user_id, pushkey)
-                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e))?
+                let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
+                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
                 {
                     Some(pusher) => pusher,
                     None => continue,

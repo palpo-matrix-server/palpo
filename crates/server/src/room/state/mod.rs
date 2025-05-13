@@ -28,12 +28,12 @@ use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEv
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::RoomType;
-use crate::core::serde::{JsonValue, RawJson, to_raw_json_value};
+use crate::core::serde::{JsonValue, RawJson};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{PduBuilder, PduEvent, update_frame_id, update_frame_id_by_sn};
+use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::{AppError, AppResult, MatrixError, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
@@ -812,7 +812,9 @@ pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> 
 }
 
 pub fn is_world_readable(room_id: &RoomId) -> bool {
-    get_history_visibility(room_id).map(|visibility| visibility == HistoryVisibility::WorldReadable).unwrap_or(false)
+    get_history_visibility(room_id)
+        .map(|visibility| visibility == HistoryVisibility::WorldReadable)
+        .unwrap_or(false)
 }
 
 pub fn get_room_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {

@@ -73,9 +73,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
             {
                 let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
                     .into_iter()
-                    .filter(|user| {
-                        crate::room::state::user_can_invite(&args.room_id, user, &args.user_id)
-                    })
+                    .filter(|user| crate::room::state::user_can_invite(&args.room_id, user, &args.user_id))
                     .next()
                 else {
                     return Err(MatrixError::unable_to_grant_join(

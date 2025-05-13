@@ -265,8 +265,8 @@ CREATE TABLE user_registration_tokens (
 ALTER TABLE ONLY user_registration_tokens
     ADD CONSTRAINT registration_tokens_token_key UNIQUE (token);
 
-drop table if exists pushers CASCADE;
-CREATE TABLE pushers (
+drop table if exists user_pushers CASCADE;
+CREATE TABLE user_pushers (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     kind text NOT NULL,
@@ -285,7 +285,7 @@ CREATE TABLE pushers (
     failing_since bigint,
     created_at bigint NOT NULL
 );
-CREATE INDEX pushers_app_id_pushkey_idx ON pushers USING btree (app_id, pushkey);
+CREATE INDEX pushers_app_id_pushkey_idx ON user_pushers USING btree (app_id, pushkey);
 
 DROP TABLE if exists rooms CASCADE;
 CREATE TABLE rooms (

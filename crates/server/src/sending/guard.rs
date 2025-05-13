@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use base64::{Engine as _, engine::general_purpose};
@@ -10,7 +9,7 @@ use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use tokio::sync::{Mutex, Semaphore, mpsc};
+use tokio::sync::{Mutex, mpsc};
 
 use super::sender;
 use super::{
@@ -32,8 +31,8 @@ use crate::core::{Seqnum, UnixMillis, device_id, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, exts::*, utils};
-use crate::room::{timeline, state};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -573,8 +572,8 @@ async fn send_events(
                         }
                     }
                 }
-                let pusher = match crate::user::pusher::get_pusher(user_id, pushkey)
-                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e))?
+                let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
+                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
                 {
                     Some(pusher) => pusher,
                     None => continue,
