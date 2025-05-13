@@ -357,6 +357,7 @@ crate::json_body_modifier!(SendLeaveReqBody);
 // };
 
 pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBody) -> SendResult<SendRequest> {
+    println!("sssssssssssssssssssssssend join_request  args: {args:#?}");
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v2/send_join/{}/{}?omit_members={}",
         &args.room_id, &args.event_id, args.omit_members

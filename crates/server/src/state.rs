@@ -127,7 +127,7 @@ fn allowed_to_send_state_event(
                     );
                 }
 
-                if crate::room::is_joined(&state_key, room_id)? {
+                if crate::room::user::is_joined(&state_key, room_id)? {
                     return Err(MatrixError::invalid_param(
                         "{state_key} is already joined, an authorising user is not required.",
                     )
@@ -141,7 +141,7 @@ fn allowed_to_send_state_event(
                     .into());
                 }
 
-                if !crate::room::is_joined(&authorising_user, room_id)? {
+                if !crate::room::user::is_joined(&authorising_user, room_id)? {
                     return Err(MatrixError::invalid_param(
                         "Authorising user {authorising_user} is not in the room, they cannot \
 						 authorise the join.",

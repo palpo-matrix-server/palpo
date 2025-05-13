@@ -62,8 +62,8 @@ pub async fn get_summary_msc_3266(
 async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> AppResult<SummaryMsc3266ResBody> {
     trace!(?sender_id, "Sending local room summary response for {room_id:?}");
     let join_rule = state::get_join_rule(room_id)?;
-    let world_readable = state::is_world_readable(room_id)?;
-    let guest_can_join = state::guest_can_join(room_id)?;
+    let world_readable = state::is_world_readable(room_id);
+    let guest_can_join = state::guest_can_join(room_id);
 
     trace!("{join_rule:?}, {world_readable:?}, {guest_can_join:?}");
 

@@ -141,9 +141,13 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    if crate::room::is_joined(user_id, room_id).unwrap_or(false) {
+    if crate::room::user::is_joined(user_id, room_id).unwrap_or(false) {
         // joining user is already joined, there is nothing we need to do
         return Ok(false);
+    }
+
+    if crate::room::user::is_invited(user_id, room_id).unwrap_or(false) {
+        return Ok(true);
     }
 
     let Ok(join_rules_event_content) = crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
@@ -173,7 +177,7 @@ pub(crate) async fn user_can_perform_restricted_join(
                 None
             }
         })
-        .any(|m| crate::room::is_joined(user_id, &m.room_id).unwrap_or(false))
+        .any(|m| crate::room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
     {
         Ok(true)
     } else {

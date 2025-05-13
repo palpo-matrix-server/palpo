@@ -209,8 +209,8 @@ async fn get_room_summary(
     let name = state::get_name(room_id).ok();
     let topic = state::get_room_topic(room_id).ok();
     let room_type = state::get_room_type(room_id).ok().flatten();
-    let world_readable = state::is_world_readable(room_id)?;
-    let guest_can_join = state::guest_can_join(room_id)?;
+    let world_readable = state::is_world_readable(room_id);
+    let guest_can_join = state::guest_can_join(room_id);
     let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
     let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
     let avatar_url = state::get_avatar_url(room_id).ok().flatten();
@@ -252,8 +252,8 @@ fn is_accessible_child(
     }
 
     if let Identifier::UserId(user_id) = identifier {
-        if crate::room::is_joined(user_id, current_room).unwrap_or(false)
-            || crate::room::is_invited(user_id, current_room).unwrap_or(false)
+        if crate::room::user::is_joined(user_id, current_room).unwrap_or(false)
+            || crate::room::user::is_invited(user_id, current_room).unwrap_or(false)
         {
             return true;
         }
@@ -262,7 +262,7 @@ fn is_accessible_child(
     match join_rule {
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
-            Identifier::UserId(user) => crate::room::is_joined(user, room).unwrap_or(false),
+            Identifier::UserId(user) => crate::room::user::is_joined(user, room).unwrap_or(false),
             Identifier::ServerName(server) => crate::room::is_server_joined_room(server, room).unwrap_or(false),
         }),
 
