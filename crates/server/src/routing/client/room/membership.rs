@@ -138,6 +138,7 @@ fn membership_filter(
 ///
 /// - The sender user must be in the room
 /// - TODO: An appservice just needs a puppet joined
+/// https://spec.matrix.org/latest/client-server-api/#knocking-on-rooms
 #[endpoint]
 pub(super) fn joined_members(
     _aa: AuthArgs,
@@ -148,18 +149,22 @@ pub(super) fn joined_members(
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
 
-    let until_sn = if !state::user_can_see_state_events(sender_id, &room_id)? {
-        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
-            Some(leave_sn)
-        } else {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
-        }
-    } else {
-        None
-    };
+    // let until_sn = if !state::user_can_see_state_events(sender_id, &room_id)? {
+    //     if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
+    //         Some(leave_sn)
+    //     } else {
+    //         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+    //     }
+    // } else {
+    //     None
+    // };
+    // the sender user must be in the room
+    if !state::user_can_see_state_events(sender_id, &room_id)? {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+    }
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id, until_sn)? {
+    for user_id in crate::room::get_joined_users(&room_id, None)? {
         if let Some(DbProfile {
             display_name,
             avatar_url,

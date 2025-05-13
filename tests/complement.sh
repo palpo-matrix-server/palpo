@@ -58,7 +58,7 @@ test_packages=(
 env \
     -C "$COMPLEMENT_SRC" \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestKnockingInMSC3787Room" -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
+    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format
