@@ -29,18 +29,3 @@ pub struct NewDbRefreshToken {
     pub created_at: UnixMillis,
 }
 
-pub fn delete_user_refresh_tokens(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-
-pub fn delete_device_refresh_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
-    diesel::delete(
-        user_refresh_tokens::table
-            .filter(user_refresh_tokens::user_id.eq(user_id))
-            .filter(user_refresh_tokens::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
-    Ok(())
-}

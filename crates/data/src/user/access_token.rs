@@ -34,33 +34,17 @@ pub struct NewDbAccessToken {
 }
 
 impl NewDbAccessToken {
-    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String) -> Self {
+    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String, refresh_token_id: Option<i64>) -> Self {
         Self {
             user_id,
             device_id,
             token,
             puppets_user_id: None,
             last_validated: None,
-            refresh_token_id: None,
+            refresh_token_id,
             is_used: false,
             expired_at: None,
             created_at: UnixMillis::now(),
         }
     }
-}
-
-pub fn delete_user_access_tokens(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-
-pub fn delete_device_access_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
-    diesel::delete(
-        user_access_tokens::table
-            .filter(user_access_tokens::user_id.eq(user_id))
-            .filter(user_access_tokens::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
-    Ok(())
 }

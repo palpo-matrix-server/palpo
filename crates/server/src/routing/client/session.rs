@@ -120,9 +120,18 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
     // Generate a new token for the device
     let access_token = utils::random_string(TOKEN_LENGTH);
 
+    let (refresh_token, refresh_token_id) = if body.refresh_token {
+        let refresh_token = utils::random_string(TOKEN_LENGTH);
+        let expires_ts = UnixMillis::now() + crate::config().login_token_ttl;
+        let refresh_token_id = data::user::set_refresh_token(&user_id, &device_id, &refresh_token, expires_ts)?;
+        (refresh_token, Some(refresh_token_id));
+    } else {
+        (None, None)
+    };
+
     // Determine if device_id was provided and exists in the db for this user
     if data::user::is_device_exists(&user_id, &device_id)? {
-        data::user::set_access_token(&user_id, &device_id, &access_token)?;
+        data::user::set_access_token(&user_id, &device_id, &access_token, refresh_token_id)?;
     } else {
         data::user::create_device(
             &user_id,
@@ -139,7 +148,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
         access_token,
         device_id,
         well_known: None,
-        refresh_token: None,
+        refresh_token,
         expires_in: None,
     })
 }

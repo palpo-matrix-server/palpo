@@ -1,5 +1,4 @@
 mod device;
-pub use device::*;
 mod password;
 pub use password::*;
 mod profile;
@@ -8,8 +7,6 @@ mod filter;
 pub use filter::*;
 mod access_token;
 pub use access_token::*;
-mod refresh_token;
-pub use refresh_token::*;
 mod data;
 pub use data::*;
 pub mod key;
@@ -256,6 +253,18 @@ pub fn is_deactivated(user_id: &UserId) -> DataResult<bool> {
         .optional()?
         .flatten();
     Ok(deactivated_at.is_some())
+}
+
+pub fn delete_access_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_refresh_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
 }
 
 /// Ensure that a user only sees signatures from themselves and the target user
