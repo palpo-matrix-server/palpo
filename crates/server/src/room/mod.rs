@@ -29,7 +29,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult,data, IsRemoteOrLocal, config, utils};
+use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config, data, utils};
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]

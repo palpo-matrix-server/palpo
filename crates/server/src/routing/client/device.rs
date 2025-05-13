@@ -12,7 +12,7 @@ use crate::core::error::ErrorKind;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
+use crate::{AppError, AuthArgs, DepotExt, data, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -43,7 +43,7 @@ async fn get_device(
 
     let device_id = device_id.into_inner();
     json_ok(DeviceResBody(
-        crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
+        data::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
     ))
 }
 
@@ -130,7 +130,7 @@ async fn delete_device(
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
-    crate::user::remove_device(authed.user_id(), &device_id)?;
+    data::user::remove_device(authed.user_id(), &device_id)?;
     empty_ok()
 }
 
@@ -183,7 +183,7 @@ pub(super) async fn dehydrated(_aa: AuthArgs) -> EmptyResult {
 #[endpoint]
 pub(super) async fn delete_dehydrated(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
-    crate::user::delete_dehydrated_devices(authed.user_id())?;
+    data::user::delete_dehydrated_devices(authed.user_id())?;
     empty_ok()
 }
 

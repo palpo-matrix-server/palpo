@@ -324,8 +324,8 @@ async fn send_events(
                         }
                     }
                 }
-                let pusher = match crate::user::pusher::get_pusher(user_id, pushkey)
-                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e))?
+                let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
+                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
                 {
                     Some(pusher) => pusher,
                     None => continue,

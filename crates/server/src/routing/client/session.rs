@@ -118,20 +118,20 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
         .unwrap_or_else(|| utils::random_string(DEVICE_ID_LENGTH).into());
 
     // Generate a new token for the device
-    let token = utils::random_string(TOKEN_LENGTH);
+    let access_token = utils::random_string(TOKEN_LENGTH);
 
     // Determine if device_id was provided and exists in the db for this user
-    if crate::user::is_device_exists(&user_id, &device_id)? {
-        crate::user::set_token(&user_id, &device_id, &token)?;
+    if data::user::is_device_exists(&user_id, &device_id)? {
+        data::user::set_access_token(&user_id, &device_id, &access_token)?;
     } else {
-        crate::user::create_device(&user_id, &device_id, &token, body.initial_device_display_name.clone())?;
+        data::user::create_device(&user_id, &device_id, &access_token, body.initial_device_display_name.clone())?;
     }
 
     tracing::info!("{} logged in", user_id);
 
     json_ok(LoginResBody {
         user_id,
-        access_token: token,
+        access_token,
         device_id,
         well_known: None,
         refresh_token: None,
@@ -206,7 +206,7 @@ async fn logout(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
         return empty_ok();
     };
 
-    crate::user::remove_device(authed.user_id(), authed.device_id())?;
+    data::user::remove_device(authed.user_id(), authed.device_id())?;
 
     empty_ok()
 }
@@ -227,7 +227,7 @@ async fn logout_all(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
         return empty_ok();
     };
 
-    crate::user::remove_all_devices(authed.user_id())?;
+    data::user::remove_all_devices(authed.user_id())?;
 
     empty_ok()
 }

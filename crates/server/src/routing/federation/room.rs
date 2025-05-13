@@ -1,8 +1,8 @@
+use diesel::prelude::*;
 use palpo_core::federation::knock::{MakeKnockReqArgs, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
-use diesel::prelude::*;
 
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
@@ -12,13 +12,13 @@ use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::data::schema::*;
 use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::data::connect;
+use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, data, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok};
 
 pub fn router() -> Router {
     Router::new()

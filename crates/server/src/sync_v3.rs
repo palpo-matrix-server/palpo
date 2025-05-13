@@ -53,7 +53,7 @@ pub async fn sync_events(
     };
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
-   
+
     let full_state = args.full_state;
 
     let mut joined_rooms = BTreeMap::new();
@@ -323,7 +323,7 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    crate::user::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
+    data::user::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
 
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn, None)?
@@ -350,7 +350,7 @@ pub async fn sync_events(
     };
 
     let to_device = ToDevice {
-        events: crate::user::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
+        events: data::user::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
     };
 
     let res_body = SyncEventsResBody {

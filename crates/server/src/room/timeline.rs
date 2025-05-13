@@ -240,7 +240,7 @@ where
         let mut highlight = false;
         let mut notify = false;
 
-        for action in crate::user::pusher::get_actions(user, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)? {
+        for action in data::user::pusher::get_actions(user, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)? {
             match action {
                 Action::Notify => notify = true,
                 Action::SetTweak(Tweak::Highlight(true)) => {
@@ -258,7 +258,7 @@ where
             highlights.push(user.clone());
         }
 
-        for push_key in crate::user::pusher::get_push_keys(user)? {
+        for push_key in data::user::pusher::get_push_keys(user)? {
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
         }
     }

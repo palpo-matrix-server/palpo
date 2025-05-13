@@ -15,7 +15,7 @@ use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, config, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError,data, config, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -297,16 +297,16 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
             let ev_type = ev_type.to_string();
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => {
-                    crate::user::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
+                    data::user::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
                 }
 
                 DeviceIdOrAllDevices::AllDevices => {
                     let (sender, ev_type, event) = (&sender, &ev_type, &event);
-                    crate::user::all_device_ids(target_user_id)
+                    data::user::all_device_ids(target_user_id)
                         .unwrap_or_default()
                         .iter()
                         .for_each(|target_device_id| {
-                            crate::user::add_to_device_event(
+                            data::user::add_to_device_event(
                                 sender,
                                 target_user_id,
                                 target_device_id,

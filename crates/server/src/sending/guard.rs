@@ -32,8 +32,8 @@ use crate::core::{Seqnum, UnixMillis, device_id, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, exts::*, utils};
-use crate::room::{timeline, state};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -573,8 +573,8 @@ async fn send_events(
                         }
                     }
                 }
-                let pusher = match crate::user::pusher::get_pusher(user_id, pushkey)
-                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e))?
+                let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
+                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
                 {
                     Some(pusher) => pusher,
                     None => continue,

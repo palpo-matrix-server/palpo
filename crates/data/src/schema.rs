@@ -427,31 +427,6 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    pushers (id) {
-        id -> Int8,
-        user_id -> Text,
-        kind -> Text,
-        app_id -> Text,
-        app_display_name -> Text,
-        device_id -> Text,
-        device_display_name -> Text,
-        access_token_id -> Nullable<Int8>,
-        profile_tag -> Nullable<Text>,
-        pushkey -> Text,
-        lang -> Text,
-        data -> Json,
-        enabled -> Bool,
-        last_stream_ordering -> Nullable<Int8>,
-        last_success -> Nullable<Int8>,
-        failing_since -> Nullable<Int8>,
-        created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
     room_aliases (alias_id) {
         alias_id -> Text,
         room_id -> Text,
@@ -854,6 +829,31 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    user_pushers (id) {
+        id -> Int8,
+        user_id -> Text,
+        kind -> Text,
+        app_id -> Text,
+        app_display_name -> Text,
+        device_id -> Text,
+        device_display_name -> Text,
+        access_token_id -> Nullable<Int8>,
+        profile_tag -> Nullable<Text>,
+        pushkey -> Text,
+        lang -> Text,
+        data -> Json,
+        enabled -> Bool,
+        last_stream_ordering -> Nullable<Int8>,
+        last_success -> Nullable<Int8>,
+        failing_since -> Nullable<Int8>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_refresh_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -976,7 +976,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     media_thumbnails,
     media_url_previews,
     outgoing_requests,
-    pushers,
     room_aliases,
     room_joined_servers,
     room_lookup_servers,
@@ -1006,6 +1005,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_passwords,
     user_presences,
     user_profiles,
+    user_pushers,
     user_refresh_tokens,
     user_registration_tokens,
     user_sessions,

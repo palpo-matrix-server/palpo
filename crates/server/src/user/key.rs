@@ -172,9 +172,9 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
 
         if device_ids.is_empty() {
             let mut container = BTreeMap::new();
-            for device_id in crate::user::all_device_ids(user_id)? {
+            for device_id in data::user::all_device_ids(user_id)? {
                 if let Some(mut keys) = data::user::get_device_keys_and_sigs(user_id, &device_id)? {
-                    let device = crate::user::get_device(user_id, &device_id)?;
+                    let device = data::user::get_device(user_id, &device_id)?;
                     if let Some(display_name) = &device.display_name {
                         keys.unsigned.device_display_name = display_name.to_owned().into();
                     }

@@ -812,7 +812,9 @@ pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> 
 }
 
 pub fn is_world_readable(room_id: &RoomId) -> bool {
-    get_history_visibility(room_id).map(|visibility| visibility == HistoryVisibility::WorldReadable).unwrap_or(false)
+    get_history_visibility(room_id)
+        .map(|visibility| visibility == HistoryVisibility::WorldReadable)
+        .unwrap_or(false)
 }
 
 pub fn get_room_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {

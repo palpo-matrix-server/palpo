@@ -20,9 +20,7 @@ pub async fn invite_user(
         );
     }
     if !crate::room::state::user_can_invite(room_id, inviter_id, invitee_id) {
-        return Err(
-            MatrixError::forbidden("You are not allowed to invite this user.", None).into(),
-        );
+        return Err(MatrixError::forbidden("You are not allowed to invite this user.", None).into());
     }
 
     if invitee_id.server_name().is_remote() {

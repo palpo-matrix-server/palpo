@@ -535,8 +535,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         .map(Borrow::borrow)
         .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
-    let pdu_id =
-        timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
+    let pdu_id = timeline::append_incoming_pdu(&incoming_pdu, val, extremities, compressed_state_ids, soft_fail)?;
 
     // Event has passed all auth/stateres checks
     // drop(state_lock);
