@@ -12,7 +12,7 @@ use crate::core::error::ErrorKind;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, data, empty_ok, json_ok, utils};
+use crate::{AppError, AuthArgs, DepotExt, MatrixError, EmptyResult, JsonResult, SESSION_ID_LENGTH, data, empty_ok, json_ok, utils};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -41,10 +41,10 @@ async fn get_device(
 ) -> JsonResult<DeviceResBody> {
     let authed = depot.authed_info()?;
 
-    let device_id = device_id.into_inner();
-    json_ok(DeviceResBody(
-        data::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
-    ))
+    let Ok(device) = data::user::device::get_device(authed.user_id(), &device_id) else {
+        return Err(MatrixError::not_found("Device is not found.").into());
+    };
+    json_ok(DeviceResBody(device.into_matrix_device()))
 }
 
 /// #GET /_matrix/client/r0/devices
@@ -130,7 +130,7 @@ async fn delete_device(
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
-    data::user::remove_device(authed.user_id(), &device_id)?;
+    data::user::device::remove_device(authed.user_id(), &device_id)?;
     empty_ok()
 }
 

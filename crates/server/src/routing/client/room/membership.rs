@@ -24,7 +24,7 @@ use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::sending::send_federation_request;
-use crate::user::DbProfile;
+use crate::data::user::DbProfile;
 use crate::{
     AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
     utils,
@@ -169,7 +169,7 @@ pub(super) fn joined_members(
             display_name,
             avatar_url,
             ..
-        }) = crate::user::get_profile(&user_id, None)?
+        }) = data::user::get_profile(&user_id, None)?
         {
             joined.insert(user_id, RoomMember::new(display_name, avatar_url));
         }
@@ -455,7 +455,7 @@ pub(super) async fn ban_user(
             avatar_url,
             blurhash,
             ..
-        } = crate::user::get_profile(&body.user_id, None)?.ok_or(MatrixError::not_found("User profile not found."))?;
+        } = data::user::get_profile(&body.user_id, None)?.ok_or(MatrixError::not_found("User profile not found."))?;
         RoomMemberEventContent {
             membership: MembershipState::Ban,
             display_name,

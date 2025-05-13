@@ -123,6 +123,12 @@ pub struct ServerConfig {
     #[serde(default = "default_login_token_ttl")]
     pub login_token_ttl: u64,
 
+    #[serde(default = "default_refresh_token_ttl")]
+    pub refresh_token_ttl: u64,
+
+    #[serde(default = "default_session_ttl")]
+    pub session_ttl: u64,
+
     /// Static TURN username to provide the client if not using a shared secret
     /// ("turn_secret"), It is recommended to use a shared secret over static
     /// credentials.
@@ -1007,6 +1013,12 @@ fn default_startup_netburst_keep() -> i64 {
 }
 fn default_login_token_ttl() -> u64 {
     2 * 60 * 1000
+}
+fn default_refresh_token_ttl() -> u64 {
+    2 * 60 * 1000
+}
+fn default_session_ttl() -> u64 {
+    60 * 60 * 1000
 }
 fn default_openid_token_ttl() -> u64 {
     60 * 60

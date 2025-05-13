@@ -12,7 +12,7 @@ pub struct DbSession {
     pub user_id: OwnedUserId,
     pub session_id: String,
     pub value: Value,
-    pub expired_at: i64,
+    pub expires_at: i64,
     pub created_at: UnixMillis,
 }
 
@@ -22,6 +22,6 @@ pub struct NewDbSession {
     pub user_id: OwnedUserId,
     pub session_id: String,
     pub value: Value,
-    pub expired_at: i64,
+    pub expires_at: i64,
     pub created_at: UnixMillis,
 }

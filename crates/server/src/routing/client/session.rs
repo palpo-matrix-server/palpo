@@ -4,6 +4,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde::Deserialize;
 
+use crate::core::UnixMillis;
 use crate::core::client::session::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
@@ -37,9 +38,9 @@ pub fn authed_router() -> Router {
         .push(
             Router::with_path("login")
                 .hoop(hoops::limit_rate)
-                .push(Router::with_path("get_token").post(get_token))
-                .push(Router::with_path("refresh").get(refresh_token)),
+                .push(Router::with_path("get_token").post(get_access_token)),
         )
+        .push(Router::with_path("refresh").post(refresh_access_token))
         .push(
             Router::with_path("logout")
                 .post(logout)
@@ -120,11 +121,27 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
     // Generate a new token for the device
     let access_token = utils::random_string(TOKEN_LENGTH);
 
-    // Determine if device_id was provided and exists in the db for this user
-    if data::user::is_device_exists(&user_id, &device_id)? {
-        data::user::set_access_token(&user_id, &device_id, &access_token)?;
+    let (refresh_token, refresh_token_id) = if body.refresh_token {
+        let refresh_token = utils::random_string(TOKEN_LENGTH);
+        let expires_at = UnixMillis::now().get() + crate::config().refresh_token_ttl;
+        let ultimate_session_expires_at = UnixMillis::now().get() + crate::config().session_ttl;
+        let refresh_token_id = data::user::device::set_refresh_token(
+            &user_id,
+            &device_id,
+            &refresh_token,
+            expires_at,
+            ultimate_session_expires_at,
+        )?;
+        (Some(refresh_token), Some(refresh_token_id))
     } else {
-        data::user::create_device(
+        (None, None)
+    };
+
+    // Determine if device_id was provided and exists in the db for this user
+    if data::user::device::is_device_exists(&user_id, &device_id)? {
+        data::user::device::set_access_token(&user_id, &device_id, &access_token, refresh_token_id)?;
+    } else {
+        data::user::device::create_device(
             &user_id,
             &device_id,
             &access_token,
@@ -139,7 +156,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
         access_token,
         device_id,
         well_known: None,
-        refresh_token: None,
+        refresh_token,
         expires_in: None,
     })
 }
@@ -151,7 +168,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
 ///
 /// <https://spec.matrix.org/v1.13/client-server-api/#post_matrixclientv1loginget_token>
 #[endpoint]
-async fn get_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonResult<TokenResBody> {
+async fn get_access_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonResult<TokenResBody> {
     let conf = crate::config();
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
@@ -211,7 +228,7 @@ async fn logout(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
         return empty_ok();
     };
 
-    data::user::remove_device(authed.user_id(), authed.device_id())?;
+    data::user::device::remove_device(authed.user_id(), authed.device_id())?;
 
     empty_ok()
 }
@@ -238,11 +255,37 @@ async fn logout_all(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
 }
 
 #[endpoint]
-async fn refresh_token(_aa: AuthArgs) -> EmptyResult {
-    // TODO: fixme
-    panic!("refresh_tokenNot implemented")
-    // let authed = depot.authed_info()?;
-    // Ok(())
+async fn refresh_access_token(
+    _aa: AuthArgs,
+    body: JsonBody<RefreshTokenReqBody>,
+    depot: &mut Depot,
+) -> JsonResult<RefreshTokenResBody> {
+    let authed = depot.authed_info()?;
+    let user_id = authed.user_id();
+    let device_id = authed.device_id();
+    crate::user::valid_refresh_token(user_id, device_id, &body.refresh_token)?;
+
+    let access_token = utils::random_string(TOKEN_LENGTH);
+    let refresh_token = utils::random_string(TOKEN_LENGTH);
+    let expires_at = UnixMillis::now().get() + crate::config().refresh_token_ttl;
+    let ultimate_session_expires_at = UnixMillis::now().get() + crate::config().session_ttl;
+    let refresh_token_id = data::user::device::set_refresh_token(
+        user_id,
+        device_id,
+        &refresh_token,
+        expires_at,
+        ultimate_session_expires_at,
+    )?;
+    if data::user::device::is_device_exists(&user_id, &device_id)? {
+        data::user::device::set_access_token(&user_id, &device_id, &access_token, Some(refresh_token_id))?;
+    } else {
+        return Err(MatrixError::not_found("Device not found.").into());
+    }
+    json_ok(RefreshTokenResBody {
+        access_token,
+        refresh_token: Some(refresh_token),
+        expires_in_ms: Some(Duration::from_millis(expires_at - UnixMillis::now().get())),
+    })
 }
 
 #[endpoint]

@@ -52,7 +52,7 @@ fn send_to_device(
             }
 
             match target_device_id_maybe {
-                DeviceIdOrAllDevices::DeviceId(target_device_id) => data::user::add_to_device_event(
+                DeviceIdOrAllDevices::DeviceId(target_device_id) => data::user::device::add_to_device_event(
                     authed.user_id(),
                     target_user_id,
                     target_device_id,
@@ -64,7 +64,7 @@ fn send_to_device(
 
                 DeviceIdOrAllDevices::AllDevices => {
                     for target_device_id in data::user::all_device_ids(target_user_id)? {
-                        data::user::add_to_device_event(
+                        data::user::device::add_to_device_event(
                             authed.user_id(),
                             target_user_id,
                             &target_device_id,

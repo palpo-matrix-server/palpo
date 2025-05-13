@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, config, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult,data, MatrixError, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -28,7 +28,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
     let mut avatar_url = None;
     let mut blurhash = None;
 
-    let profile = crate::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
+    let profile = data::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
 
     match &args.field {
         Some(ProfileField::DisplayName) => display_name = profile.display_name.clone(),

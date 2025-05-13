@@ -1,20 +1,8 @@
 mod password;
 pub use password::*;
-mod profile;
-pub use profile::*;
-mod access_token;
-pub use access_token::*;
-mod filter;
-pub use filter::*;
-mod refresh_token;
-pub use refresh_token::*;
 pub mod key;
 pub mod pusher;
 pub use key::*;
-pub mod key_backup;
-pub mod session;
-pub use key_backup::*;
-pub use session::*;
 pub mod presence;
 use std::collections::BTreeMap;
 use std::mem;
@@ -30,7 +18,7 @@ use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEv
 use crate::core::events::{GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
 use crate::data::schema::*;
-use crate::data::user::{DbUser, NewDbUser};
+use crate::data::user::{DbUser, NewDbPassword, NewDbUser};
 use crate::data::{self, connect};
 use crate::{AppError, AppResult, MatrixError, PduBuilder};
 
@@ -235,4 +223,20 @@ pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
     diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
 
     Ok(user_id)
+}
+
+pub fn valid_refresh_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> AppResult<()> {
+    let Ok(expires_at) = user_refresh_tokens::table
+        .filter(user_refresh_tokens::user_id.eq(user_id))
+        .filter(user_refresh_tokens::device_id.eq(device_id))
+        .filter(user_refresh_tokens::token.eq(token))
+        .select(user_refresh_tokens::expires_at)
+        .first::<i64>(&mut connect()?)
+    else {
+        return Err(MatrixError::unauthorized("Invalid refresh token.").into());
+    };
+    if expires_at < UnixMillis::now().get() as i64 {
+        return Err(MatrixError::unauthorized("Refresh token expired.").into());
+    }
+    Ok(())
 }

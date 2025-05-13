@@ -1,13 +1,13 @@
 use diesel::prelude::*;
-use palpo_core::MatrixError;
+use diesel::result::Error as DieselError;
 
 use crate::core::client::device::Device;
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{Seqnum, UnixMillis};
+use crate::core::{MatrixError, MatrixResult, Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::user::NewDbAccessToken;
+use crate::user::{NewDbAccessToken, NewDbRefreshToken};
 use crate::{DataError, DataResult, connect, diesel_exists};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
@@ -115,6 +115,7 @@ pub fn create_device(
             user_id.to_owned(),
             device_id.to_owned(),
             token.to_owned(),
+            None,
         ))
         .execute(&mut connect()?)?;
     Ok(device)
@@ -125,14 +126,6 @@ pub fn get_device(user_id: &UserId, device_id: &DeviceId) -> DataResult<DbUserDe
         .filter(user_devices::user_id.eq(user_id))
         .filter(user_devices::device_id.eq(device_id))
         .first::<DbUserDevice>(&mut connect()?)
-        .map_err(Into::into)
-}
-
-pub fn all_device_ids(user_id: &UserId) -> DataResult<Vec<OwnedDeviceId>> {
-    user_devices::table
-        .filter(user_devices::user_id.eq(user_id))
-        .select(user_devices::device_id)
-        .load::<OwnedDeviceId>(&mut connect()?)
         .map_err(Into::into)
 }
 
@@ -161,34 +154,78 @@ pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> DataResult<
         }
     }
 
-    super::delete_device_access_tokens(user_id, device_id)?;
-    super::delete_device_refresh_tokens(user_id, device_id)?;
+    delete_access_tokens(user_id, device_id)?;
+    delete_refresh_tokens(user_id, device_id)?;
     super::pusher::delete_device_pushers(user_id, device_id)?;
     Ok(())
 }
-pub fn remove_all_devices(user_id: &UserId) -> DataResult<()> {
-    super::delete_user_access_tokens(user_id)?;
-    super::delete_user_refresh_tokens(user_id)?;
-    super::pusher::delete_user_pushers(user_id)
+
+pub fn set_refresh_token(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    token: &str,
+    expires_at: u64,
+    ultimate_session_expires_at: u64,
+) -> DataResult<i64> {
+    let id = connect()?.transaction::<_, DieselError, _>(|conn| {
+        diesel::delete(
+            user_refresh_tokens::table
+                .filter(user_refresh_tokens::user_id.eq(user_id))
+                .filter(user_refresh_tokens::device_id.eq(device_id)),
+        )
+        .execute(conn)?;
+        diesel::insert_into(user_refresh_tokens::table)
+            .values(NewDbRefreshToken::new(
+                user_id.to_owned(),
+                device_id.to_owned(),
+                token.to_owned(),
+                expires_at as i64,
+                ultimate_session_expires_at as i64,
+            ))
+            .returning(user_refresh_tokens::id)
+            .get_result::<i64>(conn)
+    })?;
+
+    Ok(id)
 }
 
-pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_dehydrated_devices::table.filter(user_dehydrated_devices::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-
-pub fn set_access_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> DataResult<()> {
+pub fn set_access_token(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    token: &str,
+    refresh_token_id: Option<i64>,
+) -> DataResult<()> {
     diesel::insert_into(user_access_tokens::table)
         .values(NewDbAccessToken::new(
             user_id.to_owned(),
             device_id.to_owned(),
             token.to_owned(),
+            refresh_token_id,
         ))
         .on_conflict((user_access_tokens::user_id, user_access_tokens::device_id))
         .do_update()
         .set(user_access_tokens::token.eq(token))
         .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_access_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
+    diesel::delete(
+        user_access_tokens::table
+            .filter(user_access_tokens::user_id.eq(user_id))
+            .filter(user_access_tokens::device_id.eq(device_id)),
+    )
+    .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_refresh_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
+    diesel::delete(
+        user_refresh_tokens::table
+            .filter(user_refresh_tokens::user_id.eq(user_id))
+            .filter(user_refresh_tokens::device_id.eq(device_id)),
+    )
+    .execute(&mut connect()?)?;
     Ok(())
 }
 

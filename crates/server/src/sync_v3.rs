@@ -48,7 +48,7 @@ pub async fn sync_events(
         None => FilterDefinition::default(),
         Some(Filter::FilterDefinition(filter)) => filter.to_owned(),
         Some(Filter::FilterId(filter_id)) => {
-            crate::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
+            data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
         }
     };
     let lazy_load_enabled =
@@ -323,7 +323,7 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    data::user::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
+    data::user::device::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
 
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn, None)?
@@ -350,7 +350,7 @@ pub async fn sync_events(
     };
 
     let to_device = ToDevice {
-        events: data::user::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
+        events: data::user::device::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
     };
 
     let res_body = SyncEventsResBody {

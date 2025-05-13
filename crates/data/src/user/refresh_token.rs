@@ -13,8 +13,8 @@ pub struct DbRefreshToken {
     pub device_id: OwnedDeviceId,
     pub token: String,
     pub next_token_id: Option<i64>,
-    pub expired_at: Option<i64>,
-    pub ultimate_session_expired_at: Option<i64>,
+    pub expires_at: i64,
+    pub ultimate_session_expires_at: i64,
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -24,23 +24,27 @@ pub struct NewDbRefreshToken {
     pub device_id: OwnedDeviceId,
     pub token: String,
     pub next_token_id: Option<i64>,
-    pub expired_at: Option<i64>,
-    pub ultimate_session_expired_at: Option<i64>,
+    pub expires_at: i64,
+    pub ultimate_session_expires_at: i64,
     pub created_at: UnixMillis,
 }
 
-pub fn delete_user_refresh_tokens(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-
-pub fn delete_device_refresh_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
-    diesel::delete(
-        user_refresh_tokens::table
-            .filter(user_refresh_tokens::user_id.eq(user_id))
-            .filter(user_refresh_tokens::device_id.eq(device_id)),
-    )
-    .execute(&mut connect()?)?;
-    Ok(())
+impl NewDbRefreshToken {
+    pub fn new(
+        user_id: OwnedUserId,
+        device_id: OwnedDeviceId,
+        token: String,
+        expires_at: i64,
+        ultimate_session_expires_at: i64,
+    ) -> Self {
+        Self {
+            user_id,
+            device_id,
+            token,
+            next_token_id: None,
+            expires_at,
+            ultimate_session_expires_at,
+            created_at: UnixMillis::now(),
+        }
+    }
 }

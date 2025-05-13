@@ -1,5 +1,5 @@
-mod device;
-pub use device::*;
+pub mod device;
+pub use device::{DbUserDevice, NewDbUserDevice};
 mod password;
 pub use password::*;
 mod profile;
@@ -17,8 +17,8 @@ pub mod pusher;
 // pub mod push_rule;
 pub use key::*;
 pub mod key_backup;
-pub mod session;
 pub use key_backup::*;
+pub mod session;
 pub use session::*;
 pub mod presence;
 use std::mem;
@@ -256,6 +256,37 @@ pub fn is_deactivated(user_id: &UserId) -> DataResult<bool> {
         .optional()?
         .flatten();
     Ok(deactivated_at.is_some())
+}
+
+pub fn all_device_ids(user_id: &UserId) -> DataResult<Vec<OwnedDeviceId>> {
+    user_devices::table
+        .filter(user_devices::user_id.eq(user_id))
+        .select(user_devices::device_id)
+        .load::<OwnedDeviceId>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+pub fn delete_access_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_refresh_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn remove_all_devices(user_id: &UserId) -> DataResult<()> {
+    delete_access_tokens(user_id)?;
+    delete_refresh_tokens(user_id)?;
+    pusher::delete_user_pushers(user_id)
+}
+pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_dehydrated_devices::table.filter(user_dehydrated_devices::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
 }
 
 /// Ensure that a user only sees signatures from themselves and the target user
