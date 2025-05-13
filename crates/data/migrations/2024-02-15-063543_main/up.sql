@@ -99,7 +99,7 @@ CREATE TABLE user_sessions (
     session_id text NOT NULL,
     session_type text not null,
     value json not null,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT user_sessions_udx UNIQUE (user_id, session_id)
 );
@@ -122,8 +122,8 @@ CREATE TABLE user_refresh_tokens
     device_id text NOT NULL,
     token text NOT NULL,
     next_token_id bigint,
-    expired_at bigint,
-    ultimate_session_expired_at bigint,
+    expires_at bigint NOT NULL,
+    ultimate_session_expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT user_refresh_tokens_token_key UNIQUE (token)
 );
@@ -144,7 +144,7 @@ CREATE TABLE user_access_tokens
     last_validated bigint,
     refresh_token_id bigint,
     is_used bool not null default  false,
-    expired_at bigint,
+    expires_at bigint,
     created_at bigint not null,
     CONSTRAINT user_access_tokens_token_udx UNIQUE (user_id, device_id)
 );
@@ -179,11 +179,11 @@ CREATE TABLE user_openid_tokens (
     id bigserial not null PRIMARY KEY,
     token text NOT NULL,
     user_id text NOT NULL,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT user_openid_tokens_udx UNIQUE (token)
 );
-CREATE INDEX user_openid_tokens_expired_at_idx ON user_openid_tokens USING btree (expired_at);
+CREATE INDEX user_openid_tokens_expires_at_idx ON user_openid_tokens USING btree (expires_at);
 
 
 drop table if exists user_presences CASCADE;
@@ -229,7 +229,7 @@ CREATE TABLE threepid_validation_tokens (
     token text NOT NULL,
     session_id text NOT NULL,
     next_link text,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL
 );
 
@@ -259,7 +259,7 @@ CREATE TABLE user_registration_tokens (
     uses_allowed bigint,
     pending bigint NOT NULL,
     completed bigint NOT NULL,
-    expired_at bigint,
+    expires_at bigint,
     created_at bigint NOT NULL
 );
 ALTER TABLE ONLY user_registration_tokens
@@ -313,7 +313,7 @@ CREATE TABLE server_signing_keys (
 --     server_id text NOT NULL,
 --     key_id text NOT NULL,
 --     from_server text NOT NULL,
---     expired_at bigint NOT NULL,
+--     expires_at bigint NOT NULL,
 --     key_data json NOT NULL,
 --     updated_at bigint NOT NULL,
 --     created_at bigint NOT NULL,

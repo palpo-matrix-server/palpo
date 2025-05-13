@@ -41,7 +41,7 @@ async fn get_device(
 ) -> JsonResult<DeviceResBody> {
     let authed = depot.authed_info()?;
 
-    let Ok(device) = data::user::get_device(authed.user_id(), &device_id) else {
+    let Ok(device) = data::user::device::get_device(authed.user_id(), &device_id) else {
         return Err(MatrixError::not_found("Device is not found.").into());
     };
     json_ok(DeviceResBody(device.into_matrix_device()))
@@ -130,7 +130,7 @@ async fn delete_device(
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
-    data::user::remove_device(authed.user_id(), &device_id)?;
+    data::user::device::remove_device(authed.user_id(), &device_id)?;
     empty_ok()
 }
 

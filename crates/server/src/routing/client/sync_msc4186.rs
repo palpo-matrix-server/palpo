@@ -645,11 +645,11 @@ fn collect_to_device(
         return None;
     }
 
-    data::user::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
+    data::user::device::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
 
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
-        events: data::user::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
+        events: data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
     })
 }
 

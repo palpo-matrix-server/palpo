@@ -297,7 +297,7 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
             let ev_type = ev_type.to_string();
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => {
-                    data::user::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
+                    data::user::device::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
                 }
 
                 DeviceIdOrAllDevices::AllDevices => {
@@ -306,7 +306,7 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
                         .unwrap_or_default()
                         .iter()
                         .for_each(|target_device_id| {
-                            data::user::add_to_device_event(
+                            data::user::device::add_to_device_event(
                                 sender,
                                 target_user_id,
                                 target_device_id,

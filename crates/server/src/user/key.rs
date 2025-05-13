@@ -15,138 +15,12 @@ use crate::core::serde::JsonValue;
 use crate::core::{DeviceKeyAlgorithm, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::{
+    DbCrossSigningKey, DbOneTimeKey, NewDbCrossSignature, NewDbCrossSigningKey, NewDbKeyChange, NewDbOneTimeKey,
+};
 use crate::exts::*;
 use crate::user::clean_signatures;
 use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
-
-#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_keys)]
-pub struct DbCrossSigningKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub key_type: String,
-    pub key_data: JsonValue,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_keys)]
-pub struct NewDbCrossSigningKey {
-    pub user_id: OwnedUserId,
-    pub key_type: String,
-    pub key_data: JsonValue,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_sigs)]
-pub struct DbCrossSignature {
-    pub id: i64,
-
-    pub origin_user_id: OwnedUserId,
-    pub origin_key_id: OwnedDeviceKeyId,
-    pub target_user_id: OwnedUserId,
-    pub target_device_id: OwnedDeviceId,
-    pub signature: String,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_sigs)]
-pub struct NewDbCrossSignature {
-    pub origin_user_id: OwnedUserId,
-    pub origin_key_id: OwnedDeviceKeyId,
-    pub target_user_id: OwnedUserId,
-    pub target_device_id: OwnedDeviceId,
-    pub signature: String,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_fallback_keys)]
-pub struct DbFallbackKey {
-    pub id: String,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub used_at: Option<i64>,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_fallback_keys)]
-pub struct NewDbFallbackKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub used_at: Option<i64>,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_one_time_keys)]
-pub struct DbOneTimeKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_one_time_keys)]
-pub struct NewDbOneTimeKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_device_keys)]
-pub struct DbDeviceKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub stream_id: i64,
-    pub display_name: Option<String>,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = e2e_device_keys)]
-pub struct NewDbDeviceKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub stream_id: i64,
-    pub display_name: Option<String>,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_key_changes)]
-pub struct DbKeyChange {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub room_id: Option<OwnedRoomId>,
-    pub occur_sn: i64,
-    pub changed_at: UnixMillis,
-}
-#[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = e2e_key_changes)]
-pub struct NewDbKeyChange {
-    pub user_id: OwnedUserId,
-    pub room_id: Option<OwnedRoomId>,
-    pub occur_sn: i64,
-    pub changed_at: UnixMillis,
-}
 
 pub async fn query_keys<F: Fn(&UserId) -> bool>(
     sender_id: Option<&UserId>,
@@ -173,7 +47,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
             let mut container = BTreeMap::new();
             for device_id in data::user::all_device_ids(user_id)? {
                 if let Some(mut keys) = data::user::get_device_keys_and_sigs(user_id, &device_id)? {
-                    let device = data::user::get_device(user_id, &device_id)?;
+                    let device = data::user::device::get_device(user_id, &device_id)?;
                     if let Some(display_name) = &device.display_name {
                         keys.unsigned.device_display_name = display_name.to_owned().into();
                     }

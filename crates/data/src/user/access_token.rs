@@ -16,7 +16,7 @@ pub struct DbAccessToken {
     pub last_validated: Option<UnixMillis>,
     pub refresh_token_id: Option<i64>,
     pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
+    pub expires_at: Option<UnixMillis>,
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -29,7 +29,7 @@ pub struct NewDbAccessToken {
     pub last_validated: Option<UnixMillis>,
     pub refresh_token_id: Option<i64>,
     pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
+    pub expires_at: Option<UnixMillis>,
     pub created_at: UnixMillis,
 }
 
@@ -43,7 +43,7 @@ impl NewDbAccessToken {
             last_validated: None,
             refresh_token_id,
             is_used: false,
-            expired_at: None,
+            expires_at: None,
             created_at: UnixMillis::now(),
         }
     }

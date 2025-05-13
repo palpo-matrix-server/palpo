@@ -666,7 +666,7 @@ diesel::table! {
         token -> Text,
         session_id -> Text,
         next_link -> Nullable<Text>,
-        expired_at -> Int8,
+        expires_at -> Int8,
         created_at -> Int8,
     }
 }
@@ -684,7 +684,7 @@ diesel::table! {
         last_validated -> Nullable<Int8>,
         refresh_token_id -> Nullable<Int8>,
         is_used -> Bool,
-        expired_at -> Nullable<Int8>,
+        expires_at -> Nullable<Int8>,
         created_at -> Int8,
     }
 }
@@ -860,8 +860,8 @@ diesel::table! {
         device_id -> Text,
         token -> Text,
         next_token_id -> Nullable<Int8>,
-        expired_at -> Nullable<Int8>,
-        ultimate_session_expired_at -> Nullable<Int8>,
+        expires_at -> Int8,
+        ultimate_session_expires_at -> Int8,
         created_at -> Int8,
     }
 }
@@ -876,7 +876,7 @@ diesel::table! {
         uses_allowed -> Nullable<Int8>,
         pending -> Int8,
         completed -> Int8,
-        expired_at -> Nullable<Int8>,
+        expires_at -> Nullable<Int8>,
         created_at -> Int8,
     }
 }
@@ -891,7 +891,7 @@ diesel::table! {
         session_id -> Text,
         session_type -> Text,
         value -> Json,
-        expired_at -> Int8,
+        expires_at -> Int8,
         created_at -> Int8,
     }
 }
