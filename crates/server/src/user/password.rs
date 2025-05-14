@@ -12,7 +12,7 @@ pub fn vertify_password(user: &DbUser, password: &str) -> AppResult<()> {
     if user.deactivated_at.is_some() {
         return Err(MatrixError::user_deactivated("The user has been deactivated").into());
     }
-    let hash = data::user::get_password_hash(&user.id).map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
+    let hash = get_password_hash(&user.id).map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
     if hash.is_empty() {
         return Err(MatrixError::user_deactivated("The user has been deactivated").into());
     }

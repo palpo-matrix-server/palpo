@@ -102,7 +102,7 @@ pub struct UserFilterReqArgs {
 // /// Request type for the `get_profile` endpoint.
 
 /// Response type for the `get_profile` endpoint.
-#[derive(ToSchema, Deserialize, Serialize, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Debug)]
 pub struct ProfileResBody {
     /// The user's avatar URL, if set.
     #[serde(

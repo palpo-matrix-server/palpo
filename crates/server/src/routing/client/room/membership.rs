@@ -20,11 +20,11 @@ use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::DbProfile;
 use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::sending::send_federation_request;
-use crate::data::user::DbProfile;
 use crate::{
     AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
     utils,
@@ -437,7 +437,8 @@ pub(super) async fn ban_user(
         } = send_federation_request(body.user_id.server_name(), profile_request)
             .await?
             .json()
-            .await?;
+            .await
+            .unwrap_or_default();
 
         RoomMemberEventContent {
             membership: MembershipState::Ban,
