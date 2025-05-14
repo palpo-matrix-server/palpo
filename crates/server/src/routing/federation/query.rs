@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult,data, MatrixError, config, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, config, data, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("query")

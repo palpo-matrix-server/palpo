@@ -229,7 +229,6 @@ async fn logout(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     };
 
     data::user::device::remove_device(authed.user_id(), authed.device_id())?;
-
     empty_ok()
 }
 
@@ -289,7 +288,7 @@ async fn refresh_access_token(
 }
 
 #[endpoint]
-async fn redirect(_aa: AuthArgs) -> EmptyResult {
+async fn redirect(_aa: AuthArgs, redirect_url: QueryParam<String>) -> EmptyResult {
     // TODO: todo
     empty_ok()
 }
