@@ -198,7 +198,7 @@ pub(super) async fn send_message(
 
     // Check if this is a new transaction id
     if let Some(event_id) =
-        crate::transaction_id::get_event_id(&args.txn_id, authed.user_id(), Some(authed.device_id()))?
+        crate::transaction_id::get_event_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), Some(&args.room_id))?
     {
         return json_ok(SendMessageResBody::new(event_id));
     }
@@ -221,8 +221,8 @@ pub(super) async fn send_message(
     crate::transaction_id::add_txn_id(
         &args.txn_id,
         authed.user_id(),
-        Some(&args.room_id),
         Some(authed.device_id()),
+        Some(&args.room_id),
         Some(&event_id),
     )?;
 
