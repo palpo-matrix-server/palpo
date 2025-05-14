@@ -80,7 +80,7 @@ fn send_to_device(
     }
 
     // Save transaction id with empty data
-    crate::transaction_id::add_txn_id(&args.txn_id, authed.user_id(), None, Some(authed.device_id()), None)?;
+    crate::transaction_id::add_txn_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), None, None)?;
 
     empty_ok()
 }

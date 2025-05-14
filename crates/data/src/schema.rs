@@ -222,6 +222,21 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_idempotents (id) {
+        id -> Int8,
+        txn_id -> Text,
+        user_id -> Text,
+        device_id -> Text,
+        room_id -> Nullable<Text>,
+        event_id -> Nullable<Text>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_points (event_id) {
         event_id -> Text,
         event_sn -> Int8,
@@ -293,21 +308,6 @@ diesel::table! {
         vector -> Tsvector,
         origin_server_ts -> Int8,
         stream_ordering -> Nullable<Int8>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    event_txn_ids (id) {
-        id -> Int8,
-        txn_id -> Text,
-        user_id -> Text,
-        room_id -> Nullable<Text>,
-        device_id -> Nullable<Text>,
-        event_id -> Nullable<Text>,
-        created_at -> Int8,
     }
 }
 
@@ -964,12 +964,12 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_datas,
     event_edges,
     event_forward_extremities,
+    event_idempotents,
     event_points,
     event_push_summaries,
     event_receipts,
     event_relations,
     event_searches,
-    event_txn_ids,
     events,
     lazy_load_deliveries,
     media_metadatas,

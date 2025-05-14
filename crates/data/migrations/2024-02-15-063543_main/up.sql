@@ -877,28 +877,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_edges_event_id_prev_event_id_udx
     (event_id ASC NULLS LAST, prev_event_id ASC NULLS LAST);
 
 
-DROP TABLE IF EXISTS event_txn_ids;
-CREATE TABLE IF NOT EXISTS event_txn_ids
+DROP TABLE IF EXISTS event_idempotents;
+CREATE TABLE IF NOT EXISTS event_idempotents
 (
     id bigserial NOT NULL PRIMARY KEY,
     txn_id text NOT NULL,
     user_id text NOT NULL,
-    room_id text,
     device_id text,
+    room_id text,
     event_id text,
     created_at bigint NOT NULL
 );
 
--- CREATE UNIQUE INDEX IF NOT EXISTS event_txn_ids_event_id_udx
---     ON public.event_txn_ids USING btree
---     (event_id ASC NULLS LAST);
-
-CREATE INDEX IF NOT EXISTS event_txn_ids_created_at_idx
-    ON event_txn_ids USING btree
+CREATE INDEX IF NOT EXISTS event_idempotents_created_at_idx
+    ON event_idempotents USING btree
     (created_at ASC NULLS LAST);
 
-CREATE UNIQUE INDEX IF NOT EXISTS event_txn_ids_txn_id_udx
-    ON event_txn_ids USING btree
+CREATE UNIQUE INDEX IF NOT EXISTS event_idempotents_event_id_udx
+    ON event_idempotents USING btree (event_id ASC NULLS LAST);
+CREATE UNIQUE INDEX IF NOT EXISTS event_idempotents_txn_id_udx
+    ON event_idempotents USING btree
     (txn_id ASC NULLS LAST, room_id ASC NULLS LAST, user_id ASC NULLS LAST, device_id ASC NULLS LAST);
 
 drop table if exists lazy_load_deliveries CASCADE;

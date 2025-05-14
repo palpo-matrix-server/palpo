@@ -2,7 +2,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::filter::{CreateFilterReqBody, CreateFilterResBody, FilterResBody};
-use crate::{AuthArgs, DepotExt,data, JsonResult, MatrixError, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, data, json_ok};
 
 /// #GET /_matrix/client/r0/user/{user_id}/filter/{filter_id}
 /// Loads a filter that was previously created.
