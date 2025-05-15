@@ -5,6 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
 use crate::event::{PduBuilder, gen_event_id_canonical_json};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
+use crate::room::{state, timeline};
 use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
 
 pub async fn invite_user(
@@ -19,7 +20,7 @@ pub async fn invite_user(
             MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
         );
     }
-    if !crate::room::state::user_can_invite(room_id, inviter_id, invitee_id) {
+    if !state::user_can_invite(room_id, inviter_id, invitee_id) {
         return Err(MatrixError::forbidden("You are not allowed to invite this user.", None).into());
     }
 
@@ -36,18 +37,18 @@ pub async fn invite_user(
                 join_authorized_via_users_server: None,
             };
 
-            let (pdu, pdu_json) = crate::room::timeline::create_hash_and_sign_event(
+            let (pdu, pdu_json) = timeline::create_hash_and_sign_event(
                 PduBuilder::state(invitee_id.to_string(), &content),
                 inviter_id,
                 room_id,
             )?;
 
-            let invite_room_state = crate::room::state::summary_stripped(&pdu)?;
+            let invite_room_state = state::summary_stripped(&pdu)?;
 
             (pdu, pdu_json, invite_room_state)
         };
 
-        let room_version_id = crate::room::state::get_room_version(room_id)?;
+        let room_version_id = state::get_room_version(room_id)?;
 
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
             &invitee_id.server_name().origin().await,
@@ -59,7 +60,7 @@ pub async fn invite_user(
                 room_version: room_version_id.clone(),
                 event: crate::sending::convert_to_outgoing_federation_event(pdu_json.clone()),
                 invite_room_state,
-                via: crate::room::state::servers_route_via(room_id).ok(),
+                via: state::servers_route_via(room_id).ok(),
             },
         )?
         .into_inner();
@@ -103,7 +104,7 @@ pub async fn invite_user(
         return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_json_value(&RoomMemberEventContent {

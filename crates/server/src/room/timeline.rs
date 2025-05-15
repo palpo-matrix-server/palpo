@@ -4,14 +4,12 @@ use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
-use palpo_core::client::filter::RoomEventFilter;
-use palpo_core::federation::backfill::BackfillReqArgs;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
 use ulid::Ulid;
 
-use crate::core::client::filter::UrlFilter;
+use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -19,6 +17,7 @@ use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::federation::backfill::BackfillReqArgs;
 use crate::core::federation::backfill::{BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
@@ -31,6 +30,7 @@ use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
@@ -159,9 +159,9 @@ where
             .entry("unsigned".to_owned())
             .or_insert_with(|| CanonicalJsonValue::Object(Default::default()))
         {
-            if let Ok(state_frame_id) = crate::room::state::get_pdu_frame_id(&pdu.event_id) {
+            if let Ok(state_frame_id) = state::get_pdu_frame_id(&pdu.event_id) {
                 if let Ok(prev_state) =
-                    crate::room::state::get_state(state_frame_id - 1, &pdu.event_ty.to_string().into(), state_key)
+                    state::get_state(state_frame_id - 1, &pdu.event_ty.to_string().into(), state_key)
                 {
                     unsigned.insert(
                         "prev_content".to_owned(),
@@ -184,7 +184,7 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    crate::room::state::set_forward_extremities(&pdu.room_id, leaves)?;
+    state::set_forward_extremities(&pdu.room_id, leaves)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
@@ -211,7 +211,7 @@ where
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
-    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+    let power_levels = state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
         "",
@@ -293,7 +293,7 @@ where
 
                 let stripped_state = match content.membership {
                     MembershipState::Invite | MembershipState::Knock => {
-                        let state = crate::room::state::summary_stripped(pdu)?;
+                        let state = state::summary_stripped(pdu)?;
                         Some(state)
                     }
                     _ => None,
@@ -427,9 +427,7 @@ where
                 .unwrap_or_default()
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
-                || if let Ok(pdu) =
-                    crate::room::state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
-                {
+                || if let Ok(pdu) = state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None) {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
                             .alias
@@ -492,15 +490,12 @@ pub fn create_hash_and_sign_event(
         ..
     } = pdu_builder;
 
-    let prev_events: Vec<_> = crate::room::state::get_forward_extremities(room_id)?
-        .into_iter()
-        .take(20)
-        .collect();
+    let prev_events: Vec<_> = state::get_forward_extremities(room_id)?.into_iter().take(20).collect();
 
     let conf = crate::config();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
-    let room_version_id = if let Ok(room_version_id) = crate::room::state::get_room_version(room_id) {
+    let room_version_id = if let Ok(room_version_id) = state::get_room_version(room_id) {
         room_version_id
     } else {
         if event_type == TimelineEventType::RoomCreate {
@@ -515,13 +510,12 @@ pub fn create_hash_and_sign_event(
     };
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
-    let auth_events =
-        crate::room::state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
+    let auth_events = state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(crate::room::timeline::get_pdu(event_id).ok()?.depth))
+        .filter_map(|event_id| Some(timeline::get_pdu(event_id).ok()?.depth))
         .max()
         .unwrap_or_else(|| 0)
         + 1;
@@ -529,9 +523,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Ok(prev_pdu) =
-            crate::room::state::get_room_state(room_id, &event_type.to_string().into(), state_key, None)
-        {
+        if let Ok(prev_pdu) = state::get_room_state(room_id, &event_type.to_string().into(), state_key, None) {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -712,7 +704,16 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+    if let Some(state_key) = &pdu_builder.state_key {
+        if let Ok(curr_state) = state::get_room_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
+            if curr_state.content.get() == pdu_builder.content.get() {
+                return Ok(curr_state);
+            }
+        }
+    }
+
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
+
     let conf = crate::config();
     // let admin_room = crate::room::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
@@ -729,12 +730,12 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
         // of the room
         once(pdu.event_id.borrow()),
     )?;
-    let frame_id = crate::room::state::append_to_state(&pdu)?;
+    let frame_id = state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
 
-    crate::room::state::set_room_state(room_id, frame_id)?;
+    state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
 
@@ -771,15 +772,15 @@ where
 {
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
-    crate::room::state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
+    state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
-        crate::room::state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
+        state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
         return Ok(());
     }
 
-    crate::room::timeline::append_pdu(pdu, pdu_json, new_room_leaves)
+    timeline::append_pdu(pdu, pdu_json, new_room_leaves)
 }
 
 /// Returns an iterator over all PDUs in a room.
@@ -896,8 +897,8 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = crate::room::timeline::get_pdu(&event_id) {
-                if crate::room::state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
+            if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
+                if state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
                     }
@@ -947,7 +948,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         return Ok(());
     }
 
-    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+    let power_levels = state::get_room_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
         &StateEventType::RoomPowerLevels,
         "",
@@ -1002,7 +1003,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(pdu_id) = crate::room::timeline::get_pdu(&event_id) {
+    if let Ok(pdu_id) = timeline::get_pdu(&event_id) {
         info!("We already know {event_id} at {pdu_id:?}");
         return Ok(());
     }
