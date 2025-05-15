@@ -40,18 +40,23 @@ set +o pipefail
 test_packages=(
     ./tests/csapi
     ./tests
+    # ./tests/msc2836
     # ./tests/msc3874
     # ./tests/msc3890
-    # ./tests/msc3757
     # ./tests/msc3930
-    # ./tests/msc3902
     # ./tests/msc3967
     # ./tests/msc4140
 )
 
+# env \
+#     -C "$COMPLEMENT_SRC" \
+#     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
+#     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
+#     go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
+# set -o pipefail
+
 env \
     -C "$COMPLEMENT_SRC" \
-    COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
     COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
     go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -run "TestRoomMembers/Parallel/POST_/join/:room_alias_can_join_a_room_with_custom_content" -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 set -o pipefail

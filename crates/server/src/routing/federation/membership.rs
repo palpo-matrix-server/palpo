@@ -3,16 +3,18 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::core::OwnedEventId;
+use crate::core::events::room::join_rules::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
+use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::core::{OwnedRoomId, OwnedUserId, RoomVersionId};
 use crate::federation::maybe_strip_event_id;
+use crate::room::state;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, empty_ok, json_ok, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
+    utils,
 };
 
 pub fn router_v1() -> Router {
@@ -49,7 +51,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
 
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
     if !args.ver.contains(&room_version_id) {
-        return Err(MatrixError::incompatible_room_version(room_version_id, "Room version not supported.").into());
+        return Err(MatrixError::incompatible_room_version("Room version not supported.", room_version_id).into());
     }
 
     let join_authorized_via_users_server: Option<OwnedUserId> = {
@@ -57,21 +59,32 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
             None
-        } else if crate::federation::user_can_perform_restricted_join(&args.user_id, &args.room_id, &room_version_id)
-            .await?
-        {
-            let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
-                .into_iter()
-                .filter(|user| crate::room::state::user_can_invite(&args.room_id, user, &args.user_id).unwrap_or(false))
-                .next()
-            else {
-                return Err(
-                    MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),
-                );
-            };
-            Some(auth_user)
         } else {
-            None
+            let join_rule = state::get_join_rule(&args.room_id)?;
+            let guest_can_join = state::guest_can_join(&args.room_id);
+            if join_rule == JoinRule::Public || guest_can_join {
+                None
+            } else if crate::federation::user_can_perform_restricted_join(
+                &args.user_id,
+                &args.room_id,
+                &room_version_id,
+            )
+            .await?
+            {
+                let Some(auth_user) = crate::room::state::local_users_in_room(&args.room_id)?
+                    .into_iter()
+                    .filter(|user| crate::room::state::user_can_invite(&args.room_id, user, &args.user_id))
+                    .next()
+                else {
+                    return Err(MatrixError::unable_to_grant_join(
+                        "No user on this server is able to assist in joining.",
+                    )
+                    .into());
+                };
+                Some(auth_user)
+            } else {
+                None
+            }
         }
     };
 
@@ -116,10 +129,10 @@ async fn invite_user(
     let origin = depot.origin()?;
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
-    if !crate::supported_room_versions().contains(&body.room_version) {
+    if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
-            body.room_version.clone(),
             "Server does not support this room version.",
+            body.room_version.clone(),
         )
         .into());
     }
@@ -182,7 +195,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !crate::room::is_server_in_room(crate::server_name(), &args.room_id)? {
+    if !crate::room::is_server_joined_room(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -207,7 +220,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
     }
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
     }
 
     // ACL check origin
@@ -275,7 +288,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     let body = body.into_inner();
 
     if !crate::room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden(None, "Room is unknown to this server.").into());
+        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
     }
     crate::event::handler::acl_check(origin, &args.room_id)?;
 

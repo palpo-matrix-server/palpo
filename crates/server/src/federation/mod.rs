@@ -2,12 +2,15 @@ use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
 use crate::core::authorization::XMatrix;
+use crate::core::error::AuthenticateError;
+use crate::core::error::ErrorKind;
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
+use crate::core::serde::JsonValue;
 use crate::core::{MatrixError, signatures};
-use crate::{AppError, AppResult};
+use crate::{AppError, AppResult, config, sending};
 
 mod access_check;
 pub use access_check::access_check;
@@ -21,7 +24,7 @@ pub(crate) async fn send_request(
         return Err(AppError::public("Federation is disabled."));
     }
 
-    if destination == crate::server_name() {
+    if destination == config::server_name() {
         return Err(AppError::public("Won't send federation request to ourselves"));
     }
 
@@ -46,12 +49,12 @@ pub(crate) async fn send_request(
         )
         .into(),
     );
-    request_map.insert("origin".to_owned(), crate::server_name().as_str().into());
+    request_map.insert("origin".to_owned(), config::server_name().as_str().into());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
 
-    signatures::sign_json(crate::server_name().as_str(), crate::keypair(), &mut request_json)
+    signatures::sign_json(config::server_name().as_str(), config::keypair(), &mut request_json)
         .expect("our request json is what palpo expects");
 
     let request_json: serde_json::Map<String, serde_json::Value> =
@@ -69,7 +72,7 @@ pub(crate) async fn send_request(
                 AUTHORIZATION,
                 XMatrix::parse(&format!(
                     "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
-                    crate::server_name(),
+                    config::server_name(),
                     destination,
                     s.0,
                     s.1
@@ -83,20 +86,37 @@ pub(crate) async fn send_request(
     let url = request.url().clone();
 
     debug!("Sending request to {destination} at {url}");
-    let response = crate::federation_client().execute(request).await;
+    let response = sending::federation_client().execute(request).await;
 
     match response {
         Ok(response) => {
             let status = response.status();
-
             if status == 200 {
                 Ok(response)
             } else {
+                let authenticate = if let Some(header) = response.headers().get("WWW-Authenticate") {
+                    if let Ok(header) = header.to_str() {
+                        AuthenticateError::from_str(header)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
                 let body = response.text().await.unwrap_or_default();
-                warn!("{} {}: {}", url, status, body);
-                let err_msg = format!("Answer from {destination}: {body}");
-                debug!("Returning error from {destination}");
-                Err(MatrixError::unknown(err_msg).into())
+                warn!("Answer from {destination}({url}) {status}: {body}");
+                let mut extra = serde_json::from_str::<serde_json::Map<String, JsonValue>>(&body).unwrap_or_default();
+                let msg = extra
+                    .remove("error")
+                    .map(|v| v.as_str().unwrap_or_default().to_owned())
+                    .unwrap_or("Unknown error".to_owned());
+                Err(MatrixError {
+                    status_code: Some(status),
+                    authenticate,
+                    kind: serde_json::from_value(JsonValue::Object(extra)).unwrap_or(ErrorKind::Unknown),
+                    body: msg.into(),
+                }
+                .into())
             }
         }
         Err(e) => {
@@ -119,15 +139,20 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    if crate::room::is_joined(user_id, room_id).unwrap_or(false) {
+    if crate::room::user::is_joined(user_id, room_id).unwrap_or(false) {
         // joining user is already joined, there is nothing we need to do
         return Ok(false);
+    }
+
+    if crate::room::user::is_invited(user_id, room_id).unwrap_or(false) {
+        return Ok(true);
     }
 
     let Ok(join_rules_event_content) = crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
         room_id,
         &StateEventType::RoomJoinRules,
         "",
+        None,
     ) else {
         return Ok(false);
     };
@@ -150,7 +175,7 @@ pub(crate) async fn user_can_perform_restricted_join(
                 None
             }
         })
-        .any(|m| crate::room::is_joined(user_id, &m.room_id).unwrap_or(false))
+        .any(|m| crate::room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
     {
         Ok(true)
     } else {

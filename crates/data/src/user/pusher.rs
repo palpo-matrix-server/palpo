@@ -13,7 +13,7 @@ use crate::schema::*;
 use crate::{DataError, DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = pushers)]
+#[diesel(table_name = user_pushers)]
 pub struct DbPusher {
     pub id: i64,
 
@@ -35,7 +35,7 @@ pub struct DbPusher {
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = pushers)]
+#[diesel(table_name = user_pushers)]
 pub struct NewDbPusher {
     pub user_id: OwnedUserId,
     pub kind: String,
@@ -78,10 +78,10 @@ impl TryInto<Pusher> for DbPusher {
 }
 
 pub fn get_pusher(user_id: &UserId, pushkey: &str) -> DataResult<Option<Pusher>> {
-    let pusher = pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .filter(pushers::pushkey.eq(pushkey))
-        .order_by(pushers::id.desc())
+    let pusher = user_pushers::table
+        .filter(user_pushers::user_id.eq(user_id))
+        .filter(user_pushers::pushkey.eq(pushkey))
+        .order_by(user_pushers::id.desc())
         .first::<DbPusher>(&mut connect()?)
         .optional()?;
     if let Some(pusher) = pusher {
@@ -92,9 +92,9 @@ pub fn get_pusher(user_id: &UserId, pushkey: &str) -> DataResult<Option<Pusher>>
 }
 
 pub fn get_pushers(user_id: &UserId) -> DataResult<Vec<DbPusher>> {
-    pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .order_by(pushers::id.desc())
+    user_pushers::table
+        .filter(user_pushers::user_id.eq(user_id))
+        .order_by(user_pushers::id.desc())
         .load::<DbPusher>(&mut connect()?)
         .map_err(Into::into)
 }
@@ -127,9 +127,24 @@ pub fn get_actions<'a>(
 }
 
 pub fn get_push_keys(user_id: &UserId) -> DataResult<Vec<String>> {
-    pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .select(pushers::pushkey)
+    user_pushers::table
+        .filter(user_pushers::user_id.eq(user_id))
+        .select(user_pushers::pushkey)
         .load::<String>(&mut connect()?)
         .map_err(Into::into)
+}
+
+pub fn delete_user_pushers(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_pushers::table.filter(user_pushers::user_id.eq(user_id))).execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_device_pushers(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
+    diesel::delete(
+        user_pushers::table
+            .filter(user_pushers::user_id.eq(user_id))
+            .filter(user_pushers::device_id.eq(device_id)),
+    )
+    .execute(&mut connect()?)?;
+    Ok(())
 }

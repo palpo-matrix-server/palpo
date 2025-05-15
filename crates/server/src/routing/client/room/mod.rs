@@ -42,7 +42,9 @@ use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::PduBuilder;
 use crate::user::user_is_ignored;
-use crate::{AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, hoops, json_ok};
+use crate::{
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok, hoops, json_ok,
+};
 
 const LIMIT_MAX: usize = 100;
 
@@ -134,7 +136,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     let room_id = &args.room_id;
 
     if !crate::room::state::user_can_see_state_events(sender_id, room_id)? {
-        return Err(MatrixError::forbidden(None, "No room preview available.").into());
+        return Err(MatrixError::forbidden("No room preview available.", None).into());
     }
 
     let limit = LIMIT_MAX;
@@ -244,8 +246,8 @@ fn set_read_markers(
 async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::is_joined(authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+    if !crate::room::user::is_joined(authed.user_id(), &room_id)? {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
     }
 
     json_ok(AliasesResBody {
@@ -272,13 +274,13 @@ async fn upgrade(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    if !crate::supported_room_versions().contains(&body.new_version) {
+    if !config::supported_room_versions().contains(&body.new_version) {
         return Err(MatrixError::unsupported_room_version("This server does not support that room version.").into());
     }
 
     // Create a replacement room
-    let replacement_room = RoomId::new(crate::server_name());
-    crate::room::ensure_room(&replacement_room, &crate::default_room_version())?;
+    let replacement_room = RoomId::new(config::server_name());
+    crate::room::ensure_room(&replacement_room, &config::default_room_version())?;
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
@@ -298,8 +300,12 @@ async fn upgrade(
     .event_id;
 
     // Get the old room creation event
-    let mut create_event_content =
-        crate::room::state::get_room_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "")?;
+    let mut create_event_content = crate::room::state::get_room_state_content::<CanonicalJsonObject>(
+        &room_id,
+        &StateEventType::RoomCreate,
+        "",
+        None,
+    )?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -386,7 +392,7 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "") {
+        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "", None) {
             Ok(v) => v.content.clone(),
             _ => continue, // Skipping missing events.
         };
@@ -413,6 +419,7 @@ async fn upgrade(
         &room_id,
         &StateEventType::RoomPowerLevels,
         "",
+        None,
     )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
@@ -494,16 +501,16 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let room_id = RoomId::new(crate::server_name());
-    crate::room::ensure_room(&room_id, &crate::default_room_version())?;
+    let room_id = RoomId::new(config::server_name());
+    crate::room::ensure_room(&room_id, &config::default_room_version())?;
 
-    if !crate::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
-        return Err(MatrixError::forbidden(None, "Room creation has been disabled.").into());
+    if !config::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
+        return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
-        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, crate::server_name()))
+        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config::server_name()))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
         if crate::room::resolve_local_alias(&alias).is_ok() {
@@ -517,7 +524,7 @@ pub(super) async fn create_room(
 
     let room_version = match body.room_version.clone() {
         Some(room_version) => {
-            if crate::supported_room_versions().contains(&room_version) {
+            if config::supported_room_versions().contains(&room_version) {
                 room_version
             } else {
                 return Err(
@@ -525,7 +532,7 @@ pub(super) async fn create_room(
                 );
             }
         }
-        None => crate::default_room_version(),
+        None => config::default_room_version(),
     };
 
     let content = match &body.creation_content {
@@ -718,7 +725,7 @@ pub(super) async fn create_room(
         pdu_builder.state_key.get_or_insert_with(|| "".to_owned());
 
         // Silently skip encryption events if they are not allowed
-        if pdu_builder.event_type == TimelineEventType::RoomEncryption && !crate::allow_encryption() {
+        if pdu_builder.event_type == TimelineEventType::RoomEncryption && !config::allow_encryption() {
             continue;
         }
 

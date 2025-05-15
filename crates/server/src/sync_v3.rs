@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::event::{EventHash, PduEvent};
 use crate::room::state::DbRoomStateField;
 use crate::room::timeline;
-use crate::{AppError, AppResult, data, extract_variant};
+use crate::{AppError, AppResult, config, data, extract_variant};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
     TimelineEventType::CallInvite,
@@ -49,16 +49,11 @@ pub async fn sync_events(
         None => FilterDefinition::default(),
         Some(Filter::FilterDefinition(filter)) => filter.to_owned(),
         Some(Filter::FilterId(filter_id)) => {
-            crate::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
+            data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
         }
     };
-
-    let (lazy_load_enabled, lazy_load_send_redundant) = match filter.room.state.lazy_load_options {
-        LazyLoadOptions::Enabled {
-            include_redundant_members: redundant,
-        } => (true, redundant),
-        _ => (false, false),
-    };
+    let lazy_load_enabled =
+        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
     let full_state = args.full_state;
 
@@ -80,9 +75,8 @@ pub async fn sync_events(
             since_sn,
             Some(curr_sn),
             next_batch,
-            lazy_load_enabled,
-            lazy_load_send_redundant,
             full_state,
+            &filter,
             &mut device_list_updates,
             &mut left_users,
         )
@@ -114,7 +108,7 @@ pub async fn sync_events(
 
         if !crate::room::room_exists(room_id)? {
             let event = PduEvent {
-                event_id: EventId::new(crate::server_name()).into(),
+                event_id: EventId::new(config::server_name()).into(),
                 event_sn: 0,
                 sender: sender_id.to_owned(),
                 origin_server_ts: UnixMillis::now(),
@@ -256,7 +250,8 @@ pub async fn sync_events(
                 crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                     .into_iter()
                     .map(|other_room_id| {
-                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+                        crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                            .is_ok()
                     })
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need
@@ -271,7 +266,8 @@ pub async fn sync_events(
             crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                 .into_iter()
                 .map(|other_room_id| {
-                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+                    crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                        .is_ok()
                 })
                 .all(|encrypted| !encrypted);
         // If the user doesn't share an encrypted room with the target anymore, we need to tell
@@ -300,7 +296,7 @@ pub async fn sync_events(
         },
     );
 
-    if crate::allow_local_presence() {
+    if config::allow_local_presence() {
         // Take presence updates from this room
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {
@@ -329,7 +325,7 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    crate::user::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
+    data::user::device::remove_to_device_events(sender_id, device_id, since_sn - 1)?;
 
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn, None)?
@@ -356,7 +352,7 @@ pub async fn sync_events(
     };
 
     let to_device = ToDevice {
-        events: crate::user::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
+        events: data::user::device::get_to_device_events(sender_id, device_id, Some(since_sn), Some(next_batch))?,
     };
 
     let res_body = SyncEventsResBody {
@@ -381,9 +377,8 @@ async fn load_joined_room(
     since_sn: i64,
     until_sn: Option<i64>,
     next_batch: i64,
-    lazy_load_enabled: bool,
-    lazy_load_send_redundant: bool,
     full_state: bool,
+    filter: &FilterDefinition,
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
@@ -391,6 +386,15 @@ async fn load_joined_room(
     if since_sn > data::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
+    let lazy_load_enabled =
+        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
+
+    let lazy_load_send_redundant = match filter.room.state.lazy_load_options {
+        LazyLoadOptions::Enabled {
+            include_redundant_members: redundant,
+        } => redundant,
+        _ => false,
+    };
 
     let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, Some(next_batch), 10)?;
 
@@ -440,8 +444,8 @@ async fn load_joined_room(
 
                             // The membership was and still is invite or join
                             if matches!(content.membership, MembershipState::Join | MembershipState::Invite)
-                                && (crate::room::is_joined(&user_id, &room_id)?
-                                    || crate::room::is_invited(&user_id, &room_id)?)
+                                && (crate::room::user::is_joined(&user_id, &room_id)?
+                                    || crate::room::user::is_invited(&user_id, &room_id)?)
                             {
                                 Ok::<_, AppError>(Some(state_key.clone()))
                             } else {
@@ -468,7 +472,6 @@ async fn load_joined_room(
         };
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
-        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 3");
         if since_sn == 0 || joined_since_last_sync {
             println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 4");
             // Probably since = 0, we will do an initial sync
@@ -577,9 +580,12 @@ async fn load_joined_room(
                 if !crate::room::lazy_loading::lazy_load_was_sent_before(sender_id, device_id, &room_id, &event.sender)?
                     || lazy_load_send_redundant
                 {
-                    if let Ok(member_event) =
-                        crate::room::state::get_room_state(&room_id, &StateEventType::RoomMember, event.sender.as_str())
-                    {
+                    if let Ok(member_event) = crate::room::state::get_room_state(
+                        &room_id,
+                        &StateEventType::RoomMember,
+                        event.sender.as_str(),
+                        None,
+                    ) {
                         lazy_loaded.insert(event.sender.clone());
                         state_events.push(member_event);
                     }
@@ -674,7 +680,7 @@ async fn load_joined_room(
     };
 
     // Look for device list updates in this room
-    device_list_updates.extend(crate::room::keys_changed_users(room_id, since_sn, None)?);
+    device_list_updates.extend(crate::room::user::keys_changed_users(room_id, since_sn, None)?);
 
     let notification_count = if send_notification_counts {
         Some(
@@ -696,9 +702,20 @@ async fn load_joined_room(
         None
     };
 
-    let prev_batch = timeline_pdus.first().map(|(sn, _)| sn.to_string());
-
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
+    let mut limited = limited || joined_since_last_sync;
+    if let Some(first_event) = room_events.first() {
+        if let Ok(first_event) = first_event.deserialize() {
+            if first_event.event_type() == TimelineEventType::RoomCreate {
+                limited = false;
+            }
+        }
+    }
+    let prev_batch = if limited {
+        timeline_pdus.first().map(|(sn, _)| sn.to_string())
+    } else {
+        timeline_pdus.last().map(|(sn, _)| sn.to_string())
+    };
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in crate::room::receipt::read_receipts(&room_id, since_sn)? {
@@ -734,7 +751,7 @@ async fn load_joined_room(
             notification_count,
         },
         timeline: Timeline {
-            limited: limited || joined_since_last_sync,
+            limited,
             prev_batch,
             events: room_events,
         },
@@ -784,7 +801,7 @@ pub(crate) fn share_encrypted_room(
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)
         .map(|other_room_id| {
-            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "").is_ok()
+            crate::room::state::get_room_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
         })
         .any(|encrypted| encrypted);
 

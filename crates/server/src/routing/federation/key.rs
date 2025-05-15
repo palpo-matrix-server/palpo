@@ -9,7 +9,7 @@ use crate::core::federation::directory::ServerKeysResBody;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, CanonicalJsonObject};
 use crate::core::{OwnedServerSigningKeyId, UnixMillis};
-use crate::{AuthArgs, EmptyResult, JsonResult, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, JsonResult, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("key").oapi_tag("federation").push(
@@ -46,11 +46,11 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
     let conf = crate::config();
     let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
     verify_keys.insert(
-        format!("ed25519:{}", crate::keypair().version())
+        format!("ed25519:{}", config::keypair().version())
             .try_into()
             .expect("found invalid server signing keys in DB"),
         VerifyKey {
-            key: Base64::new(crate::keypair().public_key().to_vec()),
+            key: Base64::new(config::keypair().public_key().to_vec()),
         },
     );
     let server_keys = ServerSigningKeys {
@@ -64,7 +64,7 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
     let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_keys)?;
     let mut server_keys: CanonicalJsonObject = serde_json::from_slice(&buf)?;
 
-    crate::core::signatures::sign_json(&conf.server_name.as_str(), crate::keypair(), &mut server_keys)?;
+    crate::core::signatures::sign_json(&conf.server_name.as_str(), config::keypair(), &mut server_keys)?;
     let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
 
     json_ok(ServerKeysResBody::new(server_keys))

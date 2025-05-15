@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -19,13 +20,14 @@ use crate::core::identifiers::*;
 use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::DbProfile;
 use crate::exts::*;
 use crate::membership::{banned_room_check, knock_room_by_id};
 use crate::room::state;
 use crate::sending::send_federation_request;
-use crate::user::DbProfile;
 use crate::{
     AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
+    utils,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -35,15 +37,27 @@ use crate::{
 #[endpoint]
 pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot) -> JsonResult<MembersResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let membership = args.membership.as_ref();
     let not_membership = args.not_membership.as_ref();
 
-    if !state::user_can_see_state_events(&authed.user_id(), &args.room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
-    }
+    let mut until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
+        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
+            Some(leave_sn)
+        } else {
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+        }
+    } else {
+        None
+    };
 
     let frame_id = if let Some(at_sn) = &args.at {
-        if let Ok(at_sn) = at_sn.parse::<i64>() {
+        if let Ok(at_sn) = at_sn.parse::<Seqnum>() {
+            if let Some(usn) = until_sn {
+                until_sn = Some(usn.min(at_sn));
+            } else {
+                until_sn = Some(at_sn);
+            }
             event_points::table
                 .filter(event_points::room_id.eq(&args.room_id))
                 .filter(event_points::event_sn.le(at_sn))
@@ -56,12 +70,12 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        state::get_room_frame_id(&args.room_id, None)?
+        state::get_room_frame_id(&args.room_id, until_sn)?
     };
     let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
         .filter(|(key, _)| key.0 == StateEventType::RoomMember)
-        .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership))
+        .filter_map(|(_, pdu)| membership_filter(pdu, membership, not_membership, until_sn))
         .map(|pdu| pdu.to_member_event())
         .collect();
 
@@ -71,7 +85,13 @@ fn membership_filter(
     pdu: PduEvent,
     for_membership: Option<&MembershipEventFilter>,
     not_membership: Option<&MembershipEventFilter>,
+    until_sn: Option<Seqnum>,
 ) -> Option<PduEvent> {
+    if let Some(until_sn) = until_sn {
+        if pdu.event_sn > until_sn {
+            return None;
+        }
+    }
     let membership_state_filter = match for_membership {
         Some(MembershipEventFilter::Ban) => MembershipState::Ban,
         Some(MembershipEventFilter::Invite) => MembershipState::Invite,
@@ -118,6 +138,7 @@ fn membership_filter(
 ///
 /// - The sender user must be in the room
 /// - TODO: An appservice just needs a puppet joined
+/// https://spec.matrix.org/latest/client-server-api/#knocking-on-rooms
 #[endpoint]
 pub(super) fn joined_members(
     _aa: AuthArgs,
@@ -125,9 +146,21 @@ pub(super) fn joined_members(
     depot: &mut Depot,
 ) -> JsonResult<JoinedMembersResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
+    let room_id = room_id.into_inner();
 
-    if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+    // let until_sn = if !state::user_can_see_state_events(sender_id, &room_id)? {
+    //     if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
+    //         Some(leave_sn)
+    //     } else {
+    //         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+    //     }
+    // } else {
+    //     None
+    // };
+    // the sender user must be in the room
+    if !state::user_can_see_state_events(sender_id, &room_id)? {
+        return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
     }
 
     let mut joined = BTreeMap::new();
@@ -136,7 +169,7 @@ pub(super) fn joined_members(
             display_name,
             avatar_url,
             ..
-        }) = crate::user::get_profile(&user_id, None)?
+        }) = data::user::get_profile(&user_id, None)?
         {
             joined.insert(user_id, RoomMember::new(display_name, avatar_url));
         }
@@ -273,7 +306,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!("\n\n\n ======================= join_room_by_id_or_alias");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
@@ -303,7 +335,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             )
             .await?;
             let mut servers = via;
-            servers.extend(state::servers_invite_via(&room_id)?);
+            servers.extend(crate::room::lookup_servers(&room_id)?);
 
             let state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
             let state_servers = state_servers
@@ -327,7 +359,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via)).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
-            let addl_via_servers = state::servers_invite_via(&room_id)?;
+            let addl_via_servers = crate::room::lookup_servers(&room_id)?;
 
             let addl_state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
 
@@ -377,7 +409,7 @@ pub(super) async fn ban_user(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
-    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref()).ok();
+    let room_state = state::get_room_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None).ok();
 
     let event = if let Some(room_state) = room_state {
         let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
@@ -407,7 +439,8 @@ pub(super) async fn ban_user(
         } = send_federation_request(body.user_id.server_name(), profile_request)
             .await?
             .json()
-            .await?;
+            .await
+            .unwrap_or_default();
 
         RoomMemberEventContent {
             membership: MembershipState::Ban,
@@ -425,7 +458,7 @@ pub(super) async fn ban_user(
             avatar_url,
             blurhash,
             ..
-        } = crate::user::get_profile(&body.user_id, None)?.ok_or(MatrixError::not_found("User profile not found."))?;
+        } = data::user::get_profile(&body.user_id, None)?.ok_or(MatrixError::not_found("User profile not found."))?;
         RoomMemberEventContent {
             membership: MembershipState::Ban,
             display_name,
@@ -468,6 +501,7 @@ pub(super) async fn unban_user(
         &room_id,
         &StateEventType::RoomMember,
         body.user_id.as_ref(),
+        None,
     )?;
 
     event.membership = MembershipState::Leave;
@@ -501,17 +535,20 @@ pub(super) async fn kick_user(
 
     // TODO: state lock
     let Ok(event) = state::get_member(&room_id, &body.user_id) else {
-        return empty_ok();
+        return Err(MatrixError::forbidden("Users cannot kick users from a room they are not in", None).into());
     };
 
     if !matches!(
         event.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
-        return Err(MatrixError::forbidden(None, format!(
-            "Cannot kick a user who is not apart of the room (current membership: {})",
-            event.membership
-        ))
+        return Err(MatrixError::forbidden(
+            format!(
+                "Cannot kick a user who is not apart of the room (current membership: {})",
+                event.membership
+            ),
+            None,
+        )
         .into());
     }
 
@@ -555,8 +592,7 @@ pub(crate) async fn knock_room(
             .await?;
 
             let mut servers = body.via.clone();
-            servers.extend(state::servers_invite_via(&room_id).unwrap_or_default());
-
+            servers.extend(crate::room::lookup_servers(&room_id).unwrap_or_default());
             servers.extend(
                 state::get_user_state(sender_id, &room_id)
                     .unwrap_or_default()
@@ -571,6 +607,7 @@ pub(crate) async fn knock_room(
                 servers.push(server.to_owned());
             }
             servers.dedup();
+            utils::shuffle(&mut servers);
 
             (room_id, servers)
         }
@@ -585,7 +622,7 @@ pub(crate) async fn knock_room(
             )
             .await?;
 
-            let addl_via_servers = state::servers_invite_via(&room_id)?;
+            let addl_via_servers = crate::room::lookup_servers(&room_id)?;
             let addl_state_servers = state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
@@ -600,6 +637,7 @@ pub(crate) async fn knock_room(
 
             addl_servers.sort_unstable();
             addl_servers.dedup();
+            utils::shuffle(&mut addl_servers);
             servers.append(&mut addl_servers);
 
             (room_id, servers)

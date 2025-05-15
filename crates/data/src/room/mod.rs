@@ -245,13 +245,13 @@ impl NewDbEvent {
     }
 }
 
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = event_txn_ids, primary_key(event_id))]
-pub struct NewDbEventTxnId {
+#[derive(Insertable, Queryable, Debug, Clone)]
+#[diesel(table_name = event_idempotents)]
+pub struct NewDbEventIdempotent {
     pub txn_id: OwnedTransactionId,
     pub user_id: OwnedUserId,
-    pub room_id: Option<OwnedRoomId>,
     pub device_id: Option<OwnedDeviceId>,
+    pub room_id: Option<OwnedRoomId>,
     pub event_id: Option<OwnedEventId>,
     pub created_at: UnixMillis,
 }

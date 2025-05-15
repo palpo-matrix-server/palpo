@@ -7,7 +7,7 @@ use salvo::prelude::*;
 use crate::core::federation::query::RoomInfoResBody;
 use crate::core::identifiers::*;
 use crate::core::user::{ProfileField, ProfileResBody};
-use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AuthArgs, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, config, data, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("query")
@@ -28,7 +28,7 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
     let mut avatar_url = None;
     let mut blurhash = None;
 
-    let profile = crate::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
+    let profile = data::user::get_profile(&args.user_id, None)?.ok_or(MatrixError::not_found("Profile not found."))?;
 
     match &args.field {
         Some(ProfileField::DisplayName) => display_name = profile.display_name.clone(),
@@ -57,8 +57,8 @@ async fn get_profile(_aa: AuthArgs, args: ProfileReqArgs) -> JsonResult<ProfileR
 #[endpoint]
 async fn get_directory(_aa: AuthArgs, room_alias: QueryParam<OwnedRoomAliasId, true>) -> JsonResult<RoomInfoResBody> {
     let room_id = crate::room::resolve_local_alias(&room_alias)?;
-    let mut servers = crate::room::room_servers(&room_id)?;
-    servers.insert(0, crate::server_name().to_owned());
+    let mut servers = crate::room::lookup_servers(&room_id)?;
+    servers.insert(0, config::server_name().to_owned());
     servers.dedup();
     json_ok(RoomInfoResBody { room_id, servers })
 }

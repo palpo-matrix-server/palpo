@@ -119,7 +119,7 @@ impl RoomPowerLevelsEventContent {
             ban: default_power_level(),
             events: BTreeMap::new(),
             events_default: 0,
-            invite: 0,
+            invite: default_power_level(),
             kick: default_power_level(),
             redact: default_power_level(),
             state_default: default_power_level(),
@@ -140,6 +140,7 @@ impl RedactContent for RoomPowerLevelsEventContent {
     type Redacted = RedactedRoomPowerLevelsEventContent;
 
     fn redact(self, version: &RoomVersionId) -> Self::Redacted {
+        use RoomVersionId::*;
         let Self {
             ban,
             events,
@@ -154,16 +155,7 @@ impl RedactContent for RoomPowerLevelsEventContent {
         } = self;
 
         let invite = match version {
-            RoomVersionId::V1
-            | RoomVersionId::V2
-            | RoomVersionId::V3
-            | RoomVersionId::V4
-            | RoomVersionId::V5
-            | RoomVersionId::V6
-            | RoomVersionId::V7
-            | RoomVersionId::V8
-            | RoomVersionId::V9
-            | RoomVersionId::V10 => 0,
+            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => 0,
             _ => invite,
         };
 

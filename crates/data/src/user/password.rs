@@ -21,7 +21,7 @@ pub struct NewDbPassword {
     pub created_at: UnixMillis,
 }
 
-fn get_password_hash(user_id: &UserId) -> DataResult<String> {
+pub fn get_password_hash(user_id: &UserId) -> DataResult<String> {
     user_passwords::table
         .filter(user_passwords::user_id.eq(user_id))
         .order_by(user_passwords::id.desc())

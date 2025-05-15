@@ -9,11 +9,10 @@ use salvo::prelude::*;
 use crate::core::Seqnum;
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
-use crate::core::events::receipt::{ReceiptEventContent, SyncReceiptEvent, combine_receipt_event_contents};
+use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_contents};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJson;
 use crate::data;
 use crate::event::ignored_filter;
 use crate::extract_variant;
@@ -386,7 +385,7 @@ async fn process_rooms(
         let required_state = required_state_request
             .iter()
             .filter_map(|state| {
-                crate::room::state::get_room_state(room_id, &state.0, &state.1)
+                crate::room::state::get_room_state(room_id, &state.0, &state.1, None)
                     .map(|s| s.to_sync_state_event())
                     .ok()
             })
@@ -613,7 +612,7 @@ fn collect_e2ee<'a>(
             }
         }
         // Look for device list updates in this room
-        device_list_changes.extend(crate::room::keys_changed_users(room_id, global_since_sn, None)?);
+        device_list_changes.extend(crate::room::user::keys_changed_users(room_id, global_since_sn, None)?);
     }
 
     for user_id in left_encrypted_users {
@@ -646,11 +645,11 @@ fn collect_to_device(
         return None;
     }
 
-    crate::user::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
+    data::user::device::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
 
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
-        events: crate::user::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
+        events: data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
     })
 }
 

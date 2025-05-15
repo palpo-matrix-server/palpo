@@ -15,7 +15,7 @@ use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -31,21 +31,26 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!(
-        "==========send_message===={}======body:{:#?}",
-        crate::server_name(),
-        body
-    );
     if &body.origin != origin {
-        return Err(MatrixError::forbidden(None, "Not allowed to send transactions on behalf of other servers").into());
+        return Err(
+            MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
+        );
     }
 
     if body.pdus.len() > PDU_LIMIT {
-        return Err(MatrixError::forbidden(None, "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction").into());
+        return Err(MatrixError::forbidden(
+            "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction",
+            None,
+        )
+        .into());
     }
 
     if body.edus.len() > EDU_LIMIT {
-        return Err(MatrixError::forbidden(None, "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction").into());
+        return Err(MatrixError::forbidden(
+            "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction",
+            None,
+        )
+        .into());
     }
 
     let txn_start_time = Instant::now();
@@ -65,11 +70,6 @@ async fn handle_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
-    println!(
-        "================handle_pdus====server {}   pdus: {:#?}",
-        crate::server_name(),
-        pdus
-    );
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
@@ -233,7 +233,7 @@ async fn handle_edu_typing(origin: &ServerName, typing: TypingContent) {
         return;
     }
 
-    if crate::room::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
+    if crate::room::user::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
         if typing.typing {
             let timeout = UnixMillis::now()
                 .get()
@@ -297,16 +297,16 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
             let ev_type = ev_type.to_string();
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => {
-                    crate::user::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
+                    data::user::device::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
                 }
 
                 DeviceIdOrAllDevices::AllDevices => {
                     let (sender, ev_type, event) = (&sender, &ev_type, &event);
-                    crate::user::all_device_ids(target_user_id)
+                    data::user::all_device_ids(target_user_id)
                         .unwrap_or_default()
                         .iter()
                         .for_each(|target_device_id| {
-                            crate::user::add_to_device_event(
+                            data::user::device::add_to_device_event(
                                 sender,
                                 target_user_id,
                                 target_device_id,

@@ -1,23 +1,8 @@
-mod device;
-pub use device::*;
 mod password;
 pub use password::*;
-mod profile;
-pub use profile::*;
-mod access_token;
-pub use access_token::*;
-mod filter;
-pub use filter::*;
-mod refresh_token;
-pub use refresh_token::*;
 pub mod key;
 pub mod pusher;
-// pub mod push_rule;
 pub use key::*;
-pub mod key_backup;
-pub mod session;
-pub use key_backup::*;
-pub use session::*;
 pub mod presence;
 use std::collections::BTreeMap;
 use std::mem;
@@ -33,7 +18,7 @@ use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEv
 use crate::core::events::{GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
 use crate::data::schema::*;
-use crate::data::user::{DbUser, NewDbUser};
+use crate::data::user::{DbUser, NewDbPassword, NewDbUser};
 use crate::data::{self, connect};
 use crate::{AppError, AppResult, MatrixError, PduBuilder};
 
@@ -140,13 +125,15 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
             room_id,
             &StateEventType::RoomPowerLevels,
             "",
+            None,
         )
         .ok();
 
-        let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
-            RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
-        }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "")
-            .is_ok_and(|event| event.sender == user_id);
+        let user_can_demote_self =
+            room_power_levels.as_ref().is_some_and(|power_levels_content| {
+                RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
+            }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)
+                .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
             let mut power_levels_content = room_power_levels.unwrap_or_default();
@@ -224,16 +211,32 @@ pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
         .select((user_login_tokens::user_id, user_login_tokens::expires_at))
         .first::<(OwnedUserId, UnixMillis)>(&mut connect()?)
     else {
-        return Err(MatrixError::forbidden(None, "Login token is unrecognised").into());
+        return Err(MatrixError::forbidden("Login token is unrecognised.", None).into());
     };
 
     if expires_at < UnixMillis::now() {
         trace!(?user_id, ?token, "Removing expired login token");
         diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
-        return Err(MatrixError::forbidden(None, "Login token is expired").into());
+        return Err(MatrixError::forbidden("Login token is expired.", None).into());
     }
 
     diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
 
     Ok(user_id)
+}
+
+pub fn valid_refresh_token(user_id: &UserId, device_id: &DeviceId, token: &str) -> AppResult<()> {
+    let Ok(expires_at) = user_refresh_tokens::table
+        .filter(user_refresh_tokens::user_id.eq(user_id))
+        .filter(user_refresh_tokens::device_id.eq(device_id))
+        .filter(user_refresh_tokens::token.eq(token))
+        .select(user_refresh_tokens::expires_at)
+        .first::<i64>(&mut connect()?)
+    else {
+        return Err(MatrixError::unauthorized("Invalid refresh token.").into());
+    };
+    if expires_at < UnixMillis::now().get() as i64 {
+        return Err(MatrixError::unauthorized("Refresh token expired.").into());
+    }
+    Ok(())
 }

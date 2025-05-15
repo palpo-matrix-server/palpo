@@ -10,9 +10,7 @@ use crate::core::client::push::PusherPostData;
 use crate::core::identifiers::*;
 use crate::core::{
     client::push::{Device, Notification, NotificationCounts, NotificationPriority},
-    events::{
-        room::power_levels::RoomPowerLevelsEventContent, AnySyncTimelineEvent, StateEventType, TimelineEventType,
-    },
+    events::{ AnySyncTimelineEvent, StateEventType, TimelineEventType},
     push::{self, Pusher, PusherKind},
     push::{Action, PushConditionRoomCtx, PushFormat, Ruleset, Tweak},
     serde::RawJson,

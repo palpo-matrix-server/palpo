@@ -8,7 +8,7 @@ use sha1::Sha1;
 
 use crate::core::UnixSeconds;
 use crate::core::client::voip::TurnServerResBody;
-use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, hoops, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, config, hoops, json_ok};
 
 type HmacSha1 = Hmac<Sha1>;
 
@@ -25,14 +25,14 @@ async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerR
     let authed = depot.authed_info()?;
 
     // MSC4166: return M_NOT_FOUND 404 if no TURN URIs are specified in any way
-    if crate::turn_uris().is_empty() {
+    if config::turn_uris().is_empty() {
         return Err(MatrixError::not_found("turn_uris is empty").into());
     }
 
-    let turn_secret = crate::turn_secret().clone();
+    let turn_secret = config::turn_secret().clone();
 
     let (username, password) = if !turn_secret.is_empty() {
-        let expiry = UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(crate::turn_ttl()))
+        let expiry = UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(config::turn_ttl()))
             .expect("time is valid");
 
         let username = format!("{}:{}", expiry.get(), authed.user_id());
@@ -44,13 +44,13 @@ async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerR
 
         (username, password)
     } else {
-        (crate::turn_username().to_owned(), crate::turn_password().to_owned())
+        (config::turn_username().to_owned(), config::turn_password().to_owned())
     };
 
     json_ok(TurnServerResBody {
         username,
         password,
-        uris: crate::turn_uris().to_vec(),
-        ttl: Duration::from_secs(crate::turn_ttl()),
+        uris: config::turn_uris().to_vec(),
+        ttl: Duration::from_secs(config::turn_ttl()),
     })
 }

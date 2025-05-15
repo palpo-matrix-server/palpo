@@ -1,153 +1,26 @@
-use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, HashMap, hash_map};
 use std::time::Instant;
 
 use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::json;
 
-use crate::core::client::key::{ClaimKeysResBody, UploadSigningKeysReqBody};
+use crate::core::client::key::ClaimKeysResBody;
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
 use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
 use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
-use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis, client, federation};
+use crate::core::{DeviceKeyAlgorithm, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::data::user::{
+    DbCrossSigningKey, DbOneTimeKey, NewDbCrossSignature, NewDbCrossSigningKey, NewDbKeyChange, NewDbOneTimeKey,
+};
 use crate::exts::*;
-use crate::sending::EduBuf;
 use crate::user::clean_signatures;
-use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, data, sending};
-
-#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_keys)]
-pub struct DbCrossSigningKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub key_type: String,
-    pub key_data: JsonValue,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_keys)]
-pub struct NewDbCrossSigningKey {
-    pub user_id: OwnedUserId,
-    pub key_type: String,
-    pub key_data: JsonValue,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_sigs)]
-pub struct DbCrossSignature {
-    pub id: i64,
-
-    pub origin_user_id: OwnedUserId,
-    pub origin_key_id: OwnedDeviceKeyId,
-    pub target_user_id: OwnedUserId,
-    pub target_device_id: OwnedDeviceId,
-    pub signature: String,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_cross_signing_sigs)]
-pub struct NewDbCrossSignature {
-    pub origin_user_id: OwnedUserId,
-    pub origin_key_id: OwnedDeviceKeyId,
-    pub target_user_id: OwnedUserId,
-    pub target_device_id: OwnedDeviceId,
-    pub signature: String,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_fallback_keys)]
-pub struct DbFallbackKey {
-    pub id: String,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub used_at: Option<i64>,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_fallback_keys)]
-pub struct NewDbFallbackKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub used_at: Option<i64>,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_one_time_keys)]
-pub struct DbOneTimeKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = e2e_one_time_keys)]
-pub struct NewDbOneTimeKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub key_id: OwnedDeviceKeyId,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_device_keys)]
-pub struct DbDeviceKey {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub algorithm: String,
-    pub stream_id: i64,
-    pub display_name: Option<String>,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = e2e_device_keys)]
-pub struct NewDbDeviceKey {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub stream_id: i64,
-    pub display_name: Option<String>,
-    pub key_data: JsonValue,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = e2e_key_changes)]
-pub struct DbKeyChange {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub room_id: Option<OwnedRoomId>,
-    pub occur_sn: i64,
-    pub changed_at: UnixMillis,
-}
-#[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = e2e_key_changes)]
-pub struct NewDbKeyChange {
-    pub user_id: OwnedUserId,
-    pub room_id: Option<OwnedRoomId>,
-    pub occur_sn: i64,
-    pub changed_at: UnixMillis,
-}
+use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
 
 pub async fn query_keys<F: Fn(&UserId) -> bool>(
     sender_id: Option<&UserId>,
@@ -162,7 +35,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut get_over_federation = HashMap::new();
 
     for (user_id, device_ids) in device_keys_input {
-        if user_id.server_name() != crate::server_name() {
+        if user_id.server_name() != config::server_name() {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -172,9 +45,9 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
 
         if device_ids.is_empty() {
             let mut container = BTreeMap::new();
-            for device_id in crate::user::all_device_ids(user_id)? {
+            for device_id in data::user::all_device_ids(user_id)? {
                 if let Some(mut keys) = data::user::get_device_keys_and_sigs(user_id, &device_id)? {
-                    let device = crate::user::get_device(user_id, &device_id)?;
+                    let device = data::user::device::get_device(user_id, &device_id)?;
                     if let Some(display_name) = &device.display_name {
                         keys.unsigned.device_display_name = display_name.to_owned().into();
                     }
@@ -279,11 +152,10 @@ pub async fn claim_one_time_keys(
     one_time_keys_input: &BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>,
 ) -> AppResult<ClaimKeysResBody> {
     let mut one_time_keys = BTreeMap::new();
-
     let mut get_over_federation = BTreeMap::new();
 
     for (user_id, map) in one_time_keys_input {
-        if user_id.server_name() != crate::server_name() {
+        if user_id.server_name().is_remote() {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -331,7 +203,7 @@ pub async fn claim_one_time_keys(
                     failures.insert(server.to_string(), json!({}));
                 }
             },
-            Err(_e) => {
+            Err(e) => {
                 failures.insert(server.to_string(), json!({}));
             }
         }
@@ -427,7 +299,7 @@ pub fn claim_one_time_key(
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))
         .filter(e2e_one_time_keys::algorithm.eq(key_algorithm.as_ref()))
-        .order(e2e_one_time_keys::id.desc())
+        .order(e2e_one_time_keys::id.asc())
         .first::<DbOneTimeKey>(&mut connect()?)
         .optional()?;
     if let Some(DbOneTimeKey {
@@ -590,19 +462,16 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
         .execute(&mut connect()?)?;
 
     if user_id.is_local() {
-        let remote_servers = room_servers::table
-            .filter(room_servers::room_id.eq_any(joined_rooms))
-            .select(room_servers::server_id)
+        let remote_servers = room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq_any(joined_rooms))
+            .select(room_joined_servers::server_id)
             .distinct()
             .load::<OwnedServerName>(&mut connect()?)?;
 
         let content = SigningKeyUpdateContent::new(user_id.to_owned());
         let edu = Edu::SigningKeyUpdate(content);
 
-        let mut buf = EduBuf::new();
-        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::SigningKeyUpdate");
-
-        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+        sending::send_edu_servers(remote_servers.into_iter(), &edu);
     }
 
     Ok(())
@@ -654,21 +523,30 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         .values(&change)
         .execute(&mut connect()?)?;
 
-    if user_id.is_local() {
-        let remote_servers = room_servers::table
-            .filter(room_servers::room_id.eq_any(joined_rooms))
-            .select(room_servers::server_id)
-            .distinct()
-            .load::<OwnedServerName>(&mut connect()?)?;
+    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+}
 
-        let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
-        let edu = Edu::DeviceListUpdate(content);
+pub fn mark_device_list_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
+    let joined_rooms = data::user::joined_rooms(user_id)?;
+    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+}
 
-        let mut buf = EduBuf::new();
-        serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::DeviceListUpdate");
-
-        sending::send_edu_servers(remote_servers.into_iter(), &buf);
+fn mark_device_list_update_with_joined_rooms(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    joined_rooms: &[OwnedRoomId],
+) -> AppResult<()> {
+    if user_id.is_remote() {
+        return Ok(());
     }
+    let remote_servers = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq_any(joined_rooms))
+        .select(room_joined_servers::server_id)
+        .distinct()
+        .load::<OwnedServerName>(&mut connect()?)?;
 
-    Ok(())
+    let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
+    let edu = Edu::DeviceListUpdate(content);
+
+    sending::send_edu_servers(remote_servers.into_iter(), &edu)
 }

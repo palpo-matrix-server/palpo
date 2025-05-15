@@ -5,38 +5,15 @@ use crate::core::UnixMillis;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppResult, MatrixError, utils};
-
-#[derive(Identifiable, Debug, Clone)]
-#[diesel(table_name = user_passwords)]
-pub struct DbPassword {
-    pub id: i64,
-    pub user_id: OwnedUserId,
-    pub hash: String,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Queryable, Debug, Clone)]
-#[diesel(table_name = user_passwords)]
-pub struct NewDbPassword {
-    pub user_id: OwnedUserId,
-    pub hash: String,
-    pub created_at: UnixMillis,
-}
-
-fn get_password_hash(user_id: &UserId) -> AppResult<String> {
-    user_passwords::table
-        .filter(user_passwords::user_id.eq(user_id))
-        .order_by(user_passwords::id.desc())
-        .select(user_passwords::hash)
-        .first::<String>(&mut connect()?)
-        .map_err(Into::into)
-}
+use crate::data::user::NewDbPassword;
+use crate::{AppResult, MatrixError, data, utils};
 
 pub fn vertify_password(user: &DbUser, password: &str) -> AppResult<()> {
     if user.deactivated_at.is_some() {
         return Err(MatrixError::user_deactivated("The user has been deactivated").into());
     }
-    let hash = get_password_hash(&user.id).map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
+    let hash = data::user::get_password_hash(&user.id)
+        .map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
     if hash.is_empty() {
         return Err(MatrixError::user_deactivated("The user has been deactivated").into());
     }

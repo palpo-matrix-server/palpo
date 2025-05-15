@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::core::space::SpaceRoomJoinRule;
 use crate::room::state;
 use crate::routing::prelude::*;
-use crate::{GetUrlOrigin, data, sending};
+use crate::{GetUrlOrigin, config, data, sending};
 
 /// # `GET /_matrix/client/unstable/im.nheko.summary/summary/{roomIdOrAlias}`
 ///
@@ -31,10 +31,10 @@ pub async fn get_summary_msc_3266(
         crate::room::alias::resolve_with_servers(&args.room_id_or_alias, Some(args.via.clone())).await?;
 
     if data::room::is_disabled(&room_id)? {
-        return Err(MatrixError::forbidden(None, "This room is banned on this homeserver.").into());
+        return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
     }
 
-    if crate::room::is_server_in_room(crate::server_name(), &room_id)? {
+    if crate::room::is_server_joined_room(config::server_name(), &room_id)? {
         let res_body = local_room_summary(&room_id, sender_id).await?;
         json_ok(res_body)
     } else {
@@ -62,8 +62,8 @@ pub async fn get_summary_msc_3266(
 async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> AppResult<SummaryMsc3266ResBody> {
     trace!(?sender_id, "Sending local room summary response for {room_id:?}");
     let join_rule = state::get_join_rule(room_id)?;
-    let world_readable = state::is_world_readable(room_id)?;
-    let guest_can_join = state::guest_can_join(room_id)?;
+    let world_readable = state::is_world_readable(room_id);
+    let guest_can_join = state::guest_can_join(room_id);
 
     trace!("{join_rule:?}, {world_readable:?}, {guest_can_join:?}");
 
@@ -78,21 +78,13 @@ async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> App
     .await?;
 
     let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
-
     let name = state::get_name(room_id).ok();
-
     let topic = state::get_room_topic(room_id).ok();
-
     let room_type = state::get_room_type(room_id).ok().flatten();
-
     let avatar_url = state::get_avatar_url(room_id).ok().flatten();
-
     let room_version = state::get_room_version(room_id).ok();
-
     let encryption = state::get_room_encryption(room_id).ok();
-
     let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
-
     let membership = sender_id
         .map(|sender_id| {
             state::get_member(room_id, sender_id).map_or(MembershipState::Leave, |content| content.membership)
@@ -130,11 +122,15 @@ async fn remote_room_summary_hierarchy(
     );
     let conf = crate::config();
     if !conf.allow_federation {
-        return Err(MatrixError::forbidden(None, "Federation is disabled.").into());
+        return Err(MatrixError::forbidden("Federation is disabled.", None).into());
     }
 
     if crate::room::is_disabled(room_id)? {
-        return Err(MatrixError::forbidden(None, "Federaton of room {room_id} is currently disabled on this server.").into());
+        return Err(MatrixError::forbidden(
+            "Federaton of room {room_id} is currently disabled on this server.",
+            None,
+        )
+        .into());
     }
 
     let mut requests: FuturesUnordered<_> = FuturesUnordered::new();
@@ -214,10 +210,11 @@ where
                 return Ok(());
             }
 
-            Err(MatrixError::forbidden(None, 
+            Err(MatrixError::forbidden(
                 "Room is not world readable, not publicly accessible/joinable, restricted room \
 				 conditions not met, and guest access is forbidden. Not allowed to see details \
 				 of this room.",
+                None,
             )
             .into())
         }
@@ -226,9 +223,10 @@ where
                 return Ok(());
             }
 
-            Err(MatrixError::forbidden(None, 
+            Err(MatrixError::forbidden(
                 "Room is not world readable or publicly accessible/joinable, authentication is \
 				 required",
+                None,
             )
             .into())
         }

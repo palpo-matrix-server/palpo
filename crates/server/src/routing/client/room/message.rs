@@ -11,7 +11,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, exts::*, json_ok};
+use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -42,10 +42,10 @@ pub(super) async fn get_messages(
             .first::<(i64, bool)>(&mut connect()?)
             .optional()?
         else {
-            return Err(MatrixError::forbidden(None, "You aren’t a member of the room.").into());
+            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
         };
         if forgotten {
-            return Err(MatrixError::forbidden(None, "You aren’t a member of the room.").into());
+            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
         }
         Some(until_sn)
     } else {
@@ -149,7 +149,7 @@ pub(super) async fn get_messages(
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
         if let Ok(member_event) =
-            crate::room::state::get_room_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str())
+            crate::room::state::get_room_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)
         {
             resp.state.push(member_event.to_state_event());
         }
@@ -187,8 +187,8 @@ pub(super) async fn send_message(
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
-        return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
+        return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
     let payload = req.payload().await?;
@@ -198,7 +198,7 @@ pub(super) async fn send_message(
 
     // Check if this is a new transaction id
     if let Some(event_id) =
-        crate::transaction_id::get_event_id(&args.txn_id, authed.user_id(), Some(authed.device_id()))?
+        crate::transaction_id::get_event_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), Some(&args.room_id))?
     {
         return json_ok(SendMessageResBody::new(event_id));
     }
@@ -221,8 +221,8 @@ pub(super) async fn send_message(
     crate::transaction_id::add_txn_id(
         &args.txn_id,
         authed.user_id(),
-        Some(&args.room_id),
         Some(authed.device_id()),
+        Some(&args.room_id),
         Some(&event_id),
     )?;
 
@@ -245,8 +245,8 @@ pub(super) async fn post_message(
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !crate::allow_encryption() {
-        return Err(MatrixError::forbidden(None, "Encryption has been disabled").into());
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
+        return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
     let payload = req.payload().await?;

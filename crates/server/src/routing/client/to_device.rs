@@ -7,7 +7,7 @@ use ulid::Ulid;
 use crate::core::device::DirectDeviceContent;
 use crate::core::federation::transaction::Edu;
 use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
-use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, empty_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, data, empty_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("sendToDevice/{event_type}/{txn_id}").put(send_to_device)
@@ -39,13 +39,12 @@ fn send_to_device(
                 let message_id = Ulid::new();
                 crate::sending::send_reliable_edu(
                     target_user_id.server_name(),
-                    serde_json::to_vec(&Edu::DirectToDevice(DirectDeviceContent {
+                    &Edu::DirectToDevice(DirectDeviceContent {
                         sender: authed.user_id().clone(),
                         ev_type: args.event_type.clone(),
                         message_id: message_id.to_string().into(),
                         messages,
-                    }))
-                    .expect("DirectToDevice EDU can be serialized"),
+                    }),
                     &message_id.to_string(),
                 )?;
 
@@ -53,7 +52,7 @@ fn send_to_device(
             }
 
             match target_device_id_maybe {
-                DeviceIdOrAllDevices::DeviceId(target_device_id) => crate::user::add_to_device_event(
+                DeviceIdOrAllDevices::DeviceId(target_device_id) => data::user::device::add_to_device_event(
                     authed.user_id(),
                     target_user_id,
                     target_device_id,
@@ -64,8 +63,8 @@ fn send_to_device(
                 )?,
 
                 DeviceIdOrAllDevices::AllDevices => {
-                    for target_device_id in crate::user::all_device_ids(target_user_id)? {
-                        crate::user::add_to_device_event(
+                    for target_device_id in data::user::all_device_ids(target_user_id)? {
+                        data::user::device::add_to_device_event(
                             authed.user_id(),
                             target_user_id,
                             &target_device_id,
@@ -81,7 +80,7 @@ fn send_to_device(
     }
 
     // Save transaction id with empty data
-    crate::transaction_id::add_txn_id(&args.txn_id, authed.user_id(), None, Some(authed.device_id()), None)?;
+    crate::transaction_id::add_txn_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), None, None)?;
 
     empty_ok()
 }

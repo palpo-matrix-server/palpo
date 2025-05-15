@@ -24,8 +24,8 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let limit = filter.limit.unwrap_or(10).min(100) as usize;
 
     for room_id in &room_ids {
-        if !crate::room::is_joined(user_id, room_id)? {
-            return Err(MatrixError::forbidden(None, "You don't have permission to view this room.").into());
+        if !crate::room::user::is_joined(user_id, room_id)? {
+            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
         }
     }
 
@@ -79,21 +79,15 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
         .filter_map(|(rank, event_id, _, _)| {
             let pdu = crate::room::timeline::get_pdu(&event_id).ok()?;
             if crate::room::state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
-                Some((rank, pdu.to_room_event()))
+                Some((rank, pdu))
             } else {
                 None
             }
         })
-        .map(|(rank, event)| SearchResult {
-            context: EventContextResult {
-                end: None,
-                events_after: Vec::new(),
-                events_before: Vec::new(),
-                profile_info: BTreeMap::new(),
-                start: None,
-            },
+        .map(|(rank, pdu)| SearchResult {
+            context: calc_event_context(user_id, &pdu.room_id, &pdu.event_id, 10, 10, false).unwrap_or_default(),
             rank: Some(rank as f64),
-            result: Some(event),
+            result: Some(pdu.to_room_event()),
         })
         .collect();
 
@@ -109,6 +103,27 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
             .map(str::to_lowercase)
             .collect(),
     })
+}
+
+// Calculates the contextual events for any search results.
+fn calc_event_context(
+    user_id: &UserId,
+    room_id: &RoomId,
+    event_id: &EventId,
+    before_limit: usize,
+    after_limit: usize,
+    include_profile: bool,
+) -> AppResult<EventContextResult> {
+    let mut context = EventContextResult {
+        end: None,
+        events_after: Vec::new(),
+        events_before: Vec::new(),
+        profile_info: BTreeMap::new(),
+        start: None,
+    };
+
+    // TODO: Implement the logic to fetch the context events before and after the given event_id.
+    Ok(context)
 }
 
 pub fn save_pdu(pdu: &PduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {

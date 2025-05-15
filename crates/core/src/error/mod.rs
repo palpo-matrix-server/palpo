@@ -118,13 +118,8 @@ impl MatrixError {
     pub fn bad_status(status: Option<http::StatusCode>, body: impl Into<ErrorBody>) -> Self {
         Self::new(ErrorKind::BadStatus { status, body: None }, body)
     }
-    #[cfg(feature = "unstable-msc2967")]
-    pub fn forbidden(authenticate: Option<AuthenticateError>, body: impl Into<ErrorBody>) -> Self {
+    pub fn forbidden(body: impl Into<ErrorBody>, authenticate: Option<AuthenticateError>) -> Self {
         Self::new(ErrorKind::Forbidden { authenticate }, body)
-    }
-    #[cfg(not(feature = "unstable-msc2967"))]
-    pub fn forbidden(body: impl Into<ErrorBody>) -> Self {
-        Self::new(ErrorKind::Forbidden {}, body)
     }
     #[cfg(feature = "unstable-msc4186")]
     pub fn unknown_pos(body: impl Into<ErrorBody>) -> Self {
@@ -134,19 +129,19 @@ impl MatrixError {
     pub fn unactionable(body: impl Into<ErrorBody>) -> Self {
         Self::new(ErrorKind::Unactionable, body)
     }
-    pub fn unknown_token(soft_logout: bool, body: impl Into<ErrorBody>) -> Self {
+    pub fn unknown_token(body: impl Into<ErrorBody>, soft_logout: bool) -> Self {
         Self::new(ErrorKind::UnknownToken { soft_logout }, body)
     }
-    pub fn limit_exceeded(retry_after: Option<RetryAfter>, body: impl Into<ErrorBody>) -> Self {
+    pub fn limit_exceeded(body: impl Into<ErrorBody>, retry_after: Option<RetryAfter>) -> Self {
         Self::new(ErrorKind::LimitExceeded { retry_after }, body)
     }
-    pub fn incompatible_room_version(room_version: RoomVersionId, body: impl Into<ErrorBody>) -> Self {
+    pub fn incompatible_room_version(body: impl Into<ErrorBody>, room_version: RoomVersionId) -> Self {
         Self::new(ErrorKind::IncompatibleRoomVersion { room_version }, body)
     }
-    pub fn resource_limit_exceeded(admin_contact: String, body: impl Into<ErrorBody>) -> Self {
+    pub fn resource_limit_exceeded(body: impl Into<ErrorBody>, admin_contact: String) -> Self {
         Self::new(ErrorKind::ResourceLimitExceeded { admin_contact }, body)
     }
-    pub fn wrong_room_keys_version(current_version: Option<String>, body: impl Into<ErrorBody>) -> Self {
+    pub fn wrong_room_keys_version(body: impl Into<ErrorBody>, current_version: Option<String>) -> Self {
         Self::new(ErrorKind::WrongRoomKeysVersion { current_version }, body)
     }
     pub fn is_not_found(&self) -> bool {
@@ -170,6 +165,12 @@ impl fmt::Display for MatrixError {
 }
 
 impl StdError for MatrixError {}
+
+impl From<serde_json::error::Error> for MatrixError {
+    fn from(e: serde_json::error::Error) -> Self {
+        Self::bad_json(e.to_string())
+    }
+}
 
 impl Scribe for MatrixError {
     fn render(self, res: &mut Response) {

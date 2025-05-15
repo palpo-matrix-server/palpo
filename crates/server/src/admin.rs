@@ -30,7 +30,7 @@ use crate::core::identifiers::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::utils::{self, HtmlEscape};
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]
@@ -608,8 +608,12 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 let string = body[1..body.len() - 1].join("\n");
                 match serde_json::from_str(&string) {
                     Ok(mut value) => {
-                        crate::core::signatures::sign_json(conf.server_name.as_str(), crate::keypair(), &mut value)
-                            .expect("our request json is what palpo expects");
+                        crate::core::signatures::sign_json(
+                            config::server_name().as_str(),
+                            config::keypair(),
+                            &mut value,
+                        )
+                        .expect("our request json is what palpo expects");
                         let json_text = serde_json::to_string_pretty(&value).expect("canonical json is valid json");
                         RoomMessageEventContent::text_plain(json_text)
                     }
@@ -755,11 +759,12 @@ pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
 pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     let conf = crate::config();
     let room_id = RoomId::new(&conf.server_name);
+    let room_version = config::default_room_version();
 
     if crate::room::room_exists(&room_id)? {
         return Ok(room_id);
     } else {
-        crate::room::ensure_room(&room_id, &crate::default_room_version())?;
+        crate::room::ensure_room(&room_id, &room_version)?;
     }
 
     // Create a user for the server
@@ -769,7 +774,6 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
         tracing::error!(error = ?e, "create palpo admin user failed.");
     }
 
-    let room_version = conf.room_version.clone();
     let mut content = match room_version {
         RoomVersionId::V1
         | RoomVersionId::V2

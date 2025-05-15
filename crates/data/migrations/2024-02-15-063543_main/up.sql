@@ -20,7 +20,7 @@ CREATE TABLE media_metadatas (
     created_by text,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_metadatas_index ON media_metadatas USING btree (media_id, origin_server);
+CREATE UNIQUE INDEX media_metadatas_udx ON media_metadatas USING btree (media_id, origin_server);
 
 drop table if exists media_thumbnails CASCADE;
 CREATE TABLE media_thumbnails (
@@ -34,7 +34,7 @@ CREATE TABLE media_thumbnails (
     resize_method text NOT NULL,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_thumbnails_index ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
+CREATE UNIQUE INDEX media_thumbnails_udx ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
 
 drop table if exists user_datas CASCADE;
 CREATE TABLE user_datas (
@@ -45,7 +45,7 @@ CREATE TABLE user_datas (
     json_data json NOT NULL,
     occur_sn bigint not null default nextval('occur_sn_seq'),
     created_at bigint NOT NULL,
-    CONSTRAINT user_datas_ukey UNIQUE (user_id, room_id, data_type)
+    CONSTRAINT user_datas_udx UNIQUE (user_id, room_id, data_type)
 );
 -- CREATE UNIQUE INDEX user_datas_idx ON user_datas USING btree (user_id, room_id, data_type);
 
@@ -61,7 +61,7 @@ CREATE TABLE user_devices
     last_seen_ip text,
     last_seen_at bigint,
     created_at bigint NOT NULL,
-    CONSTRAINT user_devices_ukey UNIQUE (device_id, user_id)
+    CONSTRAINT user_devices_udx UNIQUE (device_id, user_id)
 );
 
 drop table  if exists users CASCADE;
@@ -99,9 +99,9 @@ CREATE TABLE user_sessions (
     session_id text NOT NULL,
     session_type text not null,
     value json not null,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
-    CONSTRAINT user_sessions_ukey UNIQUE (user_id, session_id)
+    CONSTRAINT user_sessions_udx UNIQUE (user_id, session_id)
 );
 drop table if exists user_profiles CASCADE;
 CREATE TABLE user_profiles (
@@ -111,7 +111,7 @@ CREATE TABLE user_profiles (
     display_name text,
     avatar_url text,
     blurhash text,
-    CONSTRAINT user_profiles_ukey UNIQUE (user_id, room_id)
+    CONSTRAINT user_profiles_udx UNIQUE (user_id, room_id)
 );
 
 drop table  if exists user_refresh_tokens CASCADE;
@@ -122,8 +122,8 @@ CREATE TABLE user_refresh_tokens
     device_id text NOT NULL,
     token text NOT NULL,
     next_token_id bigint,
-    expired_at bigint,
-    ultimate_session_expired_at bigint,
+    expires_at bigint NOT NULL,
+    ultimate_session_expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
     CONSTRAINT user_refresh_tokens_token_key UNIQUE (token)
 );
@@ -144,9 +144,9 @@ CREATE TABLE user_access_tokens
     last_validated bigint,
     refresh_token_id bigint,
     is_used bool not null default  false,
-    expired_at bigint,
+    expires_at bigint,
     created_at bigint not null,
-    CONSTRAINT user_access_tokens_token_ukey UNIQUE (user_id, device_id)
+    CONSTRAINT user_access_tokens_token_udx UNIQUE (user_id, device_id)
 );
 -- DROP INDEX IF EXISTS user_access_tokens_device_id;
 -- CREATE INDEX user_access_tokens_device_id
@@ -172,18 +172,18 @@ CREATE TABLE room_tags (
     created_at bigint NOT NULL 
 );
 ALTER TABLE ONLY room_tags
-    ADD CONSTRAINT room_tag_ukey UNIQUE (user_id, room_id, tag);
+    ADD CONSTRAINT room_tag_udx UNIQUE (user_id, room_id, tag);
 
 drop table if exists user_openid_tokens CASCADE;
 CREATE TABLE user_openid_tokens (
     id bigserial not null PRIMARY KEY,
     token text NOT NULL,
     user_id text NOT NULL,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL,
-    CONSTRAINT user_openid_tokens_ukey UNIQUE (token)
+    CONSTRAINT user_openid_tokens_udx UNIQUE (token)
 );
-CREATE INDEX user_openid_tokens_expired_at_idx ON user_openid_tokens USING btree (expired_at);
+CREATE INDEX user_openid_tokens_expires_at_idx ON user_openid_tokens USING btree (expires_at);
 
 
 drop table if exists user_presences CASCADE;
@@ -198,7 +198,7 @@ CREATE TABLE user_presences (
     last_user_sync_at bigint,
     currently_active boolean,
     occur_sn bigint NOT NULL default nextval('occur_sn_seq'),
-    CONSTRAINT user_presences_ukey UNIQUE (user_id)
+    CONSTRAINT user_presences_udx UNIQUE (user_id)
 );
 
 drop table if exists threepid_guests CASCADE;
@@ -229,7 +229,7 @@ CREATE TABLE threepid_validation_tokens (
     token text NOT NULL,
     session_id text NOT NULL,
     next_link text,
-    expired_at bigint NOT NULL,
+    expires_at bigint NOT NULL,
     created_at bigint NOT NULL
 );
 
@@ -259,14 +259,14 @@ CREATE TABLE user_registration_tokens (
     uses_allowed bigint,
     pending bigint NOT NULL,
     completed bigint NOT NULL,
-    expired_at bigint,
+    expires_at bigint,
     created_at bigint NOT NULL
 );
 ALTER TABLE ONLY user_registration_tokens
     ADD CONSTRAINT registration_tokens_token_key UNIQUE (token);
 
-drop table if exists pushers CASCADE;
-CREATE TABLE pushers (
+drop table if exists user_pushers CASCADE;
+CREATE TABLE user_pushers (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     kind text NOT NULL,
@@ -285,7 +285,7 @@ CREATE TABLE pushers (
     failing_since bigint,
     created_at bigint NOT NULL
 );
-CREATE INDEX pushers_app_id_pushkey_idx ON pushers USING btree (app_id, pushkey);
+CREATE INDEX pushers_app_id_pushkey_idx ON user_pushers USING btree (app_id, pushkey);
 
 DROP TABLE if exists rooms CASCADE;
 CREATE TABLE rooms (
@@ -313,11 +313,11 @@ CREATE TABLE server_signing_keys (
 --     server_id text NOT NULL,
 --     key_id text NOT NULL,
 --     from_server text NOT NULL,
---     expired_at bigint NOT NULL,
+--     expires_at bigint NOT NULL,
 --     key_data json NOT NULL,
 --     updated_at bigint NOT NULL,
 --     created_at bigint NOT NULL,
---     CONSTRAINT server_signing_keys_ukey UNIQUE (server_id, key_id, from_server)
+--     CONSTRAINT server_signing_keys_udx UNIQUE (server_id, key_id, from_server)
 -- );
 
 -- drop table if exists server_signature_keys CASCADE;
@@ -331,7 +331,7 @@ CREATE TABLE server_signing_keys (
 --     created_at bigint NOT NULL
 -- );
 -- ALTER TABLE ONLY server_signature_keys
---     ADD CONSTRAINT server_signature_keys_server_id_key_id_ukey UNIQUE (server_id, key_id);
+--     ADD CONSTRAINT server_signature_keys_server_id_key_id_udx UNIQUE (server_id, key_id);
 
 
 
@@ -353,7 +353,7 @@ CREATE TABLE user_ignores (
     created_at bigint NOT NULL
 );
 CREATE INDEX user_ignores_user_id_idx ON user_ignores USING btree (user_id);
-CREATE UNIQUE INDEX user_ignores_ukey ON user_ignores USING btree (user_id, ignored_id);
+CREATE UNIQUE INDEX user_ignores_udx ON user_ignores USING btree (user_id, ignored_id);
 
 
 drop table if exists stats_user_daily_visits CASCADE;
@@ -364,7 +364,7 @@ CREATE TABLE stats_user_daily_visits (
     user_agent text,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX stats_user_daily_visits_user_device_ts_idx ON stats_user_daily_visits USING btree (user_id, device_id, created_at);
+CREATE UNIQUE INDEX stats_user_daily_visits_user_device_ts_udx ON stats_user_daily_visits USING btree (user_id, device_id, created_at);
 CREATE INDEX stats_user_daily_visits_user_ts_idx ON stats_user_daily_visits USING btree (user_id, created_at);
 CREATE INDEX stats_user_daily_visits_ts_idx ON stats_user_daily_visits USING btree (created_at);
 
@@ -376,7 +376,7 @@ CREATE TABLE stats_monthly_active_users (
     created_at bigint NOT NULL
 );
 CREATE INDEX monthly_active_users_ts_idx ON stats_monthly_active_users USING btree (created_at);
-CREATE UNIQUE INDEX monthly_active_users_user_id_ukey ON stats_monthly_active_users USING btree (user_id);
+CREATE UNIQUE INDEX monthly_active_users_user_id_udx ON stats_monthly_active_users USING btree (user_id);
 
 
 drop table if exists stats_room_currents CASCADE;
@@ -442,8 +442,8 @@ CREATE TABLE events (
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
     rejection_reason text,
-    CONSTRAINT events_sn_ukey UNIQUE (sn),
-    CONSTRAINT event_id_sn_ukey UNIQUE (id, sn)
+    CONSTRAINT events_sn_udx UNIQUE (sn),
+    CONSTRAINT event_id_sn_udx UNIQUE (id, sn)
 );
 
 
@@ -454,7 +454,7 @@ CREATE TABLE event_points
     event_sn bigint NOT NULL default nextval('occur_sn_seq'),
     room_id text NOT NULL,
     frame_id bigint,
-    CONSTRAINT event_points_ukey UNIQUE (event_id, event_sn)
+    CONSTRAINT event_points_udx UNIQUE (event_id, event_sn)
 );
 
 drop table if exists threads CASCADE;
@@ -479,21 +479,21 @@ CREATE TABLE event_datas
     internal_metadata json,
     format_version bigint,
     json_data json NOT NULL,
-    CONSTRAINT event_datas_ukey UNIQUE (event_id, event_sn)
+    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
 );
 -- CREATE TABLE event_shorts {
 --     id bigserial NOT NULL PRIMARY KEY,
 --     event_id text NOT NULL
 -- };
 -- ALTER TABLE ONLY event_shorts
---     ADD CONSTRAINT event_shorts_ukey UNIQUE (event_id);
+--     ADD CONSTRAINT event_shorts_udx UNIQUE (event_id);
     
 -- CREATE TABLE room_shorts {
 --     id bigserial NOT NULL PRIMARY KEY,
 --     room_id text NOT NULL
 -- };
 -- ALTER TABLE ONLY room_shorts
---     ADD CONSTRAINT room_shorts_ukey UNIQUE (room_id);
+--     ADD CONSTRAINT room_shorts_udx UNIQUE (room_id);
 
 DROP TABLE IF EXISTS room_state_frames CASCADE;
 CREATE TABLE room_state_frames
@@ -501,7 +501,7 @@ CREATE TABLE room_state_frames
     id bigserial NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     hash_data bytea NOT NULL,
-    CONSTRAINT room_state_frames_ukey UNIQUE (room_id, hash_data)
+    CONSTRAINT room_state_frames_udx UNIQUE (room_id, hash_data)
 );
 DROP TABLE IF EXISTS room_state_fields CASCADE;
 CREATE TABLE room_state_fields
@@ -509,7 +509,7 @@ CREATE TABLE room_state_fields
     id bigserial NOT NULL PRIMARY KEY,
     event_ty text NOT NULL,
     state_key text NOT null,
-    CONSTRAINT room_state_fields_ukey UNIQUE (event_ty, state_key)
+    CONSTRAINT room_state_fields_udx UNIQUE (event_ty, state_key)
 );
 
 DROP TABLE IF EXISTS room_state_deltas CASCADE;
@@ -566,7 +566,7 @@ CREATE TABLE event_backward_extremities
     id bigserial NOT NULL PRIMARY KEY,
     event_id text NOT NULL,
     room_id text NOT NULL,
-    CONSTRAINT event_backward_extremities_ukey UNIQUE (event_id, room_id)
+    CONSTRAINT event_backward_extremities_udx UNIQUE (event_id, room_id)
 );
 CREATE INDEX ev_backward_extrem_id
     ON event_backward_extremities USING btree
@@ -583,7 +583,7 @@ CREATE TABLE event_forward_extremities
     id bigserial NOT NULL PRIMARY KEY,
     event_id text NOT NULL,
     room_id text NOT NULL,
-    CONSTRAINT event_forward_extremities_ukey UNIQUE (event_id, room_id)
+    CONSTRAINT event_forward_extremities_udx UNIQUE (event_id, room_id)
 );
 
 CREATE INDEX ev_forward_extrem_id
@@ -610,7 +610,7 @@ CREATE TABLE room_users
     avatar_url text,
     state_data json,
     created_at bigint NOT NULL,
-    CONSTRAINT room_users_ukey UNIQUE (event_id)
+    CONSTRAINT room_users_udx UNIQUE (event_id)
 );
 CREATE INDEX IF NOT EXISTS room_users_user_room_idx
     ON room_users USING btree
@@ -637,7 +637,7 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_keys
     key_type text NOT NULL,
     key_data json NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_idx
+CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_udx
     ON e2e_cross_signing_keys USING btree
     (user_id ASC NULLS LAST, key_type ASC NULLS LAST);
 
@@ -651,7 +651,7 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_sigs
     target_user_id text NOT NULL,
     target_device_id text NOT NULL,
     signature text NOT NULL,
-    CONSTRAINT e2e_cross_signing_sigs_ukey UNIQUE (origin_user_id, origin_key_id, target_user_id, target_device_id)
+    CONSTRAINT e2e_cross_signing_sigs_udx UNIQUE (origin_user_id, origin_key_id, target_user_id, target_device_id)
 );
 CREATE INDEX IF NOT EXISTS e2e_cross_signing_sigs_idx
     ON e2e_cross_signing_sigs USING btree
@@ -671,7 +671,7 @@ CREATE TABLE e2e_room_keys (
     created_at bigint NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS e2e_room_keys_idx
+CREATE UNIQUE INDEX  IF NOT EXISTS e2e_room_keys_udx
     ON e2e_room_keys USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST, session_id ASC NULLS LAST, version ASC NULLS LAST);
 
@@ -687,7 +687,7 @@ CREATE TABLE e2e_room_keys_versions (
     etag bigint NOT NULL default 0,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX e2e_room_keys_versions_idx ON e2e_room_keys_versions USING btree (user_id, version);
+CREATE UNIQUE INDEX  e2e_room_keys_versions_udx ON e2e_room_keys_versions USING btree (user_id, version);
 
 
 drop table if exists e2e_device_keys CASCADE;
@@ -701,7 +701,7 @@ CREATE TABLE e2e_device_keys (
     created_at bigint NOT NULL
 );
 ALTER TABLE ONLY e2e_device_keys
-    ADD CONSTRAINT e2e_device_keys_ukey UNIQUE (user_id, device_id);
+    ADD CONSTRAINT e2e_device_keys_udx UNIQUE (user_id, device_id);
 
 drop table if exists e2e_one_time_keys CASCADE;
 CREATE TABLE e2e_one_time_keys (
@@ -712,7 +712,7 @@ CREATE TABLE e2e_one_time_keys (
     key_id text not null,
     key_data json NOT NULL,
     created_at bigint NOT NULL,
-    CONSTRAINT e2e_one_time_keys_ukey UNIQUE (user_id, device_id, algorithm, key_id)
+    CONSTRAINT e2e_one_time_keys_udx UNIQUE (user_id, device_id, algorithm, key_id)
 );
 CREATE INDEX e2e_one_time_keys_idx ON e2e_one_time_keys USING btree (user_id, device_id);
 
@@ -729,7 +729,7 @@ CREATE TABLE e2e_fallback_keys (
 );
 
 ALTER TABLE ONLY e2e_fallback_keys
-    ADD CONSTRAINT e2e_fallback_keys_ukey UNIQUE (user_id, device_id, algorithm);
+    ADD CONSTRAINT e2e_fallback_keys_udx UNIQUE (user_id, device_id, algorithm);
 
 
 DROP TABLE IF EXISTS e2e_key_changes;
@@ -740,7 +740,7 @@ CREATE TABLE IF NOT EXISTS e2e_key_changes
     room_id text,
     occur_sn bigint not null default nextval('occur_sn_seq'),
     changed_at bigint NOT NULL,
-    CONSTRAINT e2e_key_changes_ukey UNIQUE NULLS NOT DISTINCT (user_id, room_id)
+    CONSTRAINT e2e_key_changes_udx UNIQUE NULLS NOT DISTINCT (user_id, room_id)
 );
 
 DROP TABLE IF EXISTS user_openid_tokens;
@@ -750,7 +750,7 @@ CREATE TABLE IF NOT EXISTS user_openid_tokens
     user_id text NOT NULL,
     token text NOT NULL,
     expires_at bigint NOT NULL,
-    CONSTRAINT user_openid_tokens_ukey UNIQUE (token)
+    CONSTRAINT user_openid_tokens_udx UNIQUE (token)
 );
 
 
@@ -760,7 +760,7 @@ CREATE TABLE IF NOT EXISTS room_servers
     id bigserial NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     server_id text NOT NULL,
-    CONSTRAINT room_servers_room_id_server_id_ukey UNIQUE (room_id, server_id)
+    CONSTRAINT room_servers_room_id_server_id_udx UNIQUE (room_id, server_id)
 );
 
 DROP TABLE IF EXISTS event_relations;
@@ -775,7 +775,7 @@ CREATE TABLE IF NOT EXISTS event_relations
     child_sn bigint NOT NULL,
     child_ty text NOT NULL,
     rel_type text,
-    CONSTRAINT event_relations_ukey UNIQUE (room_id, event_id, child_id, rel_type)
+    CONSTRAINT event_relations_udx UNIQUE (room_id, event_id, child_id, rel_type)
 );
 
 DROP TABLE IF EXISTS event_receipts CASCADE;
@@ -812,15 +812,15 @@ CREATE TABLE IF NOT EXISTS event_searches
 ALTER TABLE IF EXISTS event_searches
     ALTER COLUMN room_id SET (n_distinct=-0.01);
 
-CREATE INDEX IF NOT EXISTS event_searches_ev_ridx
+CREATE INDEX IF NOT EXISTS event_searches_ev_idx
     ON public.event_searches USING btree (room_id ASC NULLS LAST);
-CREATE UNIQUE INDEX IF NOT EXISTS event_searches_event_id_idx
+CREATE UNIQUE INDEX IF NOT EXISTS event_searches_event_id_udx
     ON public.event_searches USING btree (event_id ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS event_search_fts_idx
     ON public.event_searches USING gin (vector);
 
 ALTER TABLE ONLY event_searches
-    ADD CONSTRAINT event_searches_ukey UNIQUE (event_id);
+    ADD CONSTRAINT event_searches_udx UNIQUE (event_id);
 
 
 DROP TABLE IF EXISTS event_push_summaries;
@@ -837,7 +837,7 @@ CREATE TABLE IF NOT EXISTS event_push_summaries
 );
 CREATE INDEX IF NOT EXISTS event_push_summaries_room_id_idx
     ON public.event_push_summaries USING btree (room_id ASC NULLS LAST);
-CREATE UNIQUE INDEX IF NOT EXISTS event_push_summaries_ukey
+CREATE UNIQUE INDEX IF NOT EXISTS event_push_summaries_udx
     ON public.event_push_summaries USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST, thread_id ASC NULLS LAST);
 
@@ -872,33 +872,31 @@ CREATE INDEX IF NOT EXISTS event_edges_prev_id
     ON event_edges USING btree
     (prev_event_id ASC NULLS LAST);
 
-CREATE UNIQUE INDEX IF NOT EXISTS event_edges_event_id_prev_event_id_idx
+CREATE UNIQUE INDEX IF NOT EXISTS event_edges_event_id_prev_event_id_udx
     ON event_edges USING btree
     (event_id ASC NULLS LAST, prev_event_id ASC NULLS LAST);
 
 
-DROP TABLE IF EXISTS event_txn_ids;
-CREATE TABLE IF NOT EXISTS event_txn_ids
+DROP TABLE IF EXISTS event_idempotents;
+CREATE TABLE IF NOT EXISTS event_idempotents
 (
     id bigserial NOT NULL PRIMARY KEY,
     txn_id text NOT NULL,
     user_id text NOT NULL,
-    room_id text,
     device_id text,
+    room_id text,
     event_id text,
     created_at bigint NOT NULL
 );
 
--- CREATE UNIQUE INDEX IF NOT EXISTS event_txn_ids_event_id_ukey
---     ON public.event_txn_ids USING btree
---     (event_id ASC NULLS LAST);
-
-CREATE INDEX IF NOT EXISTS event_txn_ids_created_at_idx
-    ON event_txn_ids USING btree
+CREATE INDEX IF NOT EXISTS event_idempotents_created_at_idx
+    ON event_idempotents USING btree
     (created_at ASC NULLS LAST);
 
-CREATE UNIQUE INDEX IF NOT EXISTS event_txn_ids_txn_id
-    ON event_txn_ids USING btree
+CREATE UNIQUE INDEX IF NOT EXISTS event_idempotents_event_id_udx
+    ON event_idempotents USING btree (event_id ASC NULLS LAST);
+CREATE UNIQUE INDEX IF NOT EXISTS event_idempotents_txn_id_udx
+    ON event_idempotents USING btree
     (txn_id ASC NULLS LAST, room_id ASC NULLS LAST, user_id ASC NULLS LAST, device_id ASC NULLS LAST);
 
 drop table if exists lazy_load_deliveries CASCADE;
@@ -908,7 +906,7 @@ CREATE TABLE lazy_load_deliveries (
    device_id text NOT NULL,
    room_id text NOT NULL,
    confirmed_user_id text,
-   CONSTRAINT lazy_loads_ukey UNIQUE (user_id, device_id, room_id, confirmed_user_id)
+   CONSTRAINT lazy_loads_udx UNIQUE (user_id, device_id, room_id, confirmed_user_id)
 );
 
 
@@ -933,7 +931,7 @@ CREATE TABLE user_uiaa_datas (
     device_id text NOT NULL,
     session text NOT NULL,
     uiaa_info json NOT NULL,
-    CONSTRAINT user_uiaa_datas_ukey UNIQUE (user_id, device_id, session)
+    CONSTRAINT user_uiaa_datas_udx UNIQUE (user_id, device_id, session)
 );
 
 drop table if exists outgoing_requests CASCADE;

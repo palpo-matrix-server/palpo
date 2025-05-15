@@ -60,10 +60,10 @@ pub(super) async fn get_hierarchy(
                 // Just ignore other unavailable rooms
             }
             (None, true) => {
-                return Err(MatrixError::forbidden(None, "The requested room was not found").into());
+                return Err(MatrixError::forbidden("The requested room was not found.", None).into());
             }
             (Some(SummaryAccessibility::Inaccessible), true) => {
-                return Err(MatrixError::forbidden(None, "The requested room is inaccessible").into());
+                return Err(MatrixError::forbidden("The requested room is inaccessible.", None).into());
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
                 let populate = parents.len() >= room_sns.len();

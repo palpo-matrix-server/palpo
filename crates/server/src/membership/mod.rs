@@ -130,7 +130,7 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !crate::room::once_joined(user_id, room_id)? {
+            if !crate::room::user::once_joined(user_id, room_id)? {
                 // Add the user ID to the join list then
                 // db::mark_as_once_joined(user_id, room_id)?;
 
@@ -139,6 +139,7 @@ pub fn update_membership(
                     room_id,
                     &StateEventType::RoomCreate,
                     "",
+                    None,
                 )
                 .map(|c| c.predecessor)
                 {
@@ -250,7 +251,6 @@ pub fn update_membership(
             if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());
             }
-
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))
@@ -328,7 +328,7 @@ pub fn update_membership(
         }
         _ => {}
     }
-    crate::room::update_room_servers(room_id)?;
+    crate::room::update_joined_servers(room_id)?;
     crate::room::update_room_currents(room_id)?;
     Ok(())
 }

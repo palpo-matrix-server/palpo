@@ -251,10 +251,6 @@ pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> DataResult
 }
 
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> DataResult<()> {
-    println!(
-        ">>>>>>>>>>>>>>>>>>add add_device_keys user_id: {:?} device_id: {device_id} device_keys:{device_keys:?}",
-        user_id
-    );
     let new_device_key = NewDbDeviceKey {
         user_id: user_id.to_owned(),
         device_id: device_id.to_owned(),

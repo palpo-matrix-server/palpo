@@ -116,7 +116,7 @@ async fn set_avatar_url(
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
     if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden(None, "forbidden").into());
+        return Err(MatrixError::forbidden("forbidden", None).into());
     }
 
     let SetAvatarUrlReqBody { avatar_url, blurhash } = body.into_inner();
@@ -153,6 +153,7 @@ async fn set_avatar_url(
                             &room_id,
                             &StateEventType::RoomMember,
                             user_id.as_str(),
+                            None,
                         )?
                     })
                     .expect("event is valid, we just created it"),
@@ -169,7 +170,6 @@ async fn set_avatar_url(
     crate::data::user::set_presence(
         NewDbPresence {
             user_id: user_id.clone(),
-            // room_id: Some(room_id),
             stream_id: None,
             state: None,
             status_msg: None,
@@ -242,7 +242,7 @@ async fn set_display_name(
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
     if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden(None, "forbidden").into());
+        return Err(MatrixError::forbidden("forbidden", None).into());
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
 
@@ -261,6 +261,7 @@ async fn set_display_name(
                             &room_id,
                             &StateEventType::RoomMember,
                             user_id.as_str(),
+                            None,
                         )?
                     })
                     .expect("event is valid, we just created it"),

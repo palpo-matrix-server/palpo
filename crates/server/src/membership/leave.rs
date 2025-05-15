@@ -13,7 +13,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduBuilder;
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, data};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
@@ -29,12 +29,12 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !crate::room::is_server_in_room(crate::server_name(), room_id)?
+    if !crate::room::is_server_joined_room(config::server_name(), room_id)?
         && room_id
             .server_name()
             .map_err(|name| AppError::public(format!("Bad room id, server name is invalid: `{name}`.")))?
-            != crate::server_name()
-        && !crate::room::is_knocked(user_id, room_id)?
+            != config::server_name()
+        && !crate::room::user::is_knocked(user_id, room_id)?
     {
         match leave_room_remote(user_id, room_id).await {
             Err(e) => {
@@ -57,7 +57,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         }
     } else {
         let member_event =
-            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str()).ok();
+            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {
@@ -149,7 +149,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     let (make_leave_response, remote_server) = make_leave_response_and_server?;
 
     let room_version_id = match make_leave_response.room_version {
-        Some(version) if crate::supported_room_versions().contains(&version) => version,
+        Some(version) if config::supported_room_versions().contains(&version) => version,
         _ => return Err(AppError::public("Room version is not supported")),
     };
 
@@ -159,7 +159,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     // TODO: Is origin needed?
     leave_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     leave_event_stub.insert(
         "origin_server_ts".to_owned(),

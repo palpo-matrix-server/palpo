@@ -4,7 +4,8 @@ use salvo::prelude::*;
 use crate::core::client::push::SetPusherReqBody;
 use crate::core::client::push::pusher::PushersResBody;
 use crate::core::push::Pusher;
-use crate::{AppError, DepotExt, EmptyResult, JsonResult, empty_ok, hoops, json_ok};
+use crate::data::DataError;
+use crate::{DepotExt, EmptyResult, JsonResult, data, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushers")
@@ -19,10 +20,10 @@ async fn pushers(depot: &mut Depot) -> JsonResult<PushersResBody> {
     let authed = depot.authed_info()?;
 
     json_ok(PushersResBody {
-        pushers: crate::user::pusher::get_pushers(authed.user_id())?
+        pushers: data::user::pusher::get_pushers(authed.user_id())?
             .into_iter()
             .map(TryInto::<Pusher>::try_into)
-            .collect::<Result<Vec<_>, AppError>>()?,
+            .collect::<Result<Vec<_>, DataError>>()?,
     })
 }
 

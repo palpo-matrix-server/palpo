@@ -222,6 +222,21 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_idempotents (id) {
+        id -> Int8,
+        txn_id -> Text,
+        user_id -> Text,
+        device_id -> Text,
+        room_id -> Nullable<Text>,
+        event_id -> Nullable<Text>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_points (event_id) {
         event_id -> Text,
         event_sn -> Int8,
@@ -293,21 +308,6 @@ diesel::table! {
         vector -> Tsvector,
         origin_server_ts -> Int8,
         stream_ordering -> Nullable<Int8>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    event_txn_ids (id) {
-        id -> Int8,
-        txn_id -> Text,
-        user_id -> Text,
-        room_id -> Nullable<Text>,
-        device_id -> Nullable<Text>,
-        event_id -> Nullable<Text>,
-        created_at -> Int8,
     }
 }
 
@@ -427,31 +427,6 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    pushers (id) {
-        id -> Int8,
-        user_id -> Text,
-        kind -> Text,
-        app_id -> Text,
-        app_display_name -> Text,
-        device_id -> Text,
-        device_display_name -> Text,
-        access_token_id -> Nullable<Int8>,
-        profile_tag -> Nullable<Text>,
-        pushkey -> Text,
-        lang -> Text,
-        data -> Json,
-        enabled -> Bool,
-        last_stream_ordering -> Nullable<Int8>,
-        last_success -> Nullable<Int8>,
-        failing_since -> Nullable<Int8>,
-        created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
     room_aliases (alias_id) {
         alias_id -> Text,
         room_id -> Text,
@@ -464,9 +439,22 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    room_servers (id) {
+    room_joined_servers (id) {
         id -> Int8,
         room_id -> Text,
+        server_id -> Text,
+        occur_sn -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    room_lookup_servers (id) {
+        id -> Int8,
+        room_id -> Text,
+        alias_id -> Text,
         server_id -> Text,
     }
 }
@@ -678,7 +666,7 @@ diesel::table! {
         token -> Text,
         session_id -> Text,
         next_link -> Nullable<Text>,
-        expired_at -> Int8,
+        expires_at -> Int8,
         created_at -> Int8,
     }
 }
@@ -696,7 +684,7 @@ diesel::table! {
         last_validated -> Nullable<Int8>,
         refresh_token_id -> Nullable<Int8>,
         is_used -> Bool,
-        expired_at -> Nullable<Int8>,
+        expires_at -> Nullable<Int8>,
         created_at -> Int8,
     }
 }
@@ -841,14 +829,39 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    user_pushers (id) {
+        id -> Int8,
+        user_id -> Text,
+        kind -> Text,
+        app_id -> Text,
+        app_display_name -> Text,
+        device_id -> Text,
+        device_display_name -> Text,
+        access_token_id -> Nullable<Int8>,
+        profile_tag -> Nullable<Text>,
+        pushkey -> Text,
+        lang -> Text,
+        data -> Json,
+        enabled -> Bool,
+        last_stream_ordering -> Nullable<Int8>,
+        last_success -> Nullable<Int8>,
+        failing_since -> Nullable<Int8>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_refresh_tokens (id) {
         id -> Int8,
         user_id -> Text,
         device_id -> Text,
         token -> Text,
         next_token_id -> Nullable<Int8>,
-        expired_at -> Nullable<Int8>,
-        ultimate_session_expired_at -> Nullable<Int8>,
+        expires_at -> Int8,
+        ultimate_session_expires_at -> Int8,
         created_at -> Int8,
     }
 }
@@ -863,7 +876,7 @@ diesel::table! {
         uses_allowed -> Nullable<Int8>,
         pending -> Int8,
         completed -> Int8,
-        expired_at -> Nullable<Int8>,
+        expires_at -> Nullable<Int8>,
         created_at -> Int8,
     }
 }
@@ -878,7 +891,7 @@ diesel::table! {
         session_id -> Text,
         session_type -> Text,
         value -> Json,
-        expired_at -> Int8,
+        expires_at -> Int8,
         created_at -> Int8,
     }
 }
@@ -951,21 +964,21 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_datas,
     event_edges,
     event_forward_extremities,
+    event_idempotents,
     event_points,
     event_push_summaries,
     event_receipts,
     event_relations,
     event_searches,
-    event_txn_ids,
     events,
     lazy_load_deliveries,
     media_metadatas,
     media_thumbnails,
     media_url_previews,
     outgoing_requests,
-    pushers,
     room_aliases,
-    room_servers,
+    room_joined_servers,
+    room_lookup_servers,
     room_state_deltas,
     room_state_fields,
     room_state_frames,
@@ -992,6 +1005,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_passwords,
     user_presences,
     user_profiles,
+    user_pushers,
     user_refresh_tokens,
     user_registration_tokens,
     user_sessions,

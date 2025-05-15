@@ -18,7 +18,7 @@ use crate::data::user::{NewDbPresence, NewDbProfile};
 use crate::data::{connect, diesel_exists};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, data, empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops, utils,
 };
 
 pub fn public_router() -> Router {
@@ -64,7 +64,7 @@ async fn register(
 
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
-        return Err(MatrixError::forbidden(None, "Registration has been disabled.").into());
+        return Err(MatrixError::forbidden("Registration has been disabled.", None).into());
     }
 
     let is_guest = body.kind == RegistrationKind::Guest;
@@ -133,7 +133,7 @@ async fn register(
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
-                &UserId::parse_with_server_name("", crate::server_name()).expect("we know this is valid"),
+                &UserId::parse_with_server_name("", config::server_name()).expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
                 uiaa_info.session.as_ref().expect("session is always set"),
                 Some(&uiaa_info),
@@ -151,7 +151,7 @@ async fn register(
     let mut display_name = user_id.localpart().to_owned();
 
     // If enabled append lightning bolt to display name (default true)
-    if crate::enable_lightning_bolt() {
+    if config::enable_lightning_bolt() {
         display_name.push_str(" ⚡️");
     }
 
@@ -211,13 +211,13 @@ async fn register(
     let token = utils::random_string(TOKEN_LENGTH);
 
     //Create device for this account
-    crate::user::create_device(&user_id, &device_id, &token, body.initial_device_display_name.clone())?;
+    data::user::device::create_device(&user_id, &device_id, &token, body.initial_device_display_name.clone())?;
 
     // If this is the first real user, grant them admin privileges
     // Note: the server user, @palpo:servername, is generated first
     if !is_guest {
         if let Ok(admin_room) = crate::admin::get_admin_room() {
-            if crate::room::join_count(&admin_room)? == 1 {
+            if crate::room::user::join_count(&admin_room)? == 1 {
                 crate::admin::make_user_admin(&user_id, display_name)?;
                 warn!("Granting {} admin privileges as the first user", user_id);
             } else if body.login_type != Some(LoginType::Appservice) {
@@ -251,7 +251,7 @@ async fn register(
 async fn available(username: QueryParam<String, true>) -> JsonResult<AvailableResBody> {
     let username = username.into_inner().to_lowercase();
     // Validate user id
-    let server_name = crate::server_name();
+    let server_name = config::server_name();
     let user_id = UserId::parse_with_server_name(username, server_name)
         .ok()
         .filter(|user_id| !user_id.is_historical() && user_id.server_name() == server_name)

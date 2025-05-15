@@ -12,7 +12,10 @@ use crate::core::error::ErrorKind;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, SESSION_ID_LENGTH, empty_ok, json_ok, utils};
+use crate::{
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data, empty_ok, json_ok,
+    utils,
+};
 
 pub fn authed_router() -> Router {
     Router::with_path("devices")
@@ -41,10 +44,10 @@ async fn get_device(
 ) -> JsonResult<DeviceResBody> {
     let authed = depot.authed_info()?;
 
-    let device_id = device_id.into_inner();
-    json_ok(DeviceResBody(
-        crate::user::get_device(authed.user_id(), &device_id)?.into_matrix_device(),
-    ))
+    let Ok(device) = data::user::device::get_device(authed.user_id(), &device_id) else {
+        return Err(MatrixError::not_found("Device is not found.").into());
+    };
+    json_ok(DeviceResBody(device.into_matrix_device()))
 }
 
 /// #GET /_matrix/client/r0/devices
@@ -77,6 +80,8 @@ fn update_device(
     diesel::update(&device)
         .set(user_devices::display_name.eq(&body.display_name))
         .execute(&mut connect()?)?;
+
+    crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
 
     empty_ok()
 }
@@ -124,18 +129,15 @@ async fn delete_device(
             }
         }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        uiaa_info.auth_error = Some(AuthError::new(
-            ErrorKind::forbidden(),
-            "Invalid authentication data",
-        ));
+        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::forbidden(), "Invalid authentication data"));
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
-    crate::user::remove_device(authed.user_id(), &device_id)?;
+    data::user::device::remove_device(authed.user_id(), &device_id)?;
     empty_ok()
 }
 
-/// #PUT /_matrix/client/r0/devices/{deviceId}
+/// #DELETE /_matrix/client/r0/devices/{deviceId}
 /// Deletes the given device.
 ///
 /// - Requires UIAA to verify user password
@@ -184,7 +186,7 @@ pub(super) async fn dehydrated(_aa: AuthArgs) -> EmptyResult {
 #[endpoint]
 pub(super) async fn delete_dehydrated(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     let authed = depot.authed_info()?;
-    crate::user::delete_dehydrated_devices(authed.user_id())?;
+    data::user::delete_dehydrated_devices(authed.user_id())?;
     empty_ok()
 }
 

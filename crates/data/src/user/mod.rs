@@ -1,11 +1,13 @@
-mod device;
-pub use device::*;
+pub mod device;
+pub use device::{DbUserDevice, NewDbUserDevice};
 mod password;
 pub use password::*;
 mod profile;
 pub use profile::*;
 mod filter;
 pub use filter::*;
+mod access_token;
+pub use access_token::*;
 mod refresh_token;
 pub use refresh_token::*;
 mod data;
@@ -15,8 +17,8 @@ pub mod pusher;
 // pub mod push_rule;
 pub use key::*;
 pub mod key_backup;
-pub mod session;
 pub use key_backup::*;
+pub mod session;
 pub use session::*;
 pub mod presence;
 use std::mem;
@@ -70,48 +72,12 @@ impl DbUser {
     }
 }
 
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = user_access_tokens)]
-pub struct DbAccessToken {
-    pub id: i64,
+#[derive(Insertable, AsChangeset, Debug, Clone)]
+#[diesel(table_name = user_ignores)]
+pub struct NewDbUserIgnore {
     pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub token: String,
-    pub puppets_user_id: Option<OwnedUserId>,
-    pub last_validated: Option<UnixMillis>,
-    pub refresh_token_id: Option<i64>,
-    pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
+    pub ignored_id: OwnedUserId,
     pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = user_access_tokens)]
-pub struct NewDbAccessToken {
-    pub user_id: OwnedUserId,
-    pub device_id: OwnedDeviceId,
-    pub token: String,
-    pub puppets_user_id: Option<OwnedUserId>,
-    pub last_validated: Option<UnixMillis>,
-    pub refresh_token_id: Option<i64>,
-    pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
-    pub created_at: UnixMillis,
-}
-
-impl NewDbAccessToken {
-    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String) -> Self {
-        Self {
-            user_id,
-            device_id,
-            token,
-            puppets_user_id: None,
-            last_validated: None,
-            refresh_token_id: None,
-            is_used: false,
-            expired_at: None,
-            created_at: UnixMillis::now(),
-        }
-    }
 }
 
 pub fn is_admin(user_id: &UserId) -> DataResult<bool> {
@@ -144,10 +110,15 @@ pub fn invited_rooms(
     user_id: &UserId,
     since_sn: i64,
 ) -> DataResult<Vec<(OwnedRoomId, Vec<RawJson<AnyStrippedStateEvent>>)>> {
+    let ingored_ids = user_ignores::table
+        .filter(user_ignores::user_id.eq(user_id))
+        .select(user_ignores::ignored_id)
+        .load::<OwnedUserId>(&mut connect()?)?;
     let list = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("invite"))
         .filter(room_users::event_sn.ge(since_sn))
+        .filter(room_users::sender_id.ne_all(&ingored_ids))
         .select((room_users::room_id, room_users::state_data))
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
@@ -287,6 +258,37 @@ pub fn is_deactivated(user_id: &UserId) -> DataResult<bool> {
     Ok(deactivated_at.is_some())
 }
 
+pub fn all_device_ids(user_id: &UserId) -> DataResult<Vec<OwnedDeviceId>> {
+    user_devices::table
+        .filter(user_devices::user_id.eq(user_id))
+        .select(user_devices::device_id)
+        .load::<OwnedDeviceId>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+pub fn delete_access_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_refresh_tokens(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_refresh_tokens::table.filter(user_refresh_tokens::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn remove_all_devices(user_id: &UserId) -> DataResult<()> {
+    delete_access_tokens(user_id)?;
+    delete_refresh_tokens(user_id)?;
+    pusher::delete_user_pushers(user_id)
+}
+pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_dehydrated_devices::table.filter(user_dehydrated_devices::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
 /// Ensure that a user only sees signatures from themselves and the target user
 pub fn clean_signatures<F: Fn(&UserId) -> bool>(
     cross_signing_key: &mut serde_json::Value,
@@ -319,5 +321,20 @@ pub fn deactivate(user_id: &UserId) -> DataResult<()> {
     diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
         .execute(&mut connect()?)?;
 
+    Ok(())
+}
+
+pub fn set_ignored_users(user_id: &UserId, ignored_ids: &[OwnedUserId]) -> DataResult<()> {
+    diesel::delete(user_ignores::table.filter(user_ignores::user_id.eq(user_id))).execute(&mut connect()?)?;
+    for ignored_id in ignored_ids {
+        diesel::insert_into(user_ignores::table)
+            .values(NewDbUserIgnore {
+                user_id: user_id.to_owned(),
+                ignored_id: ignored_id.to_owned(),
+                created_at: UnixMillis::now(),
+            })
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+    }
     Ok(())
 }

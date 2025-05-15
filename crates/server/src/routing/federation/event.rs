@@ -3,10 +3,10 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::federation::authorization::EventAuthorizationResBody;
-use crate::core::federation::event::{EventResBody, MissingEventReqBody, MissingEventResBody};
+use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -22,10 +22,10 @@ pub fn router() -> Router {
 ///
 /// - Only works if a user of this server is currently invited or joined the room
 #[endpoint]
-fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot) -> JsonResult<EventResBody> {
+fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult<EventResBody> {
     let origin = depot.origin()?;
-    let event = crate::room::timeline::get_pdu_json(&event_id)?.ok_or_else(|| {
-        warn!("Event not found, event ID: {:?}", &event_id);
+    let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
+        warn!("Event not found, event ID: {:?}", &args.event_id);
         MatrixError::not_found("Event not found.")
     })?;
 
@@ -37,9 +37,9 @@ fn get_event(_aa: AuthArgs, event_id: PathParam<OwnedEventId>, depot: &mut Depot
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
 
-    crate::federation::access_check(origin, room_id, Some(&event_id))?;
+    crate::federation::access_check(origin, room_id, Some(&args.event_id))?;
     json_ok(EventResBody {
-        origin: crate::server_name().to_owned(),
+        origin: config::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdu: crate::sending::convert_to_outgoing_federation_event(event),
     })

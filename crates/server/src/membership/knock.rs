@@ -3,24 +3,22 @@ use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 
-use diesel::prelude::*;
-use palpo_core::federation::knock::{
-    MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
-};
 use salvo::http::StatusError;
 
+use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
+use crate::core::events::room::join_rules::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::federation::knock::MakeKnockReqArgs;
+use crate::core::federation::event::{EventReqArgs, EventResBody, event_request};
+use crate::core::federation::knock::{
+    MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
-use crate::core::{Seqnum, UnixMillis};
-use crate::data::connect;
-use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
+use crate::room::state::CompressedEvent;
 use crate::room::state::{self, DeltaInfo};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
+use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,
@@ -29,18 +27,19 @@ pub async fn knock_room_by_id(
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
     // let state_lock = services.rooms.state.mutex.lock(room_id).await;
-
-    if crate::room::is_invited(sender_id, room_id)? {
+    if crate::room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already invited/accepted to.").into());
+        return Err(
+            MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.", None).into(),
+        );
     }
 
-    if crate::room::is_joined(sender_id, room_id)? {
+    if crate::room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden(None, "You cannot knock on a room you are already joined in.").into());
+        return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.", None).into());
     }
 
-    if crate::room::is_knocked(sender_id, room_id)? {
+    if crate::room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
         return Ok(());
     }
@@ -48,13 +47,11 @@ pub async fn knock_room_by_id(
     if let Ok(memeber) = state::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
-            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
         }
     }
 
-    let server_in_room = crate::room::is_server_in_room(crate::server_name(), room_id)?;
-    let local_knock = server_in_room || servers.is_empty() || (servers.len() == 1 && servers[0].is_local());
-
+    let local_knock = crate::room::can_local_work_for_room(room_id, servers)?;
     if local_knock {
         knock_room_local(sender_id, room_id, reason, servers).await?;
     } else {
@@ -70,21 +67,19 @@ async fn knock_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
+    use RoomVersionId::*;
     info!("We can knock locally");
-    println!("We can knock locally");
-
     let room_version_id = crate::room::state::get_room_version(room_id)?;
+    if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
+        return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
+    }
 
-    if matches!(
-        room_version_id,
-        RoomVersionId::V1
-            | RoomVersionId::V2
-            | RoomVersionId::V3
-            | RoomVersionId::V4
-            | RoomVersionId::V5
-            | RoomVersionId::V6
+    let join_rule = crate::room::state::get_join_rule(room_id)?;
+    if !matches!(
+        join_rule,
+        JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
     ) {
-        return Err(MatrixError::forbidden(None, "This room does not support knocking.").into());
+        return Err(MatrixError::forbidden("This room does not support knocking.", None).into());
     }
 
     let content = RoomMemberEventContent {
@@ -103,21 +98,18 @@ async fn knock_room_local(
     ) else {
         return Ok(());
     };
-
     if servers.is_empty() || (servers.len() == 1 && servers[0].is_local()) {
         return Err(error);
     }
 
     warn!("We couldn't do the knock locally, maybe federation can help to satisfy the knock");
-
     let (make_knock_body, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
-
     info!("make_knock finished");
-
     let room_version_id = make_knock_body.room_version;
-
-    if !crate::supports_room_version(&room_version_id) {
-        return Err(MatrixError::forbidden(None, "Remote room version {room_version_id} is not supported by palpo").into());
+    if !config::supports_room_version(&room_version_id) {
+        return Err(
+            MatrixError::forbidden("Remote room version {room_version_id} is not supported by palpo", None).into(),
+        );
     }
     let mut knock_event_stub =
         serde_json::from_str::<CanonicalJsonObject>(make_knock_body.event.get()).map_err(|e| {
@@ -127,7 +119,7 @@ async fn knock_room_local(
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -219,11 +211,12 @@ async fn knock_room_remote(
 
     let room_version_id = make_knock_response.room_version;
 
-    if !crate::supports_room_version(&room_version_id) {
+    if !config::supports_room_version(&room_version_id) {
         return Err(StatusError::internal_server_error()
             .brief("Remote room version {room_version_id} is not supported by palpo")
             .into());
     }
+    crate::room::ensure_room(room_id, &room_version_id)?;
 
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
@@ -233,7 +226,7 @@ async fn knock_room_remote(
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(crate::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -289,81 +282,79 @@ async fn knock_room_remote(
 
     info!("Parsing knock event");
     let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
+    let mut parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");
-    let state = send_knock_body
+
+    // TODO: how to handle this? snpase save this state to unsigned field.
+    let knock_state = send_knock_body
         .knock_room_state
         .iter()
         .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
         .filter_map(Result::ok);
 
-    let mut state_map: HashMap<i64, Seqnum> = HashMap::new();
+    let mut state_map = HashMap::new();
 
-    for event in state {
-        let Some(state_key) = event.get("state_key") else {
-            warn!("send_knock stripped state event missing state_key: {event:?}");
+    for value in knock_state {
+        let Some(state_key) = value.get("state_key") else {
+            warn!("send_knock stripped state event missing state_key: {value:?}");
             continue;
         };
-        let Some(event_type) = event.get("type") else {
-            warn!("send_knock stripped state event missing event type: {event:?}");
+        let Some(event_type) = value.get("type") else {
+            warn!("send_knock stripped state event missing event type: {value:?}");
             continue;
         };
 
         let Ok(state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
-            warn!("send_knock stripped state event has invalid state_key: {event:?}");
+            warn!("send_knock stripped state event has invalid state_key: {value:?}");
             continue;
         };
         let Ok(event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into()) else {
-            warn!("send_knock stripped state event has invalid event type: {event:?}");
+            warn!("send_knock stripped state event has invalid event type: {value:?}");
             continue;
         };
 
-        let event_id = gen_event_id(&event, &room_version_id)?;
-        let event_sn = ensure_event_sn(room_id, &event_id)?;
-        let new_db_event = NewDbEvent {
-            id: event_id.clone(),
-            sn: event_sn,
-            ty: MembershipState::Leave.to_string(),
-            room_id: room_id.to_owned(),
-            unrecognized_keys: None,
-            depth: 0,
-            topological_ordering: 0,
-            stream_ordering: 0,
-            origin_server_ts: UnixMillis::now(),
-            received_at: None,
-            sender_id: Some(sender_id.to_owned()),
-            contains_url: false,
-            worker_id: None,
-            state_key: Some(sender_id.to_string()),
-            is_outlier: true,
-            soft_failed: false,
-            rejection_reason: None,
+        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id).optional()? {
+            pdu
+        } else {
+            let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
+            let res_body = crate::sending::send_federation_request(&remote_server, request)
+                .await?
+                .json::<EventResBody>()
+                .await?;
+            crate::event::handler::handle_incoming_pdu(
+                &remote_server,
+                &event_id,
+                &room_id,
+                serde_json::from_str(res_body.pdu.get())?,
+                true,
+            )
+            .await
+            .map(|_| ());
+            crate::room::timeline::get_pdu(&event_id)?
+            // let pdu = PduEvent::from_json_value(
+            //     &event_id,
+            //     data::next_sn()?,
+            //     serde_json::from_str::<JsonValue>(res_body.pdu.get())?,
+            // )
+            // .map_err(|e| {
+            //     tracing::error!("Failed to parse event: {res_body:#?}");
+            //     StatusError::internal_server_error().brief(format!("Invalid event json received from server: {e:?}"))
+            // })?;
         };
-        diesel::insert_into(events::table)
-            .values(&new_db_event)
-            .on_conflict_do_nothing()
-            .execute(&mut connect()?)?;
-        let event_data = DbEventData {
-            event_id: event_id.clone(),
-            event_sn,
-            room_id: room_id.to_owned(),
-            internal_metadata: None,
-            json_data: serde_json::to_value(&event)?,
-            format_version: None,
-        };
-        diesel::insert_into(event_datas::table)
-            .values(&event_data)
-            .on_conflict_do_nothing()
-            .execute(&mut connect()?)?;
 
-        let field_id = crate::room::state::ensure_field_id(&event_type, &state_key)?;
-        state_map.insert(field_id, event_sn);
+        if let Some(state_key) = &pdu.state_key {
+            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
+        }
     }
 
     info!("Compressing state from send_knock");
-    let compressed = state::compress_events(room_id, state_map.into_iter())?;
+    let compressed = state_map
+        .into_iter()
+        .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
+        .collect::<AppResult<_>>()?;
 
     debug!("Saving compressed state");
     let DeltaInfo {
@@ -423,7 +414,7 @@ async fn make_knock_request(
             MakeKnockReqArgs {
                 room_id: room_id.to_owned(),
                 user_id: sender_id.to_owned(),
-                ver: crate::supported_room_versions(),
+                ver: config::supported_room_versions(),
             },
         )?
         .into_inner();

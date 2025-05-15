@@ -2,7 +2,8 @@ use diesel::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
-use crate::data::schema::*;
+use crate::schema::*;
+use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_access_tokens)]
@@ -15,7 +16,7 @@ pub struct DbAccessToken {
     pub last_validated: Option<UnixMillis>,
     pub refresh_token_id: Option<i64>,
     pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
+    pub expires_at: Option<UnixMillis>,
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, Debug, Clone)]
@@ -28,21 +29,21 @@ pub struct NewDbAccessToken {
     pub last_validated: Option<UnixMillis>,
     pub refresh_token_id: Option<i64>,
     pub is_used: bool,
-    pub expired_at: Option<UnixMillis>,
+    pub expires_at: Option<UnixMillis>,
     pub created_at: UnixMillis,
 }
 
 impl NewDbAccessToken {
-    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String) -> Self {
+    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String, refresh_token_id: Option<i64>) -> Self {
         Self {
             user_id,
             device_id,
             token,
             puppets_user_id: None,
             last_validated: None,
-            refresh_token_id: None,
+            refresh_token_id,
             is_used: false,
-            expired_at: None,
+            expires_at: None,
             created_at: UnixMillis::now(),
         }
     }

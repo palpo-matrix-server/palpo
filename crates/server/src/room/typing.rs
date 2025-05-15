@@ -8,7 +8,6 @@ use crate::core::events::SyncEphemeralRoomEvent;
 use crate::core::events::typing::{TypingContent, TypingEventContent};
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::sending::EduBuf;
 use crate::{AppResult, IsRemoteOrLocal, data, sending};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
@@ -148,11 +147,7 @@ async fn federation_send(room_id: &RoomId, user_id: &UserId, typing: bool) -> Ap
 
     let content = TypingContent::new(room_id.to_owned(), user_id.to_owned(), typing);
     let edu = Edu::Typing(content);
-
-    let mut buf = EduBuf::new();
-    serde_json::to_writer(&mut buf, &edu).expect("Serialized Edu::Typing");
-
-    sending::send_edu_room(room_id, &buf)?;
+    sending::send_edu_room(room_id, &edu)?;
 
     Ok(())
 }

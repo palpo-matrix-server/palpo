@@ -1,3 +1,4 @@
+use diesel::prelude::*;
 use palpo_core::federation::knock::{MakeKnockReqArgs, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -14,8 +15,10 @@ use crate::core::federation::event::{
 use crate::core::federation::knock::MakeKnockResBody;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
+use crate::data::connect;
+use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, json_ok};
+use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -112,7 +115,7 @@ async fn send_knock(
     use crate::core::RoomVersionId::*;
 
     let origin = depot.origin()?;
-    let body = body.into_inner();
+    let body: SendKnockReqBody = body.into_inner();
 
     if args.room_id.is_remote() {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
@@ -124,7 +127,7 @@ async fn send_knock(
     let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(MatrixError::forbidden(None, "Room version does not support knocking.").into());
+        return Err(MatrixError::forbidden("Room version does not support knocking.", None).into());
     }
 
     let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
@@ -221,6 +224,14 @@ async fn send_knock(
 
     // drop(mutex_lock);
 
+    diesel::insert_into(room_joined_servers::table)
+        .values((
+            room_joined_servers::room_id.eq(&args.room_id),
+            room_joined_servers::server_id.eq(&origin),
+            room_joined_servers::occur_sn.eq(data::next_sn()?),
+        ))
+        .on_conflict_do_nothing()
+        .execute(&mut connect()?)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
     let knock_room_state = crate::room::state::summary_stripped(&pdu)?;
@@ -251,7 +262,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(
-            MatrixError::incompatible_room_version(room_version_id, "Room version does not support knocking.").into(),
+            MatrixError::incompatible_room_version("Room version does not support knocking.", room_version_id).into(),
         );
     }
 
@@ -270,7 +281,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
                 "Remote user {} is banned from {} but attempted to knock",
                 &args.user_id, &args.room_id
             );
-            return Err(MatrixError::forbidden(None, "You cannot knock on a room you are banned from.").into());
+            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
         }
     }
 

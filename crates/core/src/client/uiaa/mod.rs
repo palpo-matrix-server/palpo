@@ -10,7 +10,6 @@ use serde::{
     de::{self, DeserializeOwned},
 };
 
-#[cfg(feature = "unstable-msc2967")]
 use crate::error::AuthenticateError;
 pub use crate::error::ErrorKind;
 use crate::{
@@ -656,13 +655,8 @@ impl AuthError {
             message: message.into(),
         }
     }
-    #[cfg(feature = "unstable-msc2967")]
-    pub fn forbidden(authenticate: Option<AuthenticateError>, message: impl Into<String>) -> Self {
+    pub fn forbidden(message: impl Into<String>, authenticate: Option<AuthenticateError>) -> Self {
         Self::new(ErrorKind::Forbidden { authenticate }, message)
-    }
-    #[cfg(not(feature = "unstable-msc2967"))]
-    pub fn forbidden(message: impl Into<String>) -> Self {
-        Self::new(ErrorKind::Forbidden {}, message)
     }
     pub fn unauthorized(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Unauthorized, message)

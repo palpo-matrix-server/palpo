@@ -10,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AppError, AppResult};
+use crate::{AppError, AppResult, sending};
 
 /// Compiled regular expressions for a namespace.
 #[derive(Clone, Debug)]
@@ -337,7 +337,7 @@ pub(crate) async fn send_request(
     *request.timeout_mut() = Some(Duration::from_secs(30));
 
     let url = request.url().clone();
-    let response = match crate::default_client().execute(request).await {
+    let response = match sending::default_client().execute(request).await {
         Ok(r) => r,
         Err(e) => {
             warn!(

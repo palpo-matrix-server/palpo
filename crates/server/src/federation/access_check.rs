@@ -2,8 +2,8 @@ use crate::AppResult;
 use crate::core::{EventId, MatrixError, RoomId, ServerName};
 
 pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&EventId>) -> AppResult<()> {
-    if !crate::room::is_server_in_room(origin, room_id)? {
-        return Err(MatrixError::forbidden(None, "Server is not in room.").into());
+    if !crate::room::is_server_joined_room(origin, room_id)? {
+        return Err(MatrixError::forbidden("Server is not in room.", None).into());
     }
 
     crate::event::handler::acl_check(origin, room_id)?;
@@ -16,7 +16,7 @@ pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&Eve
 
     if let Some(event_id) = event_id {
         if !crate::room::state::server_can_see_event(origin, room_id, event_id)? {
-            return Err(MatrixError::forbidden(None, "Server is not allowed to see event.").into());
+            return Err(MatrixError::forbidden("Server is not allowed to see event.", None).into());
         }
     }
 

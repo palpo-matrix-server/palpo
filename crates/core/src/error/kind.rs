@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use serde_json::Value as JsonValue;
 
 use super::{ErrorCode, RetryAfter};
-#[cfg(feature = "unstable-msc2967")]
 use crate::error::AuthenticateError;
 use crate::{PrivOwnedStr, RoomVersionId};
 
@@ -103,7 +102,6 @@ pub enum ErrorKind {
     #[non_exhaustive]
     Forbidden {
         /// The `WWW-Authenticate` header error message.
-        #[cfg(feature = "unstable-msc2967")]
         authenticate: Option<AuthenticateError>,
     },
 
@@ -389,15 +387,11 @@ pub enum ErrorKind {
 impl ErrorKind {
     /// Constructs an empty [`ErrorKind::Forbidden`] variant.
     pub fn forbidden() -> Self {
-        Self::Forbidden {
-            #[cfg(feature = "unstable-msc2967")]
-            authenticate: None,
-        }
+        Self::Forbidden { authenticate: None }
     }
 
     /// Constructs an [`ErrorKind::Forbidden`] variant with the given
     /// `WWW-Authenticate` header error message.
-    #[cfg(feature = "unstable-msc2967")]
     pub fn forbidden_with_authenticate(authenticate: AuthenticateError) -> Self {
         Self::Forbidden {
             authenticate: Some(authenticate),

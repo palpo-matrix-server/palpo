@@ -11,14 +11,15 @@ use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use url::Url;
 
-use crate::{AppResult, JsonResult, hoops, json_ok};
+use crate::{AppResult, JsonResult, config, hoops, json_ok};
 
 pub mod prelude {
     pub use crate::core::MatrixError;
     pub use crate::core::identifiers::*;
     pub use crate::core::serde::{JsonValue, RawJson};
     pub use crate::{
-        AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, empty_ok, hoops, json_ok,
+        AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, config, empty_ok, hoops,
+        json_ok,
     };
 }
 
@@ -61,7 +62,7 @@ pub async fn limit_rate() -> AppResult<()> {
 
 #[endpoint]
 fn well_known_client() -> JsonResult<ClientWellKnownResBody> {
-    let client_url = crate::well_known_client();
+    let client_url = config::well_known_client();
     json_ok(ClientWellKnownResBody {
         homeserver: HomeServerInfo {
             base_url: client_url.clone(),
@@ -75,6 +76,6 @@ fn well_known_client() -> JsonResult<ClientWellKnownResBody> {
 #[endpoint]
 fn well_known_server() -> JsonResult<ServerWellKnownResBody> {
     json_ok(ServerWellKnownResBody {
-        server: crate::well_known_server(),
+        server: config::well_known_server(),
     })
 }

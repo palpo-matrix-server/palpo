@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use diesel::prelude::*;
 use palpo_core::push::PusherIds;
 use url::Url;
@@ -14,79 +12,12 @@ use crate::core::identifiers::*;
 use crate::core::push::push_gateway::{
     Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,
 };
-use crate::core::push::{
-    Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, PushFormat, Pusher, PusherKind, Ruleset, Tweak,
-};
-use crate::core::serde::{JsonValue, RawJson};
+use crate::core::push::{Action, PushFormat, Pusher, PusherKind, Ruleset, Tweak};
 use crate::data::schema::*;
+use crate::data::user::pusher::NewDbPusher;
 use crate::data::{self, connect};
 use crate::event::PduEvent;
 use crate::{AppError, AppResult, AuthedInfo};
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = pushers)]
-pub struct DbPusher {
-    pub id: i64,
-
-    pub user_id: OwnedUserId,
-    pub kind: String,
-    pub app_id: String,
-    pub app_display_name: String,
-    pub device_id: OwnedDeviceId,
-    pub device_display_name: String,
-    pub access_token_id: Option<i64>,
-    pub profile_tag: Option<String>,
-    pub pushkey: String,
-    pub lang: String,
-    pub data: JsonValue,
-    pub enabled: bool,
-    pub last_stream_ordering: Option<i64>,
-    pub last_success: Option<i64>,
-    pub failing_since: Option<i64>,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = pushers)]
-pub struct NewDbPusher {
-    pub user_id: OwnedUserId,
-    pub kind: String,
-    pub app_id: String,
-    pub app_display_name: String,
-    pub device_id: OwnedDeviceId,
-    pub device_display_name: String,
-    pub access_token_id: Option<i64>,
-    pub profile_tag: Option<String>,
-    pub pushkey: String,
-    pub lang: String,
-    pub data: JsonValue,
-    pub enabled: bool,
-    pub created_at: UnixMillis,
-}
-impl TryInto<Pusher> for DbPusher {
-    type Error = AppError;
-    fn try_into(self) -> AppResult<Pusher> {
-        let Self {
-            user_id,
-            profile_tag,
-            kind,
-            app_id,
-            app_display_name,
-            device_display_name,
-            pushkey,
-            lang,
-            data,
-            ..
-        } = self;
-        Ok(Pusher {
-            ids: PusherIds { app_id, pushkey },
-            profile_tag,
-            kind: PusherKind::try_new(&kind, data)?,
-            app_display_name,
-            device_display_name,
-            lang,
-        })
-    }
-}
 
 pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
     match pusher {
@@ -106,14 +37,14 @@ pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
             } = data;
             if !append {
                 diesel::delete(
-                    pushers::table
-                        .filter(pushers::user_id.eq(authed.user_id()))
-                        .filter(pushers::pushkey.eq(&pushkey))
-                        .filter(pushers::app_id.eq(&app_id)),
+                    user_pushers::table
+                        .filter(user_pushers::user_id.eq(authed.user_id()))
+                        .filter(user_pushers::pushkey.eq(&pushkey))
+                        .filter(user_pushers::app_id.eq(&app_id)),
                 )
                 .execute(&mut connect()?)?;
             }
-            diesel::insert_into(pushers::table)
+            diesel::insert_into(user_pushers::table)
                 .values(&NewDbPusher {
                     user_id: authed.user_id().to_owned(),
                     profile_tag,
@@ -133,37 +64,15 @@ pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
         }
         PusherAction::Delete(ids) => {
             diesel::delete(
-                pushers::table
-                    .filter(pushers::user_id.eq(authed.user_id()))
-                    .filter(pushers::pushkey.eq(ids.pushkey))
-                    .filter(pushers::app_id.eq(ids.app_id)),
+                user_pushers::table
+                    .filter(user_pushers::user_id.eq(authed.user_id()))
+                    .filter(user_pushers::pushkey.eq(ids.pushkey))
+                    .filter(user_pushers::app_id.eq(ids.app_id)),
             )
             .execute(&mut connect()?)?;
         }
     }
     Ok(())
-}
-
-pub fn get_pusher(user_id: &UserId, pushkey: &str) -> AppResult<Option<Pusher>> {
-    let pusher = pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .filter(pushers::pushkey.eq(pushkey))
-        .order_by(pushers::id.desc())
-        .first::<DbPusher>(&mut connect()?)
-        .optional()?;
-    if let Some(pusher) = pusher {
-        pusher.try_into().map(Option::Some)
-    } else {
-        Ok(None)
-    }
-}
-
-pub fn get_pushers(user_id: &UserId) -> AppResult<Vec<DbPusher>> {
-    pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .order_by(pushers::id.desc())
-        .load::<DbPusher>(&mut connect()?)
-        .map_err(Into::into)
 }
 
 // #[tracing::instrument(skip(destination, request))]
@@ -242,10 +151,13 @@ pub async fn send_push_notice(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
         "",
+        None,
     )
     .unwrap_or_default();
 
-    for action in get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)? {
+    for action in
+        data::user::pusher::get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)?
+    {
         let n = match action {
             Action::Notify => true,
             Action::SetTweak(tweak) => {
@@ -270,41 +182,6 @@ pub async fn send_push_notice(
     // Else the event triggered no actions
 
     Ok(())
-}
-
-pub fn get_actions<'a>(
-    user: &UserId,
-    ruleset: &'a Ruleset,
-    power_levels: &RoomPowerLevelsEventContent,
-    pdu: &RawJson<AnySyncTimelineEvent>,
-    room_id: &RoomId,
-) -> AppResult<&'a [Action]> {
-    let power_levels = PushConditionPowerLevelsCtx {
-        users: power_levels.users.clone(),
-        users_default: power_levels.users_default,
-        notifications: power_levels.notifications.clone(),
-    };
-    let ctx = PushConditionRoomCtx {
-        room_id: room_id.to_owned(),
-        member_count: 10_u32.into(), // TODO: get member count efficiently
-        user_id: user.to_owned(),
-        user_display_name: data::user::display_name(user)
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| user.localpart().to_owned()),
-        power_levels: Some(power_levels),
-        supported_features: vec![],
-    };
-
-    Ok(ruleset.get_actions(pdu, &ctx))
-}
-
-pub fn get_push_keys(user_id: &UserId) -> AppResult<Vec<String>> {
-    pushers::table
-        .filter(pushers::user_id.eq(user_id))
-        .select(pushers::pushkey)
-        .load::<String>(&mut connect()?)
-        .map_err(Into::into)
 }
 
 #[tracing::instrument(skip_all)]

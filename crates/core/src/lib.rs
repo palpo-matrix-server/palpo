@@ -47,10 +47,9 @@ use ::serde::{Deserialize, Serialize};
 use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 
-pub use self::{
-    identifiers::*,
-    time::{UnixMillis, UnixSeconds},
-};
+pub use self::identifiers::*;
+pub use self::time::{UnixMillis, UnixSeconds};
+
 pub type Seqnum = i64;
 pub type MatrixResult<T> = Result<T, MatrixError>;
 
@@ -142,6 +141,16 @@ pub enum Direction {
     /// Return events forwards in time from the requested `from` token.
     #[serde(rename = "f")]
     Forward,
+}
+
+pub enum ReasonBool<T> {
+    True,
+    False(T),
+}
+impl<T> ReasonBool<T> {
+    fn value(&self) -> bool {
+        matches!(self, Self::True)
+    }
 }
 
 /// Re-__private used by macro-generated code.

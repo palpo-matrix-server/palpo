@@ -53,6 +53,7 @@ fn search(
                 &room,
                 &StateEventType::RoomJoinRules,
                 "",
+                None,
             )
             .map(|r| r.join_rule == JoinRule::Public)
             .unwrap_or(false)

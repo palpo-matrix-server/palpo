@@ -26,6 +26,11 @@ macro_rules! extract_variant {
     };
 }
 
+pub fn shuffle<T>(vec: &mut [T]) {
+    let mut rng = rand::rng();
+    vec.shuffle(&mut rng);
+}
+
 pub fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
     let number = match old.map(|bytes| bytes.try_into()) {
         Some(Ok(bytes)) => {

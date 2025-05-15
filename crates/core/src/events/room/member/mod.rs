@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
     PrivOwnedStr,
@@ -45,7 +45,7 @@ pub use self::change::{Change, MembershipChange, MembershipDetails};
 /// The membership for a given user can change over time. Previous membership
 /// can be retrieved from the `prev_content` object on an event. If not present,
 /// the user's previous membership must be assumed as leave.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
+#[derive(ToSchema, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(
     type = "m.room.member",
     kind = State,
@@ -103,14 +103,75 @@ pub struct RoomMemberEventContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 
-    /// Arbitrarily chosen `UserId` (MxID) of a local user who can send an
-    /// invite.
+    /// Arbitrarily chosen `UserId` (MxID) of a local user who can send an invite.
     #[serde(rename = "join_authorised_via_users_server")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
+}
+
+impl<'de> Deserialize<'de> for RoomMemberEventContent {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        pub struct RoomMemberEventData {
+            #[serde(
+                skip_serializing_if = "Option::is_none",
+                default,
+                deserialize_with = "palpo_core::serde::empty_string_as_none"
+            )]
+            pub avatar_url: Option<OwnedMxcUri>,
+
+            #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
+            pub display_name: Option<String>,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            pub is_direct: Option<bool>,
+
+            pub membership: MembershipState,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            pub third_party_invite: Option<ThirdPartyInvite>,
+
+            #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+            pub blurhash: Option<String>,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            pub reason: Option<String>,
+
+            #[serde(rename = "join_authorised_via_users_server")]
+            #[serde(skip_serializing_if = "Option::is_none")]
+            pub join_authorized_via_users_server: Option<String>,
+        }
+
+        let RoomMemberEventData {
+            avatar_url,
+            display_name,
+            is_direct,
+            membership,
+            third_party_invite,
+            blurhash,
+            reason,
+            join_authorized_via_users_server,
+        } = RoomMemberEventData::deserialize(deserializer)?;
+
+        let join_authorized_via_users_server =
+            join_authorized_via_users_server.and_then(|s| OwnedUserId::try_from(s).ok());
+        Ok(Self {
+            avatar_url,
+            display_name,
+            is_direct,
+            membership,
+            third_party_invite,
+            blurhash,
+            reason,
+            join_authorized_via_users_server,
+        })
+    }
 }
 
 impl RoomMemberEventContent {

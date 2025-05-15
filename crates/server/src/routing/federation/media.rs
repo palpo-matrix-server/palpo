@@ -18,7 +18,7 @@ use crate::data::connect;
 use crate::data::media::*;
 use crate::data::schema::*;
 use crate::utils::content_disposition::make_content_disposition;
-use crate::{AppResult, AuthArgs, MatrixError, hoops};
+use crate::{AppResult, AuthArgs, MatrixError, config, hoops};
 
 pub fn router() -> Router {
     Router::with_path("media")
@@ -33,7 +33,7 @@ pub fn router() -> Router {
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
 pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
-    let server_name = crate::server_name();
+    let server_name = config::server_name();
     if let Some(metadata) = crate::data::media::get_metadata(server_name, &args.media_id)? {
         let content_type = metadata
             .content_type
@@ -48,7 +48,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM)
             });
 
-        let path = crate::media_path(server_name, &args.media_id);
+        let path = config::media_path(server_name, &args.media_id);
         if Path::new(&path).exists() {
             NamedFile::builder(path)
                 .content_type(content_type)
@@ -71,11 +71,11 @@ pub async fn get_thumbnail(
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    let server_name = crate::server_name();
+    let server_name = config::server_name();
     if let Some(DbThumbnail { content_type, .. }) =
         crate::data::media::get_thumbnail(server_name, &args.media_id, args.width, args.height)?
     {
-        let thumb_path = crate::media_path(
+        let thumb_path = config::media_path(
             server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
@@ -97,7 +97,7 @@ pub async fn get_thumbnail(
 
     let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    let thumb_path = crate::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
+    let thumb_path = config::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail { content_type, .. }) =
         crate::data::media::get_thumbnail(server_name, &args.media_id, width, height)?
     {
@@ -122,7 +122,7 @@ pub async fn get_thumbnail(
     })) = crate::data::media::get_metadata(server_name, &args.media_id)
     {
         // Generate a thumbnail
-        let image_path = crate::media_path(server_name, &args.media_id);
+        let image_path = config::media_path(server_name, &args.media_id);
         if let Ok(image) = image::open(&image_path) {
             let original_width = image.width();
             let original_height = image.height();

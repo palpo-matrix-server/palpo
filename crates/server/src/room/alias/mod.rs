@@ -15,7 +15,7 @@ use crate::data::schema::*;
 use crate::data::user::DbUser;
 use crate::exts::*;
 use crate::room::StateEventType;
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, config};
 
 mod remote;
 use remote::remote_resolve;
@@ -122,7 +122,7 @@ pub fn is_admin_room(room_id: &RoomId) -> bool {
 }
 
 pub fn admin_room_id() -> AppResult<OwnedRoomId> {
-    let server_name = crate::server_name();
+    let server_name = config::server_name();
     crate::room::resolve_local_alias(
         <&RoomAliasId>::try_from(format!("#admins:{}", server_name).as_str())
             .expect("#admins:server_name is a valid room alias"),
@@ -151,7 +151,7 @@ pub fn set_alias(
 }
 
 pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<AliasResBody> {
-    if room_alias.server_name() != crate::server_name() {
+    if room_alias.server_name() != config::server_name() {
         let request = directory_request(&room_alias.server_name().origin().await, &room_alias)?.into_inner();
         let mut body = crate::sending::send_federation_request(room_alias.server_name(), request)
             .await?
@@ -192,7 +192,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
         None => return Err(MatrixError::not_found("Room with alias not found.").into()),
     };
 
-    Ok(AliasResBody::new(room_id, vec![crate::server_name().to_owned()]))
+    Ok(AliasResBody::new(room_id, vec![config::server_name().to_owned()]))
 }
 
 #[tracing::instrument]
@@ -222,7 +222,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
 
         Ok(())
     } else {
-        Err(MatrixError::forbidden(None, "User is not permitted to remove this alias.").into())
+        Err(MatrixError::forbidden("User is not permitted to remove this alias.", None).into())
     }
 }
 #[tracing::instrument]
@@ -238,7 +238,7 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
         // Server admins can remove any local alias
         || user.is_admin
         // Always allow the Palpo user to remove the alias, since there may not be an admin room
-        || crate::server_user()== user.id
+        || config::server_user()== user.id
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
@@ -246,10 +246,11 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
         &room_id,
         &StateEventType::RoomPowerLevels,
         "",
+        None,
     ) {
         Ok(RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "") {
+    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None) {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);
