@@ -197,9 +197,12 @@ pub(super) async fn send_message(
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
 
     // Check if this is a new transaction id
-    if let Some(event_id) =
-        crate::transaction_id::get_event_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), Some(&args.room_id))?
-    {
+    if let Some(event_id) = crate::transaction_id::get_event_id(
+        &args.txn_id,
+        authed.user_id(),
+        Some(authed.device_id()),
+        Some(&args.room_id),
+    )? {
         return json_ok(SendMessageResBody::new(event_id));
     }
 

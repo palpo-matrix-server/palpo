@@ -706,7 +706,9 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 #[tracing::instrument]
 pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
     if let Some(state_key) = &pdu_builder.state_key {
-        if let Ok(curr_state) = state::get_room_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
+        if let Ok(curr_state) =
+            state::get_room_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None)
+        {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
             }

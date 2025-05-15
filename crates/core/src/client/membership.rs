@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::serde::JsonValue;
 use crate::{
     OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
     events::room::member::RoomMemberEvent,
@@ -407,7 +408,7 @@ pub struct JoinRoomReqBody {
     /// Optional extra parameters to be sent to the server.
     #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub extra_data: BTreeMap<String, Box<RawJsonValue>>,
+    pub extra_data: BTreeMap<String, JsonValue>,
 }
 
 // const METADATA: Metadata = metadata! {

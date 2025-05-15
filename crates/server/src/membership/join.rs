@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 use diesel::prelude::*;
+use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 use tracing_subscriber::fmt::format;
@@ -250,7 +251,7 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
-    extra_data: BTreeMap<String, Box<RawJsonValue>>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id) {
@@ -286,7 +287,7 @@ async fn join_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: BTreeMap<String, Box<RawJsonValue>>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
@@ -470,7 +471,7 @@ async fn join_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: BTreeMap<String, Box<RawJsonValue>>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
 

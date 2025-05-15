@@ -8,6 +8,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::serde::JsonValue;
 use crate::{
     PrivOwnedStr,
     events::{
@@ -110,7 +111,7 @@ pub struct RoomMemberEventContent {
 
     #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub extra_data: BTreeMap<String, Box<RawJsonValue>>,
+    pub extra_data: BTreeMap<String, JsonValue>,
 }
 
 impl<'de> Deserialize<'de> for RoomMemberEventContent {
@@ -148,8 +149,8 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
             #[serde(skip_serializing_if = "Option::is_none")]
             join_authorized_via_users_server: Option<String>,
 
-    #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
-            extra_data: BTreeMap<String, Box<RawJsonValue>>,
+            #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
+            extra_data: BTreeMap<String, JsonValue>,
         }
 
         let RoomMemberEventData {

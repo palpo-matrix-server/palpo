@@ -311,7 +311,10 @@ pub(crate) async fn join_room_by_id_or_alias(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!("VVVVVVVVVVVVVVVVVVVVVVV  x{}", String::from_utf8(req.payload().await.unwrap().to_vec()).unwrap());
+    println!(
+        "VVVVVVVVVVVVVVVVVVVVVVV  x{}",
+        String::from_utf8(req.payload().await.unwrap().to_vec()).unwrap()
+    );
     let body: Option<JoinRoomReqBody> = req.parse_body().await.unwrap();
     let body = body.unwrap_or_default();
     let authed = depot.authed_info()?;
