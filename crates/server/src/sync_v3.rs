@@ -299,17 +299,14 @@ pub async fn sync_events(
 
     if config::allow_local_presence() {
         // Take presence updates from this room
-        println!("\n\n\n\n============ presences_since: {} ============", since_sn);
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
             println!("============   {}=={}", user_id, sender_id);
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {
-                println!("============ continue  {}=={}", user_id, sender_id);
                 continue;
             }
 
             match presence_updates.entry(user_id) {
                 Entry::Vacant(slot) => {
-                    println!("========presence 1  {:#?}", presence_event);
                     slot.insert(presence_event);
                 }
                 Entry::Occupied(mut slot) => {
@@ -318,7 +315,6 @@ pub async fn sync_events(
                     let new_content = presence_event.content;
 
                     // Update existing presence event with more info
-                    println!("========presence 2 {:#?}", new_content.presence);
                     curr_content.presence = new_content.presence;
                     curr_content.status_msg = new_content.status_msg.or(curr_content.status_msg.take());
                     curr_content.last_active_ago = new_content.last_active_ago.or(curr_content.last_active_ago);
