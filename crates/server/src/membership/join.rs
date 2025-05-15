@@ -330,7 +330,6 @@ async fn join_room_local(
         None
     };
 
-    println!("LLLLLLLLLL000ocal extra : {extra_data:?}");
     let event = RoomMemberEventContent {
         membership: MembershipState::Join,
         display_name: data::user::display_name(user_id).ok().flatten(),

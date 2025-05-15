@@ -124,7 +124,7 @@ pub async fn sync_events(
                 redacts: None,
                 hashes: EventHash { sha256: String::new() },
                 signatures: None,
-                extra_data: None,
+                extra_data: Default::default(),
             };
             left_rooms.insert(
                 room_id.to_owned(),
@@ -382,7 +382,6 @@ async fn load_joined_room(
     device_list_updates: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
-    println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 0");
     if since_sn > data::curr_sn()? {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
@@ -415,11 +414,9 @@ async fn load_joined_room(
         .is_empty()
         && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
     {
-        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 1");
         // No state changes
         (Vec::new(), None, None, false, Vec::new())
     } else {
-        println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 2");
         // Calculates joined_member_count, invited_member_count and heroes
         let calculate_counts = || {
             let joined_member_count = crate::room::joined_member_count(&room_id).unwrap_or(0);
@@ -473,7 +470,6 @@ async fn load_joined_room(
 
         let joined_since_last_sync = crate::room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
-            println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 4");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
 
@@ -539,7 +535,6 @@ async fn load_joined_room(
             );
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
-            println!("DDDDDDDDDDDDDDDDDDDDD  load_joined_room 5");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();

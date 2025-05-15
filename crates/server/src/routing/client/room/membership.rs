@@ -307,20 +307,14 @@ pub(crate) async fn join_room_by_id_or_alias(
     room_id_or_alias: PathParam<OwnedRoomOrAliasId>,
     server_name: QueryParam<Vec<OwnedServerName>, false>,
     via: QueryParam<Vec<OwnedServerName>, false>,
-    // body: JsonBody<Option<JoinRoomReqBody>>,
+    body: JsonBody<Option<JoinRoomReqBody>>,
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!(
-        "VVVVVVVVVVVVVVVVVVVVVVV  x{}",
-        String::from_utf8(req.payload().await.unwrap().to_vec()).unwrap()
-    );
-    let body: Option<JoinRoomReqBody> = req.parse_body().await.unwrap();
-    let body = body.unwrap_or_default();
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
-    // let body = body.into_inner().unwrap_or_default();
+    let body = body.into_inner().unwrap_or_default();
     let remote_addr = req.remote_addr();
 
     // The servers to attempt to join the room through.
@@ -391,11 +385,6 @@ pub(crate) async fn join_room_by_id_or_alias(
             (servers, room_id)
         }
     };
-
-    println!(
-        "==============join_room_by_id_or_alias===extra data: {:?}",
-        body.extra_data
-    );
 
     let join_room_body = crate::membership::join_room(
         authed,

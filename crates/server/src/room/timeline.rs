@@ -591,7 +591,7 @@ pub fn create_hash_and_sign_event(
             sha256: "aaa".to_owned(),
         },
         signatures: None,
-        extra_data: None,
+        extra_data: Default::default(),
     };
 
     crate::core::state::event_auth::auth_check(
