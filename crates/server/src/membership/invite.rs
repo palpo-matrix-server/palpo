@@ -35,6 +35,7 @@ pub async fn invite_user(
                 blurhash: None,
                 reason,
                 join_authorized_via_users_server: None,
+                extra_data: None,
             };
 
             let (pdu, pdu_json) = timeline::create_hash_and_sign_event(
@@ -116,6 +117,7 @@ pub async fn invite_user(
                 blurhash: data::user::blurhash(invitee_id)?,
                 reason,
                 join_authorized_via_users_server: None,
+                extra_data: None,
             })
             .expect("event is valid, we just created it"),
             state_key: Some(invitee_id.to_string()),

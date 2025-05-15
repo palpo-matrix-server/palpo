@@ -451,6 +451,7 @@ pub(super) async fn ban_user(
             blurhash,
             reason: body.reason.clone(),
             join_authorized_via_users_server: None,
+            extra_data: None,
         }
     } else {
         let DbProfile {
@@ -468,6 +469,7 @@ pub(super) async fn ban_user(
             blurhash,
             reason: body.reason.clone(),
             join_authorized_via_users_server: None,
+            extra_data: None,
         }
     };
 

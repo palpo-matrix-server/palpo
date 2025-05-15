@@ -368,6 +368,7 @@ async fn upgrade(
                 blurhash: data::user::blurhash(authed.user_id()).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
+                extra_data: None,
             })
             .expect("event is valid, we just created it"),
             state_key: Some(authed.user_id().to_string()),
@@ -605,6 +606,7 @@ pub(super) async fn create_room(
                 blurhash: data::user::blurhash(sender_id).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
+                extra_data: None,
             })
             .expect("event is valid, we just created it"),
             state_key: Some(sender_id.to_string()),

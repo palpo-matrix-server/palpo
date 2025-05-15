@@ -18,7 +18,6 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{MakeJoinReqArgs, SendJoinArgs, SendJoinResBodyV2};
 use crate::core::federation::transaction::Edu;
-use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
@@ -273,9 +272,9 @@ pub async fn join_room(
 
     // Ask a remote server if we are not participating in this room
     if crate::room::can_local_work_for_room(room_id, servers)? {
-        join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
+        join_room_local(sender_id, room_id, reason, servers, third_party_signed, extra_data).await?;
     } else {
-        join_room_remote(authed, room_id, reason, servers, third_party_signed).await?;
+        join_room_remote(authed, room_id, reason, servers, third_party_signed, extra_data).await?;
     }
 
     Ok(JoinRoomResBody::new(room_id.to_owned()))
@@ -340,7 +339,7 @@ async fn join_room_local(
         blurhash: data::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
-        extra_data: extra_data.clone(),
+        extra_data: extra_data.cloned(),
     };
 
     // Try normal join first
@@ -391,7 +390,7 @@ async fn join_room_local(
             blurhash: data::user::blurhash(user_id).ok().flatten(),
             reason,
             join_authorized_via_users_server,
-            extra_data: extra_data.clone(),
+            extra_data: extra_data.cloned(),
         })
         .expect("event is valid, we just created it"));
 
@@ -510,7 +509,7 @@ async fn join_room_remote(
             blurhash: data::user::blurhash(sender_id)?,
             reason,
             join_authorized_via_users_server,
-            extra_data: extra_data.clone(),
+            extra_data: extra_data.cloned(),
         })
         .expect("event is valid, we just created it"),
     );
