@@ -39,7 +39,6 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
-    println!("DDDDDDDDDDDDDDDDDDDDD  sync_events 0");
     let curr_sn = data::curr_sn()?;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
     let next_batch = curr_sn + 1;
@@ -59,6 +58,7 @@ pub async fn sync_events(
 
     let mut joined_rooms = BTreeMap::new();
     let mut presence_updates = HashMap::new();
+    let mut joined_users = HashSet::new(); // Users that have joined any encrypted rooms the sender was in
     let mut left_users = HashSet::new(); // Users that have left any encrypted rooms the sender was in
     let mut device_list_updates = HashSet::new();
     let mut device_list_left = HashSet::new();
@@ -78,6 +78,7 @@ pub async fn sync_events(
             full_state,
             &filter,
             &mut device_list_updates,
+            &mut joined_users,
             &mut left_users,
         )
         .await
@@ -298,13 +299,17 @@ pub async fn sync_events(
 
     if config::allow_local_presence() {
         // Take presence updates from this room
+        println!("\n\n\n\n============ presences_since: {} ============", since_sn);
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
+            println!("============   {}=={}", user_id, sender_id);
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {
+                println!("============ continue  {}=={}", user_id, sender_id);
                 continue;
             }
 
             match presence_updates.entry(user_id) {
                 Entry::Vacant(slot) => {
+                    println!("========presence 1  {:#?}", presence_event);
                     slot.insert(presence_event);
                 }
                 Entry::Occupied(mut slot) => {
@@ -313,6 +318,7 @@ pub async fn sync_events(
                     let new_content = presence_event.content;
 
                     // Update existing presence event with more info
+                    println!("========presence 2 {:#?}", new_content.presence);
                     curr_content.presence = new_content.presence;
                     curr_content.status_msg = new_content.status_msg.or(curr_content.status_msg.take());
                     curr_content.last_active_ago = new_content.last_active_ago.or(curr_content.last_active_ago);
@@ -320,6 +326,12 @@ pub async fn sync_events(
                     curr_content.avatar_url = new_content.avatar_url.or(curr_content.avatar_url.take());
                     curr_content.currently_active = new_content.currently_active.or(curr_content.currently_active);
                 }
+            }
+        }
+        for joined_user in &joined_users {
+            if !presence_updates.contains_key(joined_user) {
+                let presence = data::user::last_presence(joined_user)?;
+                presence_updates.insert(joined_user.to_owned(), presence);
             }
         }
     }
@@ -366,6 +378,7 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
+    println!("res_body: {:#?}", res_body);
     Ok(res_body)
 }
 
@@ -380,6 +393,7 @@ async fn load_joined_room(
     full_state: bool,
     filter: &FilterDefinition,
     device_list_updates: &mut HashSet<OwnedUserId>,
+    joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
     if since_sn > data::curr_sn()? {
@@ -484,12 +498,9 @@ async fn load_joined_room(
                 } = crate::room::state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let pdu = match timeline::get_pdu(&id) {
-                        Ok(pdu) => pdu,
-                        Err(_) => {
-                            error!("Pdu in state not found: {}", id);
-                            continue;
-                        }
+                    let Ok(pdu) = timeline::get_pdu(&id) else {
+                        error!("Pdu in state not found: {}", id);
+                        continue;
                     };
                     state_events.push(pdu);
                 } else if !lazy_load_enabled
@@ -498,12 +509,9 @@ async fn load_joined_room(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let pdu = match timeline::get_pdu(&id) {
-                        Ok(pdu) => pdu,
-                        Err(_) => {
-                            error!("Pdu in state not found: {}", id);
-                            continue;
-                        }
+                    let Ok(pdu) = timeline::get_pdu(&id) else {
+                        error!("Pdu in state not found: {}", id);
+                        continue;
                     };
 
                     // This check is in case a bad user ID made it into the database
@@ -627,7 +635,8 @@ async fn load_joined_room(
                             if !crate::room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
                                 .is_empty()
                             {
-                                device_list_updates.insert(user_id);
+                                device_list_updates.insert(user_id.clone());
+                                joined_users.insert(user_id);
                             }
                         }
                         MembershipState::Leave => {
