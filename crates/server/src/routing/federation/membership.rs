@@ -97,7 +97,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         third_party_invite: None,
         reason: None,
         join_authorized_via_users_server,
-        extra_data: None,
+        extra_data: Default::default(),
     })
     .expect("member event is valid value");
     let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(

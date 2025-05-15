@@ -405,8 +405,9 @@ pub struct JoinRoomReqBody {
     pub reason: Option<String>,
 
     /// Optional extra parameters to be sent to the server.
-    #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
-    pub extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
+    #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    pub extra_data: BTreeMap<String, Box<RawJsonValue>>,
 }
 
 // const METADATA: Metadata = metadata! {

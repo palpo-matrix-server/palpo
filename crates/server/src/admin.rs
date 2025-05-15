@@ -819,7 +819,7 @@ pub(crate) fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
                 blurhash: None,
                 reason: None,
                 join_authorized_via_users_server: None,
-                extra_data: None,
+                extra_data: Default::default(),
             })
             .expect("event is valid, we just created it"),
             state_key: Some(palpo_user.to_string()),
@@ -965,7 +965,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
                 blurhash: None,
                 reason: None,
                 join_authorized_via_users_server: None,
-                extra_data: None,
+                extra_data: Default::default(),
             })
             .expect("event is valid, we just created it"),
             state_key: Some(user_id.to_string()),
@@ -986,7 +986,7 @@ pub(crate) fn make_user_admin(user_id: &UserId, display_name: String) -> AppResu
                 blurhash: None,
                 reason: None,
                 join_authorized_via_users_server: None,
-                extra_data: None,
+                extra_data: Default::default(),
             })
             .expect("event is valid, we just created it"),
             state_key: Some(user_id.to_string()),

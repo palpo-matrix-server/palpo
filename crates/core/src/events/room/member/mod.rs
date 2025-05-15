@@ -108,8 +108,9 @@ pub struct RoomMemberEventContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
 
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
+    #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    pub extra_data: BTreeMap<String, Box<RawJsonValue>>,
 }
 
 impl<'de> Deserialize<'de> for RoomMemberEventContent {
@@ -147,8 +148,8 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
             #[serde(skip_serializing_if = "Option::is_none")]
             join_authorized_via_users_server: Option<String>,
 
-            #[serde(flatten, skip_serializing_if = "Option::is_none")]
-            extra_data: Option<BTreeMap<String, Box<RawJsonValue>>>,
+    #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
+            extra_data: BTreeMap<String, Box<RawJsonValue>>,
         }
 
         let RoomMemberEventData {
@@ -191,7 +192,7 @@ impl RoomMemberEventContent {
             blurhash: None,
             reason: None,
             join_authorized_via_users_server: None,
-            extra_data: None,
+            extra_data: Default::default(),
         }
     }
 

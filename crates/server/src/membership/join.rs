@@ -12,7 +12,6 @@ use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::data::diesel_exists;
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -23,6 +22,7 @@ use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
 use crate::data::connect;
+use crate::data::diesel_exists;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
@@ -250,7 +250,7 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
-    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
+    extra_data: BTreeMap<String, Box<RawJsonValue>>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id) {
@@ -286,7 +286,7 @@ async fn join_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
+    extra_data: BTreeMap<String, Box<RawJsonValue>>,
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
@@ -339,7 +339,7 @@ async fn join_room_local(
         blurhash: data::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
-        extra_data: extra_data.cloned(),
+        extra_data: extra_data.clone(),
     };
 
     // Try normal join first
@@ -381,18 +381,21 @@ async fn join_room_local(
             CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
         );
 
-        join_event_stub.insert("content".to_owned(), to_canonical_value(RoomMemberEventContent {
-            membership: MembershipState::Join,
-            display_name: data::user::display_name(user_id).ok().flatten(),
-            avatar_url: data::user::avatar_url(user_id).ok().flatten(),
-            is_direct: None,
-            third_party_invite: None,
-            blurhash: data::user::blurhash(user_id).ok().flatten(),
-            reason,
-            join_authorized_via_users_server,
-            extra_data: extra_data.cloned(),
-        })
-        .expect("event is valid, we just created it"));
+        join_event_stub.insert(
+            "content".to_owned(),
+            to_canonical_value(RoomMemberEventContent {
+                membership: MembershipState::Join,
+                display_name: data::user::display_name(user_id).ok().flatten(),
+                avatar_url: data::user::avatar_url(user_id).ok().flatten(),
+                is_direct: None,
+                third_party_invite: None,
+                blurhash: data::user::blurhash(user_id).ok().flatten(),
+                reason,
+                join_authorized_via_users_server,
+                extra_data,
+            })
+            .expect("event is valid, we just created it"),
+        );
 
         // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
         join_event_stub.remove("event_id");
@@ -467,7 +470,7 @@ async fn join_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: Option<&BTreeMap<String, Box<RawJsonValue>>>,
+    extra_data: BTreeMap<String, Box<RawJsonValue>>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
 
@@ -509,7 +512,7 @@ async fn join_room_remote(
             blurhash: data::user::blurhash(sender_id)?,
             reason,
             join_authorized_via_users_server,
-            extra_data: extra_data.cloned(),
+            extra_data: extra_data.clone(),
         })
         .expect("event is valid, we just created it"),
     );
