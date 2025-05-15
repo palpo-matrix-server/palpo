@@ -4,9 +4,10 @@ use std::iter::once;
 use std::sync::Arc;
 
 use diesel::prelude::*;
-use palpo_data::diesel_exists;
+use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
+use tracing_subscriber::fmt::format;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
@@ -22,6 +23,7 @@ use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
 };
 use crate::data::connect;
+use crate::data::diesel_exists;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
@@ -249,6 +251,7 @@ pub async fn join_room(
     servers: &[OwnedServerName],
     third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
     // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id) {
@@ -270,9 +273,9 @@ pub async fn join_room(
 
     // Ask a remote server if we are not participating in this room
     if crate::room::can_local_work_for_room(room_id, servers)? {
-        join_room_local(sender_id, room_id, reason, servers, third_party_signed).await?;
+        join_room_local(sender_id, room_id, reason, servers, third_party_signed, extra_data).await?;
     } else {
-        join_room_remote(authed, room_id, reason, servers, third_party_signed).await?;
+        join_room_remote(authed, room_id, reason, servers, third_party_signed, extra_data).await?;
     }
 
     Ok(JoinRoomResBody::new(room_id.to_owned()))
@@ -284,6 +287,7 @@ async fn join_room_local(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("We can join locally");
     let join_rules_event_content =
@@ -335,6 +339,7 @@ async fn join_room_local(
         blurhash: data::user::blurhash(user_id).ok().flatten(),
         reason: reason.clone(),
         join_authorized_via_users_server: authorized_user,
+        extra_data: extra_data.clone(),
     };
 
     // Try normal join first
@@ -375,6 +380,7 @@ async fn join_room_local(
             "origin_server_ts".to_owned(),
             CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
         );
+
         join_event_stub.insert(
             "content".to_owned(),
             to_canonical_value(RoomMemberEventContent {
@@ -386,6 +392,7 @@ async fn join_room_local(
                 blurhash: data::user::blurhash(user_id).ok().flatten(),
                 reason,
                 join_authorized_via_users_server,
+                extra_data,
             })
             .expect("event is valid, we just created it"),
         );
@@ -463,6 +470,7 @@ async fn join_room_remote(
     reason: Option<String>,
     servers: &[OwnedServerName],
     _third_party_signed: Option<&ThirdPartySigned>,
+    extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
 
@@ -504,6 +512,7 @@ async fn join_room_remote(
             blurhash: data::user::blurhash(sender_id)?,
             reason,
             join_authorized_via_users_server,
+            extra_data: extra_data.clone(),
         })
         .expect("event is valid, we just created it"),
     );

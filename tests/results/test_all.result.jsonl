@@ -51,14 +51,11 @@
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinFailOverInMSC3787Room"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_fail_when_left_allowed_room"}
-{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_joined_to_allowed_room"}
+{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_fail_with_mangled_join_rules"}
+{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_invited"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_when_left_allowed_room"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_with_mangled_join_rules"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_invited"}
-{"Action":"fail","Test":"TestRoomMembers"}
-{"Action":"fail","Test":"TestRoomMembers/Parallel"}
-{"Action":"fail","Test":"TestRoomMembers/Parallel/POST_/join/:room_alias_can_join_a_room_with_custom_content"}
-{"Action":"fail","Test":"TestRoomMembers/Parallel/POST_/join/:room_id_can_join_a_room_with_custom_content"}
 {"Action":"fail","Test":"TestSearch"}
 {"Action":"fail","Test":"TestSearch/parallel"}
 {"Action":"fail","Test":"TestSearch/parallel/Can_get_context_around_search_results"}
@@ -73,7 +70,6 @@
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/interrupted_connectivity"}
 {"Action":"fail","Test":"TestUnbanViaInvite"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
-{"Action":"fail","Test":"TestUserAppearsInChangedDeviceListOnJoinOverFederation"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
@@ -428,8 +424,7 @@
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoin/Join_should_succeed_when_invited"}
 {"Action":"pass","Test":"TestRestrictedRoomsLocalJoin/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_fail_initially"}
-{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_fail_with_mangled_join_rules"}
-{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_invited"}
+{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_initially"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
@@ -493,8 +488,12 @@
 {"Action":"pass","Test":"TestRoomForget/Parallel/Forgotten_room_messages_cannot_be_paginated"}
 {"Action":"pass","Test":"TestRoomForget/Parallel/Leave_for_forgotten_room_shows_up_in_v2_incremental_/sync"}
 {"Action":"pass","Test":"TestRoomImageRoundtrip"}
+{"Action":"pass","Test":"TestRoomMembers"}
+{"Action":"pass","Test":"TestRoomMembers/Parallel"}
 {"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/join/:room_alias_can_join_a_room"}
+{"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/join/:room_alias_can_join_a_room_with_custom_content"}
 {"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/join/:room_id_can_join_a_room"}
+{"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/join/:room_id_can_join_a_room_with_custom_content"}
 {"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/rooms/:room_id/ban_can_ban_a_user"}
 {"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/rooms/:room_id/invite_can_send_an_invite"}
 {"Action":"pass","Test":"TestRoomMembers/Parallel/POST_/rooms/:room_id/join_can_join_a_room"}
@@ -599,6 +598,7 @@
 {"Action":"pass","Test":"TestUploadKey/Parallel/Rejects_invalid_device_keys"}
 {"Action":"pass","Test":"TestUploadKey/Parallel/Should_reject_keys_claiming_to_belong_to_a_different_user"}
 {"Action":"pass","Test":"TestUrlPreview"}
+{"Action":"pass","Test":"TestUserAppearsInChangedDeviceListOnJoinOverFederation"}
 {"Action":"pass","Test":"TestVersionStructure"}
 {"Action":"pass","Test":"TestVersionStructure/Version_responds_200_OK_with_valid_structure"}
 {"Action":"pass","Test":"TestWriteMDirectAccountData"}

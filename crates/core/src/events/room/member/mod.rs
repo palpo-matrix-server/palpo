@@ -8,6 +8,7 @@ use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::serde::JsonValue;
 use crate::{
     PrivOwnedStr,
     events::{
@@ -59,7 +60,7 @@ pub struct RoomMemberEventContent {
     #[serde(
         skip_serializing_if = "Option::is_none",
         default,
-        deserialize_with = "palpo_core::serde::empty_string_as_none"
+        deserialize_with = "crate::serde::empty_string_as_none"
     )]
     pub avatar_url: Option<OwnedMxcUri>,
 
@@ -107,6 +108,10 @@ pub struct RoomMemberEventContent {
     #[serde(rename = "join_authorised_via_users_server")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
+
+    #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    pub extra_data: BTreeMap<String, JsonValue>,
 }
 
 impl<'de> Deserialize<'de> for RoomMemberEventContent {
@@ -121,28 +126,31 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
                 default,
                 deserialize_with = "palpo_core::serde::empty_string_as_none"
             )]
-            pub avatar_url: Option<OwnedMxcUri>,
+            avatar_url: Option<OwnedMxcUri>,
 
             #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
-            pub display_name: Option<String>,
+            display_name: Option<String>,
 
             #[serde(skip_serializing_if = "Option::is_none")]
-            pub is_direct: Option<bool>,
+            is_direct: Option<bool>,
 
-            pub membership: MembershipState,
+            membership: MembershipState,
 
             #[serde(skip_serializing_if = "Option::is_none")]
-            pub third_party_invite: Option<ThirdPartyInvite>,
+            third_party_invite: Option<ThirdPartyInvite>,
 
             #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
-            pub blurhash: Option<String>,
+            blurhash: Option<String>,
 
             #[serde(skip_serializing_if = "Option::is_none")]
-            pub reason: Option<String>,
+            reason: Option<String>,
 
             #[serde(rename = "join_authorised_via_users_server")]
             #[serde(skip_serializing_if = "Option::is_none")]
-            pub join_authorized_via_users_server: Option<String>,
+            join_authorized_via_users_server: Option<String>,
+
+            #[serde(flatten, skip_serializing_if = "BTreeMap::is_empty")]
+            extra_data: BTreeMap<String, JsonValue>,
         }
 
         let RoomMemberEventData {
@@ -154,6 +162,7 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
             blurhash,
             reason,
             join_authorized_via_users_server,
+            extra_data,
         } = RoomMemberEventData::deserialize(deserializer)?;
 
         let join_authorized_via_users_server =
@@ -167,6 +176,7 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
             blurhash,
             reason,
             join_authorized_via_users_server,
+            extra_data,
         })
     }
 }
@@ -183,6 +193,7 @@ impl RoomMemberEventContent {
             blurhash: None,
             reason: None,
             join_authorized_via_users_server: None,
+            extra_data: Default::default(),
         }
     }
 

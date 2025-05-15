@@ -39,6 +39,7 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
+    println!("DDDDDDDDDDDDDDDDDDDDD  sync_events 0");
     let curr_sn = data::curr_sn()?;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
     let next_batch = curr_sn + 1;
@@ -123,6 +124,7 @@ pub async fn sync_events(
                 redacts: None,
                 hashes: EventHash { sha256: String::new() },
                 signatures: None,
+                extra_data: Default::default(),
             };
             left_rooms.insert(
                 room_id.to_owned(),

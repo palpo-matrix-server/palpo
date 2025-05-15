@@ -46,6 +46,8 @@ pub struct PduEvent {
     pub hashes: EventHash,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signatures: Option<Box<RawJsonValue>>, // BTreeMap<Box<ServerName>, BTreeMap<ServerSigningKeyId, String>>
+    #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
+    pub extra_data: BTreeMap<String, JsonValue>,
 }
 
 impl PduEvent {
@@ -237,7 +239,7 @@ impl PduEvent {
     }
     #[tracing::instrument]
     pub fn to_state_event_value(&self) -> JsonValue {
-        let mut data = json!({
+        let JsonValue::Object(mut data) = json!({
             "content": self.content,
             "type": self.event_ty,
             "event_id": *self.event_id,
@@ -245,13 +247,21 @@ impl PduEvent {
             "origin_server_ts": self.origin_server_ts,
             "room_id": self.room_id,
             "state_key": self.state_key,
-        });
+        }) else {
+            panic!("Invalid JSON value, never happened!");
+        };
 
         if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+            data.insert("unsigned".into(), json!(unsigned));
         }
 
-        data
+        for (key, value) in &self.extra_data {
+            if !data.contains_key(key) {
+                data.insert(key.clone(), value.clone());
+            }
+        }
+
+        JsonValue::Object(data)
     }
 
     #[tracing::instrument]
