@@ -14,7 +14,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbProfile, NewDbPresence};
 use crate::data::{connect, diesel_exists};
 use crate::exts::*;
-use crate::room::state;
+use crate::room::{timeline, state};
 use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok};
 
 pub fn public_router() -> Router {
@@ -193,7 +193,7 @@ async fn set_avatar_url(
         // );
         // let state_lock = mutex_state.lock().await;
 
-        let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
     }
 
     empty_ok()
@@ -286,7 +286,7 @@ async fn set_display_name(
         // );
         // let state_lock = mutex_state.lock().await;
 
-        let _ = crate::room::timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
 
         // Presence update
         crate::data::user::set_presence(

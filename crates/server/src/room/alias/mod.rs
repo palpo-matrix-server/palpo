@@ -14,7 +14,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUser;
 use crate::exts::*;
-use crate::room::StateEventType;
+use crate::room::{state, StateEventType};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, config};
 
 mod remote;
@@ -196,12 +196,13 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
 }
 
 #[tracing::instrument]
-pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
+pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
     let room_id = crate::room::resolve_local_alias(alias_id)?;
     if user_can_remove_alias(alias_id, user)? {
         let state_alias = crate::room::state::get_canonical_alias(&room_id);
 
         if state_alias.is_ok() {
+            let state_lock = state::lock_room(&room_id).await;
             crate::room::timeline::build_and_append_pdu(
                 PduBuilder {
                     event_type: TimelineEventType::RoomCanonicalAlias,
@@ -215,6 +216,7 @@ pub fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
                 },
                 &user.id,
                 &room_id,
+                &state_lock,
             )
             .ok();
         }

@@ -246,6 +246,7 @@ pub(super) async fn send_redact(
 ) -> JsonResult<RedactEventResBody> {
     let authed = depot.authed_info()?;
 
+    let state_lock = state::lock_room(&args.room_id).await;
     let event_id = crate::room::timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomRedaction,
@@ -259,6 +260,7 @@ pub(super) async fn send_redact(
         },
         authed.user_id(),
         &args.room_id,
+        &state_lock,
     )?
     .event_id;
 

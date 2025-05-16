@@ -253,7 +253,6 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
-    // TODO: state lock
     if authed.user().is_guest && appservice.is_none() && !state::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
@@ -290,6 +289,7 @@ async fn join_room_local(
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("We can join locally");
+    let state_lock = state::lock_room(&room_id).await;
     let join_rules_event_content =
         state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
             .ok();
@@ -352,6 +352,7 @@ async fn join_room_local(
         },
         user_id,
         room_id,
+        &state_lock,
     ) {
         Ok(_event_id) => return Ok(()),
         Err(e) => e,
@@ -519,6 +520,7 @@ async fn join_room_remote(
 
     // We keep the "event_id" in the pdu only in v1 or v2 rooms
     maybe_strip_event_id(&mut join_event_stub, &room_version_id);
+
 
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
     crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
@@ -762,7 +764,8 @@ async fn join_room_remote(
     let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
 
     info!("Appending new room join event");
-    crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow())).unwrap();
+    let state_lock = state::lock_room(&room_id).await;
+    crate::room::timeline::append_pdu(&parsed_join_pdu, join_event, once(parsed_join_pdu.event_id.borrow()), &state_lock).unwrap();
 
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time

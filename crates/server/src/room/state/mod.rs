@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
+
+use diesel::prelude::*;
+use lru_cache::LruCache;
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
+
 mod diff;
 pub use diff::*;
 mod field;
@@ -6,14 +14,7 @@ mod frame;
 pub use frame::*;
 use palpo_core::Seqnum;
 mod graph;
-use std::collections::HashMap;
-use std::sync::{Arc, LazyLock, Mutex};
-
-use diesel::prelude::*;
 pub use graph::*;
-use lru_cache::LruCache;
-use serde::Deserialize;
-use serde::de::DeserializeOwned;
 
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -34,7 +35,12 @@ use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
-use crate::{AppError, AppResult, MatrixError, utils};
+use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, RoomMutexMap, utils};
+
+pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100)));
+pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
+    LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_state_deltas, primary_key(frame_id))]
@@ -55,10 +61,10 @@ pub struct DbRoomStateDelta {
 //     pub disposed: Vec<u8>,
 // }
 
-pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
-    LazyLock::new(|| Mutex::new(LruCache::new(100)));
-pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
-    LazyLock::new(|| Mutex::new(LruCache::new(100)));
+pub async fn lock_room(room_id: &RoomId) -> RoomMutexGuard {
+    const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
+    ROOM_STATE_MUTEX.get().expect("must success").lock(room_id).await
+}
 
 pub fn server_joined_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
     room_joined_servers::table
@@ -311,7 +317,7 @@ pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<Arc<EventId>>>
     Ok(event_ids)
 }
 
-pub fn set_forward_extremities<'a, I>(room_id: &'a RoomId, event_ids: I) -> AppResult<()>
+pub fn set_forward_extremities<'a, I>(room_id: &'a RoomId, event_ids: I, _lock: &RoomMutexGuard) -> AppResult<()>
 where
     I: Iterator<Item = &'a EventId> + Send + 'a,
 {

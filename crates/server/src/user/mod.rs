@@ -20,6 +20,7 @@ use crate::core::identifiers::*;
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbPassword, NewDbUser};
 use crate::data::{self, connect};
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, MatrixError, PduBuilder};
 
 pub struct SlidingSyncCache {
@@ -119,7 +120,7 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
     // }
 
     for room_id in all_joined_rooms {
-        // let state_lock = crate::rooms::state.mutex.lock(room_id).await;
+        let state_lock = state::lock_room(room_id).await;
 
         let room_power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
             room_id,
@@ -144,7 +145,7 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
                 PduBuilder::state(String::new(), &power_levels_content),
                 user_id,
                 room_id,
-                // &state_lock,
+                &state_lock,
             ) {
                 Err(e) => {
                     warn!(%room_id, %user_id, "Failed to demote user's own power level: {e}");

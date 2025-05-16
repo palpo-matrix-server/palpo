@@ -503,6 +503,8 @@ pub(super) async fn create_room(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id = RoomId::new(config::server_name());
+
+    let state_lock = state::lock_room(&room_id).await;
     crate::room::ensure_room(&room_id, &config::default_room_version())?;
 
     if !config::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
@@ -591,6 +593,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 2. Let the room creator join
@@ -614,6 +617,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 3. Power levels
@@ -648,6 +652,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 4. Canonical room alias
@@ -665,6 +670,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &state_lock,
         )
         .unwrap();
     }
@@ -685,6 +691,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 5.2 History Visibility
@@ -698,6 +705,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 5.3 Guest Access
@@ -714,6 +722,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &state_lock,
     )?;
 
     // 6. Events listed in initial_state
@@ -731,7 +740,7 @@ pub(super) async fn create_room(
             continue;
         }
 
-        crate::room::timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id)?;
+        crate::room::timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
     }
 
     // 7. Events implied by name and topic
@@ -746,6 +755,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &state_lock,
         )?;
     }
 
@@ -760,6 +770,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &state_lock,
         )?;
     }
 

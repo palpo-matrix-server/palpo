@@ -16,8 +16,8 @@ use crate::core::federation::knock::{
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
-use crate::room::state::CompressedEvent;
-use crate::room::state::{self, DeltaInfo};
+use state::{CompressedEvent, DeltaInfo};
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data};
 
 pub async fn knock_room_by_id(
@@ -69,12 +69,12 @@ async fn knock_room_local(
 ) -> AppResult<()> {
     use RoomVersionId::*;
     info!("We can knock locally");
-    let room_version_id = crate::room::state::get_room_version(room_id)?;
+    let room_version_id = state::get_room_version(room_id)?;
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
     }
 
-    let join_rule = crate::room::state::get_join_rule(room_id)?;
+    let join_rule = state::get_join_rule(room_id)?;
     if !matches!(
         join_rule,
         JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
@@ -91,7 +91,7 @@ async fn knock_room_local(
     };
 
     // Try normal knock first
-    let Err(error) = crate::room::timeline::build_and_append_pdu(
+    let Err(error) = timeline::build_and_append_pdu(
         PduBuilder::state(sender_id.to_string(), &content),
         sender_id,
         room_id,
@@ -191,7 +191,7 @@ async fn knock_room_local(
     )?;
 
     info!("Appending room knock event locally");
-    crate::room::timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
+    timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
 
     Ok(())
 }
@@ -315,7 +315,7 @@ async fn knock_room_remote(
             continue;
         };
 
-        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id).optional()? {
+        let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
             let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
@@ -332,7 +332,7 @@ async fn knock_room_remote(
             )
             .await
             .map(|_| ());
-            crate::room::timeline::get_pdu(&event_id)?
+            timeline::get_pdu(&event_id)?
             // let pdu = PduEvent::from_json_value(
             //     &event_id,
             //     data::next_sn()?,
@@ -364,9 +364,9 @@ async fn knock_room_remote(
     } = state::save_state(room_id, Arc::new(compressed))?;
 
     debug!("Forcing state for new room");
-    crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
+    state::force_state(room_id, frame_id, appended, disposed)?;
 
-    let frame_id = crate::room::state::append_to_state(&parsed_knock_pdu)?;
+    let frame_id = state::append_to_state(&parsed_knock_pdu)?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
     crate::membership::update_membership(
@@ -380,7 +380,7 @@ async fn knock_room_remote(
     )?;
 
     info!("Appending room knock event locally");
-    crate::room::timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
+    timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
 
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment

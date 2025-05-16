@@ -31,7 +31,7 @@ use crate::data::{self, connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, utils};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -145,8 +145,13 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 /// in `append_pdu`.
 ///
 /// Returns pdu id
-#[tracing::instrument(skip(pdu, pdu_json, leaves))]
-pub fn append_pdu<'a, L>(pdu: &'a PduEvent, mut pdu_json: CanonicalJsonObject, leaves: L) -> AppResult<()>
+#[tracing::instrument(skip_all)]
+pub fn append_pdu<'a, L>(
+    pdu: &'a PduEvent,
+    mut pdu_json: CanonicalJsonObject,
+    leaves: L,
+    lock: &RoomMutexGuard,
+) -> AppResult<()>
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
@@ -184,7 +189,7 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leaves)?;
+    state::set_forward_extremities(&pdu.room_id, leaves, lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
@@ -703,8 +708,13 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
     Ok(())
 }
 /// Creates a new persisted data unit and adds it to a room.
-#[tracing::instrument]
-pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &RoomId) -> AppResult<PduEvent> {
+#[tracing::instrument(skip_all)]
+pub fn build_and_append_pdu(
+    pdu_builder: PduBuilder,
+    sender: &UserId,
+    room_id: &RoomId,
+    lock: &RoomMutexGuard,
+) -> AppResult<PduEvent> {
     if let Some(state_key) = &pdu_builder.state_key {
         if let Ok(curr_state) =
             state::get_room_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None)
@@ -729,9 +739,9 @@ pub fn build_and_append_pdu(pdu_builder: PduBuilder, sender: &UserId, room_id: &
     append_pdu(
         &pdu,
         pdu_json,
-        // Since this PDU references all pdu_leaves we can update the leaves
-        // of the room
+        // Since this PDU references all pdu_leaves we can update the leaves of the room
         once(pdu.event_id.borrow()),
+        lock,
     )?;
     let frame_id = state::append_to_state(&pdu)?;
 
@@ -769,6 +779,7 @@ pub fn append_incoming_pdu<'a, L>(
     new_room_leaves: L,
     state_ids_compressed: Arc<CompressedState>,
     soft_fail: bool,
+		state_lock: &'a RoomMutexGuard,
 ) -> AppResult<()>
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
@@ -779,11 +790,11 @@ where
 
     if soft_fail {
         // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
-        state::set_forward_extremities(&pdu.room_id, new_room_leaves)?;
+        state::set_forward_extremities(&pdu.room_id, new_room_leaves, state_lock)?;
         return Ok(());
     }
 
-    timeline::append_pdu(pdu, pdu_json, new_room_leaves)
+    timeline::append_pdu(pdu, pdu_json, new_room_leaves, state_lock)
 }
 
 /// Returns an iterator over all PDUs in a room.

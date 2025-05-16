@@ -105,6 +105,7 @@ pub async fn invite_user(
         return crate::sending::send_pdu_room(room_id, &event_id);
     }
 
+    let state_lock = state::lock_room(&room_id).await;
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -124,7 +125,7 @@ pub async fn invite_user(
             ..Default::default()
         },
         inviter_id,
-        room_id,
+        room_id, &state_lock
     )?;
 
     Ok(())

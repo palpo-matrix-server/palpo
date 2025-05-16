@@ -20,6 +20,7 @@ use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
 use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
+use crate::utils::{MutexMap, MutexMapGuard};
 use crate::{AppResult, MatrixError, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
@@ -31,6 +32,9 @@ pub const RANDOM_USER_ID_LENGTH: usize = 10;
 
 pub type TlsNameMap = HashMap<String, (Vec<IpAddr>, u16)>;
 type RateLimitState = (Instant, u32); // Time if last failed try, number of failed tries
+
+pub type RoomMutexMap = MutexMap<OwnedRoomId, ()>;
+pub type RoomMutexGuard = MutexMapGuard<OwnedRoomId, ()>;
 
 pub type LazyRwLock<T> = LazyLock<RwLock<T>>;
 pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);
