@@ -325,8 +325,9 @@ pub async fn sync_events(
         }
         for joined_user in &joined_users {
             if !presence_updates.contains_key(joined_user) {
-                let presence = data::user::last_presence(joined_user)?;
-                presence_updates.insert(joined_user.to_owned(), presence);
+                if let Ok(presence) = data::user::last_presence(joined_user) {
+                    presence_updates.insert(joined_user.to_owned(), presence);
+                }
             }
         }
     }
