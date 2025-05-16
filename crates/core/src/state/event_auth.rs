@@ -738,7 +738,6 @@ fn is_membership_change_allowed(
                 );
                 ReasonBool::False("Membership state of ban or join are invalid.")
             } else {
-                println!("jjjddddddddddddddddd");
                 ReasonBool::True
             }
         }

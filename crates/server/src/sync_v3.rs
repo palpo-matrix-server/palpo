@@ -300,7 +300,6 @@ pub async fn sync_events(
     if config::allow_local_presence() {
         // Take presence updates from this room
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn)? {
-            println!("============   {}=={}", user_id, sender_id);
             if user_id == sender_id || !crate::room::state::user_can_see_user(sender_id, &user_id)? {
                 continue;
             }
@@ -374,7 +373,6 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
-    println!("res_body: {:#?}", res_body);
     Ok(res_body)
 }
 
