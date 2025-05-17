@@ -84,7 +84,7 @@ pub struct DbRoomCurrent {
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
     const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
-    ROOM_STATE_MUTEX.get().expect("must success").lock(room_id).await
+    ROOM_STATE_MUTEX.get_or_init(Default::default).lock(room_id).await
 }
 
 pub fn create_room(new_room: NewDbRoom) -> AppResult<OwnedRoomId> {
