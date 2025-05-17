@@ -13,7 +13,8 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::event::PduBuilder;
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data};
+use crate::room::{self, state, timeline};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, membership};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
@@ -29,22 +30,22 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !crate::room::is_server_joined_room(config::server_name(), room_id)?
+    if !room::is_server_joined_room(config::server_name(), room_id)?
         && room_id
             .server_name()
             .map_err(|name| AppError::public(format!("Bad room id, server name is invalid: `{name}`.")))?
             != config::server_name()
-        && !crate::room::user::is_knocked(user_id, room_id)?
+        && !room::user::is_knocked(user_id, room_id)?
     {
         match leave_room_remote(user_id, room_id).await {
             Err(e) => {
                 warn!("Failed to leave room {} remotely: {}", user_id, e);
             }
             Ok((event_id, event_sn)) => {
-                let last_state = crate::room::state::get_user_state(user_id, room_id)?;
+                let last_state = state::get_user_state(user_id, room_id)?;
 
                 // We always drop the invite, we can't rely on other servers
-                crate::membership::update_membership(
+                membership::update_membership(
                     &event_id,
                     event_sn,
                     room_id,
@@ -56,13 +57,12 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
-        let member_event =
-            crate::room::state::get_room_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
+        let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             warn!("Trying to leave a room you are not a member of.");
-            // crate::room::timeline::build_and_append_pdu(
+            // timeline::build_and_append_pdu(
             //     PduBuilder::state(
             //         user_id.to_string(),
             //         &RoomMemberEventContent::new(MembershipState::Leave),
@@ -97,7 +97,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         event.membership = MembershipState::Leave;
         event.reason = reason;
 
-        crate::room::timeline::build_and_append_pdu(
+        let state_lock = room::lock_state(&room_id).await;
+        timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomMember,
                 content: to_raw_json_value(&event).expect("event is valid, we just created it"),
@@ -106,6 +107,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             },
             user_id,
             room_id,
+            &state_lock,
         )?;
     }
 
@@ -115,7 +117,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
 async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(OwnedEventId, Seqnum)> {
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
     let invite_state =
-        crate::room::state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
+        state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
 
     let servers: HashSet<_> = invite_state
         .iter()

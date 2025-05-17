@@ -6,6 +6,7 @@ use salvo::prelude::*;
 
 use crate::core::OwnedUserId;
 use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
+use crate::room::state;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
@@ -28,7 +29,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
     let sender_id = authed.user_id();
     let user_id = user_id.into_inner();
 
-    if !crate::room::state::user_can_see_user(sender_id, &user_id)? {
+    if !state::user_can_see_user(sender_id, &user_id)? {
         return Err(MatrixError::unauthorized("You cannot get the presence state of this user").into());
     }
 

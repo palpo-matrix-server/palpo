@@ -218,7 +218,7 @@ async fn register(
     if !is_guest {
         if let Ok(admin_room) = crate::admin::get_admin_room() {
             if crate::room::user::join_count(&admin_room)? == 1 {
-                crate::admin::make_user_admin(&user_id, display_name)?;
+                crate::admin::make_user_admin(&user_id, display_name).await?;
                 warn!("Granting {} admin privileges as the first user", user_id);
             } else if body.login_type != Some(LoginType::Appservice) {
                 info!("New user {} registered on this server.", user_id);

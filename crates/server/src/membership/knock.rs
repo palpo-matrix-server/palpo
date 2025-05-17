@@ -16,9 +16,11 @@ use crate::core::federation::knock::{
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
-use crate::room::state::CompressedEvent;
-use crate::room::state::{self, DeltaInfo};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data};
+use crate::room::state::{CompressedEvent, DeltaInfo};
+use crate::room::{self, state, timeline};
+use crate::{
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, config, data,
+};
 
 pub async fn knock_room_by_id(
     sender_id: &UserId,
@@ -26,36 +28,36 @@ pub async fn knock_room_by_id(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
-    // let state_lock = services.rooms.state.mutex.lock(room_id).await;
-    if crate::room::user::is_invited(sender_id, room_id)? {
+    let state_lock = room::lock_state(&room_id).await;
+    if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
             MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.", None).into(),
         );
     }
 
-    if crate::room::user::is_joined(sender_id, room_id)? {
+    if room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.", None).into());
     }
 
-    if crate::room::user::is_knocked(sender_id, room_id)? {
+    if room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
         return Ok(());
     }
 
-    if let Ok(memeber) = state::get_member(room_id, sender_id) {
+    if let Ok(memeber) = room::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
             return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
         }
     }
 
-    let local_knock = crate::room::can_local_work_for_room(room_id, servers)?;
+    let local_knock = room::can_local_work_for(room_id, servers)?;
     if local_knock {
-        knock_room_local(sender_id, room_id, reason, servers).await?;
+        knock_room_local(sender_id, room_id, reason, servers, state_lock).await?;
     } else {
-        knock_room_remote(sender_id, room_id, reason, servers).await?;
+        knock_room_remote(sender_id, room_id, reason, servers, state_lock).await?;
     }
 
     Ok(())
@@ -66,15 +68,16 @@ async fn knock_room_local(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
+    state_lock: RoomMutexGuard,
 ) -> AppResult<()> {
     use RoomVersionId::*;
     info!("We can knock locally");
-    let room_version_id = crate::room::state::get_room_version(room_id)?;
+    let room_version_id = room::get_version(room_id)?;
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
     }
 
-    let join_rule = crate::room::state::get_join_rule(room_id)?;
+    let join_rule = room::get_join_rule(room_id)?;
     if !matches!(
         join_rule,
         JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
@@ -91,10 +94,11 @@ async fn knock_room_local(
     };
 
     // Try normal knock first
-    let Err(error) = crate::room::timeline::build_and_append_pdu(
+    let Err(error) = timeline::build_and_append_pdu(
         PduBuilder::state(sender_id.to_string(), &content),
         sender_id,
         room_id,
+        &state_lock,
     ) else {
         return Ok(());
     };
@@ -191,7 +195,12 @@ async fn knock_room_local(
     )?;
 
     info!("Appending room knock event locally");
-    crate::room::timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
+    timeline::append_pdu(
+        &parsed_knock_pdu,
+        knock_event,
+        once(parsed_knock_pdu.event_id.borrow()),
+        &state_lock,
+    )?;
 
     Ok(())
 }
@@ -201,6 +210,7 @@ async fn knock_room_remote(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
+    state_lock: RoomMutexGuard,
 ) -> AppResult<()> {
     info!("Knocking {room_id} over federation.");
     println!("Knocking {room_id} over federation.");
@@ -315,7 +325,7 @@ async fn knock_room_remote(
             continue;
         };
 
-        let pdu = if let Some(pdu) = crate::room::timeline::get_pdu(&event_id).optional()? {
+        let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
             let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
@@ -332,7 +342,7 @@ async fn knock_room_remote(
             )
             .await
             .map(|_| ());
-            crate::room::timeline::get_pdu(&event_id)?
+            timeline::get_pdu(&event_id)?
             // let pdu = PduEvent::from_json_value(
             //     &event_id,
             //     data::next_sn()?,
@@ -364,9 +374,9 @@ async fn knock_room_remote(
     } = state::save_state(room_id, Arc::new(compressed))?;
 
     debug!("Forcing state for new room");
-    crate::room::state::force_state(room_id, frame_id, appended, disposed)?;
+    state::force_state(room_id, frame_id, appended, disposed)?;
 
-    let frame_id = crate::room::state::append_to_state(&parsed_knock_pdu)?;
+    let frame_id = state::append_to_state(&parsed_knock_pdu)?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
     crate::membership::update_membership(
@@ -380,7 +390,12 @@ async fn knock_room_remote(
     )?;
 
     info!("Appending room knock event locally");
-    crate::room::timeline::append_pdu(&parsed_knock_pdu, knock_event, once(parsed_knock_pdu.event_id.borrow()))?;
+    timeline::append_pdu(
+        &parsed_knock_pdu,
+        knock_event,
+        once(parsed_knock_pdu.event_id.borrow()),
+        &state_lock,
+    )?;
 
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment

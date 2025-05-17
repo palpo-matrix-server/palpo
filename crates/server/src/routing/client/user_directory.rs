@@ -9,7 +9,8 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok};
+use crate::room::state;
+use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok, room};
 
 pub fn authed_router() -> Router {
     Router::with_path("user_directory/search")
@@ -48,22 +49,17 @@ fn search(
             avatar_url: data::user::avatar_url(&user_id).ok().flatten(),
         };
 
-        let user_is_in_public_rooms = data::user::joined_rooms(&user_id).ok()?.into_iter().any(|room| {
-            crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
-                &room,
-                &StateEventType::RoomJoinRules,
-                "",
-                None,
-            )
-            .map(|r| r.join_rule == JoinRule::Public)
-            .unwrap_or(false)
+        let user_is_in_public_rooms = data::user::joined_rooms(&user_id).ok()?.into_iter().any(|room_id| {
+            room::get_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
+                .map(|r| r.join_rule == JoinRule::Public)
+                .unwrap_or(false)
         });
 
         if user_is_in_public_rooms {
             return Some(user);
         }
 
-        let user_is_in_shared_rooms = !crate::room::user::get_shared_rooms(vec![authed.user_id().clone(), user_id])
+        let user_is_in_shared_rooms = !room::user::get_shared_rooms(vec![authed.user_id().clone(), user_id])
             .ok()?
             .is_empty();
 

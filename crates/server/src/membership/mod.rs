@@ -17,7 +17,7 @@ use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
 use crate::room::state;
-use crate::{AppError, AppResult, MatrixError, SigningKeys, data};
+use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
 
 mod banned;
 mod forget;
@@ -130,18 +130,14 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !crate::room::user::once_joined(user_id, room_id)? {
+            if !room::user::once_joined(user_id, room_id)? {
                 // Add the user ID to the join list then
                 // db::mark_as_once_joined(user_id, room_id)?;
 
                 // Check if the room has a predecessor
-                if let Ok(Some(predecessor)) = crate::room::state::get_room_state_content::<RoomCreateEventContent>(
-                    room_id,
-                    &StateEventType::RoomCreate,
-                    "",
-                    None,
-                )
-                .map(|c| c.predecessor)
+                if let Ok(Some(predecessor)) =
+                    room::get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
+                        .map(|c| c.predecessor)
                 {
                     // Copy user settings from predecessor to the current room:
                     // - Push rules
@@ -329,6 +325,6 @@ pub fn update_membership(
         _ => {}
     }
     crate::room::update_joined_servers(room_id)?;
-    crate::room::update_room_currents(room_id)?;
+    crate::room::update_currents(room_id)?;
     Ok(())
 }

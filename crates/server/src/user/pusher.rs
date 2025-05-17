@@ -17,7 +17,8 @@ use crate::data::schema::*;
 use crate::data::user::pusher::NewDbPusher;
 use crate::data::{self, connect};
 use crate::event::PduEvent;
-use crate::{AppError, AppResult, AuthedInfo};
+use crate::room::{state, timeline};
+use crate::{AppError, AppResult, AuthedInfo, room};
 
 pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
     match pusher {
@@ -147,7 +148,7 @@ pub async fn send_push_notice(
     let mut notify = None;
     let mut tweaks = Vec::new();
 
-    let power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
+    let power_levels = room::get_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
         "",
@@ -236,7 +237,7 @@ async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: 
 
                 notification.sender_display_name = data::user::display_name(&event.sender).ok().flatten();
 
-                notification.room_name = crate::room::state::get_name(&event.room_id).ok();
+                notification.room_name = room::get_name(&event.room_id).ok();
 
                 crate::sending::post(Url::parse(&http.url)?)
                     .stuff(SendEventNotificationReqBody::new(notification))?

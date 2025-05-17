@@ -17,6 +17,7 @@ use crate::data;
 use crate::event::ignored_filter;
 use crate::extract_variant;
 use crate::room::filter_rooms;
+use crate::room::{self, state, timeline};
 use crate::routing::prelude::*;
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 
@@ -385,18 +386,18 @@ async fn process_rooms(
         let required_state = required_state_request
             .iter()
             .filter_map(|state| {
-                crate::room::state::get_room_state(room_id, &state.0, &state.1, None)
+                room::get_state(room_id, &state.0, &state.1, None)
                     .map(|s| s.to_sync_state_event())
                     .ok()
             })
             .collect::<Vec<_>>();
 
         // Heroes
-        let heroes: Vec<_> = crate::room::state::get_members(room_id)?
+        let heroes: Vec<_> = room::get_members(room_id)?
             .into_iter()
             .filter(|member| *member != sender_id)
             .filter_map(|user_id| {
-                crate::room::state::get_member(room_id, &user_id)
+                room::get_member(room_id, &user_id)
                     .ok()
                     .map(|member| sync_events::v5::SyncRoomHero {
                         user_id: user_id.into(),
@@ -432,22 +433,22 @@ async fn process_rooms(
         rooms.insert(
             room_id.clone(),
             SyncRoom {
-                name: crate::room::state::get_name(room_id).ok().or(name),
+                name: room::get_name(room_id).ok().or(name),
                 avatar: match heroes_avatar {
                     Some(heroes_avatar) => Some(heroes_avatar),
-                    _ => crate::room::state::get_avatar_url(room_id).ok().flatten(),
+                    _ => room::get_avatar_url(room_id).ok().flatten(),
                 },
                 initial: Some(room_since_sn == &0),
                 is_dm: None,
                 invite_state,
                 unread_notifications: sync_events::UnreadNotificationsCount {
                     highlight_count: Some(
-                        crate::room::user::highlight_count(sender_id, room_id)?
+                        room::user::highlight_count(sender_id, room_id)?
                             .try_into()
                             .expect("notification count can't go that high"),
                     ),
                     notification_count: Some(
-                        crate::room::user::notification_count(sender_id, room_id)?
+                        room::user::notification_count(sender_id, room_id)?
                             .try_into()
                             .expect("notification count can't go that high"),
                     ),
@@ -522,15 +523,14 @@ fn collect_e2ee<'a>(
     device_list_changes.extend(data::user::keys_changed_users(sender_id, global_since_sn, None)?);
 
     for room_id in all_joined_rooms {
-        let Ok(current_frame_id) = crate::room::state::get_room_frame_id(room_id, None) else {
+        let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) else {
             error!("Room {room_id} has no state");
             continue;
         };
 
         let since_frame_id = crate::event::get_frame_id(room_id, global_since_sn).ok();
 
-        let encrypted_room =
-            crate::room::state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
+        let encrypted_room = state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
 
         if let Some(since_frame_id) = since_frame_id {
             // Skip if there are only timeline changes
@@ -538,10 +538,9 @@ fn collect_e2ee<'a>(
                 continue;
             }
 
-            let since_encryption =
-                crate::room::state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
+            let since_encryption = state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
-            let since_sender_member = crate::room::state::get_state_content::<RoomMemberEventContent>(
+            let since_sender_member = state::get_state_content::<RoomMemberEventContent>(
                 since_frame_id,
                 &StateEventType::RoomMember,
                 sender_id.as_str(),
@@ -555,13 +554,13 @@ fn collect_e2ee<'a>(
             let new_encrypted_room = encrypted_room && since_encryption.is_none();
 
             if encrypted_room {
-                let current_state_ids = crate::room::state::get_full_state_ids(current_frame_id)?;
+                let current_state_ids = state::get_full_state_ids(current_frame_id)?;
 
-                let since_state_ids: HashMap<_, _> = crate::room::state::get_full_state_ids(since_frame_id)?;
+                let since_state_ids: HashMap<_, _> = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&Arc::from(&*id)) {
-                        let Ok(pdu) = crate::room::timeline::get_pdu(&id) else {
+                        let Ok(pdu) = timeline::get_pdu(&id) else {
                             error!("Pdu in state not found: {id}");
                             continue;
                         };
@@ -593,7 +592,7 @@ fn collect_e2ee<'a>(
                 if joined_since_last_sync || new_encrypted_room {
                     // If the user is in a new encrypted room, give them all joined users
                     device_list_changes.extend(
-                        crate::room::state::get_members(room_id)?
+                        room::get_members(room_id)?
                             .into_iter()
                             // Don't send key updates from the sender to the sender
                             .filter(|user_id| sender_id != *user_id)

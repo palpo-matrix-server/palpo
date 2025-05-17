@@ -3,7 +3,7 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsCh
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
-use crate::room::state;
+use crate::room::{self, state};
 use crate::{AppError, AppResult, MatrixError, config, exts::*};
 
 pub async fn get_public_rooms(
@@ -62,24 +62,24 @@ fn get_local_public_rooms(
         }
     }
 
-    let mut all_rooms: Vec<_> = crate::room::public_room_ids()?
+    let mut all_rooms: Vec<_> = room::public_room_ids()?
         .into_iter()
         .map(|room_id| {
             let chunk = PublicRoomsChunk {
-                canonical_alias: state::get_canonical_alias(&room_id).ok().flatten(),
-                name: state::get_name(&room_id).ok(),
-                num_joined_members: crate::room::joined_member_count(&room_id)
+                canonical_alias: room::get_canonical_alias(&room_id).ok().flatten(),
+                name: room::get_name(&room_id).ok(),
+                num_joined_members: room::joined_member_count(&room_id)
                     .unwrap_or_else(|_| {
                         warn!("Room {} has no member count", room_id);
                         0
                     })
                     .try_into()
                     .expect("user count should not be that big"),
-                topic: state::get_room_topic(&room_id).ok(),
-                world_readable: state::is_world_readable(&room_id),
-                guest_can_join: state::guest_can_join(&room_id),
-                avatar_url: state::get_avatar_url(&room_id).ok().flatten(),
-                join_rule: state::get_room_state_content::<RoomJoinRulesEventContent>(
+                topic: room::get_topic(&room_id).ok(),
+                world_readable: room::is_world_readable(&room_id),
+                guest_can_join: room::guest_can_join(&room_id),
+                avatar_url: room::get_avatar_url(&room_id).ok().flatten(),
+                join_rule: room::get_state_content::<RoomJoinRulesEventContent>(
                     &room_id,
                     &StateEventType::RoomJoinRules,
                     "",
@@ -92,7 +92,7 @@ fn get_local_public_rooms(
                     _ => None,
                 })?
                 .ok_or_else(|| AppError::public("Missing room join rule event for room."))?,
-                room_type: state::get_room_type(&room_id).ok().flatten(),
+                room_type: room::get_room_type(&room_id).ok().flatten(),
                 room_id,
             };
             Ok(chunk)

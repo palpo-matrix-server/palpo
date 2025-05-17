@@ -1,6 +1,7 @@
 use salvo::prelude::*;
 
 use crate::core::client::room::{ThreadsReqArgs, ThreadsResBody};
+use crate::room::state;
 use crate::{AuthArgs, DepotExt, JsonResult, json_ok};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/threads
@@ -21,9 +22,7 @@ pub(super) async fn list_threads(_aa: AuthArgs, args: ThreadsReqArgs, depot: &mu
 
     let threads = events
         .into_iter()
-        .filter(|(_, pdu)| {
-            crate::room::state::user_can_see_event(authed.user_id(), &args.room_id, &pdu.event_id).unwrap_or(false)
-        })
+        .filter(|(_, pdu)| state::user_can_see_event(authed.user_id(), &args.room_id, &pdu.event_id).unwrap_or(false))
         .collect::<Vec<_>>();
 
     json_ok(ThreadsResBody {

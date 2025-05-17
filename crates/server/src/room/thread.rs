@@ -8,6 +8,7 @@ use crate::core::serde::CanonicalJsonValue;
 use crate::data::connect;
 use crate::data::room::DbThread;
 use crate::data::schema::*;
+use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError, PduEvent};
 
 pub fn get_threads(
@@ -36,7 +37,7 @@ pub fn get_threads(
 
     let mut events = Vec::with_capacity(items.len());
     for (event_id, _) in items {
-        if let Ok(pdu) = crate::room::timeline::get_pdu(&event_id) {
+        if let Ok(pdu) = timeline::get_pdu(&event_id) {
             events.push((event_id, pdu));
         }
     }
@@ -44,10 +45,10 @@ pub fn get_threads(
 }
 
 pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
-    let root_pdu = crate::room::timeline::get_pdu(thread_id)?;
+    let root_pdu = timeline::get_pdu(thread_id)?;
 
-    let mut root_pdu_json = crate::room::timeline::get_pdu_json(thread_id)?
-        .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
+    let mut root_pdu_json =
+        timeline::get_pdu_json(thread_id)?.ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
 
     if let CanonicalJsonValue::Object(unsigned) = root_pdu_json
         .entry("unsigned".to_owned())
@@ -85,7 +86,7 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
             );
         }
 
-        crate::room::timeline::replace_pdu(thread_id, &root_pdu_json)?;
+        timeline::replace_pdu(thread_id, &root_pdu_json)?;
     }
 
     diesel::insert_into(threads::table)

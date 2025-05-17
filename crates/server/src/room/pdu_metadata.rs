@@ -9,6 +9,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::PduEvent;
+use crate::room::{state, timeline};
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {
@@ -168,11 +169,11 @@ pub fn get_relations(
     let relations = query.limit(limit as i64).load::<DbEventRelation>(&mut connect()?)?;
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Ok(mut pdu) = crate::room::timeline::get_pdu(&relation.child_id) {
+        if let Ok(mut pdu) = timeline::get_pdu(&relation.child_id) {
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }
-            if crate::room::state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false) {
+            if state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false) {
                 pdus.push((relation.child_sn, pdu));
             }
         }

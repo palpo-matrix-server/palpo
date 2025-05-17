@@ -10,6 +10,7 @@ use crate::core::Seqnum;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
@@ -119,7 +120,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        let pdu = crate::room::timeline::get_pdu(&event_id)?;
+        let pdu = timeline::get_pdu(&event_id)?;
         if pdu.room_id != room_id {
             tracing::error!(
                 ?event_id,

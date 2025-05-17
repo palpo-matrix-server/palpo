@@ -11,7 +11,8 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok};
+use crate::room::{state, timeline};
+use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -71,7 +72,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events = crate::room::timeline::get_pdus_forward(
+            let events = timeline::get_pdus_forward(
                 authed.user_id(),
                 &args.room_id,
                 from,
@@ -105,20 +106,14 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         crate::core::Direction::Backward => {
-            crate::room::timeline::backfill_if_required(&args.room_id, from).await?;
+            timeline::backfill_if_required(&args.room_id, from).await?;
             let from = if let Some(until_sn) = until_sn {
                 until_sn.min(from)
             } else {
                 from
             };
-            let events = crate::room::timeline::get_pdus_backward(
-                authed.user_id(),
-                &args.room_id,
-                from,
-                None,
-                limit,
-                Some(&args.filter),
-            )?;
+            let events =
+                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, limit, Some(&args.filter))?;
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
@@ -148,9 +143,7 @@ pub(super) async fn get_messages(
 
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
-        if let Ok(member_event) =
-            crate::room::state::get_room_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None)
-        {
+        if let Ok(member_event) = room::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None) {
             resp.state.push(member_event.to_state_event());
         }
     }
@@ -196,6 +189,7 @@ pub(super) async fn send_message(
     let _content: JsonValue =
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
 
+    let state_lock = room::lock_state(&args.room_id).await;
     // Check if this is a new transaction id
     if let Some(event_id) = crate::transaction_id::get_event_id(
         &args.txn_id,
@@ -209,7 +203,7 @@ pub(super) async fn send_message(
     let mut unsigned = BTreeMap::new();
     unsigned.insert("transaction_id".to_owned(), args.txn_id.to_string().into());
 
-    let event_id = crate::room::timeline::build_and_append_pdu(
+    let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
@@ -218,6 +212,7 @@ pub(super) async fn send_message(
         },
         authed.user_id(),
         &args.room_id,
+        &state_lock,
     )?
     .event_id;
 
@@ -247,6 +242,7 @@ pub(super) async fn post_message(
 ) -> JsonResult<SendMessageResBody> {
     let authed = depot.authed_info()?;
 
+    let state_lock = room::lock_state(&args.room_id).await;
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
         return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
@@ -260,7 +256,7 @@ pub(super) async fn post_message(
         return Err(MatrixError::bad_json("JSON body is not object.").into());
     }
 
-    let event_id = crate::room::timeline::build_and_append_pdu(
+    let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
@@ -269,6 +265,7 @@ pub(super) async fn post_message(
         },
         authed.user_id(),
         &args.room_id,
+        &state_lock,
     )?
     .event_id;
 

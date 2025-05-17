@@ -2,6 +2,7 @@ use salvo::prelude::*;
 
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
 use crate::core::{UnixMillis, user_id};
+use crate::room::{state, timeline};
 use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, config, json_ok};
 
 pub fn router() -> Router {
@@ -25,7 +26,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
 
     let limit = args.limit.min(100);
 
-    let all_events = crate::room::timeline::get_pdus_backward(
+    let all_events = timeline::get_pdus_backward(
         &user_id!("@doesntmatter:palpo.im"),
         &args.room_id,
         until,
@@ -36,8 +37,8 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {
-        if crate::room::state::server_can_see_event(origin, &args.room_id, &pdu.event_id)? {
-            if let Some(pdu_json) = crate::room::timeline::get_pdu_json(&pdu.event_id)? {
+        if state::server_can_see_event(origin, &args.room_id, &pdu.event_id)? {
+            if let Some(pdu_json) = timeline::get_pdu_json(&pdu.event_id)? {
                 events.push(crate::sending::convert_to_outgoing_federation_event(pdu_json));
             }
         }

@@ -8,7 +8,8 @@ use crate::core::events::{AnyStateEventContent, StateEventType};
 use crate::core::serde::RawJson;
 use crate::core::{EventId, RoomId, UserId};
 use crate::event::PduBuilder;
-use crate::{AppResult, IsRemoteOrLocal, MatrixError, config};
+use crate::room::{state, timeline};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, config, room};
 
 pub async fn send_state_event_for_key(
     user_id: &UserId,
@@ -18,7 +19,8 @@ pub async fn send_state_event_for_key(
     state_key: String,
 ) -> AppResult<Arc<EventId>> {
     allowed_to_send_state_event(room_id, event_type, &state_key, &json)?;
-    let event_id = crate::room::timeline::build_and_append_pdu(
+    let state_lock = room::lock_state(&room_id).await;
+    let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: event_type.to_string().into(),
             content: serde_json::from_value(serde_json::to_value(json)?)?,
@@ -27,6 +29,7 @@ pub async fn send_state_event_for_key(
         },
         user_id,
         room_id,
+        &state_lock,
     )?
     .event_id;
 

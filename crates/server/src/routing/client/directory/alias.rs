@@ -75,7 +75,7 @@ pub(super) async fn delete_alias(
         return Err(MatrixError::invalid_param("Alias is from another server.").into());
     }
 
-    crate::room::remove_alias(&alias, authed.user())?;
+    crate::room::remove_alias(&alias, authed.user()).await?;
 
     // TODO: update alt_aliases?
 
