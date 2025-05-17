@@ -1,5 +1,6 @@
 use crate::AppResult;
 use crate::core::{EventId, MatrixError, RoomId, ServerName};
+use crate::room::state;
 
 pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&EventId>) -> AppResult<()> {
     if !crate::room::is_server_joined_room(origin, room_id)? {
@@ -15,7 +16,7 @@ pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&Eve
     // let user_is_knocking = crate::room::members_knocked(room_id).count();
 
     if let Some(event_id) = event_id {
-        if !crate::room::state::server_can_see_event(origin, room_id, event_id)? {
+        if !state::server_can_see_event(origin, room_id, event_id)? {
             return Err(MatrixError::forbidden("Server is not allowed to see event.", None).into());
         }
     }

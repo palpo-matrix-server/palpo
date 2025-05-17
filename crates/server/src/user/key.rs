@@ -422,7 +422,7 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
     let joined_rooms = data::user::joined_rooms(user_id)?;
     for room_id in &joined_rooms {
         // // Don't send key updates to unencrypted rooms
-        // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
+        // if state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
         //     continue;
         // }
 
@@ -484,7 +484,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
     for room_id in &joined_rooms {
         // comment for testing
         // // Don't send key updates to unencrypted rooms
-        // if crate::room::state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
+        // if state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
         //     continue;
         // }
 

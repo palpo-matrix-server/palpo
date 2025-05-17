@@ -10,6 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::JsonValue;
 use crate::core::{MatrixError, signatures};
+use crate::room::{self, state};
 use crate::{AppError, AppResult, config, sending};
 
 mod access_check;
@@ -139,21 +140,18 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    if crate::room::user::is_joined(user_id, room_id).unwrap_or(false) {
+    if room::user::is_joined(user_id, room_id).unwrap_or(false) {
         // joining user is already joined, there is nothing we need to do
         return Ok(false);
     }
 
-    if crate::room::user::is_invited(user_id, room_id).unwrap_or(false) {
+    if room::user::is_invited(user_id, room_id).unwrap_or(false) {
         return Ok(true);
     }
 
-    let Ok(join_rules_event_content) = crate::room::state::get_room_state_content::<RoomJoinRulesEventContent>(
-        room_id,
-        &StateEventType::RoomJoinRules,
-        "",
-        None,
-    ) else {
+    let Ok(join_rules_event_content) =
+        room::get_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
+    else {
         return Ok(false);
     };
 
@@ -175,7 +173,7 @@ pub(crate) async fn user_can_perform_restricted_join(
                 None
             }
         })
-        .any(|m| crate::room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
+        .any(|m| room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
     {
         Ok(true)
     } else {

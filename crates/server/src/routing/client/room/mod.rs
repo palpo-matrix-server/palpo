@@ -41,9 +41,10 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::PduBuilder;
+use crate::room::timeline;
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok, hoops, json_ok,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok, hoops, json_ok, room,
 };
 
 const LIMIT_MAX: usize = 100;
@@ -135,15 +136,15 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     let sender_id = authed.user_id();
     let room_id = &args.room_id;
 
-    if !crate::room::state::user_can_see_state_events(sender_id, room_id)? {
+    if !room::state::user_can_see_events(sender_id, room_id)? {
         return Err(MatrixError::forbidden("No room preview available.", None).into());
     }
 
     let limit = LIMIT_MAX;
-    let events = crate::room::timeline::get_pdus_backward(sender_id, room_id, 0, None, limit, None)?;
+    let events = timeline::get_pdus_backward(sender_id, room_id, 0, None, limit, None)?;
 
-    let frame_id = crate::room::state::get_room_frame_id(room_id, None)?;
-    let state: Vec<_> = crate::room::state::get_full_state(frame_id)?
+    let frame_id = room::get_frame_id(room_id, None)?;
+    let state: Vec<_> = room::state::get_full_state(frame_id)?
         .into_iter()
         .map(|(_, event)| event.to_state_event())
         .collect::<Vec<_>>();
@@ -168,8 +169,8 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
         } else {
             None
         },
-        visibility: crate::room::directory::visibility(room_id).into(),
-        membership: crate::room::user::membership(sender_id, room_id),
+        visibility: room::directory::visibility(room_id).into(),
+        membership: room::user::membership(sender_id, room_id),
     })
 }
 /// `#POST /_matrix/client/r0/rooms/{room_id}/read_markers`
@@ -201,12 +202,12 @@ fn set_read_markers(
     }
 
     if body.private_read_receipt.is_some() || body.read_receipt.is_some() {
-        crate::room::user::reset_notification_counts(authed.user_id(), &room_id)?;
+        room::user::reset_notification_counts(authed.user_id(), &room_id)?;
     }
 
     if let Some(event_id) = &body.private_read_receipt {
         let event_sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
-        crate::room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
+        room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
     }
 
     if let Some(event) = &body.read_receipt {
@@ -225,7 +226,7 @@ fn set_read_markers(
         let mut receipt_content = BTreeMap::new();
         receipt_content.insert(event.to_owned(), receipts);
 
-        crate::room::receipt::update_read(
+        room::receipt::update_read(
             authed.user_id(),
             &room_id,
             ReceiptEvent {
@@ -246,12 +247,12 @@ fn set_read_markers(
 async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
     let authed = depot.authed_info()?;
 
-    if !crate::room::user::is_joined(authed.user_id(), &room_id)? {
+    if !room::user::is_joined(authed.user_id(), &room_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
     }
 
     json_ok(AliasesResBody {
-        aliases: crate::room::local_aliases_for_room(&room_id)?,
+        aliases: room::local_aliases_for_room(&room_id)?,
     })
 }
 
@@ -280,11 +281,12 @@ async fn upgrade(
 
     // Create a replacement room
     let replacement_room = RoomId::new(config::server_name());
-    crate::room::ensure_room(&replacement_room, &config::default_room_version())?;
+    room::ensure_room(&replacement_room, &config::default_room_version())?;
 
+    let state_lock = room::lock_state(&room_id).await;
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
-    let tombstone_event_id = crate::room::timeline::build_and_append_pdu(
+    let tombstone_event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomTombstone,
             content: to_raw_value(&RoomTombstoneEventContent {
@@ -296,16 +298,13 @@ async fn upgrade(
         },
         authed.user_id(),
         &room_id,
+        &state_lock,
     )?
     .event_id;
 
     // Get the old room creation event
-    let mut create_event_content = crate::room::state::get_room_state_content::<CanonicalJsonObject>(
-        &room_id,
-        &StateEventType::RoomCreate,
-        "",
-        None,
-    )?;
+    let mut create_event_content =
+        room::get_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "", None)?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -344,7 +343,7 @@ async fn upgrade(
         return Err(MatrixError::bad_json("Error forming creation event").into());
     }
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&create_event_content).expect("event is valid, we just created it"),
@@ -353,10 +352,11 @@ async fn upgrade(
         },
         authed.user_id(),
         &replacement_room,
+        &state_lock,
     )?;
 
     // Join the new room
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
@@ -376,6 +376,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &replacement_room,
+        &state_lock,
     )?;
 
     // Recommended transferable state events list from the specs
@@ -393,12 +394,12 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
-        let event_content = match crate::room::state::get_room_state(&room_id, &event_ty, "", None) {
+        let event_content = match room::get_state(&room_id, &event_ty, "", None) {
             Ok(v) => v.content.clone(),
             _ => continue, // Skipping missing events.
         };
 
-        crate::room::timeline::build_and_append_pdu(
+        timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: event_ty.to_string().into(),
                 content: event_content,
@@ -407,21 +408,18 @@ async fn upgrade(
             },
             authed.user_id(),
             &replacement_room,
+            &state_lock,
         )?;
     }
 
     // Moves any local aliases to the new room
-    for alias in crate::room::local_aliases_for_room(&room_id)? {
-        crate::room::set_alias(&replacement_room, &alias, authed.user_id())?;
+    for alias in room::local_aliases_for_room(&room_id)? {
+        room::set_alias(&replacement_room, &alias, authed.user_id())?;
     }
 
     // Get the old room power levels
-    let mut power_levels_event_content = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
-        &room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )?;
+    let mut power_levels_event_content =
+        room::get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
     let new_level = max(50, power_levels_event_content.users_default + 1);
@@ -429,7 +427,7 @@ async fn upgrade(
     power_levels_event_content.invite = new_level;
 
     // Modify the power levels in the old room to prevent sending of events and inviting new users
-    let _ = crate::room::timeline::build_and_append_pdu(
+    let _ = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&power_levels_event_content).expect("event is valid, we just created it"),
@@ -438,6 +436,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &room_id,
+        &state_lock,
     )?;
     // Return the replacement room id
     json_ok(UpgradeRoomResBody { replacement_room })
@@ -459,6 +458,7 @@ pub(super) async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) ->
     .await?;
     json_ok(body)
 }
+
 /// #POST /_matrix/client/r0/publicRooms
 /// Lists the public rooms on this server.
 ///
@@ -504,8 +504,8 @@ pub(super) async fn create_room(
     let sender_id = authed.user_id();
     let room_id = RoomId::new(config::server_name());
 
-    let state_lock = state::lock_room(&room_id).await;
-    crate::room::ensure_room(&room_id, &config::default_room_version())?;
+    let state_lock = room::lock_state(&room_id).await;
+    room::ensure_room(&room_id, &config::default_room_version())?;
 
     if !config::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
@@ -516,7 +516,7 @@ pub(super) async fn create_room(
         let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config::server_name()))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
-        if crate::room::resolve_local_alias(&alias).is_ok() {
+        if room::resolve_local_alias(&alias).is_ok() {
             return Err(MatrixError::room_in_use("Room alias already exists.").into());
         } else {
             Some(alias)
@@ -584,7 +584,7 @@ pub(super) async fn create_room(
     }
 
     // 1. The room create event
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&content).expect("event is valid, we just created it"),
@@ -597,7 +597,7 @@ pub(super) async fn create_room(
     )?;
 
     // 2. Let the room creator join
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
@@ -643,7 +643,7 @@ pub(super) async fn create_room(
     let power_levels_content =
         default_power_levels_content(body.power_level_content_override.as_ref(), &body.visibility, users)?;
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&power_levels_content)?,
@@ -657,7 +657,7 @@ pub(super) async fn create_room(
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
-        crate::room::timeline::build_and_append_pdu(
+        timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomCanonicalAlias,
                 content: to_raw_value(&RoomCanonicalAliasEventContent {
@@ -677,7 +677,7 @@ pub(super) async fn create_room(
 
     // 5. Events set by preset
     // 5.1 Join Rules
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomJoinRules,
             content: to_raw_value(&RoomJoinRulesEventContent::new(match preset {
@@ -695,7 +695,7 @@ pub(super) async fn create_room(
     )?;
 
     // 5.2 History Visibility
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomHistoryVisibility,
             content: to_raw_value(&RoomHistoryVisibilityEventContent::new(HistoryVisibility::Shared))
@@ -709,7 +709,7 @@ pub(super) async fn create_room(
     )?;
 
     // 5.3 Guest Access
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomGuestAccess,
             content: to_raw_value(&RoomGuestAccessEventContent::new(match preset {
@@ -740,12 +740,12 @@ pub(super) async fn create_room(
             continue;
         }
 
-        crate::room::timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
+        timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
     }
 
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
-        crate::room::timeline::build_and_append_pdu(
+        timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomName,
                 content: to_raw_value(&RoomNameEventContent::new(name.clone()))
@@ -760,7 +760,7 @@ pub(super) async fn create_room(
     }
 
     if let Some(topic) = &body.topic {
-        crate::room::timeline::build_and_append_pdu(
+        timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomTopic,
                 content: to_raw_value(&RoomTopicEventContent { topic: topic.clone() })
@@ -783,11 +783,11 @@ pub(super) async fn create_room(
 
     // Homeserver specific stuff
     if let Some(alias) = alias {
-        crate::room::set_alias(&room_id, &alias, sender_id)?;
+        room::set_alias(&room_id, &alias, sender_id)?;
     }
 
     if body.visibility == Visibility::Public {
-        crate::room::directory::set_public(&room_id, true)?;
+        room::directory::set_public(&room_id, true)?;
     }
 
     info!("{} created a room", sender_id);

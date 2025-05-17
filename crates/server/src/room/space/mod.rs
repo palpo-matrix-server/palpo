@@ -13,8 +13,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{OwnedRoomId, RoomId, UserId, space::SpaceRoomJoinRule};
 use crate::room::state;
-use crate::room::state::get_room_frame_id;
-use crate::{AppResult, GetUrlOrigin, MatrixError};
+use crate::{AppResult, GetUrlOrigin, MatrixError, room};
 
 mod pagination_token;
 pub use pagination_token::PaginationToken;
@@ -149,7 +148,7 @@ async fn get_summary_and_children_federation(
 
 /// Simply returns the stripped m.space.child events of a room
 fn get_stripped_space_child_events(room_id: &RoomId) -> AppResult<Vec<RawJson<HierarchySpaceChildEvent>>> {
-    let frame_id = get_room_frame_id(room_id, None)?;
+    let frame_id = super::get_frame_id(room_id, None)?;
     let child_events = get_full_state(frame_id)?
         .into_iter()
         .filter_map(|((state_event_type, state_key), pdu)| {
@@ -194,7 +193,7 @@ async fn get_room_summary(
     identifier: &Identifier<'_>,
 ) -> AppResult<SpaceHierarchyParentSummary> {
     let join_rule =
-        state::get_room_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
+        super::get_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
             .map_or(JoinRule::Invite, |c: RoomJoinRulesEventContent| c.join_rule);
 
     let allowed_room_ids = state::allowed_room_ids(join_rule.clone());
@@ -206,16 +205,16 @@ async fn get_room_summary(
         return Err(MatrixError::forbidden("User is not allowed to see the room", None).into());
     }
 
-    let name = state::get_name(room_id).ok();
-    let topic = state::get_room_topic(room_id).ok();
-    let room_type = state::get_room_type(room_id).ok().flatten();
-    let world_readable = state::is_world_readable(room_id);
-    let guest_can_join = state::guest_can_join(room_id);
-    let num_joined_members = crate::room::joined_member_count(room_id).unwrap_or(0);
-    let canonical_alias = state::get_canonical_alias(room_id).ok().flatten();
-    let avatar_url = state::get_avatar_url(room_id).ok().flatten();
-    let room_version = state::get_room_version(room_id).ok();
-    let encryption = state::get_room_encryption(room_id).ok();
+    let name = super::get_name(room_id).ok();
+    let topic = super::get_topic(room_id).ok();
+    let room_type = super::get_room_type(room_id).ok().flatten();
+    let world_readable = super::is_world_readable(room_id);
+    let guest_can_join = super::guest_can_join(room_id);
+    let num_joined_members = super::joined_member_count(room_id).unwrap_or(0);
+    let canonical_alias = super::get_canonical_alias(room_id).ok().flatten();
+    let avatar_url = super::get_avatar_url(room_id).ok().flatten();
+    let room_version = super::get_version(room_id).ok();
+    let encryption = super::get_encryption(room_id).ok();
 
     Ok(SpaceHierarchyParentSummary {
         canonical_alias,

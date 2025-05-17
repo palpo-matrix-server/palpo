@@ -35,6 +35,7 @@ use crate::core::{EventId, OwnedEventId, RoomId, RoomVersionId, UserId};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, RoomMutexMap, utils};
 
 pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
@@ -61,25 +62,12 @@ pub struct DbRoomStateDelta {
 //     pub disposed: Vec<u8>,
 // }
 
-pub async fn lock_room(room_id: &RoomId) -> RoomMutexGuard {
-    const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
-    ROOM_STATE_MUTEX.get().expect("must success").lock(room_id).await
-}
-
 pub fn server_joined_rooms(server_name: &ServerName) -> AppResult<Vec<OwnedRoomId>> {
     room_joined_servers::table
         .filter(room_joined_servers::server_id.eq(server_name))
         .select(room_joined_servers::room_id)
         .load::<OwnedRoomId>(&mut connect()?)
         .map_err(Into::into)
-}
-
-pub fn room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
-    let room_version = rooms::table
-        .filter(rooms::id.eq(room_id))
-        .select(rooms::version)
-        .first::<String>(&mut connect()?)?;
-    Ok(RoomVersionId::try_from(room_version)?)
 }
 
 /// Set the room to the given state_hash and update caches.
@@ -94,7 +82,7 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in &event_ids {
-        let pdu = match crate::room::timeline::get_pdu(&event_id) {
+        let pdu = match timeline::get_pdu(&event_id) {
             Ok(pdu) => pdu,
             _ => continue,
         };
@@ -142,7 +130,7 @@ pub fn force_state(
     }
 
     crate::room::update_joined_servers(room_id)?;
-    crate::room::update_room_currents(room_id)?;
+    crate::room::update_currents(room_id)?;
 
     set_room_state(room_id, frame_id)?;
 
@@ -271,38 +259,13 @@ pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedSt
     let mut state = Vec::new();
     // Add recommended events
     for (event_type, state_key) in cells {
-        if let Ok(e) = get_room_state(&event.room_id, &StateEventType::RoomCreate, "", None) {
+        if let Ok(e) = super::get_state(&event.room_id, &StateEventType::RoomCreate, "", None) {
             state.push(e.to_stripped_state_event());
         }
     }
 
     state.push(event.to_stripped_state_event());
     Ok(state)
-}
-
-pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
-    rooms::table
-        .find(room_id)
-        .select(rooms::state_frame_id)
-        .first(&mut connect()?)
-        .optional()
-        .map(|v| v.flatten())
-        .map_err(Into::into)
-}
-
-/// Returns the room's version.
-pub fn get_room_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
-    if let Some(room_version) = rooms::table
-        .find(room_id)
-        .select(rooms::version)
-        .first::<String>(&mut connect()?)
-        .optional()?
-    {
-        return Ok(RoomVersionId::try_from(&*room_version)?);
-    }
-    let create_event_content =
-        get_room_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)?;
-    Ok(create_event_content.room_version)
 }
 
 pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<Arc<EventId>>> {
@@ -373,7 +336,7 @@ pub fn get_auth_events(
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            if let Ok(pdu) = crate::room::timeline::get_pdu(&event_id) {
+            if let Ok(pdu) = timeline::get_pdu(&event_id) {
                 state_map.insert(key, pdu);
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
@@ -407,7 +370,7 @@ pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, Strin
     let mut result = HashMap::new();
     for compressed in full_state.iter() {
         let (_, event_id) = compressed.split()?;
-        if let Ok(pdu) = crate::room::timeline::get_pdu(&event_id) {
+        if let Ok(pdu) = timeline::get_pdu(&event_id) {
             result.insert(
                 (
                     pdu.event_ty.to_string().into(),
@@ -441,7 +404,7 @@ pub fn get_state_event_id(frame_id: i64, event_type: &StateEventType, state_key:
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
 pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<PduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    crate::room::timeline::get_pdu(&event_id)
+    timeline::get_pdu(&event_id)
 }
 pub fn get_state_content<T>(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<T>
 where
@@ -450,45 +413,6 @@ where
     let state = get_state(frame_id, event_type, state_key)?;
     Ok(serde_json::from_str(state.content.get())?)
 }
-
-pub fn get_room_state(
-    room_id: &RoomId,
-    event_type: &StateEventType,
-    state_key: &str,
-    until_sn: Option<Seqnum>,
-) -> AppResult<PduEvent> {
-    let frame_id = get_room_frame_id(room_id, until_sn)?;
-    get_state(frame_id, event_type, state_key)
-}
-pub fn get_room_state_content<T>(
-    room_id: &RoomId,
-    event_type: &StateEventType,
-    state_key: &str,
-    until_sn: Option<Seqnum>,
-) -> AppResult<T>
-where
-    T: DeserializeOwned,
-{
-    let frame_id = get_room_frame_id(room_id, until_sn)?;
-    get_state_content(frame_id, event_type, state_key)
-}
-// /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
-// pub fn get_state(
-//     room_id: &RoomId,
-//     event_type: &StateEventType,
-//     state_key: &str,
-//     until_sn: Option<i64>,
-// ) -> AppResult<Option<PduEvent>> {
-//     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
-//         return Ok(None);
-//     };
-//     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-//     if let Some(event_id) = event_id {
-//         crate::room::timeline::get_pdu(&event_id)
-//     } else {
-//         Ok(None)
-//     }
-// }
 
 /// Get membership for given user in state
 fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
@@ -521,7 +445,7 @@ pub async fn user_can_redact(
     room_id: &RoomId,
     federation: bool,
 ) -> AppResult<bool> {
-    let redacting_event = crate::room::timeline::get_pdu(redacts);
+    let redacting_event = timeline::get_pdu(redacts);
 
     if redacting_event
         .as_ref()
@@ -543,7 +467,7 @@ pub async fn user_can_redact(
     }
 
     if let Ok(pl_event_content) =
-        get_room_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "", None)
+        super::get_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "", None)
     {
         let pl_event: RoomPowerLevels = pl_event_content.into();
         Ok(pl_event.user_can_redact_event_of_other(sender)
@@ -559,7 +483,7 @@ pub async fn user_can_redact(
                 })
     } else {
         // Falling back on m.room.create to judge power level
-        if let Ok(room_create) = get_room_state(room_id, &StateEventType::RoomCreate, "", None) {
+        if let Ok(room_create) = super::get_state(room_id, &StateEventType::RoomCreate, "", None) {
             Ok(room_create.sender == sender
                 || redacting_event
                     .as_ref()
@@ -681,14 +605,14 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
-pub fn user_can_see_state_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    if crate::room::user::is_joined(&user_id, &room_id)? {
+pub fn user_can_see_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    if super::user::is_joined(&user_id, &room_id)? {
         return Ok(true);
     }
 
-    let history_visibility = get_history_visibility(&room_id)?;
+    let history_visibility = super::get_history_visibility(&room_id)?;
     match history_visibility {
-        HistoryVisibility::Invited => crate::room::user::is_invited(user_id, room_id),
+        HistoryVisibility::Invited => super::user::is_invited(user_id, room_id),
         HistoryVisibility::WorldReadable => Ok(true),
         _ => Ok(false),
     }
@@ -767,70 +691,11 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
 //     };
 //     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
 //     if let Some(event_id) = event_id {
-//         crate::room::timeline::get_pdu(&event_id)
+//         timeline::get_pdu(&event_id)
 //     } else {
 //         Ok(None)
 //     }
 // }
-
-pub fn get_name(room_id: &RoomId) -> AppResult<String> {
-    get_room_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomName, "", None).map(|c| c.name)
-}
-
-pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
-    get_room_state_content::<RoomAvatarEventContent>(room_id, &StateEventType::RoomAvatar, "", None).map(|c| c.url)
-}
-
-pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<RoomMemberEventContent> {
-    get_room_state_content::<RoomMemberEventContent>(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)
-}
-pub fn get_room_topic(room_id: &RoomId) -> AppResult<String> {
-    get_room_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomTopic, "", None).map(|c| c.name)
-}
-pub fn get_canonical_alias(room_id: &RoomId) -> AppResult<Option<OwnedRoomAliasId>> {
-    get_room_state_content::<RoomCanonicalAliasEventContent>(&room_id, &StateEventType::RoomCanonicalAlias, "", None)
-        .map(|c| c.alias)
-}
-pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
-    get_room_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
-        .map(|c| c.join_rule)
-}
-pub fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
-    get_power_levels_event_content(room_id).map(|content| RoomPowerLevels::from(content))
-}
-pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
-    get_room_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)
-}
-
-pub fn get_room_type(room_id: &RoomId) -> AppResult<Option<RoomType>> {
-    get_room_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
-        .map(|c| c.room_type)
-}
-
-pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> {
-    get_room_state_content::<RoomHistoryVisibilityEventContent>(
-        &room_id,
-        &StateEventType::RoomHistoryVisibility,
-        "",
-        None,
-    )
-    .map(|c| c.history_visibility)
-}
-
-pub fn is_world_readable(room_id: &RoomId) -> bool {
-    get_history_visibility(room_id)
-        .map(|visibility| visibility == HistoryVisibility::WorldReadable)
-        .unwrap_or(false)
-}
-
-pub fn get_room_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {
-    get_room_state_content(room_id, &StateEventType::RoomEncryption, "", None)
-        .map(|content: RoomEncryptionEventContent| content.algorithm)
-}
-
-pub fn is_encrypted_room(room_id: &RoomId) -> bool {
-    get_room_state(room_id, &StateEventType::RoomEncryption, "", None).is_ok()
-}
 
 #[tracing::instrument]
 pub fn get_user_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {
@@ -848,64 +713,13 @@ pub fn get_user_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Ve
     }
 }
 
-pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &UserId) -> bool {
-    // let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
-
-    // let new_event = PduBuilder {
-    //     event_type: TimelineEventType::RoomMember,
-    //     content,
-    //     state_key: Some(target_user.into()),
-    //     ..Default::default()
-    // };
-    // Ok(crate::room::timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
-
-    if let Ok(power_levels) = get_power_levels(room_id) {
-        power_levels.user_can_invite(sender_id)
-    } else {
-        let create_content =
-            get_room_state_content::<RoomCreateEventContent>(&room_id, &StateEventType::RoomCreate, "", None);
-        if let Ok(create_content) = create_content {
-            create_content.creator.as_deref() == Some(sender_id)
-        } else {
-            false
-        }
-    }
-}
-pub fn guest_can_join(room_id: &RoomId) -> bool {
-    get_room_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
-        .map(|c| c.guest_access == GuestAccess::CanJoin)
-        .unwrap_or(false)
-}
-
-/// Returns an iterator of all our local users in the room, even if they're
-/// deactivated/guests
-#[tracing::instrument(level = "debug")]
-pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
-    room_users::table
-        .filter(room_users::room_id.eq(room_id))
-        .select(room_users::user_id)
-        .load::<OwnedUserId>(&mut connect()?)
-        .map_err(Into::into)
-}
-
-/// Returns an iterator of all our local users in the room, even if they're
-/// deactivated/guests
-#[tracing::instrument(level = "debug")]
-pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
-    room_users::table
-        .filter(room_users::room_id.eq(room_id))
-        .select(room_users::user_id)
-        .load::<OwnedUserId>(&mut connect()?)
-        .map_err(Into::into)
-}
-
 /// Gets up to five servers that are likely to be in the room in the
 /// distant future.
 ///
 /// See <https://spec.matrix.org/latest/appendices/#routing>
 #[tracing::instrument(level = "trace")]
 pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    let Ok(pdu) = crate::room::state::get_room_state(room_id, &StateEventType::RoomPowerLevels, "", None) else {
+    let Ok(pdu) = super::get_state(room_id, &StateEventType::RoomPowerLevels, "", None) else {
         return Ok(Vec::new());
     };
 
@@ -917,7 +731,7 @@ pub fn servers_route_via(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
         .and_then(|x| (*x.1 >= 50).then_some(x))
         .map(|(user, _power)| user.server_name().to_owned());
 
-    let mut servers: Vec<OwnedServerName> = crate::room::joined_servers(room_id)?.into_iter().take(5).collect();
+    let mut servers: Vec<OwnedServerName> = super::joined_servers(room_id)?.into_iter().take(5).collect();
 
     if let Some(server) = most_powerful_user_server {
         servers.insert(0, server);

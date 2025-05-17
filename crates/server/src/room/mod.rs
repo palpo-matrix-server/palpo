@@ -1,3 +1,32 @@
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
+use diesel::prelude::*;
+use serde::de::DeserializeOwned;
+
+use crate::appservice::RegistrationInfo;
+use crate::core::directory::RoomTypeFilter;
+use crate::core::events::room::avatar::RoomAvatarEventContent;
+use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
+use crate::core::events::room::create::RoomCreateEventContent;
+use crate::core::events::room::encryption::RoomEncryptionEventContent;
+use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
+use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::events::room::name::RoomNameEventContent;
+use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
+use crate::core::events::{AnySyncStateEvent, StateEventType};
+use crate::core::identifiers::*;
+use crate::core::room::RoomType;
+use crate::core::serde::{JsonValue, RawJson};
+use crate::core::{Seqnum, UnixMillis};
+use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
+use crate::{
+    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config, data, utils,
+};
+
 pub mod alias;
 pub use alias::*;
 pub mod auth_chain;
@@ -13,21 +42,7 @@ pub mod typing;
 pub mod user;
 pub use current::*;
 pub mod thread;
-
-use std::collections::HashMap;
-
-use diesel::prelude::*;
-
-use crate::appservice::RegistrationInfo;
-use crate::core::directory::RoomTypeFilter;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::{AnySyncStateEvent, StateEventType};
-use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{Seqnum, UnixMillis};
-use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::{APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, config, data, utils};
+pub use state::get_room_frame_id as get_frame_id;
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -67,6 +82,11 @@ pub struct DbRoomCurrent {
     pub completed_delta_stream_id: i64,
 }
 
+pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
+    const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
+    ROOM_STATE_MUTEX.get().expect("must success").lock(room_id).await
+}
+
 pub fn create_room(new_room: NewDbRoom) -> AppResult<OwnedRoomId> {
     diesel::insert_into(rooms::table)
         .values(&new_room)
@@ -103,6 +123,31 @@ pub fn get_room_sn(room_id: &RoomId) -> AppResult<Seqnum> {
     Ok(room_sn)
 }
 
+/// Returns the room's version.
+pub fn get_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
+    if let Some(room_version) = rooms::table
+        .find(room_id)
+        .select(rooms::version)
+        .first::<String>(&mut connect()?)
+        .optional()?
+    {
+        return Ok(RoomVersionId::try_from(&*room_version)?);
+    }
+    let create_event_content =
+        get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)?;
+    Ok(create_event_content.room_version)
+}
+
+pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
+    rooms::table
+        .find(room_id)
+        .select(rooms::state_frame_id)
+        .first(&mut connect()?)
+        .optional()
+        .map(|v| v.flatten())
+        .map_err(Into::into)
+}
+
 pub fn is_disabled(room_id: &RoomId) -> AppResult<bool> {
     rooms::table
         .filter(rooms::id.eq(room_id))
@@ -119,7 +164,7 @@ pub fn disable_room(room_id: &RoomId, disabled: bool) -> AppResult<()> {
         .map_err(Into::into)
 }
 
-pub fn update_room_currents(room_id: &RoomId) -> AppResult<()> {
+pub fn update_currents(room_id: &RoomId) -> AppResult<()> {
     let joined_members = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
@@ -248,7 +293,7 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     )
     .map_err(Into::into)
 }
-pub fn can_local_work_for_room(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
+pub fn can_local_work_for(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
     let local = is_server_joined_room(config::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0].is_local());
@@ -378,7 +423,7 @@ pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate:
         .iter()
         .filter_map(|r| {
             let r = *r;
-            let room_type = state::get_room_type(r).ok()?;
+            let room_type = get_room_type(r).ok()?;
             let room_type_filter = RoomTypeFilter::from(room_type);
 
             let include = if negate {
@@ -427,4 +472,132 @@ pub async fn room_available_servers(
     }
 
     Ok(servers)
+}
+
+pub fn get_state(
+    room_id: &RoomId,
+    event_type: &StateEventType,
+    state_key: &str,
+    until_sn: Option<Seqnum>,
+) -> AppResult<PduEvent> {
+    let frame_id = get_frame_id(room_id, until_sn)?;
+    state::get_state(frame_id, event_type, state_key)
+}
+
+pub fn get_state_content<T>(
+    room_id: &RoomId,
+    event_type: &StateEventType,
+    state_key: &str,
+    until_sn: Option<Seqnum>,
+) -> AppResult<T>
+where
+    T: DeserializeOwned,
+{
+    let frame_id = get_frame_id(room_id, until_sn)?;
+    state::get_state_content(frame_id, event_type, state_key)
+}
+
+pub fn get_name(room_id: &RoomId) -> AppResult<String> {
+    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomName, "", None).map(|c| c.name)
+}
+
+pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
+    get_state_content::<RoomAvatarEventContent>(room_id, &StateEventType::RoomAvatar, "", None).map(|c| c.url)
+}
+
+pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<RoomMemberEventContent> {
+    get_state_content::<RoomMemberEventContent>(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)
+}
+pub fn get_topic(room_id: &RoomId) -> AppResult<String> {
+    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomTopic, "", None).map(|c| c.name)
+}
+pub fn get_canonical_alias(room_id: &RoomId) -> AppResult<Option<OwnedRoomAliasId>> {
+    get_state_content::<RoomCanonicalAliasEventContent>(&room_id, &StateEventType::RoomCanonicalAlias, "", None)
+        .map(|c| c.alias)
+}
+pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
+    get_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
+        .map(|c| c.join_rule)
+}
+pub fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
+    get_power_levels_event_content(room_id).map(|content| RoomPowerLevels::from(content))
+}
+pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
+    get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)
+}
+
+pub fn get_room_type(room_id: &RoomId) -> AppResult<Option<RoomType>> {
+    get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None).map(|c| c.room_type)
+}
+
+pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> {
+    get_state_content::<RoomHistoryVisibilityEventContent>(&room_id, &StateEventType::RoomHistoryVisibility, "", None)
+        .map(|c| c.history_visibility)
+}
+
+pub fn is_world_readable(room_id: &RoomId) -> bool {
+    get_history_visibility(room_id)
+        .map(|visibility| visibility == HistoryVisibility::WorldReadable)
+        .unwrap_or(false)
+}
+pub fn guest_can_join(room_id: &RoomId) -> bool {
+    get_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
+        .map(|c| c.guest_access == GuestAccess::CanJoin)
+        .unwrap_or(false)
+}
+
+pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &UserId) -> bool {
+    // let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
+
+    // let new_event = PduBuilder {
+    //     event_type: TimelineEventType::RoomMember,
+    //     content,
+    //     state_key: Some(target_user.into()),
+    //     ..Default::default()
+    // };
+    // Ok(timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
+
+    if let Ok(power_levels) = get_power_levels(room_id) {
+        power_levels.user_can_invite(sender_id)
+    } else {
+        let create_content =
+            get_state_content::<RoomCreateEventContent>(&room_id, &StateEventType::RoomCreate, "", None);
+        if let Ok(create_content) = create_content {
+            create_content.creator.as_deref() == Some(sender_id)
+        } else {
+            false
+        }
+    }
+}
+
+pub fn get_encryption(room_id: &RoomId) -> AppResult<EventEncryptionAlgorithm> {
+    get_state_content(room_id, &StateEventType::RoomEncryption, "", None)
+        .map(|content: RoomEncryptionEventContent| content.algorithm)
+}
+
+pub fn is_encrypted(room_id: &RoomId) -> bool {
+    get_state(room_id, &StateEventType::RoomEncryption, "", None).is_ok()
+}
+
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+// TODO: local?
+pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+/// Returns an iterator of all our local users in the room, even if they're
+/// deactivated/guests
+#[tracing::instrument(level = "debug")]
+pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .select(room_users::user_id)
+        .load::<OwnedUserId>(&mut connect()?)
+        .map_err(Into::into)
 }

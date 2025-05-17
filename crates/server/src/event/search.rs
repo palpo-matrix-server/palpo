@@ -10,6 +10,7 @@ use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
+use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError, PduEvent};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
@@ -77,8 +78,8 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let results: Vec<_> = items
         .into_iter()
         .filter_map(|(rank, event_id, _, _)| {
-            let pdu = crate::room::timeline::get_pdu(&event_id).ok()?;
-            if crate::room::state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
+            let pdu = timeline::get_pdu(&event_id).ok()?;
+            if state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
                 Some((rank, pdu))
             } else {
                 None

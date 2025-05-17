@@ -20,6 +20,7 @@ use crate::core::{UnixMillis, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
+use crate::room::{state, timeline};
 use crate::sending::resolver::Resolver;
 use crate::{AppError, AppResult, ServerConfig, TlsNameMap, config, data, exts::*, utils};
 
@@ -252,7 +253,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
-                        crate::room::timeline::get_pdu(event_id)
+                        timeline::get_pdu(event_id)
                             .map_err(|e| (kind.clone(), e))?
                             .to_room_event(),
                     ),
@@ -299,7 +300,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(crate::room::timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
+                        pdus.push(timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)
@@ -358,7 +359,7 @@ async fn send_events(
                     SendingEventType::Pdu(pdu_id) => {
                         // TODO: check room version and remove event_id if needed
                         let raw = crate::sending::convert_to_outgoing_federation_event(
-                            crate::room::timeline::get_pdu_json(pdu_id)
+                            timeline::get_pdu_json(pdu_id)
                                 .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?
                                 .ok_or_else(|| {
                                     error!("event not found: {server} {pdu_id:?}");

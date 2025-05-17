@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::core::ServerName;
 use crate::core::federation::event::{RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request};
 use crate::core::identifiers::*;
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, exts::*};
 
 /// Call /state_ids to find out what the state at this pdu is. We trust the
@@ -46,7 +47,7 @@ pub(super) async fn fetch_state(
             .clone()
             .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
 
-        let state_key_id = crate::room::state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
+        let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
 
         match state.entry(state_key_id) {
             hash_map::Entry::Vacant(v) => {
@@ -61,7 +62,7 @@ pub(super) async fn fetch_state(
     }
 
     // // The original create event must still be in the state
-    // let create_state_key_id = crate::room::state::ensure_field_id(&StateEventType::RoomCreate, "")?;
+    // let create_state_key_id = state::ensure_field_id(&StateEventType::RoomCreate, "")?;
 
     // if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
     //     return Err(AppError::internal("Incoming event refers to wrong create event."));

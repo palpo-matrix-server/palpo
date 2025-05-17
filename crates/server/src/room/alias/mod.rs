@@ -14,8 +14,8 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUser;
 use crate::exts::*;
-use crate::room::{state, StateEventType};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, config};
+use crate::room::{StateEventType, state, timeline};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, config, room};
 
 mod remote;
 use remote::remote_resolve;
@@ -164,7 +164,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
     }
 
     let mut room_id = None;
-    match crate::room::resolve_local_alias(&room_alias) {
+    match resolve_local_alias(&room_alias) {
         Ok(r) => room_id = Some(r),
         Err(_) => {
             for appservice in crate::appservice::all()?.values() {
@@ -178,7 +178,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
                     )
                 {
                     room_id = Some(
-                        crate::room::resolve_local_alias(&room_alias)
+                        resolve_local_alias(&room_alias)
                             .map_err(|_| AppError::public("Appservice lied to us. Room does not exist."))?,
                     );
                     break;
@@ -197,13 +197,13 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
 
 #[tracing::instrument]
 pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
-    let room_id = crate::room::resolve_local_alias(alias_id)?;
+    let room_id = resolve_local_alias(alias_id)?;
     if user_can_remove_alias(alias_id, user)? {
-        let state_alias = crate::room::state::get_canonical_alias(&room_id);
+        let state_alias = super::get_canonical_alias(&room_id);
 
         if state_alias.is_ok() {
-            let state_lock = state::lock_room(&room_id).await;
-            crate::room::timeline::build_and_append_pdu(
+            let state_lock = super::lock_state(&room_id).await;
+            timeline::build_and_append_pdu(
                 PduBuilder {
                     event_type: TimelineEventType::RoomCanonicalAlias,
                     content: to_raw_value(&RoomCanonicalAliasEventContent {
@@ -229,7 +229,7 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
 }
 #[tracing::instrument]
 fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<bool> {
-    let room_id = crate::room::resolve_local_alias(alias_id)?;
+    let room_id = resolve_local_alias(alias_id)?;
 
     let alias = room_aliases::table
         .find(alias_id)
@@ -244,15 +244,12 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
-    } else if let Ok(content) = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
-        &room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    ) {
+    } else if let Ok(content) =
+        super::get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)
+    {
         Ok(RoomPowerLevels::from(content).user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
-    } else if let Ok(event) = crate::room::state::get_room_state(&room_id, &StateEventType::RoomCreate, "", None) {
+    } else if let Ok(event) = super::get_state(&room_id, &StateEventType::RoomCreate, "", None) {
         Ok(event.sender == user.id)
     } else {
         error!("Room {} has no m.room.create event (VERY BAD)!", room_id);

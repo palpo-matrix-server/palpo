@@ -29,7 +29,7 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
-use crate::room::state;
+use crate::room::{state, timeline};
 use crate::utils::{self, HtmlEscape};
 use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config};
 
@@ -207,26 +207,26 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
 
     loop {
         tokio::select! {
-                Some(event) = receiver.recv() => {
-                    let message_content = match event {
-                        AdminRoomEvent::SendMessage(content) => content,
-                        AdminRoomEvent::ProcessMessage(room_message) => process_admin_message(room_message).await
-                    };
+            Some(event) = receiver.recv() => {
+                let message_content = match event {
+                    AdminRoomEvent::SendMessage(content) => content,
+                    AdminRoomEvent::ProcessMessage(room_message) => process_admin_message(room_message).await
+                };
 
-                    let state_lock = state::lock_room(&palpo_room).await;
-                    crate::room::timeline::build_and_append_pdu(
-                        PduBuilder {
-                            event_type: TimelineEventType::RoomMessage,
-                            content: to_raw_value(&message_content).expect("event is valid, we just created it"),
-                            ..Default::default()
-                        },
-                        &palpo_user,
-                        &palpo_room,
-                        &state_lock,
-                    )
-                    .unwrap();
-                }
+                let state_lock = crate::room::lock_state(&palpo_room).await;
+                timeline::build_and_append_pdu(
+                    PduBuilder {
+                        event_type: TimelineEventType::RoomMessage,
+                        content: to_raw_value(&message_content).expect("event is valid, we just created it"),
+                        ..Default::default()
+                    },
+                    &palpo_user,
+                    &palpo_room,
+                    &state_lock,
+                )
+                .unwrap();
             }
+        }
     }
 }
 
@@ -369,7 +369,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::GetAuthChain { event_id } => {
             let event_id = Arc::<EventId>::from(event_id);
-            if let Some(event) = crate::room::timeline::get_pdu_json(&event_id)? {
+            if let Some(event) = timeline::get_pdu_json(&event_id)? {
                 let room_id_str = event
                     .get("room_id")
                     .and_then(|val| val.as_str())
@@ -414,10 +414,10 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
         }
         AdminCommand::GetPdu { event_id } => {
             let mut outlier = false;
-            let mut pdu_json = crate::room::timeline::get_pdu_json(&event_id)?;
+            let mut pdu_json = timeline::get_pdu_json(&event_id)?;
             if pdu_json.is_none() {
                 outlier = true;
-                pdu_json = crate::room::timeline::get_pdu_json(&event_id)?;
+                pdu_json = timeline::get_pdu_json(&event_id)?;
             }
             match pdu_json {
                 Some(json) => {
@@ -772,7 +772,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         crate::room::ensure_room(&room_id, &room_version)?;
     }
 
-    let state_lock = state::lock_room(&room_id).await;
+    let state_lock = crate::room::lock_state(&room_id).await;
 
     // Create a user for the server
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
@@ -791,7 +791,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     content.room_version = room_version;
 
     // 1. The room create event
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&content).expect("event is valid, we just created it"),
@@ -806,7 +806,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 2. Make palpo bot join
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
@@ -833,7 +833,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     let mut users = BTreeMap::new();
     users.insert(palpo_user.clone(), 100.into());
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&RoomPowerLevelsEventContent {
@@ -852,7 +852,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 4.1 Join Rules
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomJoinRules,
             content: to_raw_value(&RoomJoinRulesEventContent::new(JoinRule::Invite))
@@ -866,7 +866,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 4.2 History Visibility
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomHistoryVisibility,
             content: to_raw_value(&RoomHistoryVisibilityEventContent::new(HistoryVisibility::Shared))
@@ -880,7 +880,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 4.3 Guest Access
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomGuestAccess,
             content: to_raw_value(&RoomGuestAccessEventContent::new(GuestAccess::Forbidden))
@@ -895,7 +895,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
 
     // 5. Events implied by name and topic
     let room_name = format!("{} Admin Room", &conf.server_name);
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomName,
             content: to_raw_value(&RoomNameEventContent::new(room_name)).expect("event is valid, we just created it"),
@@ -907,7 +907,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         &state_lock,
     )?;
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomTopic,
             content: to_raw_value(&RoomTopicEventContent {
@@ -927,7 +927,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         .try_into()
         .expect("#admins:server_name is a valid alias name");
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCanonicalAlias,
             content: to_raw_value(&RoomCanonicalAliasEventContent {
@@ -955,13 +955,13 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
     let conf = crate::config();
 
     let room_id = get_admin_room()?;
-    let state_lock = state::lock_room(&room_id).await;
+    let state_lock = crate::room::lock_state(&room_id).await;
 
     // Use the server user to grant the new admin's power level
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
     // Invite and join the real user
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
@@ -983,7 +983,7 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
         &room_id,
         &state_lock,
     )?;
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
@@ -1011,7 +1011,7 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
     users.insert(palpo_user.to_owned(), 100.into());
     users.insert(user_id.to_owned(), 100.into());
 
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
             content: to_raw_value(&RoomPowerLevelsEventContent {
@@ -1028,7 +1028,7 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
     )?;
 
     // Send welcome message
-    crate::room::timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomMessage,
                 content: to_raw_value(&RoomMessageEventContent::text_html(

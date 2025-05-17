@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
+use state::DbRoomStateField;
 
 use crate::PduBuilder;
 use crate::core::client::filter::LazyLoadOptions;
@@ -15,7 +16,7 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::room::RoomEventReqArgs;
-use crate::room::state::DbRoomStateField;
+use crate::room::{state, timeline};
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 
@@ -27,9 +28,9 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
 
-    let event = crate::room::timeline::get_pdu(&args.event_id)?;
+    let event = timeline::get_pdu(&args.event_id)?;
 
-    if !crate::room::state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
+    if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
         return Err(MatrixError::not_found("Event not found.").into());
     }
 
@@ -50,7 +51,7 @@ pub(super) fn report(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let pdu = crate::room::timeline::get_pdu(&args.event_id)?;
+    let pdu = timeline::get_pdu(&args.event_id)?;
 
     if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
         return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
@@ -114,11 +115,11 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_token =
         crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
 
-    let base_event = crate::room::timeline::get_pdu(&args.event_id)?;
+    let base_event = timeline::get_pdu(&args.event_id)?;
 
     let room_id = base_event.room_id.clone();
 
-    if !crate::room::state::user_can_see_event(authed.user_id(), &room_id, &args.event_id)? {
+    if !state::user_can_see_event(authed.user_id(), &room_id, &args.event_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this event.", None).into());
     }
 
@@ -138,11 +139,9 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_event = base_event.to_room_event();
 
     let events_before: Vec<_> =
-        crate::room::timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?
+        timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?
             .into_iter()
-            .filter(|(_, pdu)| {
-                crate::room::state::user_can_see_event(authed.user_id(), &room_id, &pdu.event_id).unwrap_or(false)
-            })
+            .filter(|(_, pdu)| state::user_can_see_event(authed.user_id(), &room_id, &pdu.event_id).unwrap_or(false))
             .collect();
 
     for (_, event) in &events_before {
@@ -164,8 +163,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
-    let events_after =
-        crate::room::timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?;
+    let events_after = timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -179,14 +177,12 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         }
     }
 
-    let frame_id = match crate::room::state::get_pdu_frame_id(
-        events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id),
-    ) {
+    let frame_id = match state::get_pdu_frame_id(events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id)) {
         Ok(s) => s,
-        Err(_) => crate::room::state::get_room_frame_id(&room_id, None)?,
+        Err(_) => crate::room::get_frame_id(&room_id, None)?,
     };
 
-    let state_ids = crate::room::state::get_full_state_ids(frame_id)?;
+    let state_ids = state::get_full_state_ids(frame_id)?;
 
     let end_token = events_after
         .last()
@@ -200,10 +196,10 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     for (field_id, event_id) in state_ids {
         let DbRoomStateField {
             event_ty, state_key, ..
-        } = crate::room::state::get_field(field_id)?;
+        } = state::get_field(field_id)?;
 
         if event_ty != StateEventType::RoomMember {
-            let pdu = match crate::room::timeline::get_pdu(&event_id) {
+            let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
@@ -212,7 +208,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
             };
             state.push(pdu.to_state_event());
         } else if !lazy_load_enabled || lazy_loaded.contains(&state_key) {
-            let pdu = match crate::room::timeline::get_pdu(&event_id) {
+            let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
@@ -246,8 +242,8 @@ pub(super) async fn send_redact(
 ) -> JsonResult<RedactEventResBody> {
     let authed = depot.authed_info()?;
 
-    let state_lock = state::lock_room(&args.room_id).await;
-    let event_id = crate::room::timeline::build_and_append_pdu(
+    let state_lock = crate::room::lock_state(&args.room_id).await;
+    let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomRedaction,
             content: to_raw_value(&RoomRedactionEventContent {

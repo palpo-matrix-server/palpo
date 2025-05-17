@@ -6,7 +6,7 @@ use crate::core::serde::to_raw_json_value;
 use crate::event::{PduBuilder, gen_event_id_canonical_json};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
 use crate::room::{state, timeline};
-use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data};
+use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data, room, sending};
 
 pub async fn invite_user(
     inviter_id: &UserId,
@@ -15,12 +15,12 @@ pub async fn invite_user(
     reason: Option<String>,
     is_direct: bool,
 ) -> AppResult<()> {
-    if !crate::room::user::is_joined(inviter_id, room_id)? {
+    if !room::user::is_joined(inviter_id, room_id)? {
         return Err(
             MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
         );
     }
-    if !state::user_can_invite(room_id, inviter_id, invitee_id) {
+    if !room::user_can_invite(room_id, inviter_id, invitee_id) {
         return Err(MatrixError::forbidden("You are not allowed to invite this user.", None).into());
     }
 
@@ -49,7 +49,7 @@ pub async fn invite_user(
             (pdu, pdu_json, invite_room_state)
         };
 
-        let room_version_id = state::get_room_version(room_id)?;
+        let room_version_id = room::get_version(room_id)?;
 
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
             &invitee_id.server_name().origin().await,
@@ -59,13 +59,13 @@ pub async fn invite_user(
             },
             InviteUserReqBodyV2 {
                 room_version: room_version_id.clone(),
-                event: crate::sending::convert_to_outgoing_federation_event(pdu_json.clone()),
+                event: sending::convert_to_outgoing_federation_event(pdu_json.clone()),
                 invite_room_state,
                 via: state::servers_route_via(room_id).ok(),
             },
         )?
         .into_inner();
-        let send_join_response = crate::sending::send_federation_request(invitee_id.server_name(), invite_request)
+        let send_join_response = sending::send_federation_request(invitee_id.server_name(), invite_request)
             .await?
             .json::<InviteUserResBodyV2>()
             .await?;
@@ -102,10 +102,10 @@ pub async fn invite_user(
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
 
         crate::event::handler::handle_incoming_pdu(&origin, &event_id, room_id, value, true).await?;
-        return crate::sending::send_pdu_room(room_id, &event_id);
+        return sending::send_pdu_room(room_id, &event_id);
     }
 
-    let state_lock = state::lock_room(&room_id).await;
+    let state_lock = crate::room::lock_state(&room_id).await;
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
@@ -125,7 +125,8 @@ pub async fn invite_user(
             ..Default::default()
         },
         inviter_id,
-        room_id, &state_lock
+        room_id,
+        &state_lock,
     )?;
 
     Ok(())

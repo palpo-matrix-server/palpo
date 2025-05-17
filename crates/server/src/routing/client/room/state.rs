@@ -11,9 +11,9 @@ use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::room::{RoomEventReqArgs, RoomEventTypeReqArgs, RoomTypingReqArgs};
-use crate::room::state;
+use crate::room::{state, timeline};
 use crate::utils::HtmlEscape;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/state
 /// Get all state events for a room.
@@ -29,8 +29,8 @@ pub(super) fn get_state(
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
 
-    let until_sn = if !state::user_can_see_state_events(&authed.user_id(), &room_id)? {
-        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
+    let until_sn = if !state::user_can_see_events(&authed.user_id(), &room_id)? {
+        if let Ok(leave_sn) = room::user::leave_sn(sender_id, &room_id) {
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
@@ -39,7 +39,7 @@ pub(super) fn get_state(
         None
     };
 
-    let frame_id = state::get_room_frame_id(&room_id, None)?;
+    let frame_id = room::get_frame_id(&room_id, None)?;
 
     let room_state = state::get_full_state(frame_id)?
         .values()
@@ -58,7 +58,7 @@ pub fn report(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let pdu = match crate::room::timeline::get_pdu(&args.event_id) {
+    let pdu = match timeline::get_pdu(&args.event_id) {
         Ok(pdu) => pdu,
         _ => return Err(MatrixError::invalid_param("Invalid Event ID").into()),
     };
@@ -117,8 +117,8 @@ pub(super) fn state_for_key(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
 
-    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
-        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
+    let until_sn = if !state::user_can_see_events(sender_id, &args.room_id)? {
+        if let Ok(leave_sn) = room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
@@ -127,7 +127,7 @@ pub(super) fn state_for_key(
         None
     };
 
-    let event = state::get_room_state(&args.room_id, &args.event_type, &args.state_key, until_sn)?;
+    let event = room::get_state(&args.room_id, &args.event_type, &args.state_key, until_sn)?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
@@ -151,8 +151,8 @@ pub(super) async fn state_for_empty_key(
 ) -> JsonResult<StateEventsForKeyResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let until_sn = if !state::user_can_see_state_events(sender_id, &args.room_id)? {
-        if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &args.room_id) {
+    let until_sn = if !state::user_can_see_events(sender_id, &args.room_id)? {
+        if let Ok(leave_sn) = room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
@@ -161,7 +161,7 @@ pub(super) async fn state_for_empty_key(
         None
     };
 
-    let event = state::get_room_state(&args.room_id, &args.event_type, "", until_sn)?;
+    let event = room::get_state(&args.room_id, &args.event_type, "", until_sn)?;
     let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
@@ -241,19 +241,19 @@ pub async fn send_typing(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    if !crate::room::user::is_joined(authed.user_id(), &args.room_id)? {
+    if !room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not in this room.", None).into());
     }
 
     if let Typing::Yes(duration) = body.state {
-        crate::room::typing::add_typing(
+        room::typing::add_typing(
             authed.user_id(),
             &args.room_id,
             duration.as_millis() as u64 + UnixMillis::now().get(),
         )
         .await?;
     } else {
-        crate::room::typing::remove_typing(authed.user_id(), &args.room_id).await?;
+        room::typing::remove_typing(authed.user_id(), &args.room_id).await?;
     }
     empty_ok()
 }

@@ -216,7 +216,7 @@ where
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
-    let power_levels = state::get_room_state_content::<RoomPowerLevelsEventContent>(
+    let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
         "",
@@ -229,13 +229,13 @@ where
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
-    for user in crate::room::get_our_real_users(&pdu.room_id)?.iter() {
+    for user in super::get_our_real_users(&pdu.room_id)?.iter() {
         // Don't notify the user of their own events
         if user == &pdu.sender {
             continue;
         }
 
-        let rules_for_user = crate::data::user::get_global_data::<PushRulesEventContent>(
+        let rules_for_user = data::user::get_global_data::<PushRulesEventContent>(
             user,
             &GlobalAccountDataEventType::PushRules.to_string(),
         )?
@@ -277,7 +277,7 @@ where
         }
         TimelineEventType::SpaceChild => {
             if let Some(_state_key) = &pdu.state_key {
-                crate::room::space::ROOM_ID_SPACE_CHUNK_CACHE
+                super::space::ROOM_ID_SPACE_CHUNK_CACHE
                     .lock()
                     .unwrap()
                     .remove(&pdu.room_id);
@@ -330,7 +330,7 @@ where
                 .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
             if let Some(body) = content.body {
-                if let Ok(admin_room) = crate::room::resolve_local_alias(
+                if let Ok(admin_room) = super::resolve_local_alias(
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
                         .expect("#admins:server_name is a valid room alias"),
                 ) {
@@ -377,25 +377,25 @@ where
             Relation::Reply { in_reply_to } => {
                 // We need to do it again here, because replies don't have
                 // event_id as a top level field
-                crate::room::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
+                super::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
             }
             Relation::Thread(thread) => {
-                crate::room::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
+                super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
-                crate::room::thread::add_to_thread(&thread.event_id, pdu)?;
+                super::thread::add_to_thread(&thread.event_id, pdu)?;
             }
             _ => {} // TODO: Aggregate other types
         }
     }
     if !relates_added {
         if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-            crate::room::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
+            super::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
         }
     }
 
     for appservice in crate::appservice::all()?.values() {
-        if crate::room::appservice_in_room(&pdu.room_id, &appservice)? {
+        if super::appservice_in_room(&pdu.room_id, &appservice)? {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
             continue;
         }
@@ -428,11 +428,11 @@ where
                     })
         };
         let matching_aliases = || {
-            crate::room::local_aliases_for_room(&pdu.room_id)
+            super::local_aliases_for_room(&pdu.room_id)
                 .unwrap_or_default()
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
-                || if let Ok(pdu) = state::get_room_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None) {
+                || if let Ok(pdu) = super::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None) {
                     serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
                         content
                             .alias
@@ -500,7 +500,7 @@ pub fn create_hash_and_sign_event(
     let conf = crate::config();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
-    let room_version_id = if let Ok(room_version_id) = state::get_room_version(room_id) {
+    let room_version_id = if let Ok(room_version_id) = crate::room::get_version(room_id) {
         room_version_id
     } else {
         if event_type == TimelineEventType::RoomCreate {
@@ -528,7 +528,7 @@ pub fn create_hash_and_sign_event(
     let mut unsigned = unsigned.unwrap_or_default();
 
     if let Some(state_key) = &state_key {
-        if let Ok(prev_pdu) = state::get_room_state(room_id, &event_type.to_string().into(), state_key, None) {
+        if let Ok(prev_pdu) = super::get_state(room_id, &event_type.to_string().into(), state_key, None) {
             unsigned.insert(
                 "prev_content".to_owned(),
                 serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
@@ -675,7 +675,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.", None).into());
                 }
 
-                let count = crate::room::get_joined_users(pdu.room_id(), None)?
+                let count = super::get_joined_users(pdu.room_id(), None)?
                     .iter()
                     .filter(|m| m.server_name() == server_name)
                     .filter(|m| m.as_str() != target)
@@ -692,7 +692,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.", None).into());
                 }
 
-                let count = crate::room::get_joined_users(pdu.room_id(), None)?
+                let count = super::get_joined_users(pdu.room_id(), None)?
                     .iter()
                     .filter(|m| m.server_name() == server_name)
                     .filter(|m| m.as_str() != target)
@@ -716,9 +716,7 @@ pub fn build_and_append_pdu(
     lock: &RoomMutexGuard,
 ) -> AppResult<PduEvent> {
     if let Some(state_key) = &pdu_builder.state_key {
-        if let Ok(curr_state) =
-            state::get_room_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None)
-        {
+        if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
             }
@@ -728,11 +726,11 @@ pub fn build_and_append_pdu(
     let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
 
     let conf = crate::config();
-    // let admin_room = crate::room::resolve_local_alias(
+    // let admin_room = super::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
     //         .expect("#admins:server_name is a valid room alias"),
     // )?;
-    if crate::room::is_admin_room(room_id) {
+    if super::is_admin_room(room_id) {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 
@@ -750,7 +748,7 @@ pub fn build_and_append_pdu(
 
     state::set_room_state(room_id, frame_id)?;
 
-    let mut servers: HashSet<OwnedServerName> = crate::room::participating_servers(room_id)?.into_iter().collect();
+    let mut servers: HashSet<OwnedServerName> = super::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.event_ty == TimelineEventType::RoomMember {
@@ -779,7 +777,7 @@ pub fn append_incoming_pdu<'a, L>(
     new_room_leaves: L,
     state_ids_compressed: Arc<CompressedState>,
     soft_fail: bool,
-		state_lock: &'a RoomMutexGuard,
+    state_lock: &'a RoomMutexGuard,
 ) -> AppResult<()>
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
@@ -789,7 +787,7 @@ where
     state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
 
     if soft_fail {
-        // crate::room::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
+        // super::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
         state::set_forward_extremities(&pdu.room_id, new_room_leaves, state_lock)?;
         return Ok(());
     }
@@ -962,12 +960,8 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         return Ok(());
     }
 
-    let power_levels = state::get_room_state_content::<RoomPowerLevelsEventContent>(
-        &room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )?;
+    let power_levels =
+        super::get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)?;
     let mut admin_servers = power_levels
         .users
         .iter()

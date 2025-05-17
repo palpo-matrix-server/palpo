@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use palpo_core::federation::knock::{MakeKnockReqArgs, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody};
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -7,18 +6,22 @@ use serde_json::value::to_raw_value;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::StateEventType;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::federation::event::{
     RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
 };
-use crate::core::federation::knock::MakeKnockResBody;
+use crate::core::federation::knock::{
+    MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
-use crate::{AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok};
+use crate::room::{state, timeline};
+use crate::{
+    AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok, room, sending,
+};
 
 pub fn router() -> Router {
     Router::new()
@@ -40,23 +43,19 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
-    let state_hash = crate::room::state::get_pdu_frame_id(&args.event_id)?;
+    let state_hash = state::get_pdu_frame_id(&args.event_id)?;
 
-    let pdus = crate::room::state::get_full_state_ids(state_hash)?
+    let pdus = state::get_full_state_ids(state_hash)?
         .into_values()
-        .map(|id| {
-            crate::sending::convert_to_outgoing_federation_event(
-                crate::room::timeline::get_pdu_json(&id).unwrap().unwrap(),
-            )
-        })
+        .map(|id| sending::convert_to_outgoing_federation_event(timeline::get_pdu_json(&id).unwrap().unwrap()))
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
+    let auth_chain_ids = room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateResBody {
         auth_chain: auth_chain_ids
             .into_iter()
-            .filter_map(|id| match crate::room::timeline::get_pdu_json(&id).ok()? {
+            .filter_map(|id| match timeline::get_pdu_json(&id).ok()? {
                 Some(json) => Some(crate::sending::convert_to_outgoing_federation_event(json)),
                 None => {
                     error!("Could not find event json for {id} in db::");
@@ -124,7 +123,7 @@ async fn send_knock(
     // ACL check origin server
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
-    let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
+    let room_version_id = crate::room::get_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("Room version does not support knocking.", None).into());
@@ -234,7 +233,7 @@ async fn send_knock(
         .execute(&mut connect()?)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
-    let knock_room_state = crate::room::state::summary_stripped(&pdu)?;
+    let knock_room_state = state::summary_stripped(&pdu)?;
 
     json_ok(SendKnockResBody { knock_room_state })
 }
@@ -258,7 +257,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     // ACL check origin server
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
-    let room_version_id = crate::room::state::get_room_version(&args.room_id)?;
+    let room_version_id = crate::room::get_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(
@@ -273,9 +272,8 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     //     ));
     // }
 
-    // let state_lock = crate::room::state::mutex.lock(&body.room_id).await;
-
-    if let Ok(member) = crate::room::state::get_member(&args.room_id, &args.user_id) {
+    let state_lock = room::lock_state(&args.room_id).await;
+    if let Ok(member) = room::get_member(&args.room_id, &args.user_id) {
         if member.membership == MembershipState::Ban {
             warn!(
                 "Remote user {} is banned from {} but attempted to knock",
@@ -285,7 +283,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         }
     }
 
-    let (_pdu, mut pdu_json) = crate::room::timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),
@@ -314,9 +312,9 @@ fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonR
 
     crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;
 
-    let frame_id = crate::room::state::get_pdu_frame_id(&args.event_id)?;
+    let frame_id = state::get_pdu_frame_id(&args.event_id)?;
 
-    let pdu_ids = crate::room::state::get_full_state_ids(frame_id)?
+    let pdu_ids = state::get_full_state_ids(frame_id)?
         .into_values()
         .map(|id| (*id).to_owned())
         .collect();

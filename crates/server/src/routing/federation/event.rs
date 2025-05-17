@@ -6,6 +6,7 @@ use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventReqBody, MissingEventResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
+use crate::room::{state, timeline};
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
@@ -24,7 +25,7 @@ pub fn router() -> Router {
 #[endpoint]
 fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult<EventResBody> {
     let origin = depot.origin()?;
-    let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
+    let event = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
         MatrixError::not_found("Event not found.")
     })?;
@@ -54,7 +55,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonR
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
-    let event = crate::room::timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
+    let event = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
         MatrixError::not_found("Event not found.")
     })?;
@@ -72,7 +73,7 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonR
     json_ok(EventAuthorizationResBody {
         auth_chain: auth_chain_ids
             .into_iter()
-            .filter_map(|id| crate::room::timeline::get_pdu_json(&id).ok()?)
+            .filter_map(|id| timeline::get_pdu_json(&id).ok()?)
             .map(crate::sending::convert_to_outgoing_federation_event)
             .collect(),
     })
@@ -103,7 +104,7 @@ fn missing_events(
 
     let mut i = 0;
     while i < queued_events.len() && events.len() < usize::from(body.limit) as usize {
-        if let Some(pdu) = crate::room::timeline::get_pdu_json(&queued_events[i])? {
+        if let Some(pdu) = timeline::get_pdu_json(&queued_events[i])? {
             let room_id_str = pdu
                 .get("room_id")
                 .and_then(|val| val.as_str())
@@ -125,7 +126,7 @@ fn missing_events(
                 continue;
             }
 
-            if !crate::room::state::server_can_see_event(origin, &room_id, &queued_events[i])? {
+            if !state::server_can_see_event(origin, &room_id, &queued_events[i])? {
                 i += 1;
                 continue;
             }

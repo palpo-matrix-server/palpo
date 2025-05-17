@@ -14,8 +14,10 @@ use crate::data::schema::*;
 use crate::data::user::{DbProfile, NewDbPresence};
 use crate::data::{connect, diesel_exists};
 use crate::exts::*;
-use crate::room::{timeline, state};
-use crate::{AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok};
+use crate::room::{state, timeline};
+use crate::{
+    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok, room,
+};
 
 pub fn public_router() -> Router {
     Router::with_path("profile/{user_id}")
@@ -149,7 +151,7 @@ async fn set_avatar_url(
                     event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         avatar_url: avatar_url.clone(),
-                        ..state::get_room_state_content::<RoomMemberEventContent>(
+                        ..room::get_state_content::<RoomMemberEventContent>(
                             &room_id,
                             &StateEventType::RoomMember,
                             user_id.as_str(),
@@ -182,18 +184,8 @@ async fn set_avatar_url(
         true,
     )?;
     for (pdu_builder, room_id) in all_joined_rooms {
-        // let mutex_state = Arc::clone(
-        //     services()
-        //         .globals
-        //         .roomid_mutex_state
-        //         .write()
-        //         .await
-        //         .entry(room_id.clone())
-        //         .or_default(),
-        // );
-        // let state_lock = mutex_state.lock().await;
-
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
+        let state_lock = room::lock_state(&room_id).await;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &state_lock)?;
     }
 
     empty_ok()
@@ -257,7 +249,7 @@ async fn set_display_name(
                     event_type: TimelineEventType::RoomMember,
                     content: to_raw_value(&RoomMemberEventContent {
                         display_name: display_name.clone(),
-                        ..crate::room::state::get_room_state_content::<RoomMemberEventContent>(
+                        ..room::get_state_content::<RoomMemberEventContent>(
                             &room_id,
                             &StateEventType::RoomMember,
                             user_id.as_str(),
@@ -275,18 +267,8 @@ async fn set_display_name(
         .collect();
 
     for (pdu_builder, room_id) in all_joined_rooms {
-        // let mutex_state = Arc::clone(
-        //     services()
-        //         .globals
-        //         .roomid_mutex_state
-        //         .write()
-        //         .await
-        //         .entry(room_id.clone())
-        //         .or_default(),
-        // );
-        // let state_lock = mutex_state.lock().await;
-
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id)?;
+        let state_lock = room::lock_state(&room_id).await;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &state_lock)?;
 
         // Presence update
         crate::data::user::set_presence(

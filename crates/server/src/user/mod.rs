@@ -21,7 +21,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbPassword, NewDbUser};
 use crate::data::{self, connect};
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, MatrixError, PduBuilder};
+use crate::{AppError, AppResult, MatrixError, PduBuilder, room};
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v5::ReqList>,
@@ -120,28 +120,23 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
     // }
 
     for room_id in all_joined_rooms {
-        let state_lock = state::lock_room(room_id).await;
+        let state_lock = room::lock_state(room_id).await;
 
-        let room_power_levels = crate::room::state::get_room_state_content::<RoomPowerLevelsEventContent>(
-            room_id,
-            &StateEventType::RoomPowerLevels,
-            "",
-            None,
-        )
-        .ok();
+        let room_power_levels =
+            room::get_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "", None)
+                .ok();
 
-        let user_can_demote_self =
-            room_power_levels.as_ref().is_some_and(|power_levels_content| {
-                RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
-            }) || crate::room::state::get_room_state(room_id, &StateEventType::RoomCreate, "", None)
-                .is_ok_and(|event| event.sender == user_id);
+        let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
+            RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
+        }) || room::get_state(room_id, &StateEventType::RoomCreate, "", None)
+            .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
             let mut power_levels_content = room_power_levels.unwrap_or_default();
             power_levels_content.users.remove(user_id);
 
             // ignore errors so deactivation doesn't fail
-            match crate::room::timeline::build_and_append_pdu(
+            match timeline::build_and_append_pdu(
                 PduBuilder::state(String::new(), &power_levels_content),
                 user_id,
                 room_id,
