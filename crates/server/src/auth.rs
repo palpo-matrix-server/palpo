@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::identifiers::*;
-use crate::core::serde::default_true;
+use crate::core::serde::default_false;
 use crate::core::{MatrixError, ServerName};
 use crate::data::user::{DbUser, DbUserDevice};
 
@@ -27,6 +27,9 @@ impl AuthedInfo {
     pub fn access_token_id(&self) -> Option<i64> {
         self.access_token_id
     }
+    pub fn appservice(&self) -> Option<&RegistrationInfo> {
+        self.appservice.as_ref()
+    }
     pub fn is_admin(&self) -> bool {
         self.user.is_admin
     }
@@ -41,7 +44,7 @@ pub struct AuthArgs {
     #[salvo(parameter(parameter_in = Header))]
     pub authorization: Option<String>,
 
-    #[serde(default = "default_true")]
+    #[serde(default = "default_false")]
     pub from_appservice: bool,
 }
 

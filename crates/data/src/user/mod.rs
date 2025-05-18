@@ -200,6 +200,8 @@ pub fn display_name(user_id: &UserId) -> DataResult<Option<String>> {
         .filter(user_profiles::room_id.is_null())
         .select(user_profiles::display_name)
         .first::<Option<String>>(&mut connect()?)
+        .optional()
+        .map(Option::flatten)
         .map_err(Into::into)
 }
 pub fn set_display_name(user_id: &UserId, display_name: Option<&str>) -> DataResult<()> {

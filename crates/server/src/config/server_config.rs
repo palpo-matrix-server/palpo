@@ -85,6 +85,8 @@ pub struct ServerConfig {
     #[serde(default = "default_true")]
     pub enable_admin_room: bool,
 
+    pub appservice_registration_dir: Option<String>,
+
     // #[serde(default)]
     // pub proxy: ProxyConfig,
     pub jwt_secret: Option<String>,

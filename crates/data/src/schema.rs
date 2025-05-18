@@ -13,6 +13,8 @@ diesel::table! {
         namespaces -> Json,
         rate_limited -> Nullable<Bool>,
         protocols -> Nullable<Json>,
+        receive_ephemeral -> Bool,
+        device_management -> Bool,
     }
 }
 
@@ -226,7 +228,7 @@ diesel::table! {
         id -> Int8,
         txn_id -> Text,
         user_id -> Text,
-        device_id -> Text,
+        device_id -> Nullable<Text>,
         room_id -> Nullable<Text>,
         event_id -> Nullable<Text>,
         created_at -> Int8,

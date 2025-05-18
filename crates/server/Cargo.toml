@@ -96,7 +96,7 @@ diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_js
 diesel_migrations = { workspace = true }
 either = { workspace = true, features = ["serde"] }
 fast32 = { workspace = true }
-figment = { workspace = true, features = ["env", "toml"] }
+figment = { workspace = true, features = ["env", "toml", "yaml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
 ipaddress = { workspace = true }

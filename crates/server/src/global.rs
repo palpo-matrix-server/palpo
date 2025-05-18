@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::net::IpAddr;
 use std::sync::atomic::AtomicBool;
@@ -14,12 +14,14 @@ use serde::Serialize;
 use tokio::sync::{Semaphore, broadcast};
 
 use crate::core::UnixMillis;
+use crate::core::appservice::Registration;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
-use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
+use crate::data::user::{NewDbUser, NewDbUserDevice};
+use crate::data::{connect, diesel_exists};
 use crate::room::state;
 use crate::utils::{MutexMap, MutexMapGuard};
 use crate::{AppResult, MatrixError, SigningKeys};
@@ -95,6 +97,115 @@ pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
     static DNS_RESOLVER: OnceLock<HickoryResolver<TokioConnectionProvider>> = OnceLock::new();
     DNS_RESOLVER.get_or_init(|| {
         HickoryResolver::builder_with_config(ResolverConfig::default(), TokioConnectionProvider::default()).build()
+    })
+}
+
+pub fn appservices() -> &'static Vec<Registration> {
+    use figment::{
+        Figment,
+        providers::{Format, Toml, Yaml},
+    };
+    static APPSERVICES: OnceLock<Vec<Registration>> = OnceLock::new();
+
+    APPSERVICES.get_or_init(|| {
+        let mut appservices = vec![];
+        let Some(registration_dir) = crate::config::appservice_registration_dir() else {
+            return appservices;
+        };
+        tracing::info!("Appservice registration dir: {}", registration_dir);
+        let mut exist_ids = HashSet::new();
+        let Ok(entries) = std::fs::read_dir(registration_dir) else {
+            return appservices;
+        };
+
+        for entry in entries {
+            let Ok(entry) = entry else {
+                continue;
+            };
+            let path = entry.path();
+
+            if path.is_dir() {
+                continue;
+            }
+            let Some(ext) = path.extension() else {
+                continue;
+            };
+            let registration = match ext.to_str() {
+                Some("yaml") | Some("yml") => match Figment::new().merge(Yaml::file(&path)).extract::<Registration>() {
+                    Ok(registration) => registration,
+                    Err(e) => {
+                        tracing::error!(
+                            "It looks like your config `{}` is invalid. Error occurred: {e}",
+                            path.display()
+                        );
+                        continue;
+                    }
+                },
+                Some("toml") => match Figment::new().merge(Toml::file(&path)).extract::<Registration>() {
+                    Ok(registration) => registration,
+                    Err(e) => {
+                        tracing::error!(
+                            "It looks like your config `{}` is invalid. Error occurred: {e}",
+                            path.display()
+                        );
+                        continue;
+                    }
+                },
+                _ => {
+                    continue;
+                }
+            };
+
+            if exist_ids.contains(&registration.id) {
+                tracing::error!("Duplicate appservice registration id: {}", registration.id);
+                continue;
+            }
+            exist_ids.insert(registration.id.clone());
+            appservices.push(registration.clone());
+
+            let user_id = OwnedUserId::try_from(format!(
+                "@{}:{}",
+                registration.sender_localpart,
+                crate::config::server_name()
+            ))
+            .unwrap();
+            let mut conn = connect().expect("db connect failed");
+            if !diesel_exists!(users::table.filter(users::id.eq(&user_id)), &mut conn).expect("db query failed") {
+                diesel::insert_into(users::table)
+                    .values(NewDbUser {
+                        id: user_id.to_owned(),
+                        ty: None,
+                        is_admin: false,
+                        is_guest: false,
+                        appservice_id: Some(registration.id.clone()),
+                        created_at: UnixMillis::now(),
+                    })
+                    .execute(&mut conn)
+                    .expect("db query failed");
+            }
+
+            if !diesel_exists!(
+                user_devices::table.filter(user_devices::user_id.eq(&user_id)),
+                &mut conn
+            )
+            .expect("db query failed")
+            {
+                diesel::insert_into(user_devices::table)
+                    .values(NewDbUserDevice {
+                        user_id,
+                        device_id: OwnedDeviceId::try_from("_").expect("must be valid"),
+                        display_name: Some("[Default]".to_string()),
+                        user_agent: None,
+                        is_hidden: true,
+                        last_seen_ip: None,
+                        last_seen_at: None,
+                        created_at: UnixMillis::now(),
+                    })
+                    .execute(&mut conn)
+                    .expect("db query failed");
+            }
+        }
+        appservices
     })
 }
 

@@ -158,6 +158,17 @@ pub struct DbRegistration {
     /// The external protocols which the application service provides (e.g. IRC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocols: Option<JsonValue>,
+
+    /// Whether the application service wants to receive ephemeral data.
+    ///
+    /// Defaults to `false`.
+    pub receive_ephemeral: bool,
+
+    /// Whether the application service wants to do device management, as part of MSC4190.
+    ///
+    /// Defaults to `false`
+    #[serde(default, rename = "io.element.msc4190")]
+    pub device_management: bool,
 }
 
 impl From<Registration> for DbRegistration {
@@ -171,6 +182,8 @@ impl From<Registration> for DbRegistration {
             namespaces,
             rate_limited,
             protocols,
+            receive_ephemeral,
+            device_management,
         } = value;
         Self {
             id,
@@ -181,6 +194,8 @@ impl From<Registration> for DbRegistration {
             namespaces: serde_json::to_value(namespaces).unwrap_or_default(),
             rate_limited,
             protocols: protocols.map(|protocols| serde_json::to_value(protocols).unwrap_or_default()),
+            receive_ephemeral,
+            device_management,
         }
     }
 }
@@ -197,6 +212,8 @@ impl TryFrom<DbRegistration> for Registration {
             namespaces,
             rate_limited,
             protocols,
+            receive_ephemeral,
+            device_management,
         } = value;
         let protocols = if let Some(protocols) = protocols {
             serde_json::from_value(protocols)?
@@ -212,12 +229,15 @@ impl TryFrom<DbRegistration> for Registration {
             namespaces: serde_json::from_value(namespaces)?,
             rate_limited,
             protocols,
+            receive_ephemeral,
+            device_management,
         })
     }
 }
 
 /// Registers an appservice and returns the ID to the caller
 pub fn register_appservice(registration: Registration) -> AppResult<String> {
+    println!("rrrrrrrrrrrrrregister_appservice: {:#?}", registration);
     let db_registration: DbRegistration = registration.into();
     diesel::insert_into(appservice_registrations::table)
         .values(&db_registration)

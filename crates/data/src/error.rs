@@ -70,7 +70,7 @@ impl Writer for DataError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
         let matrix = match self {
             Self::Public(msg) => MatrixError::unknown(msg),
-            Self::Internal(_msg) => MatrixError::unknown("unknown error."),
+            Self::Internal(_msg) => MatrixError::unknown("Unknown data internal error."),
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
                 use crate::core::client::uiaa::ErrorKind;
@@ -98,14 +98,14 @@ impl Writer for DataError {
                 return;
             }
             Self::Diesel(e) => {
-                tracing::error!(error = ?e, "diesel db error.");
+                tracing::error!(error = ?e, "Diesel db error.");
                 if let diesel::result::Error::NotFound = e {
                     MatrixError::not_found("Resource not found.")
                 } else {
-                    MatrixError::unknown("unknown db error.")
+                    MatrixError::unknown("Unknown db error.")
                 }
             }
-            _ => MatrixError::unknown("unknown error happened."),
+            _ => MatrixError::unknown("Unknown data error happened."),
         };
         matrix.write(req, depot, res).await;
     }

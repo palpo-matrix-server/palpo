@@ -80,6 +80,10 @@ pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     r
 }
 
+pub fn appservice_registration_dir() -> Option<&'static str> {
+    get().appservice_registration_dir.as_deref()
+}
+
 /// Returns this server's keypair.
 pub fn keypair() -> &'static Ed25519KeyPair {
     static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
