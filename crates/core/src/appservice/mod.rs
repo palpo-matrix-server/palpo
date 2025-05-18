@@ -66,8 +66,7 @@ impl Namespaces {
 /// Used for [appservice registration](https://spec.matrix.org/latest/application-service-api/#registration).
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Registration {
-    /// A unique, user - defined ID of the application service which will never
-    /// change.
+    /// A unique, user - defined ID of the application service which will never change.
     pub id: String,
 
     /// The URL for the application service.
@@ -100,6 +99,18 @@ pub struct Registration {
     /// IRC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocols: Option<Vec<String>>,
+
+    /// Whether the application service wants to receive ephemeral data.
+    ///
+    /// Defaults to `false`.
+    #[serde(default)]
+    pub receive_ephemeral: bool,
+
+    /// Whether the application service wants to do device management, as part of MSC4190.
+    ///
+    /// Defaults to `false`
+    #[serde(default, rename = "io.element.msc4190")]
+    pub device_management: bool,
 }
 
 impl Registration {

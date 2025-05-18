@@ -96,6 +96,7 @@ pub fn create_device(
     device_id: &DeviceId,
     token: &str,
     initial_device_display_name: Option<String>,
+    last_seen_ip: Option<String>,
 ) -> DataResult<DbUserDevice> {
     let device = diesel::insert_into(user_devices::table)
         .values(NewDbUserDevice {
@@ -104,7 +105,7 @@ pub fn create_device(
             display_name: initial_device_display_name,
             user_agent: None,
             is_hidden: false,
-            last_seen_ip: None, // TODO
+            last_seen_ip,
             last_seen_at: Some(UnixMillis::now()),
             created_at: UnixMillis::now(),
         })

@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use palpo_core::UnixMillis;
 use salvo::oapi::extract::{JsonBody, PathParam};
 use salvo::prelude::*;
 
@@ -13,8 +14,8 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
 use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data, empty_ok, json_ok,
-    utils,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data,
+    empty_ok, json_ok, utils,
 };
 
 pub fn authed_router() -> Router {
@@ -71,17 +72,49 @@ fn update_device(
     _aa: AuthArgs,
     device_id: PathParam<OwnedDeviceId>,
     body: JsonBody<UpdatedDeviceReqBody>,
+    req: &mut Request,
+    depot: &mut Depot,
 ) -> EmptyResult {
+    let authed = depot.authed_info()?;
     let device_id = device_id.into_inner();
     let device = user_devices::table
         .filter(user_devices::device_id.eq(&device_id))
-        .first::<DbUserDevice>(&mut connect()?)?;
+        .first::<DbUserDevice>(&mut connect()?)
+        .optional()?;
 
-    diesel::update(&device)
-        .set(user_devices::display_name.eq(&body.display_name))
-        .execute(&mut connect()?)?;
+    if let Some(device) = device {
+        diesel::update(&device)
+            .set((
+                user_devices::display_name.eq(&body.display_name),
+                user_devices::last_seen_ip.eq(&req.remote_addr().to_string()),
+                user_devices::last_seen_at.eq(UnixMillis::now()),
+            ))
+            .execute(&mut connect()?)?;
+        crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+    } else {
+        let Some(appservice) = authed.appservice() else {
+            return Err(MatrixError::not_found("Device is not found.").into());
+        };
+        if !appservice.registration.device_management {
+            return Err(MatrixError::not_found("Device is not found.").into());
+        }
+        debug!(
+            "Creating new device for {} from appservice {} as MSC4190 is enabled and device ID does not exist",
+            authed.user_id(),
+            appservice.registration.id
+        );
 
-    crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+        let device_id = OwnedDeviceId::from(utils::random_string(DEVICE_ID_LENGTH));
+
+        let device = data::user::device::create_device(
+            authed.user_id(),
+            &device_id,
+            &appservice.registration.as_token,
+            None,
+            Some(req.remote_addr().to_string()),
+        )?;
+        crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+    }
 
     empty_ok()
 }

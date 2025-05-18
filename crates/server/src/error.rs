@@ -87,10 +87,10 @@ impl AppError {
 impl Writer for AppError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
         let matrix = match self {
-            Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo."),
-            Self::FrequentlyRequest => MatrixError::unknown("frequently request resource."),
+            Self::Salvo(_e) => MatrixError::unknown("Unknown error in salvo."),
+            Self::FrequentlyRequest => MatrixError::unknown("Frequently request resource."),
             Self::Public(msg) => MatrixError::unknown(msg),
-            Self::Internal(_msg) => MatrixError::unknown("unknown error."),
+            Self::Internal(_msg) => MatrixError::unknown("Unknown error."),
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
                 use crate::core::client::uiaa::ErrorKind;
@@ -122,11 +122,15 @@ impl Writer for AppError {
                 if let diesel::result::Error::NotFound = e {
                     MatrixError::not_found("Resource not found.")
                 } else {
-                    MatrixError::unknown("unknown db error.")
+                    MatrixError::unknown("Unknown db error.")
                 }
             }
             Self::HttpStatus(e) => MatrixError::unknown(e.brief),
-            _ => MatrixError::unknown("unknown error happened."),
+            e => {
+                tracing::error!(error = ?e, "Unknown error.");
+                // println!("{}", std::backtrace::Backtrace::capture());
+                MatrixError::unknown("Unknown error happened.")
+            },
         };
         matrix.write(req, depot, res).await;
     }

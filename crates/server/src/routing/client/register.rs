@@ -211,7 +211,13 @@ async fn register(
     let token = utils::random_string(TOKEN_LENGTH);
 
     //Create device for this account
-    data::user::device::create_device(&user_id, &device_id, &token, body.initial_device_display_name.clone())?;
+    data::user::device::create_device(
+        &user_id,
+        &device_id,
+        &token,
+        body.initial_device_display_name.clone(),
+        Some(req.remote_addr().to_string()),
+    )?;
 
     // If this is the first real user, grant them admin privileges
     // Note: the server user, @palpo:servername, is generated first

@@ -50,6 +50,8 @@ log_format = "compact" # pretty, json
 # servers.)
 trusted_servers = ["matrix.org"]
 
+appservice_registration_dir = "/complement/appservice"
+
 url_preview_domain_contains_allowlist = ["*"]
 ip_range_denylist = []
 

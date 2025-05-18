@@ -68,7 +68,7 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
 /// Note: You can use [`GET /_matrix/client/r0/login`](fn.get_supported_versions_route.html) to see
 /// supported login types.
 #[endpoint]
-async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<LoginResBody> {
+async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Response) -> JsonResult<LoginResBody> {
     // Validate login method
     // TODO: Other login methods
     let user_id = match &body.login_info {
@@ -146,6 +146,7 @@ async fn login(body: JsonBody<LoginReqBody>, res: &mut Response) -> JsonResult<L
             &device_id,
             &access_token,
             body.initial_device_display_name.clone(),
+            Some(req.remote_addr().to_string()),
         )?;
     }
 

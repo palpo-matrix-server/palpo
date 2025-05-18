@@ -909,7 +909,6 @@ CREATE TABLE lazy_load_deliveries (
    CONSTRAINT lazy_loads_udx UNIQUE (user_id, device_id, room_id, confirmed_user_id)
 );
 
-
 drop table if exists appservice_registrations CASCADE;
 CREATE TABLE appservice_registrations (
     id text NOT NULL PRIMARY KEY,
@@ -919,10 +918,10 @@ CREATE TABLE appservice_registrations (
     sender_localpart text NOT NULL,
     namespaces json NOT NULL,
     rate_limited boolean,
-    protocols json
+    protocols json,
+    receive_ephemeral boolean NOT NULL DEFAULT false,
+    device_management boolean NOT NULL DEFAULT false
 );
-
-
 
 drop table if exists user_uiaa_datas CASCADE;
 CREATE TABLE user_uiaa_datas (
