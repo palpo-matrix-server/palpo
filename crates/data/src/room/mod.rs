@@ -9,6 +9,8 @@ use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{DataResult, connect};
 
+pub mod receipt;
+
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
 pub struct DbRoom {

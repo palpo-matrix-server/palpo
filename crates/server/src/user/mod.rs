@@ -18,9 +18,9 @@ use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEv
 use crate::core::events::{GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
 use crate::data::schema::*;
-use crate::data::user::{DbUser, NewDbPassword, NewDbUser};
-use crate::data::{self, connect};
-use crate::room::{state, timeline};
+use crate::data::user::{DbUser, NewDbPassword,DbUserData, NewDbUser};
+use crate::data::{self, DataResult,connect};
+use crate::room::{state, timeline};use crate::core::serde::JsonValue;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, room};
 
 pub struct SlidingSyncCache {
@@ -235,4 +235,16 @@ pub fn valid_refresh_token(user_id: &UserId, device_id: &DeviceId, token: &str) 
         return Err(MatrixError::unauthorized("Refresh token expired.").into());
     }
     Ok(())
+}
+
+/// Places one event in the account data of the user and removes the previous entry.
+#[tracing::instrument(skip(room_id, user_id, event_type, json_data))]
+pub fn set_data(
+    user_id: &UserId,
+    room_id: Option<OwnedRoomId>,
+    event_type: &str,
+    json_data: JsonValue,
+) -> DataResult<DbUserData> {
+    let user_data = data::user::set_data(user_id, room_id, event_type, json_data)?;
+    Ok(user_data)
 }

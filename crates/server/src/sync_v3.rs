@@ -699,7 +699,7 @@ async fn load_joined_room(
     };
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
-    for (_, content) in room::receipt::read_receipts(&room_id, since_sn)? {
+    for (_, content) in data::room::receipt::read_receipts(&room_id, since_sn)? {
         let receipt = ReceiptEvent {
             room_id: room_id.to_owned(),
             content,

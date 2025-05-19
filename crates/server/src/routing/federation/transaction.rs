@@ -199,7 +199,7 @@ async fn handle_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                         room_id: room_id.clone(),
                     };
 
-                    let _ = crate::room::receipt::update_read(&user_id, &room_id, event);
+                    let _ = data::room::receipt::update_read(&user_id, &room_id, &event);
                 }
             } else {
                 warn!(
