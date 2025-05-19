@@ -6,7 +6,6 @@
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty/initial_sync"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
 {"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
-{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -16,6 +15,7 @@
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
+{"Action":"fail","Test":"TestFederationKeyUploadQuery"}
 {"Action":"fail","Test":"TestGetMissingEventsGapFilling"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents"}
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_invited_visibility"}
@@ -24,16 +24,12 @@
 {"Action":"fail","Test":"TestInboundCanReturnMissingEvents/Inbound_federation_can_return_missing_events_for_world_readable_visibility"}
 {"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
 {"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
-{"Action":"fail","Test":"TestJoinFederatedRoomFailOver"}
-{"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser"}
-{"Action":"fail","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser/join_remote_federated_room_as_application_service_user"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/can_paginate_after_getting_remote_event_from_timestamp_to_event_endpoint"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/looking_forwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/when_looking_backwards_before_the_room_was_created,_should_be_able_to_find_event_that_was_imported"}
-{"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/should_find_next_event_topologically_after_given_timestmap_when_all_message_timestamps_are_the_same"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/should_find_next_event_topologically_before_given_timestamp_when_all_message_timestamps_are_the_same"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/should_not_be_able_to_query_a_private_room_you_are_not_a_member_of"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/should_not_be_able_to_query_a_public_room_you_are_not_a_member_of"}
@@ -134,6 +130,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -176,9 +173,6 @@
 {"Action":"pass","Test":"TestEvent/Parallel"}
 {"Action":"pass","Test":"TestEvent/Parallel/Large_Event"}
 {"Action":"pass","Test":"TestEvent/Parallel/Large_State_Event"}
-{"Action":"pass","Test":"TestFederationKeyUploadQuery"}
-{"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_claim_remote_one_time_key_using_POST"}
-{"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}
 {"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite"}
@@ -216,6 +210,9 @@
 {"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagFederation"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
+{"Action":"pass","Test":"TestJoinFederatedRoomFailOver"}
+{"Action":"pass","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser"}
+{"Action":"pass","Test":"TestJoinFederatedRoomFromApplicationServiceBridgeUser/join_remote_federated_room_as_application_service_user"}
 {"Action":"pass","Test":"TestJoinFederatedRoomWithUnverifiableEvents"}
 {"Action":"pass","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_missing_signatures_shouldn't_block_room_join"}
 {"Action":"pass","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_bad_signatures_shouldn't_block_room_join"}
@@ -229,6 +226,7 @@
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/federation/looking_backwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_event_after_given_timestmap"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_event_before_given_timestmap"}
+{"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_next_event_topologically_after_given_timestmap_when_all_message_timestamps_are_the_same"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_nothing_after_the_latest_timestmap"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_nothing_before_the_earliest_timestmap"}
 {"Action":"pass","Test":"TestKeyChangesLocal"}
