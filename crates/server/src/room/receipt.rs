@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::AppResult;
 use crate::core::events::AnySyncEphemeralRoomEvent;
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType, Receipts};
+use crate::core::events::receipt::{
+    Receipt, ReceiptContent, ReceiptData, ReceiptEvent, ReceiptEventContent, ReceiptMap, ReceiptType, Receipts,
+};
+use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
@@ -12,90 +14,23 @@ use crate::data::room::{DbReceipt, NewDbReceipt};
 use crate::data::schema::*;
 use crate::data::{connect, next_sn};
 use crate::room::{state, timeline};
+use crate::{AppResult, data, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
 pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> AppResult<()> {
-    let occur_sn = next_sn()?;
-    for (event_id, receipts) in event.content {
-        for (receipt_ty, user_receipts) in receipts {
-            if let Some(receipt) = user_receipts.get(user_id) {
-                let receipt_at = receipt.ts.unwrap_or_else(|| UnixMillis::now());
-                let receipt = NewDbReceipt {
-                    ty: receipt_ty.to_string(),
-                    room_id: room_id.to_owned(),
-                    user_id: user_id.to_owned(),
-                    event_id: event_id.clone(),
-                    occur_sn,
-                    json_data: serde_json::to_value(receipt)?,
-                    receipt_at,
-                };
-                diesel::insert_into(event_receipts::table)
-                    .values(&receipt)
-                    .execute(&mut connect()?)?;
-            }
-        }
-    }
+    data::room::receipt::update_read(user_id, room_id, &event)?;
+
+    let receipts = BTreeMap::from_iter([(
+        room_id.to_owned(),
+        ReceiptMap::new(BTreeMap::from_iter([(
+            user_id.to_owned(),
+            ReceiptData::new(Receipt::new(UnixMillis::now()), event.content.0.keys().cloned().collect()),
+        )])),
+    )]);
+    let edu = Edu::Receipt(ReceiptContent::new(receipts));
+    sending::send_edu_room(room_id, &edu)?;
     Ok(())
-}
-
-// /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-// pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> AppResult<SyncEphemeralRoomEvent<ReceiptEventContent>> {
-//     let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
-//         BTreeMap::new();
-//     let receipts = event_receipts::table
-//         .filter(event_receipts::room_id.eq(room_id))
-//         .filter(event_receipts::event_sn.ge(since_sn))
-//         .load::<DbReceipt>(&mut connect()?)?;
-//     for receipt in receipts {
-//         let DbReceipt {
-//             ty,
-//             user_id,
-//             event_id,
-//             json_data,
-//             ..
-//         } = receipt;
-//         let event_map = event_content.entry(event_id).or_default();
-//         let receipt_type = ReceiptType::from(ty);
-//         let type_map = event_map.entry(receipt_type).or_default();
-//         type_map.insert(user_id, serde_json::from_value(json_data).unwrap_or_default());
-//     }
-
-//     Ok(SyncEphemeralRoomEvent {
-//         content: ReceiptEventContent(event_content),
-//     })
-// }
-
-/// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> AppResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
-    let list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
-    let receipts = event_receipts::table
-        .filter(event_receipts::occur_sn.ge(since_sn))
-        .filter(event_receipts::room_id.eq(room_id))
-        .load::<DbReceipt>(&mut connect()?)?;
-    let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
-    for receipt in receipts {
-        grouped.entry(receipt.user_id.clone()).or_default().push(receipt);
-    }
-
-    let mut receipts = BTreeMap::new();
-    for (user_id, items) in grouped {
-        let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
-            BTreeMap::new();
-
-        for item in items {
-            event_content.entry(item.event_id.clone()).or_default().insert(
-                ReceiptType::from(item.ty),
-                BTreeMap::from_iter([(
-                    item.user_id.clone(),
-                    serde_json::from_value(item.json_data).unwrap_or_default(),
-                )]),
-            );
-        }
-        receipts.insert(user_id.clone(), ReceiptEventContent(event_content));
-    }
-
-    Ok(receipts)
 }
 
 /// Sets a private read marker at `count`.
@@ -113,18 +48,6 @@ pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, 
         })
         .execute(&mut connect()?)?;
     Ok(())
-}
-
-pub fn last_private_read_update_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
-    let occur_sn = event_receipts::table
-        .filter(event_receipts::room_id.eq(room_id))
-        .filter(event_receipts::user_id.eq(user_id))
-        .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
-        .order_by(event_receipts::id.desc())
-        .select(event_receipts::occur_sn)
-        .first::<Seqnum>(&mut connect()?)?;
-
-    Ok(occur_sn)
 }
 
 /// Gets the latest private read receipt from the user in the room
@@ -158,30 +81,4 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
         )]),
     )]);
     Ok(ReceiptEventContent(content))
-    // let receipt_event_content = ReceiptEventContent(content);
-    // let receipt_sync_event = SyncEphemeralRoomEvent {
-    //     content: receipt_event_content,
-    // };
-
-    // let event = serde_json::value::to_raw_value(&receipt_sync_event).expect("receipt created manually");
-
-    // Ok(RawJson::from_raw_value(event))
 }
-
-// /// Returns the count of the last typing update in this room.
-// #[tracing::instrument]
-// pub fn update_last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
-//     let mut key = room_id.as_bytes().to_vec();
-//     key.push(0xff);
-//     key.extend_from_slice(user_id.as_bytes());
-
-//     Ok(self
-//         .roomuser_id_lastprivatereadupdate
-//         .get(&key)?
-//         .map(|bytes| {
-//             utils::u64_from_bytes(&bytes)
-//                 .map_err(|_| AppError::public("Count in roomuser_id_lastprivatereadupdate is invalid."))
-//         })
-//         .transpose()?
-//         .unwrap_or(0))
-// }

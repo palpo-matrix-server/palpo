@@ -258,7 +258,7 @@ fn select_edus_receipts_room(
     max_edu_sn: &Seqnum,
     num: &mut usize,
 ) -> AppResult<ReceiptMap> {
-    let receipts = crate::room::receipt::read_receipts(room_id, since_sn)?;
+    let receipts = data::room::receipt::read_receipts(room_id, since_sn)?;
 
     let mut read = BTreeMap::<OwnedUserId, ReceiptData>::new();
     for (user_id, read_receipt) in receipts {

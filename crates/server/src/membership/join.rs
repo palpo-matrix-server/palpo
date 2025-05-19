@@ -253,7 +253,6 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
-    println!("DDDDDDDDD 0");
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
@@ -264,7 +263,6 @@ pub async fn join_room(
         });
     }
 
-    println!("DDDDDDDDD 1");
     if let Ok(membership) = room::get_member(room_id, sender_id) {
         if membership.membership == MembershipState::Ban {
             tracing::warn!("{} is banned from {room_id} but attempted to join", sender_id);
@@ -272,13 +270,10 @@ pub async fn join_room(
         }
     }
 
-    println!("DDDDDDDDD 2");
     // Ask a remote server if we are not participating in this room
     if room::can_local_work_for(room_id, servers)? {
-    println!("DDDDDDDDD 3");
         join_room_local(sender_id, room_id, reason, servers, third_party_signed, extra_data).await?;
     } else {
-    println!("DDDDDDDDD 4");
         join_room_remote(authed, room_id, reason, servers, third_party_signed, extra_data).await?;
     }
 
