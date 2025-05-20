@@ -797,15 +797,15 @@ where
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, usize::MAX, None)
+    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
-    limit: usize,
     filter: Option<&RoomEventFilter>,
+    limit: usize,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
 }
@@ -814,8 +814,8 @@ pub fn get_pdus_backward(
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
-    limit: usize,
     filter: Option<&RoomEventFilter>,
+    limit: usize,
 ) -> AppResult<Vec<(i64, PduEvent)>> {
     get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
 }

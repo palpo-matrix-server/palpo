@@ -139,7 +139,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_event = base_event.to_room_event();
 
     let events_before: Vec<_> =
-        timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?
+        timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?
             .into_iter()
             .filter(|(_, pdu)| state::user_can_see_event(authed.user_id(), &room_id, &pdu.event_id).unwrap_or(false))
             .collect();
@@ -163,7 +163,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
-    let events_after = timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, limit / 2, None)?;
+    let events_after = timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(

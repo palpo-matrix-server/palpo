@@ -31,8 +31,8 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
         &args.room_id,
         until,
         None,
-        limit,
         None,
+        limit,
     )?;
 
     let mut events = Vec::with_capacity(all_events.len());

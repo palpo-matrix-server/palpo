@@ -19,10 +19,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
         crate::room::user::reset_notification_counts(authed.user_id(), &args.room_id)?;
     }
 
-    // ping presence
-    if crate::config().allow_local_presence {
-        crate::user::ping_presence(authed.user_id(), &crate::core::presence::PresenceState::Online)?;
-    }
+    crate::user::ping_presence(authed.user_id(), &crate::core::presence::PresenceState::Online)?;
 
     match args.receipt_type {
         ReceiptType::FullyRead => {
