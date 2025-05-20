@@ -9,7 +9,6 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::room::state;
 use crate::{AuthArgs, DepotExt, JsonResult, data, hoops, json_ok, room};
 
 pub fn authed_router() -> Router {

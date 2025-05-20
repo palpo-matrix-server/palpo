@@ -292,7 +292,7 @@ async fn knock_room_remote(
 
     info!("Parsing knock event");
     let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let mut parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
+    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
     info!("Going through send_knock response knock state events");

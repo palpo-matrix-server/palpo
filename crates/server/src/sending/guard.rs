@@ -1,36 +1,23 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Debug;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use base64::{Engine as _, engine::general_purpose};
-use diesel::prelude::*;
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, mpsc};
 
 use super::{
     EduBuf, EduVec, MPSC_RECEIVER, MPSC_SENDER, OutgoingKind, SELECT_EDU_LIMIT, SELECT_PRESENCE_LIMIT,
-    SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus, sender,
+    SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus,
 };
-use crate::core::appservice::Registration;
-use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::GlobalAccountDataEventType;
-use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_message_request};
+use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::presence::{PresenceContent, PresenceUpdate};
-use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::{Seqnum, UnixMillis, device_id, push};
-use crate::data::connect;
-use crate::data::schema::*;
-use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
-use crate::room::{state, timeline};
-use crate::{AppError, AppResult, config, data, exts::*, utils};
+use crate::core::{Seqnum, device_id};
+use crate::room::state;
+use crate::{AppResult, data, exts::*};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();

@@ -8,7 +8,7 @@ use crate::core::events::{AnyStateEventContent, StateEventType};
 use crate::core::serde::RawJson;
 use crate::core::{EventId, RoomId, UserId};
 use crate::event::PduBuilder;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{AppResult, IsRemoteOrLocal, MatrixError, config, room};
 
 pub async fn send_state_event_for_key(

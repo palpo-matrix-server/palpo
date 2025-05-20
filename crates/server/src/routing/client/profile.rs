@@ -14,7 +14,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbProfile, NewDbPresence};
 use crate::data::{connect, diesel_exists};
 use crate::exts::*;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{
     AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok, room,
 };

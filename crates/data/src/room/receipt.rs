@@ -3,14 +3,13 @@ use std::collections::BTreeMap;
 use diesel::prelude::*;
 
 use crate::core::events::AnySyncEphemeralRoomEvent;
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType, Receipts};
-use crate::core::federation::transaction::Edu;
+use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
-use crate::{connect, DataResult, next_sn};
+use crate::{DataResult, connect, next_sn};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]

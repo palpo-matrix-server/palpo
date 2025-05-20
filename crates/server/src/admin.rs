@@ -27,11 +27,11 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
+use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::{self, connect};
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::utils::{self, HtmlEscape};
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, room};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]
@@ -193,7 +193,7 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
 
     let palpo_user = UserId::parse(format!("@palpo:{}", &conf.server_name)).expect("@palpo:server_name is valid");
 
-    let palpo_room = crate::room::resolve_local_alias(
+    let palpo_room = room::resolve_local_alias(
         format!("#admins:{}", &conf.server_name)
             .as_str()
             .try_into()
@@ -213,7 +213,7 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
                     AdminRoomEvent::ProcessMessage(room_message) => process_admin_message(room_message).await
                 };
 
-                let state_lock = crate::room::lock_state(&palpo_room).await;
+                let state_lock = room::lock_state(&palpo_room).await;
                 timeline::build_and_append_pdu(
                     PduBuilder {
                         event_type: TimelineEventType::RoomMessage,
@@ -343,7 +343,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 .load::<OwnedRoomId>(&mut connect()?)?;
             let mut items = Vec::with_capacity(room_ids.len());
             for room_id in room_ids {
-                let members = crate::room::joined_member_count(&room_id)?;
+                let members = room::joined_member_count(&room_id)?;
                 items.push(format!("members: {} \t\tin room: {}", members, room_id));
             }
             let output = format!("Rooms:\n{}", items.join("\n"));
@@ -378,7 +378,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 let room_id = <&RoomId>::try_from(room_id_str)
                     .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
                 let start = Instant::now();
-                let count = crate::room::auth_chain::get_auth_chain_sns(room_id, [&*event_id].into_iter())?.len();
+                let count = room::auth_chain::get_auth_chain_sns(room_id, [&*event_id].into_iter())?.len();
                 let elapsed = start.elapsed();
                 RoomMessageEventContent::text_plain(format!("Loaded auth chain with length {count} in {elapsed:?}"))
             } else {
@@ -525,11 +525,11 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             ))
         }
         AdminCommand::DisableRoom { room_id } => {
-            crate::room::disable_room(&room_id, true)?;
+            room::disable_room(&room_id, true)?;
             RoomMessageEventContent::text_plain("Room disabled.")
         }
         AdminCommand::EnableRoom { room_id } => {
-            crate::room::disable_room(&room_id, false)?;
+            room::disable_room(&room_id, false)?;
             RoomMessageEventContent::text_plain("Room enabled.")
         }
         AdminCommand::DeactivateUser { leave_rooms, user_id } => {
@@ -752,7 +752,7 @@ pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
     let admin_room_alias: Box<RoomAliasId> = format!("#admins:{}", &conf.server_name)
         .try_into()
         .expect("#admins:server_name is a valid alias name");
-    crate::room::resolve_local_alias(&admin_room_alias)
+    room::resolve_local_alias(&admin_room_alias)
 }
 
 /// Create the admin room.
@@ -766,13 +766,13 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     let room_id = RoomId::new(&conf.server_name);
     let room_version = config::default_room_version();
 
-    if crate::room::room_exists(&room_id)? {
+    if room::room_exists(&room_id)? {
         return Ok(room_id);
     } else {
-        crate::room::ensure_room(&room_id, &room_version)?;
+        room::ensure_room(&room_id, &room_version)?;
     }
 
-    let state_lock = crate::room::lock_state(&room_id).await;
+    let state_lock = room::lock_state(&room_id).await;
 
     // Create a user for the server
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
@@ -943,7 +943,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         &state_lock,
     )?;
 
-    crate::room::set_alias(&room_id, alias, created_by)?;
+    room::set_alias(&room_id, alias, created_by)?;
 
     Ok(room_id.to_owned())
 }
@@ -955,7 +955,7 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
     let conf = crate::config();
 
     let room_id = get_admin_room()?;
-    let state_lock = crate::room::lock_state(&room_id).await;
+    let state_lock = room::lock_state(&room_id).await;
 
     // Use the server user to grant the new admin's power level
     let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");

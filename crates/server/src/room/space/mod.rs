@@ -13,7 +13,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{OwnedRoomId, RoomId, UserId, space::SpaceRoomJoinRule};
 use crate::room::state;
-use crate::{AppResult, GetUrlOrigin, MatrixError, room};
+use crate::{AppResult, GetUrlOrigin, MatrixError};
 
 mod pagination_token;
 pub use pagination_token::PaginationToken;

@@ -3,6 +3,7 @@
 use std::{fmt, mem};
 
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::Value as JsonValue;
 
 mod value;
@@ -112,6 +113,13 @@ pub fn to_canonical_value<T: Serialize>(value: T) -> Result<CanonicalJsonValue, 
     serde_json::to_value(value)
         .map_err(CanonicalJsonError::SerDe)?
         .try_into()
+}
+
+pub fn from_canonical_value<T>(value: CanonicalJsonObject) -> Result<T, CanonicalJsonError>
+where
+    T: DeserializeOwned,
+{
+    serde_json::from_value(serde_json::to_value(value)?).map_err(CanonicalJsonError::SerDe)
 }
 
 /// The value to put in `unsigned.redacted_because`.

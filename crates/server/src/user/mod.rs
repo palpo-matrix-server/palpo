@@ -17,11 +17,12 @@ use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::events::{GlobalAccountDataEventType, StateEventType};
 use crate::core::identifiers::*;
+use crate::core::serde::JsonValue;
 use crate::data::schema::*;
-use crate::data::user::{DbUser, NewDbPassword,DbUserData, NewDbUser};
-use crate::data::{self, DataResult,connect};
-use crate::room::{state, timeline};use crate::core::serde::JsonValue;
-use crate::{AppError, AppResult, MatrixError, PduBuilder, room};
+use crate::data::user::{DbUser, DbUserData, NewDbPassword, NewDbUser};
+use crate::data::{DataResult, connect};
+use crate::room::timeline;
+use crate::{AppError, AppResult, MatrixError, PduBuilder, data, room};
 
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v5::ReqList>,

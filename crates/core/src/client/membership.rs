@@ -4,13 +4,10 @@ use std::collections::BTreeMap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::serde::JsonValue;
-use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
-    events::room::member::RoomMemberEvent,
-    serde::{RawJson, RawJsonValue, StringEnum},
-    third_party::Medium,
-};
+use crate::events::room::member::RoomMemberEvent;
+use crate::serde::{JsonValue, RawJson, StringEnum};
+use crate::third_party::Medium;
+use crate::{OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr};
 
 /// A signature of an `m.third_party_invite` token to prove that this user owns
 /// a third party identity which has been invited to the room.

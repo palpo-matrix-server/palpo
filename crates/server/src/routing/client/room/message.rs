@@ -11,7 +11,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages

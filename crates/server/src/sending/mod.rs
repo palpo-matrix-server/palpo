@@ -20,7 +20,7 @@ use crate::core::{UnixMillis, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::sending::resolver::Resolver;
 use crate::{AppError, AppResult, ServerConfig, TlsNameMap, config, data, exts::*, utils};
 

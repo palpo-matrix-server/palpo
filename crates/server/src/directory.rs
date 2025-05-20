@@ -3,8 +3,8 @@ use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsCh
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
-use crate::room::{self, state};
-use crate::{AppError, AppResult, MatrixError, config, exts::*};
+use crate::exts::*;
+use crate::{AppError, AppResult, MatrixError, config, room};
 
 pub async fn get_public_rooms(
     server: Option<&ServerName>,

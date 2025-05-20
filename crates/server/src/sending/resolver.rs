@@ -1,8 +1,6 @@
 use std::error::Error as StdError;
-use std::future::Future;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 use std::{future, iter};
 
@@ -12,7 +10,6 @@ use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use tower_service::Service as TowerService;
 
 use crate::TlsNameMap;
-use crate::core::client::sync_events;
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;

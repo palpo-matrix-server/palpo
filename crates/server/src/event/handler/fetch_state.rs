@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::core::ServerName;
 use crate::core::federation::event::{RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request};
 use crate::core::identifiers::*;
-use crate::room::{state, timeline};
+use crate::room::state;
 use crate::{AppError, AppResult, exts::*};
 
 /// Call /state_ids to find out what the state at this pdu is. We trust the
