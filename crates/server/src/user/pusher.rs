@@ -3,22 +3,19 @@ use palpo_core::push::PusherIds;
 use url::Url;
 
 use crate::core::UnixMillis;
-use crate::core::client::push::PusherPostData;
-use crate::core::client::push::pusher::PusherAction;
-use crate::core::events::{
-    AnySyncTimelineEvent, StateEventType, TimelineEventType, room::power_levels::RoomPowerLevelsEventContent,
-};
+use crate::core::client::push::{PusherAction, PusherPostData};
+use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::push::push_gateway::{
     Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,
 };
 use crate::core::push::{Action, PushFormat, Pusher, PusherKind, Ruleset, Tweak};
+use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::pusher::NewDbPusher;
-use crate::data::{self, connect};
 use crate::event::PduEvent;
-use crate::room::{state, timeline};
-use crate::{AppError, AppResult, AuthedInfo, room};
+use crate::{AppError, AppResult, AuthedInfo, data, room};
 
 pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
     match pusher {

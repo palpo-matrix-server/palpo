@@ -24,7 +24,9 @@ mod raw_json;
 pub mod single_element_seq;
 mod strings;
 pub mod test;
-pub use canonical_json::{CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
+pub use canonical_json::{
+    CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, from_canonical_value, to_canonical_value,
+};
 
 pub use self::{
     base64::{Base64, Base64DecodeError},

@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::federation::maybe_strip_event_id;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
     room, utils,
@@ -374,9 +374,9 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    // let mutex_lock = room::event_handler.mutex_federation.lock(room_id).await;
+    let state_lock = crate::room::lock_state(&args.room_id).await;
     crate::event::handler::handle_incoming_pdu(origin, &event_id, &args.room_id, value, true).await?;
-    // drop(mutex_lock);
+    drop(state_lock);
 
     crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
     empty_ok()

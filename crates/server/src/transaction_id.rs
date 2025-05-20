@@ -1,12 +1,12 @@
 use diesel::prelude::*;
 use palpo_core::UnixMillis;
 
+use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::{DeviceId, TransactionId, UserId};
 use crate::data::room::NewDbEventIdempotent;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppResult, room};
 
 pub fn add_txn_id(
     txn_id: &TransactionId,

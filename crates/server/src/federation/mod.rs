@@ -10,8 +10,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::JsonValue;
 use crate::core::{MatrixError, signatures};
-use crate::room::{self, state};
-use crate::{AppError, AppResult, config, sending};
+use crate::{AppError, AppResult, config, room, sending};
 
 mod access_check;
 pub use access_check::access_check;
@@ -110,7 +109,7 @@ pub(crate) async fn send_request(
                 let msg = extra
                     .remove("error")
                     .map(|v| v.as_str().unwrap_or_default().to_owned())
-                    .unwrap_or("Unknown error".to_owned());
+                    .unwrap_or("Parse remote respone data failed.".to_owned());
                 Err(MatrixError {
                     status_code: Some(status),
                     authenticate,

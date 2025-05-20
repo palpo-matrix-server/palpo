@@ -1,8 +1,8 @@
 //! Endpoints for push notifications.
 
-pub mod notification;
-pub mod push_rule;
-pub mod pusher;
+mod notification;
+mod push_rule;
+mod pusher;
 
 pub use notification::*;
 pub use push_rule::*;

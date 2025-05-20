@@ -2,9 +2,9 @@ use salvo::oapi::ToParameters;
 use serde::Deserialize;
 
 use crate::appservice::RegistrationInfo;
+use crate::core::MatrixError;
 use crate::core::identifiers::*;
 use crate::core::serde::default_false;
-use crate::core::{MatrixError, ServerName};
 use crate::data::user::{DbUser, DbUserDevice};
 
 #[derive(Clone, Debug)]

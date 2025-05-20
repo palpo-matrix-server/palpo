@@ -10,7 +10,7 @@ use crate::core::Seqnum;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{AppResult, MatrixError};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]

@@ -2,18 +2,17 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::events::AnySyncEphemeralRoomEvent;
+use crate::core::UnixMillis;
 use crate::core::events::receipt::{
     Receipt, ReceiptContent, ReceiptData, ReceiptEvent, ReceiptEventContent, ReceiptMap, ReceiptType, Receipts,
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{Seqnum, UnixMillis};
-use crate::data::room::{DbReceipt, NewDbReceipt};
+use crate::core::serde::JsonValue;
+use crate::data::room::NewDbReceipt;
 use crate::data::schema::*;
 use crate::data::{connect, next_sn};
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::{AppResult, data, sending};
 
 /// Replaces the previous read receipt.
@@ -25,7 +24,10 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
         room_id.to_owned(),
         ReceiptMap::new(BTreeMap::from_iter([(
             user_id.to_owned(),
-            ReceiptData::new(Receipt::new(UnixMillis::now()), event.content.0.keys().cloned().collect()),
+            ReceiptData::new(
+                Receipt::new(UnixMillis::now()),
+                event.content.0.keys().cloned().collect(),
+            ),
         )])),
     )]);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));

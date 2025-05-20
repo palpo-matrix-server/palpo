@@ -130,7 +130,7 @@ impl Writer for AppError {
                 tracing::error!(error = ?e, "Unknown error.");
                 // println!("{}", std::backtrace::Backtrace::capture());
                 MatrixError::unknown("Unknown error happened.")
-            },
+            }
         };
         matrix.write(req, depot, res).await;
     }

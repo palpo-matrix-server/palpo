@@ -22,7 +22,6 @@ use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::data::user::{NewDbUser, NewDbUserDevice};
 use crate::data::{connect, diesel_exists};
-use crate::room::state;
 use crate::utils::{MutexMap, MutexMapGuard};
 use crate::{AppResult, MatrixError, SigningKeys};
 

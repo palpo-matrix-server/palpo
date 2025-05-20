@@ -5,7 +5,7 @@ use crate::core::client::device::Device;
 use crate::core::events::AnyToDeviceEvent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{MatrixError, MatrixResult, Seqnum, UnixMillis};
+use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::user::{NewDbAccessToken, NewDbRefreshToken};
 use crate::{DataError, DataResult, connect, diesel_exists};
