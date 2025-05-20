@@ -304,7 +304,7 @@ async fn process_rooms(
 
             (Vec::new(), true)
         } else {
-            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, Some(Seqnum::MAX), *timeline_limit)?
+            crate::sync_v3::load_timeline(sender_id, &room_id, *room_since_sn, Some(Seqnum::MAX), None, *timeline_limit)?
         };
 
         if body.extensions.account_data.enabled == Some(true) {

@@ -7,7 +7,7 @@ use palpo_core::events::receipt::ReceiptEvent;
 use state::DbRoomStateField;
 
 use crate::core::UnixMillis;
-use crate::core::client::filter::{FilterDefinition, LazyLoadOptions};
+use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::v3::{
     Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState, KnockedRoom, LeftRoom,
     Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs, SyncEventsResBody, Timeline, ToDevice,
@@ -316,9 +316,14 @@ pub async fn sync_events(
             }
         }
         for joined_user in &joined_users {
+            println!("=========joined user: {}", joined_user);
             if !presence_updates.contains_key(joined_user) {
+                println!("==============ccccccccc user {sender_id}  joined_user:{}", joined_user);
                 if let Ok(presence) = data::user::last_presence(joined_user) {
+                    println!("CCCCCCCCCCCCC  0");
                     presence_updates.insert(joined_user.to_owned(), presence);
+                } else {
+                    println!("CCCCCCCCCCCCC  1");
                 }
             }
         }
@@ -396,7 +401,14 @@ async fn load_joined_room(
         _ => false,
     };
 
-    let (timeline_pdus, limited) = load_timeline(sender_id, room_id, since_sn, Some(next_batch), 10)?;
+    let (timeline_pdus, limited) = load_timeline(
+        sender_id,
+        room_id,
+        since_sn,
+        Some(next_batch),
+        Some(&filter.room.timeline),
+        10,
+    )?;
 
     let send_notification_counts =
         !timeline_pdus.is_empty() || room::user::last_notification_read(sender_id, &room_id)? >= since_sn;
@@ -517,14 +529,18 @@ async fn load_joined_room(
 
             // && encrypted_room || new_encrypted_room {
             // If the user is in a new encrypted room, give them all joined users
-            device_list_updates.extend(
-                room::get_joined_users(&room_id, None)?.into_iter().filter(|user_id| {
+            *joined_users = room::get_joined_users(&room_id, None)?
+                .into_iter()
+                .filter(|user_id| {
                     // Don't send key updates from the sender to the sender
                     sender_id != user_id
-                }), // .filter(|user_id| {
-                    // Only send keys if the sender doesn't share an encrypted room with the target already
-                    // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
-                    // }),
+                })
+                .collect();
+            device_list_updates.extend(
+                joined_users.clone().into_iter(), // .filter(|user_id| {
+                                                  // Only send keys if the sender doesn't share an encrypted room with the target already
+                                                  // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                                                  // }),
             );
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
@@ -749,6 +765,7 @@ pub(crate) fn load_timeline(
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<Seqnum>,
+    filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
     let mut timeline_pdus = if let Some(until_sn) = until_sn {
@@ -757,9 +774,9 @@ pub(crate) fn load_timeline(
         } else {
             (until_sn, since_sn)
         };
-        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), limit + 1, None)?
+        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
     } else {
-        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, limit + 1, None)?
+        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
     };
 
     if timeline_pdus.len() > limit {

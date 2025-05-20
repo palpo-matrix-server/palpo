@@ -141,7 +141,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
     }
 
     let limit = LIMIT_MAX;
-    let events = timeline::get_pdus_backward(sender_id, room_id, 0, None, limit, None)?;
+    let events = timeline::get_pdus_backward(sender_id, room_id, 0, None, None, limit)?;
 
     let frame_id = room::get_frame_id(room_id, None)?;
     let state: Vec<_> = room::state::get_full_state(frame_id)?

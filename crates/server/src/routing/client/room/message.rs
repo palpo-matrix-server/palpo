@@ -77,8 +77,8 @@ pub(super) async fn get_messages(
                 &args.room_id,
                 from,
                 until_sn,
-                limit,
                 Some(&args.filter),
+                limit,
             )?;
 
             for (_, event) in &events {
@@ -113,7 +113,7 @@ pub(super) async fn get_messages(
                 from
             };
             let events =
-                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, limit, Some(&args.filter))?;
+                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
