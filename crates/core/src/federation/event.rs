@@ -151,7 +151,7 @@ impl EventResBody {
 //     }
 // };
 
-pub fn server_keys_request(origin: &str, room_id: &RoomId, body: MissingEventReqBody) -> SendResult<SendRequest> {
+pub fn missing_events_request(origin: &str, room_id: &RoomId, body: MissingEventReqBody) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/get_missing_events/{}",
         room_id

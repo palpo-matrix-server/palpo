@@ -114,7 +114,7 @@ pub(crate) async fn handle_incoming_pdu(
     println!("MMMMMMMisssing event ids: {:#?}", incoming_pdu.prev_events);
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     let (sorted_prev_events, mut event_info) =
-        fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
+        fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu).await?;
 
     debug!(events = ?sorted_prev_events, "Got previous events");
     for prev_id in sorted_prev_events {
@@ -802,6 +802,23 @@ pub async fn fetch_missing_prev_events(
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
+
+    let mut earliest_events = room::state::get_forward_extremities(room_id)?;
+    earliest_events.extend(outlier_stack.iter().cloned());
+    let request = missing_events_request(
+        &origin.origin().await,
+        room_id,
+        MissingEventReqBody{
+            limit: 10,
+            min_depth: first_pdu_in_room.depth,
+            earliest_events,
+            latest_events: vec![incoming_pdu],
+        },
+    )?.into_inner();
+    let res_body = crate::sending::send_federation_request(&origin, request)
+        .await?
+        .json::<MissingEventsResBody>()
+        .await?;
 
     while let Some(prev_event_id) = outlier_stack.pop_front() {
         if let Some((pdu, mut json_opt)) =
