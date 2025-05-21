@@ -688,7 +688,7 @@ async fn join_room_remote(
             Err(_) => continue,
         };
 
-        if !timeline::has_pdu(&event_id)? {
+        if !timeline::has_pdu(&event_id) {
             let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
             let db_event = NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?;
             diesel::insert_into(events::table)

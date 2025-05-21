@@ -111,6 +111,7 @@ pub(crate) async fn handle_incoming_pdu(
         return Ok(());
     }
 
+    println!("MMMMMMMisssing event ids: {:#?}", incoming_pdu.prev_events);
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     let (sorted_prev_events, mut event_info) =
         fetch_missing_prev_events(origin, room_id, room_version_id, incoming_pdu.prev_events.clone()).await?;
@@ -657,8 +658,7 @@ pub(crate) async fn fetch_and_handle_outliers(
     let mut events_with_auth_events = Vec::with_capacity(events.len());
     for id in events {
         // a. Look in the main timeline (pduid_pdu tree)
-        // b. Look at outlier pdu tree
-        // (get_pdu_json checks both)
+        // b. Look at outlier pdu tree (get_pdu_json checks both)
         if let Ok(local_pdu) = timeline::get_pdu(id) {
             trace!("Found {} in db", id);
             events_with_auth_events.push((id, Some(local_pdu), vec![]));
@@ -666,8 +666,7 @@ pub(crate) async fn fetch_and_handle_outliers(
         }
 
         // c. Ask origin server over federation
-        // We also handle its auth chain here so we don't get a stack overflow in
-        // handle_outlier_pdu.
+        // We also handle its auth chain here so we don't get a stack overflow in handle_outlier_pdu.
         let mut todo_auth_events: VecDeque<_> = [Arc::clone(id)].into();
         let mut events_in_reverse_order = Vec::new();
         let mut events_all = HashSet::new();
@@ -689,7 +688,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                 continue;
             }
 
-            if timeline::has_pdu(&next_id).unwrap_or(false) {
+            if timeline::has_pdu(&next_id) {
                 trace!("Found {} in db", next_id);
                 continue;
             }
@@ -747,8 +746,7 @@ pub(crate) async fn fetch_and_handle_outliers(
     let mut pdus = Vec::with_capacity(events_with_auth_events.len());
     for (id, local_pdu, events_in_reverse_order) in events_with_auth_events {
         // a. Look in the main timeline (pduid_pdu tree)
-        // b. Look at outlier pdu tree
-        // (get_pdu_json checks both)
+        // b. Look at outlier pdu tree (get_pdu_json checks both)
         if let Some(local_pdu) = local_pdu {
             trace!("Found {id} in db");
             pdus.push((local_pdu.clone(), None));

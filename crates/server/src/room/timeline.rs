@@ -27,11 +27,11 @@ use crate::core::state::Event;
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::{self, connect, diesel_exists};
+use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, utils};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -120,12 +120,12 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<PduEvent> {
     PduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
 }
 
-pub fn has_pdu(event_id: &EventId) -> AppResult<bool> {
-    diesel_exists!(
-        event_datas::table.filter(event_datas::event_id.eq(event_id)),
-        &mut connect()?
-    )
-    .map_err(Into::into)
+pub fn has_pdu(event_id: &EventId) -> bool {
+    if let Ok(mut conn) = connect() {
+        diesel_exists!(event_datas::table.filter(event_datas::event_id.eq(event_id)), &mut conn).unwrap_or(false)
+    } else {
+        false
+    }
 }
 
 /// Removes a pdu and creates a new one with the same id.
@@ -192,8 +192,8 @@ where
     state::set_forward_extremities(&pdu.room_id, leaves, lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
-    crate::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
-    crate::room::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
+    super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
+    super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // Insert pdu
     let event_data = DbEventData {
@@ -500,7 +500,7 @@ pub fn create_hash_and_sign_event(
     let conf = crate::config();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
-    let room_version_id = if let Ok(room_version_id) = crate::room::get_version(room_id) {
+    let room_version_id = if let Ok(room_version_id) = super::get_version(room_id) {
         room_version_id
     } else {
         if event_type == TimelineEventType::RoomCreate {
