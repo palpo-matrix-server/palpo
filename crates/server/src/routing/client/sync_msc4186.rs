@@ -566,7 +566,7 @@ fn collect_e2ee<'a>(
                 let since_state_ids: HashMap<_, _> = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
-                    if since_state_ids.get(&key) != Some(&Arc::from(&*id)) {
+                    if since_state_ids.get(&key) != Some(&id) {
                         let Ok(pdu) = timeline::get_pdu(&id) else {
                             error!("Pdu in state not found: {id}");
                             continue;

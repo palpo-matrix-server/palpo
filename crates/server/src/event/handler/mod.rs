@@ -161,7 +161,7 @@ async fn handle_prev_pdu(
     origin: &ServerName,
     event_id: &EventId,
     room_id: &RoomId,
-    event_info: &mut HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
+    event_info: &mut HashMap<OwnedEventId, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
     create_event: &PduEvent,
     first_ts_in_room: UnixMillis,
     prev_id: &EventId,
@@ -282,17 +282,7 @@ fn handle_outlier_pdu<'a>(
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
             // NOTE: Step 5 is not applied anymore because it failed too often
             debug!(event_id = ?incoming_pdu.event_id, "Fetching auth events");
-            fetch_and_handle_outliers(
-                origin,
-                &incoming_pdu
-                    .auth_events
-                    .iter()
-                    .map(|x| Arc::from(&**x))
-                    .collect::<Vec<_>>(),
-                room_id,
-                room_version_id,
-            )
-            .await?;
+            fetch_and_handle_outliers(origin, &incoming_pdu.auth_events, room_id, room_version_id).await?;
         }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -492,7 +482,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
         if let Some(state_key) = &incoming_pdu.state_key {
             let state_key_id = state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
 
-            state_after.insert(state_key_id, Arc::from(&*incoming_pdu.event_id));
+            state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         }
 
         let new_room_state = resolve_state(room_id, room_version_id, state_after)?;
@@ -554,7 +544,7 @@ pub async fn upgrade_outlier_to_timeline_pdu(
 fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    incoming_state: HashMap<i64, Arc<EventId>>,
+    incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
 
@@ -599,7 +589,7 @@ fn resolve_state(
         &fork_states,
         auth_chain_sets
             .iter()
-            .map(|set| set.iter().map(|id| Arc::from(&**id)).collect::<HashSet<_>>())
+            .map(|set| set.iter().map(|id|id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         |id| match timeline::get_pdu(id) {
             Err(e) => {
@@ -644,7 +634,7 @@ fn resolve_state(
 #[tracing::instrument(skip_all)]
 pub(crate) async fn fetch_and_handle_outliers(
     origin: &ServerName,
-    events: &[Arc<EventId>],
+    events: &[OwnedEventId],
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
@@ -667,7 +657,7 @@ pub(crate) async fn fetch_and_handle_outliers(
 
         // c. Ask origin server over federation
         // We also handle its auth chain here so we don't get a stack overflow in handle_outlier_pdu.
-        let mut todo_auth_events: VecDeque<_> = [Arc::clone(id)].into();
+        let mut todo_auth_events: VecDeque<_> = [id.clone()].into();
         let mut events_in_reverse_order = Vec::new();
         let mut events_all = HashSet::new();
         while let Some(next_id) = todo_auth_events.pop_front() {
@@ -721,7 +711,7 @@ pub(crate) async fn fetch_and_handle_outliers(
                     if let Some(auth_events) = value.get("auth_events").and_then(|c| c.as_array()) {
                         for auth_event in auth_events {
                             if let Ok(auth_event) = serde_json::from_value(auth_event.clone().into()) {
-                                let a: Arc<EventId> = auth_event;
+                                let a: OwnedEventId = auth_event;
                                 todo_auth_events.push_back(a);
                             } else {
                                 warn!("Auth event id is not valid");
@@ -789,22 +779,31 @@ pub async fn fetch_missing_prev_events(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    initial_set: Vec<Arc<EventId>>,
+    initial_set: Vec<OwnedEventId>,
 ) -> AppResult<(
-    Vec<Arc<EventId>>,
-    HashMap<Arc<EventId>, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
+    Vec<OwnedEventId>,
+    HashMap<OwnedEventId, (Arc<PduEvent>, BTreeMap<String, CanonicalJsonValue>)>,
 )> {
     let conf = crate::config();
-    let mut graph: HashMap<Arc<EventId>, _> = HashMap::new();
+    let mut graph: HashMap<OwnedEventId, _> = HashMap::new();
     let mut event_info = HashMap::new();
-    let mut todo_outlier_stack: VecDeque<Arc<EventId>> = initial_set.into();
+    let timeline_ids = events::table
+        .filter(events::room_id.eq(room_id))
+        .filter(events::id.eq_any(&initial_set))
+        .filter(events::is_outlier.eq(false))
+        .select(events::id)
+        .load::<OwnedEventId>(&mut connect()?)?;
+    let mut outlier_stack: VecDeque<OwnedEventId> = initial_set
+        .into_iter()
+        .filter(|id| !timeline_ids.contains(&id))
+        .collect();
     let mut amount = 0;
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
 
-    while let Some(prev_event_id) = todo_outlier_stack.pop_front() {
+    while let Some(prev_event_id) = outlier_stack.pop_front() {
         if let Some((pdu, mut json_opt)) =
             fetch_and_handle_outliers(origin, &[prev_event_id.clone()], room_id, room_version_id)
                 .await?
@@ -828,7 +827,7 @@ pub async fn fetch_missing_prev_events(
                     amount = amount.saturating_add(1);
                     for prev_prev in &pdu.prev_events {
                         if !graph.contains_key(prev_prev) {
-                            todo_outlier_stack.push_back(prev_prev.clone());
+                            outlier_stack.push_back(prev_prev.clone());
                         }
                     }
 

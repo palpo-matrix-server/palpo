@@ -261,14 +261,13 @@ pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedSt
     Ok(state)
 }
 
-pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<Arc<EventId>>> {
+pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>> {
     let event_ids = event_forward_extremities::table
         .filter(event_forward_extremities::room_id.eq(room_id))
         .select(event_forward_extremities::event_id)
         .distinct()
         .load::<OwnedEventId>(&mut connect()?)?
         .into_iter()
-        .map(|id| id.into())
         .collect();
     Ok(event_ids)
 }
@@ -341,7 +340,7 @@ pub fn get_auth_events(
 
 /// Builds a StateMap by iterating over all keys that start
 /// with state_hash, this gives the full state for the given state_hash.
-pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>> {
+pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, OwnedEventId>> {
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
@@ -349,7 +348,7 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, Arc<EventId>>
     let mut map = HashMap::new();
     for compressed in full_state.iter() {
         let splited = compressed.split()?;
-        map.insert(splited.0, Arc::from(&*splited.1));
+        map.insert(splited.0, splited.1);
     }
     Ok(map)
 }

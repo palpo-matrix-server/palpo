@@ -183,7 +183,7 @@ pub async fn sync_events(
 
         let mut left_state_ids = state::get_full_state_ids(left_frame_id)?;
         let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
-        left_state_ids.insert(leave_state_key_id, Arc::from(left_event_id.as_ref()));
+        left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
         for (key, event_id) in left_state_ids {
             if full_state || since_state_ids.get(&key) != Some(&event_id) {

@@ -182,7 +182,7 @@ pub fn get_relations(
 }
 
 // #[tracing::instrument(skip(room_id, event_ids))]
-// pub fn mark_as_referenced(room_id: &RoomId, event_ids: &[Arc<EventId>]) -> AppResult<()> {
+// pub fn mark_as_referenced(room_id: &RoomId, event_ids: &[OwnedEventId]) -> AppResult<()> {
 // for prev in event_ids {
 //     let mut key = room_id.as_bytes().to_vec();
 //     key.extend_from_slice(prev.as_bytes());

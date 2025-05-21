@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, UnixMillis,
+    EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis,
     sending::{SendRequest, SendResult},
     serde::RawJsonValue,
 };
@@ -151,8 +151,16 @@ impl EventResBody {
 //     }
 // };
 
+pub fn server_keys_request(origin: &str, room_id: &RoomId, body: MissingEventReqBody) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/get_missing_events/{}",
+        room_id
+    ))?;
+    crate::sending::post(url).stuff(body)
+}
+
 /// Request type for the `get_missing_events` endpoint.
-#[derive(ToSchema, Deserialize, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct MissingEventReqBody {
     /// The room ID to search in.
     // #[salvo(parameter(parameter_in = Path))]
@@ -179,6 +187,7 @@ pub struct MissingEventReqBody {
     /// The event IDs to retrieve the previous events for.
     pub latest_events: Vec<OwnedEventId>,
 }
+crate::json_body_modifier!(MissingEventReqBody);
 
 /// Response type for the `get_missing_events` endpoint.
 #[derive(ToSchema, Serialize, Debug)]

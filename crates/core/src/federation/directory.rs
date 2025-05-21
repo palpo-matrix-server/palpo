@@ -34,7 +34,7 @@ use crate::{
 
 pub fn public_rooms_request(origin: &str, body: PublicRoomsReqBody) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/federation/v1/publicRooms"))?;
-    crate::sending::get(url).stuff(body)
+    crate::sending::post(url).stuff(body)
 }
 
 /// Request type for the `get_filtered_public_rooms` endpoint.

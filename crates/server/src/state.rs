@@ -6,7 +6,7 @@ use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent}
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyStateEventContent, StateEventType};
 use crate::core::serde::RawJson;
-use crate::core::{EventId, RoomId, UserId};
+use crate::core::identifiers::*;
 use crate::event::PduBuilder;
 use crate::room::timeline;
 use crate::{AppResult, IsRemoteOrLocal, MatrixError, config, room};
@@ -17,7 +17,7 @@ pub async fn send_state_event_for_key(
     event_type: &StateEventType,
     json: RawJson<AnyStateEventContent>,
     state_key: String,
-) -> AppResult<Arc<EventId>> {
+) -> AppResult<OwnedEventId> {
     allowed_to_send_state_event(room_id, event_type, &state_key, &json)?;
     let state_lock = room::lock_state(&room_id).await;
     let event_id = timeline::build_and_append_pdu(
