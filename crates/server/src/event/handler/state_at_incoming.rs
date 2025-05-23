@@ -14,10 +14,12 @@ pub(super) async fn state_at_incoming_degree_one(
 ) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
     let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
+        println!("=========state_at_incoming_degree_one  0  {prev_event}");
         return Ok(None);
     };
 
     let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
+        println!("=========state_at_incoming_degree_one  1");
         return Ok(None);
     };
 
@@ -43,15 +45,15 @@ pub(super) async fn state_at_incoming_resolved(
     let mut extremity_sstate_hashes = HashMap::new();
 
     let mut okay = true;
-    for prev_eventid in &incoming_pdu.prev_events {
-        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_eventid) {
+    for prev_event_id in &incoming_pdu.prev_events {
+        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_event_id) {
             pdu
         } else {
             okay = false;
             break;
         };
 
-        let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_eventid) {
+        let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_event_id) {
             s
         } else {
             okay = false;
@@ -60,7 +62,9 @@ pub(super) async fn state_at_incoming_resolved(
 
         extremity_sstate_hashes.insert(sstate_hash, prev_event);
     }
+    println!("=========state_at_incoming_resolved  0");
     if !okay {
+        println!("=========state_at_incoming_resolved  1");
         return Ok(None);
     }
 
@@ -137,6 +141,7 @@ pub(super) async fn state_at_incoming_resolved(
                 "State resolution on prev events failed, either an event could not be found or deserialization: {}",
                 e
             );
+            println!("=========state_at_incoming_resolved  2");
             Ok(None)
         }
     }

@@ -396,7 +396,7 @@ pub fn shutdown() {
     ROTATE.fire();
 }
 
-pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId)> {
+pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
         tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         MatrixError::bad_json("Invalid PDU in server response")
@@ -416,5 +416,5 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
             return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
         }
     };
-    Ok((event_id, value, room_id))
+    Ok((event_id, value, room_id, room_version_id))
 }

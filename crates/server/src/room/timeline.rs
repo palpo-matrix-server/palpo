@@ -189,6 +189,7 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
+    println!("=========set_forward_extremities 1  {:#?}", pdu.event_id);
     state::set_forward_extremities(&pdu.room_id, leaves, lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
@@ -788,6 +789,7 @@ where
 
     if soft_fail {
         // super::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
+        println!("=========set_forward_extremities 0  {:#?}", pdu.event_id);
         state::set_forward_extremities(&pdu.room_id, new_room_leaves, state_lock)?;
         return Ok(());
     }
@@ -1008,7 +1010,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
 
 #[tracing::instrument(skip(pdu))]
 pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppResult<()> {
-    let (event_id, value, room_id) = crate::parse_incoming_pdu(&pdu)?;
+    let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
     if let Ok(pdu_id) = timeline::get_pdu(&event_id) {
@@ -1016,7 +1018,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
-    crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, false).await?;
+    crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("We just created it");
     let pdu = get_pdu(&event_id)?;

@@ -9,7 +9,7 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::room::DbRoom;
+use crate::data::room::DbRoom;
 use crate::{EmptyResult, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/directory/list/room/{room_id}

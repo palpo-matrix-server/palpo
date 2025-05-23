@@ -3,7 +3,7 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::federation::authorization::EventAuthorizationResBody;
-use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventReqBody, MissingEventResBody};
+use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::room::{state, timeline};
@@ -91,9 +91,9 @@ async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
 fn missing_events(
     _aa: AuthArgs,
     room_id: PathParam<OwnedRoomId>,
-    body: JsonBody<MissingEventReqBody>,
+    body: JsonBody<MissingEventsReqBody>,
     depot: &mut Depot,
-) -> JsonResult<MissingEventResBody> {
+) -> JsonResult<MissingEventsResBody> {
     let origin = depot.origin()?;
 
     let room_id = room_id.into_inner();
@@ -147,7 +147,7 @@ fn missing_events(
         i += 1;
     }
 
-    json_ok(MissingEventResBody { events })
+    json_ok(MissingEventsResBody { events })
 }
 
 #[endpoint]

@@ -151,7 +151,7 @@ impl EventResBody {
 //     }
 // };
 
-pub fn missing_events_request(origin: &str, room_id: &RoomId, body: MissingEventReqBody) -> SendResult<SendRequest> {
+pub fn missing_events_request(origin: &str, room_id: &RoomId, body: MissingEventsReqBody) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/get_missing_events/{}",
         room_id
@@ -161,7 +161,7 @@ pub fn missing_events_request(origin: &str, room_id: &RoomId, body: MissingEvent
 
 /// Request type for the `get_missing_events` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
-pub struct MissingEventReqBody {
+pub struct MissingEventsReqBody {
     /// The room ID to search in.
     // #[salvo(parameter(parameter_in = Path))]
     // pub room_id: OwnedRoomId,
@@ -187,16 +187,16 @@ pub struct MissingEventReqBody {
     /// The event IDs to retrieve the previous events for.
     pub latest_events: Vec<OwnedEventId>,
 }
-crate::json_body_modifier!(MissingEventReqBody);
+crate::json_body_modifier!(MissingEventsReqBody);
 
 /// Response type for the `get_missing_events` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-pub struct MissingEventResBody {
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
+pub struct MissingEventsResBody {
     /// The missing PDUs.
     #[salvo(schema(value_type = Vec<Object>))]
     pub events: Vec<Box<RawJsonValue>>,
 }
-impl MissingEventResBody {
+impl MissingEventsResBody {
     /// Creates a new `Response` with the given events.
     pub fn new(events: Vec<Box<RawJsonValue>>) -> Self {
         Self { events }

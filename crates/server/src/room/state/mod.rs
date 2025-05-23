@@ -283,6 +283,7 @@ where
             .filter(event_forward_extremities::event_id.ne_all(&event_ids)),
     )
     .execute(&mut connect()?)?;
+println!("SSSSSSSSSSSSSEt forward_extremities  {:#?}", event_ids);
     for event_id in event_ids {
         diesel::insert_into(event_forward_extremities::table)
             .values((

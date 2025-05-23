@@ -32,7 +32,7 @@ pub(super) async fn fetch_state(
         .json::<RoomStateIdsResBody>()
         .await?;
     debug!("Fetching state events at event.");
-    let state_vec = super::fetch_and_handle_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
+    let state_vec = super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
     let mut state: HashMap<_, OwnedEventId> = HashMap::new();
     for (pdu, _) in state_vec {

@@ -105,7 +105,7 @@ pub(super) async fn sync_events_v5(
         },
     };
 
-    handle_lists(
+    process_lists(
         sync_info,
         &all_invited_rooms,
         &all_joined_rooms,
@@ -153,7 +153,7 @@ pub(super) async fn sync_events_v5(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn handle_lists<'a>(
+async fn process_lists<'a>(
     (sender_id, sender_device, global_since_sn, body): SyncInfo<'_>,
     all_invited_rooms: &Vec<&'a RoomId>,
     all_joined_rooms: &Vec<&'a RoomId>,

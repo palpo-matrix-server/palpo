@@ -37,7 +37,7 @@ pub struct PduEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_key: Option<String>,
     pub prev_events: Vec<OwnedEventId>,
-    pub depth: usize,
+    pub depth: u64,
     pub auth_events: Vec<OwnedEventId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redacts: Option<OwnedEventId>,
