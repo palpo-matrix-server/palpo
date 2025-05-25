@@ -16,7 +16,9 @@ use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::membership::{MakeJoinResBody, RoomStateV1, RoomStateV2,MakeJoinReqArgs, SendJoinArgs, SendJoinResBodyV2, SendJoinReqBody};
+use crate::core::federation::membership::{
+    MakeJoinReqArgs, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
+};
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -99,6 +101,10 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into(),
     )
     .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user ID: {e}")))?;
+
+    if room::user::is_banned(&sender, room_id)? {
+        return Err(MatrixError::forbidden("User is banned from the room.", None).into());
+    }
 
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 

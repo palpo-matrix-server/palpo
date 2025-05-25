@@ -38,6 +38,7 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
+    println!("MMMMMMMMMMMMMMMake join");
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -258,6 +259,7 @@ async fn send_join_v2(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV2> {
+    println!("MMMMMMMMMMMMMMsend join v2");
     let body = body.into_inner();
     // let server_name = args.room_id.server_name().map_err(AppError::public)?;
     // crate::event::handler::acl_check(&server_name, &args.room_id)?;
@@ -275,6 +277,7 @@ async fn send_join_v1(
     args: RoomEventReqArgs,
     body: JsonBody<SendJoinReqBody>,
 ) -> JsonResult<SendJoinResBodyV1> {
+    println!("MMMMMMMMMMMMMMsend join v1");
     let body = body.into_inner();
     let room_state = crate::federation::membership::send_join_v1(depot.origin()?, &args.room_id, &body.0).await?;
     json_ok(SendJoinResBodyV1(room_state))

@@ -789,6 +789,10 @@ pub async fn fetch_missing_prev_events(
         .filter(events::id.eq_any(&earliest_events))
         .select(events::id)
         .load::<OwnedEventId>(&mut connect()?)?;
+    let exists_events: HashSet<_> = earliest_events.iter().collect();
+    if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
+        return Ok(());
+    }
 
     let room_version_id = &room::get_version(room_id)?;
 
@@ -815,7 +819,10 @@ pub async fn fetch_missing_prev_events(
     for event in res_body.events {
         let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
         Box::pin(async move {
-            println!("========fill and process incoming pdu=========event_id: {:#?}", event_id);
+            println!(
+                "========fill and process incoming pdu=========event_id: {:#?}",
+                event_id
+            );
             crate::event::handler::process_incoming_pdu(
                 origin,
                 &event_id,
@@ -826,7 +833,8 @@ pub async fn fetch_missing_prev_events(
             )
             .await
             .unwrap();
-        }).await;
+        })
+        .await;
     }
     Ok(())
 }
