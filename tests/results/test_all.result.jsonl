@@ -5,6 +5,7 @@
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty"}
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty/initial_sync"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
+{"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -32,11 +33,11 @@
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/should_not_be_able_to_query_a_public_room_you_are_not_a_member_of"}
 {"Action":"fail","Test":"TestKnocking"}
 {"Action":"fail","Test":"TestKnocking/A_user_can_knock_on_a_room_without_a_reason#01"}
+{"Action":"fail","Test":"TestKnocking/A_user_in_the_room_can_reject_a_knock#01"}
+{"Action":"fail","Test":"TestKnocking/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason#01"}
-{"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_in_the_room_can_reject_a_knock#01"}
-{"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room#01"}
-{"Action":"fail","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
+{"Action":"fail","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
@@ -50,7 +51,6 @@
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_when_left_allowed_room"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_with_mangled_join_rules"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_invited"}
-{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself/parallel"}
 {"Action":"fail","Test":"TestRoomCreationReportsEventsToMyself/parallel/Setting_state_twice_is_idempotent"}
@@ -128,7 +128,6 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
-{"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
@@ -246,9 +245,7 @@
 {"Action":"pass","Test":"TestKnocking/A_user_in_the_room_can_accept_a_knock"}
 {"Action":"pass","Test":"TestKnocking/A_user_in_the_room_can_accept_a_knock#01"}
 {"Action":"pass","Test":"TestKnocking/A_user_in_the_room_can_reject_a_knock"}
-{"Action":"pass","Test":"TestKnocking/A_user_in_the_room_can_reject_a_knock#01"}
 {"Action":"pass","Test":"TestKnocking/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room"}
-{"Action":"pass","Test":"TestKnocking/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room#01"}
 {"Action":"pass","Test":"TestKnocking/A_user_that_has_knocked_on_a_local_room_can_rescind_their_knock_and_then_knock_again"}
 {"Action":"pass","Test":"TestKnocking/A_user_that_is_banned_from_a_room_cannot_knock_on_it"}
 {"Action":"pass","Test":"TestKnocking/A_user_that_is_banned_from_a_room_cannot_knock_on_it#01"}
@@ -264,7 +261,9 @@
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_in_the_room_can_accept_a_knock"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_in_the_room_can_accept_a_knock#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_in_the_room_can_reject_a_knock"}
+{"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_in_the_room_can_reject_a_knock#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room"}
+{"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_has_already_knocked_is_allowed_to_knock_again_on_the_same_room#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_has_knocked_on_a_local_room_can_rescind_their_knock_and_then_knock_again"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_is_banned_from_a_room_cannot_knock_on_it"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_that_is_banned_from_a_room_cannot_knock_on_it#01"}
@@ -273,12 +272,12 @@
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
+{"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
-{"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
 {"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"pass","Test":"TestKnockRoomsInPublicRoomsDirectory"}
@@ -426,6 +425,7 @@
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_initially"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_joined_to_allowed_room"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
+{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
 {"Action":"pass","Test":"TestRestrictedRoomsSpacesSummaryFederation"}
 {"Action":"pass","Test":"TestRestrictedRoomsSpacesSummaryLocal"}
 {"Action":"pass","Test":"TestRoomAlias"}
