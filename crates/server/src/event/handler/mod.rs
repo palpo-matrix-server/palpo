@@ -823,18 +823,25 @@ pub async fn fetch_missing_prev_events(
                 "========fill and process incoming pdu=========event_id: {:#?}",
                 event_id
             );
-            crate::event::handler::process_incoming_pdu(
-                origin,
-                &event_id,
-                &room_id,
-                &room_version_id,
-                event_value,
-                true,
-            )
-            .await
-            .unwrap();
+            if !diesel_exists!(
+                events::table
+                    .filter(events::id.eq(&event_id))
+                    .filter(events::room_id.eq(&room_id)),
+                &mut connect()?
+            )? {
+                crate::event::handler::process_incoming_pdu(
+                    origin,
+                    &event_id,
+                    &room_id,
+                    &room_version_id,
+                    event_value,
+                    true,
+                )
+                .await?;
+            }
+            Ok::<_, AppError>(())
         })
-        .await;
+        .await?;
     }
     Ok(())
 }

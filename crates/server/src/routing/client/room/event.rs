@@ -18,7 +18,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::room::RoomEventReqArgs;
 use crate::room::{state, timeline};
 use crate::utils::HtmlEscape;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
 /// Gets a single event.
@@ -267,7 +267,12 @@ pub(super) async fn send_redact(
 pub(super) async fn timestamp_to_event(
     _aa: AuthArgs,
     args: EventByTimestampReqArgs,
+    depot: &mut Depot,
 ) -> JsonResult<EventByTimestampResBody> {
+    let authed = depot.authed_info()?;
+    if !room::user::is_joined(authed.user_id(), &args.room_id)? {
+        return Err(MatrixError::forbidden("You are not joined to this room.", None).into());
+    }
     let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
     json_ok(EventByTimestampResBody {
         event_id,
