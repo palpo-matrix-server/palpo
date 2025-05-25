@@ -21,6 +21,7 @@ use crate::core::identifiers::*;
 use crate::core::room::RoomType;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
+use crate::data::room::{DbRoomCurrent, NewDbRoom, DbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
@@ -43,44 +44,6 @@ pub mod user;
 pub use current::*;
 pub mod thread;
 pub use state::get_room_frame_id as get_frame_id;
-
-#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = rooms)]
-pub struct DbRoom {
-    pub id: OwnedRoomId,
-    pub sn: Seqnum,
-    pub version: String,
-    pub is_public: bool,
-    pub min_depth: i64,
-    pub state_frame_id: Option<i64>,
-    pub has_auth_chain_index: bool,
-    pub disabled: bool,
-    pub created_at: UnixMillis,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = rooms)]
-pub struct NewDbRoom {
-    pub id: OwnedRoomId,
-    pub version: String,
-    pub is_public: bool,
-    pub min_depth: i64,
-    pub has_auth_chain_index: bool,
-    pub created_at: UnixMillis,
-}
-
-#[derive(Insertable, Identifiable, Queryable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = stats_room_currents, primary_key(room_id))]
-pub struct DbRoomCurrent {
-    pub room_id: OwnedRoomId,
-    pub state_events: i64,
-    pub joined_members: i64,
-    pub invited_members: i64,
-    pub left_members: i64,
-    pub banned_members: i64,
-    pub knocked_members: i64,
-    pub local_users_in_room: i64,
-    pub completed_delta_stream_id: i64,
-}
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
     const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();

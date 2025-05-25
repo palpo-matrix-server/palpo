@@ -333,10 +333,11 @@ async fn knock_room_remote(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            crate::event::handler::handle_incoming_pdu(
+            crate::event::handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
+                &room_version_id,
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )

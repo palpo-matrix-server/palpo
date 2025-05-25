@@ -15,7 +15,7 @@ pub(super) async fn fetch_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
-) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
+) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
     debug!("Calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
@@ -32,15 +32,9 @@ pub(super) async fn fetch_state(
         .json::<RoomStateIdsResBody>()
         .await?;
     debug!("Fetching state events at event.");
-    let state_vec = super::fetch_and_handle_outliers(
-        origin,
-        &res.pdu_ids.iter().map(|x| Arc::from(&**x)).collect::<Vec<_>>(),
-        room_id,
-        room_version_id,
-    )
-    .await?;
+    let state_vec = super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
-    let mut state: HashMap<_, Arc<EventId>> = HashMap::new();
+    let mut state: HashMap<_, OwnedEventId> = HashMap::new();
     for (pdu, _) in state_vec {
         let state_key = pdu
             .state_key
@@ -51,7 +45,7 @@ pub(super) async fn fetch_state(
 
         match state.entry(state_key_id) {
             hash_map::Entry::Vacant(v) => {
-                v.insert(Arc::from(&*pdu.event_id));
+                v.insert(pdu.event_id);
             }
             hash_map::Entry::Occupied(_) => {
                 return Err(AppError::internal(

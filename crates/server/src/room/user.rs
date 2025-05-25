@@ -160,6 +160,15 @@ pub fn is_invited(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 }
 
 #[tracing::instrument]
+pub fn is_banned(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    let query = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq(MembershipState::Ban.to_string()));
+    diesel_exists!(query, &mut connect()?).map_err(Into::into)
+}
+
+#[tracing::instrument]
 pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     let left = room_users::table
         .filter(room_users::user_id.eq(user_id))
@@ -236,6 +245,9 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> Option<MembershipState>
     }
     if is_invited(user_id, room_id).unwrap_or(false) {
         return Some(MembershipState::Invite);
+    }
+    if is_banned(user_id, room_id).unwrap_or(false) {
+        return Some(MembershipState::Ban);
     }
     if once_joined(user_id, room_id).unwrap_or(false) {
         return Some(MembershipState::Ban);

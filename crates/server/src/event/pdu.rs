@@ -25,7 +25,7 @@ pub struct EventHash {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct PduEvent {
-    pub event_id: Arc<EventId>,
+    pub event_id: OwnedEventId,
     #[serde(skip_serializing)]
     pub event_sn: Seqnum,
     #[serde(rename = "type")]
@@ -36,11 +36,11 @@ pub struct PduEvent {
     pub content: Box<RawJsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_key: Option<String>,
-    pub prev_events: Vec<Arc<EventId>>,
-    pub depth: usize,
-    pub auth_events: Vec<Arc<EventId>>,
+    pub prev_events: Vec<OwnedEventId>,
+    pub depth: u64,
+    pub auth_events: Vec<OwnedEventId>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub redacts: Option<Arc<EventId>>,
+    pub redacts: Option<OwnedEventId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unsigned: Option<Box<RawJsonValue>>,
     pub hashes: EventHash,
@@ -361,7 +361,7 @@ impl PduEvent {
 }
 
 impl crate::core::state::Event for PduEvent {
-    type Id = Arc<EventId>;
+    type Id = OwnedEventId;
 
     fn event_id(&self) -> &Self::Id {
         &self.event_id
@@ -431,7 +431,7 @@ pub struct PduBuilder {
     pub content: Box<RawJsonValue>,
     pub unsigned: Option<BTreeMap<String, serde_json::Value>>,
     pub state_key: Option<String>,
-    pub redacts: Option<Arc<EventId>>,
+    pub redacts: Option<OwnedEventId>,
     pub timestamp: Option<UnixMillis>,
 }
 

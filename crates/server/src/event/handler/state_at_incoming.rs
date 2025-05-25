@@ -11,13 +11,15 @@ use crate::room::{state, timeline};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
-) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
+) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
     let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
+        println!("=========state_at_incoming_degree_one  0  {prev_event}");
         return Ok(None);
     };
 
     let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
+        println!("=========state_at_incoming_degree_one  1");
         return Ok(None);
     };
 
@@ -27,7 +29,7 @@ pub(super) async fn state_at_incoming_degree_one(
     if let Some(state_key) = &prev_pdu.state_key {
         let state_key_id = state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
 
-        state.insert(state_key_id, Arc::from(prev_event));
+        state.insert(state_key_id, prev_event.to_owned());
         // Now it's the state after the pdu
     }
 
@@ -38,20 +40,20 @@ pub(super) async fn state_at_incoming_resolved(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-) -> AppResult<Option<HashMap<i64, Arc<EventId>>>> {
+) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
     debug!("Calculating state at event using state res");
     let mut extremity_sstate_hashes = HashMap::new();
 
     let mut okay = true;
-    for prev_eventid in &incoming_pdu.prev_events {
-        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_eventid) {
+    for prev_event_id in &incoming_pdu.prev_events {
+        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_event_id) {
             pdu
         } else {
             okay = false;
             break;
         };
 
-        let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_eventid) {
+        let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_event_id) {
             s
         } else {
             okay = false;
@@ -60,7 +62,9 @@ pub(super) async fn state_at_incoming_resolved(
 
         extremity_sstate_hashes.insert(sstate_hash, prev_event);
     }
+    println!("=========state_at_incoming_resolved  0");
     if !okay {
+        println!("=========state_at_incoming_resolved  1");
         return Ok(None);
     }
 
@@ -72,7 +76,7 @@ pub(super) async fn state_at_incoming_resolved(
 
         if let Some(state_key) = &prev_event.state_key {
             let state_key_id = state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
-            leaf_state.insert(state_key_id, Arc::from(&*prev_event.event_id));
+            leaf_state.insert(state_key_id, prev_event.event_id);
             // Now it's the state after the pdu
         }
 
@@ -110,7 +114,7 @@ pub(super) async fn state_at_incoming_resolved(
         &fork_states,
         auth_chain_sets
             .iter()
-            .map(|set| set.iter().map(|id| Arc::from(&**id)).collect::<HashSet<_>>())
+            .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         |id| {
             let res = timeline::get_pdu(id);
@@ -137,6 +141,7 @@ pub(super) async fn state_at_incoming_resolved(
                 "State resolution on prev events failed, either an event could not be found or deserialization: {}",
                 e
             );
+            println!("=========state_at_incoming_resolved  2");
             Ok(None)
         }
     }

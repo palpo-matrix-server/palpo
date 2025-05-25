@@ -54,8 +54,8 @@ async fn send_message(
     }
 
     let txn_start_time = Instant::now();
-    let resolved_map = handle_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
-    handle_edus(body.edus, &body.origin).await;
+    let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
+    process_edus(body.edus, &body.origin).await;
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -65,7 +65,7 @@ async fn send_message(
     })
 }
 
-async fn handle_pdus(
+async fn process_pdus(
     pdus: &[Box<RawJsonValue>],
     origin: &ServerName,
     txn_start_time: &Instant,
@@ -84,11 +84,14 @@ async fn handle_pdus(
         // and hashes checks
     }
     let mut resolved_map = BTreeMap::new();
-    for (event_id, value, room_id) in parsed_pdus {
+    for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
         let state_lock = crate::room::lock_state(&room_id).await;
-        let result = crate::event::handler::handle_incoming_pdu(origin, &event_id, &room_id, value, true).await;
+        println!("Locked state for {event_id}  {value:#?}");
+        let result =
+            crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true)
+                .await;
         drop(state_lock);
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
@@ -110,15 +113,15 @@ async fn handle_pdus(
     Ok(resolved_map)
 }
 
-async fn handle_edus(edus: Vec<Edu>, origin: &ServerName) {
+async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
     for edu in edus {
         match edu {
-            Edu::Presence(presence) => handle_edu_presence(origin, presence).await,
-            Edu::Receipt(receipt) => handle_edu_receipt(origin, receipt).await,
-            Edu::Typing(typing) => handle_edu_typing(origin, typing).await,
-            Edu::DeviceListUpdate(content) => handle_edu_device_list_update(origin, content).await,
-            Edu::DirectToDevice(content) => handle_edu_direct_to_device(origin, content).await,
-            Edu::SigningKeyUpdate(content) => handle_edu_signing_key_update(origin, content).await,
+            Edu::Presence(presence) => process_edu_presence(origin, presence).await,
+            Edu::Receipt(receipt) => process_edu_receipt(origin, receipt).await,
+            Edu::Typing(typing) => process_edu_typing(origin, typing).await,
+            Edu::DeviceListUpdate(content) => process_edu_device_list_update(origin, content).await,
+            Edu::DirectToDevice(content) => process_edu_direct_to_device(origin, content).await,
+            Edu::SigningKeyUpdate(content) => process_edu_signing_key_update(origin, content).await,
             Edu::_Custom(ref _custom) => {
                 warn!("received custom/unknown EDU");
             }
@@ -126,7 +129,7 @@ async fn handle_edus(edus: Vec<Edu>, origin: &ServerName) {
     }
 }
 
-async fn handle_edu_presence(origin: &ServerName, presence: PresenceContent) {
+async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
     if !crate::config().allow_incoming_presence {
         return;
     }
@@ -158,7 +161,7 @@ async fn handle_edu_presence(origin: &ServerName, presence: PresenceContent) {
     }
 }
 
-async fn handle_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
+async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
     // if !crate::config().allow_incoming_read_receipts() {
     // 	return;
     // }
@@ -208,7 +211,7 @@ async fn handle_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
     }
 }
 
-async fn handle_edu_typing(origin: &ServerName, typing: TypingContent) {
+async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     // if !crate::config().allow_incoming_typing {
     //     return;
     // }
@@ -246,7 +249,7 @@ async fn handle_edu_typing(origin: &ServerName, typing: TypingContent) {
     }
 }
 
-async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListUpdateContent) {
+async fn process_edu_device_list_update(origin: &ServerName, content: DeviceListUpdateContent) {
     let DeviceListUpdateContent { user_id, device_id, .. } = content;
 
     if user_id.server_name() != origin {
@@ -260,7 +263,7 @@ async fn handle_edu_device_list_update(origin: &ServerName, content: DeviceListU
     let _ = crate::user::mark_device_key_update(&user_id, &device_id);
 }
 
-async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceContent) {
+async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDeviceContent) {
     let DirectDeviceContent {
         sender,
         ev_type,
@@ -319,7 +322,7 @@ async fn handle_edu_direct_to_device(origin: &ServerName, content: DirectDeviceC
     crate::transaction_id::add_txn_id(&message_id, &sender, None, None, None);
 }
 
-async fn handle_edu_signing_key_update(origin: &ServerName, content: SigningKeyUpdateContent) {
+async fn process_edu_signing_key_update(origin: &ServerName, content: SigningKeyUpdateContent) {
     let SigningKeyUpdateContent {
         user_id,
         master_key,

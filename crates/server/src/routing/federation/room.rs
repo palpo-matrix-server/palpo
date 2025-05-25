@@ -215,13 +215,18 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
-    // let mutex_lock = crate::event::mutex_federation.lock(&body.room_id).await;
-
-    crate::event::handler::handle_incoming_pdu(&origin, &event_id, &args.room_id, value.clone(), true)
-        .await
-        .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
-
-    // drop(mutex_lock);
+    let state_lock = room::lock_state(&args.room_id).await;
+    crate::event::handler::process_incoming_pdu(
+        &origin,
+        &event_id,
+        &args.room_id,
+        &room_version_id,
+        value.clone(),
+        true,
+    )
+    .await
+    .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
+    drop(state_lock);
 
     diesel::insert_into(room_joined_servers::table)
         .values((

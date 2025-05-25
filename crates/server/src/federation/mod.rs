@@ -13,6 +13,7 @@ use crate::core::{MatrixError, signatures};
 use crate::{AppError, AppResult, config, room, sending};
 
 mod access_check;
+pub mod membership;
 pub use access_check::access_check;
 
 #[tracing::instrument(skip(request))]
