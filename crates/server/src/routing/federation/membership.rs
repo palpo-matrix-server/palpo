@@ -216,7 +216,6 @@ async fn invite_user(
 /// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
-    println!("MMMMMMMMMMMMMMMMMMmake_leave  {}", crate::config::server_name());
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());

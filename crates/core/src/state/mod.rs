@@ -445,7 +445,6 @@ fn iterative_auth_check<E: Event + Clone>(
             .iter()
             .find_map(|(_, pdu)| (*pdu.event_type() == TimelineEventType::RoomThirdPartyInvite).then_some(pdu));
 
-    println!("=============auth_check 4");
         if auth_check(room_version, &event, current_third_party, |ty, key| {
             auth_events.get(&ty.with_state_key(key))
         })
