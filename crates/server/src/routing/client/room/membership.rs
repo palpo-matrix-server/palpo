@@ -238,6 +238,7 @@ pub(super) async fn join_room_by_id(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
     let body = body.into_inner();
+    println!("\n\n\n==============join_room_by_id===body: {:?}", body);
 
     let mut servers = Vec::new(); // There is no body.server_name for /roomId/join
     servers.extend(
@@ -250,13 +251,7 @@ pub(super) async fn join_room_by_id(
             .filter_map(|sender| UserId::parse(sender).ok())
             .map(|user| user.server_name().to_owned()),
     );
-
     servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
-
-    println!(
-        "==============join_room_by_id===extra data: {:?}",
-        body.as_ref().map(|body| body.extra_data.clone())
-    );
 
     crate::membership::join_room(
         authed,
@@ -315,6 +310,7 @@ pub(crate) async fn join_room_by_id_or_alias(
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner().unwrap_or_default();
+    println!("\n\n\n==============join_room_by_id_or_alias===body: {:?}", body);
     let remote_addr = req.remote_addr();
 
     // The servers to attempt to join the room through.

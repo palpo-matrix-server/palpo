@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+use salvo::server;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -189,7 +190,6 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    println!("=========set_forward_extremities 1  {:#?}", pdu.event_id);
     state::set_forward_extremities(&pdu.room_id, leaves, lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
@@ -789,7 +789,6 @@ where
 
     if soft_fail {
         // super::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
-        println!("=========set_forward_extremities 0  {:#?}", pdu.event_id);
         state::set_forward_extremities(&pdu.room_id, new_room_leaves, state_lock)?;
         return Ok(());
     }
