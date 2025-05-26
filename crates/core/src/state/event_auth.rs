@@ -20,12 +20,12 @@ use crate::state::{Event, RoomVersion, StateEventType, TimelineEventType};
 use crate::{MatrixError, MatrixResult, ReasonBool};
 
 // FIXME: field extracting could be bundled for `content`
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct GetMembership {
     membership: MembershipState,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct RoomMemberContentFields {
     membership: Option<RawJson<MembershipState>>,
     join_authorised_via_users_server: Option<RawJson<OwnedUserId>>,
@@ -519,7 +519,6 @@ fn is_membership_change_allowed(
             } else {
                 content.users_default
             };
-
             (user_pl, invite)
         } else {
             (0, 0)
@@ -705,10 +704,6 @@ fn is_membership_change_allowed(
             }
         }
         MembershipState::Knock if room_version.allow_knocking => {
-            println!(
-                "jjjjjjjjjjjjjjjjjoin_rule {join_rule:?}  room_version.knock_restricted_join_rule: {:?}",
-                room_version.knock_restricted_join_rule
-            );
             // 1. If the `join_rule` is anything other than `knock` or `knock_restricted`,
             //    reject.
             if !matches!(join_rule, JoinRule::KnockRestricted(_) | JoinRule::Knock) {

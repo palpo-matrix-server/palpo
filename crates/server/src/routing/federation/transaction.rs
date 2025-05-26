@@ -88,7 +88,6 @@ async fn process_pdus(
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
         let state_lock = crate::room::lock_state(&room_id).await;
-        println!("Locked state for {event_id}  {value:#?}");
         let result =
             crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true)
                 .await;

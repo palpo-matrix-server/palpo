@@ -37,6 +37,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             != config::server_name()
         && !room::user::is_knocked(user_id, room_id)?
     {
+        println!("LLLLLLLLLLLLLeaving room server:{}  {} remotely for user {}",  crate::config::server_name(), room_id, user_id);
         match leave_room_remote(user_id, room_id).await {
             Err(e) => {
                 warn!("Failed to leave room {} remotely: {}", user_id, e);
@@ -57,6 +58,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
+        println!("LLLLLLLLLLLLLeaving room server:{}  {} locally for user {}", crate::config::server_name(), room_id, user_id);
         let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms

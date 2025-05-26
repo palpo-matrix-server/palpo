@@ -124,7 +124,6 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    println!("MMMMMMMisssing for incoming_pdu: {:#?}", incoming_pdu);
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
 
@@ -367,7 +366,6 @@ pub async fn process_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("==================process_to_timeline_pdu: {:#?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
@@ -387,10 +385,8 @@ pub async fn process_to_timeline_pdu(
     debug!("Resolving state at event");
 
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
-        println!("xxxxxxxxxxx0");
         state_at_incoming_degree_one(incoming_pdu).await?
     } else {
-        println!("xxxxxxxxxxx1");
         state_at_incoming_resolved(incoming_pdu, room_id, room_version_id).await?
     };
 
@@ -532,7 +528,7 @@ pub async fn process_to_timeline_pdu(
     )?;
 
     // Event has passed all auth/stateres checks
-    // drop(state_lock);
+    drop(state_lock);
     Ok(())
 }
 
@@ -776,12 +772,10 @@ pub async fn fetch_missing_prev_events(
     room_version_id: &RoomVersionId,
     incoming_pdu: &PduEvent,
 ) -> AppResult<()> {
-    println!("FFFFFFFFFFFFFFFFFFFFFFEtch missing prev events");
     let conf = crate::config();
 
     // TODO:
     let mut earliest_events = room::state::get_forward_extremities(room_id)?;
-    println!("====eeeeearliest_events: {:#?}", earliest_events);
     earliest_events.extend(incoming_pdu.prev_events.iter().cloned());
 
     let mut earliest_events: Vec<OwnedEventId> = events::table
