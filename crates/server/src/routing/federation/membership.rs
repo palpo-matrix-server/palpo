@@ -65,13 +65,11 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
-            println!("==================1");
             None
         } else {
             let join_rule = room::get_join_rule(&args.room_id)?;
             let guest_can_join = room::guest_can_join(&args.room_id);
             if join_rule == JoinRule::Public || guest_can_join {
-                println!("==================2");
                 None
             } else if crate::federation::user_can_perform_restricted_join(
                 &args.user_id,
@@ -85,24 +83,17 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                     .filter(|user| room::user_can_invite(&args.room_id, user, &args.user_id))
                     .next()
                 else {
-                    println!("==================3");
                     return Err(MatrixError::unable_to_grant_join(
                         "No user on this server is able to assist in joining.",
                     )
                     .into());
                 };
-                println!("==================4");
                 Some(auth_user)
             } else {
-                println!("==================5");
                 None
             }
         }
     };
-    println!(
-        "jjjjjjjjjoin_authorized_via_users_server: {:?}",
-        join_authorized_via_users_server
-    );
 
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,

@@ -324,24 +324,16 @@ pub(crate) async fn join_room_by_id_or_alias(
         .into_inner()
         .unwrap_or_else(|| server_name.into_inner().unwrap_or_default());
 
-    let (servers, room_id) = match OwnedRoomId::try_from(room_id_or_alias) {
+    let (room_id, servers) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
-            println!("rrrrrrrrrrrrrrromm id");
-            banned_room_check(
-                authed.user_id(),
-                Some(&room_id),
-                room_id.server_name().ok(),
-                remote_addr,
-            )
-            .await?;
+            banned_room_check(sender_id, Some(&room_id), room_id.server_name().ok(), remote_addr).await?;
             let mut servers = if via.is_empty() {
                 crate::room::lookup_servers(&room_id)?
             } else {
                 via.clone()
             };
-            println!("rrrrrrrrrrrrrrromm servers: {:?}", servers);
 
-            let state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let state_servers = state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
             let state_servers = state_servers
                 .iter()
                 .filter_map(|event| serde_json::from_str(event.inner().get()).ok())
@@ -350,15 +342,19 @@ pub(crate) async fn join_room_by_id_or_alias(
                 .filter_map(|sender| UserId::parse(sender).ok())
                 .map(|user| user.server_name().to_owned());
 
-            println!("rrrrrrrrrrrrrrromm state_servers: {:?}", state_servers);
             servers.extend(state_servers);
+
+            // if let Ok(server) = room_id.server_name() {
+            //     if sender_id.is_local() {
+            //         servers.push(server.to_owned());
+            //     }
+            // }
 
             servers.sort_unstable();
             servers.dedup();
-            (servers, room_id)
+            (room_id, servers)
         }
         Err(room_alias) => {
-            println!("rrrrrrrrrrrrrrromm alias");
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via.clone())).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
@@ -368,7 +364,7 @@ pub(crate) async fn join_room_by_id_or_alias(
                 via
             };
 
-            let addl_state_servers = state::get_user_state(authed.user_id(), &room_id)?.unwrap_or_default();
+            let addl_state_servers = state::get_user_state(sender_id, &room_id)?.unwrap_or_default();
 
             let mut addl_servers: Vec<_> = addl_state_servers
                 .iter()
@@ -380,15 +376,19 @@ pub(crate) async fn join_room_by_id_or_alias(
                 .chain(addl_via_servers)
                 .collect();
 
+            // if let Ok(server) = room_id.server_name() {
+            //     if sender_id.is_local() {
+            //         servers.push(server.to_owned());
+            //     }
+            // }
+
             addl_servers.sort_unstable();
             addl_servers.dedup();
             servers.append(&mut addl_servers);
 
-            (servers, room_id)
+            (room_id, servers)
         }
     };
-
-    println!("====================join via severs: {:?}", servers);
 
     let join_room_body = crate::membership::join_room(
         authed,

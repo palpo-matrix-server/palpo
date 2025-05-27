@@ -809,14 +809,9 @@ pub async fn fetch_missing_prev_events(
         .json::<MissingEventsResBody>()
         .await?;
 
-    println!("===========missing events: {:#?}", res_body);
     for event in res_body.events {
         let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
         Box::pin(async move {
-            println!(
-                "========fill and process incoming pdu=========event_id: {:#?}",
-                event_id
-            );
             if !diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))

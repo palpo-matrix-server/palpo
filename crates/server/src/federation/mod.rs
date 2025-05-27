@@ -164,7 +164,6 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(false);
     }
 
-    println!("Ccccccccccccccccchecking if user {} can join restricted room {}", user_id, room_id);
     if r.allow
         .iter()
         .filter_map(|rule| {
@@ -174,11 +173,8 @@ pub(crate) async fn user_can_perform_restricted_join(
                 None
             }
         })
-        .any(|m| {
-            println!("DDDDDDDDDDDDDD  user_id: {user_id} room_id: {} {:?}", m.room_id, room::user::is_joined(user_id, &m.room_id));
-            room::user::is_joined(user_id, &m.room_id).unwrap_or(false)})
+        .any(|m| room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
     {
-        println!("User {} is in a required room for joining {}", user_id, room_id);
         Ok(true)
     } else {
         Err(MatrixError::unable_to_authorize_join("Joining user is not known to be in any required room.").into())

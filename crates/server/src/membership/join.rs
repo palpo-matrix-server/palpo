@@ -268,7 +268,10 @@ async fn join_room_remote(
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
-    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}", authed.user_id());
+    println!(
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}",
+        authed.user_id()
+    );
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;
