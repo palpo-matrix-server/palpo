@@ -46,12 +46,49 @@ All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.resul
 
 ### Major tests to be passed
 - [x] Complement tests `TestDeviceListUpdates/*`.
-- [ ] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
+- [x] Complement tests `TestDeviceManagement/*`.
+- [x] Complement tests `TestEventAuth/*`.
+- [x] Complement tests `TestInboundFederationProfile/*`.
+- [x] Complement tests `TestLeftRoomFixture/*`.
+- [x] Complement tests `TestLogin/*`.
+- [x] Complement tests `TestLogout/*`.
+- [x] Complement tests `TestMediaFilenames/*`.
+- [x] Complement tests `TestMediaWithoutFileName/*`.
+- [x] Complement tests `TestMembersLocal/*`.
+- [x] Complement tests `TestPowerLevels/*`.
+- [x] Complement tests `TestPresence/*`.
+- [x] Complement tests `TestProfileAvatarURL/*`.
+- [x] Complement tests `TestProfileDisplayName/*`.
+- [x] Complement tests `TestPushSync/*`.
+- [x] Complement tests `TestRegistration/*`.
+- [x] Complement tests `TestRestrictedRoomsLocalJoin*`.
+- [x] Complement tests `TestRestrictedRoomsRemoteJoin*`.
+- [x] Complement tests `TestRoomAlias/*`.
+- [x] Complement tests `TestRoomCanonicalAlias/*`.
+- [x] Complement tests `TestRoomCreate/*`.
+- [x] Complement tests `TestRoomCreationReportsEventsToMyself/*`.
+- [x] Complement tests `TestRoomDeleteAlias/*`.
+- [x] Complement tests `TestRoomForget/*`.
+- [x] Complement tests `TestRoomMembers/*`.
+- [x] Complement tests `TestRoomsInvite/*`.
+- [x] Complement tests `TestRoomSpecificUsernameAtJoin/*`.
+- [x] Complement tests `TestRoomSpecificUsernameChange/*`.
+- [x] Complement tests `TestRoomState/*`.
+- [x] Complement tests `TestSyncTimelineGap/*`.
+- [x] Complement tests `TestSyncFilter/*`.
+- [x] Complement tests `TestUnknownEndpoints/*`.
+- [x] Complement tests `TestJoinFederatedRoomWithUnverifiableEvents/*`.
+- [x] Complement tests `TestE2EKeyBackupReplaceRoomKeyRules/*`.
 - [ ] Complement tests `TestDeviceListsUpdateOverFederation/*`.
-- [ ] Complement tests `TestFederationRoomsInvite/*`.
-- [ ] Complement tests `TestRoomMembers/*`.
-- [ ] Complement tests `TestRoomState/*`.
+- [x] Complement tests `TestFederationRoomsInvite/*`.
+- [x] Complement tests `TestUploadKey/*`.
+- [x] Complement tests `TestRoomState/*`.
 - [ ] Complement tests `TestToDeviceMessagesOverFederation/*`.
+- [ ] Complement tests `TestInboundCanReturnMissingEvents/*`.
+- [ ] Complement tests `TestJumpToDateEndpoint/*`.
+- [ ] Complement tests `TestKnockingInMSC3787Room/*`.
+- [ ] Complement tests `TestClientSpacesSummary/*`.
+- [ ] Complement tests `TestArchivedRoomsHistory/*`.
 - [ ] Other complement tests.
 
 We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing. 
