@@ -295,10 +295,9 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         ),
         &args.user_id,
         &args.room_id,
-        // &state_lock,
+        &state_lock,
     )?;
-
-    // drop(state_lock);
+    drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format
     crate::federation::maybe_strip_event_id(&mut pdu_json, &room_version_id);

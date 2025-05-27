@@ -38,11 +38,14 @@ pub async fn invite_user(
                 extra_data: Default::default(),
             };
 
+            let state_lock = crate::room::lock_state(room_id).await;
             let (pdu, pdu_json) = timeline::create_hash_and_sign_event(
                 PduBuilder::state(invitee_id.to_string(), &content),
                 inviter_id,
                 room_id,
+                &state_lock,
             )?;
+            drop(state_lock);
 
             let invite_room_state = state::summary_stripped(&pdu)?;
 

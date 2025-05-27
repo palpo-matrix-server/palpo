@@ -1,5 +1,6 @@
 mod fetch_state;
 mod state_at_incoming;
+
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
 use std::future::Future;
@@ -251,9 +252,8 @@ fn process_to_outlier_pdu<'a>(
             }
             Ok(crate::core::signatures::Verified::All) => value,
             Err(e) => {
-                // Drop
-                warn!("Dropping bad event {}: {}", event_id, e,);
-                return Err(MatrixError::invalid_param("Signature verification failed").into());
+                warn!("Dropping bad event {}: {}  {value:#?}", event_id, e,);
+                return Err(MatrixError::invalid_param("Signature verification failed.").into());
             }
         };
 

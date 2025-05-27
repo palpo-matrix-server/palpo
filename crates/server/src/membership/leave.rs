@@ -57,8 +57,10 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
+        println!("Leaving room local {} for user {}", room_id, user_id);
         let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
+        println!("=============memeber event: {:#?}", member_event);
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             warn!("Trying to leave a room you are not a member of.");
@@ -115,6 +117,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
 }
 
 async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(OwnedEventId, Seqnum)> {
+    println!("Leaving room remote {} for user {}", room_id, user_id);
     let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
     let invite_state =
         state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
