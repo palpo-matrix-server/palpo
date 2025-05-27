@@ -82,7 +82,7 @@ async fn join_room_local(
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("We can join locally");
-    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin room_local: {user_id} {room_id}");
+    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin room_local: {user_id} {room_id}    {servers:?}");
     let state_lock = room::lock_state(&room_id).await;
     let join_rules_event_content =
         room::get_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None).ok();
@@ -268,7 +268,7 @@ async fn join_room_remote(
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
-    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.");
+    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}", authed.user_id());
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;

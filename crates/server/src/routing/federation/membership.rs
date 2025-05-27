@@ -38,6 +38,7 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
+    println!("MMMMMMMMMMMMMake join  {} {} {}", crate::config::server_name(), args.room_id, args.user_id);
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -54,15 +55,23 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         return Err(MatrixError::incompatible_room_version("Room version not supported.", room_version_id).into());
     }
 
+    println!(
+        "MMMMMMMMMMMM {} {}, {}",
+        crate::config::server_name(),
+        args.room_id,
+        args.user_id
+    );
     let join_authorized_via_users_server: Option<OwnedUserId> = {
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
+            println!("==================1");
             None
         } else {
             let join_rule = room::get_join_rule(&args.room_id)?;
             let guest_can_join = room::guest_can_join(&args.room_id);
             if join_rule == JoinRule::Public || guest_can_join {
+                println!("==================2");
                 None
             } else if crate::federation::user_can_perform_restricted_join(
                 &args.user_id,
@@ -76,17 +85,24 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                     .filter(|user| room::user_can_invite(&args.room_id, user, &args.user_id))
                     .next()
                 else {
+                    println!("==================3");
                     return Err(MatrixError::unable_to_grant_join(
                         "No user on this server is able to assist in joining.",
                     )
                     .into());
                 };
+                println!("==================4");
                 Some(auth_user)
             } else {
+                println!("==================5");
                 None
             }
         }
     };
+    println!(
+        "jjjjjjjjjoin_authorized_via_users_server: {:?}",
+        join_authorized_via_users_server
+    );
 
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
@@ -375,7 +391,8 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     }
 
     let state_lock = crate::room::lock_state(&args.room_id).await;
-    crate::event::handler::process_incoming_pdu(origin, &event_id, &args.room_id, &room_version_id, value, true).await?;
+    crate::event::handler::process_incoming_pdu(origin, &event_id, &args.room_id, &room_version_id, value, true)
+        .await?;
     drop(state_lock);
 
     crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();

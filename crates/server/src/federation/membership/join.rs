@@ -144,6 +144,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
+        println!("aaaaaaaaaaaaaaauthorising_user {}", authorising_user);
         if !room::user::is_joined(&authorising_user, room_id)? {
             return Err(MatrixError::invalid_param(
                 "Authorising user {authorising_user} is not in the room you are trying to join, \
@@ -152,6 +153,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
+        println!("Ccccccccccccccccchecking if user {} can join restricted room {}", state_key, room_id);
         if !crate::federation::user_can_perform_restricted_join(&state_key, room_id, &room_version_id).await? {
             return Err(
                 MatrixError::unable_to_authorize_join("Joining user did not pass restricted room's rules.").into(),
