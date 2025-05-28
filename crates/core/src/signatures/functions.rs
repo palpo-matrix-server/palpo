@@ -441,11 +441,6 @@ pub fn hash_and_sign_event<K>(
 where
     K: KeyPair,
 {
-    let authorising_user = if let Some(CanonicalJsonValue::Object(content)) = object.get_mut("content") {
-        content.remove("join_authorised_via_users_server")
-    } else {
-        None
-    };
     let hash = content_hash(object)?;
 
     let hashes_value = object
@@ -462,10 +457,6 @@ where
     sign_json(entity_id, keypair, &mut redacted)?;
 
     object.insert("signatures".into(), mem::take(redacted.get_mut("signatures").unwrap()));
-
-    if let Some(authorising_user) = authorising_user {
-        object.insert("join_authorised_via_users_server".into(), authorising_user);
-    }
     Ok(())
 }
 

@@ -5,7 +5,7 @@ use serde::de::{Error as _, IgnoredAny};
 
 use crate::events::room::{
     create::RoomCreateEventContent,
-    join_rules::{JoinRule, RoomJoinRulesEventContent},
+    join_rule::{JoinRule, RoomJoinRulesEventContent},
     member::{MembershipState, ThirdPartyInvite},
     power_levels::RoomPowerLevelsEventContent,
     third_party_invite::RoomThirdPartyInviteEventContent,
@@ -507,6 +507,7 @@ fn is_membership_change_allowed(
     let sender_membership_event_id = sender_membership_event.as_ref().map(|e| e.event_id());
     let target_user_membership_event_id = target_user_membership_event.as_ref().map(|e| e.event_id());
 
+    println!("==============user_for_join_auth : {:?}", user_for_join_auth);
     let user_for_join_auth_is_valid = if let Some(user_for_join_auth) = user_for_join_auth {
         // Is the authorised user allowed to invite users into this room
         let (auth_user_pl, invite_level) = if let Some(pl) = &power_levels_event {

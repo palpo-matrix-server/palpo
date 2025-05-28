@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex, MutexGuard};
 use lru_cache::LruCache;
 
 use crate::core::client::space::SpaceHierarchyRoomsChunk;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{StateEventType, space::child::SpaceChildEventContent};
 use crate::core::federation::space::{

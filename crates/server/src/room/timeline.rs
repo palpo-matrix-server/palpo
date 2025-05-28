@@ -265,9 +265,6 @@ where
             }
         }
         TimelineEventType::RoomMember => {
-            if let Some(CanonicalJsonValue::Object(content)) = pdu_json.get_mut("content") {
-                content.remove("join_authorised_via_users_server");
-            }
             if let Some(state_key) = &pdu.state_key {
                 #[derive(Deserialize)]
                 struct ExtractMembership {

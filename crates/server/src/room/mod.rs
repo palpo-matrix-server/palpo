@@ -12,7 +12,7 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encryption::RoomEncryptionEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
@@ -549,6 +549,7 @@ pub fn is_encrypted(room_id: &RoomId) -> bool {
 pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_server_id.eq(config::server_name()))
         .select(room_users::user_id)
         .load::<OwnedUserId>(&mut connect()?)
         .map_err(Into::into)

@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::core::events::room::join_rules::JoinRule;
+use crate::core::events::room::join_rule::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
@@ -61,12 +61,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     }
 
     let state_lock = crate::room::lock_state(&args.room_id).await;
-    println!(
-        "MMMMMMMMMMMM {} {}, {}",
-        crate::config::server_name(),
-        args.room_id,
-        args.user_id
-    );
     let join_authorized_via_users_server: Option<OwnedUserId> = {
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
@@ -81,6 +75,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                 &args.user_id,
                 &args.room_id,
                 &room_version_id,
+                Some(&join_rule),
             )
             .await?
             {
@@ -94,9 +89,15 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                     )
                     .into());
                 };
+                println!(
+                    "AAAAAAAAAAAAAAAAAAAAAAutyher user: {auth_user}  {}",
+                    config::server_name()
+                );
                 Some(auth_user)
             } else {
-                None
+                return Err(
+                    MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),
+                );
             }
         }
     };
@@ -130,6 +131,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     };
+    println!("MMMMMMMMMMMMMake join response: {:#?}", body);
     json_ok(body)
 }
 

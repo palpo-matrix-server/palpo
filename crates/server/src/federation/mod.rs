@@ -1,3 +1,4 @@
+use hickory_resolver::proto::rr::rdata::A;
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
@@ -5,7 +6,7 @@ use crate::core::authorization::XMatrix;
 use crate::core::error::AuthenticateError;
 use crate::core::error::ErrorKind;
 use crate::core::events::StateEventType;
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::JsonValue;
@@ -132,6 +133,7 @@ pub(crate) async fn user_can_perform_restricted_join(
     user_id: &UserId,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
+    join_rule: Option<&JoinRule>,
 ) -> AppResult<bool> {
     use RoomVersionId::*;
 
@@ -149,13 +151,18 @@ pub(crate) async fn user_can_perform_restricted_join(
         return Ok(true);
     }
 
-    let Ok(join_rules_event_content) =
-        room::get_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None)
-    else {
-        return Ok(false);
+    let join_rule = match join_rule {
+        Some(rule) => rule.to_owned(),
+        None => {
+            // If no join rule is provided, we need to fetch it from the room state
+            let Ok(join_rule) = room::get_join_rule(room_id) else {
+                return Ok(false);
+            };
+            join_rule
+        }
     };
 
-    let (JoinRule::Restricted(r) | JoinRule::KnockRestricted(r)) = join_rules_event_content.join_rule else {
+    let (JoinRule::Restricted(r) | JoinRule::KnockRestricted(r)) = join_rule else {
         return Ok(false);
     };
 
