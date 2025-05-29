@@ -151,7 +151,7 @@ pub fn append_pdu<'a, L>(
     pdu: &'a PduEvent,
     mut pdu_json: CanonicalJsonObject,
     leaves: L,
-    lock: &RoomMutexGuard,
+    state_lock: &RoomMutexGuard,
 ) -> AppResult<()>
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
@@ -190,31 +190,11 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leaves, lock)?;
+    state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
     super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
-
-    // Insert pdu
-    let event_data = DbEventData {
-        event_id: (&*pdu.event_id).to_owned(),
-        event_sn: pdu.event_sn,
-        room_id: pdu.room_id.to_owned(),
-        internal_metadata: None,
-        json_data: serde_json::to_value(&pdu_json)?,
-        format_version: None,
-    };
-    diesel::insert_into(event_datas::table)
-        .values(&event_data)
-        .on_conflict((event_datas::event_id, event_datas::event_sn))
-        .do_update()
-        .set(&event_data)
-        .execute(&mut connect()?)?;
-    diesel::update(events::table.find(&*pdu.event_id))
-        .set(events::is_outlier.eq(false))
-        .execute(&mut connect()?)?;
-    crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
@@ -355,6 +335,26 @@ where
         _ => {}
     }
 
+    // Insert pdu
+    let event_data = DbEventData {
+        event_id: (&*pdu.event_id).to_owned(),
+        event_sn: pdu.event_sn,
+        room_id: pdu.room_id.to_owned(),
+        internal_metadata: None,
+        json_data: serde_json::to_value(&pdu_json)?,
+        format_version: None,
+    };
+    diesel::insert_into(event_datas::table)
+        .values(&event_data)
+        .on_conflict((event_datas::event_id, event_datas::event_sn))
+        .do_update()
+        .set(&event_data)
+        .execute(&mut connect()?)?;
+    diesel::update(events::table.find(&*pdu.event_id))
+        .set(events::is_outlier.eq(false))
+        .execute(&mut connect()?)?;
+    crate::event::search::save_pdu(pdu, &pdu_json)?;
+
     // Update Relationships
     #[derive(Deserialize, Clone, Debug)]
     struct ExtractRelatesTo {
@@ -486,6 +486,7 @@ pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
+    state_lock: &RoomMutexGuard,
 ) -> AppResult<(PduEvent, CanonicalJsonObject)> {
     let PduBuilder {
         event_type,
@@ -714,7 +715,7 @@ pub fn build_and_append_pdu(
     pdu_builder: PduBuilder,
     sender: &UserId,
     room_id: &RoomId,
-    lock: &RoomMutexGuard,
+    state_lock: &RoomMutexGuard,
 ) -> AppResult<PduEvent> {
     if let Some(state_key) = &pdu_builder.state_key {
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
@@ -724,7 +725,7 @@ pub fn build_and_append_pdu(
         }
     }
 
-    let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id)?;
+    let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
 
     let conf = crate::config();
     // let admin_room = super::resolve_local_alias(
@@ -740,7 +741,7 @@ pub fn build_and_append_pdu(
         pdu_json,
         // Since this PDU references all pdu_leaves we can update the leaves of the room
         once(pdu.event_id.borrow()),
-        lock,
+        state_lock,
     )?;
     let frame_id = state::append_to_state(&pdu)?;
 

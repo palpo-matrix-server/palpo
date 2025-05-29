@@ -17,7 +17,7 @@ use crate::{
         TimelineEventType,
         pdu::{EventHash, Pdu, RoomV3Pdu},
         room::{
-            join_rules::{JoinRule, RoomJoinRulesEventContent},
+            join_rule::{JoinRule, RoomJoinRulesEventContent},
             member::{MembershipState, RoomMemberEventContent},
         },
     },

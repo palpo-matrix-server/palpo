@@ -140,7 +140,7 @@ event_enum! {
         "m.room.encryption" => super::room::encryption,
         "m.room.guest_access" => super::room::guest_access,
         "m.room.history_visibility" => super::room::history_visibility,
-        "m.room.join_rules" => super::room::join_rules,
+        "m.room.join_rules" => super::room::join_rule,
         "m.room.member" => super::room::member,
         "m.room.name" => super::room::name,
         "m.room.pinned_events" => super::room::pinned_events,

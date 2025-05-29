@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::core::events::room::join_rules::JoinRule;
+use crate::core::events::room::join_rule::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
@@ -38,7 +38,12 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
-    println!("MMMMMMMMMMMMMake join  {} {} {}", crate::config::server_name(), args.room_id, args.user_id);
+    println!(
+        "MMMMMMMMMMMMMake join  {} {} {}",
+        crate::config::server_name(),
+        args.user_id,
+        args.room_id
+    );
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -55,28 +60,29 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         return Err(MatrixError::incompatible_room_version("Room version not supported.", room_version_id).into());
     }
 
-    println!(
-        "MMMMMMMMMMMM {} {}, {}",
-        crate::config::server_name(),
-        args.room_id,
-        args.user_id
-    );
+    let state_lock = crate::room::lock_state(&args.room_id).await;
+    
+    if args.user_id.is_remote()
+        && args.room_id.is_remote()
+        && !room::is_server_joined(config::server_name(), &args.room_id)?
+    {
+        return Err(MatrixError::bad_json("Not allowed to join on unkonwn remote server.").into());
+    }
     let join_authorized_via_users_server: Option<OwnedUserId> = {
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             // room version does not support restricted join rules
-            println!("==================1");
             None
         } else {
             let join_rule = room::get_join_rule(&args.room_id)?;
             let guest_can_join = room::guest_can_join(&args.room_id);
             if join_rule == JoinRule::Public || guest_can_join {
-                println!("==================2");
                 None
             } else if crate::federation::user_can_perform_restricted_join(
                 &args.user_id,
                 &args.room_id,
                 &room_version_id,
+                Some(&join_rule),
             )
             .await?
             {
@@ -85,24 +91,23 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                     .filter(|user| room::user_can_invite(&args.room_id, user, &args.user_id))
                     .next()
                 else {
-                    println!("==================3");
                     return Err(MatrixError::unable_to_grant_join(
                         "No user on this server is able to assist in joining.",
                     )
                     .into());
                 };
-                println!("==================4");
+                println!(
+                    "AAAAAAAAAAAAAAAAAAAAAAutyher user: {auth_user}  {}",
+                    config::server_name()
+                );
                 Some(auth_user)
             } else {
-                println!("==================5");
-                None
+                return Err(
+                    MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),
+                );
             }
         }
     };
-    println!(
-        "jjjjjjjjjoin_authorized_via_users_server: {:?}",
-        join_authorized_via_users_server
-    );
 
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
@@ -125,12 +130,15 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         },
         &args.user_id,
         &args.room_id,
+        &state_lock,
     )?;
+    drop(state_lock);
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
     let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     };
+    println!("MMMMMMMMMMMMMake join response: {:#?}", body);
     json_ok(body)
 }
 
@@ -212,7 +220,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !room::is_server_joined_room(config::server_name(), &args.room_id)? {
+    if !room::is_server_joined(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -232,6 +240,12 @@ async fn invite_user(
 /// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
+    println!(
+        "MMMMMMMMMMMMMake leave  {} {} {}",
+        crate::config::server_name(),
+        args.room_id,
+        args.user_id
+    );
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
@@ -244,7 +258,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     crate::event::handler::acl_check(origin, &args.room_id)?;
 
     let room_version_id = room::get_version(&args.room_id)?;
-    // let state_lock = services.rooms.state.mutex.lock(&body.room_id).await;
+    let state_lock = crate::room::lock_state(&args.room_id).await;
 
     let (_pdu, mut pdu_json) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
@@ -253,9 +267,9 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         ),
         &args.user_id,
         &args.room_id,
+        &state_lock,
     )?;
-
-    // drop(state_lock);
+    drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format
     maybe_strip_event_id(&mut pdu_json, &room_version_id);

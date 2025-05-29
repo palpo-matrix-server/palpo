@@ -13,7 +13,7 @@ use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
@@ -210,14 +210,16 @@ async fn join_room_local(
         // It has enough fields to be called a proper event now
         let join_event = join_event_stub;
 
+        let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone()));
+        println!("======join_event0: {body:#?}");
         let send_join_request = crate::core::federation::membership::send_join_request(
-            &room_id.server_name().map_err(AppError::public)?.origin().await,
+            &remote_server.origin().await,
             SendJoinArgs {
                 room_id: room_id.to_owned(),
                 event_id: event_id.to_owned(),
                 omit_members: false,
             },
-            SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone())),
+            body,
         )?
         .into_inner();
 
@@ -268,7 +270,10 @@ async fn join_room_remote(
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
-    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}", authed.user_id());
+    println!(
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}",
+        authed.user_id()
+    );
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;
@@ -331,9 +336,10 @@ async fn join_room_remote(
 
     // It has enough fields to be called a proper event now
     let mut join_event = join_event_stub;
-
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone()));
+    println!("======join_event2 body: {body:#?}");
     info!("Asking {remote_server} for send_join");
+    println!("===========remote server: {remote_server}==================={servers:?}");
     let send_join_request = crate::core::federation::membership::send_join_request(
         &remote_server.origin().await,
         SendJoinArgs {
@@ -615,9 +621,11 @@ async fn make_join_request(
             },
         )?
         .into_inner();
+        println!("=========make_join_request=remote_server1: {remote_server}");
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
         match make_join_response {
             Ok(make_join_response) => {
+                println!("=========make_join_request=remote_server2: {remote_server}");
                 let res_body = make_join_response.json::<MakeJoinResBody>().await;
                 last_join_error = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
             }

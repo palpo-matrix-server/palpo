@@ -457,7 +457,6 @@ where
     sign_json(entity_id, keypair, &mut redacted)?;
 
     object.insert("signatures".into(), mem::take(redacted.get_mut("signatures").unwrap()));
-
     Ok(())
 }
 

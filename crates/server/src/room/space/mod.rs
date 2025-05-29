@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex, MutexGuard};
 use lru_cache::LruCache;
 
 use crate::core::client::space::SpaceHierarchyRoomsChunk;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{StateEventType, space::child::SpaceChildEventContent};
 use crate::core::federation::space::{
@@ -262,7 +262,7 @@ fn is_accessible_child(
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
             Identifier::UserId(user) => crate::room::user::is_joined(user, room).unwrap_or(false),
-            Identifier::ServerName(server) => crate::room::is_server_joined_room(server, room).unwrap_or(false),
+            Identifier::ServerName(server) => crate::room::is_server_joined(server, room).unwrap_or(false),
         }),
 
         // Invite only, Private, or Custom join rule

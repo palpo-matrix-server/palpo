@@ -237,7 +237,6 @@ impl TryFrom<DbRegistration> for Registration {
 
 /// Registers an appservice and returns the ID to the caller
 pub fn register_appservice(registration: Registration) -> AppResult<String> {
-    println!("rrrrrrrrrrrrrregister_appservice: {:#?}", registration);
     let db_registration: DbRegistration = registration.into();
     diesel::insert_into(appservice_registrations::table)
         .values(&db_registration)

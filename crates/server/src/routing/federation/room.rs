@@ -228,6 +228,7 @@ async fn send_knock(
     .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
     drop(state_lock);
 
+    println!("================sssend knock============{}  {}=======", args.room_id, origin);
     diesel::insert_into(room_joined_servers::table)
         .values((
             room_joined_servers::room_id.eq(&args.room_id),
@@ -295,10 +296,9 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         ),
         &args.user_id,
         &args.room_id,
-        // &state_lock,
+        &state_lock,
     )?;
-
-    // drop(state_lock);
+    drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format
     crate::federation::maybe_strip_event_id(&mut pdu_json, &room_version_id);

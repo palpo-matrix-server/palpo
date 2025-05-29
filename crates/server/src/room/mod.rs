@@ -12,7 +12,7 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encryption::RoomEncryptionEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
@@ -21,11 +21,12 @@ use crate::core::identifiers::*;
 use crate::core::room::RoomType;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
-use crate::data::room::{DbRoomCurrent, NewDbRoom, DbRoom};
+use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config, data, utils,
+    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config, data, room,
+    utils,
 };
 
 pub mod alias;
@@ -176,6 +177,7 @@ pub fn update_currents(room_id: &RoomId) -> AppResult<()> {
 }
 
 pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
+    println!("=========update_joined_servers  {room_id}");
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
@@ -183,7 +185,10 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
         .distinct()
         .load::<OwnedUserId>(&mut connect()?)?
         .into_iter()
-        .map(|user_id| user_id.server_name().to_owned())
+        .map(|user_id| {
+            println!("======jjjjjjjjoined user===user_id: {user_id}");
+            user_id.server_name().to_owned()
+        })
         .collect::<Vec<OwnedServerName>>();
 
     diesel::delete(
@@ -194,6 +199,10 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
+        println!(
+            "=========================joined_server: {}  room_id:{room_id}",
+            joined_server
+        );
         diesel::insert_into(room_joined_servers::table)
             .values((
                 room_joined_servers::room_id.eq(room_id),
@@ -203,7 +212,11 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
     }
-
+    println!(
+        "||||||||||=========================joined_servers: {}  room_id:{room_id}  {:?}",
+        config::server_name(),
+        crate::room::joined_servers(room_id)?,
+    );
     Ok(())
 }
 pub fn get_our_real_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
@@ -257,23 +270,21 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     .map_err(Into::into)
 }
 pub fn can_local_work_for(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
-    let local = is_server_joined_room(config::server_name(), room_id)?
+    println!("=========can_local_work_for  servers: {:?}", servers);
+    let local = is_server_joined(config::server_name(), room_id)?
         || servers.is_empty()
         || (servers.len() == 1 && servers[0].is_local());
     Ok(local)
 }
-pub fn is_server_joined_room(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
-    // if server
-    //     == room_id
-    //         .server_name()
-    //         .map_err(|_| AppError::internal("bad room server name."))?
-    // {
-    //     return Ok(true);
-    // }
+pub fn is_server_joined(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
+    println!("=========is_server_joined  server: {server} room_id: {room_id}");
+    println!("=========is_server_joined  all servers: {:?} room_id: {room_id}", joined_servers(room_id)?);
     let query = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.eq(server));
-    diesel_exists!(query, &mut connect()?).map_err(Into::into)
+    let x = diesel_exists!(query, &mut connect()?).map_err(Into::into);
+    println!("=========is_server_joined  x: {:?}", x);
+    x
 }
 pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     room_joined_servers::table
@@ -549,6 +560,7 @@ pub fn is_encrypted(room_id: &RoomId) -> bool {
 pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_server_id.eq(config::server_name()))
         .select(room_users::user_id)
         .load::<OwnedUserId>(&mut connect()?)
         .map_err(Into::into)

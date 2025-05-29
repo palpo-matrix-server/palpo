@@ -13,7 +13,7 @@ use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::join_rules::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
@@ -38,6 +38,7 @@ use crate::{
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
+   println!("Seeeeeeend join v1 called with room_id: {room_id} and pdu: {pdu:?}");
     if !room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -125,6 +126,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
 
+    println!("=========content: {content:?}");
     if let Some(authorising_user) = content.join_authorized_via_users_server {
         use crate::core::RoomVersionId::*;
 
@@ -144,8 +146,10 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
-        println!("aaaaaaaaaaaaaaauthorising_user {}", authorising_user);
         if !room::user::is_joined(&authorising_user, room_id)? {
+            println!(
+                "aaaaaaaaaaaaaaaaAuthorising user {authorising_user} is not joined to room {room_id}, cannot authorise join."
+            );
             return Err(MatrixError::invalid_param(
                 "Authorising user {authorising_user} is not in the room you are trying to join, \
 				 they cannot authorise your join.",
@@ -153,8 +157,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into());
         }
 
-        println!("Ccccccccccccccccchecking if user {} can join restricted room {}", state_key, room_id);
-        if !crate::federation::user_can_perform_restricted_join(&state_key, room_id, &room_version_id).await? {
+        if !crate::federation::user_can_perform_restricted_join(&state_key, room_id, &room_version_id, None).await? {
             return Err(
                 MatrixError::unable_to_authorize_join("Joining user did not pass restricted room's rules.").into(),
             );

@@ -30,7 +30,7 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
 use crate::core::events::room::history_visibility::HistoryVisibility;
 use crate::core::events::room::history_visibility::RoomHistoryVisibilityEventContent;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
@@ -44,7 +44,8 @@ use crate::event::PduBuilder;
 use crate::room::timeline;
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok, hoops, json_ok, room,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, config, data, empty_ok,
+    hoops, json_ok, room,
 };
 
 const LIMIT_MAX: usize = 100;
@@ -170,7 +171,7 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
             None
         },
         visibility: room::directory::visibility(room_id).into(),
-        membership: room::user::membership(sender_id, room_id),
+        membership: room::user::membership(sender_id, room_id).ok(),
     })
 }
 /// `#POST /_matrix/client/r0/rooms/{room_id}/read_markers`

@@ -5,7 +5,7 @@ use salvo::prelude::*;
 use crate::core::client::user_directory::SearchedUser;
 use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody, SearchUsersResBody};
 use crate::core::events::StateEventType;
-use crate::core::events::room::join_rules::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;

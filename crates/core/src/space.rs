@@ -5,7 +5,7 @@
 use palpo_macros::StringEnum;
 use salvo::prelude::*;
 
-use crate::{PrivOwnedStr, events::room::join_rules::JoinRule};
+use crate::{PrivOwnedStr, events::room::join_rule::JoinRule};
 
 /// The rule used for users wishing to join a room.
 ///
