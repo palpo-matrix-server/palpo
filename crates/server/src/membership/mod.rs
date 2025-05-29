@@ -13,9 +13,9 @@ use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{UnixMillis, federation};
-use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::room::state;
 use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
 
@@ -299,6 +299,7 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
+            println!("nnnnnnnnnnnnnnnnnnew memebership: {membership:?}  room_id:{room_id}, user_id:{user_id}");
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),

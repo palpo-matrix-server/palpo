@@ -17,6 +17,8 @@ pub enum AppError {
     Public(String),
     #[error("internal: `{0}`")]
     Internal(String),
+    // #[error("local unable process: `{0}`")]
+    // LocalUnableProcess(String),
     #[error("salvo internal error: `{0}`")]
     Salvo(#[from] ::salvo::Error),
     #[error("parse int error: `{0}`")]
@@ -81,6 +83,9 @@ impl AppError {
     pub fn internal<S: Into<String>>(msg: S) -> Self {
         Self::Internal(msg.into())
     }
+    // pub fn local_unable_process<S: Into<String>>(msg: S) -> Self {
+    //     Self::LocalUnableProcess(msg.into())
+    // }
 }
 
 #[async_trait]
@@ -91,6 +96,7 @@ impl Writer for AppError {
             Self::FrequentlyRequest => MatrixError::unknown("Frequently request resource."),
             Self::Public(msg) => MatrixError::unknown(msg),
             Self::Internal(_msg) => MatrixError::unknown("Unknown error."),
+            // Self::LocalUnableProcess(msg) => MatrixError::unrecognized(msg),
             Self::Matrix(e) => e,
             Self::Uiaa(uiaa) => {
                 use crate::core::client::uiaa::ErrorKind;

@@ -41,8 +41,8 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     println!(
         "MMMMMMMMMMMMMake join  {} {} {}",
         crate::config::server_name(),
-        args.room_id,
-        args.user_id
+        args.user_id,
+        args.room_id
     );
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
@@ -61,6 +61,13 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     }
 
     let state_lock = crate::room::lock_state(&args.room_id).await;
+    
+    if args.user_id.is_remote()
+        && args.room_id.is_remote()
+        && !room::is_server_joined(config::server_name(), &args.room_id)?
+    {
+        return Err(MatrixError::bad_json("Not allowed to join on unkonwn remote server.").into());
+    }
     let join_authorized_via_users_server: Option<OwnedUserId> = {
         use RoomVersionId::*;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
@@ -213,7 +220,7 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !room::is_server_joined_room(config::server_name(), &args.room_id)? {
+    if !room::is_server_joined(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,

@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 
-use crate::AppResult;
 use crate::core::Seqnum;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
@@ -10,6 +9,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
+use crate::{AppError, AppResult, room, IsRemoteOrLocal, config, MatrixError};
 
 pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     diesel::update(
@@ -192,6 +192,16 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    // if room_id.is_remote() {
+    //     // If the room is remote, we should check if our server is joined.
+    //     if !room::is_server_joined(config::server_name(), room_id)? {
+    //         return Err(AppError::public(format!(
+    //             "Server {} is not joined to room {}",
+    //             config::server_name(),
+    //             room_id
+    //         )));
+    //     }
+    // }
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -201,6 +211,16 @@ pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    // if room_id.is_remote() {
+    //     // If the room is remote, we should check if our server is joined.
+    //     if !room::is_server_joined(config::server_name(), room_id)? {
+    //         return Err(AppError::public(format!(
+    //             "Server {} is not joined to room {}",
+    //             config::server_name(),
+    //             room_id
+    //         )));
+    //     }
+    // }
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -211,6 +231,16 @@ pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+    // if room_id.is_remote() {
+    //     // If the room is remote, we should check if our server is joined.
+    //     if !room::is_server_joined(config::server_name(), room_id)? {
+    //         return Err(AppError::public(format!(
+    //             "Server {} is not joined to room {}",
+    //             config::server_name(),
+    //             room_id
+    //         )));
+    //     }
+    // }
     let joined = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -241,24 +271,24 @@ pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson
 }
 
 #[tracing::instrument(level = "trace")]
-pub fn membership(user_id: &UserId, room_id: &RoomId) -> Option<MembershipState> {
-    if is_joined(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Join);
+pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipState> {
+    if is_joined(user_id, room_id)? {
+        return Ok(MembershipState::Join);
     }
-    if is_left(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Leave);
+    if is_left(user_id, room_id)? {
+        return Ok(MembershipState::Leave);
     }
-    if is_knocked(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Knock);
+    if is_knocked(user_id, room_id)? {
+        return Ok(MembershipState::Knock);
     }
-    if is_invited(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Invite);
+    if is_invited(user_id, room_id)? {
+        return Ok(MembershipState::Invite);
     }
-    if is_banned(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Ban);
+    if is_banned(user_id, room_id)? {
+        return Ok(MembershipState::Ban);
     }
-    if once_joined(user_id, room_id).unwrap_or(false) {
-        return Some(MembershipState::Ban);
+    if once_joined(user_id, room_id)? {
+        return Ok(MembershipState::Ban);
     }
-    None
+    Err(MatrixError::not_found(format!("User {} is not a member of room {}", user_id, room_id)).into())
 }

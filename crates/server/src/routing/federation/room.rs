@@ -228,6 +228,7 @@ async fn send_knock(
     .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
     drop(state_lock);
 
+    println!("================sssend knock============{}  {}=======", args.room_id, origin);
     diesel::insert_into(room_joined_servers::table)
         .values((
             room_joined_servers::room_id.eq(&args.room_id),

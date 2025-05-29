@@ -30,7 +30,7 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !room::is_server_joined_room(config::server_name(), room_id)?
+    if !room::is_server_joined(config::server_name(), room_id)?
         && room_id
             .server_name()
             .map_err(|name| AppError::public(format!("Bad room id, server name is invalid: `{name}`.")))?

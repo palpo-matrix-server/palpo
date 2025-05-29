@@ -262,7 +262,7 @@ fn is_accessible_child(
         SpaceRoomJoinRule::Public | SpaceRoomJoinRule::Knock | SpaceRoomJoinRule::KnockRestricted => true,
         SpaceRoomJoinRule::Restricted => allowed_room_ids.iter().any(|room| match identifier {
             Identifier::UserId(user) => crate::room::user::is_joined(user, room).unwrap_or(false),
-            Identifier::ServerName(server) => crate::room::is_server_joined_room(server, room).unwrap_or(false),
+            Identifier::ServerName(server) => crate::room::is_server_joined(server, room).unwrap_or(false),
         }),
 
         // Invite only, Private, or Custom join rule
