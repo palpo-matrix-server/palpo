@@ -396,7 +396,9 @@ pub fn shutdown() {
     ROTATE.fire();
 }
 
-pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
+pub fn parse_incoming_pdu(
+    pdu: &RawJsonValue,
+) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
         tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
         MatrixError::bad_json("Invalid PDU in server response")
@@ -417,4 +419,13 @@ pub fn parse_incoming_pdu(pdu: &RawJsonValue) -> AppResult<(OwnedEventId, Canoni
         }
     };
     Ok((event_id, value, room_id, room_version_id))
+}
+
+pub fn get_servers_from_users(users: &[OwnedUserId]) -> Vec<OwnedServerName> {
+    let mut servers = HashSet::new();
+    for user in users {
+        let server_name = user.server_name().to_owned();
+        servers.insert(server_name);
+    }
+    servers.into_iter().collect()
 }

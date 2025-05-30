@@ -29,7 +29,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::room::timeline;
-use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, utils};
+use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, membership, room, utils};
 
 pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
@@ -102,7 +102,7 @@ pub fn force_state(
                     Err(_) => continue,
                 };
 
-                crate::membership::update_membership(
+                membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
                     room_id,
@@ -113,7 +113,7 @@ pub fn force_state(
                 )?;
             }
             TimelineEventType::SpaceChild => {
-                crate::room::space::ROOM_ID_SPACE_CHUNK_CACHE
+                room::space::ROOM_ID_SPACE_CHUNK_CACHE
                     .lock()
                     .unwrap()
                     .remove(&pdu.room_id);
@@ -122,8 +122,8 @@ pub fn force_state(
         }
     }
 
-    crate::room::update_joined_servers(room_id)?;
-    crate::room::update_currents(room_id)?;
+    room::update_joined_servers(room_id)?;
+    room::update_currents(room_id)?;
 
     set_room_state(room_id, frame_id)?;
 

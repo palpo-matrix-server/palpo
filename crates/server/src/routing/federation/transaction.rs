@@ -29,6 +29,7 @@ async fn send_message(
     _txn_id: PathParam<OwnedTransactionId>,
     body: JsonBody<SendMessageReqBody>,
 ) -> JsonResult<SendMessageResBody> {
+    println!("======================get send message====================== {body:#?}");
     let origin = depot.origin()?;
     let body = body.into_inner();
     if &body.origin != origin {

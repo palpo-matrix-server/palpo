@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::sync::OnceLock;
 
 use diesel::prelude::*;
@@ -25,8 +25,8 @@ use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config, data, room,
-    utils,
+    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config,
+    data, membership, room, utils,
 };
 
 pub mod alias;
@@ -185,11 +185,10 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
         .distinct()
         .load::<OwnedUserId>(&mut connect()?)?
         .into_iter()
-        .map(|user_id| {
-            println!("======jjjjjjjjoined user===user_id: {user_id}");
-            user_id.server_name().to_owned()
-        })
-        .collect::<Vec<OwnedServerName>>();
+        .map(|user_id| user_id.server_name().to_owned())
+        .collect::<HashSet<OwnedServerName>>()
+        .into_iter()
+        .collect::<Vec<_>>();
 
     diesel::delete(
         room_joined_servers::table
@@ -269,22 +268,44 @@ pub fn is_room_exists(room_id: &RoomId) -> AppResult<bool> {
     )
     .map_err(Into::into)
 }
-pub fn can_local_work_for(room_id: &RoomId, servers: &[OwnedServerName]) -> AppResult<bool> {
-    println!("=========can_local_work_for  servers: {:?}", servers);
-    let local = is_server_joined(config::server_name(), room_id)?
-        || servers.is_empty()
-        || (servers.len() == 1 && servers[0].is_local());
-    Ok(local)
+pub fn should_join_on_remote_servers(
+    sender_id: &UserId,
+    room_id: &RoomId,
+    servers: &[OwnedServerName],
+) -> AppResult<(bool, Vec<OwnedServerName>)> {
+    // let local = is_server_joined(config::server_name(), room_id)?
+    //     || servers.is_empty()
+    //     || (servers.len() == 1 && servers[0].is_local());
+    if !is_server_joined(config::server_name(), room_id).unwrap_or(false) {
+        return Ok((true, servers.to_vec()));
+    }
+    let Ok(join_rule) = room::get_join_rule(room_id) else {
+        return Ok((true, servers.to_vec()));
+    };
+
+    if !join_rule.is_restricted() {
+        return Ok((false, servers.to_vec()));
+    }
+    let users = membership::get_users_can_issue_invite(room_id, sender_id, &join_rule.restriction_rooms())?;
+    let mut allowed_servers = crate::get_servers_from_users(&users);
+    if let Ok(room_server) = room_id.server_name() {
+        let room_server = room_server.to_owned();
+        if !allowed_servers.contains(&room_server) {
+            allowed_servers.push(room_server);
+        }
+    }
+    Ok((true, allowed_servers))
 }
 pub fn is_server_joined(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     println!("=========is_server_joined  server: {server} room_id: {room_id}");
-    println!("=========is_server_joined  all servers: {:?} room_id: {room_id}", joined_servers(room_id)?);
+    println!(
+        "=========is_server_joined  all servers: {:?} room_id: {room_id}",
+        joined_servers(room_id)?
+    );
     let query = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.eq(server));
-    let x = diesel_exists!(query, &mut connect()?).map_err(Into::into);
-    println!("=========is_server_joined  x: {:?}", x);
-    x
+    diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
 pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     room_joined_servers::table

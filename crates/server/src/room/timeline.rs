@@ -32,7 +32,7 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
+use crate::{AppError, membership, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -288,9 +288,10 @@ where
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online)?;
                 }
+                println!("DDDDDDDDDDDDDDDpppppppppp pdu: {:?}", pdu);
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
-                crate::membership::update_membership(
+                membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
                     &pdu.room_id,
@@ -751,6 +752,7 @@ pub fn build_and_append_pdu(
     state::set_room_state(room_id, frame_id)?;
 
     let mut servers: HashSet<OwnedServerName> = super::participating_servers(room_id)?.into_iter().collect();
+    println!("DDDDDDDDDDDDDDDservers: {:?}", servers);
 
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.event_ty == TimelineEventType::RoomMember {

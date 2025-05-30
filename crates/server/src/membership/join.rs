@@ -62,213 +62,54 @@ pub async fn join_room(
             return Err(MatrixError::forbidden("You are banned from the room.", None).into());
         }
     }
+    println!("dddddddddddd  {servers:?}");
 
     // Ask a remote server if we are not participating in this room
-    if room::can_local_work_for(room_id, servers)? {
-        join_room_local(sender_id, room_id, reason, servers, third_party_signed, extra_data).await?;
-    } else {
-        join_room_remote(authed, room_id, reason, servers, third_party_signed, extra_data).await?;
-    }
+    let (should_remote, servers) = room::should_join_on_remote_servers(sender_id, room_id, servers)?;
 
-    Ok(JoinRoomResBody::new(room_id.to_owned()))
-}
+    println!("dddddddddddd22  {servers:?}");
+    if !should_remote {
+        info!("We can join locally");
+        println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin room_local: {sender_id} {room_id} ");
+        let state_lock = room::lock_state(&room_id).await;
+        let join_rule = room::get_join_rule(room_id)?;
 
-async fn join_room_local(
-    user_id: &UserId,
-    room_id: &RoomId,
-    reason: Option<String>,
-    servers: &[OwnedServerName],
-    _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: BTreeMap<String, JsonValue>,
-) -> AppResult<()> {
-    info!("We can join locally");
-    println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin room_local: {user_id} {room_id}    {servers:?}");
-    let state_lock = room::lock_state(&room_id).await;
-    let join_rules_event_content =
-        room::get_state_content::<RoomJoinRulesEventContent>(room_id, &StateEventType::RoomJoinRules, "", None).ok();
-    // let power_levels_event = state::get_state(room_id, &StateEventType::RoomPowerLevels, "", None)?;
-
-    let restriction_rooms = match join_rules_event_content {
-        Some(RoomJoinRulesEventContent {
-            join_rule: JoinRule::Restricted(restricted),
-        })
-        | Some(RoomJoinRulesEventContent {
-            join_rule: JoinRule::KnockRestricted(restricted),
-        }) => restricted
-            .allow
-            .into_iter()
-            .filter_map(|a| match a {
-                AllowRule::RoomMembership(r) => Some(r.room_id),
-                _ => None,
-            })
-            .collect(),
-        _ => Vec::new(),
-    };
-
-    let authorized_user = if restriction_rooms
-        .iter()
-        .any(|restriction_room_id| room::user::is_joined(user_id, restriction_room_id).unwrap_or(false))
-    {
-        let mut auth_user = None;
-        for joined_user in room::get_joined_users(room_id, None)? {
-            if joined_user.server_name() == config::server_name()
-                && room::user_can_invite(room_id, &joined_user, user_id)
-            {
-                auth_user = Some(joined_user);
-                break;
-            }
-        }
-        auth_user
-    } else {
-        None
-    };
-
-    let event = RoomMemberEventContent {
-        membership: MembershipState::Join,
-        display_name: data::user::display_name(user_id).ok().flatten(),
-        avatar_url: data::user::avatar_url(user_id).ok().flatten(),
-        is_direct: None,
-        third_party_invite: None,
-        blurhash: data::user::blurhash(user_id).ok().flatten(),
-        reason: reason.clone(),
-        join_authorized_via_users_server: authorized_user,
-        extra_data: extra_data.clone(),
-    };
-
-    // Try normal join first
-    let error = match timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomMember,
-            content: to_raw_json_value(&event).expect("event is valid, we just created it"),
-            state_key: Some(user_id.to_string()),
-            ..Default::default()
-        },
-        user_id,
-        room_id,
-        &state_lock,
-    ) {
-        Ok(_event_id) => return Ok(()),
-        Err(e) => e,
-    };
-
-    if !restriction_rooms.is_empty() && servers.iter().filter(|s| *s != config::server_name()).count() > 0 {
-        info!("We couldn't do the join locally, maybe federation can help to satisfy the restricted join requirements");
-        let (make_join_response, remote_server) = make_join_request(user_id, room_id, servers).await?;
-
-        let room_version_id = match make_join_response.room_version {
-            Some(room_version_id) if config::supported_room_versions().contains(&room_version_id) => room_version_id,
-            _ => return Err(AppError::public("Room version is not supported")),
-        };
-        let mut join_event_stub: CanonicalJsonObject = serde_json::from_str(make_join_response.event.get())
-            .map_err(|_| AppError::public("Invalid make_join event json received from server."))?;
-        let join_authorized_via_users_server = join_event_stub
-            .get("content")
-            .map(|s| s.as_object()?.get("join_authorised_via_users_server")?.as_str())
-            .and_then(|s| OwnedUserId::try_from(s.unwrap_or_default()).ok());
-        // TODO: Is origin needed?
-        join_event_stub.insert(
-            "origin".to_owned(),
-            CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
-        );
-        join_event_stub.insert(
-            "origin_server_ts".to_owned(),
-            CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-        );
-
-        join_event_stub.insert(
-            "content".to_owned(),
-            to_canonical_value(RoomMemberEventContent {
-                membership: MembershipState::Join,
-                display_name: data::user::display_name(user_id).ok().flatten(),
-                avatar_url: data::user::avatar_url(user_id).ok().flatten(),
-                is_direct: None,
-                third_party_invite: None,
-                blurhash: data::user::blurhash(user_id).ok().flatten(),
-                reason,
-                join_authorized_via_users_server,
-                extra_data,
-            })
-            .expect("event is valid, we just created it"),
-        );
-
-        // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
-        join_event_stub.remove("event_id");
-
-        // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
-        crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
-            .expect("event is valid, we just created it");
-
-        // Generate event id
-        let event_id = crate::event::gen_event_id(&join_event_stub, &room_version_id)?;
-
-        // Add event_id back
-        join_event_stub.insert(
-            "event_id".to_owned(),
-            CanonicalJsonValue::String(event_id.as_str().to_owned()),
-        );
-
-        // It has enough fields to be called a proper event now
-        let join_event = join_event_stub;
-
-        let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone()));
-        println!("======join_event0: {body:#?}");
-        let send_join_request = crate::core::federation::membership::send_join_request(
-            &remote_server.origin().await,
-            SendJoinArgs {
-                room_id: room_id.to_owned(),
-                event_id: event_id.to_owned(),
-                omit_members: false,
-            },
-            body,
-        )?
-        .into_inner();
-
-        let send_join_response = crate::sending::send_federation_request(&remote_server, send_join_request)
-            .await?
-            .json::<SendJoinResBodyV2>()
-            .await?;
-
-        if let Some(signed_raw) = send_join_response.0.event {
-            let (signed_event_id, signed_value) = match gen_event_id_canonical_json(&signed_raw, &room_version_id) {
-                Ok(t) => t,
-                Err(_) => {
-                    // Event could not be converted to canonical json
-                    return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
-                }
-            };
-
-            if signed_event_id != event_id {
-                return Err(MatrixError::invalid_param("Server sent event with wrong event id").into());
-            }
-
-            // let pub_key_map = RwLock::new(BTreeMap::new());
-            crate::event::handler::process_incoming_pdu(
-                &remote_server,
-                &signed_event_id,
+        let event = RoomMemberEventContent {
+            membership: MembershipState::Join,
+            display_name: data::user::display_name(sender_id).ok().flatten(),
+            avatar_url: data::user::avatar_url(sender_id).ok().flatten(),
+            is_direct: None,
+            third_party_invite: None,
+            blurhash: data::user::blurhash(sender_id).ok().flatten(),
+            reason: reason.clone(),
+            join_authorized_via_users_server: get_first_user_can_issue_invite(
                 room_id,
-                &room_version_id,
-                signed_value,
-                true,
-                // &pub_key_map,
+                sender_id,
+                &join_rule.restriction_rooms(),
             )
-            .await?;
-        } else {
-            return Err(error);
+            .ok(),
+            extra_data: extra_data.clone(),
+        };
+        match timeline::build_and_append_pdu(
+            PduBuilder {
+                event_type: TimelineEventType::RoomMember,
+                content: to_raw_json_value(&event).expect("event is valid, we just created it"),
+                state_key: Some(sender_id.to_string()),
+                ..Default::default()
+            },
+            sender_id,
+            room_id,
+            &state_lock,
+        ) {
+            Ok(_) => {
+                return Ok(JoinRoomResBody::new(room_id.to_owned()));
+            }
+            Err(e) => {
+                tracing::error!("Failed to append join event locally: {e}");
+            }
         }
-    } else {
-        return Err(error);
     }
-    Ok(())
-}
 
-async fn join_room_remote(
-    authed: &AuthedInfo,
-    room_id: &RoomId,
-    reason: Option<String>,
-    servers: &[OwnedServerName],
-    _third_party_signed: Option<&ThirdPartySigned>,
-    extra_data: BTreeMap<String, JsonValue>,
-) -> AppResult<()> {
     info!("Joining {room_id} over federation.");
     println!(
         "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}",
@@ -276,7 +117,7 @@ async fn join_room_remote(
     );
 
     let sender_id = authed.user_id();
-    let (make_join_response, remote_server) = make_join_request(sender_id, room_id, servers).await?;
+    let (make_join_response, remote_server) = make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make_join finished");
 
@@ -594,7 +435,47 @@ async fn join_room_remote(
         let edu = Edu::DeviceListUpdate(content);
         send_edu_server(room_server_id, &edu)?;
     }
-    Ok(())
+    Ok(JoinRoomResBody::new(room_id.to_owned()))
+}
+
+pub fn get_first_user_can_issue_invite(
+    room_id: &RoomId,
+    invitee_id: &UserId,
+    restriction_rooms: &[OwnedRoomId],
+) -> AppResult<OwnedUserId> {
+    if restriction_rooms
+        .iter()
+        .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
+    {
+        for joined_user in room::get_joined_users(room_id, None)? {
+            if joined_user.server_name() == config::server_name()
+                && room::user_can_invite(room_id, &joined_user, invitee_id)
+            {
+                return Ok(joined_user);
+            }
+        }
+    }
+    Err(MatrixError::not_found("No user can issue invite in this room.").into())
+}
+pub fn get_users_can_issue_invite(
+    room_id: &RoomId,
+    invitee_id: &UserId,
+    restriction_rooms: &[OwnedRoomId],
+) -> AppResult<Vec<OwnedUserId>> {
+    let mut users = vec![];
+    if restriction_rooms
+        .iter()
+        .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
+    {
+        for joined_user in room::get_joined_users(room_id, None)? {
+            if joined_user.server_name() == config::server_name()
+                && room::user_can_invite(room_id, &joined_user, invitee_id)
+            {
+                users.push(joined_user);
+            }
+        }
+    }
+    Ok(users)
 }
 
 async fn make_join_request(

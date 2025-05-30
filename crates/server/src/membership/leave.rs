@@ -29,6 +29,7 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
 }
 
 pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
+    println!("===================={}  leave room  {}", config::server_name(), room_id);
     // Ask a remote server if we don't have this room
     if !room::is_server_joined(config::server_name(), room_id)?
         && room_id
@@ -37,6 +38,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             != config::server_name()
         && !room::user::is_knocked(user_id, room_id)?
     {
+        println!("Leaving room {} remotely for user {}", room_id, user_id);
         match leave_room_remote(user_id, room_id).await {
             Err(e) => {
                 warn!("Failed to leave room {} remotely: {}", user_id, e);
@@ -60,7 +62,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         println!("Leaving room local {} for user {}", room_id, user_id);
         let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
-        println!("=============memeber event: {:#?}", member_event);
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             warn!("Trying to leave a room you are not a member of.");
@@ -80,7 +81,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .first::<(OwnedEventId, i64)>(&mut connect()?)
                 .optional()?;
             if let Some((event_id, event_sn)) = event_id_sns {
-                crate::membership::update_membership(
+                membership::update_membership(
                     &event_id,
                     event_sn,
                     room_id,
@@ -242,5 +243,6 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
 
     crate::sending::send_federation_request(&remote_server, request).await?;
 
+    println!("AAAAAAAAAAAAAAAfter remote leave request: {:#?}", event_id);
     Ok((event_id, event_sn))
 }
