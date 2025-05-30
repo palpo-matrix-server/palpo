@@ -300,7 +300,6 @@ async fn make_knock_request(
         StatusError::internal_server_error().brief("No server available to assist in knocking."),
     ));
 
-    println!("KKKKKKKKKKKKKKKservers: {servers:?}");
     let mut make_knock_counter: usize = 0;
 
     for remote_server in servers {

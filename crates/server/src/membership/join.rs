@@ -507,7 +507,6 @@ async fn make_join_request(
             },
         )?
         .into_inner();
-        println!("=========make_join_request=remote_server1: {remote_server}");
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
         match make_join_response {
             Ok(make_join_response) => {

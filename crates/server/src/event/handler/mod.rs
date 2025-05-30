@@ -371,7 +371,6 @@ pub async fn process_to_timeline_pdu(
         return Ok(());
     }
 
-    println!("  =======process_to_timeline_pdu 0");
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
@@ -381,7 +380,6 @@ pub async fn process_to_timeline_pdu(
     let room_version_id = &room::get_version(room_id)?;
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
-    println!("  =======process_to_timeline_pdu 1");
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
@@ -392,7 +390,6 @@ pub async fn process_to_timeline_pdu(
         state_at_incoming_resolved(incoming_pdu, room_id, room_version_id).await?
     };
 
-    println!("  =======process_to_timeline_pdu 2");
     let state_at_incoming_event = match state_at_incoming_event {
         None => fetch_state(origin, room_id, &room_version_id, &incoming_pdu.event_id)
             .await?
@@ -400,7 +397,6 @@ pub async fn process_to_timeline_pdu(
         Some(state) => state,
     };
 
-    println!("  =======process_to_timeline_pdu 3");
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
     event_auth::auth_check(
@@ -415,7 +411,6 @@ pub async fn process_to_timeline_pdu(
         },
     )?;
 
-    println!("  =======process_to_timeline_pdu 4");
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
@@ -431,7 +426,6 @@ pub async fn process_to_timeline_pdu(
         auth_events.get(&(k.clone(), s.to_owned()))
     })?;
 
-    println!("  =======process_to_timeline_pdu 5");
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
     let soft_fail = match incoming_pdu.redacts_id(&room_version_id) {
@@ -444,7 +438,6 @@ pub async fn process_to_timeline_pdu(
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
-    println!("  =======process_to_timeline_pdu 6");
     // We start looking at current room state now, so lets lock the room
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
@@ -458,7 +451,6 @@ pub async fn process_to_timeline_pdu(
         }
     }
 
-    println!("  =======process_to_timeline_pdu 7");
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
@@ -472,7 +464,6 @@ pub async fn process_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
-    println!("  =======process_to_timeline_pdu 8");
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
 
@@ -485,7 +476,7 @@ pub async fn process_to_timeline_pdu(
             state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         }
 
-        let new_room_state = resolve_state(room_id, room_version_id, state_after)?;
+        let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
@@ -504,7 +495,6 @@ pub async fn process_to_timeline_pdu(
 
     if soft_fail {
         let extremities = extremities.iter().map(Borrow::borrow);
-        println!("  =======process_to_timeline_pdu 11");
         timeline::append_incoming_pdu(
             &incoming_pdu,
             val,
@@ -542,13 +532,12 @@ pub async fn process_to_timeline_pdu(
     Ok(())
 }
 
-fn resolve_state(
+async fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
-
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
     } else {
@@ -584,8 +573,7 @@ fn resolve_state(
         .collect();
     debug!("Resolving state");
 
-    println!("==================  resolve_state 0");
-    let lock = crate::STATERES_MUTEX.lock();
+    let state_lock = room::lock_state(room_id).await;
     let state = match crate::core::state::resolve(
         room_version_id,
         &fork_states,
@@ -608,8 +596,7 @@ fn resolve_state(
             ));
         }
     };
-    println!("==================  resolve_state 1");
-    drop(lock);
+    drop(state_lock);
 
     debug!("State resolution done. Compressing state");
 

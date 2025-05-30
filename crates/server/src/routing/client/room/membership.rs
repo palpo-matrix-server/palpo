@@ -543,6 +543,7 @@ pub(super) async fn kick_user(
     body: JsonBody<KickUserReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
+    println!("KKKKKKKKKKKKKKKKKKKKKKKIck");
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
@@ -550,6 +551,7 @@ pub(super) async fn kick_user(
     let Ok(event) = room::get_member(&room_id, &body.user_id) else {
         return Err(MatrixError::forbidden("Users cannot kick users from a room they are not in", None).into());
     };
+    println!("KKKKKKKKKKKKKKKKKKKKKKKIck 1");
 
     if !matches!(
         event.membership,
@@ -565,6 +567,7 @@ pub(super) async fn kick_user(
         .into());
     }
 
+    println!("KKKKKKKKKKKKKKKKKKKKKKKIck 2");
     timeline::build_and_append_pdu(
         PduBuilder::state(
             body.user_id.to_string(),

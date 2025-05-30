@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use state::DbRoomStateField;
 
-use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::state::{StateMap, resolve};
 use crate::event::PduEvent;
 use crate::room::{state, timeline};
+use crate::{AppResult, room};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
@@ -103,8 +103,7 @@ pub(super) async fn state_at_incoming_resolved(
         fork_states.push(state);
     }
 
-    let lock = crate::STATERES_MUTEX.lock();
-
+    let state_lock = room::lock_state(room_id).await;
     let result = resolve(
         room_version_id,
         &fork_states,
@@ -120,7 +119,7 @@ pub(super) async fn state_at_incoming_resolved(
             res.ok()
         },
     );
-    drop(lock);
+    drop(state_lock);
 
     match result {
         Ok(new_state) => Ok(Some(
