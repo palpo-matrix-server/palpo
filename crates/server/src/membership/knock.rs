@@ -22,7 +22,7 @@ use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, config, data,
 };
 
-pub async fn knock_room_by_id(
+pub async fn knock_room(
     sender_id: &UserId,
     room_id: &RoomId,
     reason: Option<String>,
@@ -91,6 +91,8 @@ pub async fn knock_room_by_id(
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
+                } else {
+                    println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV  {}:  {servers:?}", config::server_name());
                 }
             }
         }

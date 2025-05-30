@@ -107,6 +107,8 @@ pub async fn join_room(
                 tracing::error!("Failed to append join event locally: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
+                } else {
+                    println!("YYYYYYYYYYYYYYYYYYYYYY:  {servers:?}");
                 }
             }
         }
@@ -489,6 +491,7 @@ async fn make_join_request(
         .brief("No server available to assist in joining.")
         .into());
 
+        println!("MMMMMMMMMMMMMMMakle join request: {user_id} {room_id} {servers:?}");
     for remote_server in servers {
         if remote_server == config::server_name() {
             continue;

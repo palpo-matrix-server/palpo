@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
 use diesel::prelude::*;
@@ -273,9 +273,9 @@ pub fn should_join_on_remote_servers(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(bool, Vec<OwnedServerName>)> {
-    // let local = is_server_joined(config::server_name(), room_id)?
-    //     || servers.is_empty()
-    //     || (servers.len() == 1 && servers[0].is_local());
+    if room_id.is_local() {
+        return Ok((false, vec![]));
+    }
     if !is_server_joined(config::server_name(), room_id).unwrap_or(false) {
         return Ok((true, servers.to_vec()));
     }

@@ -366,7 +366,6 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
-    println!("===================={}  sync events  {:?}", config::server_name(), res_body);
     Ok(res_body)
 }
 
