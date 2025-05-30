@@ -62,7 +62,6 @@ pub async fn join_room(
             return Err(MatrixError::forbidden("You are banned from the room.", None).into());
         }
     }
-    println!("dddddddddddd  {servers:?}");
 
     // Ask a remote server if we are not participating in this room
     let (should_remote, servers) = room::should_join_on_remote_servers(sender_id, room_id, servers)?;
@@ -106,6 +105,9 @@ pub async fn join_room(
             }
             Err(e) => {
                 tracing::error!("Failed to append join event locally: {e}");
+                if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
+                    return Err(e);
+                }
             }
         }
     }

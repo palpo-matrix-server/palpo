@@ -192,16 +192,6 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    // if room_id.is_remote() {
-    //     // If the room is remote, we should check if our server is joined.
-    //     if !room::is_server_joined(config::server_name(), room_id)? {
-    //         return Err(AppError::public(format!(
-    //             "Server {} is not joined to room {}",
-    //             config::server_name(),
-    //             room_id
-    //         )));
-    //     }
-    // }
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -211,16 +201,6 @@ pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    // if room_id.is_remote() {
-    //     // If the room is remote, we should check if our server is joined.
-    //     if !room::is_server_joined(config::server_name(), room_id)? {
-    //         return Err(AppError::public(format!(
-    //             "Server {} is not joined to room {}",
-    //             config::server_name(),
-    //             room_id
-    //         )));
-    //     }
-    // }
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -231,16 +211,6 @@ pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 
 #[tracing::instrument]
 pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    // if room_id.is_remote() {
-    //     // If the room is remote, we should check if our server is joined.
-    //     if !room::is_server_joined(config::server_name(), room_id)? {
-    //         return Err(AppError::public(format!(
-    //             "Server {} is not joined to room {}",
-    //             config::server_name(),
-    //             room_id
-    //         )));
-    //     }
-    // }
     let joined = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))

@@ -310,7 +310,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner().unwrap_or_default();
-    println!("\n\n\n==============join_room_by_id_or_alias===body: {:?}", body);
     let remote_addr = req.remote_addr();
 
     // The servers to attempt to join the room through.
@@ -660,6 +659,7 @@ pub(crate) async fn knock_room(
         }
     };
 
+    println!("=======================lllllllllllll servers {servers:?}");
     knock_room_by_id(sender_id, &room_id, body.reason.clone(), &servers).await?;
     empty_ok()
 }

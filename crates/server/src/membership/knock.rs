@@ -89,6 +89,9 @@ pub async fn knock_room_by_id(
             }
             Err(e) => {
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
+                if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
+                    return Err(e);
+                }
             }
         }
     }
@@ -295,6 +298,7 @@ async fn make_knock_request(
         StatusError::internal_server_error().brief("No server available to assist in knocking."),
     ));
 
+    println!("KKKKKKKKKKKKKKKservers: {servers:?}");
     let mut make_knock_counter: usize = 0;
 
     for remote_server in servers {

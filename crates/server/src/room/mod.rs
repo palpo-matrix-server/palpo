@@ -298,10 +298,6 @@ pub fn should_join_on_remote_servers(
 }
 pub fn is_server_joined(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {
     println!("=========is_server_joined  server: {server} room_id: {room_id}");
-    println!(
-        "=========is_server_joined  all servers: {:?} room_id: {room_id}",
-        joined_servers(room_id)?
-    );
     let query = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.eq(server));
