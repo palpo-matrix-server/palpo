@@ -38,7 +38,6 @@ use crate::{
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
-   println!("Seeeeeeend join v1 called with room_id: {room_id} and pdu: {pdu:?}");
     if !room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -126,7 +125,6 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
 
-    println!("=========content: {content:?}");
     if let Some(authorising_user) = content.join_authorized_via_users_server {
         use crate::core::RoomVersionId::*;
 

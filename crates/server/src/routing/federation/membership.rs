@@ -14,7 +14,7 @@ use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
-    room, utils,
+    membership, room, utils,
 };
 
 pub fn router_v1() -> Router {
@@ -38,12 +38,6 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
-    println!(
-        "MMMMMMMMMMMMMake join  {} {} {}",
-        crate::config::server_name(),
-        args.user_id,
-        args.room_id
-    );
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -61,7 +55,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
     }
 
     let state_lock = crate::room::lock_state(&args.room_id).await;
-    
+
     if args.user_id.is_remote()
         && args.room_id.is_remote()
         && !room::is_server_joined(config::server_name(), &args.room_id)?
@@ -86,21 +80,11 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
             )
             .await?
             {
-                let Some(auth_user) = room::local_users_in_room(&args.room_id)?
-                    .into_iter()
-                    .filter(|user| room::user_can_invite(&args.room_id, user, &args.user_id))
-                    .next()
-                else {
-                    return Err(MatrixError::unable_to_grant_join(
-                        "No user on this server is able to assist in joining.",
-                    )
-                    .into());
-                };
-                println!(
-                    "AAAAAAAAAAAAAAAAAAAAAAutyher user: {auth_user}  {}",
-                    config::server_name()
-                );
-                Some(auth_user)
+                membership::get_first_user_can_issue_invite(
+                    &args.room_id,
+                    &args.user_id,
+                    &join_rule.restriction_rooms(),
+                ).ok()
             } else {
                 return Err(
                     MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),
@@ -138,7 +122,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     };
-    println!("MMMMMMMMMMMMMake join response: {:#?}", body);
     json_ok(body)
 }
 
@@ -240,12 +223,6 @@ async fn invite_user(
 /// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
-    println!(
-        "MMMMMMMMMMMMMake leave  {} {} {}",
-        crate::config::server_name(),
-        args.room_id,
-        args.user_id
-    );
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());

@@ -124,6 +124,22 @@ pub enum JoinRule {
 }
 
 impl JoinRule {
+    pub fn is_restricted(&self) -> bool {
+        matches!(self, JoinRule::Restricted(_) | JoinRule::KnockRestricted(_))
+    }
+    pub fn restriction_rooms(&self) -> Vec<OwnedRoomId> {
+        match self {
+            JoinRule::Restricted(restricted) | JoinRule::KnockRestricted(restricted) => restricted
+                .allow
+                .iter()
+                .filter_map(|a| match a {
+                    AllowRule::RoomMembership(r) => Some(r.room_id.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
     /// Returns allowed room_id's for restricted rooms; empty for other variants
     pub fn allowed_rooms(&self) -> impl Iterator<Item = &RoomId> + Send {
         let rules = match self {

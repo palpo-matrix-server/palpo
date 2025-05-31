@@ -21,7 +21,7 @@ COPY tests/complement/startup.sh startup.sh
 
 ENV PALPO_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/palpo"
 ENV PALPO_CONFIG=/work/palpo.toml
-ENV RUST_LOG="warn,palpo=info,palpo_core=warn,salvo=error"
+ENV RUST_LOG="warn,palpo_server=info,palpo_core=warn,salvo=error"
 ENV LOG_FORMAT=text
 
 # RUN echo "log = \"warn,_=off,sled=off\"" >> palpo.toml

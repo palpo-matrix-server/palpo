@@ -60,7 +60,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
         println!("Leaving room local {} for user {}", room_id, user_id);
         let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
-        println!("=============memeber event: {:#?}", member_event);
         // Fix for broken rooms
         let Some(member_event) = member_event else {
             warn!("Trying to leave a room you are not a member of.");
@@ -80,7 +79,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                 .first::<(OwnedEventId, i64)>(&mut connect()?)
                 .optional()?;
             if let Some((event_id, event_sn)) = event_id_sns {
-                crate::membership::update_membership(
+                membership::update_membership(
                     &event_id,
                     event_sn,
                     room_id,
@@ -239,8 +238,6 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         )),
     )?
     .into_inner();
-
     crate::sending::send_federation_request(&remote_server, request).await?;
-
     Ok((event_id, event_sn))
 }

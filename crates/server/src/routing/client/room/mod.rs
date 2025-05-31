@@ -710,21 +710,35 @@ pub(super) async fn create_room(
     )?;
 
     // 5.3 Guest Access
-    timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomGuestAccess,
-            content: to_raw_value(&RoomGuestAccessEventContent::new(match preset {
-                RoomPreset::PublicChat => GuestAccess::Forbidden,
-                _ => GuestAccess::CanJoin,
-            }))
-            .expect("event is valid, we just created it"),
-            state_key: Some("".to_owned()),
-            ..Default::default()
-        },
-        sender_id,
-        &room_id,
-        &state_lock,
-    )?;
+    // timeline::build_and_append_pdu(
+    //     PduBuilder {
+    //         event_type: TimelineEventType::RoomGuestAccess,
+    //         content: to_raw_value(&RoomGuestAccessEventContent::new(match preset {
+    //             RoomPreset::PublicChat => GuestAccess::Forbidden,
+    //             _ => GuestAccess::CanJoin,
+    //         }))
+    //         .expect("event is valid, we just created it"),
+    //         state_key: Some("".to_owned()),
+    //         ..Default::default()
+    //     },
+    //     sender_id,
+    //     &room_id,
+    //     &state_lock,
+    // )?;
+    if preset != RoomPreset::PublicChat {
+        timeline::build_and_append_pdu(
+            PduBuilder {
+                event_type: TimelineEventType::RoomGuestAccess,
+                content: to_raw_value(&RoomGuestAccessEventContent::new(GuestAccess::CanJoin))
+                    .expect("event is valid, we just created it"),
+                state_key: Some("".to_owned()),
+                ..Default::default()
+            },
+            sender_id,
+            &room_id,
+            &state_lock,
+        )?;
+    }
 
     // 6. Events listed in initial_state
     for event in &body.initial_state {

@@ -114,6 +114,3 @@ ulid = "1.1.0"
 web-time = "1.1.0"
 webpage = { version = "2.0.1", default-features = false }
 wildmatch = "2.1.0"
-
-[profile.dev]
-opt-level = 1

@@ -22,7 +22,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
 use crate::exts::*;
-use crate::membership::{banned_room_check, knock_room_by_id};
+use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
 use crate::{
@@ -238,7 +238,6 @@ pub(super) async fn join_room_by_id(
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
     let body = body.into_inner();
-    println!("\n\n\n==============join_room_by_id===body: {:?}", body);
 
     let mut servers = Vec::new(); // There is no body.server_name for /roomId/join
     servers.extend(
@@ -310,7 +309,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner().unwrap_or_default();
-    println!("\n\n\n==============join_room_by_id_or_alias===body: {:?}", body);
     let remote_addr = req.remote_addr();
 
     // The servers to attempt to join the room through.
@@ -660,6 +658,6 @@ pub(crate) async fn knock_room(
         }
     };
 
-    knock_room_by_id(sender_id, &room_id, body.reason.clone(), &servers).await?;
+    crate::membership::knock_room(sender_id, &room_id, body.reason.clone(), &servers).await?;
     empty_ok()
 }

@@ -32,7 +32,7 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
+use crate::{AppError, membership, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -290,7 +290,7 @@ where
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
-                crate::membership::update_membership(
+                membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
                     &pdu.room_id,
@@ -721,6 +721,9 @@ pub fn build_and_append_pdu(
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
+            } else{
+                println!("=============curr content: {:?}", curr_state.content.get());
+                println!("=============new content: {:?}", pdu_builder.content.get());
             }
         }
     }

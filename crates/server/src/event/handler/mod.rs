@@ -451,7 +451,7 @@ pub async fn process_to_timeline_pdu(
         }
     }
 
-    // // Only keep those extremities were not referenced yet
+    // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
     debug!("Compressing state at event");
@@ -476,7 +476,7 @@ pub async fn process_to_timeline_pdu(
             state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         }
 
-        let new_room_state = resolve_state(room_id, room_version_id, state_after)?;
+        let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
@@ -532,13 +532,12 @@ pub async fn process_to_timeline_pdu(
     Ok(())
 }
 
-fn resolve_state(
+async fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
-
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
     } else {
@@ -574,7 +573,7 @@ fn resolve_state(
         .collect();
     debug!("Resolving state");
 
-    // let lock = crate::STATERES_MUTEX.lock;
+    let state_lock = room::lock_state(room_id).await;
     let state = match crate::core::state::resolve(
         room_version_id,
         &fork_states,
@@ -597,7 +596,7 @@ fn resolve_state(
             ));
         }
     };
-    // drop(lock);
+    drop(state_lock);
 
     debug!("State resolution done. Compressing state");
 
