@@ -177,7 +177,6 @@ pub fn update_currents(room_id: &RoomId) -> AppResult<()> {
 }
 
 pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
-    println!("=========update_joined_servers  {room_id}");
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq("join"))
@@ -198,10 +197,6 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
-        println!(
-            "=========================joined_server: {}  room_id:{room_id}",
-            joined_server
-        );
         diesel::insert_into(room_joined_servers::table)
             .values((
                 room_joined_servers::room_id.eq(room_id),
@@ -211,11 +206,6 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
     }
-    println!(
-        "||||||||||=========================joined_servers: {}  room_id:{room_id}  {:?}",
-        config::server_name(),
-        crate::room::joined_servers(room_id)?,
-    );
     Ok(())
 }
 pub fn get_our_real_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {

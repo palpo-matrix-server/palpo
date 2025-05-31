@@ -91,14 +91,11 @@ pub async fn knock_room(
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
-                } else {
-                    println!("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV  {}:  {servers:?}", config::server_name());
                 }
             }
         }
     }
     info!("Knocking {room_id} over federation.");
-    println!("Knocking {room_id} over federation.");
 
     let (make_knock_response, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
 
@@ -309,7 +306,6 @@ async fn make_knock_request(
 
         info!("Asking {remote_server} for make_knock ({make_knock_counter})");
 
-        println!("Asking {remote_server} for make_knock ({make_knock_counter})");
         let request = crate::core::federation::knock::make_knock_request(
             &remote_server.origin().await,
             MakeKnockReqArgs {

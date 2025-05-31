@@ -38,12 +38,6 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
-    println!(
-        "MMMMMMMMMMMMMake join  {} {} {}",
-        crate::config::server_name(),
-        args.user_id,
-        args.room_id
-    );
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -128,7 +122,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
     };
-    println!("MMMMMMMMMMMMMake join response: {:#?}", body);
     json_ok(body)
 }
 
@@ -230,12 +223,6 @@ async fn invite_user(
 /// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
-    println!(
-        "MMMMMMMMMMMMMake leave  {} {} {}",
-        crate::config::server_name(),
-        args.room_id,
-        args.user_id
-    );
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());

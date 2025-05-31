@@ -146,7 +146,6 @@ fn missing_events(
         }
         i += 1;
     }
-    println!("===================events0: {events:#?}");
     let events = events
         .into_iter().rev()
         .filter_map(|(event_id, event)| {
@@ -157,7 +156,6 @@ fn missing_events(
             }
         })
         .collect();
-    println!("===================events: {events:#?}");
     json_ok(MissingEventsResBody { events })
 }
 

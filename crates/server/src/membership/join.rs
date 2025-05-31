@@ -66,10 +66,8 @@ pub async fn join_room(
     // Ask a remote server if we are not participating in this room
     let (should_remote, servers) = room::should_join_on_remote_servers(sender_id, room_id, servers)?;
 
-    println!("dddddddddddd22  {servers:?}");
     if !should_remote {
         info!("We can join locally");
-        println!("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin room_local: {sender_id} {room_id} ");
         let state_lock = room::lock_state(&room_id).await;
         let join_rule = room::get_join_rule(room_id)?;
 
@@ -107,18 +105,12 @@ pub async fn join_room(
                 tracing::error!("Failed to append join event locally: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
-                } else {
-                    println!("YYYYYYYYYYYYYYYYYYYYYY:  {servers:?}");
                 }
             }
         }
     }
 
     info!("Joining {room_id} over federation.");
-    println!(
-        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJoin  {room_id} over federation.  {servers:?}   {}",
-        authed.user_id()
-    );
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, &servers).await?;
@@ -182,9 +174,7 @@ pub async fn join_room(
     // It has enough fields to be called a proper event now
     let mut join_event = join_event_stub;
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone()));
-    println!("======join_event2 body: {body:#?}");
     info!("Asking {remote_server} for send_join");
-    println!("===========remote server: {remote_server}==================={servers:?}");
     let send_join_request = crate::core::federation::membership::send_join_request(
         &remote_server.origin().await,
         SendJoinArgs {
@@ -491,7 +481,6 @@ async fn make_join_request(
         .brief("No server available to assist in joining.")
         .into());
 
-        println!("MMMMMMMMMMMMMMMakle join request: {user_id} {room_id} {servers:?}");
     for remote_server in servers {
         if remote_server == config::server_name() {
             continue;
@@ -510,7 +499,6 @@ async fn make_join_request(
         let make_join_response = crate::sending::send_federation_request(remote_server, make_join_request).await;
         match make_join_response {
             Ok(make_join_response) => {
-                println!("=========make_join_request=remote_server2: {remote_server}");
                 let res_body = make_join_response.json::<MakeJoinResBody>().await;
                 last_join_error = res_body.map(|r| (r, remote_server.clone())).map_err(Into::into);
             }

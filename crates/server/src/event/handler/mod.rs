@@ -609,7 +609,6 @@ async fn resolve_state(
         })
         .collect::<AppResult<_>>()?;
 
-    println!("==================  resolve_state 2");
     Ok(Arc::new(new_room_state))
 }
 
