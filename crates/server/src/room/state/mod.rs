@@ -497,30 +497,42 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         Err(_) => return Ok(true),
     };
 
-    if let Some(visibility) = SERVER_VISIBILITY_CACHE
-        .lock()
-        .unwrap()
-        .get_mut(&(origin.to_owned(), frame_id))
-    {
-        return Ok(*visibility);
-    }
+    // if let Some(visibility) = SERVER_VISIBILITY_CACHE
+    //     .lock()
+    //     .unwrap()
+    //     .get_mut(&(origin.to_owned(), frame_id))
+    // {
+    //     return Ok(*visibility);
+    // }
 
-    let history_visibility = get_state_content(frame_id, &StateEventType::RoomHistoryVisibility, "")
-        .map(|c: RoomHistoryVisibilityEventContent| c.history_visibility)?;
+    let history_visibility = super::get_history_visibility(room_id)?;
 
-    let mut current_server_members = crate::room::get_joined_users(room_id, None)?
-        .into_iter()
-        .filter(|member| member.server_name() == origin);
+    println!(
+        "lllllllllll  2  {:?}   {:?}  {:?}",
+        history_visibility,
+        room::get_invited_users(room_id, None)?,
+        room::get_joined_users(room_id, None)?
+    );
 
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable | HistoryVisibility::Shared => true,
         HistoryVisibility::Invited => {
             // Allow if any member on requesting server was AT LEAST invited, else deny
-            current_server_members.any(|member| user_was_invited(frame_id, &member))
+            room::get_invited_users(room_id, None)?
+                .into_iter()
+                .filter(|member| member.server_name() == origin)
+                .any(|member| user_was_invited(frame_id, &member))
+                || room::get_joined_users(room_id, None)?
+                    .into_iter()
+                    .filter(|member| member.server_name() == origin)
+                    .any(|member| user_was_joined(frame_id, &member))
         }
         HistoryVisibility::Joined => {
             // Allow if any member on requested server was joined, else deny
-            current_server_members.any(|member| user_was_joined(frame_id, &member))
+            room::get_joined_users(room_id, None)?
+                .into_iter()
+                .filter(|member| member.server_name() == origin)
+                .any(|member| user_was_joined(frame_id, &member))
         }
         _ => {
             error!("Unknown history visibility {history_visibility}");
@@ -528,10 +540,10 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         }
     };
 
-    SERVER_VISIBILITY_CACHE
-        .lock()
-        .unwrap()
-        .insert((origin.to_owned(), frame_id), visibility);
+    // SERVER_VISIBILITY_CACHE
+    //     .lock()
+    //     .unwrap()
+    //     .insert((origin.to_owned(), frame_id), visibility);
 
     Ok(visibility)
 }

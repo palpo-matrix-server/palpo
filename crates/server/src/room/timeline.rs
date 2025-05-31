@@ -721,6 +721,9 @@ pub fn build_and_append_pdu(
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
+            } else{
+                println!("=============curr content: {:?}", curr_state.content.get());
+                println!("=============new content: {:?}", pdu_builder.content.get());
             }
         }
     }

@@ -373,18 +373,29 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
 }
 
 pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    get_state_users(room_id, &MembershipState::Join, until_sn)
+}
+pub fn get_invited_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    get_state_users(room_id, &MembershipState::Invite, until_sn)
+}
+
+pub fn get_state_users(
+    room_id: &RoomId,
+    state: &MembershipState,
+    until_sn: Option<i64>,
+) -> AppResult<Vec<OwnedUserId>> {
     if let Some(until_sn) = until_sn {
         room_users::table
             .filter(room_users::event_sn.le(until_sn))
             .filter(room_users::room_id.eq(room_id))
-            .filter(room_users::membership.eq(MembershipState::Join.to_string()))
+            .filter(room_users::membership.eq(state.to_string()))
             .select(room_users::user_id)
             .load(&mut connect()?)
             .map_err(Into::into)
     } else {
         room_users::table
             .filter(room_users::room_id.eq(room_id))
-            .filter(room_users::membership.eq(MembershipState::Join.to_string()))
+            .filter(room_users::membership.eq(state.to_string()))
             .select(room_users::user_id)
             .load(&mut connect()?)
             .map_err(Into::into)

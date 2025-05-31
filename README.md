@@ -84,7 +84,7 @@ All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.resul
 - [x] Complement tests `TestUploadKey/*`.
 - [x] Complement tests `TestRoomState/*`.
 - [ ] Complement tests `TestToDeviceMessagesOverFederation/*`.
-- [ ] Complement tests `TestInboundCanReturnMissingEvents/*`.
+- [x] Complement tests `TestInboundCanReturnMissingEvents/*`.
 - [ ] Complement tests `TestJumpToDateEndpoint/*`.
 - [ ] Complement tests `TestKnockingInMSC3787Room/*`.
 - [ ] Complement tests `TestClientSpacesSummary/*`.

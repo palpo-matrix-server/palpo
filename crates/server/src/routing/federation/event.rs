@@ -104,7 +104,8 @@ fn missing_events(
 
     let mut i = 0;
     while i < queued_events.len() && events.len() < usize::from(body.limit) as usize {
-        if let Some(pdu) = timeline::get_pdu_json(&queued_events[i])? {
+        let event_id = queued_events[i].clone();
+        if let Some(pdu) = timeline::get_pdu_json(&event_id)? {
             let room_id_str = pdu
                 .get("room_id")
                 .and_then(|val| val.as_str())
@@ -116,17 +117,12 @@ fn missing_events(
             if event_room_id != &room_id {
                 warn!(
                     "Evil event detected: Event {} found while searching in room {}",
-                    queued_events[i], &room_id
+                    event_id, &room_id
                 );
                 return Err(MatrixError::invalid_param("Evil event detected").into());
             }
 
-            if body.earliest_events.contains(&queued_events[i]) {
-                i += 1;
-                continue;
-            }
-
-            if !state::server_can_see_event(origin, &room_id, &queued_events[i])? {
+            if body.earliest_events.contains(&event_id) {
                 i += 1;
                 continue;
             }
@@ -142,11 +138,26 @@ fn missing_events(
                 )
                 .map_err(|_| AppError::internal("Invalid prev_events content in pdu in db::"))?,
             );
-            events.push(crate::sending::convert_to_outgoing_federation_event(pdu));
+            if i >= body.latest_events.len() {
+                events.push((event_id, crate::sending::convert_to_outgoing_federation_event(pdu)));
+            }
+        } else {
+            println!("Event not found, event ID: {:?}", event_id);
         }
         i += 1;
     }
-
+    println!("===================events0: {events:#?}");
+    let events = events
+        .into_iter().rev()
+        .filter_map(|(event_id, event)| {
+            if state::server_can_see_event(origin, &room_id, &event_id).unwrap_or(false) {
+                Some(event)
+            } else {
+                None
+            }
+        })
+        .collect();
+    println!("===================events: {events:#?}");
     json_ok(MissingEventsResBody { events })
 }
 
