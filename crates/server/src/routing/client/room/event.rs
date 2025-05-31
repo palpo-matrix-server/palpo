@@ -263,6 +263,9 @@ pub(super) async fn send_redact(
     let event_id = (*event_id).to_owned();
     json_ok(RedactEventResBody { event_id })
 }
+
+
+/// #GET /_matrix/client/r0/rooms/{room_id}/timestamp_to_event
 #[endpoint]
 pub(super) async fn timestamp_to_event(
     _aa: AuthArgs,
@@ -273,6 +276,7 @@ pub(super) async fn timestamp_to_event(
     if !room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not joined to this room.", None).into());
     }
+    println!("==================timestamp_to_event {args:?}");
     let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
     json_ok(EventByTimestampResBody {
         event_id,

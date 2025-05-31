@@ -32,7 +32,7 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, membership, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, utils};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, membership, utils};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -494,6 +494,7 @@ pub fn create_hash_and_sign_event(
         unsigned,
         state_key,
         redacts,
+        timestamp,
         ..
     } = pdu_builder;
 
@@ -558,7 +559,7 @@ pub fn create_hash_and_sign_event(
         depth: depth as i64,
         topological_ordering: depth as i64,
         stream_ordering: 0,
-        origin_server_ts: UnixMillis::now(),
+        origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
         received_at: None,
         sender_id: Some(sender_id.to_owned()),
         contains_url: content_value.get("url").is_some(),
@@ -582,7 +583,7 @@ pub fn create_hash_and_sign_event(
         event_ty: event_type,
         room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
-        origin_server_ts: UnixMillis::now(),
+        origin_server_ts:  timestamp.unwrap_or_else(UnixMillis::now),
         content,
         state_key,
         prev_events,
@@ -721,7 +722,7 @@ pub fn build_and_append_pdu(
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
-            } else{
+            } else {
                 println!("=============curr content: {:?}", curr_state.content.get());
                 println!("=============new content: {:?}", pdu_builder.content.get());
             }

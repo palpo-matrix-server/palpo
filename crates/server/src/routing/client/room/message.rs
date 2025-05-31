@@ -178,6 +178,7 @@ pub(super) async fn send_message(
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
     let authed = depot.authed_info()?;
+    println!("==============authed: {:?}", authed.appservice().is_some());
 
     // Forbid m.room.encrypted if encryption is disabled
     if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
@@ -197,6 +198,7 @@ pub(super) async fn send_message(
         Some(authed.device_id()),
         Some(&args.room_id),
     )? {
+        println!("==============return exists event id: {}  {}", event_id, args.txn_id);
         return json_ok(SendMessageResBody::new(event_id));
     }
 
@@ -208,6 +210,12 @@ pub(super) async fn send_message(
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
+            timestamp: if authed.appservice().is_some() {
+                println!("DDDDDDDDDDxxxxxxxxzaaaaaaaaa");
+                args.timestamp
+            } else {
+                None
+            },
             ..Default::default()
         },
         authed.user_id(),
@@ -223,6 +231,7 @@ pub(super) async fn send_message(
         Some(&args.room_id),
         Some(&event_id),
     )?;
+    println!("==============return event id: {}  {}", event_id, args.txn_id);
 
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
