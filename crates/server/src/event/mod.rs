@@ -75,6 +75,13 @@ pub fn get_event_for_timestamp(
     timestamp: UnixMillis,
     dir: Direction,
 ) -> AppResult<(OwnedEventId, UnixMillis)> {
+    println!("fffffff0  room_id:{room_id} timestamp:{timestamp} dir:{dir:?}");
+    println!(
+        "LLLLLLLLLLbackward event 22222222: {:#?}",
+        events::table
+            .order_by((events::origin_server_ts.desc(), events::sn.desc()))
+            .load::<DbEvent>(&mut connect()?)?
+    );
     match dir {
         Direction::Forward => {
             let (local_event_id, origin_server_ts) = events::table
@@ -95,22 +102,6 @@ pub fn get_event_for_timestamp(
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
 
-            println!(
-                "LLLLLLLLLLbackward event found: {:#?}",
-                events::table
-                    .filter(events::room_id.eq(room_id))
-                    .filter(events::origin_server_ts.is_not_null())
-                    .filter(events::origin_server_ts.le(timestamp))
-                    .order_by((events::origin_server_ts.desc(), events::sn.desc()))
-                    .load::<DbEvent>(&mut connect()?)?
-            );
-            println!(
-                "LLLLLLLLLLbackward event 22222222: {:#?}",
-                events::table
-                    .filter(events::room_id.eq(room_id))
-                    .order_by((events::origin_server_ts.desc(), events::sn.desc()))
-                    .load::<DbEvent>(&mut connect()?)?
-            );
             Ok((local_event_id, origin_server_ts))
         }
     }

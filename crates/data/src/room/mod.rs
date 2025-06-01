@@ -262,3 +262,15 @@ pub fn is_disabled(room_id: &RoomId) -> DataResult<bool> {
     let query = rooms::table.filter(rooms::disabled.eq(true));
     Ok(diesel_exists!(query, &mut connect()?)?)
 }
+
+pub fn add_joined_server(room_id: &RoomId, server_name: &ServerName) -> DataResult<()> {
+    diesel::insert_into(room_joined_servers::table)
+        .values((
+            room_joined_servers::room_id.eq(room_id),
+            room_joined_servers::server_id.eq(server_name),
+            room_joined_servers::occur_sn.eq(crate::next_sn()?),
+        ))
+        .on_conflict_do_nothing()
+        .execute(&mut connect()?)?;
+    Ok(())
+}

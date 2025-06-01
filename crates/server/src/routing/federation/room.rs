@@ -229,14 +229,7 @@ async fn send_knock(
     drop(state_lock);
 
     println!("================sssend knock============{}  {}=======", args.room_id, origin);
-    diesel::insert_into(room_joined_servers::table)
-        .values((
-            room_joined_servers::room_id.eq(&args.room_id),
-            room_joined_servers::server_id.eq(&origin),
-            room_joined_servers::occur_sn.eq(data::next_sn()?),
-        ))
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
+    data::room::add_joined_server(&args.room_id, &origin)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
     let knock_room_state = state::summary_stripped(&pdu)?;

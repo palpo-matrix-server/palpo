@@ -769,6 +769,7 @@ pub fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
+    println!("=================room_id: {room_id}  remote servers: {:?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

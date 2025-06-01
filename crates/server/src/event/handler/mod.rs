@@ -64,6 +64,8 @@ pub(crate) async fn process_incoming_pdu(
     is_timeline_event: bool,
     // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
+    println!("PPPPPPPPPPPPProcess incoming pdu: {event_id} in room {room_id} from {origin}");
+    println!("PPPPPPPPPPPPProcess incoming pdu: {value:#?}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -122,6 +124,7 @@ pub(crate) async fn process_incoming_pdu(
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
+        println!("???????????????? 7");
         return Ok(());
     }
 
@@ -783,10 +786,23 @@ pub async fn fetch_missing_prev_events(
         .select(events::id)
         .load::<OwnedEventId>(&mut connect()?)?;
     let exists_events: HashSet<_> = earliest_events.iter().collect();
+    println!(
+        "==============earliest_events: {earliest_events:?}  {:?}",
+        event_datas::table
+            .filter(event_datas::room_id.eq(room_id))
+            .filter(event_datas::event_id.eq_any(&earliest_events))
+            .select(event_datas::event_id)
+            .load::<OwnedEventId>(&mut connect()?)?
+    );
     if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
+        println!("No missing prev events for {}", incoming_pdu.event_id);
         return Ok(());
     }
 
+    println!(
+        "Fetching missing prev events for {} in room {}",
+        incoming_pdu.event_id, room_id
+    );
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?

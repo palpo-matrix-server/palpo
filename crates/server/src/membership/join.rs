@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
+use crate::event::{self, PduBuilder, PduEvent, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::CompressedEvent;
 use crate::room::state::DeltaInfo;
@@ -186,11 +186,14 @@ pub async fn join_room(
     )?
     .into_inner();
 
+    let state_lock = room::lock_state(room_id).await;
+    println!("+++++++++++++++++++++loaced room :{room_id}");
     let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request)
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
 
+    println!("sssssssssssssend_join response: {:#?}", send_join_body);
     info!("send_join finished");
 
     if let Some(signed_raw) = &send_join_body.0.event {
@@ -260,6 +263,27 @@ pub async fn join_room(
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
+    if !room::get_state(room_id, &StateEventType::RoomCreate, "", None).is_ok() {
+        println!("No room create event found in state, checking auth chain for it");
+        for auth_pdu in resp_auth {
+            let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
+            println!("CVccccccccddddddd event_value: {:?}", event_value);
+            if event_value.get("type") == Some(&CanonicalJsonValue::String((StateEventType::RoomCreate.to_string()))) {
+                println!("CVccccccccddddddd");
+                crate::event::handler::process_incoming_pdu(
+                    &remote_server,
+                    &event_id,
+                    &room_id,
+                    &room_version_id,
+                    event_value,
+                    true,
+                )
+                .await?;
+                break;
+            }
+        }
+    }
+
     info!("Going through send_join response room_state");
     for result in send_join_body
         .0
@@ -304,6 +328,7 @@ pub async fn join_room(
                 .do_update()
                 .set(&event_data)
                 .execute(&mut connect()?)?;
+
             pdu
         };
 
@@ -370,8 +395,8 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
-    // let prev_events = state.iter().map(|(_, event_id)| event_id.clone()).collect::<Vec<_>>();
-    // crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, prev_events).await?;
+    // crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
+    //     .await?;
 
     info!("Saving state from send_join");
     let DeltaInfo {
@@ -391,7 +416,7 @@ pub async fn join_room(
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
-    room::update_joined_servers(room_id)?;
+    // room::update_joined_servers(room_id)?;
     // room::update_currents(room_id)?;
 
     // We append to state before appending the pdu, so we don't have a moment in time with the
@@ -399,7 +424,6 @@ pub async fn join_room(
     let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
 
     info!("Appending new room join event");
-    let state_lock = room::lock_state(&room_id).await;
     timeline::append_pdu(
         &parsed_join_pdu,
         join_event,
@@ -412,6 +436,7 @@ pub async fn join_room(
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     state::set_room_state(room_id, frame_id_after_join)?;
+    drop(state_lock);
 
     let room_server_id = room_id
         .server_name()

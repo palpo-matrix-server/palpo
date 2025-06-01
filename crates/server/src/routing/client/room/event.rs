@@ -272,11 +272,12 @@ pub(super) async fn timestamp_to_event(
     args: EventByTimestampReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<EventByTimestampResBody> {
+    println!("==================timestamp_to_event {args:?}");
     let authed = depot.authed_info()?;
     if !room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not joined to this room.", None).into());
     }
-    println!("==================timestamp_to_event {args:?}");
+    println!("==================timestamp_to_event 2 {args:?}");
     let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
     json_ok(EventByTimestampResBody {
         event_id,
