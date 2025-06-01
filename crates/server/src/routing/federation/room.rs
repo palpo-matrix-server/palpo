@@ -215,7 +215,6 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
-    let state_lock = room::lock_state(&args.room_id).await;
     crate::event::handler::process_incoming_pdu(
         &origin,
         &event_id,
@@ -226,7 +225,6 @@ async fn send_knock(
     )
     .await
     .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
-    drop(state_lock);
 
     println!("================sssend knock============{}  {}=======", args.room_id, origin);
     data::room::add_joined_server(&args.room_id, &origin)?;

@@ -88,12 +88,10 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        let state_lock = crate::room::lock_state(&room_id).await;
         println!("SSSSSSSSSSSSSSStarte process pdu federation");
         let result =
             crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true)
                 .await;
-        drop(state_lock);
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),

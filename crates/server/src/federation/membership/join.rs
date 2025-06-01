@@ -186,10 +186,9 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
      println!("==========send join v1==========10");
-    let state_lock = room::lock_state(&room_id).await;
+     println!("==========send join v1==========10 ---0");
     crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true)
         .await?;
-    drop(state_lock);
 
      println!("==========send join v1==========11");
     let state_ids = state::get_full_state_ids(frame_id)?;

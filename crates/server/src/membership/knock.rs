@@ -28,7 +28,6 @@ pub async fn knock_room(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
-    let state_lock = room::lock_state(&room_id).await;
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(
@@ -82,7 +81,7 @@ pub async fn knock_room(
             PduBuilder::state(sender_id.to_string(), &content),
             sender_id,
             room_id,
-            &state_lock,
+            &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
                 return Ok(());
@@ -277,7 +276,7 @@ pub async fn knock_room(
         &parsed_knock_pdu,
         knock_event,
         once(parsed_knock_pdu.event_id.borrow()),
-        &state_lock,
+        &room::lock_state(&room_id).await,
     )?;
 
     info!("Setting final room state for new room");

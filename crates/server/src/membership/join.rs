@@ -52,7 +52,7 @@ pub async fn join_room(
     }
     let sender_id = authed.user_id();
     if room::user::is_joined(sender_id, room_id)? {
-    println!("jjjjjjjjjjjjjjjjjjoin 6");
+        println!("jjjjjjjjjjjjjjjjjjoin 6");
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
         });
@@ -73,7 +73,6 @@ pub async fn join_room(
     println!("jjjjjjjjjjjjjjjjjjoin 9");
     if !should_remote {
         info!("We can join locally");
-        let state_lock = room::lock_state(&room_id).await;
         let join_rule = room::get_join_rule(room_id)?;
 
         let event = RoomMemberEventContent {
@@ -101,7 +100,7 @@ pub async fn join_room(
             },
             sender_id,
             room_id,
-            &state_lock,
+            &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
@@ -404,8 +403,8 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
-    // crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
-    //     .await?;
+    crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
+        .await?;
 
     info!("Saving state from send_join");
     let DeltaInfo {
