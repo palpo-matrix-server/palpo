@@ -38,10 +38,12 @@ use crate::{
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
+    println!("==========send join v1==========");
     if !room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
 
+     println!("==========send join v1==========1");
     crate::event::handler::acl_check(origin, room_id)?;
 
     // We need to return the state prior to joining, let's keep a reference to that here
@@ -50,6 +52,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = room::get_version(room_id)?;
 
+     println!("==========send join v1==========2");
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
         .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
 
@@ -62,6 +65,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
+     println!("==========send join v1==========3");
     if event_room_id != room_id {
         return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());
     }
@@ -79,6 +83,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("Not allowed to send non-membership state event to join endpoint.").into());
     }
 
+     println!("==========send join v1==========4");
     let content: RoomMemberEventContent = serde_json::from_value(
         value
             .get("content")
@@ -92,6 +97,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("Not allowed to send a non-join membership event to join endpoint.").into());
     }
 
+     println!("==========send join v1==========5");
     // ACL check sender user server name
     let sender: OwnedUserId = serde_json::from_value(
         value
@@ -106,6 +112,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::forbidden("User is banned from the room.", None).into());
     }
 
+     println!("==========send join v1==========6");
     crate::event::handler::acl_check(sender.server_name(), room_id)?;
 
     // check if origin server is trying to send for another server
@@ -113,6 +120,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::forbidden("Not allowed to join on behalf of another server.", None).into());
     }
 
+     println!("==========send join v1==========7");
     let state_key: OwnedUserId = serde_json::from_value(
         value
             .get("state_key")
@@ -125,6 +133,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
 
+     println!("==========send join v1==========8");
     if let Some(authorising_user) = content.join_authorized_via_users_server {
         use crate::core::RoomVersionId::*;
 
@@ -162,6 +171,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         }
     }
 
+     println!("==========send join v1==========9");
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
         .map_err(|e| MatrixError::invalid_param(format!("Failed to sign send_join event: {e}")))?;
 
@@ -175,11 +185,13 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
+     println!("==========send join v1==========10");
     let state_lock = room::lock_state(&room_id).await;
     crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true)
         .await?;
     drop(state_lock);
 
+     println!("==========send join v1==========11");
     let state_ids = state::get_full_state_ids(frame_id)?;
     let state = state_ids
         .iter()
@@ -187,6 +199,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
 
+     println!("==========send join v1==========12");
     let auth_chain_ids = room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
     let auth_chain = auth_chain_ids
         .into_iter()
@@ -195,6 +208,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .collect();
     crate::sending::send_pdu_room(room_id, &event_id)?;
 
+     println!("==========send join v1==========13");
     Ok(RoomStateV1 {
         auth_chain,
         state,
