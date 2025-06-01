@@ -47,7 +47,7 @@ pub mod thread;
 pub use state::get_room_frame_id as get_frame_id;
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
-    const ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
+    static ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
     ROOM_STATE_MUTEX.get_or_init(Default::default).lock(room_id).await
 }
 

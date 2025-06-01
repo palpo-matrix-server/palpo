@@ -13,7 +13,7 @@ pub struct SlidingSyncCache {
     extensions: sync_events::v5::ExtensionsConfig,
 }
 
-pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
+pub static CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
     LazyLock::new(|| Default::default());
 
 pub fn forget_sync_request_connection(user_id: OwnedUserId, device_id: OwnedDeviceId, conn_id: String) {
@@ -39,9 +39,8 @@ pub fn update_sync_request_with_cache(
     let Some(conn_id) = req_body.conn_id.clone() else {
         return BTreeMap::new();
     };
-    let connections = CONNECTIONS;
-
-    let mut cache = connections.lock().unwrap();
+    
+    let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
         Arc::new(Mutex::new(SlidingSyncCache {
             lists: BTreeMap::new(),
@@ -142,9 +141,7 @@ pub fn update_sync_subscriptions(
     conn_id: String,
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
 ) {
-    let connections = CONNECTIONS;
-
-    let mut cache = connections.lock().unwrap();
+    let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
         Arc::new(Mutex::new(SlidingSyncCache {
             lists: BTreeMap::new(),
@@ -167,9 +164,7 @@ pub fn update_sync_known_rooms(
     new_cached_rooms: BTreeSet<OwnedRoomId>,
     global_since_sn: i64,
 ) {
-    let connections = CONNECTIONS;
-
-    let mut cache = connections.lock().unwrap();
+    let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
         Arc::new(Mutex::new(SlidingSyncCache {
             lists: BTreeMap::new(),

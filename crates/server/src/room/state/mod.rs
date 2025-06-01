@@ -31,9 +31,9 @@ use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::room::timeline;
 use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, membership, room, utils};
 
-pub const SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
+pub static SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
-pub const USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
+pub static USER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedUserId, i64), bool>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]

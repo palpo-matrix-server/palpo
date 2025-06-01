@@ -186,8 +186,6 @@ pub async fn join_room(
     )?
     .into_inner();
 
-    let state_lock = room::lock_state(room_id).await;
-    println!("+++++++++++++++++++++loaced room :{room_id}");
     let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request)
         .await?
         .json::<SendJoinResBodyV2>()
@@ -284,6 +282,7 @@ pub async fn join_room(
         }
     }
 
+    let state_lock = room::lock_state(room_id).await;
     info!("Going through send_join response room_state");
     for result in send_join_body
         .0
