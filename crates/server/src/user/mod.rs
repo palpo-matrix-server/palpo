@@ -31,8 +31,6 @@ pub struct SlidingSyncCache {
     extensions: sync_events::v5::ExtensionsConfig,
 }
 
-pub const CONNECTIONS: LazyLock<Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>> =
-    LazyLock::new(|| Default::default());
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();

@@ -215,7 +215,6 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
-    let state_lock = room::lock_state(&args.room_id).await;
     crate::event::handler::process_incoming_pdu(
         &origin,
         &event_id,
@@ -226,17 +225,8 @@ async fn send_knock(
     )
     .await
     .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
-    drop(state_lock);
 
-    println!("================sssend knock============{}  {}=======", args.room_id, origin);
-    diesel::insert_into(room_joined_servers::table)
-        .values((
-            room_joined_servers::room_id.eq(&args.room_id),
-            room_joined_servers::server_id.eq(&origin),
-            room_joined_servers::occur_sn.eq(data::next_sn()?),
-        ))
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
+    data::room::add_joined_server(&args.room_id, &origin)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
     let knock_room_state = state::summary_stripped(&pdu)?;

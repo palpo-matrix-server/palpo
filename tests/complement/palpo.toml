@@ -41,7 +41,7 @@ allow_local_presence = true
 
 enable_admin_room = false
 
-rust_log = "warn,salvo=error"
+rust_log = "warn,palpo=warn,salvo=error"
 log_format = "compact" # pretty, json
 
 # Servers listed here will be used to gather public keys of other servers.

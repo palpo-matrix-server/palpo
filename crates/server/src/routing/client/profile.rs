@@ -184,8 +184,7 @@ async fn set_avatar_url(
         true,
     )?;
     for (pdu_builder, room_id) in all_joined_rooms {
-        let state_lock = room::lock_state(&room_id).await;
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &state_lock)?;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &room::lock_state(&room_id).await)?;
     }
 
     empty_ok()
@@ -267,8 +266,7 @@ async fn set_display_name(
         .collect();
 
     for (pdu_builder, room_id) in all_joined_rooms {
-        let state_lock = room::lock_state(&room_id).await;
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &state_lock)?;
+        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &room::lock_state(&room_id).await)?;
 
         // Presence update
         crate::data::user::set_presence(

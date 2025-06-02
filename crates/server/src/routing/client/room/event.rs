@@ -263,6 +263,9 @@ pub(super) async fn send_redact(
     let event_id = (*event_id).to_owned();
     json_ok(RedactEventResBody { event_id })
 }
+
+
+/// #GET /_matrix/client/r0/rooms/{room_id}/timestamp_to_event
 #[endpoint]
 pub(super) async fn timestamp_to_event(
     _aa: AuthArgs,

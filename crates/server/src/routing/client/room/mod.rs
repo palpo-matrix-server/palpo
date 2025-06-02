@@ -788,6 +788,7 @@ pub(super) async fn create_room(
             &state_lock,
         )?;
     }
+    drop(state_lock);
 
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {

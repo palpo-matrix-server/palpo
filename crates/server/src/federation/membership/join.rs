@@ -145,9 +145,6 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         }
 
         if !room::user::is_joined(&authorising_user, room_id)? {
-            println!(
-                "aaaaaaaaaaaaaaaaAuthorising user {authorising_user} is not joined to room {room_id}, cannot authorise join."
-            );
             return Err(MatrixError::invalid_param(
                 "Authorising user {authorising_user} is not in the room you are trying to join, \
 				 they cannot authorise your join.",
@@ -175,10 +172,8 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-    let state_lock = room::lock_state(&room_id).await;
     crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true)
         .await?;
-    drop(state_lock);
 
     let state_ids = state::get_full_state_ids(frame_id)?;
     let state = state_ids

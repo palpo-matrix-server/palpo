@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{
     fmt::Debug,
     hash::Hash,
@@ -10,18 +11,13 @@ use crate::{AppError, AppResult};
 
 /// Map of Mutexes
 pub struct MutexMap<Key, Val> {
-    map: Map<Key, Val>,
+    map: Arc<std::sync::Mutex<HashMap<Key, Arc<tokio::sync::Mutex<Val>>>>>,
 }
 
 pub struct MutexMapGuard<Key, Val> {
-    map: Map<Key, Val>,
+    map: Arc<std::sync::Mutex<HashMap<Key, Arc<tokio::sync::Mutex<Val>>>>>,
     val: Omg<Val>,
 }
-
-type Map<Key, Val> = Arc<MapMutex<Key, Val>>;
-type MapMutex<Key, Val> = std::sync::Mutex<HashMap<Key, Val>>;
-type HashMap<Key, Val> = std::collections::HashMap<Key, Value<Val>>;
-type Value<Val> = Arc<tokio::sync::Mutex<Val>>;
 
 impl<Key, Val> MutexMap<Key, Val>
 where
@@ -31,7 +27,7 @@ where
     #[must_use]
     pub fn new() -> Self {
         Self {
-            map: Map::new(MapMutex::new(HashMap::new())),
+            map: Default::default(),
         }
     }
 

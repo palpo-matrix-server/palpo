@@ -208,6 +208,11 @@ pub(super) async fn send_message(
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: Some(unsigned),
+            timestamp: if authed.appservice().is_some() {
+                args.timestamp
+            } else {
+                None
+            },
             ..Default::default()
         },
         authed.user_id(),
@@ -223,7 +228,7 @@ pub(super) async fn send_message(
         Some(&args.room_id),
         Some(&event_id),
     )?;
-
+    
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
 

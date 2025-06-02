@@ -62,7 +62,6 @@ pub(crate) async fn process_incoming_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
-    // pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<()> {
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
@@ -127,7 +126,7 @@ pub(crate) async fn process_incoming_pdu(
 
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
-
+    
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -573,7 +572,6 @@ async fn resolve_state(
         .collect();
     debug!("Resolving state");
 
-    let state_lock = room::lock_state(room_id).await;
     let state = match crate::core::state::resolve(
         room_version_id,
         &fork_states,
@@ -596,7 +594,6 @@ async fn resolve_state(
             ));
         }
     };
-    drop(state_lock);
 
     debug!("State resolution done. Compressing state");
 
@@ -783,10 +780,23 @@ pub async fn fetch_missing_prev_events(
         .select(events::id)
         .load::<OwnedEventId>(&mut connect()?)?;
     let exists_events: HashSet<_> = earliest_events.iter().collect();
+    println!(
+        "==============earliest_events: {earliest_events:?}  {:?}",
+        event_datas::table
+            .filter(event_datas::room_id.eq(room_id))
+            .filter(event_datas::event_id.eq_any(&earliest_events))
+            .select(event_datas::event_id)
+            .load::<OwnedEventId>(&mut connect()?)?
+    );
     if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
+        println!("No missing prev events for {}", incoming_pdu.event_id);
         return Ok(());
     }
 
+    println!(
+        "Fetching missing prev events for {} in room {}",
+        incoming_pdu.event_id, room_id
+    );
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?

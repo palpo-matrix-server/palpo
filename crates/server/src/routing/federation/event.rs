@@ -1,3 +1,4 @@
+use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
@@ -6,8 +7,11 @@ use crate::core::federation::authorization::EventAuthorizationResBody;
 use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
+use crate::data::connect;
+use crate::data::room::DbEvent;
+use crate::data::schema::*;
 use crate::room::{state, timeline};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, event, json_ok};
 
 pub fn router() -> Router {
     Router::new()
@@ -85,7 +89,7 @@ async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
     empty_ok()
 }
 
-/// #POST /_matrix/federation/v1/get_missing_events/{room_id}
+/// #POST /_matrix/federation/v1/get_missing_events/{room_id} 
 /// Retrieves events that the sender is missing.
 #[endpoint]
 fn missing_events(
@@ -147,7 +151,8 @@ fn missing_events(
         i += 1;
     }
     let events = events
-        .into_iter().rev()
+        .into_iter()
+        .rev()
         .filter_map(|(event_id, event)| {
             if state::server_can_see_event(origin, &room_id, &event_id).unwrap_or(false) {
                 Some(event)

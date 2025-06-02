@@ -81,7 +81,7 @@ pub fn get_event_for_timestamp(
                 .filter(events::room_id.eq(room_id))
                 .filter(events::origin_server_ts.is_not_null())
                 .filter(events::origin_server_ts.ge(timestamp))
-                .order_by(events::origin_server_ts.asc())
+                .order_by((events::origin_server_ts.asc(), events::sn.asc()))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
             Ok((local_event_id, origin_server_ts))
@@ -91,9 +91,10 @@ pub fn get_event_for_timestamp(
                 .filter(events::room_id.eq(room_id))
                 .filter(events::origin_server_ts.is_not_null())
                 .filter(events::origin_server_ts.le(timestamp))
-                .order_by(events::origin_server_ts.desc())
+                .order_by((events::origin_server_ts.desc(), events::sn.desc()))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
+
             Ok((local_event_id, origin_server_ts))
         }
     }

@@ -202,7 +202,6 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
         let state_alias = super::get_canonical_alias(&room_id);
 
         if state_alias.is_ok() {
-            let state_lock = super::lock_state(&room_id).await;
             timeline::build_and_append_pdu(
                 PduBuilder {
                     event_type: TimelineEventType::RoomCanonicalAlias,
@@ -216,7 +215,7 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
                 },
                 &user.id,
                 &room_id,
-                &state_lock,
+                &super::lock_state(&room_id).await,
             )
             .ok();
         }
