@@ -507,13 +507,6 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
 
     let history_visibility = super::get_history_visibility(room_id)?;
 
-    println!(
-        "lllllllllll  2  {:?}   {:?}  {:?}",
-        history_visibility,
-        room::get_invited_users(room_id, None)?,
-        room::get_joined_users(room_id, None)?
-    );
-
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable | HistoryVisibility::Shared => true,
         HistoryVisibility::Invited => {
