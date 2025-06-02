@@ -381,10 +381,8 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    let state_lock = crate::room::lock_state(&args.room_id).await;
     crate::event::handler::process_incoming_pdu(origin, &event_id, &args.room_id, &room_version_id, value, true)
         .await?;
-    drop(state_lock);
 
     crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
     empty_ok()

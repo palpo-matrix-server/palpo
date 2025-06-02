@@ -57,7 +57,6 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
-        println!("Leaving room local {} for user {}", room_id, user_id);
         let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms

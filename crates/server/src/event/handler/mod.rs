@@ -63,8 +63,6 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
-    println!("PPPPPPPPPPPPProcess incoming pdu: {event_id} in room {room_id} from {origin}");
-    println!("PPPPPPPPPPPPProcess incoming pdu: {value:#?}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -123,25 +121,19 @@ pub(crate) async fn process_incoming_pdu(
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-        println!("???????????????? 7");
         return Ok(());
     }
 
-    println!("???????????????? 8 fetch missing prev events");
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
     
-    println!("???????????????? 8 fetch missing prev events 1");
-
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("???????????????? 9");
     crate::event::handler::process_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await?;
-    println!("???????????????? 10");
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -442,11 +434,9 @@ pub async fn process_to_timeline_pdu(
         }
     };
 
-    println!("???????????????? lock 13");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
-    println!("???????????????? lock 13 -1");
     // We start looking at current room state now, so lets lock the room
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
@@ -460,7 +450,6 @@ pub async fn process_to_timeline_pdu(
         }
     }
 
-    println!("???????????????? 14");
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
@@ -474,11 +463,9 @@ pub async fn process_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
-    println!("???????????????? 15");
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
 
-    println!("???????????????? 15  0");
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
 
@@ -488,10 +475,8 @@ pub async fn process_to_timeline_pdu(
             state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         }
 
-    println!("???????????????? 15  1");
         let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
-    println!("???????????????? 15  2");
         // Set the new room state to the resolved state
         debug!("Forcing new room state");
 
@@ -501,12 +486,9 @@ pub async fn process_to_timeline_pdu(
             disposed,
         } = state::save_state(room_id, new_room_state)?;
 
-    println!("???????????????? 15  3");
         state::force_state(room_id, frame_id, appended, disposed)?;
-    println!("???????????????? 15  4");
     }
 
-    println!("???????????????? 16");
     // 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
     debug!("Starting soft fail auth check");
 
@@ -524,11 +506,9 @@ pub async fn process_to_timeline_pdu(
         // Soft fail, we keep the event as an outlier but don't add it to the timeline
         warn!("Event was soft failed: {:?}", incoming_pdu);
         crate::room::pdu_metadata::mark_event_soft_failed(&incoming_pdu.event_id)?;
-    println!("???????????????? 17");
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
 
-    println!("???????????????? 18");
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
@@ -537,7 +517,6 @@ pub async fn process_to_timeline_pdu(
         .map(Borrow::borrow)
         .chain(once(incoming_pdu.event_id.borrow()));
     debug!("Appended incoming pdu");
-    println!("???????????????? 19");
     let pdu_id = timeline::append_incoming_pdu(
         &incoming_pdu,
         val,
@@ -547,7 +526,6 @@ pub async fn process_to_timeline_pdu(
         &state_lock,
     )?;
 
-    println!("???????????????? 20");
     // Event has passed all auth/stateres checks
     drop(state_lock);
     Ok(())

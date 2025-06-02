@@ -46,19 +46,16 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
-    println!("jjjjjjjjjjjjjjjjjjoin 5");
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
     let sender_id = authed.user_id();
     if room::user::is_joined(sender_id, room_id)? {
-        println!("jjjjjjjjjjjjjjjjjjoin 6");
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
         });
     }
 
-    println!("jjjjjjjjjjjjjjjjjjoin 7");
     if let Ok(membership) = room::get_member(room_id, sender_id) {
         if membership.membership == MembershipState::Ban {
             tracing::warn!("{} is banned from {room_id} but attempted to join", sender_id);
@@ -66,11 +63,9 @@ pub async fn join_room(
         }
     }
 
-    println!("jjjjjjjjjjjjjjjjjjoin 8");
     // Ask a remote server if we are not participating in this room
     let (should_remote, servers) = room::should_join_on_remote_servers(sender_id, room_id, servers)?;
 
-    println!("jjjjjjjjjjjjjjjjjjoin 9");
     if !should_remote {
         info!("We can join locally");
         let join_rule = room::get_join_rule(room_id)?;
@@ -114,13 +109,11 @@ pub async fn join_room(
         }
     }
 
-    println!("jjjjjjjjjjjjjjjjjjoin 10");
     info!("Joining {room_id} over federation.");
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, &servers).await?;
 
-    println!("jjjjjjjjjjjjjjjjjjoin 11");
     info!("make_join finished");
 
     let room_version_id = match make_join_response.room_version {
@@ -131,7 +124,6 @@ pub async fn join_room(
     let mut join_event_stub: CanonicalJsonObject = serde_json::from_str(make_join_response.event.get())
         .map_err(|_| AppError::public("Invalid make_join event json received from server."))?;
 
-    println!("jjjjjjjjjjjjjjjjjjoin 12");
     let join_authorized_via_users_server = join_event_stub
         .get("content")
         .map(|s| s.as_object()?.get("join_authorised_via_users_server")?.as_str())
@@ -162,7 +154,6 @@ pub async fn join_room(
         .expect("event is valid, we just created it"),
     );
 
-    println!("jjjjjjjjjjjjjjjjjjoin 13");
     // We keep the "event_id" in the pdu only in v1 or v2 rooms
     maybe_strip_event_id(&mut join_event_stub, &room_version_id);
 
@@ -183,7 +174,6 @@ pub async fn join_room(
     let mut join_event = join_event_stub;
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(join_event.clone()));
     info!("Asking {remote_server} for send_join");
-    println!("jjjjjjjjjjjjjjjjjjoin 14");
     let send_join_request = crate::core::federation::membership::send_join_request(
         &remote_server.origin().await,
         SendJoinArgs {
@@ -194,14 +184,12 @@ pub async fn join_room(
         body,
     )?
     .into_inner();
-    println!("jjjjjjjjjjjjjjjjjjoin 15");
 
     let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request)
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
 
-    println!("sssssssssssssend_join response: {:#?}", send_join_body);
     info!("send_join finished");
 
     if let Some(signed_raw) = &send_join_body.0.event {
@@ -272,12 +260,9 @@ pub async fn join_room(
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
     if !room::get_state(room_id, &StateEventType::RoomCreate, "", None).is_ok() {
-        println!("No room create event found in state, checking auth chain for it");
         for auth_pdu in resp_auth {
             let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
-            println!("CVccccccccddddddd event_value: {:?}", event_value);
             if event_value.get("type") == Some(&CanonicalJsonValue::String((StateEventType::RoomCreate.to_string()))) {
-                println!("CVccccccccddddddd");
                 crate::event::handler::process_incoming_pdu(
                     &remote_server,
                     &event_id,

@@ -226,7 +226,6 @@ async fn send_knock(
     .await
     .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
 
-    println!("================sssend knock============{}  {}=======", args.room_id, origin);
     data::room::add_joined_server(&args.room_id, &origin)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
