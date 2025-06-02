@@ -350,7 +350,7 @@ pub async fn join_room(
         }
     }
 
-    println!("jjjjjjjjjjjjjjjjjjoin 20");
+    println!("jjjjjjjjjjjjjjjjjjoin 20 {send_join_body:#?}");
     info!("Going through send_join response auth_chain");
     for result in send_join_body
         .0
@@ -387,6 +387,7 @@ pub async fn join_room(
                 .execute(&mut connect()?)?;
         }
     }
+    println!("jjjjjjjjjjjjjjjjjjoin 21");
 
     info!("Running send_join auth check");
     // TODO: Authcheck
@@ -408,7 +409,6 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
-    println!("jjjjjjjjjjjjjjjjjjoin 21");
     crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
         .await?;
 
@@ -427,7 +427,6 @@ pub async fn join_room(
         ),
     )?;
 
-    println!("jjjjjjjjjjjjjjjjjjoin 22");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");

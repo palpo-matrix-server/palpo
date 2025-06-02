@@ -2,11 +2,9 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis,
-    sending::{SendRequest, SendResult},
-    serde::RawJsonValue,
-};
+use crate::sending::{SendRequest, SendResult};
+use crate::{Direction, serde::RawJsonValue};
+use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
 
 /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 ///
@@ -27,20 +25,20 @@ use crate::{
 // };
 
 /// Request type for the `get_event_by_timestamp` endpoint.
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct EventByTimestampReqArgs {
+    /// The ID of the room the event is in.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
 
-// pub struct EventByxRequest {
-//     /// The ID of the room the event is in.
-//     #[salvo(parameter(parameter_in = Path))]
-//     pub room_id: OwnedRoomId,
+    /// The timestamp to search from.
+    #[salvo(parameter(parameter_in = Query))]
+    pub dir: Direction,
 
-//     /// The timestamp to search from.
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub ts: UnixMillis,
-
-//     /// The direction in which to search.
-//     #[salvo(parameter(parameter_in = Query))]
-//     pub dir: Direction,
-// }
+    /// The timestamp to search from.
+    #[salvo(parameter(parameter_in = Query))]
+    pub ts: UnixMillis,
+}
 
 /// Response type for the `get_event_by_timestamp` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
