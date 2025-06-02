@@ -240,6 +240,7 @@ pub async fn join_room(
             }
         }
     }
+    println!("jjjjjjjjjjjjjjjjjjoin 16");
 
     room::ensure_room(room_id, &room_version_id)?;
 
@@ -265,12 +266,14 @@ pub async fn join_room(
     let mut state = HashMap::new();
     let pub_key_map = RwLock::new(BTreeMap::new());
 
+    println!("jjjjjjjjjjjjjjjjjjoin 17");
     info!("Acquiring server signing keys for response events");
     let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
+    println!("jjjjjjjjjjjjjjjjjjoin 18");
     if !room::get_state(room_id, &StateEventType::RoomCreate, "", None).is_ok() {
         println!("No room create event found in state, checking auth chain for it");
         for auth_pdu in resp_auth {
@@ -292,6 +295,7 @@ pub async fn join_room(
         }
     }
 
+    println!("jjjjjjjjjjjjjjjjjjoin 19");
     info!("Going through send_join response room_state");
     for result in send_join_body
         .0
@@ -346,6 +350,7 @@ pub async fn join_room(
         }
     }
 
+    println!("jjjjjjjjjjjjjjjjjjoin 20");
     info!("Going through send_join response auth_chain");
     for result in send_join_body
         .0
@@ -403,6 +408,7 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
+    println!("jjjjjjjjjjjjjjjjjjoin 21");
     crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
         .await?;
 
@@ -421,6 +427,7 @@ pub async fn join_room(
         ),
     )?;
 
+    println!("jjjjjjjjjjjjjjjjjjoin 22");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
@@ -428,6 +435,7 @@ pub async fn join_room(
     // room::update_currents(room_id)?;
 
     let state_lock = room::lock_state(room_id).await;
+    println!("jjjjjjjjjjjjjjjjjjoin 23");
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
@@ -441,6 +449,7 @@ pub async fn join_room(
     )
     .unwrap();
 
+    println!("jjjjjjjjjjjjjjjjjjoin 24");
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
@@ -463,6 +472,7 @@ pub async fn join_room(
         let edu = Edu::DeviceListUpdate(content);
         send_edu_server(room_server_id, &edu)?;
     }
+    println!("jjjjjjjjjjjjjjjjjjoin 25");
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 
