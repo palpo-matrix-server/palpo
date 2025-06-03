@@ -4,7 +4,10 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::federation::authorization::EventAuthorizationResBody;
-use crate::core::federation::event::{EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody};
+use crate::core::federation::event::{
+    EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody, MissingEventsReqBody,
+    MissingEventsResBody,
+};
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::data::connect;
@@ -84,12 +87,22 @@ fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonR
 }
 
 #[endpoint]
-async fn event_by_timestamp(_aa: AuthArgs) -> EmptyResult {
-    // TODO: todo
-    empty_ok()
+async fn event_by_timestamp(
+    _aa: AuthArgs,
+    args: EventByTimestampReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<EventByTimestampResBody> {
+    let origin = depot.origin()?;
+    crate::federation::access_check(origin, &args.room_id, None)?;
+
+    let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
+    json_ok(EventByTimestampResBody {
+        event_id,
+        origin_server_ts,
+    })
 }
 
-/// #POST /_matrix/federation/v1/get_missing_events/{room_id} 
+/// #POST /_matrix/federation/v1/get_missing_events/{room_id}
 /// Retrieves events that the sender is missing.
 #[endpoint]
 fn missing_events(

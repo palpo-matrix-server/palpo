@@ -99,10 +99,7 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
         })
         .on_conflict(threads::event_id)
         .do_update()
-        .set((
-            threads::last_id.eq(&pdu.event_id),
-            threads::last_sn.eq(pdu.event_sn),
-        ))
+        .set((threads::last_id.eq(&pdu.event_id), threads::last_sn.eq(pdu.event_sn)))
         .execute(&mut connect()?)?;
     Ok(())
 }

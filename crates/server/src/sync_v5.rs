@@ -39,7 +39,7 @@ pub fn update_sync_request_with_cache(
     let Some(conn_id) = req_body.conn_id.clone() else {
         return BTreeMap::new();
     };
-    
+
     let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_insert_with(|| {
         Arc::new(Mutex::new(SlidingSyncCache {

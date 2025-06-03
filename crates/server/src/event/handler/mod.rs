@@ -63,6 +63,8 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
+    println!("PPPPPPPPPPPPProcess incoming pdu: {event_id} in room {room_id} from {origin}");
+    println!("PPPPPPPPPPPPProcess incoming pdu: {value:#?}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -126,7 +128,7 @@ pub(crate) async fn process_incoming_pdu(
 
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
-    
+
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -202,6 +204,7 @@ fn process_to_outlier_pdu<'a>(
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     Box::pin(async move {
+        println!("process_to_outlier_pdu  0");
         if let Some((event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select((event_datas::event_sn, event_datas::json_data))
@@ -213,6 +216,7 @@ fn process_to_outlier_pdu<'a>(
             }
         }
 
+        println!("process_to_outlier_pdu  1");
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
@@ -233,6 +237,7 @@ fn process_to_outlier_pdu<'a>(
                     .map_err(|_| MatrixError::invalid_param("Time must be after the unix epoch"))?,
             )
         };
+        println!("process_to_outlier_pdu  2");
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
@@ -256,6 +261,7 @@ fn process_to_outlier_pdu<'a>(
             }
         };
 
+        println!("process_to_outlier_pdu  3");
         // Now that we have checked the signature and hashes we can add the eventID and convert
         // to our PduEvent type
         val.insert(
@@ -271,6 +277,7 @@ fn process_to_outlier_pdu<'a>(
 
         check_room_id(room_id, &incoming_pdu)?;
 
+        println!("process_to_outlier_pdu  4");
         if !auth_events_known {
             // 4. fetch any missing auth events doing all checks listed here starting at 1. These are not timeline events
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
@@ -285,6 +292,7 @@ fn process_to_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
+            println!("process_to_outlier_pdu  5");
             let auth_event = match timeline::get_pdu(id) {
                 Ok(e) => e,
                 Err(_) => {
@@ -311,6 +319,7 @@ fn process_to_outlier_pdu<'a>(
             }
         }
 
+        println!("process_to_outlier_pdu  6");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -328,6 +337,7 @@ fn process_to_outlier_pdu<'a>(
 
         debug!("Validation successful.");
 
+        println!("process_to_outlier_pdu  7");
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
@@ -352,6 +362,7 @@ fn process_to_outlier_pdu<'a>(
             .execute(&mut connect()?)
             .unwrap();
 
+        println!("process_to_outlier_pdu  8");
         debug!("Added pdu as outlier.");
 
         Ok((incoming_pdu, val))
@@ -421,10 +432,12 @@ pub async fn process_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
+    println!("\n\n\nprocess_to_timeline_pdu  =======2  incoming_pdu: {incoming_pdu:#?} auth_events: {auth_events:#?}");
     event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })?;
 
+    println!("process_to_timeline_pdu  =======3");
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
     let soft_fail = match incoming_pdu.redacts_id(&room_version_id) {
@@ -434,6 +447,7 @@ pub async fn process_to_timeline_pdu(
         }
     };
 
+    println!("process_to_timeline_pdu  =======4");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
@@ -770,7 +784,6 @@ pub async fn fetch_missing_prev_events(
 ) -> AppResult<()> {
     let conf = crate::config();
 
-    // TODO:
     let mut earliest_events = room::state::get_forward_extremities(room_id)?;
     earliest_events.extend(incoming_pdu.prev_events.iter().cloned());
 
@@ -780,23 +793,11 @@ pub async fn fetch_missing_prev_events(
         .select(events::id)
         .load::<OwnedEventId>(&mut connect()?)?;
     let exists_events: HashSet<_> = earliest_events.iter().collect();
-    println!(
-        "==============earliest_events: {earliest_events:?}  {:?}",
-        event_datas::table
-            .filter(event_datas::room_id.eq(room_id))
-            .filter(event_datas::event_id.eq_any(&earliest_events))
-            .select(event_datas::event_id)
-            .load::<OwnedEventId>(&mut connect()?)?
-    );
     if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
         println!("No missing prev events for {}", incoming_pdu.event_id);
         return Ok(());
     }
 
-    println!(
-        "Fetching missing prev events for {} in room {}",
-        incoming_pdu.event_id, room_id
-    );
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?

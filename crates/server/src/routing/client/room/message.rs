@@ -177,6 +177,7 @@ pub(super) async fn send_message(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
+    println!("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled
@@ -228,7 +229,7 @@ pub(super) async fn send_message(
         Some(&args.room_id),
         Some(&event_id),
     )?;
-    
+
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
 
