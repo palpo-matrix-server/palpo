@@ -722,9 +722,6 @@ pub fn build_and_append_pdu(
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
                 return Ok(curr_state);
-            } else {
-                println!("=============curr content: {:?}", curr_state.content.get());
-                println!("=============new content: {:?}", pdu_builder.content.get());
             }
         }
     }
@@ -769,7 +766,6 @@ pub fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    println!("=================room_id: {room_id}  remote servers: {:?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
@@ -851,15 +847,15 @@ pub fn get_pdus(
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
         if let Some(until_sn) = until_sn {
             if dir == Direction::Forward {
-                query = query.filter(events::sn.le(until_sn)).filter(events::sn.ge(since_sn));
+                query = query.filter(events::stamp_sn.le(until_sn)).filter(events::sn.ge(since_sn));
             } else {
-                query = query.filter(events::sn.le(since_sn)).filter(events::sn.ge(until_sn));
+                query = query.filter(events::stamp_sn.le(since_sn)).filter(events::sn.ge(until_sn));
             }
         } else {
             if dir == Direction::Forward {
-                query = query.filter(events::sn.ge(since_sn));
+                query = query.filter(events::stamp_sn.ge(since_sn));
             } else {
-                query = query.filter(events::sn.le(since_sn));
+                query = query.filter(events::stamp_sn.le(since_sn));
             }
         }
 
@@ -894,14 +890,14 @@ pub fn get_pdus(
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             events::table
-                .filter(events::id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
+                .filter(events::id.eq_any(query.filter(events::stamp_sn.gt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
         } else {
             events::table
-                .filter(events::id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
+                .filter(events::id.eq_any(query.filter(events::stamp_sn.lt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))

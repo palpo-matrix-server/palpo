@@ -49,12 +49,12 @@ pub fn get_left_count(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<u6
 }
 
 #[tracing::instrument]
-pub fn get_left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<i64>> {
+pub fn get_left_stamp_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Option<Seqnum>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::membership.eq("leave"))
-        .select(room_users::event_sn)
+        .filter(room_users::membership.eq("leave").or(room_users::membership.eq("ban")))
+        .select(room_users::stamp_sn)
         .first::<i64>(&mut connect()?)
         .optional()
         .map_err(Into::into)

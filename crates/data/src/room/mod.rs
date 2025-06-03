@@ -205,6 +205,7 @@ pub struct DbEvent {
     pub is_outlier: bool,
     pub is_redacted: bool,
     pub soft_failed: bool,
+    pub stamp_sn: Seqnum,
     pub rejection_reason: Option<String>,
 }
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]

@@ -442,8 +442,10 @@ CREATE TABLE events (
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
     rejection_reason text,
+    stamp_sn bigint not null default nextval('occur_sn_seq'),
     CONSTRAINT events_sn_udx UNIQUE (sn),
-    CONSTRAINT event_id_sn_udx UNIQUE (id, sn)
+    CONSTRAINT events_id_sn_udx UNIQUE (id, sn),
+    CONSTRAINT events_stamp_sn_udx UNIQUE (id, stamp_sn)
 );
 
 
@@ -609,6 +611,7 @@ CREATE TABLE room_users
     display_name text,
     avatar_url text,
     state_data json,
+    stamp_sn bigint not null default nextval('occur_sn_seq'),
     created_at bigint NOT NULL,
     CONSTRAINT room_users_udx UNIQUE (event_id)
 );

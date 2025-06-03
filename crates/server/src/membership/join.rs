@@ -8,6 +8,7 @@ use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 use tracing_subscriber::fmt::format;
+use indexmap::IndexMap;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
@@ -189,6 +190,7 @@ pub async fn join_room(
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
+    println!("==============send join body: {:#?}", send_join_body);
 
     info!("send_join finished");
 
@@ -259,8 +261,16 @@ pub async fn join_room(
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
+    let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
         let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
+        parsed_pdus.insert(event_id, event_value);
+    }
+    for state in resp_state {
+        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(state)?;
+        parsed_pdus.insert(event_id, event_value);
+    }
+    for (event_id, event_value) in parsed_pdus {
         if let Err(e) = crate::event::handler::process_incoming_pdu(
             &remote_server,
             &event_id,
@@ -415,7 +425,6 @@ pub async fn join_room(
     // room::update_currents(room_id)?;
 
     let state_lock = room::lock_state(room_id).await;
-    println!("jjjjjjjjjjjjjjjjjjoin 23");
     // We append to state before appending the pdu, so we don't have a moment in time with the
     // pdu without it's state. This is okay because append_pdu can't fail.
     let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
@@ -429,7 +438,6 @@ pub async fn join_room(
     )
     .unwrap();
 
-    println!("jjjjjjjjjjjjjjjjjjoin 24");
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
@@ -452,7 +460,6 @@ pub async fn join_room(
         let edu = Edu::DeviceListUpdate(content);
         send_edu_server(room_server_id, &edu)?;
     }
-    println!("jjjjjjjjjjjjjjjjjjoin 25");
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 

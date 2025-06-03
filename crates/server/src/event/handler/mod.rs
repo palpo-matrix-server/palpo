@@ -63,8 +63,7 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
-    println!("PPPPPPPPPPPPProcess incoming pdu: {event_id} in room {room_id} from {origin}");
-    println!("PPPPPPPPPPPPProcess incoming pdu: {value:#?}");
+    println!("process_incoming_pdu: {event_id} in {room_id},  value:{value:?}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server").into());
     }
@@ -76,6 +75,7 @@ pub(crate) async fn process_incoming_pdu(
             .filter(events::is_outlier.eq(false)),
         &mut connect()?
     )? {
+        println!("process_incoming_pdu0");
         return Ok(());
     }
 
@@ -108,14 +108,17 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("process_incoming_pdu  1");
     let room_version_id = &room::get_version(room_id)?;
 
     let (incoming_pdu, val) = process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
 
+    println!("process_incoming_pdu  2");
     check_room_id(room_id, &incoming_pdu)?;
 
     // 8. if not timeline event: stop
     if !is_timeline_event {
+        println!("process_incoming_pdu  3");
         return Ok(());
     }
 
@@ -135,7 +138,9 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("process_incoming_pdu  4");
     crate::event::handler::process_to_timeline_pdu(&incoming_pdu, val, origin, room_id).await?;
+    println!("process_incoming_pdu  5");
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -204,7 +209,6 @@ fn process_to_outlier_pdu<'a>(
     auth_events_known: bool,
 ) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
     Box::pin(async move {
-        println!("process_to_outlier_pdu  0");
         if let Some((event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
             .select((event_datas::event_sn, event_datas::json_data))
@@ -237,7 +241,6 @@ fn process_to_outlier_pdu<'a>(
                     .map_err(|_| MatrixError::invalid_param("Time must be after the unix epoch"))?,
             )
         };
-        println!("process_to_outlier_pdu  2");
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
@@ -261,7 +264,6 @@ fn process_to_outlier_pdu<'a>(
             }
         };
 
-        println!("process_to_outlier_pdu  3");
         // Now that we have checked the signature and hashes we can add the eventID and convert
         // to our PduEvent type
         val.insert(
@@ -277,7 +279,6 @@ fn process_to_outlier_pdu<'a>(
 
         check_room_id(room_id, &incoming_pdu)?;
 
-        println!("process_to_outlier_pdu  4");
         if !auth_events_known {
             // 4. fetch any missing auth events doing all checks listed here starting at 1. These are not timeline events
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
@@ -292,7 +293,6 @@ fn process_to_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
-            println!("process_to_outlier_pdu  5");
             let auth_event = match timeline::get_pdu(id) {
                 Ok(e) => e,
                 Err(_) => {
@@ -319,7 +319,6 @@ fn process_to_outlier_pdu<'a>(
             }
         }
 
-        println!("process_to_outlier_pdu  6");
         // The original create event must be in the auth events
         if !matches!(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -337,10 +336,10 @@ fn process_to_outlier_pdu<'a>(
 
         debug!("Validation successful.");
 
-        println!("process_to_outlier_pdu  7");
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
+        db_event.stamp_sn = data::next_sn()?;
 
         diesel::insert_into(events::table)
             .values(db_event)
@@ -362,7 +361,6 @@ fn process_to_outlier_pdu<'a>(
             .execute(&mut connect()?)
             .unwrap();
 
-        println!("process_to_outlier_pdu  8");
         debug!("Added pdu as outlier.");
 
         Ok((incoming_pdu, val))
@@ -432,12 +430,10 @@ pub async fn process_to_timeline_pdu(
         &incoming_pdu.content,
     )?;
 
-    println!("\n\n\nprocess_to_timeline_pdu  =======2  incoming_pdu: {incoming_pdu:#?} auth_events: {auth_events:#?}");
     event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
         auth_events.get(&(k.clone(), s.to_owned()))
     })?;
 
-    println!("process_to_timeline_pdu  =======3");
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
     let soft_fail = match incoming_pdu.redacts_id(&room_version_id) {
@@ -447,7 +443,6 @@ pub async fn process_to_timeline_pdu(
         }
     };
 
-    println!("process_to_timeline_pdu  =======4");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
@@ -542,6 +537,7 @@ pub async fn process_to_timeline_pdu(
 
     // Event has passed all auth/stateres checks
     drop(state_lock);
+    println!("aDDDDDDDDDDDDDDDDDDED TO TIMELINE");
     Ok(())
 }
 

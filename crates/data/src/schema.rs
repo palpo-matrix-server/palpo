@@ -326,7 +326,7 @@ diesel::table! {
         topological_ordering -> Int8,
         stream_ordering -> Int8,
         unrecognized_keys -> Nullable<Text>,
-        origin_server_ts -> Int8,
+        origin_server_ts -> Nullable<Int8>,
         received_at -> Nullable<Int8>,
         sender_id -> Nullable<Text>,
         contains_url -> Bool,
@@ -335,6 +335,7 @@ diesel::table! {
         is_outlier -> Bool,
         is_redacted -> Bool,
         soft_failed -> Bool,
+        stamp_sn -> Int8,
         rejection_reason -> Nullable<Text>,
     }
 }

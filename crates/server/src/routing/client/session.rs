@@ -71,8 +71,10 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
 async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Response) -> JsonResult<LoginResBody> {
     // Validate login method
     // TODO: Other login methods
+    println!("==========login body: {:#?}", &body);
     let user_id = match &body.login_info {
         LoginInfo::Password(Password { identifier, password }) => {
+            println!("==========login identifier: {:#?}", &identifier);
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {
                 user_id.to_lowercase()
             } else {
@@ -91,12 +93,14 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             user_id
         }
         LoginInfo::Token(Token { token }) => {
+            println!("==========login 2");
             if !crate::config().login_via_existing_session {
                 return Err(MatrixError::unknown("Token login is not enabled.").into());
             }
             crate::user::take_login_token(token)?
         }
         LoginInfo::Appservice(Appservice { identifier }) => {
+            println!("==========login 3");
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {
                 user_id.to_lowercase()
             } else {
@@ -112,6 +116,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
         }
     };
 
+    println!("==========login 4");
     // Generate new device id if the user didn't specify one
     let device_id = body
         .device_id
