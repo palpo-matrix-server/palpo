@@ -129,7 +129,6 @@ pub(crate) async fn process_incoming_pdu(
     // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
     fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
     
-
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
