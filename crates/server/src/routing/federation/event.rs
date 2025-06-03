@@ -102,7 +102,7 @@ async fn event_by_timestamp(
     })
 }
 
-/// #POST /_matrix/federation/v1/get_missing_events/{room_id} 
+/// #POST /_matrix/federation/v1/get_missing_events/{room_id}
 /// Retrieves events that the sender is missing.
 #[endpoint]
 fn missing_events(

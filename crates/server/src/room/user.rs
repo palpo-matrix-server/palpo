@@ -9,7 +9,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppError, AppResult, room, IsRemoteOrLocal, config, MatrixError};
+use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, config, room};
 
 pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     diesel::update(

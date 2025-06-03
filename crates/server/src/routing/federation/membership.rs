@@ -84,7 +84,8 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                     &args.room_id,
                     &args.user_id,
                     &join_rule.restriction_rooms(),
-                ).ok()
+                )
+                .ok()
             } else {
                 return Err(
                     MatrixError::unable_to_grant_join("No user on this server is able to assist in joining.").into(),

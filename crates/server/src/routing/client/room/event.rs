@@ -264,7 +264,6 @@ pub(super) async fn send_redact(
     json_ok(RedactEventResBody { event_id })
 }
 
-
 /// #GET /_matrix/client/r0/rooms/{room_id}/timestamp_to_event
 #[endpoint]
 pub(super) async fn timestamp_to_event(

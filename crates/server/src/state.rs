@@ -5,8 +5,8 @@ use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHisto
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyStateEventContent, StateEventType};
-use crate::core::serde::RawJson;
 use crate::core::identifiers::*;
+use crate::core::serde::RawJson;
 use crate::event::PduBuilder;
 use crate::room::timeline;
 use crate::{AppResult, IsRemoteOrLocal, MatrixError, config, room};

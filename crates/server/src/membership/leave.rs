@@ -127,7 +127,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     let invite_state =
         state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
 
-        println!("<<<<<<<<<<<<<<leave 1");
+    println!("<<<<<<<<<<<<<<leave 1");
     let servers: HashSet<_> = invite_state
         .iter()
         .filter_map(|event| serde_json::from_str(event.as_str()).ok())
@@ -157,7 +157,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         }
     }
 
-        println!("<<<<<<<<<<<<<<leave 2");
+    println!("<<<<<<<<<<<<<<leave 2");
     let (make_leave_response, remote_server) = make_leave_response_and_server?;
 
     let room_version_id = match make_leave_response.room_version {
@@ -165,7 +165,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         _ => return Err(AppError::public("Room version is not supported")),
     };
 
-        println!("<<<<<<<<<<<<<<leave 3");
+    println!("<<<<<<<<<<<<<<leave 3");
     let mut leave_event_stub = serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
         .map_err(|_| AppError::public("Invalid make_leave event json received from server."))?;
 
@@ -188,7 +188,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
-        println!("<<<<<<<<<<<<<<leave 4");
+    println!("<<<<<<<<<<<<<<leave 4");
     let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
@@ -220,7 +220,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
 
-        println!("<<<<<<<<<<<<<<leave 5");
+    println!("<<<<<<<<<<<<<<leave 5");
     let event_data = DbEventData {
         event_id: event_id.clone(),
         event_sn,
@@ -237,7 +237,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
 
-        println!("<<<<<<<<<<<<<<leave 6");
+    println!("<<<<<<<<<<<<<<leave 6");
     let request = send_leave_request_v2(
         &remote_server.origin().await,
         SendLeaveReqArgsV2 {
@@ -249,8 +249,8 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         )),
     )?
     .into_inner();
-        println!("<<<<<<<<<<<<<<leave 7");
+    println!("<<<<<<<<<<<<<<leave 7");
     crate::sending::send_federation_request(&remote_server, request).await?;
-        println!("<<<<<<<<<<<<<<leave 8");
+    println!("<<<<<<<<<<<<<<leave 8");
     Ok((event_id, event_sn))
 }

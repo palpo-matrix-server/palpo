@@ -229,7 +229,7 @@ pub(super) async fn send_message(
         Some(&args.room_id),
         Some(&event_id),
     )?;
-    
+
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
 }
 

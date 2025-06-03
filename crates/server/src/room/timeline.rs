@@ -583,7 +583,7 @@ pub fn create_hash_and_sign_event(
         event_ty: event_type,
         room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
-        origin_server_ts:  timestamp.unwrap_or_else(UnixMillis::now),
+        origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
         content,
         state_key,
         prev_events,

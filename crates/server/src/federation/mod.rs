@@ -180,7 +180,10 @@ pub(crate) async fn user_can_perform_restricted_join(
                 None
             }
         })
-        .any(|m| room::is_server_joined(config::server_name(), &m.room_id).unwrap_or(false) && room::user::is_joined(user_id, &m.room_id).unwrap_or(false))
+        .any(|m| {
+            room::is_server_joined(config::server_name(), &m.room_id).unwrap_or(false)
+                && room::user::is_joined(user_id, &m.room_id).unwrap_or(false)
+        })
     {
         Ok(true)
     } else {

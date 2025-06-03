@@ -326,7 +326,7 @@ pub(crate) async fn join_room_by_id_or_alias(
 
     let (room_id, servers) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
-    println!("jjjjjjjjjjjjjjjjjjoin 2");
+            println!("jjjjjjjjjjjjjjjjjjoin 2");
             banned_room_check(sender_id, Some(&room_id), room_id.server_name().ok(), remote_addr).await?;
             let mut servers = if via.is_empty() {
                 crate::room::lookup_servers(&room_id)?
@@ -356,7 +356,7 @@ pub(crate) async fn join_room_by_id_or_alias(
             (room_id, servers)
         }
         Err(room_alias) => {
-    println!("jjjjjjjjjjjjjjjjjjoin 3");
+            println!("jjjjjjjjjjjjjjjjjjoin 3");
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via.clone())).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
