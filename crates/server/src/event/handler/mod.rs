@@ -784,7 +784,6 @@ pub async fn fetch_missing_prev_events(
 ) -> AppResult<()> {
     let conf = crate::config();
 
-    // TODO:
     let mut earliest_events = room::state::get_forward_extremities(room_id)?;
     earliest_events.extend(incoming_pdu.prev_events.iter().cloned());
 
@@ -794,23 +793,11 @@ pub async fn fetch_missing_prev_events(
         .select(events::id)
         .load::<OwnedEventId>(&mut connect()?)?;
     let exists_events: HashSet<_> = earliest_events.iter().collect();
-    println!(
-        "==============earliest_events: {earliest_events:?}  {:?}",
-        event_datas::table
-            .filter(event_datas::room_id.eq(room_id))
-            .filter(event_datas::event_id.eq_any(&earliest_events))
-            .select(event_datas::event_id)
-            .load::<OwnedEventId>(&mut connect()?)?
-    );
     if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
         println!("No missing prev events for {}", incoming_pdu.event_id);
         return Ok(());
     }
 
-    println!(
-        "Fetching missing prev events for {} in room {}",
-        incoming_pdu.event_id, room_id
-    );
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?

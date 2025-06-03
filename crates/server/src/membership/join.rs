@@ -261,7 +261,7 @@ pub async fn join_room(
 
     for auth_pdu in resp_auth {
         let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
-        crate::event::handler::process_incoming_pdu(
+        if let Err(e) = crate::event::handler::process_incoming_pdu(
             &remote_server,
             &event_id,
             &room_id,
@@ -269,10 +269,17 @@ pub async fn join_room(
             event_value,
             true,
         )
-        .await?;
+        .await
+        {
+            error!("Failed to fetch missing prev events for join: {e}");
+        }
     }
-    crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
-        .await?;
+    if let Err(e) =
+        crate::event::handler::fetch_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu)
+            .await
+    {
+        error!("Failed to fetch missing prev events for join: {e}");
+    }
 
     info!("Going through send_join response room_state");
     for result in send_join_body
