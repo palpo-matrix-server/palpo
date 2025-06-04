@@ -15,6 +15,3 @@ CREATE TABLE media_url_previews (
     CONSTRAINT media_url_previews_ukey UNIQUE (url)
 );
 CREATE UNIQUE INDEX media_url_previews_index ON media_url_previews USING btree (url, og_title, og_type, og_url, og_description);
-
-ALTER TABLE IF EXISTS public.events
-    ALTER COLUMN origin_server_ts SET NOT NULL;

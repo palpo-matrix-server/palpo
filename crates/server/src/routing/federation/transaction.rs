@@ -57,6 +57,7 @@ async fn send_message(
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
+    println!("RRRRRRRRRRReceived transaction  2");
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -71,6 +72,7 @@ async fn process_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
+    println!("processing pdu 0");
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
@@ -84,6 +86,7 @@ async fn process_pdus(
         // We do not add the event_id field to the pdu here because of signature
         // and hashes checks
     }
+    println!("processing pdu 1");
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
@@ -100,6 +103,7 @@ async fn process_pdus(
         resolved_map.insert(event_id, result);
     }
 
+    println!("processing pdu 2");
     for (id, result) in &resolved_map {
         if let Err(e) = result {
             if matches!(e, AppError::Matrix(_)) {
@@ -108,6 +112,7 @@ async fn process_pdus(
         }
     }
 
+    println!("processing pdu 3");
     Ok(resolved_map)
 }
 

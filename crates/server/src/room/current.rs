@@ -2,6 +2,7 @@ use diesel::prelude::*;
 
 use crate::AppResult;
 use crate::core::identifiers::*;
+use crate::core::Seqnum;
 use crate::data::connect;
 use crate::data::schema::*;
 

@@ -28,8 +28,8 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::PduEvent;
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
-use crate::room::{self, state, timeline};
-use crate::{AppError, AppResult, MatrixError, exts::*};
+use crate::room::{state, timeline};
+use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -145,6 +145,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .remove(&room_id.to_owned());
+    println!("process_incoming_pdu  6");
     Ok(())
 }
 
@@ -339,7 +340,6 @@ fn process_to_outlier_pdu<'a>(
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, incoming_pdu.event_sn, &val)?;
         db_event.is_outlier = true;
-        db_event.stamp_sn = data::next_sn()?;
 
         diesel::insert_into(events::table)
             .values(db_event)

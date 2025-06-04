@@ -432,7 +432,7 @@ CREATE TABLE events (
     topological_ordering bigint NOT NULL,
     stream_ordering bigint NOT NULL,
     unrecognized_keys text,
-    origin_server_ts bigint,
+    origin_server_ts bigint NOT NULL,
     received_at bigint,
     sender_id text,
     contains_url boolean NOT NULL,

@@ -205,8 +205,8 @@ pub struct DbEvent {
     pub is_outlier: bool,
     pub is_redacted: bool,
     pub soft_failed: bool,
-    pub stamp_sn: Seqnum,
     pub rejection_reason: Option<String>,
+    pub stamp_sn: Seqnum,
 }
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
@@ -232,6 +232,7 @@ pub struct NewDbEvent {
     #[serde(default = "default_false")]
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
+    pub stamp_sn: Seqnum,
 }
 impl NewDbEvent {
     pub fn from_canonical_json(id: &EventId, sn: Seqnum, value: &CanonicalJsonObject) -> DataResult<Self> {
@@ -242,6 +243,7 @@ impl NewDbEvent {
         let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
         obj.insert("sn".into(), sn.into());
+        obj.insert("stamp_sn".into(), sn.into());
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
         Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)

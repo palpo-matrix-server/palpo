@@ -208,6 +208,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
+        stamp_sn: event_sn,
     };
     diesel::insert_into(events::table)
         .values(&new_db_event)
