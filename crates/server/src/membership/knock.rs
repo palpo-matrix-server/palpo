@@ -276,6 +276,7 @@ pub async fn knock_room(
         &parsed_knock_pdu,
         knock_event,
         once(parsed_knock_pdu.event_id.borrow()),
+        data::next_sn()?,
         &room::lock_state(&room_id).await,
     )?;
 

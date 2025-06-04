@@ -43,7 +43,7 @@ pub(super) async fn sync_events_v3(
     _aa: AuthArgs,
     args: sync_events::v3::SyncEventsReqArgs,
     depot: &mut Depot,
-) -> JsonResult<sync_events::v3::SyncEventsResBody> {println!("SSSSSSSSSSSSSSSSSSSSSSSS");
+) -> JsonResult<sync_events::v3::SyncEventsResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let device_id = authed.device_id();
@@ -51,9 +51,7 @@ pub(super) async fn sync_events_v3(
     crate::user::ping_presence(&sender_id, &args.set_presence)?;
     // Setup watchers, so if there's no response, we can wait for them
     let watcher = crate::watcher::watch(&sender_id, &device_id);
-println!("SSSSSSSSSSSSSSSSSSSSSSSS 1");
     let mut body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
-println!("SSSSSSSSSSSSSSSSSSSSSSSS 2");
 
     if !args.full_state
         && body.rooms.is_empty()
@@ -62,7 +60,6 @@ println!("SSSSSSSSSSSSSSSSSSSSSSSS 2");
         && body.device_lists.is_empty()
         && body.to_device.is_empty()
     {
-        println!("SSSSSS");
         // Hang a few seconds so requests are not spammed
         // Stop hanging if new info arrives
         let default = Duration::from_secs(30);
@@ -71,6 +68,6 @@ println!("SSSSSSSSSSSSSSSSSSSSSSSS 2");
 
         // Retry returning data
         body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
-    }println!("SSSSSSSSSSSSSSSSSSSSSSSS end");
+    }
     json_ok(body)
 }

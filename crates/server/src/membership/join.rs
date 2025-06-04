@@ -190,7 +190,6 @@ pub async fn join_room(
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
-    println!("==============send join body: {:#?}", send_join_body);
 
     info!("send_join finished");
 
@@ -381,7 +380,6 @@ pub async fn join_room(
                 .execute(&mut connect()?)?;
         }
     }
-    println!("jjjjjjjjjjjjjjjjjjoin 21");
 
     info!("Running send_join auth check");
     // TODO: Authcheck
@@ -434,6 +432,7 @@ pub async fn join_room(
         &parsed_join_pdu,
         join_event,
         once(parsed_join_pdu.event_id.borrow()),
+        data::next_sn()?,
         &state_lock,
     )
     .unwrap();

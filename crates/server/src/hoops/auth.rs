@@ -37,7 +37,6 @@ pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut De
 }
 
 async fn auth_by_access_token_inner(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
-    println!("AAAAAAAAAAAuth");
     let token = aa.require_access_token()?;
 
     let access_token = user_access_tokens::table

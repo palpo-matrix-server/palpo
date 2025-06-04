@@ -151,6 +151,7 @@ pub fn append_pdu<'a, L>(
     pdu: &'a PduEvent,
     mut pdu_json: CanonicalJsonObject,
     leaves: L,
+    stamp_sn: Seqnum,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<()>
 where
@@ -350,10 +351,10 @@ where
         .do_update()
         .set(&event_data)
         .execute(&mut connect()?)?;
-    let stamp_sn = data::next_sn()?;
     diesel::update(events::table.find(&*pdu.event_id))
         .set((events::is_outlier.eq(false), events::stamp_sn.eq(stamp_sn)))
         .execute(&mut connect()?)?;
+    println!("PDU {} appended to room {:?}  stamp_sn: {stamp_sn}", pdu.event_id, pdu);
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     // Update Relationships
@@ -744,6 +745,7 @@ pub fn build_and_append_pdu(
         pdu_json,
         // Since this PDU references all pdu_leaves we can update the leaves of the room
         once(pdu.event_id.borrow()),
+        pdu.event_sn,
         state_lock,
     )?;
     let frame_id = state::append_to_state(&pdu)?;
@@ -797,7 +799,7 @@ where
         return Ok(());
     }
 
-    timeline::append_pdu(pdu, pdu_json, new_room_leaves, state_lock)
+    timeline::append_pdu(pdu, pdu_json, new_room_leaves, data::next_sn()?, state_lock)
 }
 
 /// Returns an iterator over all PDUs in a room.
@@ -839,17 +841,14 @@ pub fn get_pdus(
 ) -> AppResult<Vec<(Seqnum, PduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(Seqnum, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
-    println!("======get_pdus   0");
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
         data::curr_sn()? + 1
     };
 
-    println!("======get_pdus   1");
     while list.len() < limit {
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
-        println!("======get_pdus   4");
         if let Some(until_sn) = until_sn {
             if dir == Direction::Forward {
                 query = query
@@ -868,7 +867,6 @@ pub fn get_pdus(
             }
         }
 
-        println!("======get_pdus   5");
         if let Some(filter) = filter {
             if let Some(url_filter) = &filter.url_filter {
                 match url_filter {
@@ -898,36 +896,39 @@ pub fn get_pdus(
                 }
             }
         }
-        println!("======get_pdus   6");
         query = query.filter(events::is_outlier.eq(false));
         let events: Vec<(OwnedEventId, Seqnum, Seqnum)> = if dir == Direction::Forward {
             events::table
                 .filter(events::id.eq_any(query.filter(events::stamp_sn.gt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
-                .limit(utils::usize_to_i64(limit))
+                // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn, events::stamp_sn))
                 .load::<(OwnedEventId, Seqnum, Seqnum)>(&mut connect()?)?
         } else {
             events::table
                 .filter(events::id.eq_any(query.filter(events::stamp_sn.lt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
-                .limit(utils::usize_to_i64(limit))
+                // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn, events::stamp_sn))
                 .load::<(OwnedEventId, Seqnum, Seqnum)>(&mut connect()?)?
         };
-        println!("======get_pdus   7");
         if events.is_empty() {
-            println!("======get_pdus   8");
             break;
         }
-        start_sn = if let Some(stamp_sn) = events.iter().map(|(_, _, stamp_sn)| stamp_sn).max() {
-            stamp_sn
+        start_sn = if dir == Direction::Forward {
+            if let Some(stamp_sn) = events.iter().map(|(_, _, stamp_sn)| stamp_sn).max() {
+                *stamp_sn
+            } else {
+                break;
+            }
         } else {
-            println!("======get_pdus   9");
-            break;
+            if let Some(stamp_sn) = events.iter().map(|(_, _, stamp_sn)| stamp_sn).min() {
+                *stamp_sn
+            } else {
+                break;
+            }
         };
         for (event_id, event_sn, _) in events {
-            println!("======get_pdus   10");
             if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
                 if state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                     if pdu.sender != user_id {
@@ -943,7 +944,6 @@ pub fn get_pdus(
         }
     }
 
-    println!("======get_pdus   11");
     if dir == Direction::Backward {
         list.reverse();
     }

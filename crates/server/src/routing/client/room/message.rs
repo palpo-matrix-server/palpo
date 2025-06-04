@@ -115,6 +115,7 @@ pub(super) async fn get_messages(
             let events =
                 timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
 
+            println!("================get messages events: {:#?}", events);
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417
@@ -177,7 +178,6 @@ pub(super) async fn send_message(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<SendMessageResBody> {
-    println!("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
     let authed = depot.authed_info()?;
 
     // Forbid m.room.encrypted if encryption is disabled

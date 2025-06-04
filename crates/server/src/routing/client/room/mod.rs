@@ -584,7 +584,6 @@ pub(super) async fn create_room(
         return Err(MatrixError::bad_json("Invalid creation content").into());
     }
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  0");
     // 1. The room create event
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -598,7 +597,6 @@ pub(super) async fn create_room(
         &state_lock,
     )?;
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  1");
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -623,7 +621,6 @@ pub(super) async fn create_room(
         &state_lock,
     )?;
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  2");
     // 3. Power levels
     // Figure out preset. We need it for preset specific events
     let preset = body.preset.clone().unwrap_or(match &body.visibility {
@@ -644,7 +641,6 @@ pub(super) async fn create_room(
         }
     }
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  3");
     let power_levels_content =
         default_power_levels_content(body.power_level_content_override.as_ref(), &body.visibility, users)?;
 
@@ -660,7 +656,6 @@ pub(super) async fn create_room(
         &state_lock,
     )?;
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  4");
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
         timeline::build_and_append_pdu(
@@ -681,7 +676,6 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  5");
     // 5. Events set by preset
     // 5.1 Join Rules
     timeline::build_and_append_pdu(
@@ -701,7 +695,6 @@ pub(super) async fn create_room(
         &state_lock,
     )?;
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  6");
     // 5.2 History Visibility
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -732,7 +725,6 @@ pub(super) async fn create_room(
     //     &room_id,
     //     &state_lock,
     // )?;
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  7");
     if preset != RoomPreset::PublicChat {
         timeline::build_and_append_pdu(
             PduBuilder {
@@ -766,7 +758,6 @@ pub(super) async fn create_room(
         timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
     }
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  8");
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
         timeline::build_and_append_pdu(
@@ -799,31 +790,22 @@ pub(super) async fn create_room(
     }
     drop(state_lock);
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  9");
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   0");
         if let Err(e) = crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await {
-            println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   1");
             tracing::error!("Failed to invite user {}: {:?}", user_id, e);
         }
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   2");
     }
 
     // Homeserver specific stuff
     if let Some(alias) = alias {
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   3");
         room::set_alias(&room_id, &alias, sender_id)?;
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   4");
     }
 
     if body.visibility == Visibility::Public {
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   5");
         room::directory::set_public(&room_id, true)?;
-        println!("CCCCCCCCCCCCCCCCCCCCCCC0  9   6");
     }
 
-    println!("CCCCCCCCCCCCCCCCCCCCCCC0  10");
     info!("{} created a room", sender_id);
     json_ok(CreateRoomResBody { room_id })
 }

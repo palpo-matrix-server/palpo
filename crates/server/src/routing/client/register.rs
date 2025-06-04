@@ -54,7 +54,6 @@ async fn register(
     res: &mut Response,
 ) -> JsonResult<RegisterResBody> {
     let body = body.into_inner();
-    println!("==========register body: {:#?}", &body);
     // For complement test `TestRequestEncodingFails`.
     if body.is_default() {
         let payload = req.payload().await?;
@@ -63,12 +62,10 @@ async fn register(
         }
     }
 
-    println!("-------------0");
     let conf = crate::config();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
         return Err(MatrixError::forbidden("Registration has been disabled.", None).into());
     }
-    println!("-------------1");
 
     let is_guest = body.kind == RegistrationKind::Guest;
     let user_id = match (&body.username, is_guest) {
@@ -94,7 +91,6 @@ async fn register(
         },
     };
 
-    println!("-------------2");
     if body.login_type == Some(LoginType::Appservice) {
         let authed = depot.authed_info()?;
         if let Some(appservice) = &authed.appservice {
