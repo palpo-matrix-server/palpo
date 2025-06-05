@@ -11,7 +11,7 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::event::PduBuilder;
+use crate::event::{ensure_event_sn, PduBuilder};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, membership};
@@ -178,10 +178,11 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
-    let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
+    // TODO: event_sn??, outlier but has sn??
+    let event_sn = ensure_event_sn(&room_id, &event_id)?;
     let new_db_event = NewDbEvent {
         id: event_id.to_owned(),
-        sn: event_sn,
+        sn: None,
         ty: MembershipState::Leave.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -197,13 +198,11 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
-        stamp_sn: event_sn,
     };
     diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict_do_nothing()
-        .returning(events::sn)
-        .get_result::<Seqnum>(&mut connect()?)?;
+        .execute(&mut connect()?)?;
     // Add event_id back
     leave_event_stub.insert(
         "event_id".to_owned(),
@@ -212,7 +211,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
 
     let event_data = DbEventData {
         event_id: event_id.clone(),
-        event_sn,
+        event_sn: Some(event_sn),
         room_id: room_id.to_owned(),
         internal_metadata: None,
         json_data: serde_json::to_value(&leave_event_stub)?,

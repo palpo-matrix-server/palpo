@@ -19,7 +19,7 @@ pub async fn send_state_event_for_key(
     state_key: String,
 ) -> AppResult<OwnedEventId> {
     allowed_to_send_state_event(room_id, event_type, &state_key, &json)?;
-    let event_id = timeline::build_and_append_pdu(
+    let sn_pdu = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: event_type.to_string().into(),
             content: serde_json::from_value(serde_json::to_value(json)?)?,
@@ -29,10 +29,9 @@ pub async fn send_state_event_for_key(
         user_id,
         room_id,
         &room::lock_state(&room_id).await,
-    )?
-    .event_id;
+    )?;
 
-    Ok(event_id)
+    Ok(sn_pdu.pdu.event_id)
 }
 
 fn allowed_to_send_state_event(

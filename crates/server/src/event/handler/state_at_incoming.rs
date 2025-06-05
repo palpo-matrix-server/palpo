@@ -22,7 +22,7 @@ pub(super) async fn state_at_incoming_degree_one(
     };
 
     debug!("Using cached state");
-    let prev_pdu = timeline::get_pdu(prev_event)?;
+    let prev_pdu = timeline::get_sn_pdu(prev_event)?;
 
     if let Some(state_key) = &prev_pdu.state_key {
         let state_key_id = state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
@@ -44,7 +44,7 @@ pub(super) async fn state_at_incoming_resolved(
 
     let mut okay = true;
     for prev_event_id in &incoming_pdu.prev_events {
-        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_event_id) {
+        let prev_event = if let Ok(pdu) = timeline::get_sn_pdu(prev_event_id) {
             pdu
         } else {
             okay = false;
@@ -72,7 +72,7 @@ pub(super) async fn state_at_incoming_resolved(
 
         if let Some(state_key) = &prev_event.state_key {
             let state_key_id = state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
-            leaf_state.insert(state_key_id, prev_event.event_id);
+            leaf_state.insert(state_key_id, prev_event.event_id.clone());
             // Now it's the state after the pdu
         }
 
@@ -112,7 +112,7 @@ pub(super) async fn state_at_incoming_resolved(
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         |id| {
-            let res = timeline::get_pdu(id);
+            let res = timeline::get_sn_pdu(id);
             if let Err(e) = &res {
                 error!("LOOK AT ME Failed to fetch event: {}", e);
             }

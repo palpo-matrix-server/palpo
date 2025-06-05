@@ -4,11 +4,11 @@ use std::iter::once;
 use std::sync::Arc;
 
 use diesel::prelude::*;
+use indexmap::IndexMap;
 use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 use tracing_subscriber::fmt::format;
-use indexmap::IndexMap;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
@@ -28,14 +28,14 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{self, PduBuilder, PduEvent, gen_event_id_canonical_json};
+use crate::event::{self, PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
-use crate::room::state::CompressedEvent;
-use crate::room::state::DeltaInfo;
+use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{
-    AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data, room,
+    AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent, config,
+    data, room,
 };
 
 pub async fn join_room(
@@ -47,6 +47,7 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
+    println!("JJJJJJJJJJJJJJJJJJoin room");
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
@@ -110,12 +111,14 @@ pub async fn join_room(
         }
     }
 
-    info!("Joining {room_id} over federation.");
+    info!("joining {room_id} over federation");
+    println!("Joining {room_id} over federation.");
 
     let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make_join finished");
+    println!("make_join finished");
 
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => room_version,
@@ -192,6 +195,7 @@ pub async fn join_room(
         .await?;
 
     info!("send_join finished");
+    println!("make_send_joinjoin finished");
 
     if let Some(signed_raw) = &send_join_body.0.event {
         info!("There is a signed event. This room is probably using restricted joins. Adding signature to our event");
@@ -233,21 +237,15 @@ pub async fn join_room(
     room::ensure_room(room_id, &room_version_id)?;
 
     info!("Parsing join event");
-    let parsed_join_pdu = PduEvent::from_canonical_object(
-        &event_id,
-        crate::event::ensure_event_sn(room_id, &event_id)?,
-        join_event.clone(),
-    )
-    .map_err(|e| {
+    println!("Parsing join event");
+
+    let parsed_join_pdu = PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
         warn!("Invalid PDU in send_join response: {}", e);
         AppError::public("Invalid join event PDU.")
     })?;
+    println!("parsed_join_pdu: {parsed_join_pdu:?}");
     diesel::insert_into(events::table)
-        .values(NewDbEvent::from_canonical_json(
-            &event_id,
-            parsed_join_pdu.event_sn,
-            &join_event,
-        )?)
+        .values(NewDbEvent::from_canonical_json(&event_id, None, &join_event)?)
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;
 
@@ -255,6 +253,7 @@ pub async fn join_room(
     let pub_key_map = RwLock::new(BTreeMap::new());
 
     info!("Acquiring server signing keys for response events");
+    println!("Acquiring server signing keys for response events");
     let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
@@ -302,27 +301,23 @@ pub async fn join_room(
             Err(_) => continue,
         };
 
-        let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
+        let pdu = if let Some(pdu) = timeline::get_sn_pdu(&event_id).optional()? {
             pdu
         } else {
-            let pdu = PduEvent::from_canonical_object(
-                &event_id,
-                crate::event::ensure_event_sn(room_id, &event_id)?,
-                value.clone(),
-            )
-            .map_err(|e| {
+            let event_sn = ensure_event_sn(&room_id, &event_id)?;
+            let pdu = SnPduEvent::from_canonical_object(&event_id, event_sn, value.clone()).map_err(|e| {
                 warn!("Invalid PDU in send_join response: {} {:?}", e, value);
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
             diesel::insert_into(events::table)
-                .values(NewDbEvent::from_canonical_json(&event_id, pdu.event_sn, &value)?)
+                .values(NewDbEvent::from_canonical_json(&event_id, Some(event_sn), &value)?)
                 .on_conflict_do_nothing()
                 .execute(&mut connect()?)?;
 
             let event_data = DbEventData {
                 event_id: pdu.event_id.to_owned().into(),
-                event_sn: pdu.event_sn,
+                event_sn: Some(event_sn),
                 room_id: pdu.room_id.clone(),
                 internal_metadata: None,
                 json_data: serde_json::to_value(&value)?,
@@ -330,7 +325,7 @@ pub async fn join_room(
             };
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
-                .on_conflict((event_datas::event_id, event_datas::event_sn))
+                .on_conflict(event_datas::event_id)
                 .do_update()
                 .set(&event_data)
                 .execute(&mut connect()?)?;
@@ -357,15 +352,15 @@ pub async fn join_room(
         };
 
         if !timeline::has_pdu(&event_id) {
-            let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
-            let db_event = NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?;
+            let event_sn = ensure_event_sn(&room_id, &event_id)?;
+            let db_event = NewDbEvent::from_canonical_json(&event_id, Some(event_sn), &value)?;
             diesel::insert_into(events::table)
                 .values(&db_event)
                 .on_conflict_do_nothing()
                 .execute(&mut connect()?)?;
             let event_data = DbEventData {
                 event_id: event_id.to_owned(),
-                event_sn,
+                event_sn: Some(event_sn),
                 room_id: db_event.room_id.clone(),
                 internal_metadata: None,
                 json_data: serde_json::to_value(&value)?,
@@ -374,7 +369,7 @@ pub async fn join_room(
 
             diesel::insert_into(event_datas::table)
                 .values(&event_data)
-                .on_conflict((event_datas::event_id, event_datas::event_sn))
+                .on_conflict(event_datas::event_id)
                 .do_update()
                 .set(&event_data)
                 .execute(&mut connect()?)?;
@@ -388,7 +383,7 @@ pub async fn join_room(
     //     &parsed_join_pdu,
     //     None::<PduEvent>, // TODO: third party invite
     //     |k, s| {
-    //         timeline::get_pdu(
+    //         room::get_pdu_and_sn(
     //             state.get(&state::ensure_field_id(&k.to_string().into(), s).ok()?)?,
     //         )
     //         .ok()?
@@ -423,19 +418,11 @@ pub async fn join_room(
     // room::update_currents(room_id)?;
 
     let state_lock = room::lock_state(room_id).await;
-    // We append to state before appending the pdu, so we don't have a moment in time with the
-    // pdu without it's state. This is okay because append_pdu can't fail.
-    let frame_id_after_join = state::append_to_state(&parsed_join_pdu)?;
-
     info!("Appending new room join event");
-    timeline::append_pdu(
-        &parsed_join_pdu,
-        join_event,
-        once(parsed_join_pdu.event_id.borrow()),
-        data::next_sn()?,
-        &state_lock,
-    )
-    .unwrap();
+    let join_event_id = parsed_join_pdu.event_id.clone();
+    let join_pdu =
+        timeline::append_pdu(parsed_join_pdu, join_event, once(join_event_id.borrow()), &state_lock).unwrap();
+    let frame_id_after_join = state::append_to_state(&join_pdu)?;
 
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time

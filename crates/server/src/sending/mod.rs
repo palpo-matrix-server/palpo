@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::room::timeline;
 use crate::sending::resolver::Resolver;
-use crate::{AppError, AppResult, ServerConfig, TlsNameMap, config, data, exts::*, utils};
+use crate::{AppError, AppResult, room, ServerConfig, TlsNameMap, config, data, exts::*, utils};
 
 mod dest;
 pub use dest::*;
@@ -253,8 +253,9 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
-                        timeline::get_pdu(event_id)
+                        room::get_pdu_and_sn(event_id)
                             .map_err(|e| (kind.clone(), e))?
+                            .0
                             .to_room_event(),
                     ),
                     SendingEventType::Edu(_) => {
@@ -300,7 +301,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(timeline::get_pdu(event_id).map_err(|e| (kind.clone(), e))?);
+                        pdus.push(room::get_pdu_and_sn(event_id).map_err(|e| (kind.clone(), e))?.0);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)

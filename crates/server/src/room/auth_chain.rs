@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::room::timeline;
-use crate::{AppResult, MatrixError};
+use crate::{AppResult, room,  MatrixError};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]
@@ -47,8 +47,12 @@ where
     let started = Instant::now();
     let starting_events = events::table
         .filter(events::id.eq_any(starting_event_ids.clone()))
+        .filter(events::sn.is_not_null())
         .select((events::id, events::sn))
-        .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?;
+        .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
+        .into_iter()
+        .filter_map(|(event_id, event_sn)| event_sn.map(|sn| (event_id, sn)))
+        .collect::<Vec<_>>();
 
     let mut buckets = [BUCKET; NUM_BUCKETS];
     for (event_id, event_sn) in &starting_events {
@@ -120,7 +124,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        let pdu = timeline::get_pdu(&event_id)?;
+        let (pdu,_) = room::get_pdu_and_sn(&event_id)?;
         if pdu.room_id != room_id {
             tracing::error!(
                 ?event_id,
@@ -132,10 +136,12 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
         }
 
         for (auth_event_id, auth_event_sn) in events::table
+            .filter(events::sn.is_not_null())
             .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
             .select((events::id, events::sn))
-            .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+            .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
         {
+            let auth_event_sn = auth_event_sn.expect("auth event should have a sequence number");
             if found.insert(auth_event_sn) {
                 tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
 

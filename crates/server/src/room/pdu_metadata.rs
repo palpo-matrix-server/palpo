@@ -8,7 +8,7 @@ use crate::core::events::{TimelineEventType, relation::RelationType};
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::PduEvent;
+use crate::event::{SnPduEvent, PduEvent};
 use crate::room::{state, timeline};
 
 #[derive(Clone, Debug, Deserialize)]
@@ -139,7 +139,7 @@ pub fn get_relations(
     to: Option<i64>,
     dir: Direction,
     limit: usize,
-) -> AppResult<Vec<(i64, PduEvent)>> {
+) -> AppResult<Vec<(i64, SnPduEvent)>> {
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))
@@ -167,18 +167,18 @@ pub fn get_relations(
         }
     }
     let relations = query.limit(limit as i64).load::<DbEventRelation>(&mut connect()?)?;
-    let mut pdus = Vec::with_capacity(relations.len());
+    let mut sn_pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Ok(mut pdu) = timeline::get_pdu(&relation.child_id) {
-            if pdu.sender != user_id {
-                pdu.remove_transaction_id()?;
+        if let Ok(mut sn_pdu) = timeline::get_sn_pdu(&relation.child_id) {
+            if sn_pdu.sender != user_id {
+                sn_pdu.remove_transaction_id()?;
             }
-            if state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false) {
-                pdus.push((relation.child_sn, pdu));
+            if state::user_can_see_event(user_id, &room_id, &sn_pdu.event_id).unwrap_or(false) {
+                sn_pdus.push((relation.child_sn, sn_pdu));
             }
         }
     }
-    Ok(pdus)
+    Ok(sn_pdus)
 }
 
 // #[tracing::instrument(skip(room_id, event_ids))]

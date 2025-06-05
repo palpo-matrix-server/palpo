@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,7 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, UserId};
+use crate::event::pdu;
 use crate::{AppError, AppResult};
 
 /// Content hashes of a PDU.
@@ -24,10 +26,130 @@ pub struct EventHash {
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct PduEvent {
-    pub event_id: OwnedEventId,
+pub struct SnPduEvent {
+    #[serde(flatten)]
+    pub pdu: PduEvent,
     #[serde(skip_serializing)]
     pub event_sn: Seqnum,
+}
+impl SnPduEvent {
+    pub fn new(pdu: PduEvent, event_sn: Seqnum) -> Self {
+        Self { pdu, event_sn }
+    }
+
+    pub fn from_canonical_object(
+        event_id: &EventId,
+        event_sn: Seqnum,
+        mut json: CanonicalJsonObject,
+    ) -> Result<Self, serde_json::Error> {
+        let pdu = PduEvent::from_canonical_object(event_id, json)?;
+        Ok(Self::new(pdu, event_sn))
+    }
+
+    pub fn from_json_value(event_id: &EventId, event_sn: Seqnum, json: JsonValue) -> AppResult<Self> {
+        let pdu = PduEvent::from_json_value(event_id, json)?;
+        Ok(Self::new(pdu, event_sn))
+    }
+}
+impl AsRef<PduEvent> for SnPduEvent {
+    fn as_ref(&self) -> &PduEvent {
+        &self.pdu
+    }
+}
+impl AsMut<PduEvent> for SnPduEvent {
+    fn as_mut(&mut self) -> &mut PduEvent {
+        &mut self.pdu
+    }
+}
+impl DerefMut for SnPduEvent {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.pdu
+    }
+}
+impl Deref for SnPduEvent {
+    type Target = PduEvent;
+
+    fn deref(&self) -> &Self::Target {
+        &self.pdu
+    }
+}
+impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
+    type Error = AppError;
+
+    fn try_from((pdu, event_sn): (PduEvent, Option<Seqnum>)) -> Result<Self, Self::Error> {
+        if let Some(sn) = event_sn {
+            Ok(SnPduEvent::new(pdu, sn))
+        } else {
+            Err(AppError::internal("Cannot convert PDU without event_sn to SnPduEvent."))
+        }
+    }
+}
+impl crate::core::state::Event for SnPduEvent {
+    type Id = OwnedEventId;
+
+    fn event_id(&self) -> &Self::Id {
+        &self.event_id
+    }
+
+    fn room_id(&self) -> &RoomId {
+        &self.room_id
+    }
+
+    fn sender(&self) -> &UserId {
+        &self.sender
+    }
+
+    fn event_type(&self) -> &TimelineEventType {
+        &self.event_ty
+    }
+
+    fn content(&self) -> &RawJsonValue {
+        &self.content
+    }
+
+    fn origin_server_ts(&self) -> UnixMillis {
+        self.origin_server_ts
+    }
+
+    fn state_key(&self) -> Option<&str> {
+        self.state_key.as_deref()
+    }
+
+    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+        Box::new(self.prev_events.iter())
+    }
+
+    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+        Box::new(self.auth_events.iter())
+    }
+
+    fn redacts(&self) -> Option<&Self::Id> {
+        self.redacts.as_ref()
+    }
+}
+
+// These impl's allow us to dedup state snapshots when resolving state
+// for incoming events (federation/send/{txn}).
+impl Eq for SnPduEvent {}
+impl PartialEq for SnPduEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.event_id == other.event_id
+    }
+}
+impl PartialOrd for SnPduEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.event_id.partial_cmp(&other.event_id)
+    }
+}
+impl Ord for SnPduEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.event_id.cmp(&other.event_id)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct PduEvent {
+    pub event_id: OwnedEventId,
     #[serde(rename = "type")]
     pub event_ty: TimelineEventType,
     pub room_id: OwnedRoomId,
@@ -327,24 +449,18 @@ impl PduEvent {
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
 
-    pub fn from_canonical_object(
-        event_id: &EventId,
-        event_sn: Seqnum,
-        mut json: CanonicalJsonObject,
-    ) -> Result<Self, serde_json::Error> {
+    pub fn from_canonical_object(event_id: &EventId, mut json: CanonicalJsonObject) -> Result<Self, serde_json::Error> {
         json.insert(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
-        json.insert("event_sn".to_owned(), event_sn.into());
 
         serde_json::from_value(serde_json::to_value(json).expect("valid JSON"))
     }
 
-    pub fn from_json_value(event_id: &EventId, event_sn: Seqnum, json: JsonValue) -> AppResult<Self> {
+    pub fn from_json_value(event_id: &EventId, json: JsonValue) -> AppResult<Self> {
         if let JsonValue::Object(mut obj) = json {
             obj.insert("event_id".to_owned(), event_id.as_str().into());
-            obj.insert("event_sn".to_owned(), event_sn.into());
 
             serde_json::from_value(serde_json::Value::Object(obj)).map_err(Into::into)
         } else {

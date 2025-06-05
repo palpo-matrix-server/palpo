@@ -114,11 +114,15 @@ pub fn get_event_for_timestamp(
 }
 
 pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(Seqnum, String)> {
-    events::table
+    let (sn, ty) = events::table
         .find(event_id)
         .select((events::sn, events::ty))
-        .first::<(Seqnum, String)>(&mut connect()?)
-        .map_err(Into::into)
+        .first::<(Option<Seqnum>, String)>(&mut connect()?)?;
+    if let Some(sn) = sn {
+        Ok((sn, ty))
+    } else {
+        Err(MatrixError::not_found("event sn is not found").into())
+    }
 }
 
 pub fn get_db_event(event_id: &EventId) -> AppResult<DbEvent> {
@@ -166,16 +170,15 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     Ok(())
 }
 
-pub type PdusIterItem = (Seqnum, PduEvent);
+pub type PdusIterItem = (Seqnum, SnPduEvent);
 #[inline]
 pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
     let (_, ref pdu) = item;
-
     is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
 }
 
 #[inline]
-pub fn is_ignored_pdu(pdu: &PduEvent, user_id: &UserId) -> bool {
+pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
     if pdu.event_ty.to_string() == "org.matrix.dummy_event" {

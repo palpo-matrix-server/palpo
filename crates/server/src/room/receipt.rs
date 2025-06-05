@@ -13,7 +13,7 @@ use crate::data::room::NewDbReceipt;
 use crate::data::schema::*;
 use crate::data::{connect, next_sn};
 use crate::room::timeline;
-use crate::{AppResult, data, sending};
+use crate::{AppResult, data, room, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
@@ -65,9 +65,8 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
     // let room_sn = crate::room::get_room_sn(room_id)
     //     .map_err(|e| MatrixError::bad_state(format!("room does not exist in database for {room_id}: {e}")))?;
 
-    let pdu = timeline::get_pdu(&event_id)?;
+    let (pdu, _) = room::get_pdu_and_sn(&event_id)?;
 
-    let event_id: OwnedEventId = (&*pdu.event_id).to_owned();
     let user_id: OwnedUserId = user_id.to_owned();
     let content: BTreeMap<OwnedEventId, Receipts> = BTreeMap::from_iter([(
         event_id,

@@ -567,17 +567,17 @@ fn collect_e2ee<'a>(
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&id) {
-                        let Ok(pdu) = timeline::get_pdu(&id) else {
+                        let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
                             error!("Pdu in state not found: {id}");
                             continue;
                         };
-                        if pdu.event_ty == TimelineEventType::RoomMember {
-                            if let Some(Ok(user_id)) = pdu.state_key.as_deref().map(UserId::parse) {
+                        if sn_pdu.event_ty == TimelineEventType::RoomMember {
+                            if let Some(Ok(user_id)) = sn_pdu.state_key.as_deref().map(UserId::parse) {
                                 if &user_id == sender_id {
                                     continue;
                                 }
 
-                                let content: RoomMemberEventContent = pdu.get_content()?;
+                                let content: RoomMemberEventContent = sn_pdu.get_content()?;
                                 match content.membership {
                                     MembershipState::Join => {
                                         // A new user joined an encrypted room

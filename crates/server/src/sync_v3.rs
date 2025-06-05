@@ -20,7 +20,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{EventHash, PduEvent};
+use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
@@ -68,6 +68,7 @@ pub async fn sync_events(
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
+        println!("============joined room: {}", room_id);
         let joined_room = match load_joined_room(
             sender_id,
             device_id,
@@ -100,17 +101,16 @@ pub async fn sync_events(
     for room_id in all_left_rooms.keys() {
         let mut left_state_events = Vec::new();
 
-        let left_stamp_sn = room::get_left_stamp_sn(&room_id, sender_id)?;
+        let left_sn = room::get_left_sn(&room_id, sender_id)?;
 
         // Left before last sync
-        if Some(since_sn) > left_stamp_sn {
+        if Some(since_sn) > left_sn {
             continue;
         }
 
         if !room::room_exists(room_id)? {
             let event = PduEvent {
                 event_id: EventId::new(config::server_name()).into(),
-                event_sn: 0,
                 sender: sender_id.to_owned(),
                 origin_server_ts: UnixMillis::now(),
                 event_ty: TimelineEventType::RoomMember,
@@ -197,20 +197,20 @@ pub async fn sync_events(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let pdu = match timeline::get_pdu(&event_id) {
-                        Ok(pdu) => pdu,
+                    let sn_pdu = match timeline::get_sn_pdu(&event_id) {
+                        Ok(sn_pdu) => sn_pdu,
                         _ => {
                             error!("Pdu in state not found: {}", event_id);
                             continue;
                         }
                     };
 
-                    left_state_events.push(pdu.to_sync_state_event());
+                    left_state_events.push(sn_pdu.to_sync_state_event());
                 }
             }
         }
 
-        let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+        let left_event = timeline::get_sn_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
         left_rooms.insert(
             room_id.to_owned(),
             LeftRoom {
@@ -436,7 +436,7 @@ async fn load_joined_room(
             if joined_member_count + invited_member_count <= 5 {
                 // Go through all PDUs and for each member event, check if the user is still joined or
                 // invited until we have 5 or we reach the end
-                for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
+                for hero in timeline::all_sn_pdus(sender_id, &room_id, until_sn)?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {
@@ -476,6 +476,7 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
+        println!("jjjjjjjj 7");
         let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
@@ -486,24 +487,25 @@ async fn load_joined_room(
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
 
+            println!("=====current_state_ids: {:?}", current_state_ids);
             for (state_key_id, id) in current_state_ids {
                 let DbRoomStateField {
                     event_ty, state_key, ..
                 } = state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let Ok(pdu) = timeline::get_pdu(&id) else {
+                    let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
-                    state_events.push(pdu);
+                    state_events.push(sn_pdu);
                 } else if !lazy_load_enabled
                     || full_state
                     || timeline_users.contains(&state_key)
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let Ok(pdu) = timeline::get_pdu(&id) else {
+                    let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
@@ -512,7 +514,7 @@ async fn load_joined_room(
                     if let Ok(uid) = UserId::parse(&state_key) {
                         lazy_loaded.insert(uid);
                     }
-                    state_events.push(pdu);
+                    state_events.push(sn_pdu);
                 }
             }
 
@@ -537,6 +539,7 @@ async fn load_joined_room(
                                                   // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
                                                   // }),
             );
+            println!("jjjjjjjjjjjjjjoin");
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
             // Incremental /sync
@@ -549,16 +552,16 @@ async fn load_joined_room(
 
                 for (key, id) in current_state_ids {
                     if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let pdu = match timeline::get_pdu(&id) {
-                            Ok(pdu) => pdu,
+                        let sn_pdu = match timeline::get_sn_pdu(&id) {
+                            Ok(sn_pdu) => sn_pdu,
                             Err(_) => {
                                 error!("Pdu in state not found: {}", id);
                                 continue;
                             }
                         };
 
-                        if pdu.event_ty == TimelineEventType::RoomMember {
-                            match UserId::parse(pdu.state_key.as_ref().expect("State event has state key").clone()) {
+                        if sn_pdu.event_ty == TimelineEventType::RoomMember {
+                            match UserId::parse(sn_pdu.state_key.as_ref().expect("State event has state key").clone()) {
                                 Ok(state_key_user_id) => {
                                     lazy_loaded.insert(state_key_user_id);
                                 }
@@ -566,7 +569,7 @@ async fn load_joined_room(
                             }
                         }
 
-                        state_events.push(pdu);
+                        state_events.push(sn_pdu);
                     }
                 }
             }
@@ -659,6 +662,7 @@ async fn load_joined_room(
                 (None, None, Vec::new())
             };
 
+            println!("jjjjjjjjjjjjjjoin 1");
             (
                 heroes,
                 joined_member_count,
@@ -667,6 +671,7 @@ async fn load_joined_room(
                 state_events,
             )
         } else {
+            println!("jjjjjjjjjjjjjjoin 2");
             (Vec::new(), None, None, false, Vec::new())
         }
     };
@@ -729,6 +734,7 @@ async fn load_joined_room(
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
         .collect();
+    println!("jjjjjjjjjjjjjjoin 3");
     Ok(JoinedRoom {
         account_data: RoomAccountData { events: account_events },
         summary: RoomSummary {
@@ -762,16 +768,16 @@ pub(crate) fn load_timeline(
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
+) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
     let mut timeline_pdus = if let Some(until_sn) = until_sn {
         let (min_sn, max_sn) = if until_sn > since_sn {
             (since_sn, until_sn)
         } else {
             (until_sn, since_sn)
         };
-        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
+        timeline::get_sn_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
     } else {
-        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+        timeline::get_sn_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
     };
 
     if timeline_pdus.len() > limit {

@@ -44,7 +44,7 @@ mod signing_keys;
 pub mod sync_v3;
 pub mod sync_v5;
 pub mod watcher;
-pub use event::{PduBuilder, PduEvent};
+pub use event::{PduBuilder, PduEvent, SnPduEvent};
 pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;

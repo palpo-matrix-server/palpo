@@ -21,14 +21,12 @@ use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
+use crate::event::{PduBuilder, PduEvent, SnPduEvent};
 use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
-use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
-    room, utils,
-};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, json_ok, room, utils};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -82,16 +80,17 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     json_ok(MembersResBody { chunk: states })
 }
 fn membership_filter(
-    pdu: PduEvent,
+    pdu: SnPduEvent,
     for_membership: Option<&MembershipEventFilter>,
     not_membership: Option<&MembershipEventFilter>,
     until_sn: Option<Seqnum>,
-) -> Option<PduEvent> {
+) -> Option<SnPduEvent> {
     if let Some(until_sn) = until_sn {
         if pdu.event_sn > until_sn {
             return None;
         }
     }
+
     let membership_state_filter = match for_membership {
         Some(MembershipEventFilter::Ban) => MembershipState::Ban,
         Some(MembershipEventFilter::Invite) => MembershipState::Invite,

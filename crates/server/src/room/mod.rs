@@ -25,7 +25,7 @@ use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config,
+    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, SnPduEvent,RoomMutexGuard, RoomMutexMap, config,
     data, membership, room, utils,
 };
 
@@ -110,6 +110,19 @@ pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
         .optional()
         .map(|v| v.flatten())
         .map_err(Into::into)
+}
+
+/// Returns the pdu.
+///
+/// Checks database if not found in the timeline.
+// TODO: use cache
+pub fn get_pdu_and_sn(event_id: &EventId) -> AppResult<(PduEvent, Option<Seqnum>)> {
+    let (event_sn, json) = event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select((event_datas::event_sn, event_datas::json_data))
+        .first::<(Option<Seqnum>, JsonValue)>(&mut connect()?)?;
+    let pdu = PduEvent::from_json_value(event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+    Ok((pdu, event_sn))
 }
 
 pub fn is_disabled(room_id: &RoomId) -> AppResult<bool> {
@@ -463,7 +476,7 @@ pub fn get_state(
     event_type: &StateEventType,
     state_key: &str,
     until_sn: Option<Seqnum>,
-) -> AppResult<PduEvent> {
+) -> AppResult<SnPduEvent> {
     let frame_id = get_frame_id(room_id, until_sn)?;
     state::get_state(frame_id, event_type, state_key)
 }

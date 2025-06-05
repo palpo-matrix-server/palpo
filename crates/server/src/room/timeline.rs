@@ -32,7 +32,9 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, config, data, membership, utils};
+use crate::{
+    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
+};
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
 // pub static PDU_CACHE: LazyLock<Mutex<LruCache<OwnedRoomId, Arc<PduEvent>>>> = LazyLock::new(Default::default);
@@ -42,23 +44,24 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
     event_datas::table
         .filter(event_datas::room_id.eq(room_id))
         .order(event_datas::event_sn.asc())
-        .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
-        .first::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)
+        .select((event_datas::event_id, event_datas::json_data))
+        .first::<(OwnedEventId, JsonValue)>(&mut connect()?)
         .optional()?
-        .map(|(event_id, event_sn, json)| {
-            PduEvent::from_json_value(&event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+        .map(|(event_id, json)| {
+            PduEvent::from_json_value(&event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
 
 #[tracing::instrument]
-pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
-    events::table
+pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
+    let event_sn = events::table
         .filter(events::room_id.eq(room_id))
+        .filter(events::sn.is_not_null())
         .select(events::sn)
         .order(events::sn.desc())
-        .first::<i64>(&mut connect()?)
-        .map_err(Into::into)
+        .first::<Option<Seqnum>>(&mut connect()?)?;
+    Ok(event_sn.expect("event sn should not none"))
 }
 
 /// Returns the json of a pdu.
@@ -75,12 +78,12 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 /// Returns the pdu.
 ///
 /// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
-pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
-    let Some(event_sn) = events::table
+pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> {
+    let Some(Some(event_sn)) = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id))
         .select(events::sn)
-        .first::<Seqnum>(&mut connect()?)
+        .first::<Option<Seqnum>>(&mut connect()?)
         .optional()?
     else {
         return Ok(None);
@@ -91,7 +94,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<PduEvent>> {
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            PduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+            SnPduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
         })
         .transpose()
 }
@@ -106,19 +109,12 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
     .map_err(Into::into)
 }
 
-/// Returns the pdu.
-///
-/// Checks database if not found in the timeline.
-// TODO: use cache
-pub fn get_pdu(event_id: &EventId) -> AppResult<PduEvent> {
-    // if let Some(p) = PDU_CACHE.lock().unwrap().get_mut(event_id) {
-    //     return Ok(Some(Arc::clone(p)));
-    // }
-    let (event_sn, json) = event_datas::table
-        .filter(event_datas::event_id.eq(event_id))
-        .select((event_datas::event_sn, event_datas::json_data))
-        .first::<(Seqnum, JsonValue)>(&mut connect()?)?;
-    PduEvent::from_json_value(event_id, event_sn, json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+pub fn get_sn_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
+    let (pdu, event_sn) = super::get_pdu_and_sn(event_id)?;
+    let Some(event_sn) = event_sn else {
+        return Err(MatrixError::not_found(format!("PDU {event_id} event sn is none.")).into());
+    };
+    Ok(SnPduEvent::new(pdu, event_sn))
 }
 
 pub fn has_pdu(event_id: &EventId) -> bool {
@@ -148,16 +144,18 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 /// Returns pdu id
 #[tracing::instrument(skip_all)]
 pub fn append_pdu<'a, L>(
-    pdu: &'a PduEvent,
+    pdu: PduEvent,
     mut pdu_json: CanonicalJsonObject,
     leaves: L,
-    stamp_sn: Seqnum,
     state_lock: &RoomMutexGuard,
-) -> AppResult<()>
+) -> AppResult<SnPduEvent>
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
     let conf = crate::config();
+
+    let event_sn = crate::event::ensure_event_sn(&pdu.room_id, &pdu.event_id)?;
+
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
     // interpret things like membership changes
@@ -194,7 +192,7 @@ where
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
-    super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
+    super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, event_sn)?;
     super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers
@@ -254,7 +252,7 @@ where
     match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
-                redact_pdu(redact_id, pdu)?;
+                redact_pdu(redact_id, &pdu)?;
             }
         }
         TimelineEventType::SpaceChild => {
@@ -280,7 +278,7 @@ where
 
                 let stripped_state = match content.membership {
                     MembershipState::Invite | MembershipState::Knock => {
-                        let state = state::summary_stripped(pdu)?;
+                        let state = state::summary_stripped(&pdu)?;
                         Some(state)
                     }
                     _ => None,
@@ -293,7 +291,7 @@ where
                 // and immediately leaves we need the DB to record the invite event for auth
                 membership::update_membership(
                     &pdu.event_id,
-                    pdu.event_sn,
+                    event_sn,
                     &pdu.room_id,
                     &target_user_id,
                     content.membership,
@@ -336,10 +334,9 @@ where
         _ => {}
     }
 
-    // Insert pdu
     let event_data = DbEventData {
-        event_id: (&*pdu.event_id).to_owned(),
-        event_sn: pdu.event_sn,
+        event_id: pdu.event_id.clone(),
+        event_sn: Some(event_sn),
         room_id: pdu.room_id.to_owned(),
         internal_metadata: None,
         json_data: serde_json::to_value(&pdu_json)?,
@@ -347,15 +344,15 @@ where
     };
     diesel::insert_into(event_datas::table)
         .values(&event_data)
-        .on_conflict((event_datas::event_id, event_datas::event_sn))
+        .on_conflict(event_datas::event_id)
         .do_update()
         .set(&event_data)
         .execute(&mut connect()?)?;
     diesel::update(events::table.find(&*pdu.event_id))
-        .set((events::is_outlier.eq(false), events::stamp_sn.eq(stamp_sn)))
+        .set((events::is_outlier.eq(false), events::sn.eq(event_sn)))
         .execute(&mut connect()?)?;
-    println!("PDU {} appended to room {:?}  stamp_sn: {stamp_sn}", pdu.event_id, pdu);
-    crate::event::search::save_pdu(pdu, &pdu_json)?;
+
+    let sn_pdu = SnPduEvent::new(pdu, event_sn);
 
     // Update Relationships
     #[derive(Deserialize, Clone, Debug)]
@@ -374,39 +371,41 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
-    if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
+    if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(sn_pdu.content.get()) {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
             Relation::Reply { in_reply_to } => {
                 // We need to do it again here, because replies don't have
                 // event_id as a top level field
-                super::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
+                super::pdu_metadata::add_relation(&sn_pdu.room_id, &in_reply_to.event_id, &sn_pdu.event_id, rel_type)?;
                 relates_added = true;
             }
             Relation::Thread(thread) => {
-                super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
+                super::pdu_metadata::add_relation(&sn_pdu.room_id, &thread.event_id, &sn_pdu.event_id, rel_type)?;
                 relates_added = true;
-                super::thread::add_to_thread(&thread.event_id, pdu)?;
+                super::thread::add_to_thread(&thread.event_id, &sn_pdu)?;
             }
             _ => {} // TODO: Aggregate other types
         }
     }
     if !relates_added {
-        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-            super::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
+        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(sn_pdu.content.get()) {
+            super::pdu_metadata::add_relation(&sn_pdu.room_id, &content.relates_to.event_id, &sn_pdu.event_id, None)?;
         }
     }
 
+    crate::event::search::save_sn_pdu(&sn_pdu, &pdu_json)?;
+
     for appservice in crate::appservice::all()?.values() {
-        if super::appservice_in_room(&pdu.room_id, &appservice)? {
-            crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+        if super::appservice_in_room(&sn_pdu.room_id, &appservice)? {
+            crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &sn_pdu.event_id)?;
             continue;
         }
 
         // If the RoomMember event has a non-empty state_key, it is targeted at someone.
         // If it is our appservice user, we send this PDU to it.
-        if pdu.event_ty == TimelineEventType::RoomMember {
-            if let Some(state_key_uid) = &pdu
+        if sn_pdu.event_ty == TimelineEventType::RoomMember {
+            if let Some(state_key_uid) = &sn_pdu
                 .state_key
                 .as_ref()
                 .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
@@ -415,46 +414,50 @@ where
                     UserId::parse_with_server_name(&*appservice.registration.sender_localpart, &conf.server_name).ok()
                 {
                     if state_key_uid == &appservice_uid {
-                        crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+                        crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &sn_pdu.event_id)?;
                         continue;
                     }
                 }
             }
         }
         let matching_users = || {
-            config::server_name() == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
-                || pdu.event_ty == TimelineEventType::RoomMember
-                    && pdu.state_key.as_ref().map_or(false, |state_key| {
+            config::server_name() == sn_pdu.sender.server_name() && appservice.is_user_match(&sn_pdu.sender)
+                || sn_pdu.event_ty == TimelineEventType::RoomMember
+                    && sn_pdu.state_key.as_ref().map_or(false, |state_key| {
                         UserId::parse(state_key).map_or(false, |user_id| {
                             config::server_name() == user_id.server_name() && appservice.is_user_match(&user_id)
                         })
                     })
         };
         let matching_aliases = || {
-            super::local_aliases_for_room(&pdu.room_id)
+            super::local_aliases_for_room(&sn_pdu.room_id)
                 .unwrap_or_default()
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
-                || if let Ok(pdu) = super::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None) {
-                    serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
-                        content
-                            .alias
-                            .map_or(false, |alias| appservice.aliases.is_match(alias.as_str()))
-                            || content
-                                .alt_aliases
-                                .iter()
-                                .any(|alias| appservice.aliases.is_match(alias.as_str()))
-                    })
+                || if let Ok(sn_pdu) = super::get_state(&sn_pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
+                {
+                    serde_json::from_str::<RoomCanonicalAliasEventContent>(sn_pdu.content.get()).map_or(
+                        false,
+                        |content| {
+                            content
+                                .alias
+                                .map_or(false, |alias| appservice.aliases.is_match(alias.as_str()))
+                                || content
+                                    .alt_aliases
+                                    .iter()
+                                    .any(|alias| appservice.aliases.is_match(alias.as_str()))
+                        },
+                    )
                 } else {
                     false
                 }
         };
 
-        if matching_aliases() || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users() {
-            crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+        if matching_aliases() || appservice.rooms.is_match(sn_pdu.room_id.as_str()) || matching_users() {
+            crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &sn_pdu.event_id)?;
         }
     }
-    Ok(())
+    Ok(sn_pdu)
 }
 
 fn increment_notification_counts(
@@ -525,7 +528,7 @@ pub fn create_hash_and_sign_event(
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(timeline::get_pdu(event_id).ok()?.depth))
+        .filter_map(|event_id| Some(room::get_pdu_and_sn(event_id).ok()?.0.depth))
         .max()
         .unwrap_or_else(|| 0)
         + 1;
@@ -549,12 +552,11 @@ pub fn create_hash_and_sign_event(
         }
     }
 
-    let event_id = OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
+    let temp_event_id = OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
-    let event_sn = crate::event::ensure_event_sn(room_id, &event_id)?;
     let new_db_event = NewDbEvent {
-        id: event_id.to_owned(),
-        sn: event_sn,
+        id: temp_event_id.to_owned(),
+        sn: None,
         ty: event_type.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -570,19 +572,16 @@ pub fn create_hash_and_sign_event(
         is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
-        stamp_sn: event_sn,
     };
     diesel::insert_into(events::table)
         .values(&new_db_event)
         .on_conflict(events::id)
         .do_update()
         .set(&new_db_event)
-        .returning(events::sn)
-        .get_result::<Seqnum>(&mut connect()?)?;
+        .execute(&mut connect()?)?;
 
     let mut pdu = PduEvent {
-        event_id: event_id.into(),
-        event_sn,
+        event_id: temp_event_id.clone(),
         event_ty: event_type,
         room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
@@ -637,17 +636,14 @@ pub fn create_hash_and_sign_event(
     let event_id = crate::event::gen_event_id(&pdu_json, &room_version_id)?;
     pdu.event_id = event_id.clone().into();
 
-    diesel::update(events::table.filter(events::sn.eq(event_sn)))
-        .set(events::id.eq(&event_id))
-        .execute(&mut connect()?)?;
-    diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
-        .set(event_points::event_id.eq(&event_id))
-        .execute(&mut connect()?)?;
-
     pdu_json.insert(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
+
+    diesel::update(events::table.find(&*temp_event_id))
+        .set(events::id.eq(&pdu.event_id))
+        .execute(&mut connect()?)?;
 
     Ok((pdu, pdu_json))
 }
@@ -720,7 +716,7 @@ pub fn build_and_append_pdu(
     sender: &UserId,
     room_id: &RoomId,
     state_lock: &RoomMutexGuard,
-) -> AppResult<PduEvent> {
+) -> AppResult<SnPduEvent> {
     if let Some(state_key) = &pdu_builder.state_key {
         if let Ok(curr_state) = super::get_state(room_id, &pdu_builder.event_type.to_string().into(), state_key, None) {
             if curr_state.content.get() == pdu_builder.content.get() {
@@ -740,15 +736,15 @@ pub fn build_and_append_pdu(
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 
-    append_pdu(
-        &pdu,
+    let event_id = pdu.event_id.clone();
+    let sn_pdu = append_pdu(
+        pdu,
         pdu_json,
         // Since this PDU references all pdu_leaves we can update the leaves of the room
-        once(pdu.event_id.borrow()),
-        pdu.event_sn,
+        once(event_id.borrow()),
         state_lock,
     )?;
-    let frame_id = state::append_to_state(&pdu)?;
+    let frame_id = state::append_to_state(&sn_pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
@@ -758,8 +754,8 @@ pub fn build_and_append_pdu(
     let mut servers: HashSet<OwnedServerName> = super::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember {
-        if let Some(state_key_uid) = &pdu
+    if sn_pdu.event_ty == TimelineEventType::RoomMember {
+        if let Some(state_key_uid) = &sn_pdu
             .state_key
             .as_ref()
             .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
@@ -770,67 +766,40 @@ pub fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
+    crate::sending::send_pdu_servers(servers.into_iter(), &sn_pdu.event_id)?;
 
-    Ok(pdu)
-}
-
-/// Append the incoming event setting the state snapshot to the state from the
-/// server that sent the event.
-#[tracing::instrument(skip_all)]
-pub fn append_incoming_pdu<'a, L>(
-    pdu: &'a PduEvent,
-    pdu_json: CanonicalJsonObject,
-    new_room_leaves: L,
-    state_ids_compressed: Arc<CompressedState>,
-    soft_fail: bool,
-    state_lock: &'a RoomMutexGuard,
-) -> AppResult<()>
-where
-    L: Iterator<Item = &'a EventId> + Send + 'a,
-{
-    // We append to state before appending the pdu, so we don't have a moment in time with the
-    // pdu without it's state. This is okay because append_pdu can't fail.
-    state::set_event_state(&pdu.event_id, pdu.event_sn, &pdu.room_id, state_ids_compressed)?;
-
-    if soft_fail {
-        // super::pdu_metadata::mark_as_referenced(&pdu.room_id, &pdu.prev_events)?;
-        state::set_forward_extremities(&pdu.room_id, new_room_leaves, state_lock)?;
-        return Ok(());
-    }
-
-    timeline::append_pdu(pdu, pdu_json, new_room_leaves, data::next_sn()?, state_lock)
+    Ok(sn_pdu)
 }
 
 /// Returns an iterator over all PDUs in a room.
-pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
+pub fn all_sn_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, SnPduEvent)>> {
+    get_sn_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
-pub fn get_pdus_forward(
+pub fn get_sn_pdus_forward(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
+) -> AppResult<Vec<(i64, SnPduEvent)>> {
+    get_sn_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
 }
-pub fn get_pdus_backward(
+pub fn get_sn_pdus_backward(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, PduEvent)>> {
-    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
+) -> AppResult<Vec<(i64, SnPduEvent)>> {
+    get_sn_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
 /// event with id `until` in reverse-chronological order.
 #[tracing::instrument]
-pub fn get_pdus(
+pub fn get_sn_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
@@ -838,9 +807,9 @@ pub fn get_pdus(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
-) -> AppResult<Vec<(Seqnum, PduEvent)>> {
+) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
     // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
-    let mut list: Vec<(Seqnum, PduEvent)> = Vec::with_capacity(limit.max(10).min(100));
+    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.max(10).min(100));
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
@@ -851,19 +820,15 @@ pub fn get_pdus(
         let mut query = events::table.filter(events::room_id.eq(room_id)).into_boxed();
         if let Some(until_sn) = until_sn {
             if dir == Direction::Forward {
-                query = query
-                    .filter(events::stamp_sn.le(until_sn))
-                    .filter(events::stamp_sn.ge(since_sn));
+                query = query.filter(events::sn.le(until_sn)).filter(events::sn.ge(since_sn));
             } else {
-                query = query
-                    .filter(events::stamp_sn.le(since_sn))
-                    .filter(events::stamp_sn.ge(until_sn));
+                query = query.filter(events::sn.le(since_sn)).filter(events::sn.ge(until_sn));
             }
         } else {
             if dir == Direction::Forward {
-                query = query.filter(events::stamp_sn.ge(since_sn));
+                query = query.filter(events::sn.ge(since_sn));
             } else {
-                query = query.filter(events::stamp_sn.le(since_sn));
+                query = query.filter(events::sn.le(since_sn));
             }
         }
 
@@ -896,40 +861,48 @@ pub fn get_pdus(
                 }
             }
         }
-        query = query.filter(events::is_outlier.eq(false));
-        let events: Vec<(OwnedEventId, Seqnum, Seqnum)> = if dir == Direction::Forward {
+        query = query
+            .filter(events::is_outlier.eq(false))
+            .filter(events::sn.is_not_null());
+        let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             events::table
-                .filter(events::id.eq_any(query.filter(events::stamp_sn.gt(start_sn)).select(events::id)))
+                .filter(events::id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
                 // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn, events::stamp_sn))
-                .load::<(OwnedEventId, Seqnum, Seqnum)>(&mut connect()?)?
+                .select((events::id, events::sn))
+                .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
+                .into_iter()
+                .filter_map(|(id, sn)| sn.map(|sn| (id, sn)))
+                .collect()
         } else {
             events::table
-                .filter(events::id.eq_any(query.filter(events::stamp_sn.lt(start_sn)).select(events::id)))
+                .filter(events::id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
                 .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
                 // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn, events::stamp_sn))
-                .load::<(OwnedEventId, Seqnum, Seqnum)>(&mut connect()?)?
+                .select((events::id, events::sn))
+                .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
+                .into_iter()
+                .filter_map(|(id, sn)| sn.map(|sn| (id, sn)))
+                .collect()
         };
         if events.is_empty() {
             break;
         }
         start_sn = if dir == Direction::Forward {
-            if let Some(stamp_sn) = events.iter().map(|(_, _, stamp_sn)| stamp_sn).max() {
-                *stamp_sn
+            if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
+                *sn
             } else {
                 break;
             }
         } else {
-            if let Some(stamp_sn) = events.iter().map(|(_, _, stamp_sn)| stamp_sn).min() {
-                *stamp_sn
+            if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
+                *sn
             } else {
                 break;
             }
         };
-        for (event_id, event_sn, _) in events {
-            if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
+        for (event_id, event_sn) in events {
+            if let Ok(mut pdu) = timeline::get_sn_pdu(&event_id) {
                 if state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
@@ -955,9 +928,9 @@ pub fn get_pdus(
 #[tracing::instrument(skip(reason))]
 pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
-    if let Ok(mut pdu) = get_pdu(event_id) {
-        pdu.redact(reason)?;
-        replace_pdu(event_id, &utils::to_canonical_object(&pdu)?)?;
+    if let Ok(mut sn_pdu) = get_sn_pdu(event_id) {
+        sn_pdu.redact(reason)?;
+        replace_pdu(event_id, &utils::to_canonical_object(&sn_pdu)?)?;
         diesel::update(events::table.filter(events::id.eq(event_id)))
             .set(events::is_redacted.eq(true))
             .execute(&mut connect()?)?;
@@ -969,7 +942,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
+    let pdus = all_sn_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
     let first_pdu = pdus.first();
 
     let Some(first_pdu) = first_pdu else {
@@ -1031,26 +1004,26 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(pdu_id) = timeline::get_pdu(&event_id) {
-        info!("We already know {event_id} at {pdu_id:?}");
+    if let Ok(sn_pdu) = timeline::get_sn_pdu(&event_id) {
+        info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
 
     crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
-    let value = get_pdu_json(&event_id)?.expect("We just created it");
-    let pdu = get_pdu(&event_id)?;
+    let value = get_pdu_json(&event_id)?.expect("we just created it");
+    let sn_pdu = get_sn_pdu(&event_id)?;
 
     // // Insert pdu
     // prepend_backfill_pdu(&pdu, &event_id, &value)?;
 
-    if pdu.event_ty == TimelineEventType::RoomMessage {
+    if sn_pdu.event_ty == TimelineEventType::RoomMessage {
         #[derive(Deserialize)]
         struct ExtractBody {
             body: Option<String>,
         }
 
-        let content = serde_json::from_str::<ExtractBody>(pdu.content.get())
+        let content = serde_json::from_str::<ExtractBody>(sn_pdu.content.get())
             .map_err(|_| AppError::internal("Invalid content in pdu."))?;
     }
 

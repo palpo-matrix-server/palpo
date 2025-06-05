@@ -72,7 +72,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events = timeline::get_pdus_forward(
+            let events = timeline::get_sn_pdus_forward(
                 authed.user_id(),
                 &args.room_id,
                 from,
@@ -113,9 +113,8 @@ pub(super) async fn get_messages(
                 from
             };
             let events =
-                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
+                timeline::get_sn_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
 
-            println!("================get messages events: {:#?}", events);
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417
@@ -219,7 +218,7 @@ pub(super) async fn send_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )?.pdu
     .event_id;
 
     crate::transaction_id::add_txn_id(
@@ -272,7 +271,7 @@ pub(super) async fn post_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )?.pdu
     .event_id;
 
     json_ok(SendMessageResBody::new((*event_id).to_owned()))
