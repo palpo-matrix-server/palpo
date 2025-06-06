@@ -40,7 +40,7 @@ pub(super) async fn state_at_incoming_resolved(
     room_version_id: &RoomVersionId,
 ) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
     debug!("Calculating state at event using state res");
-    let mut extremity_sstate_hashes = HashMap::new();
+    let mut extremity_state_hashes = HashMap::new();
 
     let mut okay = true;
     for prev_event_id in &incoming_pdu.prev_events {
@@ -58,16 +58,16 @@ pub(super) async fn state_at_incoming_resolved(
             break;
         };
 
-        extremity_sstate_hashes.insert(sstate_hash, prev_event);
+        extremity_state_hashes.insert(sstate_hash, prev_event);
     }
     if !okay {
         return Ok(None);
     }
 
-    let mut fork_states = Vec::with_capacity(extremity_sstate_hashes.len());
-    let mut auth_chain_sets = Vec::with_capacity(extremity_sstate_hashes.len());
+    let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
+    let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
 
-    for (sstate_hash, prev_event) in extremity_sstate_hashes {
+    for (sstate_hash, prev_event) in extremity_state_hashes {
         let mut leaf_state: HashMap<_, _> = state::get_full_state_ids(sstate_hash)?;
 
         if let Some(state_key) = &prev_event.state_key {

@@ -11,7 +11,6 @@ use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use fetch_state::fetch_state;
-use palpo_data::schema::device_inboxes::json_data;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -307,13 +306,14 @@ fn process_to_outlier_pdu<'a>(
     })
 }
 
-#[tracing::instrument(skip(incoming_pdu, val))]
+#[tracing::instrument(skip(incoming_pdu, json_data))]
 pub async fn process_to_timeline_pdu(
     incoming_pdu: PduEvent,
     json_data: BTreeMap<String, CanonicalJsonValue>,
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
+    println!("==========incoming pdu: {:#?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
@@ -322,7 +322,7 @@ pub async fn process_to_timeline_pdu(
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
-
+println!("==========incoming pdu 0");
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let timer = Instant::now();
     let room_version_id = &room::get_version(room_id)?;
@@ -332,6 +332,7 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
 
+    let event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(&incoming_pdu).await?
     } else {
@@ -345,6 +346,7 @@ pub async fn process_to_timeline_pdu(
         Some(state) => state,
     };
 
+println!("==========incoming pdu 2");
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
     event_auth::auth_check(
@@ -359,6 +361,7 @@ pub async fn process_to_timeline_pdu(
         },
     )?;
 
+println!("==========incoming pdu 3");
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
@@ -383,6 +386,7 @@ pub async fn process_to_timeline_pdu(
         }
     };
 
+println!("==========incoming pdu 4");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
@@ -399,6 +403,7 @@ pub async fn process_to_timeline_pdu(
         }
     }
 
+println!("==========incoming pdu 5");
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
@@ -412,6 +417,7 @@ pub async fn process_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
+println!("==========incoming pdu 6");
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
 
@@ -424,7 +430,6 @@ pub async fn process_to_timeline_pdu(
             state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         }
 
-        let event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
         let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
@@ -439,6 +444,7 @@ pub async fn process_to_timeline_pdu(
         state::force_state(room_id, frame_id, appended, disposed)?;
     }
 
+println!("==========incoming pdu 7");
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
@@ -458,6 +464,7 @@ pub async fn process_to_timeline_pdu(
         state::set_event_state(&sn_pdu.event_id, sn_pdu.event_sn, &sn_pdu.room_id, compressed_state_ids)?;
     }
 
+println!("==========incoming pdu 8");
     // Event has passed all auth/stateres checks
     drop(state_lock);
     Ok(())
@@ -468,6 +475,7 @@ async fn resolve_state(
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
+    println!("Loading current room state ids, incoming_state: {incoming_state:#?}");
     debug!("Loading current room state ids");
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
@@ -511,12 +519,20 @@ async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        |id| match timeline::get_sn_pdu(id) {
-            Err(e) => {
-                error!("LOOK AT ME Failed to fetch event: {}", e);
-                None
+        |id| {
+            println!(
+                "AAAAAA  id: {id}    {:#?}",
+                events::table
+                    .filter(events::room_id.eq(room_id))
+                    .load::<crate::data::room::DbEvent>(&mut connect().unwrap())
+            );
+            match timeline::get_sn_pdu(id) {
+                Err(e) => {
+                    error!("LOOK AT ME Failed to fetch event: {}", e);
+                    None
+                }
+                Ok(pdu) => Some(pdu),
             }
-            Ok(pdu) => Some(pdu),
         },
     ) {
         Ok(new_state) => new_state,

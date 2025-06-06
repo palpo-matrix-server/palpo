@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json, handler};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::CompressedEvent;
 use crate::room::state::DeltaInfo;
@@ -185,8 +185,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
     println!("=============send_join_v1  12");
-    crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true)
-        .await?;
+    handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true).await?;
 
     println!("=============send_join_v1  13");
     let state_ids = state::get_full_state_ids(frame_id)?;

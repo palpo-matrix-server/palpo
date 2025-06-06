@@ -45,12 +45,20 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum
     {
         Ok(sn)
     } else {
-        diesel::insert_into(event_points::table)
+        let sn = diesel::insert_into(event_points::table)
             .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
             .on_conflict_do_nothing()
             .returning(event_points::event_sn)
-            .get_result::<Seqnum>(&mut connect()?)
-            .map_err(Into::into)
+            .get_result::<Seqnum>(&mut connect()?)?;
+
+        diesel::update(events::table.find(event_id))
+            .set(events::sn.eq(sn))
+            .execute(&mut connect()?)?;
+
+        diesel::update(event_datas::table.find(event_id))
+            .set(event_datas::event_sn.eq(sn))
+            .execute(&mut connect()?)?;
+        Ok(sn)
     }
 }
 /// Returns the `count` of this pdu's id.
