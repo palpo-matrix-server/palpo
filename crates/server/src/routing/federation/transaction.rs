@@ -32,7 +32,7 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!("RRRRRRRRRRReceived transaction from {origin} with body: {body:#?}");
+    println!("\n\n\nRRRRRRRRRRReceived transaction from {origin} with body: {body:#?}");
     if &body.origin != origin {
         return Err(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
@@ -58,7 +58,6 @@ async fn send_message(
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
-    println!("RRRRRRRRRRReceived transaction  2");
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -76,9 +75,12 @@ async fn process_pdus(
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
-            Ok(t) => t,
+            Ok(t) =>{
+                println!("sssssss");t
+            } ,
             Err(e) => {
                 warn!("Could not parse PDU: {e}");
+                 println!("ssssffff");
                 continue;
             }
         });
@@ -90,6 +92,7 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
+        println!("processing pdu == 1: {event_id}");
         let result = handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true).await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
@@ -100,7 +103,7 @@ async fn process_pdus(
         resolved_map.insert(event_id, result);
     }
 
-    println!("processing pdu 2");
+    println!("processing pdu 2  resolved_map: {resolved_map:#?}");
     for (id, result) in &resolved_map {
         if let Err(e) = result {
             if matches!(e, AppError::Matrix(_)) {

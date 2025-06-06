@@ -124,9 +124,6 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-    fetch_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
-
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -172,7 +169,7 @@ fn process_to_outlier_pdu<'a>(
             MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
         })?;
 
-        let origin_server_ts: UnixMillis = {
+        let origin_server_ts = {
             let ts = origin_server_ts
                 .as_integer()
                 .ok_or_else(|| MatrixError::invalid_param("origin_server_ts must be an integer"))?;
@@ -213,9 +210,9 @@ fn process_to_outlier_pdu<'a>(
         );
         let incoming_pdu = PduEvent::from_json_value(
             event_id,
-            serde_json::to_value(&val).expect("CanonicalJsonObj is a valid JsonValue"),
+            serde_json::to_value(&val).expect("CanonicalJson is a valid JsonValue"),
         )
-        .map_err(|_| AppError::internal("Event is not a valid PDU."))?;
+        .map_err(|_| AppError::internal("event is not a valid PDU."))?;
 
         check_room_id(room_id, &incoming_pdu)?;
 
@@ -223,12 +220,12 @@ fn process_to_outlier_pdu<'a>(
             // 4. fetch any missing auth events doing all checks listed here starting at 1. These are not timeline events
             // 5. Reject "due to auth events" if can't get all the auth events or some of the auth events are also rejected "due to auth events"
             // NOTE: Step 5 is not applied anymore because it failed too often
-            debug!(event_id = ?incoming_pdu.event_id, "Fetching auth events");
+            debug!(event_id = ?incoming_pdu.event_id, "fetching auth events");
             fetch_and_process_outliers(origin, &incoming_pdu.auth_events, room_id, room_version_id).await?;
         }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
-        debug!("Auth check for {} based on auth events", incoming_pdu.event_id);
+        debug!("auth check for {} based on auth events", incoming_pdu.event_id);
 
         // Build map of auth events
         let mut auth_events = HashMap::new();
@@ -236,7 +233,7 @@ fn process_to_outlier_pdu<'a>(
             let (auth_event, event_sn) = match room::get_pdu_and_sn(id) {
                 Ok(e) => e,
                 Err(_) => {
-                    warn!("Could not find auth event {}", id);
+                    warn!("cCould not find auth event {}", id);
                     continue;
                 }
             };
@@ -252,7 +249,7 @@ fn process_to_outlier_pdu<'a>(
                 }
                 hash_map::Entry::Occupied(_) => {
                     return Err(MatrixError::invalid_param(
-                        "Auth event's type and state_key combination exists multiple times.",
+                        "auth event's type and state_key combination exists multiple times.",
                     )
                     .into());
                 }
@@ -264,21 +261,27 @@ fn process_to_outlier_pdu<'a>(
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
             Some(_) | None
         ) {
-            return Err(MatrixError::invalid_param("Incoming event refers to wrong create event.").into());
+            return Err(MatrixError::invalid_param("incoming event refers to wrong create event").into());
         }
 
-        event_auth::auth_check(
+        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+        fetch_and_process_missing_events(origin, room_id, room_version_id, &incoming_pdu).await?;
+
+        let auth_result = event_auth::auth_check(
             &room_version,
             &incoming_pdu,
             None::<PduEvent>, // TODO: third party invite
             |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
-        )?;
+        );
 
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, None, &val)?;
         db_event.is_outlier = true;
+        if let Err(e) = &auth_result {
+            db_event.rejection_reason = Some(e.to_string())
+        };
 
         diesel::insert_into(events::table)
             .values(db_event)
@@ -300,9 +303,9 @@ fn process_to_outlier_pdu<'a>(
             .execute(&mut connect()?)
             .unwrap();
 
-        debug!("Added pdu as outlier.");
+        debug!("added pdu as outlier");
 
-        Ok((incoming_pdu, val))
+        auth_result.map(|_| (incoming_pdu, val)).map_err(Into::into)
     })
 }
 
@@ -318,6 +321,15 @@ pub async fn process_to_timeline_pdu(
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
+    let event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
+
+    println!("==========incoming pdu  {event_sn}   {}", incoming_pdu.event_id);
+    println!(
+        "==========incoming pdu {:#?}",
+        events::table
+            .find(&incoming_pdu.event_id)
+            .first::<palpo_data::room::DbEvent>(&mut connect()?)
+    );
 
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
@@ -332,7 +344,6 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
 
-    let event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(&incoming_pdu).await?
     } else {
@@ -702,7 +713,7 @@ pub(crate) async fn fetch_and_process_outliers(
     Ok(pdus)
 }
 
-pub async fn fetch_missing_prev_events(
+pub async fn fetch_and_process_missing_events(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
