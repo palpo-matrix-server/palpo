@@ -189,7 +189,7 @@ diesel::table! {
 
     event_datas (event_id) {
         event_id -> Text,
-        event_sn -> Nullable<Int8>,
+        event_sn -> Int8,
         room_id -> Text,
         internal_metadata -> Nullable<Json>,
         format_version -> Nullable<Int8>,
@@ -319,7 +319,7 @@ diesel::table! {
 
     events (id) {
         id -> Text,
-        sn -> Nullable<Int8>,
+        sn -> Int8,
         ty -> Text,
         room_id -> Text,
         depth -> Int8,

@@ -425,7 +425,7 @@ CREATE INDEX IF NOT EXISTS user_dehydrated_devices_user_idx
 drop table if exists events CASCADE;
 CREATE TABLE events (
     id text NOT NULL PRIMARY KEY,
-    sn bigint,
+    sn bigint NOT NULL,
     ty text NOT NULL,
     room_id text NOT NULL,
     depth bigint DEFAULT 0 NOT NULL,
@@ -445,6 +445,17 @@ CREATE TABLE events (
     CONSTRAINT events_id_sn_udx UNIQUE (id, sn)
 );
 
+drop table if exists event_datas CASCADE;
+CREATE TABLE event_datas
+(
+    event_id text NOT NULL PRIMARY KEY,
+    event_sn bigint NOT NULL,
+    room_id text NOT NULL,
+    internal_metadata json,
+    format_version bigint,
+    json_data json NOT NULL,
+    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
+);
 
 DROP TABLE IF EXISTS event_points CASCADE;
 CREATE TABLE event_points
@@ -469,30 +480,6 @@ CREATE INDEX threads_event_sn_idx
     ON threads USING btree
     (room_id ASC NULLS LAST, event_sn ASC NULLS LAST);
 
-drop table if exists event_datas CASCADE;
-CREATE TABLE event_datas
-(
-    event_id text NOT NULL PRIMARY KEY,
-    event_sn bigint,
-    room_id text NOT NULL,
-    internal_metadata json,
-    format_version bigint,
-    json_data json NOT NULL,
-    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
-);
--- CREATE TABLE event_shorts {
---     id bigserial NOT NULL PRIMARY KEY,
---     event_id text NOT NULL
--- };
--- ALTER TABLE ONLY event_shorts
---     ADD CONSTRAINT event_shorts_udx UNIQUE (event_id);
-    
--- CREATE TABLE room_shorts {
---     id bigserial NOT NULL PRIMARY KEY,
---     room_id text NOT NULL
--- };
--- ALTER TABLE ONLY room_shorts
---     ADD CONSTRAINT room_shorts_udx UNIQUE (room_id);
 
 DROP TABLE IF EXISTS room_state_frames CASCADE;
 CREATE TABLE room_state_frames

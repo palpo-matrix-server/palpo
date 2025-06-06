@@ -1,7 +1,7 @@
 use crate::AppResult;
 use crate::core::{EventId, MatrixError, RoomId, ServerName};
-use crate::room::{self, state};
 use crate::event::handler;
+use crate::room::{self, state};
 
 pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&EventId>) -> AppResult<()> {
     if !room::is_server_joined(origin, room_id)? {

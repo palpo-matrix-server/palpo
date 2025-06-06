@@ -392,7 +392,10 @@ pub fn auth_check<E: Event>(
     // level, reject If the event has a state_key that starts with an @ and does
     // not match the sender, reject.
     if !can_send_event(&incoming_event, power_levels_event.as_ref(), sender_power_level) {
-        return Err(MatrixError::forbidden("you don't have permission to post that to the room", None));
+        return Err(MatrixError::forbidden(
+            "you don't have permission to post that to the room",
+            None,
+        ));
     }
 
     // If type is m.room.power_levels

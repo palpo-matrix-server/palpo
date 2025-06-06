@@ -180,9 +180,9 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
 
     // TODO: event_sn??, outlier but has sn??
     let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let new_db_event = NewDbEvent {
+    NewDbEvent {
         id: event_id.to_owned(),
-        sn: None,
+        sn: event_sn,
         ty: MembershipState::Leave.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -198,29 +198,23 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
-    };
-    diesel::insert_into(events::table)
-        .values(&new_db_event)
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
+    }
+    .save()?;
     // Add event_id back
     leave_event_stub.insert(
         "event_id".to_owned(),
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
 
-    let event_data = DbEventData {
+    DbEventData {
         event_id: event_id.clone(),
-        event_sn: Some(event_sn),
+        event_sn,
         room_id: room_id.to_owned(),
         internal_metadata: None,
         json_data: serde_json::to_value(&leave_event_stub)?,
         format_version: None,
-    };
-    diesel::insert_into(event_datas::table)
-        .values(&event_data)
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
+    }
+    .save()?;
 
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;

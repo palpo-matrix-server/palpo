@@ -29,7 +29,7 @@ use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, handler,PduBuilder, PduEvent};
+use crate::event::{EventHash, PduBuilder, PduEvent, handler};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
 use crate::{
@@ -60,8 +60,8 @@ pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
         .filter(events::sn.is_not_null())
         .select(events::sn)
         .order(events::sn.desc())
-        .first::<Option<Seqnum>>(&mut connect()?)?;
-    Ok(event_sn.expect("event sn should not none"))
+        .first::<Seqnum>(&mut connect()?)?;
+    Ok(event_sn)
 }
 
 /// Returns the json of a pdu.
@@ -79,11 +79,11 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 ///
 /// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> {
-    let Some(Some(event_sn)) = events::table
+    let Some(event_sn) = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id))
         .select(events::sn)
-        .first::<Option<Seqnum>>(&mut connect()?)
+        .first::<Seqnum>(&mut connect()?)
         .optional()?
     else {
         return Ok(None);
@@ -110,10 +110,11 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 }
 
 pub fn get_sn_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
-    let (pdu, event_sn) = super::get_pdu_and_sn(event_id)?;
-    let Some(event_sn) = event_sn else {
-        return Err(MatrixError::not_found(format!("PDU {event_id} event sn is none.")).into());
-    };
+    let (event_sn, json) = event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select((event_datas::event_sn, event_datas::json_data))
+        .first::<(Seqnum, JsonValue)>(&mut connect()?)?;
+    let pdu = PduEvent::from_json_value(event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))?;
     Ok(SnPduEvent::new(pdu, event_sn))
 }
 
@@ -334,20 +335,14 @@ where
         _ => {}
     }
 
-    let event_data = DbEventData {
+    DbEventData {
         event_id: pdu.event_id.clone(),
-        event_sn: Some(event_sn),
+        event_sn,
         room_id: pdu.room_id.to_owned(),
         internal_metadata: None,
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
-    };
-    diesel::insert_into(event_datas::table)
-        .values(&event_data)
-        .on_conflict(event_datas::event_id)
-        .do_update()
-        .set(&event_data)
-        .execute(&mut connect()?)?;
+    }.save()?;
     diesel::update(events::table.find(&*pdu.event_id))
         .set((events::is_outlier.eq(false), events::sn.eq(event_sn)))
         .execute(&mut connect()?)?;
@@ -528,7 +523,7 @@ pub fn create_hash_and_sign_event(
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(room::get_pdu_and_sn(event_id).ok()?.0.depth))
+        .filter_map(|event_id| Some(timeline::get_sn_pdu(event_id).ok()?.0.depth))
         .max()
         .unwrap_or_else(|| 0)
         + 1;
@@ -554,9 +549,10 @@ pub fn create_hash_and_sign_event(
 
     let temp_event_id = OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(&content.get())?;
-    let new_db_event = NewDbEvent {
+    let event_sn = crate::event::ensure_event_sn(room_id, &temp_event_id)?;
+    NewDbEvent {
         id: temp_event_id.to_owned(),
-        sn: None,
+        sn: event_sn,
         ty: event_type.to_string(),
         room_id: room_id.to_owned(),
         unrecognized_keys: None,
@@ -572,13 +568,8 @@ pub fn create_hash_and_sign_event(
         is_outlier: true,
         soft_failed: false,
         rejection_reason: None,
-    };
-    diesel::insert_into(events::table)
-        .values(&new_db_event)
-        .on_conflict(events::id)
-        .do_update()
-        .set(&new_db_event)
-        .execute(&mut connect()?)?;
+    }
+    .save()?;
 
     let mut pdu = PduEvent {
         event_id: temp_event_id.clone(),
@@ -773,9 +764,9 @@ pub fn build_and_append_pdu(
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_sn_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_sn_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
+    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
-pub fn get_sn_pdus_forward(
+pub fn get_pdus_forward(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
@@ -783,9 +774,9 @@ pub fn get_sn_pdus_forward(
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_sn_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
+    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Forward)
 }
-pub fn get_sn_pdus_backward(
+pub fn get_pdus_backward(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
@@ -793,13 +784,13 @@ pub fn get_sn_pdus_backward(
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_sn_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
+    get_pdus(user_id, room_id, since_sn, until_sn, limit, filter, Direction::Backward)
 }
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
 /// event with id `until` in reverse-chronological order.
 #[tracing::instrument]
-pub fn get_sn_pdus(
+pub fn get_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     since_sn: Seqnum,
@@ -870,9 +861,8 @@ pub fn get_sn_pdus(
                 .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
                 // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
-                .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
+                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                 .into_iter()
-                .filter_map(|(id, sn)| sn.map(|sn| (id, sn)))
                 .collect()
         } else {
             events::table
@@ -880,9 +870,8 @@ pub fn get_sn_pdus(
                 .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
                 // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
-                .load::<(OwnedEventId, Option<Seqnum>)>(&mut connect()?)?
+                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                 .into_iter()
-                .filter_map(|(id, sn)| sn.map(|sn| (id, sn)))
                 .collect()
         };
         if events.is_empty() {

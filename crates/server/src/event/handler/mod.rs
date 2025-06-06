@@ -26,7 +26,7 @@ use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{PduEvent, handler};
+use crate::event::{PduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
@@ -230,7 +230,7 @@ fn process_to_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
-            let (auth_event, event_sn) = match room::get_pdu_and_sn(id) {
+            let auth_event = match timeline::get_sn_pdu(id) {
                 Ok(e) => e,
                 Err(_) => {
                     warn!("cCould not find auth event {}", id);
@@ -277,31 +277,21 @@ fn process_to_outlier_pdu<'a>(
         debug!("Validation successful.");
 
         // 7. Persist the event as an outlier.
-        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, None, &val)?;
+        let event_sn = ensure_event_sn(room_id, event_id)?;
+        let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
         db_event.is_outlier = true;
         if let Err(e) = &auth_result {
             db_event.rejection_reason = Some(e.to_string())
         };
-
-        diesel::insert_into(events::table)
-            .values(db_event)
-            .on_conflict_do_nothing()
-            .execute(&mut connect()?)?;
-        let event_data = DbEventData {
+        DbEventData {
             event_id: (&*incoming_pdu.event_id).to_owned(),
-            event_sn: None,
+            event_sn,
             room_id: incoming_pdu.room_id.clone(),
             internal_metadata: None,
             json_data: serde_json::to_value(&val)?,
             format_version: None,
-        };
-        diesel::insert_into(event_datas::table)
-            .values(&event_data)
-            .on_conflict(event_datas::event_id)
-            .do_update()
-            .set(&event_data)
-            .execute(&mut connect()?)
-            .unwrap();
+        }
+        .save()?;
 
         debug!("added pdu as outlier");
 
@@ -368,7 +358,7 @@ pub async fn process_to_timeline_pdu(
             state::ensure_field_id(&k.to_string().into(), s)
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
-                .and_then(|event_id| room::get_pdu_and_sn(event_id).ok().map(|(pdu, _)| pdu))
+                .and_then(|event_id| timeline::get_sn_pdu(event_id).ok())
         },
     )?;
 
@@ -587,7 +577,7 @@ pub(crate) async fn fetch_and_process_outliers(
     for id in events {
         // a. Look in the main timeline (pduid_pdu tree)
         // b. Look at outlier pdu tree (get_pdu_json checks both)
-        if let Ok((local_pdu, _)) = room::get_pdu_and_sn(id) {
+        if let Ok(local_pdu) = timeline::get_sn_pdu(id) {
             trace!("Found {} in db", id);
             events_with_auth_events.push((id, Some(local_pdu), vec![]));
             continue;
@@ -693,7 +683,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
             }
 
-            if let Ok((pdu, _)) = room::get_pdu_and_sn(&next_id) {
+            if let Ok(pdu) = timeline::get_sn_pdu(&next_id) {
                 pdus.push((pdu, Some(value)));
                 continue;
             }

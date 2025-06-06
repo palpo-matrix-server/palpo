@@ -15,7 +15,7 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
-use crate::event::{PduBuilder, PduEvent, handler, ensure_event_sn, gen_event_id};
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{

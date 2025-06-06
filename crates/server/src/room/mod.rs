@@ -112,19 +112,6 @@ pub fn get_current_frame_id(room_id: &RoomId) -> AppResult<Option<i64>> {
         .map_err(Into::into)
 }
 
-/// Returns the pdu.
-///
-/// Checks database if not found in the timeline.
-// TODO: use cache
-pub fn get_pdu_and_sn(event_id: &EventId) -> AppResult<(PduEvent, Option<Seqnum>)> {
-    let (event_sn, json) = event_datas::table
-        .filter(event_datas::event_id.eq(event_id))
-        .select((event_datas::event_sn, event_datas::json_data))
-        .first::<(Option<Seqnum>, JsonValue)>(&mut connect()?)?;
-    let pdu = PduEvent::from_json_value(event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))?;
-    Ok((pdu, event_sn))
-}
-
 pub fn is_disabled(room_id: &RoomId) -> AppResult<bool> {
     rooms::table
         .filter(rooms::id.eq(room_id))

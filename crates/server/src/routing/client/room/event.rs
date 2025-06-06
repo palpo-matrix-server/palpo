@@ -28,7 +28,7 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
 
-    let event = room::get_pdu_and_sn(&args.event_id)?.0;
+    let event = timeline::get_sn_pdu(&args.event_id)?.0;
 
     if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
         return Err(MatrixError::not_found("Event not found.").into());
@@ -51,7 +51,7 @@ pub(super) fn report(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let pdu = room::get_pdu_and_sn(&args.event_id)?.0;
+    let pdu = timeline::get_sn_pdu(&args.event_id)?.0;
 
     if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
         return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
@@ -115,7 +115,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_token =
         crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
 
-    let base_event = room::get_pdu_and_sn(&args.event_id)?.0;
+    let base_event = timeline::get_sn_pdu(&args.event_id)?.0;
 
     let room_id = base_event.room_id.clone();
 
@@ -199,7 +199,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         } = state::get_field(field_id)?;
 
         if event_ty != StateEventType::RoomMember {
-            let pdu = match room::get_pdu_and_sn(&event_id) {
+            let pdu = match timeline::get_sn_pdu(&event_id) {
                 Ok((pdu, _)) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
@@ -208,8 +208,8 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
             };
             state.push(pdu.to_state_event());
         } else if !lazy_load_enabled || lazy_loaded.contains(&state_key) {
-            let pdu = match room::get_pdu_and_sn(&event_id) {
-                Ok((pdu, _)) => pdu,
+            let pdu = match timeline::get_sn_pdu(&event_id) {
+                Ok(pdu) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
                     continue;

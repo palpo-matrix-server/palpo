@@ -253,9 +253,8 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => pdu_jsons.push(
-                        room::get_pdu_and_sn(event_id)
+                        timeline::get_sn_pdu(event_id)
                             .map_err(|e| (kind.clone(), e))?
-                            .0
                             .to_room_event(),
                     ),
                     SendingEventType::Edu(_) => {
@@ -301,7 +300,7 @@ async fn send_events(
             for event in &events {
                 match event {
                     SendingEventType::Pdu(event_id) => {
-                        pdus.push(room::get_pdu_and_sn(event_id).map_err(|e| (kind.clone(), e))?.0);
+                        pdus.push(timeline::get_sn_pdu(event_id).map_err(|e| (kind.clone(), e))?);
                     }
                     SendingEventType::Edu(_) => {
                         // Push gateways don't need EDUs (?)

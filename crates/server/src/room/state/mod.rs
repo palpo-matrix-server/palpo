@@ -437,7 +437,7 @@ pub async fn user_can_redact(
     room_id: &RoomId,
     federation: bool,
 ) -> AppResult<bool> {
-    let redacting_event = room::get_pdu_and_sn(redacts).map(|(pdu, _)| pdu);
+    let redacting_event = timeline::get_sn_pdu(redacts);
 
     if redacting_event
         .as_ref()

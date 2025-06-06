@@ -3,7 +3,7 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::federation::membership::InviteUserResBodyV2;
 use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
-use crate::event::{PduBuilder, handler, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, gen_event_id_canonical_json, handler};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
 use crate::room::{state, timeline};
 use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data, room, sending};

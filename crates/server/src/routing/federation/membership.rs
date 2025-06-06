@@ -10,8 +10,8 @@ use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
-use crate::federation::maybe_strip_event_id;
 use crate::event::handler;
+use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, SnPduEvent, config,

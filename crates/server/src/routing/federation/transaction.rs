@@ -75,12 +75,13 @@ async fn process_pdus(
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
-            Ok(t) =>{
-                println!("sssssss");t
-            } ,
+            Ok(t) => {
+                println!("sssssss");
+                t
+            }
             Err(e) => {
                 warn!("Could not parse PDU: {e}");
-                 println!("ssssffff");
+                println!("ssssffff");
                 continue;
             }
         });

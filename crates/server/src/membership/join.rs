@@ -246,7 +246,11 @@ pub async fn join_room(
     })?;
     println!("parsed_join_pdu: {parsed_join_pdu:?}");
     diesel::insert_into(events::table)
-        .values(NewDbEvent::from_canonical_json(&event_id, None, &join_event)?)
+        .values(NewDbEvent::from_canonical_json(
+            &event_id,
+            ensure_event_sn(room_id, &event_id)?,
+            &join_event,
+        )?)
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;
 
@@ -276,7 +280,8 @@ pub async fn join_room(
             error!("Failed to fetch missing prev events for join: {e}");
         }
     }
-    if let Err(e) = fetch_and_process_missing_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu).await {
+    if let Err(e) = fetch_and_process_missing_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu).await
+    {
         error!("Failed to fetch missing prev events for join: {e}");
     }
 
@@ -301,25 +306,16 @@ pub async fn join_room(
                 AppError::public("Invalid PDU in send_join response.")
             })?;
 
-            diesel::insert_into(events::table)
-                .values(NewDbEvent::from_canonical_json(&event_id, Some(event_sn), &value)?)
-                .on_conflict_do_nothing()
-                .execute(&mut connect()?)?;
-
-            let event_data = DbEventData {
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            DbEventData {
                 event_id: pdu.event_id.to_owned().into(),
-                event_sn: Some(event_sn),
+                event_sn,
                 room_id: pdu.room_id.clone(),
                 internal_metadata: None,
                 json_data: serde_json::to_value(&value)?,
                 format_version: None,
-            };
-            diesel::insert_into(event_datas::table)
-                .values(&event_data)
-                .on_conflict(event_datas::event_id)
-                .do_update()
-                .set(&event_data)
-                .execute(&mut connect()?)?;
+            }
+            .save()?;
 
             pdu
         };
@@ -344,26 +340,16 @@ pub async fn join_room(
 
         if !timeline::has_pdu(&event_id) {
             let event_sn = ensure_event_sn(&room_id, &event_id)?;
-            let db_event = NewDbEvent::from_canonical_json(&event_id, Some(event_sn), &value)?;
-            diesel::insert_into(events::table)
-                .values(&db_event)
-                .on_conflict_do_nothing()
-                .execute(&mut connect()?)?;
-            let event_data = DbEventData {
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            DbEventData {
                 event_id: event_id.to_owned(),
-                event_sn: Some(event_sn),
-                room_id: db_event.room_id.clone(),
+                event_sn,
+                room_id: room_id.clone(),
                 internal_metadata: None,
                 json_data: serde_json::to_value(&value)?,
                 format_version: None,
-            };
-
-            diesel::insert_into(event_datas::table)
-                .values(&event_data)
-                .on_conflict(event_datas::event_id)
-                .do_update()
-                .set(&event_data)
-                .execute(&mut connect()?)?;
+            }
+            .save()?;
         }
     }
 
@@ -374,7 +360,7 @@ pub async fn join_room(
     //     &parsed_join_pdu,
     //     None::<PduEvent>, // TODO: third party invite
     //     |k, s| {
-    //         room::get_pdu_and_sn(
+    //         timeline::get_sn_pdu(
     //             state.get(&state::ensure_field_id(&k.to_string().into(), s).ok()?)?,
     //         )
     //         .ok()?

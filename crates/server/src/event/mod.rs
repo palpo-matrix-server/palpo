@@ -125,12 +125,8 @@ pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(Seqnum, String)> {
     let (sn, ty) = events::table
         .find(event_id)
         .select((events::sn, events::ty))
-        .first::<(Option<Seqnum>, String)>(&mut connect()?)?;
-    if let Some(sn) = sn {
-        Ok((sn, ty))
-    } else {
-        Err(MatrixError::not_found("event sn is not found").into())
-    }
+        .first::<(Seqnum, String)>(&mut connect()?)?;
+    Ok((sn, ty))
 }
 
 pub fn get_db_event(event_id: &EventId) -> AppResult<DbEvent> {
