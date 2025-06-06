@@ -257,7 +257,8 @@ pub(super) async fn send_redact(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?.pdu
+    )?
+    .pdu
     .event_id;
 
     let event_id = (*event_id).to_owned();

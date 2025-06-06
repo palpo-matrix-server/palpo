@@ -43,7 +43,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
 
-    crate::event::handler::acl_check(origin, room_id)?;
+    handler::acl_check(origin, room_id)?;
 
     println!("=============send_join_v1  1");
     // We need to return the state prior to joining, let's keep a reference to that here
@@ -114,7 +114,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     }
 
     println!("=============send_join_v1  7");
-    crate::event::handler::acl_check(sender.server_name(), room_id)?;
+    handler::acl_check(sender.server_name(), room_id)?;
     println!("=============send_join_v1  8");
 
     // check if origin server is trying to send for another server

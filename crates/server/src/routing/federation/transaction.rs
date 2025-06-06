@@ -14,6 +14,7 @@ use crate::core::presence::PresenceContent;
 use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
+use crate::event::handler;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok};
 
@@ -31,7 +32,7 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!("RRRRRRRRRRReceived transaction from {origin} with body: {body:?}");
+    println!("RRRRRRRRRRReceived transaction from {origin} with body: {body:#?}");
     if &body.origin != origin {
         return Err(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
@@ -72,7 +73,6 @@ async fn process_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
-    println!("processing pdu 0");
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
@@ -86,14 +86,11 @@ async fn process_pdus(
         // We do not add the event_id field to the pdu here because of signature
         // and hashes checks
     }
-    println!("processing pdu 1");
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        let result =
-            crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true)
-                .await;
+        let result = handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true).await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
@@ -170,7 +167,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
     // }
 
     for (room_id, room_updates) in receipt {
-        if crate::event::handler::acl_check(origin, &room_id).is_err() {
+        if handler::acl_check(origin, &room_id).is_err() {
             warn!(
                 %origin, %room_id,
                 "received read receipt EDU from ACL'd server"
@@ -227,7 +224,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
         return;
     }
 
-    if crate::event::handler::acl_check(typing.user_id.server_name(), &typing.room_id).is_err() {
+    if handler::acl_check(typing.user_id.server_name(), &typing.room_id).is_err() {
         warn!(
             %typing.user_id, %typing.room_id, %origin,
             "received typing EDU for ACL'd user's server"

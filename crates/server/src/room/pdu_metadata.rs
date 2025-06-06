@@ -8,7 +8,7 @@ use crate::core::events::{TimelineEventType, relation::RelationType};
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{SnPduEvent, PduEvent};
+use crate::event::{PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 
 #[derive(Clone, Debug, Deserialize)]

@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::room::timeline;
-use crate::{AppResult, room,  MatrixError};
+use crate::{AppResult, MatrixError, room};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]
@@ -124,7 +124,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        let (pdu,_) = room::get_pdu_and_sn(&event_id)?;
+        let (pdu, _) = room::get_pdu_and_sn(&event_id)?;
         if pdu.room_id != room_id {
             tracing::error!(
                 ?event_id,

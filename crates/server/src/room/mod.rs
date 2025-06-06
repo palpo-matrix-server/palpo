@@ -25,8 +25,8 @@ use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, SnPduEvent,RoomMutexGuard, RoomMutexMap, config,
-    data, membership, room, utils,
+    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, SnPduEvent,
+    config, data, membership, room, utils,
 };
 
 pub mod alias;

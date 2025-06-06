@@ -26,7 +26,7 @@ use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::PduEvent;
+use crate::event::{PduEvent, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
@@ -85,7 +85,7 @@ pub(crate) async fn process_incoming_pdu(
     }
 
     // 1.3.1 Check room ACL on origin field/server
-    crate::event::handler::acl_check(origin, &room_id)?;
+    handler::acl_check(origin, &room_id)?;
 
     // 1.3.2 Check room ACL on sender's server name
     let sender: OwnedUserId = serde_json::from_value(
@@ -98,7 +98,7 @@ pub(crate) async fn process_incoming_pdu(
     .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
 
     if sender.server_name().ne(origin) {
-        crate::event::handler::acl_check(sender.server_name(), room_id)?;
+        handler::acl_check(sender.server_name(), room_id)?;
     }
 
     // 1. Skip the PDU if we already have it as a timeline event
@@ -133,7 +133,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    crate::event::handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
+    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
@@ -322,7 +322,7 @@ pub async fn process_to_timeline_pdu(
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
-println!("==========incoming pdu 0");
+    println!("==========incoming pdu 0");
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let timer = Instant::now();
     let room_version_id = &room::get_version(room_id)?;
@@ -346,7 +346,7 @@ println!("==========incoming pdu 0");
         Some(state) => state,
     };
 
-println!("==========incoming pdu 2");
+    println!("==========incoming pdu 2");
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
     event_auth::auth_check(
@@ -361,7 +361,7 @@ println!("==========incoming pdu 2");
         },
     )?;
 
-println!("==========incoming pdu 3");
+    println!("==========incoming pdu 3");
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
@@ -386,7 +386,7 @@ println!("==========incoming pdu 3");
         }
     };
 
-println!("==========incoming pdu 4");
+    println!("==========incoming pdu 4");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(&room_id).await;
 
@@ -403,7 +403,7 @@ println!("==========incoming pdu 4");
         }
     }
 
-println!("==========incoming pdu 5");
+    println!("==========incoming pdu 5");
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
@@ -417,7 +417,7 @@ println!("==========incoming pdu 5");
             .collect::<AppResult<_>>()?,
     );
 
-println!("==========incoming pdu 6");
+    println!("==========incoming pdu 6");
     if incoming_pdu.state_key.is_some() {
         debug!("Preparing for stateres to derive new room state");
 
@@ -444,7 +444,7 @@ println!("==========incoming pdu 6");
         state::force_state(room_id, frame_id, appended, disposed)?;
     }
 
-println!("==========incoming pdu 7");
+    println!("==========incoming pdu 7");
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
@@ -464,7 +464,7 @@ println!("==========incoming pdu 7");
         state::set_event_state(&sn_pdu.event_id, sn_pdu.event_sn, &sn_pdu.room_id, compressed_state_ids)?;
     }
 
-println!("==========incoming pdu 8");
+    println!("==========incoming pdu 8");
     // Event has passed all auth/stateres checks
     drop(state_lock);
     Ok(())
@@ -519,20 +519,12 @@ async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        |id| {
-            println!(
-                "AAAAAA  id: {id}    {:#?}",
-                events::table
-                    .filter(events::room_id.eq(room_id))
-                    .load::<crate::data::room::DbEvent>(&mut connect().unwrap())
-            );
-            match timeline::get_sn_pdu(id) {
-                Err(e) => {
-                    error!("LOOK AT ME Failed to fetch event: {}", e);
-                    None
-                }
-                Ok(pdu) => Some(pdu),
+        |id| match timeline::get_sn_pdu(id) {
+            Err(e) => {
+                error!("LOOK AT ME Failed to fetch event: {}", e);
+                None
             }
+            Ok(pdu) => Some(pdu),
         },
     ) {
         Ok(new_state) => new_state,
@@ -731,6 +723,15 @@ pub async fn fetch_missing_prev_events(
         println!("No missing prev events for {}", incoming_pdu.event_id);
         return Ok(());
     }
+    println!(
+        "GGEEEEEEEEEE missing prev events for {}  \n    {:#?}",
+        incoming_pdu.event_id,
+        incoming_pdu
+            .prev_events
+            .iter()
+            .filter(|id| !exists_events.contains(id))
+            .collect::<Vec<_>>()
+    );
 
     let room_version_id = &room::get_version(room_id)?;
 
@@ -762,15 +763,7 @@ pub async fn fetch_missing_prev_events(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                crate::event::handler::process_incoming_pdu(
-                    origin,
-                    &event_id,
-                    &room_id,
-                    &room_version_id,
-                    event_value,
-                    true,
-                )
-                .await?;
+                process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, event_value, true).await?;
             }
             Ok::<_, AppError>(())
         })

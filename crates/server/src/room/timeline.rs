@@ -29,7 +29,7 @@ use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent};
+use crate::event::{EventHash, handler,PduBuilder, PduEvent};
 use crate::room::state::CompressedState;
 use crate::room::{state, timeline};
 use crate::{
@@ -1009,7 +1009,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
-    crate::event::handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
+    handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("we just created it");
     let sn_pdu = get_sn_pdu(&event_id)?;

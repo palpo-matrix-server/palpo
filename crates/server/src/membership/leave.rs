@@ -11,7 +11,7 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::event::{ensure_event_sn, PduBuilder};
+use crate::event::{PduBuilder, ensure_event_sn};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, membership};

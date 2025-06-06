@@ -218,7 +218,8 @@ pub(super) async fn send_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?.pdu
+    )?
+    .pdu
     .event_id;
 
     crate::transaction_id::add_txn_id(
@@ -271,7 +272,8 @@ pub(super) async fn post_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?.pdu
+    )?
+    .pdu
     .event_id;
 
     json_ok(SendMessageResBody::new((*event_id).to_owned()))

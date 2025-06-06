@@ -15,11 +15,12 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
+use crate::event::{PduBuilder, PduEvent, handler, ensure_event_sn, gen_event_id};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
-use crate::{SnPduEvent,
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, config, data,
+use crate::{
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, SnPduEvent,
+    config, data,
 };
 
 pub async fn knock_room(
@@ -213,7 +214,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            crate::event::handler::process_incoming_pdu(
+            handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
@@ -240,7 +241,6 @@ pub async fn knock_room(
         once(event_id.borrow()),
         &room::lock_state(&room_id).await,
     )?;
-
 
     info!("Compressing state from send_knock");
     let compressed = state_map

@@ -301,7 +301,8 @@ async fn upgrade(
         &room_id,
         &state_lock,
     )?
-    .pdu.event_id;
+    .pdu
+    .event_id;
 
     // Get the old room creation event
     let mut create_event_content =

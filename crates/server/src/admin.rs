@@ -635,7 +635,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
 
                                                                               //                 // Generally we shouldn't be checking against expired keys unless required, so in the admin
                                                                               //                 // room it might be best to not allow expired keys
-                                                                              //                 // crate::event::handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
+                                                                              //                 // handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
 
                                                                               //                 let mut expired_key_map = BTreeMap::new();
                                                                               //                 let mut valid_key_map = BTreeMap::new();

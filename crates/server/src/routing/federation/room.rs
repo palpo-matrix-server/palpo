@@ -18,6 +18,7 @@ use crate::core::serde::JsonObject;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
+use crate::event::handler;
 use crate::room::{state, timeline};
 use crate::{
     AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok, room, sending,
@@ -121,7 +122,7 @@ async fn send_knock(
     }
 
     // ACL check origin server
-    crate::event::handler::acl_check(origin, &args.room_id)?;
+    handler::acl_check(origin, &args.room_id)?;
 
     let room_version_id = crate::room::get_version(&args.room_id)?;
 
@@ -174,7 +175,7 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::invalid_param(format!("Event sender is not a valid user ID: {e}")))?;
 
-    crate::event::handler::acl_check(sender.server_name(), &args.room_id)?;
+    handler::acl_check(sender.server_name(), &args.room_id)?;
 
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
@@ -208,22 +209,12 @@ async fn send_knock(
 
     event.insert("event_id".to_owned(), "$placeholder".into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(
-        &event_id,
-        event.into(),
-    )
-    .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
+    let pdu: PduEvent = PduEvent::from_json_value(&event_id, event.into())
+        .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
-    crate::event::handler::process_incoming_pdu(
-        &origin,
-        &event_id,
-        &args.room_id,
-        &room_version_id,
-        value.clone(),
-        true,
-    )
-    .await
-    .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
+    handler::process_incoming_pdu(&origin, &event_id, &args.room_id, &room_version_id, value.clone(), true)
+        .await
+        .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
 
     data::room::add_joined_server(&args.room_id, &origin)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
@@ -250,7 +241,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     }
 
     // ACL check origin server
-    crate::event::handler::acl_check(origin, &args.room_id)?;
+    handler::acl_check(origin, &args.room_id)?;
 
     let room_version_id = crate::room::get_version(&args.room_id)?;
 

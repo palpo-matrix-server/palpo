@@ -12,6 +12,7 @@ use crate::core::federation::space::{
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{OwnedRoomId, RoomId, UserId, space::SpaceRoomJoinRule};
+use crate::event::handler;
 use crate::room::state;
 use crate::{AppResult, GetUrlOrigin, MatrixError};
 
@@ -245,7 +246,7 @@ fn is_accessible_child(
 ) -> bool {
     if let Identifier::ServerName(server_name) = identifier {
         // Checks if ACLs allow for the server to participate
-        if crate::event::handler::acl_check(server_name, current_room).is_err() {
+        if handler::acl_check(server_name, current_room).is_err() {
             return false;
         }
     }
