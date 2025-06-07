@@ -75,7 +75,7 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in &event_ids {
-        let sn_pdu = match timeline::get_sn_pdu(&event_id) {
+        let sn_pdu = match timeline::get_pdu(&event_id) {
             Ok(sn_pdu) => sn_pdu,
             _ => continue,
         };
@@ -327,9 +327,11 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!("=======full state: state_key_id{state_key_id:#?}  event_id:{event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            if let Ok(sn_pdu) = timeline::get_sn_pdu(&event_id) {
-                state_map.insert(key, sn_pdu);
+            println!("=============find event: {} for key: {:?}", event_id, key);
+            if let Ok(pdu) = timeline::get_pdu(&event_id) {
+                state_map.insert(key, pdu);
             } else {
                 tracing::warn!("pdu is not found: {}", event_id);
             }
@@ -362,7 +364,7 @@ pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, Strin
     let mut result = HashMap::new();
     for compressed in full_state.iter() {
         let (_, event_id) = compressed.split()?;
-        if let Ok(pdu) = timeline::get_sn_pdu(&event_id) {
+        if let Ok(pdu) = timeline::get_pdu(&event_id) {
             result.insert(
                 (
                     pdu.event_ty.to_string().into(),
@@ -396,7 +398,7 @@ pub fn get_state_event_id(frame_id: i64, event_type: &StateEventType, state_key:
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
 pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<SnPduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    timeline::get_sn_pdu(&event_id)
+    timeline::get_pdu(&event_id)
 }
 pub fn get_state_content<T>(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<T>
 where
@@ -437,7 +439,7 @@ pub async fn user_can_redact(
     room_id: &RoomId,
     federation: bool,
 ) -> AppResult<bool> {
-    let redacting_event = timeline::get_sn_pdu(redacts);
+    let redacting_event = timeline::get_pdu(redacts);
 
     if redacting_event
         .as_ref()

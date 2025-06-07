@@ -234,7 +234,7 @@ impl PduEvent {
     pub fn remove_transaction_id(&mut self) -> AppResult<()> {
         if let Some(unsigned) = &self.unsigned {
             let mut unsigned: BTreeMap<String, Box<RawJsonValue>> = serde_json::from_str(unsigned.get())
-                .map_err(|_| AppError::internal("Invalid unsigned in pdu event"))?;
+                .map_err(|_| AppError::internal("invalid unsigned in pdu event"))?;
             unsigned.remove("transaction_id");
             self.unsigned = Some(to_raw_value(&unsigned).expect("unsigned is valid"));
         }

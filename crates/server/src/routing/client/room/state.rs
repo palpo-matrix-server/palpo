@@ -58,7 +58,7 @@ pub fn report(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let pdu = match timeline::get_sn_pdu(&args.event_id) {
+    let pdu = match timeline::get_pdu(&args.event_id) {
         Ok(pdu) => pdu,
         _ => return Err(MatrixError::invalid_param("Invalid Event ID").into()),
     };

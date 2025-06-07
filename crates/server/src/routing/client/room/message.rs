@@ -72,7 +72,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         crate::core::Direction::Forward => {
-            let events = timeline::get_sn_pdus_forward(
+            let events = timeline::get_pdus_forward(
                 authed.user_id(),
                 &args.room_id,
                 from,
@@ -113,7 +113,7 @@ pub(super) async fn get_messages(
                 from
             };
             let events =
-                timeline::get_sn_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
+                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:

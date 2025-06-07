@@ -26,7 +26,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
 
     let limit = args.limit.min(100);
 
-    let all_events = timeline::get_sn_pdus_backward(
+    let all_events = timeline::get_pdus_backward(
         &user_id!("@doesntmatter:palpo.im"),
         &args.room_id,
         until,

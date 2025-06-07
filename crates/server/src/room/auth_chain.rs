@@ -123,7 +123,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        let pdu = timeline::get_sn_pdu(&event_id)?;
+        let pdu = timeline::get_pdu(&event_id)?;
         if pdu.room_id != room_id {
             tracing::error!(
                 ?event_id,
@@ -140,8 +140,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
             .select((events::id, events::sn))
             .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
         {
-            let auth_event_sn = auth_event_sn.expect("auth event should have a sequence number");
-            if found.insert(auth_event_sn) {
+           if found.insert(auth_event_sn) {
                 tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
 
                 todo.push_back(auth_event_id);

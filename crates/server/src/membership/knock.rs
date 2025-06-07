@@ -15,6 +15,7 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
+use crate::data::room::NewDbEvent;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
@@ -172,11 +173,11 @@ pub async fn knock_room(
 
     info!("send_knock finished");
 
-    info!("Parsing knock event");
+    info!("parsing knock event");
     let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
-    info!("Going through send_knock response knock state events");
+    info!("going through send_knock response knock state events");
 
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
@@ -206,8 +207,8 @@ pub async fn knock_room(
             continue;
         };
 
-        let sn_pdu = if let Some(sn_pdu) = timeline::get_sn_pdu(&event_id).optional()? {
-            sn_pdu
+        let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
+            pdu
         } else {
             let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
             let res_body = crate::sending::send_federation_request(&remote_server, request)
@@ -224,19 +225,41 @@ pub async fn knock_room(
             )
             .await
             .map(|_| ());
-            timeline::get_sn_pdu(&event_id)?
+            timeline::get_pdu(&event_id)?
         };
 
-        if let Some(state_key) = &sn_pdu.state_key {
-            let state_key_id = state::ensure_field_id(&sn_pdu.event_ty.to_string().into(), state_key)?;
-            state_map.insert(state_key_id, (sn_pdu.event_id.clone(), sn_pdu.event_sn));
+        if let Some(state_key) = &pdu.state_key {
+            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
 
     info!("Appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
-    let knock_pdu = timeline::append_pdu(
-        parsed_knock_pdu,
+    let event_sn = ensure_event_sn(room_id, &event_id)?;
+    NewDbEvent {
+        id: event_id.to_owned(),
+        sn: event_sn,
+        ty: MembershipState::Knock.to_string(),
+        room_id: room_id.to_owned(),
+        unrecognized_keys: None,
+        depth: parsed_knock_pdu.depth as i64,
+        topological_ordering: parsed_knock_pdu.depth as i64,
+        stream_ordering: 0,
+        origin_server_ts: UnixMillis::now(),
+        received_at: None,
+        sender_id: Some(sender_id.to_owned()),
+        contains_url: false,
+        worker_id: None,
+        state_key: Some(sender_id.to_string()),
+        is_outlier: true,
+        soft_failed: false,
+        rejection_reason: None,
+    }
+    .save()?;
+    let knock_pdu = SnPduEvent::new(parsed_knock_pdu, event_sn);
+    timeline::append_pdu(
+        &knock_pdu,
         knock_event,
         once(event_id.borrow()),
         &room::lock_state(&room_id).await,

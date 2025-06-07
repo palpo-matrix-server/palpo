@@ -567,7 +567,7 @@ fn collect_e2ee<'a>(
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&id) {
-                        let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
+                        let Ok(sn_pdu) = timeline::get_pdu(&id) else {
                             error!("Pdu in state not found: {id}");
                             continue;
                         };

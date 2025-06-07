@@ -197,7 +197,7 @@ pub async fn sync_events(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let sn_pdu = match timeline::get_sn_pdu(&event_id) {
+                    let sn_pdu = match timeline::get_pdu(&event_id) {
                         Ok(sn_pdu) => sn_pdu,
                         _ => {
                             error!("Pdu in state not found: {}", event_id);
@@ -210,7 +210,7 @@ pub async fn sync_events(
             }
         }
 
-        let left_event = timeline::get_sn_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+        let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
         left_rooms.insert(
             room_id.to_owned(),
             LeftRoom {
@@ -494,7 +494,7 @@ async fn load_joined_room(
                 } = state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
+                    let Ok(sn_pdu) = timeline::get_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
@@ -505,7 +505,7 @@ async fn load_joined_room(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let Ok(sn_pdu) = timeline::get_sn_pdu(&id) else {
+                    let Ok(sn_pdu) = timeline::get_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
@@ -552,7 +552,7 @@ async fn load_joined_room(
 
                 for (key, id) in current_state_ids {
                     if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let sn_pdu = match timeline::get_sn_pdu(&id) {
+                        let sn_pdu = match timeline::get_pdu(&id) {
                             Ok(sn_pdu) => sn_pdu,
                             Err(_) => {
                                 error!("Pdu in state not found: {}", id);
@@ -775,9 +775,9 @@ pub(crate) fn load_timeline(
         } else {
             (until_sn, since_sn)
         };
-        timeline::get_sn_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
+        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
     } else {
-        timeline::get_sn_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
     };
 
     if timeline_pdus.len() > limit {

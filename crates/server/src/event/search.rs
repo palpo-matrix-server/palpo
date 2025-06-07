@@ -78,7 +78,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let results: Vec<_> = items
         .into_iter()
         .filter_map(|(rank, event_id, _, _)| {
-            let sn_pdu = timeline::get_sn_pdu(&event_id).ok()?;
+            let sn_pdu = timeline::get_pdu(&event_id).ok()?;
             if state::user_can_see_event(user_id, &sn_pdu.room_id, &sn_pdu.event_id).unwrap_or(false) {
                 Some((rank, sn_pdu))
             } else {
@@ -127,7 +127,7 @@ fn calc_event_context(
     Ok(context)
 }
 
-pub fn save_sn_pdu(sn_pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
+pub fn save_pdu(sn_pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
     let Some(CanonicalJsonValue::Object(content)) = pdu_json.get("content") else {
         return Ok(());
     };

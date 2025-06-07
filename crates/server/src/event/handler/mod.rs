@@ -26,7 +26,7 @@ use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{PduEvent, ensure_event_sn, handler};
+use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
@@ -105,7 +105,6 @@ pub(crate) async fn process_incoming_pdu(
     if state::get_pdu_frame_id(event_id).is_ok() {
         return Ok(());
     }
-
     let room_version_id = &room::get_version(room_id)?;
 
     let (incoming_pdu, val) = process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value, false).await?;
@@ -146,16 +145,17 @@ fn process_to_outlier_pdu<'a>(
     room_version_id: &'a RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
     auth_events_known: bool,
-) -> Pin<Box<impl Future<Output = AppResult<(PduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
+) -> Pin<Box<impl Future<Output = AppResult<(SnPduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
+    println!("=======process_to_outlier_pdu===event_id: {event_id}");
     Box::pin(async move {
-        if let Some(event_data) = event_datas::table
+        if let Some((event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
-            .select(event_datas::json_data)
-            .first::<JsonValue>(&mut connect()?)
+            .select((event_datas::event_sn, event_datas::json_data))
+            .first::<(Seqnum, JsonValue)>(&mut connect()?)
             .optional()?
         {
             if let Ok(val) = serde_json::from_value::<BTreeMap<String, CanonicalJsonValue>>(event_data.clone()) {
-                return Ok((PduEvent::from_json_value(event_id, event_data)?, val));
+                return Ok((SnPduEvent::from_json_value(event_id, event_sn, event_data)?, val));
             }
         }
 
@@ -230,7 +230,7 @@ fn process_to_outlier_pdu<'a>(
         // Build map of auth events
         let mut auth_events = HashMap::new();
         for id in &incoming_pdu.auth_events {
-            let auth_event = match timeline::get_sn_pdu(id) {
+            let auth_event = match timeline::get_pdu(id) {
                 Ok(e) => e,
                 Err(_) => {
                     warn!("cCould not find auth event {}", id);
@@ -283,8 +283,9 @@ fn process_to_outlier_pdu<'a>(
         if let Err(e) = &auth_result {
             db_event.rejection_reason = Some(e.to_string())
         };
+        db_event.save()?;
         DbEventData {
-            event_id: (&*incoming_pdu.event_id).to_owned(),
+            event_id: incoming_pdu.event_id.clone(),
             event_sn,
             room_id: incoming_pdu.room_id.clone(),
             internal_metadata: None,
@@ -292,16 +293,19 @@ fn process_to_outlier_pdu<'a>(
             format_version: None,
         }
         .save()?;
+    println!("================saved event: {event_id}   {event_sn} as outlier");
 
         debug!("added pdu as outlier");
 
-        auth_result.map(|_| (incoming_pdu, val)).map_err(Into::into)
+        auth_result
+            .map(|_| (SnPduEvent::new(incoming_pdu, event_sn), val))
+            .map_err(Into::into)
     })
 }
 
 #[tracing::instrument(skip(incoming_pdu, json_data))]
 pub async fn process_to_timeline_pdu(
-    incoming_pdu: PduEvent,
+    incoming_pdu: SnPduEvent,
     json_data: BTreeMap<String, CanonicalJsonValue>,
     origin: &ServerName,
     room_id: &RoomId,
@@ -358,13 +362,14 @@ pub async fn process_to_timeline_pdu(
             state::ensure_field_id(&k.to_string().into(), s)
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
-                .and_then(|event_id| timeline::get_sn_pdu(event_id).ok())
+                .and_then(|event_id| timeline::get_pdu(event_id).ok())
         },
     )?;
 
     println!("==========incoming pdu 3");
     debug!("Auth check succeeded");
 
+    println!("==get_auth_events=2");
     debug!("Gathering auth events");
     let auth_events = state::get_auth_events(
         room_id,
@@ -461,8 +466,13 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     } else {
         debug!("Appended incoming pdu");
-        let sn_pdu = timeline::append_pdu(incoming_pdu, json_data, extremities, &state_lock)?;
-        state::set_event_state(&sn_pdu.event_id, sn_pdu.event_sn, &sn_pdu.room_id, compressed_state_ids)?;
+        timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock)?;
+        state::set_event_state(
+            &incoming_pdu.event_id,
+            incoming_pdu.event_sn,
+            &incoming_pdu.room_id,
+            compressed_state_ids,
+        )?;
     }
 
     println!("==========incoming pdu 8");
@@ -520,7 +530,7 @@ async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        |id| match timeline::get_sn_pdu(id) {
+        |id| match timeline::get_pdu(id) {
             Err(e) => {
                 error!("LOOK AT ME Failed to fetch event: {}", e);
                 None
@@ -565,7 +575,7 @@ pub(crate) async fn fetch_and_process_outliers(
     events: &[OwnedEventId],
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-) -> AppResult<Vec<(PduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
+) -> AppResult<Vec<(SnPduEvent, Option<BTreeMap<String, CanonicalJsonValue>>)>> {
     let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
         hash_map::Entry::Vacant(e) => {
             e.insert((Instant::now(), 1));
@@ -577,7 +587,7 @@ pub(crate) async fn fetch_and_process_outliers(
     for id in events {
         // a. Look in the main timeline (pduid_pdu tree)
         // b. Look at outlier pdu tree (get_pdu_json checks both)
-        if let Ok(local_pdu) = timeline::get_sn_pdu(id) {
+        if let Ok(local_pdu) = timeline::get_pdu(id) {
             trace!("Found {} in db", id);
             events_with_auth_events.push((id, Some(local_pdu), vec![]));
             continue;
@@ -683,7 +693,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
             }
 
-            if let Ok(pdu) = timeline::get_sn_pdu(&next_id) {
+            if let Ok(pdu) = timeline::get_pdu(&next_id) {
                 pdus.push((pdu, Some(value)));
                 continue;
             }

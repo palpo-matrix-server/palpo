@@ -169,7 +169,7 @@ pub fn get_relations(
     let relations = query.limit(limit as i64).load::<DbEventRelation>(&mut connect()?)?;
     let mut sn_pdus = Vec::with_capacity(relations.len());
     for relation in relations {
-        if let Ok(mut sn_pdu) = timeline::get_sn_pdu(&relation.child_id) {
+        if let Ok(mut sn_pdu) = timeline::get_pdu(&relation.child_id) {
             if sn_pdu.sender != user_id {
                 sn_pdu.remove_transaction_id()?;
             }

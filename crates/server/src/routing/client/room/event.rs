@@ -27,8 +27,7 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 #[endpoint]
 pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
-
-    let event = timeline::get_sn_pdu(&args.event_id)?.0;
+    let event = timeline::get_pdu(&args.event_id)?;
 
     if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
         return Err(MatrixError::not_found("Event not found.").into());
@@ -50,8 +49,7 @@ pub(super) fn report(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-
-    let pdu = timeline::get_sn_pdu(&args.event_id)?.0;
+    let pdu = timeline::get_pdu(&args.event_id)?;
 
     if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
         return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
@@ -115,8 +113,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_token =
         crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
 
-    let base_event = timeline::get_sn_pdu(&args.event_id)?.0;
-
+    let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
 
     if !state::user_can_see_event(authed.user_id(), &room_id, &args.event_id)? {
@@ -139,7 +136,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     let base_event = base_event.to_room_event();
 
     let events_before: Vec<_> =
-        timeline::get_sn_pdus_backward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?
+        timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?
             .into_iter()
             .filter(|(_, pdu)| state::user_can_see_event(authed.user_id(), &room_id, &pdu.event_id).unwrap_or(false))
             .collect();
@@ -163,7 +160,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
 
-    let events_after = timeline::get_sn_pdus_forward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?;
+    let events_after = timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -199,8 +196,8 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         } = state::get_field(field_id)?;
 
         if event_ty != StateEventType::RoomMember {
-            let pdu = match timeline::get_sn_pdu(&event_id) {
-                Ok((pdu, _)) => pdu,
+            let pdu = match timeline::get_pdu(&event_id) {
+                Ok(pdu) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
                     continue;
@@ -208,7 +205,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
             };
             state.push(pdu.to_state_event());
         } else if !lazy_load_enabled || lazy_loaded.contains(&state_key) {
-            let pdu = match timeline::get_sn_pdu(&event_id) {
+            let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 Err(_) => {
                     error!("Pdu in state not found: {}", event_id);
