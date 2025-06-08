@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use cookie::time::error;
 use diesel::prelude::*;
 use fetch_state::fetch_state;
+use indexmap::IndexMap;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -147,6 +148,7 @@ fn process_to_outlier_pdu<'a>(
     room_version_id: &'a RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
 ) -> Pin<Box<impl Future<Output = AppResult<(SnPduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
+    println!("===========process to outlier pdu: {}", event_id);
     Box::pin(async move {
         if let Some((event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
@@ -160,6 +162,8 @@ fn process_to_outlier_pdu<'a>(
                 return Ok((SnPduEvent::from_json_value(event_id, event_sn, event_data)?, val));
             }
         }
+
+        println!("=======db event: {:#?}", palpo_data::room::DbEvent::get_by_id(event_id));
 
         // 1.1. Remove unsigned field
         value.remove("unsigned");
@@ -244,7 +248,6 @@ fn process_to_outlier_pdu<'a>(
         } else {
             None
         };
-        println!("===========rejection_reason: {rejection_reason:?}");
 
         let auth_events = auth_events
             .into_iter()
@@ -280,6 +283,7 @@ fn process_to_outlier_pdu<'a>(
 
         debug!("Validation successful.");
 
+        println!("=======incoming pdu: {incoming_pdu:#?}");
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         fetch_and_process_missing_events(origin, room_id, room_version_id, &incoming_pdu).await?;
 
@@ -712,44 +716,63 @@ pub async fn fetch_and_process_missing_events(
     incoming_pdu: &PduEvent,
 ) -> AppResult<()> {
     let conf = crate::config();
-
-    let mut earliest_events = room::state::get_forward_extremities(room_id)?;
-    earliest_events.extend(incoming_pdu.prev_events.iter().cloned());
-
-    let mut earliest_events: Vec<OwnedEventId> = events::table
-        .filter(events::room_id.eq(room_id))
-        .filter(events::id.eq_any(&earliest_events))
-        .select(events::id)
-        .load::<OwnedEventId>(&mut connect()?)?;
-    let exists_events: HashSet<_> = earliest_events.iter().collect();
-    if incoming_pdu.prev_events.iter().all(|id| exists_events.contains(id)) {
-        println!("No missing prev events for {}", incoming_pdu.event_id);
-        return Ok(());
-    }
-
     let room_version_id = &room::get_version(room_id)?;
 
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
+    let forward_extremities = room::state::get_forward_extremities(room_id)?;
 
-    let request = missing_events_request(
-        &origin.origin().await,
-        room_id,
-        MissingEventsReqBody {
-            limit: 10,
-            min_depth: first_pdu_in_room.depth,
-            earliest_events,
-            latest_events: vec![incoming_pdu.event_id.clone()],
-        },
-    )?
-    .into_inner();
-    let res_body = crate::sending::send_federation_request(&origin, request)
-        .await?
-        .json::<MissingEventsResBody>()
-        .await?;
+    let mut fetched_events = HashMap::with_capacity(100);
 
-    for event in res_body.events {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
+    let mut missing_stack = IndexMap::new();
+    missing_stack.insert(incoming_pdu.event_id.clone(), incoming_pdu.prev_events.clone());
+
+    while let Some((event_id, prev_events)) = missing_stack.pop() {
+        let mut earliest_events = forward_extremities.clone();
+        earliest_events.extend(prev_events.iter().cloned());
+
+        let mut earliest_events: Vec<OwnedEventId> = events::table
+            .filter(events::room_id.eq(room_id))
+            .filter(events::id.eq_any(&earliest_events))
+            .select(events::id)
+            .load::<OwnedEventId>(&mut connect()?)?;
+        let exists_events: HashSet<_> = earliest_events.iter().collect();
+        if prev_events.iter().all(|id| exists_events.contains(id)) {
+            println!("No missing prev events for {}", event_id);
+            continue;
+        }
+
+        let request = missing_events_request(
+            &origin.origin().await,
+            room_id,
+            MissingEventsReqBody {
+                limit: 10,
+                min_depth: first_pdu_in_room.depth,
+                earliest_events,
+                latest_events: vec![incoming_pdu.event_id.clone()],
+            },
+        )?
+        .into_inner();
+        let res_body = crate::sending::send_federation_request(&origin, request)
+            .await?
+            .json::<MissingEventsResBody>()
+            .await?;
+
+        for event in res_body.events {
+            let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
+
+            if fetched_events.contains_key(&event_id) || missing_stack.contains_key(&event_id) {
+                continue;
+            }
+            let pdu = PduEvent::from_canonical_object(&event_id, event_value)
+                .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+
+            missing_stack.insert(event_id.clone(), pdu.prev_events.clone());
+            fetched_events.insert(event_id, pdu);
+        }
+    }
+
+    for (event_id, event) in fetched_events {
         Box::pin(async move {
             if !diesel_exists!(
                 events::table
@@ -757,12 +780,13 @@ pub async fn fetch_and_process_missing_events(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, event_value, true).await?;
+                process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, event, true).await?;
             }
             Ok::<_, AppError>(())
         })
         .await?;
     }
+
     Ok(())
 }
 

@@ -111,7 +111,6 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 }
 
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
-    println!("FFFFind event {event_id}");
     let (event_sn, json) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((event_datas::event_sn, event_datas::json_data))

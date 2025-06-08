@@ -37,7 +37,6 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
         warn!("Event {} is rejected, returning 404", &args.event_id);
         return Err(MatrixError::not_found("Event not found.").into());
     }
-    println!("GGGGGGGGGGGGGGGGGEt event: {event:#?}");
 
     let event_json = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);

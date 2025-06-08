@@ -540,7 +540,6 @@ async fn load_joined_room(
                                                   // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
                                                   // }),
             );
-            println!("jjjjjjjjjjjjjjoin");
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
             // Incremental /sync
@@ -663,7 +662,6 @@ async fn load_joined_room(
                 (None, None, Vec::new())
             };
 
-            println!("jjjjjjjjjjjjjjoin 1");
             (
                 heroes,
                 joined_member_count,
@@ -672,7 +670,6 @@ async fn load_joined_room(
                 state_events,
             )
         } else {
-            println!("jjjjjjjjjjjjjjoin 2");
             (Vec::new(), None, None, false, Vec::new())
         }
     };
@@ -735,7 +732,6 @@ async fn load_joined_room(
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
         .collect();
-    println!("jjjjjjjjjjjjjjoin 3");
     Ok(JoinedRoom {
         account_data: RoomAccountData { events: account_events },
         summary: RoomSummary {

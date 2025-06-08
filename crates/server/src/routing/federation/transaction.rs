@@ -91,7 +91,6 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        println!("processing pdu == 1: {event_id}");
         let result = handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true).await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
@@ -102,7 +101,6 @@ async fn process_pdus(
         resolved_map.insert(event_id, result);
     }
 
-    println!("processing pdu 2  resolved_map: {resolved_map:#?}");
     for (id, result) in &resolved_map {
         if let Err(e) = result {
             if matches!(e, AppError::Matrix(_)) {
@@ -111,7 +109,6 @@ async fn process_pdus(
         }
     }
 
-    println!("processing pdu 3");
     Ok(resolved_map)
 }
 
