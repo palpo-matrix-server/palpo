@@ -327,9 +327,7 @@ pub fn get_auth_events(
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
-        println!("=======full state: state_key_id{state_key_id:#?}  event_id:{event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            println!("=============find event: {} for key: {:?}", event_id, key);
             if let Ok(pdu) = timeline::get_pdu(&event_id) {
                 state_map.insert(key, pdu);
             } else {

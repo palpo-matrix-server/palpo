@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+use palpo_data::schema::events::rejection_reason;
 use salvo::server;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
@@ -117,6 +118,32 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         .first::<(Seqnum, JsonValue)>(&mut connect()?)?;
     let pdu = PduEvent::from_json_value(event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))?;
     Ok(SnPduEvent::new(pdu, event_sn))
+}
+
+pub fn get_may_missing_pdus(
+    room_id: &RoomId,
+    event_ids: &[OwnedEventId],
+) -> AppResult<(Vec<SnPduEvent>, Vec<OwnedEventId>)> {
+    let events = event_datas::table
+        .filter(event_datas::room_id.eq(room_id))
+        .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+        .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
+
+    let mut pdus = Vec::with_capacity(events.len());
+    let mut missing_ids = events.iter().map(|(id, _, _)| id.to_owned()).collect::<HashSet<_>>();
+    for (event_id, event_sn, json) in events {
+        let mut pdu = SnPduEvent::from_json_value(&event_id, event_sn, json)
+            .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+        pdu.rejection_reason = events::table
+            .filter(events::id.eq(&event_id))
+            .select(events::rejection_reason)
+            .first::<Option<String>>(&mut connect()?)
+            .optional()?
+            .flatten();
+        pdus.push(pdu);
+        missing_ids.remove(&event_id);
+    }
+    Ok((pdus, missing_ids.into_iter().collect()))
 }
 
 pub fn has_pdu(event_id: &EventId) -> bool {
@@ -512,7 +539,6 @@ pub fn create_hash_and_sign_event(
     };
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
-    println!("==get_auth_events=1  {content:#?}");
     let auth_events = state::get_auth_events(room_id, &event_type, sender_id, state_key.as_deref(), &content)?;
 
     // Our depth is the maximum depth of prev_events + 1
@@ -567,6 +593,7 @@ pub fn create_hash_and_sign_event(
         },
         signatures: None,
         extra_data: Default::default(),
+        rejection_reason: None,
     };
 
     crate::core::state::event_auth::auth_check(
@@ -763,7 +790,7 @@ pub fn build_and_append_pdu(
 }
 
 /// Returns an iterator over all PDUs in a room.
-pub fn all_sn_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, SnPduEvent)>> {
+pub fn all_pdus(user_id: &UserId, room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<(i64, SnPduEvent)>> {
     get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
 pub fn get_pdus_forward(
@@ -852,9 +879,6 @@ pub fn get_pdus(
                 }
             }
         }
-        query = query
-            .filter(events::is_outlier.eq(false))
-            .filter(events::sn.is_not_null());
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             events::table
                 .filter(events::id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
@@ -931,7 +955,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_sn_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
+    let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
     let first_pdu = pdus.first();
 
     let Some(first_pdu) = first_pdu else {
@@ -993,7 +1017,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(sn_pdu) = timeline::get_pdu(&event_id) {
+    if let Ok(pdu) = timeline::get_pdu(&event_id) {
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
@@ -1001,38 +1025,17 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
     let value = get_pdu_json(&event_id)?.expect("we just created it");
-    let sn_pdu = get_pdu(&event_id)?;
+    let pdu = get_pdu(&event_id)?;
 
-    // // Insert pdu
-    // prepend_backfill_pdu(&pdu, &event_id, &value)?;
-
-    if sn_pdu.event_ty == TimelineEventType::RoomMessage {
+    if pdu.event_ty == TimelineEventType::RoomMessage {
         #[derive(Deserialize)]
         struct ExtractBody {
             body: Option<String>,
         }
 
-        let content = serde_json::from_str::<ExtractBody>(sn_pdu.content.get())
+        let content = serde_json::from_str::<ExtractBody>(pdu.content.get())
             .map_err(|_| AppError::internal("Invalid content in pdu."))?;
     }
 
-    info!("Prepended backfill pdu");
     Ok(())
 }
-
-// fn prepend_backfill_pdu(
-//     pdu_id: i64,
-//     event_id: &EventId,
-//     json: &CanonicalJsonObject,
-//
-// ) -> AppResult<()> {
-// self.pduid_pdu.insert(
-//     pdu_id,
-//     &serde_json::to_vec(json).expect("CanonicalJsonObject is always a valid"),
-// )?;
-
-// self.eventid_pduid.insert(event_id.as_bytes(), pdu_id)?;
-// self.eventid_outlierpdu.remove(event_id.as_bytes())?;
-
-//     Ok(())
-// }

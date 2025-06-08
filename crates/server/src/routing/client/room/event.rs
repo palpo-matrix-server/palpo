@@ -16,6 +16,7 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::room::RoomEventReqArgs;
+use crate::data::room::DbEvent;
 use crate::room::{state, timeline};
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
@@ -27,6 +28,18 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 #[endpoint]
 pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
+
+    let event = DbEvent::get_by_id(&args.event_id)?;
+    println!("GGGGGGGGGGGGGGGGGEt event: {event:#?}");
+    if event.rejection_reason.is_some() {
+        warn!("Event {} is rejected", &args.event_id);
+        return Err(MatrixError::not_found("Event not found.").into());
+    }
+    if event.is_outlier {
+        warn!("Event {} is outlier", &args.event_id);
+        return Err(MatrixError::not_found("Event not found.").into());
+    }
+
     let event = timeline::get_pdu(&args.event_id)?;
 
     if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {

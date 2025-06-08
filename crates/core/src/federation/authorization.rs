@@ -8,8 +8,11 @@
 
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
-use crate::{OwnedEventId, OwnedRoomId, serde::RawJsonValue};
+use crate::identifiers::*;
+use crate::sending::{SendRequest, SendResult};
+use crate::serde::RawJsonValue;
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -19,6 +22,14 @@ use crate::{OwnedEventId, OwnedRoomId, serde::RawJsonValue};
 //         1.0 => "/_matrix/federation/v1/event_auth/:room_id/:event_id",
 //     }
 // };
+
+pub fn event_authorization_request(origin: &str, room_id: &RoomId, event_id: &EventId) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/event_auth/{}/{}",
+        room_id, event_id
+    ))?;
+    Ok(crate::sending::get(url))
+}
 
 /// Request type for the `get_event_authorization` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
@@ -33,7 +44,7 @@ pub struct EventAuthorizationReqArgs {
 }
 
 /// Response type for the `get_event_authorization` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
 
 pub struct EventAuthorizationResBody {
     /// The full set of authorization events that make up the state of the room,

@@ -219,6 +219,13 @@ pub struct DbEvent {
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
 }
+impl DbEvent {
+    pub fn get_by_id(id: &EventId) -> DataResult<Self> {
+        events::table.find(id).first(&mut connect()?).map_err(Into::into)
+    }
+}
+
+
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {

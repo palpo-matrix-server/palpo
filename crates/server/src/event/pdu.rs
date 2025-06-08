@@ -170,6 +170,9 @@ pub struct PduEvent {
     pub signatures: Option<Box<RawJsonValue>>, // BTreeMap<Box<ServerName>, BTreeMap<ServerSigningKeyId, String>>
     #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
     pub extra_data: BTreeMap<String, JsonValue>,
+
+    #[serde(skip)]
+    pub rejection_reason: Option<String>,
 }
 
 impl PduEvent {
@@ -473,6 +476,10 @@ impl PduEvent {
         T: for<'de> Deserialize<'de>,
     {
         serde_json::from_str(self.content.get())
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        self.rejection_reason.is_some()
     }
 }
 

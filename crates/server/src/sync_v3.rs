@@ -126,6 +126,7 @@ pub async fn sync_events(
                 hashes: EventHash { sha256: String::new() },
                 signatures: None,
                 extra_data: Default::default(),
+                rejection_reason: None,
             };
             left_rooms.insert(
                 room_id.to_owned(),
@@ -436,7 +437,7 @@ async fn load_joined_room(
             if joined_member_count + invited_member_count <= 5 {
                 // Go through all PDUs and for each member event, check if the user is still joined or
                 // invited until we have 5 or we reach the end
-                for hero in timeline::all_sn_pdus(sender_id, &room_id, until_sn)?
+                for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {

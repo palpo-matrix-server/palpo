@@ -132,6 +132,10 @@ impl Writer for AppError {
                 }
             }
             Self::HttpStatus(e) => MatrixError::unknown(e.brief),
+            Self::Data(e) => {
+                e.write(req, depot, res).await;
+                return;
+            }
             e => {
                 tracing::error!(error = ?e, "Unknown error.");
                 // println!("{}", std::backtrace::Backtrace::capture());

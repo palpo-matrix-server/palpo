@@ -506,7 +506,6 @@ pub(super) async fn create_room(
     let sender_id = authed.user_id();
     let room_id = RoomId::new(config::server_name());
 
-    println!("===========create_room  0");
     let state_lock = room::lock_state(&room_id).await;
     room::ensure_room(&room_id, &config::default_room_version())?;
 
@@ -514,7 +513,6 @@ pub(super) async fn create_room(
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
     }
 
-    println!("===========create_room  1");
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
         let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config::server_name()))
@@ -679,7 +677,6 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
-    println!("===========create_room  11");
     // 5. Events set by preset
     // 5.1 Join Rules
     timeline::build_and_append_pdu(
@@ -699,7 +696,6 @@ pub(super) async fn create_room(
         &state_lock,
     )?;
 
-    println!("===========create_room  12");
     // 5.2 History Visibility
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -745,7 +741,6 @@ pub(super) async fn create_room(
         )?;
     }
 
-    println!("===========create_room  13");
     // 6. Events listed in initial_state
     for event in &body.initial_state {
         let mut pdu_builder = event.deserialize_as::<PduBuilder>().map_err(|e| {
@@ -764,7 +759,6 @@ pub(super) async fn create_room(
         timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
     }
 
-    println!("===========create_room  14");
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
         timeline::build_and_append_pdu(
@@ -797,7 +791,6 @@ pub(super) async fn create_room(
     }
     drop(state_lock);
 
-    println!("===========create_room  15");
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
         if let Err(e) = crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await {
