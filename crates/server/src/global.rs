@@ -396,10 +396,10 @@ pub fn shutdown() {
 }
 
 pub fn parse_incoming_pdu(
-    pdu: &RawJsonValue,
+    raw_value: &RawJsonValue,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
-    let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
+    let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
+        warn!("Error parsing incoming event {:?}: {:?}", raw_value, e);
         MatrixError::bad_json("Invalid PDU in server response")
     })?;
     let room_id = value
@@ -410,7 +410,7 @@ pub fn parse_incoming_pdu(
     let room_version_id = crate::room::get_version(&room_id)
         .map_err(|_| MatrixError::invalid_param(format!("server is not in room {room_id}")))?;
 
-    let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
+    let event_id = match crate::event::gen_event_id(&value, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
             // Event could not be converted to canonical json

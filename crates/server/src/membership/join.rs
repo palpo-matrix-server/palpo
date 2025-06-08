@@ -48,7 +48,6 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
-    println!("JJJJJJJJJJJJJJJJJJoin room");
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }

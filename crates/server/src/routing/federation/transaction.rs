@@ -32,7 +32,7 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!("\n\n\nRRRRRRRRRRReceived transaction from {origin} with body: {body:#?}");
+    println!("\n\n\nRRRRRRRRRRReceived transaction {} from {origin} with body: {body:#?}", crate::config::server_name());
     if &body.origin != origin {
         return Err(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),

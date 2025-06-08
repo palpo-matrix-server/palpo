@@ -125,6 +125,7 @@ pub fn get_may_missing_pdus(
 ) -> AppResult<(Vec<SnPduEvent>, Vec<OwnedEventId>)> {
     let events = event_datas::table
         .filter(event_datas::room_id.eq(room_id))
+        .filter(event_datas::event_id.eq_any(event_ids))
         .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
         .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
 

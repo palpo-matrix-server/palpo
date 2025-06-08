@@ -13,6 +13,7 @@ use cookie::time::error;
 use diesel::prelude::*;
 use fetch_state::fetch_state;
 use indexmap::IndexMap;
+use palpo_core::events::call::reject;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -108,8 +109,8 @@ pub(crate) async fn process_incoming_pdu(
     if state::get_pdu_frame_id(event_id).is_ok() {
         return Ok(());
     }
-    let room_version_id = &room::get_version(room_id)?;
 
+    println!("Caaal   process_to_outlier_pdu   {}", event_id);
     let (incoming_pdu, val) = process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
@@ -132,6 +133,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("=========dd==process_to_timeline_pdu: {}", event_id);
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -163,13 +165,10 @@ fn process_to_outlier_pdu<'a>(
             }
         }
 
-        println!("=======db event: {:#?}", palpo_data::room::DbEvent::get_by_id(event_id));
-
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
         let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
-
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("Invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
@@ -222,6 +221,8 @@ fn process_to_outlier_pdu<'a>(
 
         check_room_id(room_id, &incoming_pdu)?;
 
+        println!("==========xx  incoming_pdu: {incoming_pdu:#?}");
+
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("auth check for {} based on auth events", incoming_pdu.event_id);
 
@@ -230,6 +231,7 @@ fn process_to_outlier_pdu<'a>(
             fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await?;
         }
         let (auth_events, missing_auth_event_ids) = timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
+        println!("=======get_may_missing_pdus  {:#?}", incoming_pdu.auth_events);
         let mut rejection_reason = if !missing_auth_event_ids.is_empty() {
             error!(
                 "missing auth events for {}: {:?}",
@@ -243,10 +245,23 @@ fn process_to_outlier_pdu<'a>(
                     .collect::<Vec<_>>()
                     .join(", ")
             ))
-        } else if auth_events.iter().any(|pdu| pdu.is_rejected()) {
-            Some(format!("include rejected auth events"))
         } else {
-            None
+            let rejected_auth_events = auth_events
+                .iter()
+                .filter_map(|pdu| {
+                    if pdu.is_rejected() {
+                        Some(pdu.event_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            if !rejected_auth_events.is_empty() {
+                println!("============auth_events: {auth_events:?}   rejected_auth_events: {rejected_auth_events:?}");
+                Some(format!("one or many auth events rejected: {:?}", rejected_auth_events))
+            } else {
+                None
+            }
         };
 
         let auth_events = auth_events
@@ -283,10 +298,6 @@ fn process_to_outlier_pdu<'a>(
 
         debug!("Validation successful.");
 
-        println!("=======incoming pdu: {incoming_pdu:#?}");
-        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        fetch_and_process_missing_events(origin, room_id, room_version_id, &incoming_pdu).await?;
-
         // 7. Persist the event as an outlier.
         let event_sn = ensure_event_sn(room_id, event_id)?;
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
@@ -304,6 +315,9 @@ fn process_to_outlier_pdu<'a>(
         .save()?;
 
         debug!("added pdu as outlier");
+
+        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+        fetch_and_process_missing_events(origin, room_id, room_version_id, &incoming_pdu).await?;
 
         if let Some(rejection_reason) = rejection_reason {
             Err(MatrixError::invalid_param(format!(
@@ -722,7 +736,7 @@ pub async fn fetch_and_process_missing_events(
         .ok_or_else(|| AppError::internal("Failed to find first pdu in database."))?;
     let forward_extremities = room::state::get_forward_extremities(room_id)?;
 
-    let mut fetched_events = HashMap::with_capacity(100);
+    let mut fetched_events = IndexMap::with_capacity(100);
 
     let mut missing_stack = IndexMap::new();
     missing_stack.insert(incoming_pdu.event_id.clone(), incoming_pdu.prev_events.clone());
@@ -759,20 +773,38 @@ pub async fn fetch_and_process_missing_events(
             .await?;
 
         for event in res_body.events {
-            let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
+            let (event_id, event_val, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
 
-            if fetched_events.contains_key(&event_id) || missing_stack.contains_key(&event_id) {
+            if fetched_events.contains_key(&event_id)
+                || missing_stack.contains_key(&event_id)
+                || incoming_pdu.event_id == event_id
+            {
                 continue;
             }
-            let pdu = PduEvent::from_canonical_object(&event_id, event_value)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+            let prev_events = event_val
+                .get("prev_events")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().and_then(|id| OwnedEventId::try_from(id).ok()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
 
-            missing_stack.insert(event_id.clone(), pdu.prev_events.clone());
-            fetched_events.insert(event_id, pdu);
+            if !prev_events.is_empty() {
+                missing_stack.insert(event_id.clone(), prev_events);
+            }
+            fetched_events.insert(event_id, event_val);
         }
     }
 
-    for (event_id, event) in fetched_events {
+    fetched_events.sort_by(|_x1, v1, _k2, v2| {
+        let depth1 = v1.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
+        let depth2 = v2.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
+        depth1.cmp(&depth2)
+    });
+    for (event_id, event_val) in fetched_events {
+        println!("==========event_id: {event_id}");
         Box::pin(async move {
             if !diesel_exists!(
                 events::table
@@ -780,7 +812,7 @@ pub async fn fetch_and_process_missing_events(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, event, true).await?;
+                process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, event_val, true).await?;
             }
             Ok::<_, AppError>(())
         })
