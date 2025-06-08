@@ -7,8 +7,9 @@ use crate::core::client::relation::RelationEventsResBody;
 use crate::core::events::{TimelineEventType, relation::RelationType};
 use crate::core::identifiers::*;
 use crate::data::connect;
+use crate::data::room::{DbEventRelation, NewDbEventRelation};
 use crate::data::schema::*;
-use crate::event::PduEvent;
+use crate::event::{PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 
 #[derive(Clone, Debug, Deserialize)]
@@ -19,33 +20,6 @@ struct ExtractRelType {
 struct ExtractRelatesToEventId {
     #[serde(rename = "m.relates_to")]
     relates_to: ExtractRelType,
-}
-
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = event_relations)]
-pub struct DbEventRelation {
-    pub id: i64,
-
-    pub room_id: OwnedRoomId,
-    pub event_id: OwnedEventId,
-    pub event_sn: i64,
-    pub event_ty: String,
-    pub child_id: OwnedEventId,
-    pub child_sn: i64,
-    pub child_ty: String,
-    pub rel_type: Option<String>,
-}
-#[derive(Insertable, Debug, Clone)]
-#[diesel(table_name = event_relations)]
-pub struct NewDbEventRelation {
-    pub room_id: OwnedRoomId,
-    pub event_id: OwnedEventId,
-    pub event_sn: i64,
-    pub event_ty: String,
-    pub child_id: OwnedEventId,
-    pub child_sn: i64,
-    pub child_ty: String,
-    pub rel_type: Option<String>,
 }
 
 #[tracing::instrument]
@@ -139,7 +113,7 @@ pub fn get_relations(
     to: Option<i64>,
     dir: Direction,
     limit: usize,
-) -> AppResult<Vec<(i64, PduEvent)>> {
+) -> AppResult<Vec<(i64, SnPduEvent)>> {
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))

@@ -25,8 +25,8 @@ use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, config,
-    data, membership, room, utils,
+    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, SnPduEvent,
+    config, data, membership, room, utils,
 };
 
 pub mod alias;
@@ -463,7 +463,7 @@ pub fn get_state(
     event_type: &StateEventType,
     state_key: &str,
     until_sn: Option<Seqnum>,
-) -> AppResult<PduEvent> {
+) -> AppResult<SnPduEvent> {
     let frame_id = get_frame_id(room_id, until_sn)?;
     state::get_state(frame_id, event_type, state_key)
 }

@@ -9,14 +9,14 @@ use crate::data::connect;
 use crate::data::room::DbThread;
 use crate::data::schema::*;
 use crate::room::{state, timeline};
-use crate::{AppResult, MatrixError, PduEvent};
+use crate::{AppResult, MatrixError, PduEvent, SnPduEvent};
 
 pub fn get_threads(
     room_id: &RoomId,
     include: &IncludeThreads,
     limit: i64,
     from_token: Option<i64>,
-) -> AppResult<(Vec<(OwnedEventId, PduEvent)>, Option<i64>)> {
+) -> AppResult<(Vec<(OwnedEventId, SnPduEvent)>, Option<i64>)> {
     let items = if let Some(from_token) = from_token {
         threads::table
             .filter(threads::room_id.eq(room_id))
@@ -44,7 +44,7 @@ pub fn get_threads(
     Ok((events, next_token))
 }
 
-pub fn add_to_thread(thread_id: &EventId, pdu: &PduEvent) -> AppResult<()> {
+pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
     let root_pdu = timeline::get_pdu(thread_id)?;
 
     let mut root_pdu_json =

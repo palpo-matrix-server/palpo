@@ -425,14 +425,14 @@ CREATE INDEX IF NOT EXISTS user_dehydrated_devices_user_idx
 drop table if exists events CASCADE;
 CREATE TABLE events (
     id text NOT NULL PRIMARY KEY,
-    sn bigint not null default nextval('occur_sn_seq'),
+    sn bigint NOT NULL,
     ty text NOT NULL,
     room_id text NOT NULL,
     depth bigint DEFAULT 0 NOT NULL,
     topological_ordering bigint NOT NULL,
     stream_ordering bigint NOT NULL,
     unrecognized_keys text,
-    origin_server_ts bigint,
+    origin_server_ts bigint NOT NULL,
     received_at bigint,
     sender_id text,
     contains_url boolean NOT NULL,
@@ -442,10 +442,20 @@ CREATE TABLE events (
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
     rejection_reason text,
-    CONSTRAINT events_sn_udx UNIQUE (sn),
-    CONSTRAINT event_id_sn_udx UNIQUE (id, sn)
+    CONSTRAINT events_id_sn_udx UNIQUE (id, sn)
 );
 
+drop table if exists event_datas CASCADE;
+CREATE TABLE event_datas
+(
+    event_id text NOT NULL PRIMARY KEY,
+    event_sn bigint NOT NULL,
+    room_id text NOT NULL,
+    internal_metadata json,
+    format_version bigint,
+    json_data json NOT NULL,
+    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
+);
 
 DROP TABLE IF EXISTS event_points CASCADE;
 CREATE TABLE event_points
@@ -470,30 +480,6 @@ CREATE INDEX threads_event_sn_idx
     ON threads USING btree
     (room_id ASC NULLS LAST, event_sn ASC NULLS LAST);
 
-drop table if exists event_datas CASCADE;
-CREATE TABLE event_datas
-(
-    event_id text NOT NULL PRIMARY KEY,
-    event_sn bigserial not null,
-    room_id text NOT NULL,
-    internal_metadata json,
-    format_version bigint,
-    json_data json NOT NULL,
-    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
-);
--- CREATE TABLE event_shorts {
---     id bigserial NOT NULL PRIMARY KEY,
---     event_id text NOT NULL
--- };
--- ALTER TABLE ONLY event_shorts
---     ADD CONSTRAINT event_shorts_udx UNIQUE (event_id);
-    
--- CREATE TABLE room_shorts {
---     id bigserial NOT NULL PRIMARY KEY,
---     room_id text NOT NULL
--- };
--- ALTER TABLE ONLY room_shorts
---     ADD CONSTRAINT room_shorts_udx UNIQUE (room_id);
 
 DROP TABLE IF EXISTS room_state_frames CASCADE;
 CREATE TABLE room_state_frames
@@ -754,13 +740,14 @@ CREATE TABLE IF NOT EXISTS user_openid_tokens
 );
 
 
-DROP TABLE IF EXISTS room_servers;
-CREATE TABLE IF NOT EXISTS room_servers
+DROP TABLE IF EXISTS room_joined_servers;
+CREATE TABLE IF NOT EXISTS room_joined_servers
 (
     id bigserial NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     server_id text NOT NULL,
-    CONSTRAINT room_servers_room_id_server_id_udx UNIQUE (room_id, server_id)
+    occur_sn bigint NOT NULL,
+    CONSTRAINT room_joined_servers_room_id_server_id_udx UNIQUE (room_id, server_id)
 );
 
 DROP TABLE IF EXISTS event_relations;
@@ -946,3 +933,48 @@ CREATE TABLE outgoing_requests (
     state text NOT NULL DEFAULT 'created',
     data bytea
 );
+
+
+drop table if exists media_url_previews CASCADE;
+CREATE TABLE media_url_previews (
+    id bigserial not null PRIMARY KEY,
+    url text NOT NULL,
+    og_title text,
+    og_type text,
+    og_url text,
+    og_description text,
+    og_image text,
+    image_size bigint,
+    og_image_width integer,
+    og_image_height integer,
+    created_at bigint NOT NULL,
+    CONSTRAINT media_url_previews_ukey UNIQUE (url)
+);
+CREATE UNIQUE INDEX media_url_previews_index ON media_url_previews USING btree (url, og_title, og_type, og_url, og_description);
+
+
+DROP TABLE IF EXISTS user_login_tokens;
+
+CREATE TABLE IF NOT EXISTS user_login_tokens
+(
+    id bigserial NOT NULL PRIMARY KEY,
+    user_id text NOT NULL,
+    token text NOT NULL,
+    expires_at bigint NOT NULL,
+    CONSTRAINT user_login_tokens_ukey UNIQUE (token)
+);
+
+DROP TABLE IF EXISTS room_lookup_servers;
+CREATE TABLE room_lookup_servers
+(
+   id bigserial not null PRIMARY KEY,
+   room_id text NOT NULL,
+   alias_id text NOT NULL,
+   server_id text NOT NULL,
+   CONSTRAINT room_lookup_servers_udx UNIQUE (room_id, alias_id, server_id)
+);
+
+CREATE INDEX IF NOT EXISTS room_lookup_servers_alias_id_idx
+    ON room_lookup_servers USING btree (alias_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS room_lookup_servers_room_id_idx
+    ON room_lookup_servers USING btree (room_id ASC NULLS LAST);

@@ -15,11 +15,13 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id};
+use crate::data::room::NewDbEvent;
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, config, data,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, SnPduEvent,
+    config, data,
 };
 
 pub async fn knock_room(
@@ -171,12 +173,11 @@ pub async fn knock_room(
 
     info!("send_knock finished");
 
-    info!("Parsing knock event");
-    let event_sn = ensure_event_sn(&room_id, &event_id)?;
-    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, event_sn, knock_event.clone())
+    info!("parsing knock event");
+    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, knock_event.clone())
         .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
 
-    info!("Going through send_knock response knock state events");
+    info!("going through send_knock response knock state events");
 
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
@@ -214,7 +215,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            crate::event::handler::process_incoming_pdu(
+            handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
@@ -225,15 +226,6 @@ pub async fn knock_room(
             .await
             .map(|_| ());
             timeline::get_pdu(&event_id)?
-            // let pdu = PduEvent::from_json_value(
-            //     &event_id,
-            //     data::next_sn()?,
-            //     serde_json::from_str::<JsonValue>(res_body.pdu.get())?,
-            // )
-            // .map_err(|e| {
-            //     tracing::error!("Failed to parse event: {res_body:#?}");
-            //     StatusError::internal_server_error().brief(format!("Invalid event json received from server: {e:?}"))
-            // })?;
         };
 
         if let Some(state_key) = &pdu.state_key {
@@ -241,6 +233,37 @@ pub async fn knock_room(
             state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
+
+    info!("Appending room knock event locally");
+    let event_id = parsed_knock_pdu.event_id.clone();
+    let event_sn = ensure_event_sn(room_id, &event_id)?;
+    NewDbEvent {
+        id: event_id.to_owned(),
+        sn: event_sn,
+        ty: MembershipState::Knock.to_string(),
+        room_id: room_id.to_owned(),
+        unrecognized_keys: None,
+        depth: parsed_knock_pdu.depth as i64,
+        topological_ordering: parsed_knock_pdu.depth as i64,
+        stream_ordering: 0,
+        origin_server_ts: UnixMillis::now(),
+        received_at: None,
+        sender_id: Some(sender_id.to_owned()),
+        contains_url: false,
+        worker_id: None,
+        state_key: Some(sender_id.to_string()),
+        is_outlier: true,
+        soft_failed: false,
+        rejection_reason: None,
+    }
+    .save()?;
+    let knock_pdu = SnPduEvent::new(parsed_knock_pdu, event_sn);
+    timeline::append_pdu(
+        &knock_pdu,
+        knock_event,
+        once(event_id.borrow()),
+        &room::lock_state(&room_id).await,
+    )?;
 
     info!("Compressing state from send_knock");
     let compressed = state_map
@@ -258,25 +281,17 @@ pub async fn knock_room(
     debug!("Forcing state for new room");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
-    let frame_id = state::append_to_state(&parsed_knock_pdu)?;
+    let frame_id = state::append_to_state(&knock_pdu)?;
 
     info!("Updating membership locally to knock state with provided stripped state events");
     crate::membership::update_membership(
         &event_id,
-        event_sn,
+        knock_pdu.event_sn,
         room_id,
         sender_id,
         MembershipState::Knock,
         sender_id,
         Some(send_knock_body.knock_room_state),
-    )?;
-
-    info!("Appending room knock event locally");
-    timeline::append_pdu(
-        &parsed_knock_pdu,
-        knock_event,
-        once(parsed_knock_pdu.event_id.borrow()),
-        &room::lock_state(&room_id).await,
     )?;
 
     info!("Setting final room state for new room");

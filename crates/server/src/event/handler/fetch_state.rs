@@ -45,7 +45,7 @@ pub(super) async fn fetch_state(
 
         match state.entry(state_key_id) {
             hash_map::Entry::Vacant(v) => {
-                v.insert(pdu.event_id);
+                v.insert(pdu.event_id.clone());
             }
             hash_map::Entry::Occupied(_) => {
                 return Err(AppError::internal(

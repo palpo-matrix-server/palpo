@@ -242,23 +242,16 @@ pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson
 
 #[tracing::instrument(level = "trace")]
 pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipState> {
-    if is_joined(user_id, room_id)? {
-        return Ok(MembershipState::Join);
+    let membership = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::room_id.eq(room_id))
+        .order_by(room_users::id.desc())
+        .select(room_users::membership)
+        .first::<String>(&mut connect()?)
+        .optional()?;
+    if let Some(membership) = membership {
+        Ok(membership.into())
+    } else {
+        Err(MatrixError::not_found(format!("User {} is not a member of room {}", user_id, room_id)).into())
     }
-    if is_left(user_id, room_id)? {
-        return Ok(MembershipState::Leave);
-    }
-    if is_knocked(user_id, room_id)? {
-        return Ok(MembershipState::Knock);
-    }
-    if is_invited(user_id, room_id)? {
-        return Ok(MembershipState::Invite);
-    }
-    if is_banned(user_id, room_id)? {
-        return Ok(MembershipState::Ban);
-    }
-    if once_joined(user_id, room_id)? {
-        return Ok(MembershipState::Ban);
-    }
-    Err(MatrixError::not_found(format!("User {} is not a member of room {}", user_id, room_id)).into())
 }

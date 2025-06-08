@@ -45,12 +45,20 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum
     {
         Ok(sn)
     } else {
-        diesel::insert_into(event_points::table)
+        let sn = diesel::insert_into(event_points::table)
             .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
             .on_conflict_do_nothing()
             .returning(event_points::event_sn)
-            .get_result::<Seqnum>(&mut connect()?)
-            .map_err(Into::into)
+            .get_result::<Seqnum>(&mut connect()?)?;
+
+        diesel::update(events::table.find(event_id))
+            .set(events::sn.eq(sn))
+            .execute(&mut connect()?)?;
+
+        diesel::update(event_datas::table.find(event_id))
+            .set(event_datas::event_sn.eq(sn))
+            .execute(&mut connect()?)?;
+        Ok(sn)
     }
 }
 /// Returns the `count` of this pdu's id.
@@ -75,13 +83,6 @@ pub fn get_event_for_timestamp(
     timestamp: UnixMillis,
     dir: Direction,
 ) -> AppResult<(OwnedEventId, UnixMillis)> {
-    println!("fffffff0  room_id:{room_id} timestamp:{timestamp} dir:{dir:?}");
-    println!(
-        "LLLLLLLLLLbackward event 22222222: {:#?}",
-        events::table
-            .order_by((events::origin_server_ts.desc(), events::sn.desc()))
-            .load::<DbEvent>(&mut connect()?)?
-    );
     match dir {
         Direction::Forward => {
             let (local_event_id, origin_server_ts) = events::table
@@ -102,6 +103,12 @@ pub fn get_event_for_timestamp(
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
 
+            println!("=====get_event_for_timestamp===events: {:#?}",  events::table
+                .filter(events::room_id.eq(room_id))
+                .order_by((events::origin_server_ts.desc(), events::sn.desc()))
+                .select((events::id, events::origin_server_ts))
+                .load::<(OwnedEventId, UnixMillis)>(&mut connect()?)?);
+
             Ok((local_event_id, origin_server_ts))
         }
     }
@@ -114,11 +121,11 @@ pub fn get_event_for_timestamp(
 }
 
 pub fn get_event_sn_and_ty(event_id: &EventId) -> AppResult<(Seqnum, String)> {
-    events::table
+    let (sn, ty) = events::table
         .find(event_id)
         .select((events::sn, events::ty))
-        .first::<(Seqnum, String)>(&mut connect()?)
-        .map_err(Into::into)
+        .first::<(Seqnum, String)>(&mut connect()?)?;
+    Ok((sn, ty))
 }
 
 pub fn get_db_event(event_id: &EventId) -> AppResult<DbEvent> {
@@ -166,16 +173,15 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     Ok(())
 }
 
-pub type PdusIterItem = (Seqnum, PduEvent);
+pub type PdusIterItem = (Seqnum, SnPduEvent);
 #[inline]
 pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
     let (_, ref pdu) = item;
-
     is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
 }
 
 #[inline]
-pub fn is_ignored_pdu(pdu: &PduEvent, user_id: &UserId) -> bool {
+pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
     if pdu.event_ty.to_string() == "org.matrix.dummy_event" {

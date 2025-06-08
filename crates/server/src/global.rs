@@ -391,30 +391,30 @@ pub fn filter_keys_single_server(
 pub fn shutdown() {
     SHUTDOWN.store(true, std::sync::atomic::Ordering::Relaxed);
     // On shutdown
-    info!(target: "shutdown-sync", "Received shutdown notification, notifying sync helpers...");
+    info!(target: "shutdown-sync", "received shutdown notification, notifying sync helpers...");
     ROTATE.fire();
 }
 
 pub fn parse_incoming_pdu(
-    pdu: &RawJsonValue,
+    raw_value: &RawJsonValue,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
-    let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        tracing::warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
+    let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
+        warn!("Error parsing incoming event {:?}: {:?}", raw_value, e);
         MatrixError::bad_json("Invalid PDU in server response")
     })?;
-    let room_id: OwnedRoomId = value
+    let room_id = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
-        .ok_or(MatrixError::invalid_param("Invalid room id in pdu"))?;
+        .ok_or(MatrixError::invalid_param("invalid room id in pdu"))?;
 
     let room_version_id = crate::room::get_version(&room_id)
-        .map_err(|_| MatrixError::invalid_param(format!("Server is not in room {room_id}")))?;
+        .map_err(|_| MatrixError::invalid_param(format!("server is not in room {room_id}")))?;
 
-    let (event_id, value) = match crate::event::gen_event_id_canonical_json(pdu, &room_version_id) {
+    let event_id = match crate::event::gen_event_id(&value, &room_version_id) {
         Ok(t) => t,
         Err(_) => {
             // Event could not be converted to canonical json
-            return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
+            return Err(MatrixError::invalid_param("could not convert event to canonical json").into());
         }
     };
     Ok((event_id, value, room_id, room_version_id))

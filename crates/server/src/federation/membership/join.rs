@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json, handler};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::CompressedEvent;
 use crate::room::state::DeltaInfo;
@@ -38,12 +38,14 @@ use crate::{
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
+    println!("=============send_join_v1  0");
     if !room::room_exists(room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
 
-    crate::event::handler::acl_check(origin, room_id)?;
+    handler::acl_check(origin, room_id)?;
 
+    println!("=============send_join_v1  1");
     // We need to return the state prior to joining, let's keep a reference to that here
     let frame_id = room::get_frame_id(room_id, None)?;
 
@@ -53,6 +55,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
         .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
 
+    println!("=============send_join_v1  2");
     let event_room_id: OwnedRoomId = serde_json::from_value(
         value
             .get("room_id")
@@ -62,6 +65,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
+    println!("=============send_join_v1  3");
     if event_room_id != room_id {
         return Err(MatrixError::bad_json("Event room_id does not match request path room ID.").into());
     }
@@ -75,6 +79,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("Event has invalid state event type: {e}")))?;
 
+    println!("=============send_join_v1  4");
     if event_type != StateEventType::RoomMember {
         return Err(MatrixError::bad_json("Not allowed to send non-membership state event to join endpoint.").into());
     }
@@ -88,6 +93,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("Event content is empty or invalid: {e}")))?;
 
+    println!("=============send_join_v1  5");
     if content.membership != MembershipState::Join {
         return Err(MatrixError::bad_json("Not allowed to send a non-join membership event to join endpoint.").into());
     }
@@ -102,11 +108,14 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user ID: {e}")))?;
 
+    println!("=============send_join_v1  6");
     if room::user::is_banned(&sender, room_id)? {
         return Err(MatrixError::forbidden("User is banned from the room.", None).into());
     }
 
-    crate::event::handler::acl_check(sender.server_name(), room_id)?;
+    println!("=============send_join_v1  7");
+    handler::acl_check(sender.server_name(), room_id)?;
+    println!("=============send_join_v1  8");
 
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
@@ -121,10 +130,12 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
             .into(),
     )
     .map_err(|e| MatrixError::bad_json(format!("State key is not a valid user ID: {e}")))?;
+    println!("=============send_join_v1  9");
     if state_key != sender {
         return Err(MatrixError::bad_json("State key does not match sender user.").into());
     };
 
+    println!("=============send_join_v1  10");
     if let Some(authorising_user) = content.join_authorized_via_users_server {
         use crate::core::RoomVersionId::*;
 
@@ -159,6 +170,7 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         }
     }
 
+    println!("=============send_join_v1  11");
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
         .map_err(|e| MatrixError::invalid_param(format!("Failed to sign send_join event: {e}")))?;
 
@@ -172,9 +184,10 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
     )
     .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
 
-    crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true)
-        .await?;
+    println!("=============send_join_v1  12");
+    handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value.clone(), true).await?;
 
+    println!("=============send_join_v1  13");
     let state_ids = state::get_full_state_ids(frame_id)?;
     let state = state_ids
         .iter()
@@ -188,8 +201,10 @@ pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonVa
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
+    println!("=============send_join_v1  14");
     crate::sending::send_pdu_room(room_id, &event_id)?;
 
+    println!("=============send_join_v1  15");
     Ok(RoomStateV1 {
         auth_chain,
         state,

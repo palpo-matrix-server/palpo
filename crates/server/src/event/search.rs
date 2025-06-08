@@ -11,7 +11,7 @@ use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::room::{state, timeline};
-use crate::{AppResult, MatrixError, PduEvent};
+use crate::{AppResult, MatrixError, PduEvent, SnPduEvent};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
     let filter = &criteria.filter;
@@ -127,7 +127,7 @@ fn calc_event_context(
     Ok(context)
 }
 
-pub fn save_pdu(pdu: &PduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
+pub fn save_pdu(pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
     let Some(CanonicalJsonValue::Object(content)) = pdu_json.get("content") else {
         return Ok(());
     };
@@ -156,7 +156,7 @@ pub fn save_pdu(pdu: &PduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()>
     };
     diesel::sql_query("INSERT INTO event_searches (event_id, event_sn, room_id, sender_id, key, vector, origin_server_ts) VALUES ($1, $2, $3, $4, $5, to_tsvector('english', $6), $7) ON CONFLICT (event_id) DO UPDATE SET vector = to_tsvector('english', $6), origin_server_ts = $7")
         .bind::<diesel::sql_types::Text, _>(pdu.event_id.as_str())
-        .bind::<diesel::sql_types::Int8, _>(pdu.event_sn)
+        .bind::<diesel::sql_types::Nullable<diesel::sql_types::Int8>, _>(pdu.event_sn)
         .bind::<diesel::sql_types::Text, _>(&pdu.room_id)
         .bind::<diesel::sql_types::Text, _>(&pdu.sender)
         .bind::<diesel::sql_types::Text, _>(key)

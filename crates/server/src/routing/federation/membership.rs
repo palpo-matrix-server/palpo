@@ -10,11 +10,12 @@ use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
+use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, config, empty_ok, json_ok,
-    membership, room, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, SnPduEvent, config,
+    empty_ok, json_ok, membership, room, utils,
 };
 
 pub fn router_v1() -> Router {
@@ -38,6 +39,7 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
+    println!("MMMMMMMMMMake join: {:?}", args);
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -47,7 +49,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         return Err(MatrixError::bad_json("Not allowed to join on behalf of another server/user.").into());
     }
 
-    crate::event::handler::acl_check(args.user_id.server_name(), &args.room_id)?;
+    handler::acl_check(args.user_id.server_name(), &args.room_id)?;
 
     let room_version_id = room::get_version(&args.room_id)?;
     if !args.ver.contains(&room_version_id) {
@@ -94,6 +96,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         }
     };
 
+    println!("MMMMMMMMMMake join == 0");
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
         blurhash: None,
@@ -117,8 +120,10 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         &args.room_id,
         &state_lock,
     )?;
+    println!("MMMMMMMMMMake join == 2");
     drop(state_lock);
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
+    println!("MMMMMMMMMMake join == 3");
     let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
@@ -136,7 +141,7 @@ async fn invite_user(
 ) -> JsonResult<InviteUserResBodyV2> {
     let body = body.into_inner();
     let origin = depot.origin()?;
-    crate::event::handler::acl_check(origin, &args.room_id)?;
+    handler::acl_check(origin, &args.room_id)?;
 
     if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
@@ -161,7 +166,7 @@ async fn invite_user(
         return Err(MatrixError::invalid_param("Cannot invite remote users.").into());
     }
 
-    crate::event::handler::acl_check(invitee_id.server_name(), &args.room_id)?;
+    handler::acl_check(invitee_id.server_name(), &args.room_id)?;
 
     crate::server_key::hash_and_sign_event(&mut signed_event, &body.room_version)
         .map_err(|e| MatrixError::invalid_param(format!("Failed to sign event: {e}.")))?;
@@ -189,7 +194,7 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(
+    let pdu = SnPduEvent::from_json_value(
         &event_id,
         crate::event::ensure_event_sn(&args.room_id, &event_id)?,
         event.into(),
@@ -233,7 +238,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     }
 
     // ACL check origin
-    crate::event::handler::acl_check(origin, &args.room_id)?;
+    handler::acl_check(origin, &args.room_id)?;
 
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
@@ -268,7 +273,7 @@ async fn send_join_v2(
 ) -> JsonResult<SendJoinResBodyV2> {
     let body = body.into_inner();
     // let server_name = args.room_id.server_name().map_err(AppError::public)?;
-    // crate::event::handler::acl_check(&server_name, &args.room_id)?;
+    // handler::acl_check(&server_name, &args.room_id)?;
 
     let room_state = crate::federation::membership::send_join_v2(depot.origin()?, &args.room_id, &body.0).await?;
 
@@ -299,7 +304,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     if !room::is_room_exists(&args.room_id)? {
         return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
     }
-    crate::event::handler::acl_check(origin, &args.room_id)?;
+    handler::acl_check(origin, &args.room_id)?;
 
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = room::get_version(&args.room_id)?;
@@ -363,7 +368,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
     )
     .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
 
-    crate::event::handler::acl_check(sender.server_name(), &args.room_id)?;
+    handler::acl_check(sender.server_name(), &args.room_id)?;
 
     if sender.server_name() != origin {
         return Err(MatrixError::bad_json("Not allowed to leave on behalf of another server.").into());
@@ -382,8 +387,7 @@ async fn send_leave(depot: &mut Depot, args: SendLeaveReqArgsV2, body: JsonBody<
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    crate::event::handler::process_incoming_pdu(origin, &event_id, &args.room_id, &room_version_id, value, true)
-        .await?;
+    handler::process_incoming_pdu(origin, &event_id, &args.room_id, &room_version_id, value, true).await?;
 
     crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
     empty_ok()

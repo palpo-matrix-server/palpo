@@ -3,7 +3,7 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::federation::membership::InviteUserResBodyV2;
 use crate::core::identifiers::*;
 use crate::core::serde::to_raw_json_value;
-use crate::event::{PduBuilder, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, gen_event_id_canonical_json, handler};
 use crate::membership::federation::membership::{InviteUserReqArgs, InviteUserReqBodyV2};
 use crate::room::{state, timeline};
 use crate::{AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, data, room, sending};
@@ -104,7 +104,7 @@ pub async fn invite_user(
         )
         .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
 
-        crate::event::handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true).await?;
+        handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true).await?;
         return sending::send_pdu_room(room_id, &event_id);
     }
 

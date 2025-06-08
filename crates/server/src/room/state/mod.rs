@@ -29,7 +29,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::room::timeline;
-use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, membership, room, utils};
+use crate::{AppError, AppResult, MatrixError, RoomMutexGuard, SnPduEvent, membership, room, utils};
 
 pub static SERVER_VISIBILITY_CACHE: LazyLock<Mutex<LruCache<(OwnedServerName, i64), bool>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
@@ -92,7 +92,7 @@ pub fn force_state(
                     Err(_) => continue,
                 };
 
-                let state_key = match pdu.state_key {
+                let state_key = match &pdu.state_key {
                     Some(k) => k,
                     None => continue,
                 };
@@ -186,7 +186,7 @@ pub fn set_event_state(
 /// This adds all current state events (not including the incoming event)
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
-pub fn append_to_state(new_pdu: &PduEvent) -> AppResult<i64> {
+pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None).ok();
 
     if let Some(state_key) = &new_pdu.state_key {
@@ -272,7 +272,7 @@ pub fn get_forward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>>
     Ok(event_ids)
 }
 
-pub fn set_forward_extremities<'a, I>(room_id: &'a RoomId, event_ids: I, _lock: &RoomMutexGuard) -> AppResult<()>
+pub fn set_forward_extremities<'a, I>(room_id: &RoomId, event_ids: I, _lock: &RoomMutexGuard) -> AppResult<()>
 where
     I: Iterator<Item = &'a EventId> + Send + 'a,
 {
@@ -303,7 +303,7 @@ pub fn get_auth_events(
     sender: &UserId,
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
-) -> AppResult<StateMap<PduEvent>> {
+) -> AppResult<StateMap<SnPduEvent>> {
     let frame_id = if let Ok(current_frame_id) = get_room_frame_id(room_id, None) {
         current_frame_id
     } else {
@@ -353,7 +353,7 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, OwnedEventId>
     Ok(map)
 }
 
-pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, String), PduEvent>> {
+pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, String), SnPduEvent>> {
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
@@ -394,7 +394,7 @@ pub fn get_state_event_id(frame_id: i64, event_type: &StateEventType, state_key:
 }
 
 /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
-pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<PduEvent> {
+pub fn get_state(frame_id: i64, event_type: &StateEventType, state_key: &str) -> AppResult<SnPduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
     timeline::get_pdu(&event_id)
 }
@@ -675,24 +675,6 @@ pub fn save_state(room_id: &RoomId, new_compressed_events: Arc<CompressedState>)
         disposed,
     })
 }
-
-// /// Returns a single PDU from `room_id` with key (`event_type`, `state_key`).
-// pub fn get_state(
-//     room_id: &RoomId,
-//     event_type: &StateEventType,
-//     state_key: &str,
-//     until_sn: Option<i64>,
-// ) -> AppResult<Option<PduEvent>> {
-//     let Some(frame_id) = get_room_frame_id(room_id, until_sn)? else {
-//         return Ok(None);
-//     };
-//     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-//     if let Some(event_id) = event_id {
-//         timeline::get_pdu(&event_id)
-//     } else {
-//         Ok(None)
-//     }
-// }
 
 #[tracing::instrument]
 pub fn get_user_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Option<Vec<RawJson<AnyStrippedStateEvent>>>> {

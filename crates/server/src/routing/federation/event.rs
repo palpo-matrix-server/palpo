@@ -3,7 +3,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::federation::authorization::EventAuthorizationResBody;
+use crate::core::federation::authorization::{EventAuthorizationReqArgs, EventAuthorizationResBody};
 use crate::core::federation::event::{
     EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody, MissingEventsReqBody,
     MissingEventsResBody,
@@ -32,12 +32,18 @@ pub fn router() -> Router {
 #[endpoint]
 fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult<EventResBody> {
     let origin = depot.origin()?;
-    let event = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
+    let event = DbEvent::get_by_id(&args.event_id)?;
+    if event.rejection_reason.is_some() {
+        warn!("Event {} is rejected, returning 404", &args.event_id);
+        return Err(MatrixError::not_found("Event not found.").into());
+    }
+
+    let event_json = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
         warn!("Event not found, event ID: {:?}", &args.event_id);
         MatrixError::not_found("Event not found.")
     })?;
 
-    let room_id_str = event
+    let room_id_str = event_json
         .get("room_id")
         .and_then(|val| val.as_str())
         .ok_or_else(|| AppError::internal("Invalid event in database"))?;
@@ -49,7 +55,7 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
     json_ok(EventResBody {
         origin: config::server_name().to_owned(),
         origin_server_ts: UnixMillis::now(),
-        pdu: crate::sending::convert_to_outgoing_federation_event(event),
+        pdu: crate::sending::convert_to_outgoing_federation_event(event_json),
     })
 }
 
@@ -58,7 +64,11 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
 ///
 /// - This does not include the event itself
 #[endpoint]
-fn auth_chain(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<EventAuthorizationResBody> {
+fn auth_chain(
+    _aa: AuthArgs,
+    args: EventAuthorizationReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<EventAuthorizationResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 

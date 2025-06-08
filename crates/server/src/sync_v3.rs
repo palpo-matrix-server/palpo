@@ -20,7 +20,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{EventHash, PduEvent};
+use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
@@ -68,6 +68,7 @@ pub async fn sync_events(
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
+        println!("============joined room: {}", room_id);
         let joined_room = match load_joined_room(
             sender_id,
             device_id,
@@ -110,7 +111,6 @@ pub async fn sync_events(
         if !room::room_exists(room_id)? {
             let event = PduEvent {
                 event_id: EventId::new(config::server_name()).into(),
-                event_sn: 0,
                 sender: sender_id.to_owned(),
                 origin_server_ts: UnixMillis::now(),
                 event_ty: TimelineEventType::RoomMember,
@@ -126,6 +126,7 @@ pub async fn sync_events(
                 hashes: EventHash { sha256: String::new() },
                 signatures: None,
                 extra_data: Default::default(),
+                rejection_reason: None,
             };
             left_rooms.insert(
                 room_id.to_owned(),
@@ -476,6 +477,7 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
+        println!("jjjjjjjj 7");
         let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
@@ -486,6 +488,7 @@ async fn load_joined_room(
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
 
+            println!("=====current_state_ids: {:?}", current_state_ids);
             for (state_key_id, id) in current_state_ids {
                 let DbRoomStateField {
                     event_ty, state_key, ..
@@ -762,7 +765,7 @@ pub(crate) fn load_timeline(
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<(Vec<(i64, PduEvent)>, bool)> {
+) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
     let mut timeline_pdus = if let Some(until_sn) = until_sn {
         let (min_sn, max_sn) = if until_sn > since_sn {
             (since_sn, until_sn)

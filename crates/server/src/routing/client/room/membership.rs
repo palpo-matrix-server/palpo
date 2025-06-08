@@ -21,14 +21,12 @@ use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
+use crate::event::{PduBuilder, PduEvent, SnPduEvent};
 use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
-use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, PduBuilder, PduEvent, data, empty_ok, json_ok,
-    room, utils,
-};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, json_ok, room, utils};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -82,16 +80,17 @@ pub(super) fn get_members(_aa: AuthArgs, args: MembersReqArgs, depot: &mut Depot
     json_ok(MembersResBody { chunk: states })
 }
 fn membership_filter(
-    pdu: PduEvent,
+    pdu: SnPduEvent,
     for_membership: Option<&MembershipEventFilter>,
     not_membership: Option<&MembershipEventFilter>,
     until_sn: Option<Seqnum>,
-) -> Option<PduEvent> {
+) -> Option<SnPduEvent> {
     if let Some(until_sn) = until_sn {
         if pdu.event_sn > until_sn {
             return None;
         }
     }
+
     let membership_state_filter = match for_membership {
         Some(MembershipEventFilter::Ban) => MembershipState::Ban,
         Some(MembershipEventFilter::Invite) => MembershipState::Invite,
@@ -305,14 +304,12 @@ pub(crate) async fn join_room_by_id_or_alias(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!("jjjjjjjjjjjjjjjjjjoin 0");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();
     let body = body.into_inner().unwrap_or_default();
     let remote_addr = req.remote_addr();
 
-    println!("jjjjjjjjjjjjjjjjjjoin 1");
     // The servers to attempt to join the room through.
     //
     // One of the servers must be participating in the room.
@@ -326,7 +323,6 @@ pub(crate) async fn join_room_by_id_or_alias(
 
     let (room_id, servers) = match OwnedRoomId::try_from(room_id_or_alias) {
         Ok(room_id) => {
-            println!("jjjjjjjjjjjjjjjjjjoin 2");
             banned_room_check(sender_id, Some(&room_id), room_id.server_name().ok(), remote_addr).await?;
             let mut servers = if via.is_empty() {
                 crate::room::lookup_servers(&room_id)?
@@ -356,7 +352,6 @@ pub(crate) async fn join_room_by_id_or_alias(
             (room_id, servers)
         }
         Err(room_alias) => {
-            println!("jjjjjjjjjjjjjjjjjjoin 3");
             let (room_id, mut servers) = crate::room::resolve_alias(&room_alias, Some(via.clone())).await?;
             banned_room_check(sender_id, Some(&room_id), Some(room_alias.server_name()), remote_addr).await?;
 
@@ -392,7 +387,6 @@ pub(crate) async fn join_room_by_id_or_alias(
         }
     };
 
-    println!("jjjjjjjjjjjjjjjjjjoin 4");
     let join_room_body = crate::membership::join_room(
         authed,
         &room_id,
@@ -521,6 +515,13 @@ pub(super) async fn unban_user(
         None,
     )?;
 
+    if event.membership != MembershipState::Ban {
+        return Err(MatrixError::bad_state(format!(
+            "Cannot unban user who was not banned, current memebership is {}",
+            event.membership
+        ))
+        .into());
+    }
     event.membership = MembershipState::Leave;
     event.reason = body.reason.clone();
 

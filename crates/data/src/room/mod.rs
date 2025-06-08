@@ -168,7 +168,7 @@ pub struct NewDbRoomUser {
 #[diesel(table_name = threads, primary_key(event_id))]
 pub struct DbThread {
     pub event_id: OwnedEventId,
-    pub event_sn: i64,
+    pub event_sn: Seqnum,
     pub room_id: OwnedRoomId,
     pub last_id: OwnedEventId,
     pub last_sn: i64,
@@ -178,18 +178,30 @@ pub struct DbThread {
 #[diesel(table_name = event_datas, primary_key(event_id))]
 pub struct DbEventData {
     pub event_id: OwnedEventId,
-    pub event_sn: i64,
+    pub event_sn: Seqnum,
     pub room_id: OwnedRoomId,
     pub internal_metadata: Option<JsonValue>,
     pub json_data: JsonValue,
     pub format_version: Option<i64>,
 }
 
+impl DbEventData {
+    pub fn save(&self) -> DataResult<()> {
+        diesel::insert_into(event_datas::table)
+            .values(self)
+            .on_conflict(event_datas::event_id)
+            .do_update()
+            .set(self)
+            .execute(&mut connect()?)?;
+        Ok(())
+    }
+}
+
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct DbEvent {
     pub id: OwnedEventId,
-    pub sn: i64,
+    pub sn: Seqnum,
     pub ty: String,
     pub room_id: OwnedRoomId,
     pub depth: i64,
@@ -207,11 +219,18 @@ pub struct DbEvent {
     pub soft_failed: bool,
     pub rejection_reason: Option<String>,
 }
+impl DbEvent {
+    pub fn get_by_id(id: &EventId) -> DataResult<Self> {
+        events::table.find(id).first(&mut connect()?).map_err(Into::into)
+    }
+}
+
+
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {
     pub id: OwnedEventId,
-    pub sn: i64,
+    pub sn: Seqnum,
     #[serde(rename = "type")]
     pub ty: String,
     pub room_id: OwnedRoomId,
@@ -238,12 +257,24 @@ impl NewDbEvent {
     }
     pub fn from_json_value(id: &EventId, sn: Seqnum, mut value: JsonValue) -> DataResult<Self> {
         let depth = value.get("depth").cloned().unwrap_or(0.into());
+        let ty = value.get("type").cloned().unwrap_or_else(|| "m.room.message".into());
         let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
         obj.insert("sn".into(), sn.into());
+        obj.insert("type".into(), ty);
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
         Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
+    }
+
+    pub fn save(&self) -> DataResult<()> {
+        diesel::insert_into(events::table)
+            .values(self)
+            .on_conflict(events::id)
+            .do_update()
+            .set(self)
+            .execute(&mut connect()?)?;
+        Ok(())
     }
 }
 
