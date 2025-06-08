@@ -75,24 +75,24 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in &event_ids {
-        let sn_pdu = match timeline::get_pdu(&event_id) {
-            Ok(sn_pdu) => sn_pdu,
+        let pdu = match timeline::get_pdu(&event_id) {
+            Ok(pdu) => pdu,
             _ => continue,
         };
 
-        match sn_pdu.event_ty {
+        match pdu.event_ty {
             TimelineEventType::RoomMember => {
                 #[derive(Deserialize)]
                 struct ExtractMembership {
                     membership: MembershipState,
                 }
 
-                let membership = match serde_json::from_str::<ExtractMembership>(sn_pdu.content.get()) {
+                let membership = match serde_json::from_str::<ExtractMembership>(pdu.content.get()) {
                     Ok(e) => e.membership,
                     Err(_) => continue,
                 };
 
-                let state_key = match &sn_pdu.state_key {
+                let state_key = match &pdu.state_key {
                     Some(k) => k,
                     None => continue,
                 };
@@ -103,12 +103,12 @@ pub fn force_state(
                 };
 
                 membership::update_membership(
-                    &sn_pdu.event_id,
-                    sn_pdu.event_sn,
+                    &pdu.event_id,
+                    pdu.event_sn,
                     room_id,
                     &user_id,
                     membership,
-                    &sn_pdu.sender,
+                    &pdu.sender,
                     None,
                 )?;
             }
@@ -116,7 +116,7 @@ pub fn force_state(
                 room::space::ROOM_ID_SPACE_CHUNK_CACHE
                     .lock()
                     .unwrap()
-                    .remove(&sn_pdu.room_id);
+                    .remove(&pdu.room_id);
             }
             _ => continue,
         }

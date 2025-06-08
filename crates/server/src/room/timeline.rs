@@ -941,9 +941,9 @@ pub fn get_pdus(
 #[tracing::instrument(skip(reason))]
 pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
-    if let Ok(mut sn_pdu) = get_pdu(event_id) {
-        sn_pdu.redact(reason)?;
-        replace_pdu(event_id, &utils::to_canonical_object(&sn_pdu)?)?;
+    if let Ok(mut pdu) = get_pdu(event_id) {
+        pdu.redact(reason)?;
+        replace_pdu(event_id, &utils::to_canonical_object(&pdu)?)?;
         diesel::update(events::table.filter(events::id.eq(event_id)))
             .set(events::is_redacted.eq(true))
             .execute(&mut connect()?)?;

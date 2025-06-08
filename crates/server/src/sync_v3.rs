@@ -198,15 +198,15 @@ pub async fn sync_events(
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let sn_pdu = match timeline::get_pdu(&event_id) {
-                        Ok(sn_pdu) => sn_pdu,
+                    let pdu = match timeline::get_pdu(&event_id) {
+                        Ok(pdu) => pdu,
                         _ => {
                             error!("Pdu in state not found: {}", event_id);
                             continue;
                         }
                     };
 
-                    left_state_events.push(sn_pdu.to_sync_state_event());
+                    left_state_events.push(pdu.to_sync_state_event());
                 }
             }
         }
@@ -495,18 +495,18 @@ async fn load_joined_room(
                 } = state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
-                    let Ok(sn_pdu) = timeline::get_pdu(&id) else {
+                    let Ok(pdu) = timeline::get_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
-                    state_events.push(sn_pdu);
+                    state_events.push(pdu);
                 } else if !lazy_load_enabled
                     || full_state
                     || timeline_users.contains(&state_key)
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                 {
-                    let Ok(sn_pdu) = timeline::get_pdu(&id) else {
+                    let Ok(pdu) = timeline::get_pdu(&id) else {
                         error!("Pdu in state not found: {}", id);
                         continue;
                     };
@@ -515,7 +515,7 @@ async fn load_joined_room(
                     if let Ok(uid) = UserId::parse(&state_key) {
                         lazy_loaded.insert(uid);
                     }
-                    state_events.push(sn_pdu);
+                    state_events.push(pdu);
                 }
             }
 
@@ -552,16 +552,16 @@ async fn load_joined_room(
 
                 for (key, id) in current_state_ids {
                     if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let sn_pdu = match timeline::get_pdu(&id) {
-                            Ok(sn_pdu) => sn_pdu,
+                        let pdu = match timeline::get_pdu(&id) {
+                            Ok(pdu) => pdu,
                             Err(_) => {
                                 error!("Pdu in state not found: {}", id);
                                 continue;
                             }
                         };
 
-                        if sn_pdu.event_ty == TimelineEventType::RoomMember {
-                            match UserId::parse(sn_pdu.state_key.as_ref().expect("State event has state key").clone()) {
+                        if pdu.event_ty == TimelineEventType::RoomMember {
+                            match UserId::parse(pdu.state_key.as_ref().expect("State event has state key").clone()) {
                                 Ok(state_key_user_id) => {
                                     lazy_loaded.insert(state_key_user_id);
                                 }
@@ -569,7 +569,7 @@ async fn load_joined_room(
                             }
                         }
 
-                        state_events.push(sn_pdu);
+                        state_events.push(pdu);
                     }
                 }
             }

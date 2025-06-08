@@ -194,7 +194,7 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let sn_pdu = SnPduEvent::from_json_value(
+    let pdu = SnPduEvent::from_json_value(
         &event_id,
         crate::event::ensure_event_sn(&args.room_id, &event_id)?,
         event.into(),
@@ -203,7 +203,7 @@ async fn invite_user(
         warn!("Invalid invite event: {}", e);
         MatrixError::invalid_param("Invalid invite event.")
     })?;
-    invite_state.push(sn_pdu.to_stripped_state_event());
+    invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
@@ -211,8 +211,8 @@ async fn invite_user(
     // send the invite PDU to the relevant appservices.
     if !room::is_server_joined(config::server_name(), &args.room_id)? {
         crate::membership::update_membership(
-            &sn_pdu.event_id,
-            sn_pdu.event_sn,
+            &pdu.event_id,
+            pdu.event_sn,
             &args.room_id,
             &invitee_id,
             MembershipState::Invite,

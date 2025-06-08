@@ -78,17 +78,17 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     let results: Vec<_> = items
         .into_iter()
         .filter_map(|(rank, event_id, _, _)| {
-            let sn_pdu = timeline::get_pdu(&event_id).ok()?;
-            if state::user_can_see_event(user_id, &sn_pdu.room_id, &sn_pdu.event_id).unwrap_or(false) {
-                Some((rank, sn_pdu))
+            let pdu = timeline::get_pdu(&event_id).ok()?;
+            if state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
+                Some((rank, pdu))
             } else {
                 None
             }
         })
-        .map(|(rank, sn_pdu)| SearchResult {
-            context: calc_event_context(user_id, &sn_pdu.room_id, &sn_pdu.event_id, 10, 10, false).unwrap_or_default(),
+        .map(|(rank, pdu)| SearchResult {
+            context: calc_event_context(user_id, &pdu.room_id, &pdu.event_id, 10, 10, false).unwrap_or_default(),
             rank: Some(rank as f64),
-            result: Some(sn_pdu.to_room_event()),
+            result: Some(pdu.to_room_event()),
         })
         .collect();
 
@@ -127,11 +127,11 @@ fn calc_event_context(
     Ok(context)
 }
 
-pub fn save_pdu(sn_pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
+pub fn save_pdu(pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
     let Some(CanonicalJsonValue::Object(content)) = pdu_json.get("content") else {
         return Ok(());
     };
-    let Some((key, vector)) = (match sn_pdu.event_ty {
+    let Some((key, vector)) = (match pdu.event_ty {
         TimelineEventType::RoomName => content
             .get("name")
             .and_then(|v| v.as_str())
@@ -155,15 +155,15 @@ pub fn save_pdu(sn_pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResul
         return Ok(());
     };
     diesel::sql_query("INSERT INTO event_searches (event_id, event_sn, room_id, sender_id, key, vector, origin_server_ts) VALUES ($1, $2, $3, $4, $5, to_tsvector('english', $6), $7) ON CONFLICT (event_id) DO UPDATE SET vector = to_tsvector('english', $6), origin_server_ts = $7")
-        .bind::<diesel::sql_types::Text, _>(sn_pdu.event_id.as_str())
-        .bind::<diesel::sql_types::Nullable<diesel::sql_types::Int8>, _>(sn_pdu.event_sn)
-        .bind::<diesel::sql_types::Text, _>(&sn_pdu.room_id)
-        .bind::<diesel::sql_types::Text, _>(&sn_pdu.sender)
+        .bind::<diesel::sql_types::Text, _>(pdu.event_id.as_str())
+        .bind::<diesel::sql_types::Nullable<diesel::sql_types::Int8>, _>(pdu.event_sn)
+        .bind::<diesel::sql_types::Text, _>(&pdu.room_id)
+        .bind::<diesel::sql_types::Text, _>(&pdu.sender)
         .bind::<diesel::sql_types::Text, _>(key)
         .bind::<diesel::sql_types::Text, _>(vector)
-        .bind::<diesel::sql_types::Int8, _>(sn_pdu.origin_server_ts)
+        .bind::<diesel::sql_types::Int8, _>(pdu.origin_server_ts)
         .bind::<diesel::sql_types::Text, _>(vector)
-        .bind::<diesel::sql_types::Int8, _>(sn_pdu.origin_server_ts)
+        .bind::<diesel::sql_types::Int8, _>(pdu.origin_server_ts)
         .execute(&mut connect()?)?;
 
     Ok(())
