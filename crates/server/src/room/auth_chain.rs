@@ -140,7 +140,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
             .select((events::id, events::sn))
             .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
         {
-           if found.insert(auth_event_sn) {
+            if found.insert(auth_event_sn) {
                 tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
 
                 todo.push_back(auth_event_id);

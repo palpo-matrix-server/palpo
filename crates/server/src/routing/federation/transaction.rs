@@ -32,7 +32,6 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
-    println!("\n\n\nRRRRRRRRRRReceived transaction {} from {origin} with body: {body:#?}", crate::config::server_name());
     if &body.origin != origin {
         return Err(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
@@ -75,9 +74,7 @@ async fn process_pdus(
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
-            Ok(t) => {
-                t
-            }
+            Ok(t) => t,
             Err(e) => {
                 warn!("Could not parse PDU: {e}");
                 continue;
@@ -91,7 +88,6 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        println!("PPPPPPPPParsed event {event_id} with value: {value:#?}");
         let result = handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true).await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),

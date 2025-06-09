@@ -39,7 +39,6 @@ pub fn router_v2() -> Router {
 /// Creates a join template.
 #[endpoint]
 async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJoinResBody> {
-    println!("MMMMMMMMMMake join: {:?}", args);
     if !room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room is unknown to this server.").into());
     }
@@ -96,7 +95,6 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         }
     };
 
-    println!("MMMMMMMMMMake join == 0");
     let content = to_raw_value(&RoomMemberEventContent {
         avatar_url: None,
         blurhash: None,
@@ -120,10 +118,8 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         &args.room_id,
         &state_lock,
     )?;
-    println!("MMMMMMMMMMake join == 2");
     drop(state_lock);
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
-    println!("MMMMMMMMMMake join == 3");
     let body = MakeJoinResBody {
         room_version: Some(room_version_id),
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),

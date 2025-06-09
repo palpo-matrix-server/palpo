@@ -30,7 +30,6 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
     let authed = depot.authed_info()?;
 
     let event = DbEvent::get_by_id(&args.event_id)?;
-    println!("GGGGGGGGGGGGGGGGGEt event: {event:#?}");
     if event.rejection_reason.is_some() {
         warn!("Event {} is rejected", &args.event_id);
         return Err(MatrixError::not_found("Event not found.").into());
