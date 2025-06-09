@@ -130,7 +130,7 @@ pub fn get_may_missing_pdus(
         .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
 
     let mut pdus = Vec::with_capacity(events.len());
-    let mut missing_ids = events.iter().map(|(id, _, _)| id.to_owned()).collect::<HashSet<_>>();
+    let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for (event_id, event_sn, json) in events {
         let mut pdu = SnPduEvent::from_json_value(&event_id, event_sn, json)
             .map_err(|_e| AppError::internal("Invalid PDU in db."))?;

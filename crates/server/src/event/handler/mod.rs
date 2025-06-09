@@ -14,6 +14,7 @@ use diesel::prelude::*;
 use fetch_state::fetch_state;
 use indexmap::IndexMap;
 use palpo_core::events::call::reject;
+use palpo_data::room::DbEvent;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -110,7 +111,6 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    println!("Caaal   process_to_outlier_pdu   {}", event_id);
     let (incoming_pdu, val) = process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value).await?;
 
     check_room_id(room_id, &incoming_pdu)?;
@@ -133,7 +133,6 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("=========dd==process_to_timeline_pdu: {}", event_id);
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -150,7 +149,6 @@ fn process_to_outlier_pdu<'a>(
     room_version_id: &'a RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
 ) -> Pin<Box<impl Future<Output = AppResult<(SnPduEvent, BTreeMap<String, CanonicalJsonValue>)>> + 'a + Send>> {
-    println!("===========process to outlier pdu: {}", event_id);
     Box::pin(async move {
         if let Some((event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
@@ -158,9 +156,7 @@ fn process_to_outlier_pdu<'a>(
             .first::<(Seqnum, JsonValue)>(&mut connect()?)
             .optional()?
         {
-            println!("process_to_outlier_pdu   0");
             if let Ok(val) = serde_json::from_value::<BTreeMap<String, CanonicalJsonValue>>(event_data.clone()) {
-                println!("process_to_outlier_pdu   1");
                 return Ok((SnPduEvent::from_json_value(event_id, event_sn, event_data)?, val));
             }
         }
@@ -221,8 +217,6 @@ fn process_to_outlier_pdu<'a>(
 
         check_room_id(room_id, &incoming_pdu)?;
 
-        println!("==========xx  incoming_pdu: {incoming_pdu:#?}");
-
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("auth check for {} based on auth events", incoming_pdu.event_id);
 
@@ -231,7 +225,6 @@ fn process_to_outlier_pdu<'a>(
             fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await?;
         }
         let (auth_events, missing_auth_event_ids) = timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
-        println!("=======get_may_missing_pdus  {:#?}", incoming_pdu.auth_events);
         let mut rejection_reason = if !missing_auth_event_ids.is_empty() {
             error!(
                 "missing auth events for {}: {:?}",
@@ -257,8 +250,7 @@ fn process_to_outlier_pdu<'a>(
                 })
                 .collect::<Vec<_>>();
             if !rejected_auth_events.is_empty() {
-                println!("============auth_events: {auth_events:?}   rejected_auth_events: {rejected_auth_events:?}");
-                Some(format!("one or many auth events rejected: {:?}", rejected_auth_events))
+                Some(format!("event's auth events rejected: {:?}", rejected_auth_events))
             } else {
                 None
             }
@@ -317,17 +309,9 @@ fn process_to_outlier_pdu<'a>(
         debug!("added pdu as outlier");
 
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        fetch_and_process_missing_events(origin, room_id, room_version_id, &incoming_pdu).await?;
+        fetch_and_process_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu).await?;
 
-        if let Some(rejection_reason) = rejection_reason {
-            Err(MatrixError::invalid_param(format!(
-                "Event {} was rejected due to auth events: {}",
-                incoming_pdu.event_id, rejection_reason
-            ))
-            .into())
-        } else {
-            Ok((SnPduEvent::new(incoming_pdu, event_sn), val))
-        }
+        Ok((SnPduEvent::new(incoming_pdu, event_sn), val))
     })
 }
 
@@ -496,7 +480,6 @@ async fn resolve_state(
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
-    println!("Loading current room state ids, incoming_state: {incoming_state:#?}");
     debug!("Loading current room state ids");
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
@@ -723,7 +706,7 @@ pub(crate) async fn fetch_and_process_outliers(
     Ok(pdus)
 }
 
-pub async fn fetch_and_process_missing_events(
+pub async fn fetch_and_process_missing_prev_events(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
@@ -750,9 +733,9 @@ pub async fn fetch_and_process_missing_events(
             .filter(events::id.eq_any(&earliest_events))
             .select(events::id)
             .load::<OwnedEventId>(&mut connect()?)?;
+
         let exists_events: HashSet<_> = earliest_events.iter().collect();
         if prev_events.iter().all(|id| exists_events.contains(id)) {
-            println!("No missing prev events for {}", event_id);
             continue;
         }
 
@@ -804,7 +787,6 @@ pub async fn fetch_and_process_missing_events(
         depth1.cmp(&depth2)
     });
     for (event_id, event_val) in fetched_events {
-        println!("==========event_id: {event_id}");
         Box::pin(async move {
             if !diesel_exists!(
                 events::table

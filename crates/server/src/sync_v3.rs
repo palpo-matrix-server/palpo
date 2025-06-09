@@ -68,7 +68,6 @@ pub async fn sync_events(
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
-        println!("============joined room: {}", room_id);
         let joined_room = match load_joined_room(
             sender_id,
             device_id,
@@ -477,7 +476,6 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        println!("jjjjjjjj 7");
         let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
@@ -488,7 +486,6 @@ async fn load_joined_room(
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
 
-            println!("=====current_state_ids: {:?}", current_state_ids);
             for (state_key_id, id) in current_state_ids {
                 let DbRoomStateField {
                     event_ty, state_key, ..

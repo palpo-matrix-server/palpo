@@ -225,7 +225,6 @@ impl DbEvent {
     }
 }
 
-
 #[derive(Insertable, AsChangeset, Deserialize, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct NewDbEvent {
