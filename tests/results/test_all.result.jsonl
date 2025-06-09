@@ -5,7 +5,6 @@
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty"}
 {"Action":"fail","Test":"TestArchivedRoomsHistory/timeline_is_empty/initial_sync"}
 {"Action":"fail","Test":"TestClientSpacesSummary"}
-{"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
@@ -16,9 +15,6 @@
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
-{"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
-{"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
-{"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
 {"Action":"fail","Test":"TestKnocking"}
 {"Action":"fail","Test":"TestKnocking/A_user_can_knock_on_a_room_without_a_reason#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
@@ -28,6 +24,7 @@
 {"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
+{"Action":"fail","Test":"TestOutboundFederationSend"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
 {"Action":"fail","Test":"TestSearch"}
@@ -36,7 +33,6 @@
 {"Action":"fail","Test":"TestThreadedReceipts"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/interrupted_connectivity"}
-{"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestUnbanViaInvite"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestACLs"}
@@ -105,6 +101,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -188,7 +185,10 @@
 {"Action":"pass","Test":"TestInboundFederationProfile"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Inbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Non-numeric_ports_in_server_names_are_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
 {"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagFederation"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
@@ -340,7 +340,6 @@
 {"Action":"pass","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
 {"Action":"pass","Test":"TestOutboundFederationProfile"}
 {"Action":"pass","Test":"TestOutboundFederationProfile/Outbound_federation_can_query_profile_data"}
-{"Action":"pass","Test":"TestOutboundFederationSend"}
 {"Action":"pass","Test":"TestPowerLevels"}
 {"Action":"pass","Test":"TestPowerLevels/GET_/rooms/:room_id/state/m.room.power_levels_can_fetch_levels"}
 {"Action":"pass","Test":"TestPowerLevels/PUT_power_levels_should_not_explode_if_the_old_power_levels_were_empty"}
@@ -572,6 +571,7 @@
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation/good_connectivity"}
+{"Action":"pass","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestTxnIdempotency"}
 {"Action":"pass","Test":"TestTxnIdempotencyScopedToDevice"}
 {"Action":"pass","Test":"TestTxnIdWithRefreshToken"}
