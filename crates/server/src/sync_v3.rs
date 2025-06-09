@@ -68,7 +68,6 @@ pub async fn sync_events(
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
-        println!("============joined room: {}", room_id);
         let joined_room = match load_joined_room(
             sender_id,
             device_id,
@@ -477,7 +476,6 @@ async fn load_joined_room(
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
-        println!("jjjjjjjj 7");
         let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
@@ -488,7 +486,6 @@ async fn load_joined_room(
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
 
-            println!("=====current_state_ids: {:?}", current_state_ids);
             for (state_key_id, id) in current_state_ids {
                 let DbRoomStateField {
                     event_ty, state_key, ..
@@ -677,6 +674,10 @@ async fn load_joined_room(
     // Look for device list updates in this room
     device_list_updates.extend(room::user::keys_changed_users(room_id, since_sn, None)?);
 
+    println!(
+        "======send_notification_counts  sender_id:{sender_id}  : {}",
+        send_notification_counts
+    );
     let notification_count = if send_notification_counts {
         Some(
             room::user::notification_count(sender_id, &room_id)?
@@ -696,7 +697,9 @@ async fn load_joined_room(
     } else {
         None
     };
-
+    println!(
+        "======send_notification_counts  notification_count:{notification_count:?}  highlight_count:{highlight_count:?}"
+    );
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
     let mut limited = limited || joined_since_last_sync;
     if let Some(first_event) = room_events.first() {

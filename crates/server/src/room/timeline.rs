@@ -274,6 +274,10 @@ where
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
         }
     }
+    println!(
+        "PDU {} to room {}，  notifies:{notifies:?}  highlights:{highlights:?}",
+        pdu.event_id, pdu.room_id
+    );
     increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
     match pdu.event_ty {
@@ -481,6 +485,7 @@ fn increment_notification_counts(
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
+    println!("===========increment_notification_counts  room_id: {room_id}  notifies:{notifies:?}");
     for user_id in notifies {
         diesel::update(
             event_push_summaries::table
