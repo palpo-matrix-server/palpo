@@ -26,6 +26,8 @@ impl Ruleset {
                 ConditionalPushRule::invite_for_me(user_id),
                 ConditionalPushRule::member_event(),
                 ConditionalPushRule::is_user_mention(user_id),
+                // deprecated, but added for complement test `TestThreadedReceipts`.
+                ConditionalPushRule::contains_display_name(),
                 ConditionalPushRule::is_room_mention(),
                 ConditionalPushRule::tombstone(),
                 ConditionalPushRule::reaction(),
@@ -212,6 +214,27 @@ impl ConditionalPushRule {
                 key: r"content.m\.mentions.user_ids".to_owned(),
                 value: user_id.as_str().into(),
             }],
+        }
+    }
+
+    /// Matches any message whose content is unencrypted and contains the user's current display
+    /// name in the room in which it was sent.
+    ///
+    /// Since Matrix 1.7, this rule only matches if the event's content does not contain an
+    /// `m.mentions` property.
+    #[deprecated = "Since Matrix 1.7. Use the m.mentions property with ConditionalPushRule::is_user_mention() instead."]
+    pub fn contains_display_name() -> Self {
+        #[allow(deprecated)]
+        Self {
+            actions: vec![
+                Action::Notify,
+                Action::SetTweak(Tweak::Sound("default".into())),
+                Action::SetTweak(Tweak::Highlight(true)),
+            ],
+            default: true,
+            enabled: true,
+            rule_id: PredefinedOverrideRuleId::ContainsDisplayName.to_string(),
+            conditions: vec![ContainsDisplayName],
         }
     }
 
@@ -588,6 +611,11 @@ pub enum PredefinedOverrideRuleId {
 
     /// `.m.rule.is_room_mention`
     IsRoomMention,
+    
+    /// `.m.rule.contains_display_name`
+    #[deprecated = "Since Matrix 1.7. Use the m.mentions property with PredefinedOverrideRuleId::IsUserMention instead."]
+    ContainsDisplayName,
+
 
     /// `.m.rule.tombstone`
     Tombstone,
