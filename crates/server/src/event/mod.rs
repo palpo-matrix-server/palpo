@@ -103,12 +103,6 @@ pub fn get_event_for_timestamp(
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
 
-            println!("=====get_event_for_timestamp===events: {:#?}",  events::table
-                .filter(events::room_id.eq(room_id))
-                .order_by((events::origin_server_ts.desc(), events::sn.desc()))
-                .select((events::id, events::origin_server_ts))
-                .load::<(OwnedEventId, UnixMillis)>(&mut connect()?)?);
-
             Ok((local_event_id, origin_server_ts))
         }
     }

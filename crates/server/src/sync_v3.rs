@@ -693,9 +693,6 @@ async fn load_joined_room(
     } else {
         None
     };
-    println!(
-        "======send_notification_counts  notification_count:{notification_count:?}  highlight_count:{highlight_count:?}"
-    );
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
     let mut limited = limited || joined_since_last_sync;
     if let Some(first_event) = room_events.first() {

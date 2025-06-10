@@ -123,7 +123,6 @@ pub fn get_actions<'a>(
         supported_features: vec![],
     };
 
-    println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx get actions for user: {user}, room: {room_id},   get_actions: {:?}", ruleset.get_actions(pdu, &ctx));
     Ok(ruleset.get_actions(pdu, &ctx))
 }
 
