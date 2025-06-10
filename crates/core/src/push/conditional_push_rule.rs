@@ -90,6 +90,17 @@ impl ConditionalPushRule {
             return false;
         }
 
+        println!(
+            "Checking conditions push rule: {self:?}  {}",
+            self.conditions.iter().all(|cond| {
+                println!(
+                    "\n\n\nChecking condition: {:?} event:{:?} result:{}",
+                    cond, event,
+                    cond.applies(event, context)
+                );
+                cond.applies(event, context)
+            })
+        );
         self.conditions.iter().all(|cond| cond.applies(event, context))
     }
 }

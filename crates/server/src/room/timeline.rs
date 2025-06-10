@@ -253,6 +253,7 @@ where
         let mut notify = false;
 
         for action in data::user::pusher::get_actions(user, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)? {
+            println!("==========action: {action:?} for user: {user}");
             match action {
                 Action::Notify => notify = true,
                 Action::SetTweak(Tweak::Highlight(true)) => {
@@ -485,24 +486,46 @@ fn increment_notification_counts(
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
-    println!("===========increment_notification_counts  room_id: {room_id}  notifies:{notifies:?}");
+    println!("===========increment_notification_counts  room_id: {room_id}  notifies:{notifies:?}  highlights:{highlights:?}");
     for user_id in notifies {
-        diesel::update(
+        let rows = diesel::update(
             event_push_summaries::table
                 .filter(event_push_summaries::user_id.eq(&user_id))
                 .filter(event_push_summaries::room_id.eq(room_id)),
         )
         .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
         .execute(&mut connect()?)?;
+        if rows == 0 {
+            diesel::insert_into(event_push_summaries::table)
+                .values((
+                    event_push_summaries::user_id.eq(&user_id),
+                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::notification_count.eq(1),
+                    event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
+                ))
+                .execute(&mut connect()?)?;
+        }
     }
     for user_id in highlights {
-        diesel::update(
+        let rows = diesel::update(
             event_push_summaries::table
                 .filter(event_push_summaries::user_id.eq(&user_id))
                 .filter(event_push_summaries::room_id.eq(room_id)),
         )
         .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
         .execute(&mut connect()?)?;
+        if rows == 0 {
+            diesel::insert_into(event_push_summaries::table)
+                .values((
+                    event_push_summaries::user_id.eq(&user_id),
+                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::highlight_count.eq(1),
+                    event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
+                ))
+                .execute(&mut connect()?)?;
+        }
     }
 
     Ok(())

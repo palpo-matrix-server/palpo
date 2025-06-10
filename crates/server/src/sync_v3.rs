@@ -674,10 +674,6 @@ async fn load_joined_room(
     // Look for device list updates in this room
     device_list_updates.extend(room::user::keys_changed_users(room_id, since_sn, None)?);
 
-    println!(
-        "======send_notification_counts  sender_id:{sender_id}  : {}",
-        send_notification_counts
-    );
     let notification_count = if send_notification_counts {
         Some(
             room::user::notification_count(sender_id, &room_id)?

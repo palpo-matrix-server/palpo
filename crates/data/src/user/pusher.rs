@@ -7,7 +7,7 @@ use crate::core::UnixMillis;
 use crate::core::events::AnySyncTimelineEvent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::identifiers::*;
-use crate::core::push::{Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset};
+use crate::core::push::{Action, PushConditionPowerLevelsCtx, RoomVersionFeature, PushConditionRoomCtx, Pusher, PusherKind, Ruleset};
 use crate::core::serde::{JsonValue, RawJson};
 use crate::schema::*;
 use crate::{DataError, DataResult, connect};
@@ -123,6 +123,7 @@ pub fn get_actions<'a>(
         supported_features: vec![],
     };
 
+    println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx get actions for user: {user}, room: {room_id},   get_actions: {:?}", ruleset.get_actions(pdu, &ctx));
     Ok(ruleset.get_actions(pdu, &ctx))
 }
 
