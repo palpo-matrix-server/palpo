@@ -168,6 +168,8 @@ fn missing_events(
             if i >= body.latest_events.len() {
                 events.push((event_id, crate::sending::convert_to_outgoing_federation_event(pdu)));
             }
+        } else {
+            warn!("event not found, event id: {:?}", event_id);
         }
         i += 1;
     }
