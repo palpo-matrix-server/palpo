@@ -270,7 +270,6 @@ impl Ruleset {
             // no need to look at the rules if the event was by the user themselves
             None
         } else {
-            println!("mmmmmmmmmmmmmatch 1  {self:#?}");
             self.iter().find(|rule| rule.applies(&event, context))
         }
     }
@@ -288,7 +287,6 @@ impl Ruleset {
     pub fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
         self.get_match(event, context)
             .map(|rule| {
-                println!("mmmmmmmmmmmmmatch get_actions rule  {:#?}", rule);
                 rule.actions()
             })
             .unwrap_or(&[])

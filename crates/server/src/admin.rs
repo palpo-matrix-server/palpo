@@ -499,7 +499,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             // Default to pretty display_name
             let mut display_name = user_id.localpart().to_owned();
 
-            // If enabled append lightning bolt to display name (default true)
+            // If enabled append lightning bolt to display name (default false)
             if conf.enable_lightning_bolt {
                 display_name.push_str(" ⚡️");
             }

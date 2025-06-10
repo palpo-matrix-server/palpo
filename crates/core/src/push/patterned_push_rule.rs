@@ -21,7 +21,7 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::{Action, FlattenedJson, MissingPatternError, PushConditionRoomCtx, PushRule, condition};
+use crate::push::{Action, FlattenedJson, MissingPatternError,PredefinedContentRuleId, PushConditionRoomCtx, PushRule, condition};
 
 /// Like `SimplePushRule`, but with an additional `pattern` field.
 ///
@@ -57,7 +57,8 @@ impl PatternedPushRule {
     /// * `context` - The context of the room at the time of the event.
     pub fn applies_to(&self, key: &str, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
         // The old mention rules are disabled when an m.mentions field is present.
-        if event.contains_mentions() {
+        #[allow(deprecated)]
+        if self.rule_id == PredefinedContentRuleId::ContainsUserName.as_ref() && event.contains_mentions() {
             return false;
         }
 

@@ -35,7 +35,7 @@ allow_federation = true
 allow_check_for_updates = true
 
 # Enable the display name lightning bolt on registration.
-enable_lightning_bolt = true
+enable_lightning_bolt = false
 
 allow_local_presence = true
 

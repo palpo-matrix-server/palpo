@@ -253,7 +253,6 @@ where
         let mut notify = false;
 
         for action in data::user::pusher::get_actions(user, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)? {
-            println!("==========action: {action:?} for user: {user}");
             match action {
                 Action::Notify => notify = true,
                 Action::SetTweak(Tweak::Highlight(true)) => {
@@ -486,7 +485,6 @@ fn increment_notification_counts(
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
-    println!("===========increment_notification_counts  room_id: {room_id}  notifies:{notifies:?}  highlights:{highlights:?}");
     for user_id in notifies {
         let rows = diesel::update(
             event_push_summaries::table
