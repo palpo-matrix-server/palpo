@@ -226,7 +226,6 @@ pub fn get_key_for_session(
 }
 
 pub fn delete_backup(user_id: &UserId, version: i64) -> DataResult<()> {
-    println!("DDDDDDDDDDelete backup");
     delete_all_keys(user_id, version)?;
     diesel::update(
         e2e_room_keys_versions::table
@@ -239,7 +238,6 @@ pub fn delete_backup(user_id: &UserId, version: i64) -> DataResult<()> {
 }
 
 pub fn delete_all_keys(user_id: &UserId, version: i64) -> DataResult<()> {
-    println!("DDDDDDDDDDelete delete_all_keys");
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))
@@ -250,7 +248,6 @@ pub fn delete_all_keys(user_id: &UserId, version: i64) -> DataResult<()> {
 }
 
 pub fn delete_room_keys(user_id: &UserId, version: i64, room_id: &RoomId) -> DataResult<()> {
-    println!("DDDDDDDDDDelete delete_room_keys");
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))
@@ -262,7 +259,6 @@ pub fn delete_room_keys(user_id: &UserId, version: i64, room_id: &RoomId) -> Dat
 }
 
 pub fn delete_room_key(user_id: &UserId, version: i64, room_id: &RoomId, session_id: &SessionId) -> DataResult<()> {
-    println!("DDDDDDDDDDelete delete_room_key");
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))

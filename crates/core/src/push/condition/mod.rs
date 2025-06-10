@@ -56,8 +56,7 @@ impl RoomVersionFeature {
     }
 }
 
-/// A condition that must apply for an associated push rule's action to be
-/// taken.
+/// A condition that must apply for an associated push rule's action to be taken.
 #[derive(ToSchema, Clone, Debug)]
 pub enum PushCondition {
     /// A glob pattern match on a field of the event.

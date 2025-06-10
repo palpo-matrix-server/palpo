@@ -40,7 +40,7 @@ pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
     event_push_summaries::table
         .filter(event_push_summaries::user_id.eq(user_id))
         .filter(event_push_summaries::room_id.eq(room_id))
-        .select(event_push_summaries::notification_count)
+        .select(event_push_summaries::highlight_count)
         .first::<i64>(&mut connect()?)
         .optional()
         .map(|v| v.unwrap_or_default() as u64)
