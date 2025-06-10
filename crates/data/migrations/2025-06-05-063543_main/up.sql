@@ -463,6 +463,7 @@ CREATE TABLE event_points
     event_id text NOT NULL PRIMARY KEY,
     event_sn bigint NOT NULL default nextval('occur_sn_seq'),
     room_id text NOT NULL,
+    thread_id text,
     frame_id bigint,
     CONSTRAINT event_points_udx UNIQUE (event_id, event_sn)
 );

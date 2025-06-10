@@ -333,18 +333,22 @@ async fn send_events(
                 .map(|content: PushRulesEventContent| content.global)
                 .unwrap_or_else(|| push::Ruleset::server_default(user_id));
 
-                let unread = crate::room::user::notification_count(user_id, &pdu.room_id)
-                    .map_err(|e| (kind.clone(), e.into()))?
-                    .try_into()
-                    .expect("notification count can't go that high");
+                let notify_summary = crate::room::user::notify_summary(user_id, &pdu.room_id)
+                    .map_err(|e| (kind.clone(), e.into()))?;
 
                 let max_request = crate::sending::max_request();
                 let permit = max_request.acquire().await;
 
-                let _response = crate::user::pusher::send_push_notice(user_id, unread, &pusher, rules_for_user, &pdu)
-                    .await
-                    .map(|_response| kind.clone())
-                    .map_err(|e| (kind.clone(), e));
+                let _response = crate::user::pusher::send_push_notice(
+                    user_id,
+                    notify_summary.all_unread_count(),
+                    &pusher,
+                    rules_for_user,
+                    &pdu,
+                )
+                .await
+                .map(|_response| kind.clone())
+                .map_err(|e| (kind.clone(), e));
 
                 drop(permit);
             }

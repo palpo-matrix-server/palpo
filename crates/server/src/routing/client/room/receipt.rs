@@ -1,19 +1,26 @@
 use std::collections::BTreeMap;
 
+use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::{
-    Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
+    CreateReceiptReqBody, Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, empty_ok};
+use crate::{AppError, data,AuthArgs, DepotExt, EmptyResult, empty_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
 #[endpoint]
-pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) fn send_receipt(
+    _aa: AuthArgs,
+    args: SendReceiptReqArgs,
+    body: JsonBody<CreateReceiptReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
+    let body = body.into_inner();
 
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
         crate::room::user::reset_notification_counts(authed.user_id(), &args.room_id)?;
@@ -63,7 +70,7 @@ pub(super) fn send_receipt(_aa: AuthArgs, args: SendReceiptReqArgs, depot: &mut 
             // let count = timeline::get_event_sn(&args.event_id)?
             //     .ok_or(MatrixError::invalid_param("Event does not exist."))?;
             let event_sn = crate::event::get_event_sn(&args.event_id)?;
-            crate::room::receipt::set_private_read(&args.room_id, authed.user_id(), &args.event_id, event_sn)?;
+            data::room::receipt::set_private_read(&args.room_id, authed.user_id(), &args.event_id, event_sn)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }

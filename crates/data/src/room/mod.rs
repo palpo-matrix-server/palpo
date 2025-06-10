@@ -128,6 +128,19 @@ pub struct NewDbReceipt {
     pub receipt_at: UnixMillis,
 }
 
+#[derive(Identifiable, Queryable, Debug, Clone)]
+#[diesel(table_name = event_push_summaries)]
+pub struct DbEventPushSummary {
+    pub id: i64,
+    pub user_id: OwnedUserId,
+    pub room_id: OwnedRoomId,
+    pub notification_count: i64,
+    pub highlight_count: i64,
+    pub unread_count: i64,
+    pub stream_ordering: i64,
+    pub thread_id: Option<OwnedEventId>,
+}
+
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = room_users)]
 pub struct DbRoomUser {

@@ -219,7 +219,7 @@ where
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
     // Mark as read first so the sending client doesn't get a notification even if appending
     // fails
-    super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
+    data::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers

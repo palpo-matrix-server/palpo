@@ -168,18 +168,18 @@ pub struct NotificationCounts {
     /// The number of unread messages a user has across all of the rooms they
     /// are a member of.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
-    pub unread: usize,
+    pub unread: u64,
 
     /// The number of unacknowledged missed calls a user has across all rooms of
     /// which they are a member.
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
-    pub missed_calls: usize,
+    pub missed_calls: u64,
 }
 
 impl NotificationCounts {
     /// Create new notification counts from the given unread and missed call
     /// counts.
-    pub fn new(unread: usize, missed_calls: usize) -> Self {
+    pub fn new(unread: u64, missed_calls: u64) -> Self {
         NotificationCounts { unread, missed_calls }
     }
 

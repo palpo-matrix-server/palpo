@@ -243,6 +243,7 @@ diesel::table! {
         event_id -> Text,
         event_sn -> Int8,
         room_id -> Text,
+        thread_id -> Nullable<Text>,
         frame_id -> Nullable<Int8>,
     }
 }

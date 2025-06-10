@@ -137,7 +137,7 @@ pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
 #[tracing::instrument(skip(user, unread, pusher, ruleset, pdu))]
 pub async fn send_push_notice(
     user: &UserId,
-    unread: usize,
+    unread: u64,
     pusher: &Pusher,
     ruleset: Ruleset,
     pdu: &PduEvent,
@@ -183,7 +183,7 @@ pub async fn send_push_notice(
 }
 
 #[tracing::instrument(skip_all)]
-async fn send_notice(unread: usize, pusher: &Pusher, tweaks: Vec<Tweak>, event: &PduEvent) -> AppResult<()> {
+async fn send_notice(unread: u64, pusher: &Pusher, tweaks: Vec<Tweak>, event: &PduEvent) -> AppResult<()> {
     // TODO: email
     match &pusher.kind {
         PusherKind::Http(http) => {
