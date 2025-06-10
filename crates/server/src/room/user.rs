@@ -71,7 +71,7 @@ impl From<Vec<DbEventPushSummary>> for UserNotifySummary {
     }
 }
 
-pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+pub fn update_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     diesel::update(
         event_push_summaries::table
             .filter(event_push_summaries::user_id.eq(user_id))

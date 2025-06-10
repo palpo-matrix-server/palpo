@@ -8,7 +8,7 @@ use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::{
     CreateReceiptReqBody, Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
-use crate::{AppError, data,AuthArgs, DepotExt, EmptyResult, empty_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, data, empty_ok};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
@@ -21,10 +21,6 @@ pub(super) fn send_receipt(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     let body = body.into_inner();
-
-    if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
-        crate::room::user::reset_notification_counts(authed.user_id(), &args.room_id)?;
-    }
 
     crate::user::ping_presence(authed.user_id(), &crate::core::presence::PresenceState::Online)?;
 
@@ -73,6 +69,9 @@ pub(super) fn send_receipt(
             data::room::receipt::set_private_read(&args.room_id, authed.user_id(), &args.event_id, event_sn)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),
+    }
+    if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
+        crate::room::user::update_notify_summary(authed.user_id(), &args.room_id)?;
     }
     empty_ok()
 }

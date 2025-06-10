@@ -217,7 +217,7 @@ where
         }
     }
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
-    super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
+    super::user::update_notify_summary(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
@@ -421,7 +421,7 @@ where
     if let Err(e) = increment_notification_counts(&pdu.event_id, notifies, highlights) {
         error!("failed to increment notification counts: {}", e);
     }
-    
+
     for appservice in crate::appservice::all()?.values() {
         if super::appservice_in_room(&pdu.room_id, &appservice)? {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
