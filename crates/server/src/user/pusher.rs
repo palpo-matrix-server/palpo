@@ -144,7 +144,6 @@ pub async fn send_push_notice(
 ) -> AppResult<()> {
     let mut notify = None;
     let mut tweaks = Vec::new();
-
     let power_levels = room::get_state_content::<RoomPowerLevelsEventContent>(
         &pdu.room_id,
         &StateEventType::RoomPowerLevels,
@@ -164,13 +163,11 @@ pub async fn send_push_notice(
             }
             _ => false,
         };
-
         if notify.is_some() {
             return Err(AppError::internal(
                 r#"Malformed pushrule contains more than one of these actions: ["dont_notify", "notify", "coalesce"]"#,
             ));
         }
-
         notify = Some(n);
     }
 
@@ -227,13 +224,10 @@ async fn send_notice(unread: u64, pusher: &Pusher, tweaks: Vec<Tweak>, event: &P
                 notification.sender = Some(event.sender.clone());
                 notification.event_type = Some(event.event_ty.clone());
                 notification.content = serde_json::value::to_raw_value(&event.content).ok();
-
                 if event.event_ty == TimelineEventType::RoomMember {
                     notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
                 }
-
                 notification.sender_display_name = data::user::display_name(&event.sender).ok().flatten();
-
                 notification.room_name = room::get_name(&event.room_id).ok();
 
                 crate::sending::post(Url::parse(&http.url)?)

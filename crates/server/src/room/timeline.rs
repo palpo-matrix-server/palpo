@@ -217,9 +217,6 @@ where
         }
     }
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
-    // Mark as read first so the sending client doesn't get a notification even if appending
-    // fails
-    data::room::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
     super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers
@@ -274,11 +271,6 @@ where
             crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
         }
     }
-    println!(
-        "PDU {} to room {}，  notifies:{notifies:?}  highlights:{highlights:?}",
-        pdu.event_id, pdu.room_id
-    );
-    increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
     match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
@@ -396,6 +388,7 @@ where
     }
     let mut relates_added = false;
     if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
+        println!("Rrrrrrrrrrrrrrrrrrrrelates to: {:?}", content.relates_to);
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
             Relation::Reply { in_reply_to } => {
@@ -407,6 +400,7 @@ where
             Relation::Thread(thread) => {
                 super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
+                println!("Adding to thread: {:?}", thread.event_id);
                 super::thread::add_to_thread(&thread.event_id, &pdu)?;
             }
             _ => {} // TODO: Aggregate other types
@@ -420,6 +414,14 @@ where
 
     crate::event::search::save_pdu(&pdu, &pdu_json)?;
 
+    println!(
+        "PDU {} to room {}，  notifies:{notifies:?}  highlights:{highlights:?}",
+        pdu.event_id, pdu.room_id
+    );
+    if let Err(e) = increment_notification_counts(&pdu.event_id, notifies, highlights) {
+        error!("failed to increment notification counts: {}", e);
+    }
+    
     for appservice in crate::appservice::all()?.values() {
         if super::appservice_in_room(&pdu.room_id, &appservice)? {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
@@ -481,15 +483,21 @@ where
 }
 
 fn increment_notification_counts(
-    room_id: &RoomId,
+    event_id: &EventId,
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
+    let (room_id, thread_id) = event_points::table
+        .find(event_id)
+        .select((event_points::room_id, event_points::thread_id))
+        .first::<(OwnedRoomId, Option<OwnedEventId>)>(&mut connect()?)?;
+    println!("=========Incrementing notification counts for event {event_id} in room {room_id}, thread {thread_id:?}");
     for user_id in notifies {
         let rows = diesel::update(
             event_push_summaries::table
                 .filter(event_push_summaries::user_id.eq(&user_id))
-                .filter(event_push_summaries::room_id.eq(room_id)),
+                .filter(event_push_summaries::room_id.eq(&room_id))
+                .filter(event_push_summaries::thread_id.eq(&thread_id)),
         )
         .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
         .execute(&mut connect()?)?;
@@ -497,9 +505,10 @@ fn increment_notification_counts(
             diesel::insert_into(event_push_summaries::table)
                 .values((
                     event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::room_id.eq(&room_id),
                     event_push_summaries::notification_count.eq(1),
                     event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::thread_id.eq(&thread_id),
                     event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
                 ))
                 .execute(&mut connect()?)?;
@@ -509,7 +518,8 @@ fn increment_notification_counts(
         let rows = diesel::update(
             event_push_summaries::table
                 .filter(event_push_summaries::user_id.eq(&user_id))
-                .filter(event_push_summaries::room_id.eq(room_id)),
+                .filter(event_push_summaries::room_id.eq(&room_id))
+                .filter(event_push_summaries::thread_id.eq(&thread_id)),
         )
         .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
         .execute(&mut connect()?)?;
@@ -517,9 +527,10 @@ fn increment_notification_counts(
             diesel::insert_into(event_push_summaries::table)
                 .values((
                     event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::room_id.eq(&room_id),
                     event_push_summaries::highlight_count.eq(1),
                     event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::thread_id.eq(&thread_id),
                     event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
                 ))
                 .execute(&mut connect()?)?;

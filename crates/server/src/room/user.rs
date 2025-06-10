@@ -87,11 +87,12 @@ pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResul
 }
 
 pub fn notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<UserNotifySummary> {
-    let summary = event_push_summaries::table
+    let summaries = event_push_summaries::table
         .filter(event_push_summaries::user_id.eq(user_id))
         .filter(event_push_summaries::room_id.eq(room_id))
         .load::<DbEventPushSummary>(&mut connect()?)?;
-    Ok(summary.into())
+    println!("===============user notify summary: {:#?}", summaries);
+    Ok(summaries.into())
 }
 
 pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
@@ -141,14 +142,6 @@ pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId
     }
     Ok(shared_rooms)
 }
-
-// pub fn joined_any_room_in_server(user_id: &UserId, server_id: &ServerName) -> AppResult<bool> {
-//     let query = room_users::table
-//         .filter(room_users::user_id.eq(user_id))
-//         .filter(room_users::room_server_id.eq(server_id))
-//         .filter(room_users::membership.eq(MembershipState::Join.to_string()));
-//     diesel_exists!(query, &mut connect()?).map_err(Into::into)
-// }
 
 pub fn keys_changed_users(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     if let Some(to_sn) = to_sn {

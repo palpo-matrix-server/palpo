@@ -48,7 +48,7 @@ pub(super) fn send_receipt(
                 authed.user_id().clone(),
                 Receipt {
                     ts: Some(UnixMillis::now()),
-                    thread: ReceiptThread::Unthreaded,
+                    thread: body.thread.clone(),
                 },
             );
             let mut receipts = BTreeMap::new();
