@@ -17,8 +17,27 @@ use crate::{AppResult, data, room, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
-pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> AppResult<()> {
-    data::room::receipt::update_read(user_id, room_id, &event)?;
+pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> AppResult<()> {
+    for (event_id, receipts) in event.content.clone() {
+        let event_sn = crate::event::get_event_sn(&event_id)?;
+        for (receipt_ty, user_receipts) in receipts {
+            if let Some(receipt) = user_receipts.get(user_id) {
+                let receipt_at = receipt.ts.unwrap_or_else(|| UnixMillis::now());
+                let receipt = NewDbReceipt {
+                    ty: receipt_ty.to_string(),
+                    room_id: room_id.to_owned(),
+                    user_id: user_id.to_owned(),
+                    event_id: event_id.clone(),
+                    event_sn,
+                    json_data: serde_json::to_value(receipt)?,
+                    receipt_at,
+                };
+                diesel::insert_into(event_receipts::table)
+                    .values(&receipt)
+                    .execute(&mut connect()?)?;
+            }
+        }
+    }
 
     let receipts = BTreeMap::from_iter([(
         room_id.to_owned(),

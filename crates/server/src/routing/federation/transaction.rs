@@ -16,7 +16,7 @@ use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
 use crate::event::handler;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, room, json_ok};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -180,7 +180,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                 continue;
             }
 
-            if crate::room::get_joined_users(&room_id, None)
+            if room::get_joined_users(&room_id, None)
                 .unwrap_or_default()
                 .iter()
                 .any(|member| member.server_name() == user_id.server_name())
@@ -194,7 +194,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                         room_id: room_id.clone(),
                     };
 
-                    let _ = data::room::receipt::update_read(&user_id, &room_id, &event);
+                    let _ = room::receipt::update_read(&user_id, &room_id, &event);
                 }
             } else {
                 warn!(
@@ -228,14 +228,14 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
         return;
     }
 
-    if crate::room::user::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
+    if room::user::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
         if typing.typing {
             let timeout = UnixMillis::now()
                 .get()
                 .saturating_add(crate::config().typing_federation_timeout_s.saturating_mul(1000));
-            let _ = crate::room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
+            let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
         } else {
-            let _ = crate::room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
+            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
         }
     } else {
         warn!(

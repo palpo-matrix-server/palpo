@@ -1,6 +1,5 @@
 pub mod handler;
 mod pdu;
-use palpo_core::Direction;
 pub use pdu::*;
 pub mod search;
 
@@ -9,7 +8,7 @@ use serde_json::json;
 
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::{Seqnum, UnixMillis, signatures};
+use crate::core::{Seqnum,Direction, UnixMillis, signatures};
 use crate::data::connect;
 use crate::data::room::{DbEvent, NewDbEventPushAction};
 use crate::data::schema::*;
@@ -194,31 +193,4 @@ pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
     // }
 
     false
-}
-
-#[tracing::instrument]
-pub fn upsert_push_action(
-    room_id: &RoomId,
-    event_id: &EventId,
-    user_id: &UserId,
-    notify: bool,
-    highlight: bool,
-    thread_id: Option<&EventId>,
-) -> AppResult<()> {
-    let actions: Vec<String> = vec![];
-    data::room::event::upsert_push_action(&NewDbEventPushAction {
-        room_id: room_id.to_owned(),
-        event_id: event_id.to_owned(),
-        user_id: user_id.to_owned(),
-        profile_tag: "".to_owned(),
-        actions: serde_json::to_value(actions).expect("actions is always valid"),
-        topological_ordering: 0,
-        stream_ordering: 0,
-        notify,
-        highlight,
-        unread: false,
-        thread_id: thread_id.map(|t| t.to_owned()),
-    })?;
-
-    Ok(())
 }

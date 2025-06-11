@@ -11,38 +11,12 @@ use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
 use crate::{DataResult, connect, next_sn};
 
-/// Replaces the previous read receipt.
-#[tracing::instrument]
-pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> DataResult<()> {
-    let occur_sn = next_sn()?;
-    for (event_id, receipts) in event.content.clone() {
-        for (receipt_ty, user_receipts) in receipts {
-            if let Some(receipt) = user_receipts.get(user_id) {
-                let receipt_at = receipt.ts.unwrap_or_else(|| UnixMillis::now());
-                let receipt = NewDbReceipt {
-                    ty: receipt_ty.to_string(),
-                    room_id: room_id.to_owned(),
-                    user_id: user_id.to_owned(),
-                    event_id: event_id.clone(),
-                    occur_sn,
-                    json_data: serde_json::to_value(receipt)?,
-                    receipt_at,
-                };
-                diesel::insert_into(event_receipts::table)
-                    .values(&receipt)
-                    .execute(&mut connect()?)?;
-            }
-        }
-    }
-
-    Ok(())
-}
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
     let list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
-        .filter(event_receipts::occur_sn.ge(since_sn))
+        .filter(event_receipts::event_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))
         .load::<DbReceipt>(&mut connect()?)?;
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
@@ -72,14 +46,14 @@ pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<
 
 /// Sets a private read marker at `count`.
 #[tracing::instrument]
-pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, event_sn: i64) -> DataResult<()> {
+pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, event_sn: Seqnum) -> DataResult<()> {
     diesel::insert_into(event_receipts::table)
         .values(&NewDbReceipt {
             ty: ReceiptType::ReadPrivate.to_string(),
             room_id: room_id.to_owned(),
             user_id: user_id.to_owned(),
             event_id: event_id.to_owned(),
-            occur_sn: next_sn()?,
+            event_sn,
             json_data: JsonValue::default(),
             receipt_at: UnixMillis::now(),
         })
@@ -88,13 +62,13 @@ pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, 
 }
 
 pub fn last_private_read_update_sn(user_id: &UserId, room_id: &RoomId) -> DataResult<Seqnum> {
-    let occur_sn = event_receipts::table
+    let event_sn = event_receipts::table
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
-        .order_by(event_receipts::id.desc())
-        .select(event_receipts::occur_sn)
+        .order_by(event_receipts::event_sn.desc())
+        .select(event_receipts::event_sn)
         .first::<Seqnum>(&mut connect()?)?;
 
-    Ok(occur_sn)
+    Ok(event_sn)
 }

@@ -729,14 +729,13 @@ CREATE TABLE event_receipts (
     room_id text NOT NULL,
     user_id text NOT NULL,
     event_id text NOT NULL,
-    occur_sn bigint NOT NULL,
+    event_sn bigint NOT NULL,
     json_data json NOT NULL,
     receipt_at bigint NOT NULL
 );
-
 CREATE INDEX event_receipts_room_id_idx ON event_receipts USING btree (room_id);
 CREATE INDEX event_receipts_user_id_idx ON event_receipts USING btree (user_id);
-CREATE INDEX event_receipts_occur_sn_idx ON event_receipts USING btree (occur_sn);
+CREATE INDEX event_receipts_event_sn_idx ON event_receipts USING btree (event_sn);
 
 
 DROP TABLE IF EXISTS event_searches;
@@ -948,6 +947,7 @@ CREATE TABLE IF NOT EXISTS event_push_actions
     id bigserial NOT NULL PRIMARY KEY,
     room_id text NOT NULL,
     event_id text NOT NULL,
+    event_sn bigint NOT NULL,
     user_id text NOT NULL,
     profile_tag text NOT NULL DEFAULT '',
     actions jsonb NOT NULL,
