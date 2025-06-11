@@ -783,7 +783,12 @@ CREATE INDEX IF NOT EXISTS event_push_summaries_room_id_idx
     ON event_push_summaries USING btree (room_id ASC NULLS LAST);
 CREATE UNIQUE INDEX IF NOT EXISTS event_push_summaries_udx
     ON event_push_summaries USING btree
-    (user_id ASC NULLS LAST, room_id ASC NULLS LAST, thread_id ASC NULLS LAST);
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST, thread_id ASC NULLS LAST)
+WHERE thread_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS event_push_summaries_udx2
+    ON event_push_summaries USING btree
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST)
+WHERE thread_id IS NULL;
 
 
 DROP TABLE IF EXISTS device_streams;
@@ -952,8 +957,7 @@ CREATE TABLE IF NOT EXISTS event_push_actions
     highlight boolean NOT NULL DEFAULT false,
     unread boolean NOT NULL DEFAULT true,
     thread_id text,
-    CONSTRAINT event_push_actions_event_id_user_id_profile_tag_ukey UNIQUE (room_id, event_id, user_id, profile_tag),
-    CONSTRAINT event_push_actions_thread_id CHECK (thread_id IS NOT NULL)
+    CONSTRAINT event_push_actions_event_id_user_id_profile_tag_ukey UNIQUE (room_id, event_id, user_id, profile_tag)
 );
 
 CREATE INDEX IF NOT EXISTS event_push_actions_highlights_idx ON event_push_actions

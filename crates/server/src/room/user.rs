@@ -13,6 +13,7 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, config, room};
 
+#[derive(Debug, Clone)]
 pub struct UserNotifySummary {
     pub notification_count: u64,
     pub unread_count: u64,
@@ -20,6 +21,8 @@ pub struct UserNotifySummary {
 
     pub threads: BTreeMap<OwnedEventId, ThreadPushSummary>,
 }
+
+#[derive(Debug, Clone)]
 pub struct ThreadPushSummary {
     pub notification_count: u64,
     pub unread_count: u64,
