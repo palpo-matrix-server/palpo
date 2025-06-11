@@ -36,7 +36,7 @@ pub struct ServerConfig {
     pub listen_addr: String,
     pub server_name: OwnedServerName,
     pub db: DbConfig,
-    #[serde(default = "default_true")]
+    #[serde(default = "default_false")]
     pub enable_lightning_bolt: bool,
     #[serde(default = "default_true")]
     pub allow_check_for_updates: bool,

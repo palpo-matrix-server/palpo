@@ -217,10 +217,7 @@ where
         }
     }
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
-    // Mark as read first so the sending client doesn't get a notification even if appending
-    // fails
-    super::receipt::set_private_read(&pdu.room_id, &pdu.sender, &pdu.event_id, pdu.event_sn)?;
-    super::user::reset_notification_counts(&pdu.sender, &pdu.room_id)?;
+    super::user::refresh_notify_summary(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
@@ -231,28 +228,64 @@ where
     )
     .unwrap_or_default();
 
+    #[derive(Deserialize, Clone, Debug)]
+    struct ExtractEventId {
+        event_id: OwnedEventId,
+    }
+    #[derive(Deserialize, Clone, Debug)]
+    struct ExtractRelatesToEventId {
+        #[serde(rename = "m.relates_to")]
+        relates_to: ExtractEventId,
+    }
+    let mut relates_added = false;
+    let mut thread_id = None;
+    if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
+        let rel_type = content.relates_to.rel_type();
+        match content.relates_to {
+            Relation::Reply { in_reply_to } => {
+                // We need to do it again here, because replies don't have event_id as a top level field
+                super::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
+                relates_added = true;
+            }
+            Relation::Thread(thread) => {
+                super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
+                relates_added = true;
+                println!("Adding to thread: {:?}", thread.event_id);
+                thread_id = Some(thread.event_id.clone());
+                super::thread::add_to_thread(&thread.event_id, &pdu)?;
+            }
+            _ => {} // TODO: Aggregate other types
+        }
+    }
+    if !relates_added {
+        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
+            super::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
+        }
+    }
+
     let sync_pdu = pdu.to_sync_room_event();
 
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
-    for user in super::get_our_real_users(&pdu.room_id)?.iter() {
+    for user_id in super::get_our_real_users(&pdu.room_id)?.iter() {
         // Don't notify the user of their own events
-        if user == &pdu.sender {
+        if user_id == &pdu.sender {
             continue;
         }
 
         let rules_for_user = data::user::get_global_data::<PushRulesEventContent>(
-            user,
+            user_id,
             &GlobalAccountDataEventType::PushRules.to_string(),
         )?
         .map(|content: PushRulesEventContent| content.global)
-        .unwrap_or_else(|| Ruleset::server_default(user));
+        .unwrap_or_else(|| Ruleset::server_default(user_id));
 
         let mut highlight = false;
         let mut notify = false;
 
-        for action in data::user::pusher::get_actions(user, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)? {
+        for action in data::user::pusher::get_actions(user_id, &rules_for_user, &power_levels, &sync_pdu, &pdu.room_id)?
+        {
             match action {
                 Action::Notify => notify = true,
                 Action::SetTweak(Tweak::Highlight(true)) => {
@@ -263,18 +296,28 @@ where
         }
 
         if notify {
-            notifies.push(user.clone());
+            notifies.push(user_id.clone());
         }
 
         if highlight {
-            highlights.push(user.clone());
+            highlights.push(user_id.clone());
         }
 
-        for push_key in data::user::pusher::get_push_keys(user)? {
-            crate::sending::send_push_pdu(&pdu.event_id, user, push_key)?;
+        if let Err(e) = crate::event::upsert_push_action(
+            &pdu.room_id,
+            &pdu.event_id,
+            user_id,
+            notify,
+            highlight,
+            thread_id.as_deref(),
+        ) {
+            error!("failed to upsert event push action: {}", e);
+        }
+
+        for push_key in data::user::pusher::get_push_keys(user_id)? {
+            crate::sending::send_push_pdu(&pdu.event_id, user_id, push_key)?;
         }
     }
-    increment_notification_counts(&pdu.room_id, notifies, highlights)?;
 
     match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
@@ -381,40 +424,11 @@ where
         relates_to: Relation,
     }
 
-    #[derive(Deserialize, Clone, Debug)]
-    struct ExtractEventId {
-        event_id: OwnedEventId,
-    }
-    #[derive(Deserialize, Clone, Debug)]
-    struct ExtractRelatesToEventId {
-        #[serde(rename = "m.relates_to")]
-        relates_to: ExtractEventId,
-    }
-    let mut relates_added = false;
-    if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
-        let rel_type = content.relates_to.rel_type();
-        match content.relates_to {
-            Relation::Reply { in_reply_to } => {
-                // We need to do it again here, because replies don't have
-                // event_id as a top level field
-                super::pdu_metadata::add_relation(&pdu.room_id, &in_reply_to.event_id, &pdu.event_id, rel_type)?;
-                relates_added = true;
-            }
-            Relation::Thread(thread) => {
-                super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
-                relates_added = true;
-                super::thread::add_to_thread(&thread.event_id, &pdu)?;
-            }
-            _ => {} // TODO: Aggregate other types
-        }
-    }
-    if !relates_added {
-        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
-            super::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
-        }
-    }
-
     crate::event::search::save_pdu(&pdu, &pdu_json)?;
+
+    if let Err(e) = increment_notification_counts(&pdu.event_id, notifies, highlights) {
+        error!("failed to increment notification counts: {}", e);
+    }
 
     for appservice in crate::appservice::all()?.values() {
         if super::appservice_in_room(&pdu.room_id, &appservice)? {
@@ -476,52 +490,143 @@ where
     Ok(())
 }
 
-fn increment_notification_counts(
-    room_id: &RoomId,
+pub fn increment_notification_counts(
+    event_id: &EventId,
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
+    let (room_id, thread_id) = event_points::table
+        .find(event_id)
+        .select((event_points::room_id, event_points::thread_id))
+        .first::<(OwnedRoomId, Option<OwnedEventId>)>(&mut connect()?)?;
+
     for user_id in notifies {
-        let rows = diesel::update(
-            event_push_summaries::table
-                .filter(event_push_summaries::user_id.eq(&user_id))
-                .filter(event_push_summaries::room_id.eq(room_id)),
-        )
-        .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
-        .execute(&mut connect()?)?;
+        let rows = if let Some(thread_id) = &thread_id {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.eq(thread_id)),
+            )
+            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .execute(&mut connect()?)?
+        } else {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.is_null()),
+            )
+            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .execute(&mut connect()?)?
+        };
         if rows == 0 {
             diesel::insert_into(event_push_summaries::table)
                 .values((
                     event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::room_id.eq(&room_id),
                     event_push_summaries::notification_count.eq(1),
                     event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::thread_id.eq(&thread_id),
                     event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
                 ))
                 .execute(&mut connect()?)?;
         }
     }
     for user_id in highlights {
-        let rows = diesel::update(
-            event_push_summaries::table
-                .filter(event_push_summaries::user_id.eq(&user_id))
-                .filter(event_push_summaries::room_id.eq(room_id)),
-        )
-        .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
-        .execute(&mut connect()?)?;
+        let rows = if let Some(thread_id) = &thread_id {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.eq(thread_id)),
+            )
+            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .execute(&mut connect()?)?
+        } else {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.is_null()),
+            )
+            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .execute(&mut connect()?)?
+        };
         if rows == 0 {
             diesel::insert_into(event_push_summaries::table)
                 .values((
                     event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(room_id),
+                    event_push_summaries::room_id.eq(&room_id),
                     event_push_summaries::highlight_count.eq(1),
                     event_push_summaries::unread_count.eq(1),
+                    event_push_summaries::thread_id.eq(&thread_id),
                     event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
                 ))
                 .execute(&mut connect()?)?;
         }
     }
 
+    Ok(())
+}
+
+pub fn decrement_notification_counts(
+    event_id: &EventId,
+    user_id: &UserId,
+    notifies: bool,
+    highlights: bool,
+) -> AppResult<()> {
+    let (room_id, thread_id) = event_points::table
+        .find(event_id)
+        .select((event_points::room_id, event_points::thread_id))
+        .first::<(OwnedRoomId, Option<OwnedEventId>)>(&mut connect()?)?;
+
+    if notifies {
+        if let Some(thread_id) = &thread_id {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.eq(thread_id))
+                    .filter(event_push_summaries::notification_count.gt(0)),
+            )
+            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count - 1))
+            .execute(&mut connect()?)?;
+        } else {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.is_null())
+                    .filter(event_push_summaries::notification_count.gt(0)),
+            )
+            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count - 1))
+            .execute(&mut connect()?)?;
+        }
+    }
+    if highlights {
+        if let Some(thread_id) = &thread_id {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.eq(thread_id))
+                    .filter(event_push_summaries::highlight_count.gt(0)),
+            )
+            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count - 1))
+            .execute(&mut connect()?)?;
+        } else {
+            diesel::update(
+                event_push_summaries::table
+                    .filter(event_push_summaries::user_id.eq(&user_id))
+                    .filter(event_push_summaries::room_id.eq(&room_id))
+                    .filter(event_push_summaries::thread_id.is_null())
+                    .filter(event_push_summaries::highlight_count.gt(0)),
+            )
+            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count - 1))
+            .execute(&mut connect()?)?;
+        }
+    }
     Ok(())
 }
 

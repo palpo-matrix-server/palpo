@@ -169,7 +169,7 @@ fn missing_events(
                 events.push((event_id, crate::sending::convert_to_outgoing_federation_event(pdu)));
             }
         } else {
-            warn!("event not found, event id: {:?}", event_id);
+            warn!("Event not found, event ID: {:?}", event_id);
         }
         i += 1;
     }

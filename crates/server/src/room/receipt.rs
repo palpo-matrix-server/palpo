@@ -35,23 +35,6 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: ReceiptEvent) -> A
     Ok(())
 }
 
-/// Sets a private read marker at `count`.
-#[tracing::instrument]
-pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, event_sn: i64) -> AppResult<()> {
-    diesel::insert_into(event_receipts::table)
-        .values(&NewDbReceipt {
-            ty: ReceiptType::ReadPrivate.to_string(),
-            room_id: room_id.to_owned(),
-            user_id: user_id.to_owned(),
-            event_id: event_id.to_owned(),
-            occur_sn: next_sn()?,
-            json_data: JsonValue::default(),
-            receipt_at: UnixMillis::now(),
-        })
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-
 /// Gets the latest private read receipt from the user in the room
 pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<ReceiptEventContent> {
     let event_id = event_receipts::table

@@ -203,12 +203,12 @@ fn set_read_markers(
     }
 
     if body.private_read_receipt.is_some() || body.read_receipt.is_some() {
-        room::user::reset_notification_counts(authed.user_id(), &room_id)?;
+        room::user::refresh_notify_summary(authed.user_id(), &room_id)?;
     }
 
     if let Some(event_id) = &body.private_read_receipt {
         let event_sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
-        room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
+        data::room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
     }
 
     if let Some(event) = &body.read_receipt {

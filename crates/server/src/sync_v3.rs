@@ -674,25 +674,6 @@ async fn load_joined_room(
     // Look for device list updates in this room
     device_list_updates.extend(room::user::keys_changed_users(room_id, since_sn, None)?);
 
-    let notification_count = if send_notification_counts {
-        Some(
-            room::user::notification_count(sender_id, &room_id)?
-                .try_into()
-                .expect("notification count can't go that high"),
-        )
-    } else {
-        None
-    };
-
-    let highlight_count = if send_notification_counts {
-        Some(
-            room::user::highlight_count(sender_id, &room_id)?
-                .try_into()
-                .expect("highlight count can't go that high"),
-        )
-    } else {
-        None
-    };
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
     let mut limited = limited || joined_since_last_sync;
     if let Some(first_event) = room_events.first() {
@@ -728,6 +709,20 @@ async fn load_joined_room(
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
         .collect();
+
+    let notify_summary = room::user::notify_summary(sender_id, &room_id)?;
+    let mut notification_count = None;
+    let mut highlight_count = None;
+    if send_notification_counts {
+        if filter.room.timeline.unread_thread_notifications {
+            notification_count = Some(notify_summary.notification_count);
+            highlight_count = Some(notify_summary.highlight_count);
+        } else {
+            notification_count = Some(notify_summary.all_notification_count());
+            highlight_count = Some(notify_summary.all_highlight_count());
+        }
+    }
+
     Ok(JoinedRoom {
         account_data: RoomAccountData { events: account_events },
         summary: RoomSummary {
@@ -748,8 +743,24 @@ async fn load_joined_room(
             events: state_events.iter().map(|pdu| pdu.to_sync_state_event()).collect(),
         },
         ephemeral: Ephemeral { events: edus },
-        unread_thread_notifications: BTreeMap::new(),
-        unread_count: None,
+        unread_thread_notifications: if filter.room.timeline.unread_thread_notifications {
+            notify_summary
+                .threads
+                .iter()
+                .map(|(thread_id, summary)| {
+                    (
+                        thread_id.to_owned(),
+                        UnreadNotificationsCount {
+                            notification_count: Some(summary.notification_count),
+                            highlight_count: Some(summary.highlight_count),
+                        },
+                    )
+                })
+                .collect()
+        } else {
+            BTreeMap::new()
+        },
+        unread_count: Some(notify_summary.all_unread_count()),
     })
 }
 

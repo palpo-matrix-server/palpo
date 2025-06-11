@@ -285,7 +285,11 @@ impl Ruleset {
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
     pub fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
-        self.get_match(event, context).map(|rule| rule.actions()).unwrap_or(&[])
+        self.get_match(event, context)
+            .map(|rule| {
+                rule.actions()
+            })
+            .unwrap_or(&[])
     }
 
     /// Removes a user-defined rule in the rule set.

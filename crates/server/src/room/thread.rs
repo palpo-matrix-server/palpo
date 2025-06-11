@@ -89,6 +89,10 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
         timeline::replace_pdu(thread_id, &root_pdu_json)?;
     }
 
+    diesel::update(event_points::table.find(&pdu.event_id))
+        .set(event_points::thread_id.eq(thread_id))
+        .execute(&mut connect()?)?;
+
     diesel::insert_into(threads::table)
         .values(DbThread {
             event_id: root_pdu.event_id.clone(),

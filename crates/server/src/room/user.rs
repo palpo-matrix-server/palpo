@@ -1,17 +1,80 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
+use palpo_data::room::DbEvent;
 
 use crate::core::Seqnum;
 use crate::core::events::AnyStrippedStateEvent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
+use crate::data::room::DbEventPushSummary;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, config, room};
 
-pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+#[derive(Debug, Clone)]
+pub struct UserNotifySummary {
+    pub notification_count: u64,
+    pub unread_count: u64,
+    pub highlight_count: u64,
+
+    pub threads: BTreeMap<OwnedEventId, ThreadPushSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ThreadPushSummary {
+    pub notification_count: u64,
+    pub unread_count: u64,
+    pub highlight_count: u64,
+}
+
+impl UserNotifySummary {
+    pub fn all_notification_count(&self) -> u64 {
+        self.notification_count + self.threads.iter().map(|(_, t)| t.notification_count).sum::<u64>()
+    }
+    pub fn all_unread_count(&self) -> u64 {
+        self.notification_count + self.threads.iter().map(|(_, t)| t.unread_count).sum::<u64>()
+    }
+    pub fn all_highlight_count(&self) -> u64 {
+        self.highlight_count + self.threads.iter().map(|(_, t)| t.highlight_count).sum::<u64>()
+    }
+}
+
+impl From<Vec<DbEventPushSummary>> for UserNotifySummary {
+    fn from(summaries: Vec<DbEventPushSummary>) -> Self {
+        let mut notification_count = 0;
+        let mut unread_count = 0;
+        let mut highlight_count = 0;
+        let mut threads = BTreeMap::new();
+
+        for summary in summaries {
+            if let Some(thread_id) = summary.thread_id {
+                threads.insert(
+                    thread_id,
+                    ThreadPushSummary {
+                        notification_count: summary.notification_count as u64,
+                        unread_count: summary.unread_count as u64,
+                        highlight_count: summary.highlight_count as u64,
+                    },
+                );
+            } else {
+                notification_count += summary.notification_count as u64;
+                unread_count += summary.unread_count as u64;
+                highlight_count += summary.highlight_count as u64;
+            }
+        }
+
+        UserNotifySummary {
+            notification_count,
+            unread_count,
+            highlight_count,
+            threads,
+        }
+    }
+}
+
+pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
     diesel::update(
         event_push_summaries::table
             .filter(event_push_summaries::user_id.eq(user_id))
@@ -20,20 +83,18 @@ pub fn reset_notification_counts(user_id: &UserId, room_id: &RoomId) -> AppResul
     .set((
         event_push_summaries::notification_count.eq(0),
         event_push_summaries::unread_count.eq(0),
+        event_push_summaries::highlight_count.eq(0),
     ))
     .execute(&mut connect()?)?;
     Ok(())
 }
 
-pub fn notification_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
-    event_push_summaries::table
+pub fn notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<UserNotifySummary> {
+    let summaries = event_push_summaries::table
         .filter(event_push_summaries::user_id.eq(user_id))
         .filter(event_push_summaries::room_id.eq(room_id))
-        .select(event_push_summaries::notification_count)
-        .first::<i64>(&mut connect()?)
-        .optional()
-        .map(|v| v.unwrap_or_default() as u64)
-        .map_err(Into::into)
+        .load::<DbEventPushSummary>(&mut connect()?)?;
+    Ok(summaries.into())
 }
 
 pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
@@ -83,14 +144,6 @@ pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId
     }
     Ok(shared_rooms)
 }
-
-// pub fn joined_any_room_in_server(user_id: &UserId, server_id: &ServerName) -> AppResult<bool> {
-//     let query = room_users::table
-//         .filter(room_users::user_id.eq(user_id))
-//         .filter(room_users::room_server_id.eq(server_id))
-//         .filter(room_users::membership.eq(MembershipState::Join.to_string()));
-//     diesel_exists!(query, &mut connect()?).map_err(Into::into)
-// }
 
 pub fn keys_changed_users(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     if let Some(to_sn) = to_sn {

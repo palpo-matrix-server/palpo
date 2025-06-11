@@ -437,6 +437,7 @@ async fn process_rooms(
             None
         };
 
+        let notify_summary = room::user::notify_summary(sender_id, &room_id)?;
         rooms.insert(
             room_id.clone(),
             SyncRoom {
@@ -449,16 +450,8 @@ async fn process_rooms(
                 is_dm: None,
                 invite_state,
                 unread_notifications: sync_events::UnreadNotificationsCount {
-                    highlight_count: Some(
-                        room::user::highlight_count(sender_id, room_id)?
-                            .try_into()
-                            .expect("notification count can't go that high"),
-                    ),
-                    notification_count: Some(
-                        room::user::notification_count(sender_id, room_id)?
-                            .try_into()
-                            .expect("notification count can't go that high"),
-                    ),
+                    notification_count: Some(notify_summary.all_notification_count()),
+                    highlight_count: Some(notify_summary.all_highlight_count()),
                 },
                 timeline: room_events,
                 required_state,

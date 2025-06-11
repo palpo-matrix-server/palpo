@@ -10,6 +10,7 @@ use crate::schema::*;
 use crate::{DataResult, connect};
 
 pub mod receipt;
+pub mod event;
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -126,6 +127,19 @@ pub struct NewDbReceipt {
     pub occur_sn: i64,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
+}
+
+#[derive(Identifiable, Queryable, Debug, Clone)]
+#[diesel(table_name = event_push_summaries)]
+pub struct DbEventPushSummary {
+    pub id: i64,
+    pub user_id: OwnedUserId,
+    pub room_id: OwnedRoomId,
+    pub notification_count: i64,
+    pub highlight_count: i64,
+    pub unread_count: i64,
+    pub stream_ordering: i64,
+    pub thread_id: Option<OwnedEventId>,
 }
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
@@ -277,7 +291,7 @@ impl NewDbEvent {
     }
 }
 
-#[derive(Insertable, Queryable, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = event_idempotents)]
 pub struct NewDbEventIdempotent {
     pub txn_id: OwnedTransactionId,
@@ -286,6 +300,23 @@ pub struct NewDbEventIdempotent {
     pub room_id: Option<OwnedRoomId>,
     pub event_id: Option<OwnedEventId>,
     pub created_at: UnixMillis,
+}
+
+
+#[derive(Insertable, AsChangeset, Debug, Clone)]
+#[diesel(table_name = event_push_actions)]
+pub struct NewDbEventPushAction{
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub user_id: OwnedUserId,
+    pub profile_tag: String,
+    pub actions: JsonValue,
+    pub topological_ordering: i64,
+    pub stream_ordering: i64,
+    pub notify: bool,
+    pub highlight: bool,
+    pub unread: bool,
+    pub thread_id: Option<OwnedEventId>,
 }
 
 pub fn is_disabled(room_id: &RoomId) -> DataResult<bool> {

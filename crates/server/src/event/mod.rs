@@ -5,15 +5,15 @@ pub use pdu::*;
 pub mod search;
 
 use diesel::prelude::*;
-use palpo_core::serde::CanonicalJsonObject;
+use serde_json::json;
 
 use crate::core::identifiers::*;
-use crate::core::serde::RawJsonValue;
-use crate::core::{Seqnum, UnixMillis};
+use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
+use crate::core::{Seqnum, UnixMillis, signatures};
 use crate::data::connect;
-use crate::data::room::DbEvent;
+use crate::data::room::{DbEvent, NewDbEventPushAction};
 use crate::data::schema::*;
-use crate::{AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, data};
 
 /// Generates a correct eventId for the incoming pdu.
 ///
@@ -31,7 +31,7 @@ pub fn gen_event_id_canonical_json(
 }
 /// Generates a correct eventId for the incoming pdu.
 pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId) -> AppResult<OwnedEventId> {
-    let reference_hash = crate::core::signatures::reference_hash(value, room_version_id)?;
+    let reference_hash = signatures::reference_hash(value, room_version_id)?;
     let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
     Ok(event_id)
 }
@@ -194,4 +194,31 @@ pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
     // }
 
     false
+}
+
+#[tracing::instrument]
+pub fn upsert_push_action(
+    room_id: &RoomId,
+    event_id: &EventId,
+    user_id: &UserId,
+    notify: bool,
+    highlight: bool,
+    thread_id: Option<&EventId>,
+) -> AppResult<()> {
+    let actions: Vec<String> = vec![];
+    data::room::event::upsert_push_action(&NewDbEventPushAction {
+        room_id: room_id.to_owned(),
+        event_id: event_id.to_owned(),
+        user_id: user_id.to_owned(),
+        profile_tag: "".to_owned(),
+        actions: serde_json::to_value(actions).expect("actions is always valid"),
+        topological_ordering: 0,
+        stream_ordering: 0,
+        notify,
+        highlight,
+        unread: false,
+        thread_id: thread_id.map(|t| t.to_owned()),
+    })?;
+
+    Ok(())
 }
