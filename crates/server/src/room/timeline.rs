@@ -305,7 +305,7 @@ where
         if let Err(e) = push_action::upsert_push_action(&pdu.room_id, &pdu.event_id, user_id, notify, highlight) {
             error!("failed to upsert event push action: {}", e);
         }
-        push_action::refresh_notify_summary(&pdu.sender, &pdu.room_id, thread_id.as_deref())?;
+        push_action::refresh_notify_summary(&pdu.sender, &pdu.room_id)?;
 
         for push_key in data::user::pusher::get_push_keys(user_id)? {
             crate::sending::send_push_pdu(&pdu.event_id, user_id, push_key)?;

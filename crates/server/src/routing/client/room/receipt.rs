@@ -83,7 +83,7 @@ pub(super) fn send_receipt(
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
-        push_action::refresh_notify_summary(sender_id, &args.room_id, thread_id)?;
+        push_action::refresh_notify_summary(sender_id, &args.room_id)?;
     }
     empty_ok()
 }

@@ -167,15 +167,15 @@ pub fn remove_actions_until(
                 .filter(event_push_actions::event_sn.le(event_sn)),
         )
         .execute(&mut connect()?)?;
+    } else {
+        diesel::delete(
+            event_push_actions::table
+                .filter(event_push_actions::user_id.eq(user_id))
+                .filter(event_push_actions::room_id.eq(room_id))
+                .filter(event_push_actions::event_sn.le(event_sn)),
+        )
+        .execute(&mut connect()?)?;
     }
-    diesel::delete(
-        event_push_actions::table
-            .filter(event_push_actions::user_id.eq(user_id))
-            .filter(event_push_actions::room_id.eq(room_id))
-            .filter(event_push_actions::thread_id.is_null())
-            .filter(event_push_actions::event_sn.le(event_sn)),
-    )
-    .execute(&mut connect()?)?;
     Ok(())
 }
 
@@ -189,8 +189,33 @@ pub fn remove_actions_for_room(user_id: &UserId, room_id: &RoomId) -> AppResult<
     Ok(())
 }
 
-pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId, thread_id: Option<&EventId>) -> AppResult<()> {
-    if let Some(thread_id) = thread_id {
+pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+    let thread_ids = event_push_actions::table
+        .filter(event_push_actions::user_id.eq(user_id))
+        .filter(event_push_actions::room_id.eq(room_id))
+        .select(event_push_actions::thread_id)
+        .distinct()
+        .load::<Option<OwnedEventId>>(&mut connect()?)?
+        .into_iter()
+        .filter_map(|x| x)
+        .collect::<Vec<_>>();
+    diesel::delete(
+        event_push_actions::table
+            .filter(event_push_actions::user_id.eq(user_id))
+            .filter(event_push_actions::room_id.eq(room_id))
+            .filter(event_push_actions::thread_id.is_not_null())
+            .filter(event_push_actions::thread_id.ne_all(&thread_ids)),
+    )
+    .execute(&mut connect()?)?;
+    diesel::delete(
+        event_push_summaries::table
+            .filter(event_push_summaries::user_id.eq(user_id))
+            .filter(event_push_summaries::room_id.eq(room_id))
+            .filter(event_push_summaries::thread_id.is_not_null())
+            .filter(event_push_summaries::thread_id.ne_all(&thread_ids)),
+    )
+    .execute(&mut connect()?)?;
+    for thread_id in &thread_ids {
         let query = event_push_actions::table
             .filter(event_push_actions::user_id.eq(user_id))
             .filter(event_push_actions::room_id.eq(room_id))

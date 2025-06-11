@@ -209,7 +209,7 @@ fn set_read_markers(
         let event_sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
         data::room::receipt::set_private_read(&room_id, sender_id, event_id, event_sn)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
-        push_action::refresh_notify_summary(sender_id, &room_id, None)?;
+        push_action::refresh_notify_summary(sender_id, &room_id)?;
     }
 
     if let Some(event) = &body.read_receipt {
@@ -238,7 +238,7 @@ fn set_read_markers(
         )?;
         let event_sn = crate::event::get_event_sn(event)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
-        push_action::refresh_notify_summary(sender_id, &room_id, None)?;
+        push_action::refresh_notify_summary(sender_id, &room_id)?;
     }
     empty_ok()
 }
