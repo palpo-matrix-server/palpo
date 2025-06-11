@@ -256,6 +256,7 @@ diesel::table! {
         id -> Int8,
         room_id -> Text,
         event_id -> Text,
+        event_sn -> Int8,
         user_id -> Text,
         profile_tag -> Text,
         actions -> Jsonb,
@@ -294,7 +295,7 @@ diesel::table! {
         room_id -> Text,
         user_id -> Text,
         event_id -> Text,
-        occur_sn -> Int8,
+        event_sn -> Int8,
         json_data -> Json,
         receipt_at -> Int8,
     }

@@ -24,6 +24,7 @@ use crate::core::client::room::{
     RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
 };
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
+use crate::core::events::fully_read::{FullyReadEvent, FullyReadEventContent};
 use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -41,7 +42,7 @@ use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::event::PduBuilder;
-use crate::room::timeline;
+use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
     AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, config, data, empty_ok,
@@ -187,34 +188,34 @@ fn set_read_markers(
     depot: &mut Depot,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
     if let Some(fully_read) = &body.fully_read {
-        let fully_read_event = crate::core::events::fully_read::FullyReadEvent {
-            content: crate::core::events::fully_read::FullyReadEventContent {
+        let fully_read_event = FullyReadEvent {
+            content: FullyReadEventContent {
                 event_id: fully_read.clone(),
             },
         };
         crate::data::user::set_data(
-            authed.user_id(),
+            sender_id,
             Some(room_id.clone()),
             &RoomAccountDataEventType::FullyRead.to_string(),
             serde_json::to_value(fully_read_event.content).expect("to json value always works"),
         )?;
-    }
-
-    if body.private_read_receipt.is_some() || body.read_receipt.is_some() {
-        room::user::refresh_notify_summary(authed.user_id(), &room_id)?;
+        push_action::remove_actions_for_room(sender_id, &room_id)?;
     }
 
     if let Some(event_id) = &body.private_read_receipt {
         let event_sn = crate::event::ensure_event_sn(&room_id, &event_id)?;
-        data::room::receipt::set_private_read(&room_id, authed.user_id(), event_id, event_sn)?;
+        data::room::receipt::set_private_read(&room_id, sender_id, event_id, event_sn)?;
+        push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
+        push_action::refresh_notify_summary(sender_id, &room_id)?;
     }
 
     if let Some(event) = &body.read_receipt {
         let mut user_receipts = BTreeMap::new();
         user_receipts.insert(
-            authed.user_id().clone(),
+            sender_id.clone(),
             Receipt {
                 ts: Some(UnixMillis::now()),
                 thread: ReceiptThread::Unthreaded,
@@ -228,13 +229,16 @@ fn set_read_markers(
         receipt_content.insert(event.to_owned(), receipts);
 
         room::receipt::update_read(
-            authed.user_id(),
+            sender_id,
             &room_id,
-            ReceiptEvent {
+            &ReceiptEvent {
                 content: ReceiptEventContent(receipt_content),
                 room_id: room_id.clone(),
             },
         )?;
+        let event_sn = crate::event::get_event_sn(event)?;
+        push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
+        push_action::refresh_notify_summary(sender_id, &room_id)?;
     }
     empty_ok()
 }

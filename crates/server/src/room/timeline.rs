@@ -32,7 +32,7 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, ensure_event_sn, handler};
 use crate::room::state::CompressedState;
-use crate::room::{state, timeline};
+use crate::room::{push_action, state, timeline};
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
 };
@@ -217,7 +217,6 @@ where
         }
     }
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
-    super::user::refresh_notify_summary(&pdu.sender, &pdu.room_id)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
@@ -303,16 +302,10 @@ where
             highlights.push(user_id.clone());
         }
 
-        if let Err(e) = crate::event::upsert_push_action(
-            &pdu.room_id,
-            &pdu.event_id,
-            user_id,
-            notify,
-            highlight,
-            thread_id.as_deref(),
-        ) {
+        if let Err(e) = push_action::upsert_push_action(&pdu.room_id, &pdu.event_id, user_id, notify, highlight) {
             error!("failed to upsert event push action: {}", e);
         }
+        push_action::refresh_notify_summary(&pdu.sender, &pdu.room_id)?;
 
         for push_key in data::user::pusher::get_push_keys(user_id)? {
             crate::sending::send_push_pdu(&pdu.event_id, user_id, push_key)?;
@@ -426,7 +419,7 @@ where
 
     crate::event::search::save_pdu(&pdu, &pdu_json)?;
 
-    if let Err(e) = increment_notification_counts(&pdu.event_id, notifies, highlights) {
+    if let Err(e) = push_action::increment_notification_counts(&pdu.event_id, notifies, highlights) {
         error!("failed to increment notification counts: {}", e);
     }
 
@@ -485,146 +478,6 @@ where
 
         if matching_aliases() || appservice.rooms.is_match(pdu.room_id.as_str()) || matching_users() {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
-        }
-    }
-    Ok(())
-}
-
-pub fn increment_notification_counts(
-    event_id: &EventId,
-    notifies: Vec<OwnedUserId>,
-    highlights: Vec<OwnedUserId>,
-) -> AppResult<()> {
-    let (room_id, thread_id) = event_points::table
-        .find(event_id)
-        .select((event_points::room_id, event_points::thread_id))
-        .first::<(OwnedRoomId, Option<OwnedEventId>)>(&mut connect()?)?;
-
-    for user_id in notifies {
-        let rows = if let Some(thread_id) = &thread_id {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.eq(thread_id)),
-            )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
-            .execute(&mut connect()?)?
-        } else {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.is_null()),
-            )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
-            .execute(&mut connect()?)?
-        };
-        if rows == 0 {
-            diesel::insert_into(event_push_summaries::table)
-                .values((
-                    event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(&room_id),
-                    event_push_summaries::notification_count.eq(1),
-                    event_push_summaries::unread_count.eq(1),
-                    event_push_summaries::thread_id.eq(&thread_id),
-                    event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
-                ))
-                .execute(&mut connect()?)?;
-        }
-    }
-    for user_id in highlights {
-        let rows = if let Some(thread_id) = &thread_id {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.eq(thread_id)),
-            )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
-            .execute(&mut connect()?)?
-        } else {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.is_null()),
-            )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
-            .execute(&mut connect()?)?
-        };
-        if rows == 0 {
-            diesel::insert_into(event_push_summaries::table)
-                .values((
-                    event_push_summaries::user_id.eq(&user_id),
-                    event_push_summaries::room_id.eq(&room_id),
-                    event_push_summaries::highlight_count.eq(1),
-                    event_push_summaries::unread_count.eq(1),
-                    event_push_summaries::thread_id.eq(&thread_id),
-                    event_push_summaries::stream_ordering.eq(1), // TODO: use the correct stream ordering
-                ))
-                .execute(&mut connect()?)?;
-        }
-    }
-
-    Ok(())
-}
-
-pub fn decrement_notification_counts(
-    event_id: &EventId,
-    user_id: &UserId,
-    notifies: bool,
-    highlights: bool,
-) -> AppResult<()> {
-    let (room_id, thread_id) = event_points::table
-        .find(event_id)
-        .select((event_points::room_id, event_points::thread_id))
-        .first::<(OwnedRoomId, Option<OwnedEventId>)>(&mut connect()?)?;
-
-    if notifies {
-        if let Some(thread_id) = &thread_id {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.eq(thread_id))
-                    .filter(event_push_summaries::notification_count.gt(0)),
-            )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count - 1))
-            .execute(&mut connect()?)?;
-        } else {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.is_null())
-                    .filter(event_push_summaries::notification_count.gt(0)),
-            )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count - 1))
-            .execute(&mut connect()?)?;
-        }
-    }
-    if highlights {
-        if let Some(thread_id) = &thread_id {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.eq(thread_id))
-                    .filter(event_push_summaries::highlight_count.gt(0)),
-            )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count - 1))
-            .execute(&mut connect()?)?;
-        } else {
-            diesel::update(
-                event_push_summaries::table
-                    .filter(event_push_summaries::user_id.eq(&user_id))
-                    .filter(event_push_summaries::room_id.eq(&room_id))
-                    .filter(event_push_summaries::thread_id.is_null())
-                    .filter(event_push_summaries::highlight_count.gt(0)),
-            )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count - 1))
-            .execute(&mut connect()?)?;
         }
     }
     Ok(())

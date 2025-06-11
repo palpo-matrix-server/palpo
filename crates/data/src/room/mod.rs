@@ -112,7 +112,7 @@ pub struct DbReceipt {
     pub room_id: OwnedRoomId,
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
-    pub occur_sn: Seqnum,
+    pub event_sn: Seqnum,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
@@ -124,7 +124,7 @@ pub struct NewDbReceipt {
     pub room_id: OwnedRoomId,
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
-    pub occur_sn: i64,
+    pub event_sn: Seqnum,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
@@ -308,6 +308,7 @@ pub struct NewDbEventIdempotent {
 pub struct NewDbEventPushAction{
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
+    pub event_sn: Seqnum,
     pub user_id: OwnedUserId,
     pub profile_tag: String,
     pub actions: JsonValue,

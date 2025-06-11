@@ -74,21 +74,6 @@ impl From<Vec<DbEventPushSummary>> for UserNotifySummary {
     }
 }
 
-pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
-    diesel::update(
-        event_push_summaries::table
-            .filter(event_push_summaries::user_id.eq(user_id))
-            .filter(event_push_summaries::room_id.eq(room_id)),
-    )
-    .set((
-        event_push_summaries::notification_count.eq(0),
-        event_push_summaries::unread_count.eq(0),
-        event_push_summaries::highlight_count.eq(0),
-    ))
-    .execute(&mut connect()?)?;
-    Ok(())
-}
-
 pub fn notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<UserNotifySummary> {
     let summaries = event_push_summaries::table
         .filter(event_push_summaries::user_id.eq(user_id))
@@ -112,8 +97,8 @@ pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<S
     event_receipts::table
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::room_id.eq(room_id))
-        .order_by(event_receipts::occur_sn.desc())
-        .select(event_receipts::occur_sn)
+        .order_by(event_receipts::event_sn.desc())
+        .select(event_receipts::event_sn)
         .first::<Seqnum>(&mut connect()?)
         .optional()
         .map(|v| v.unwrap_or_default())

@@ -44,6 +44,7 @@ pub mod typing;
 pub mod user;
 pub use current::*;
 pub mod thread;
+pub mod push_action;
 pub use state::get_room_frame_id as get_frame_id;
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {

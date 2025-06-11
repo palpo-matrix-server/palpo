@@ -12,7 +12,7 @@ use crate::core::events::receipt::{
 };
 use crate::core::presence::PresenceState;
 use crate::data::schema::*;
-use crate::room::timeline;
+use crate::room::{push_action, timeline};
 use crate::{AppError, AuthArgs, DepotExt, EmptyResult, core, data, empty_ok, room};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
@@ -27,9 +27,13 @@ pub(super) fn send_receipt(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let body = body.into_inner();
+    let mut thread_id = match &body.thread {
+        ReceiptThread::Thread(id) => Some(&**id),
+        _ => None,
+    };
 
     crate::user::ping_presence(sender_id, &PresenceState::Online)?;
-
+    let event_sn = crate::event::get_event_sn(&args.event_id)?;
     match args.receipt_type {
         ReceiptType::FullyRead => {
             let fully_read_event = FullyReadEvent {
@@ -43,6 +47,7 @@ pub(super) fn send_receipt(
                 &RoomAccountDataEventType::FullyRead.to_string(),
                 serde_json::to_value(fully_read_event.content).expect("to json value always works"),
             )?;
+            push_action::remove_actions_for_room(sender_id, &args.room_id)?;
         }
         ReceiptType::Read => {
             let mut user_receipts = BTreeMap::new();
@@ -62,31 +67,23 @@ pub(super) fn send_receipt(
             room::receipt::update_read(
                 sender_id,
                 &args.room_id,
-                ReceiptEvent {
+                &ReceiptEvent {
                     content: ReceiptEventContent(receipt_content),
                     room_id: args.room_id.clone(),
                 },
             )?;
+            push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
         ReceiptType::ReadPrivate => {
             // let count = timeline::get_event_sn(&args.event_id)?
             //     .ok_or(MatrixError::invalid_param("Event does not exist."))?;
-            let event_sn = crate::event::get_event_sn(&args.event_id)?;
             data::room::receipt::set_private_read(&args.room_id, sender_id, &args.event_id, event_sn)?;
+            push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
-        let (notify, highlight) = event_push_actions::table
-            .filter(event_push_actions::room_id.eq(&args.room_id))
-            .filter(event_push_actions::user_id.eq(sender_id))
-            .filter(event_push_actions::event_id.eq(&args.event_id))
-            .select((event_push_actions::notify, event_push_actions::highlight))
-            .first::<(bool, bool)>(&mut data::connect()?)
-            .unwrap_or((false, false));
-        if notify || highlight {
-            timeline::decrement_notification_counts(&args.event_id, sender_id, notify, highlight)?;
-        }
+        push_action::refresh_notify_summary(sender_id, &args.room_id)?;
     }
     empty_ok()
 }
