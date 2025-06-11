@@ -307,33 +307,6 @@ CREATE TABLE server_signing_keys (
      updated_at bigint NOT NULL,
      created_at bigint NOT NULL
 );
--- drop table if exists server_signing_keys CASCADE;
--- CREATE TABLE server_signing_keys (
---     id bigserial NOT NULL PRIMARY KEY,
---     server_id text NOT NULL,
---     key_id text NOT NULL,
---     from_server text NOT NULL,
---     expires_at bigint NOT NULL,
---     key_data json NOT NULL,
---     updated_at bigint NOT NULL,
---     created_at bigint NOT NULL,
---     CONSTRAINT server_signing_keys_udx UNIQUE (server_id, key_id, from_server)
--- );
-
--- drop table if exists server_signature_keys CASCADE;
--- CREATE TABLE server_signature_keys (
---     id bigserial NOT NULL PRIMARY KEY,
---     server_id text NOT NULL,
---     key_id text NOT NULL,
---     from_server text NOT NULL,
---     verify_key bytea NOT NULL,
---     valid_until bigint NOT NULL,
---     created_at bigint NOT NULL
--- );
--- ALTER TABLE ONLY server_signature_keys
---     ADD CONSTRAINT server_signature_keys_server_id_key_id_udx UNIQUE (server_id, key_id);
-
-
 
 drop table if exists user_filters CASCADE;
 CREATE TABLE user_filters (
@@ -343,7 +316,6 @@ CREATE TABLE user_filters (
     created_at bigint NOT NULL
 );
 CREATE INDEX user_filters_user_id_idx ON user_filters USING btree (user_id);
-
 
 drop table if exists user_ignores CASCADE;
 CREATE TABLE user_ignores (
@@ -508,22 +480,6 @@ CREATE TABLE room_state_deltas
     appended bytea NOT NULL,
     disposed bytea NOT NULL
 );
-
--- DROP TABLE IF EXISTS room_states CASCADE;
--- CREATE TABLE room_states
--- (
---     room_id text NOT NULL PRIMARY KEY,
---     frame_id bigint NOT NULL
--- );
-
--- DROP TABLE IF EXISTS room_state_hashes CASCADE;
--- CREATE TABLE room_state_hashes
--- (
---     id bigserial NOT NULL PRIMARY KEY,
---     room_id text NOT NULL,
---     event_id text NOT NULL,
---     raw_data bytea NOT NULL
--- );
 
 DROP TABLE IF EXISTS device_inboxes CASCADE;
 CREATE TABLE device_inboxes
@@ -801,11 +757,11 @@ ALTER TABLE IF EXISTS event_searches
     ALTER COLUMN room_id SET (n_distinct=-0.01);
 
 CREATE INDEX IF NOT EXISTS event_searches_ev_idx
-    ON public.event_searches USING btree (room_id ASC NULLS LAST);
+    ON event_searches USING btree (room_id ASC NULLS LAST);
 CREATE UNIQUE INDEX IF NOT EXISTS event_searches_event_id_udx
-    ON public.event_searches USING btree (event_id ASC NULLS LAST);
+    ON event_searches USING btree (event_id ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS event_search_fts_idx
-    ON public.event_searches USING gin (vector);
+    ON event_searches USING gin (vector);
 
 ALTER TABLE ONLY event_searches
     ADD CONSTRAINT event_searches_udx UNIQUE (event_id);
@@ -824,9 +780,9 @@ CREATE TABLE IF NOT EXISTS event_push_summaries
     thread_id text
 );
 CREATE INDEX IF NOT EXISTS event_push_summaries_room_id_idx
-    ON public.event_push_summaries USING btree (room_id ASC NULLS LAST);
+    ON event_push_summaries USING btree (room_id ASC NULLS LAST);
 CREATE UNIQUE INDEX IF NOT EXISTS event_push_summaries_udx
-    ON public.event_push_summaries USING btree
+    ON event_push_summaries USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST, thread_id ASC NULLS LAST);
 
 
@@ -979,3 +935,42 @@ CREATE INDEX IF NOT EXISTS room_lookup_servers_alias_id_idx
     ON room_lookup_servers USING btree (alias_id ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS room_lookup_servers_room_id_idx
     ON room_lookup_servers USING btree (room_id ASC NULLS LAST);
+
+
+DROP TABLE IF EXISTS event_push_actions;
+CREATE TABLE IF NOT EXISTS event_push_actions
+(
+    id bigserial NOT NULL PRIMARY KEY,
+    room_id text NOT NULL,
+    event_id text NOT NULL,
+    user_id text NOT NULL,
+    profile_tag text NOT NULL DEFAULT '',
+    actions jsonb NOT NULL,
+    topological_ordering bigint,
+    stream_ordering bigint,
+    notify boolean NOT NULL DEFAULT true,
+    highlight boolean NOT NULL DEFAULT false,
+    unread boolean NOT NULL DEFAULT true,
+    thread_id text,
+    CONSTRAINT event_push_actions_event_id_user_id_profile_tag_ukey UNIQUE (room_id, event_id, user_id, profile_tag),
+    CONSTRAINT event_push_actions_thread_id CHECK (thread_id IS NOT NULL)
+);
+
+CREATE INDEX IF NOT EXISTS event_push_actions_highlights_idx ON event_push_actions
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST, topological_ordering ASC NULLS LAST, stream_ordering ASC NULLS LAST)
+    WHERE highlight = true;
+
+CREATE INDEX IF NOT EXISTS event_push_actions_rm_tokens_idx ON event_push_actions
+    (user_id ASC NULLS LAST, room_id ASC NULLS LAST, topological_ordering ASC NULLS LAST, stream_ordering ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS event_push_actions_room_id_user_id_idx ON event_push_actions
+    (room_id ASC NULLS LAST, user_id ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS event_push_actions_stream_highlight_idx ON event_push_actions
+    (highlight ASC NULLS LAST, stream_ordering ASC NULLS LAST) WHERE highlight = false;
+
+CREATE INDEX IF NOT EXISTS event_push_actions_stream_ordering ON event_push_actions
+    (stream_ordering ASC NULLS LAST, user_id ASC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS event_push_actions_u_highlight ON event_push_actions
+    (user_id ASC NULLS LAST, stream_ordering ASC NULLS LAST);

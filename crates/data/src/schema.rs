@@ -252,6 +252,26 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_push_actions (id) {
+        id -> Int8,
+        room_id -> Text,
+        event_id -> Text,
+        user_id -> Text,
+        profile_tag -> Text,
+        actions -> Jsonb,
+        topological_ordering -> Nullable<Int8>,
+        stream_ordering -> Nullable<Int8>,
+        notify -> Bool,
+        highlight -> Bool,
+        unread -> Bool,
+        thread_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_push_summaries (id) {
         id -> Int8,
         user_id -> Text,
@@ -969,6 +989,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_forward_extremities,
     event_idempotents,
     event_points,
+    event_push_actions,
     event_push_summaries,
     event_receipts,
     event_relations,

@@ -8,7 +8,8 @@ use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::receipt::{
     CreateReceiptReqBody, Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, data, empty_ok};
+use crate::room::timeline;
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, data, empty_ok, room};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
@@ -53,7 +54,7 @@ pub(super) fn send_receipt(
             let mut receipt_content = BTreeMap::new();
             receipt_content.insert(args.event_id.to_owned(), receipts);
 
-            crate::room::receipt::update_read(
+            room::receipt::update_read(
                 authed.user_id(),
                 &args.room_id,
                 ReceiptEvent {
@@ -71,7 +72,7 @@ pub(super) fn send_receipt(
         _ => return Err(AppError::internal("Unsupported receipt type")),
     }
     if matches!(&args.receipt_type, ReceiptType::Read | ReceiptType::ReadPrivate) {
-        crate::room::user::update_notify_summary(authed.user_id(), &args.room_id)?;
+        timeline::decrement_notification_counts(&args.event_id, authed.user_id(), true, false)?;
     }
     empty_ok()
 }
