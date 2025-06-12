@@ -296,6 +296,7 @@ diesel::table! {
         user_id -> Text,
         event_id -> Text,
         event_sn -> Int8,
+        thread_id -> Nullable<Text>,
         json_data -> Json,
         receipt_at -> Int8,
     }

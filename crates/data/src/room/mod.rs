@@ -113,6 +113,7 @@ pub struct DbReceipt {
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: Seqnum,
+    pub thread_id: Option<OwnedEventId>,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
@@ -125,6 +126,7 @@ pub struct NewDbReceipt {
     pub user_id: OwnedUserId,
     pub event_id: OwnedEventId,
     pub event_sn: Seqnum,
+    pub thread_id: Option<OwnedEventId>,
     pub json_data: JsonValue,
     pub receipt_at: UnixMillis,
 }
