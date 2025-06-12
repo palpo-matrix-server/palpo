@@ -22,6 +22,10 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
         let event_sn = crate::event::get_event_sn(&event_id)?;
         for (receipt_ty, user_receipts) in receipts {
             if let Some(receipt) = user_receipts.get(user_id) {
+                let thread_id = match &receipt.thread {
+                    crate::core::events::receipt::ReceiptThread::Thread(id) => Some(id.clone()),
+                    _ => None,
+                };
                 let receipt_at = receipt.ts.unwrap_or_else(|| UnixMillis::now());
                 let receipt = NewDbReceipt {
                     ty: receipt_ty.to_string(),
@@ -29,6 +33,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     user_id: user_id.to_owned(),
                     event_id: event_id.clone(),
                     event_sn,
+                    thread_id,
                     json_data: serde_json::to_value(receipt)?,
                     receipt_at,
                 };

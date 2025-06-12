@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
 
@@ -11,16 +11,27 @@ use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
 use crate::{DataResult, connect, next_sn};
 
-
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
     let list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
         .filter(event_receipts::event_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))
+        .order_by(event_receipts::id.desc())
         .load::<DbReceipt>(&mut connect()?)?;
+    let unthread_receipts = receipts
+        .iter()
+        .filter(|r| r.thread_id.is_none())
+        .map(|r| (r.user_id.clone(), r.event_id.clone()))
+        .collect::<HashSet<_>>();
+
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
-    for receipt in receipts {
+    for mut receipt in receipts {
+        if let Some(thread_id) = &receipt.thread_id {
+            if unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone())) {
+                receipt.thread_id = None;
+            }
+        }
         grouped.entry(receipt.user_id.clone()).or_default().push(receipt);
     }
 
@@ -54,6 +65,7 @@ pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, 
             user_id: user_id.to_owned(),
             event_id: event_id.to_owned(),
             event_sn,
+            thread_id: None,
             json_data: JsonValue::default(),
             receipt_at: UnixMillis::now(),
         })

@@ -730,6 +730,7 @@ CREATE TABLE event_receipts (
     user_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
+    thread_id text,
     json_data json NOT NULL,
     receipt_at bigint NOT NULL
 );
