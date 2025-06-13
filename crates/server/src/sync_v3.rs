@@ -713,6 +713,7 @@ async fn load_joined_room(
     let notify_summary = room::user::notify_summary(sender_id, &room_id)?;
     let mut notification_count = None;
     let mut highlight_count = None;
+    let mut unread_count = None;
     if send_notification_counts {
         if filter.room.timeline.unread_thread_notifications {
             notification_count = Some(notify_summary.notification_count);
@@ -721,6 +722,7 @@ async fn load_joined_room(
             notification_count = Some(notify_summary.all_notification_count());
             highlight_count = Some(notify_summary.all_highlight_count());
         }
+        unread_count = Some(notify_summary.all_unread_count())
     }
 
     Ok(JoinedRoom {
@@ -760,7 +762,7 @@ async fn load_joined_room(
         } else {
             BTreeMap::new()
         },
-        unread_count: Some(notify_summary.all_unread_count()),
+        unread_count,
     })
 }
 
