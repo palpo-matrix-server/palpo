@@ -61,7 +61,8 @@ All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.resul
 - [x] Complement tests `TestProfileDisplayName/*`.
 - [x] Complement tests `TestPushSync/*`.
 - [x] Complement tests `TestRegistration/*`.
-- [x] Complement tests `TestRestrictedRoomsLocalJoin*`.
+- [x] Complement tests `TestRegistration/*`.
+- [x] Complement tests `TestSearch/*`.
 - [x] Complement tests `TestRestrictedRoomsRemoteJoin*`.
 - [x] Complement tests `TestRoomAlias/*`.
 - [x] Complement tests `TestRoomCanonicalAlias/*`.

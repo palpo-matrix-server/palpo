@@ -1,9 +1,12 @@
 use std::collections::BTreeMap;
 
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 
 use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};
+use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
+use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::canonical_json::CanonicalJsonValue;
@@ -86,7 +89,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
             }
         })
         .map(|(rank, pdu)| SearchResult {
-            context: calc_event_context(user_id, &pdu.room_id, &pdu.event_id, 10, 10, false).unwrap_or_default(),
+            context: calc_event_context(user_id, &pdu.room_id, pdu.event_sn, 10, 10, false).unwrap_or_default(),
             rank: Some(rank as f64),
             result: Some(pdu.to_room_event()),
         })
@@ -110,20 +113,38 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
 fn calc_event_context(
     user_id: &UserId,
     room_id: &RoomId,
-    event_id: &EventId,
+    event_sn: Seqnum,
     before_limit: usize,
     after_limit: usize,
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
+    let before_pdus = timeline::get_pdus_backward(user_id, room_id, event_sn - 1, None, None, before_limit)?;
+    let after_pdus = timeline::get_pdus_forward(user_id, room_id, event_sn + 1, None, None, after_limit)?;
+    let mut profile = BTreeMap::new();
+    if include_profile {
+        if let Ok(frame_id) = crate::event::get_frame_id(room_id, event_sn) {
+            let RoomMemberEventContent {
+                display_name,
+                avatar_url,
+                ..
+            } = state::get_state_content(frame_id, &StateEventType::RoomMember, user_id.as_str())?;
+            if let Some(display_name) = display_name {
+                profile.insert("displayname".to_string(), display_name);
+            }
+            if let Some(avatar_url) = avatar_url {
+                profile.insert("avatar_url".to_string(), avatar_url.to_string());
+            }
+        }
+    }
+
     let mut context = EventContextResult {
-        end: None,
-        events_after: Vec::new(),
-        events_before: Vec::new(),
+        start: before_pdus.first().map(|(sn, _)| sn.to_string()),
+        end: after_pdus.last().map(|(sn, _)| sn.to_string()),
+        events_before: before_pdus.into_iter().rev().map(|(_, pdu)| pdu.to_room_event()).collect(),
+        events_after: after_pdus.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect(),
         profile_info: BTreeMap::new(),
-        start: None,
     };
 
-    // TODO: Implement the logic to fetch the context events before and after the given event_id.
     Ok(context)
 }
 
