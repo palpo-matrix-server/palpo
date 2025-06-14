@@ -35,7 +35,7 @@ pub(super) async fn fetch_state(
     let state_vec = super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
     let mut state: HashMap<_, OwnedEventId> = HashMap::new();
-    for (pdu, _) in state_vec {
+    for (pdu, _, _event_guard) in state_vec {
         let state_key = pdu
             .state_key
             .clone()

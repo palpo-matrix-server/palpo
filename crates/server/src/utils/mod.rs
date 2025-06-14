@@ -17,6 +17,8 @@ pub use stream::*;
 pub mod content_disposition;
 mod mutex_map;
 pub use mutex_map::{MutexMap, MutexMapGuard};
+mod sequm_queue;
+pub use sequm_queue::*;
 
 #[macro_export]
 macro_rules! extract_variant {

@@ -107,7 +107,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         extra_data: Default::default(),
     })
     .expect("member event is valid value");
-    let (_pdu, mut pdu_json) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _) = timeline::create_hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content,
@@ -190,12 +190,8 @@ async fn invite_user(
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
-    let pdu = SnPduEvent::from_json_value(
-        &event_id,
-        crate::event::ensure_event_sn(&args.room_id, &event_id)?,
-        event.into(),
-    )
-    .map_err(|e| {
+    let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
+    let pdu = SnPduEvent::from_json_value(&event_id, event_sn, event.into()).map_err(|e| {
         warn!("Invalid invite event: {}", e);
         MatrixError::invalid_param("Invalid invite event.")
     })?;
@@ -216,6 +212,7 @@ async fn invite_user(
             Some(invite_state),
         )?;
     }
+    drop(event_guard);
 
     json_ok(InviteUserResBodyV2 {
         event: crate::sending::convert_to_outgoing_federation_event(signed_event),
@@ -239,7 +236,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
-    let (_pdu, mut pdu_json) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Leave),

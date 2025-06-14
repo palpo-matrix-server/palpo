@@ -13,7 +13,7 @@ use salvo::oapi::ToSchema;
 use serde::Serialize;
 use tokio::sync::{Semaphore, broadcast};
 
-use crate::core::UnixMillis;
+use crate::core::{Seqnum, UnixMillis};
 use crate::core::appservice::Registration;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
@@ -22,7 +22,7 @@ use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::data::user::{NewDbUser, NewDbUserDevice};
 use crate::data::{connect, diesel_exists};
-use crate::utils::{MutexMap, MutexMapGuard};
+use crate::utils::{MutexMap, MutexMapGuard, SeqnumQueue, SeqnumQueueFuture, SeqnumQueueGuard};
 use crate::{AppResult, MatrixError, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
@@ -53,6 +53,7 @@ pub static APPSERVICE_IN_ROOM_CACHE: LazyRwLock<HashMap<OwnedRoomId, HashMap<Str
     LazyRwLock::new(Default::default);
 pub static ROTATE: LazyLock<RotationHandler> = LazyLock::new(Default::default);
 pub static SHUTDOWN: AtomicBool = AtomicBool::new(false);
+pub static SEQNUM_QUEUE: LazyLock<SeqnumQueue> = LazyLock::new(Default::default);
 
 /// Handles "rotation" of long-polling requests. "Rotation" in this context is similar to "rotation" of log files and the like.
 ///
@@ -85,6 +86,14 @@ impl Default for RotationHandler {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub fn queue_seqnum(sn: Seqnum) -> SeqnumQueueGuard {
+    SEQNUM_QUEUE.push(sn)
+}
+
+pub fn seqnum_reach(sn: Seqnum) -> SeqnumQueueFuture {
+    SEQNUM_QUEUE.reach(sn)
 }
 
 pub fn config() -> &'static crate::config::ServerConfig {

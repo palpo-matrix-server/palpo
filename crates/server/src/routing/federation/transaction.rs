@@ -16,7 +16,7 @@ use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
 use crate::event::handler;
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
-use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, room, json_ok};
+use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok, room};
 
 pub fn router() -> Router {
     Router::with_path("send/{txn_id}").put(send_message)
@@ -37,6 +37,8 @@ async fn send_message(
             MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
         );
     }
+
+    println!("=====================send_message:  curren server:{}  {:?}  body:{body:#?}", crate::config::server_name(), origin);
 
     if body.pdus.len() > PDU_LIMIT {
         return Err(MatrixError::forbidden(
@@ -95,16 +97,19 @@ async fn process_pdus(
             "Finished PDU {event_id}",
         );
 
-        resolved_map.insert(event_id, result);
+        if result.is_ok() {
+            resolved_map.insert(event_id, Ok(()));
+        }
+        // resolved_map.insert(event_id, result);
     }
 
-    for (id, result) in &resolved_map {
-        if let Err(e) = result {
-            if matches!(e, AppError::Matrix(_)) {
-                warn!("Incoming PDU failed {id}: {e:?}");
-            }
-        }
-    }
+    // for (id, result) in &resolved_map {
+    //     if let Err(e) = result {
+    //         if matches!(e, AppError::Matrix(_)) {
+    //             warn!("Incoming PDU failed {id}: {e:?}");
+    //         }
+    //     }
+    // }
 
     Ok(resolved_map)
 }

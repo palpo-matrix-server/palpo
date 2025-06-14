@@ -33,6 +33,7 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, ensure_event_sn, handler};
 use crate::room::state::CompressedState;
 use crate::room::{push_action, state, timeline};
+use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
 };
@@ -352,6 +353,10 @@ where
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
+                println!(
+                    "==========udpate memembship to : {:?}  {}",
+                    content.membership, pdu.event_sn
+                );
                 membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
@@ -397,6 +402,7 @@ where
         _ => {}
     }
 
+    println!("===========save pdu data: {:?}", pdu.event_id);
     DbEventData {
         event_id: pdu.event_id.clone(),
         event_sn: pdu.event_sn,
@@ -488,7 +494,7 @@ pub fn create_hash_and_sign_event(
     sender_id: &UserId,
     room_id: &RoomId,
     state_lock: &RoomMutexGuard,
-) -> AppResult<(SnPduEvent, CanonicalJsonObject)> {
+) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
     let PduBuilder {
         event_type,
         content,
@@ -612,7 +618,7 @@ pub fn create_hash_and_sign_event(
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
 
-    let event_sn = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
+    let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
         id: pdu.event_id.to_owned(),
         sn: event_sn,
@@ -643,7 +649,7 @@ pub fn create_hash_and_sign_event(
     }
     .save()?;
 
-    Ok((SnPduEvent::new(pdu, event_sn), pdu_json))
+    Ok((SnPduEvent::new(pdu, event_sn), pdu_json, event_guard))
 }
 
 fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
@@ -723,7 +729,7 @@ pub fn build_and_append_pdu(
         }
     }
 
-    let (pdu, pdu_json) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
+    let (pdu, pdu_json, event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
 
     let conf = crate::config();
     // let admin_room = super::resolve_local_alias(
@@ -764,6 +770,7 @@ pub fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
+    println!("=====================send_pdu_servers:  {:?}  pdu:{pdu:#?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

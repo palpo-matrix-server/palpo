@@ -178,7 +178,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
     // TODO: event_sn??, outlier but has sn??
-    let event_sn = ensure_event_sn(&room_id, &event_id)?;
+    let (event_sn, event_guard) = ensure_event_sn(&room_id, &event_id)?;
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -214,6 +214,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         format_version: None,
     }
     .save()?;
+    drop(event_guard);
 
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
