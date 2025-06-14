@@ -285,6 +285,7 @@ pub fn update_membership(
             })?;
         }
         MembershipState::Leave | MembershipState::Ban => {
+            println!("========update_membership ban: {:?} {:?}   membership:{:?}   event_sn:{event_sn}", room_id, user_id, membership);
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))

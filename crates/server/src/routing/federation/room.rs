@@ -269,7 +269,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         }
     }
 
-    let (_pdu, mut pdu_json) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),

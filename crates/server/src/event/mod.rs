@@ -8,10 +8,11 @@ use serde_json::json;
 
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::{Seqnum,Direction, UnixMillis, signatures};
+use crate::core::{Direction, Seqnum, UnixMillis, signatures};
 use crate::data::connect;
 use crate::data::room::{DbEvent, NewDbEventPushAction};
 use crate::data::schema::*;
+use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError, data};
 
 /// Generates a correct eventId for the incoming pdu.
@@ -35,14 +36,14 @@ pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId
     Ok(event_id)
 }
 
-pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum> {
+pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<(Seqnum, Option<SeqnumQueueGuard>)> {
     if let Some(sn) = event_points::table
         .find(event_id)
         .select(event_points::event_sn)
         .first::<Seqnum>(&mut connect()?)
         .optional()?
     {
-        Ok(sn)
+        Ok((sn, None))
     } else {
         let sn = diesel::insert_into(event_points::table)
             .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
@@ -57,7 +58,8 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<Seqnum
         diesel::update(event_datas::table.find(event_id))
             .set(event_datas::event_sn.eq(sn))
             .execute(&mut connect()?)?;
-        Ok(sn)
+
+        Ok((sn, Some(crate::queue_seqnum(sn))))
     }
 }
 /// Returns the `count` of this pdu's id.

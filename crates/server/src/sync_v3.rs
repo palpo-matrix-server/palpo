@@ -40,8 +40,10 @@ pub async fn sync_events(
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
     let curr_sn = data::curr_sn()?;
+    crate::seqnum_reach(curr_sn).await;
     let since_sn = args.since.as_ref().and_then(|s| s.parse().ok()).unwrap_or_default();
     let next_batch = curr_sn + 1;
+    println!("\n\n\n\n\n:=====sync_events==============since_sn: {since_sn}  ===next_batch: {next_batch}");
 
     // Load filter
     let filter = match &args.filter {
@@ -104,10 +106,12 @@ pub async fn sync_events(
 
         // Left before last sync
         if Some(since_sn) > left_sn {
+            println!("===========since_sn: {}, left_sn: {:?}", since_sn, left_sn);
             continue;
         }
 
         if !room::room_exists(room_id)? {
+            println!("===========Room {} does not exist anymore, skipping", room_id);
             let event = PduEvent {
                 event_id: EventId::new(config::server_name()).into(),
                 sender: sender_id.to_owned(),
@@ -143,6 +147,7 @@ pub async fn sync_events(
             );
             continue;
         }
+        println!("=====================syncing room 2: {}", room_id);
 
         let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn);
 
@@ -152,21 +157,25 @@ pub async fn sync_events(
         };
 
         let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+            println!("=====================syncing room 3");
             continue;
         };
         let Ok(left_event_id) =
             state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())
         else {
             error!("Left room but no left state event");
+            println!("=====================syncing room 4");
             continue;
         };
 
         let Ok(left_frame_id) = state::get_pdu_frame_id(&left_event_id) else {
             error!("Leave event has no state");
+            println!("=====================syncing room 5");
             continue;
         };
         if let Ok(since_frame_id) = since_frame_id {
             if left_frame_id < since_frame_id {
+                println!("=====================syncing room 6");
                 continue;
             }
         } else {
@@ -177,6 +186,7 @@ pub async fn sync_events(
                 .first::<bool>(&mut connect()?)
                 .optional()?;
             if let Some(true) = forgotten {
+                println!("=====================syncing room 7");
                 continue;
             }
         }
@@ -185,6 +195,7 @@ pub async fn sync_events(
         let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
         left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
+        println!("=====================syncing room 8");
         for (key, event_id) in left_state_ids {
             if full_state || since_state_ids.get(&key) != Some(&event_id) {
                 let DbRoomStateField {
@@ -210,6 +221,7 @@ pub async fn sync_events(
             }
         }
 
+        println!("=====================syncing room 9");
         let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
         left_rooms.insert(
             room_id.to_owned(),
@@ -229,6 +241,7 @@ pub async fn sync_events(
                 },
             },
         );
+        println!("=====================syncing room 10");
     }
 
     let invited_rooms: BTreeMap<_, _> = data::user::invited_rooms(sender_id, since_sn)?
@@ -258,6 +271,7 @@ pub async fn sync_events(
             }
         }
     }
+    println!("=====================syncing room 11");
     for user_id in left_users {
         let dont_share_encrypted_room = room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
             .into_iter()
@@ -334,6 +348,7 @@ pub async fn sync_events(
             .collect(),
     };
 
+    println!("=====================syncing room 12  {left_rooms:#?}");
     let rooms = Rooms {
         leave: left_rooms,
         join: joined_rooms,

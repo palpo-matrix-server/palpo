@@ -236,7 +236,7 @@ pub async fn knock_room(
 
     info!("Appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
-    let event_sn = ensure_event_sn(room_id, &event_id)?;
+    let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -299,6 +299,7 @@ pub async fn knock_room(
     // in time where events in the current room state do not exist
     state::set_room_state(room_id, frame_id);
 
+    drop(event_guard);
     Ok(())
 }
 
