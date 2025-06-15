@@ -130,7 +130,7 @@ pub fn get_db_event(event_id: &EventId) -> AppResult<DbEvent> {
         .map_err(Into::into)
 }
 
-pub fn get_frame_id(room_id: &RoomId, event_sn: i64) -> AppResult<i64> {
+pub fn get_frame_id(room_id: &RoomId, event_sn: Seqnum) -> AppResult<i64> {
     event_points::table
         .filter(event_points::room_id.eq(room_id))
         .filter(event_points::event_sn.eq(event_sn))

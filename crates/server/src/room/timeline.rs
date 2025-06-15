@@ -498,7 +498,7 @@ pub fn create_hash_and_sign_event(
     let PduBuilder {
         event_type,
         content,
-        unsigned,
+        mut unsigned,
         state_key,
         redacts,
         timestamp,
@@ -535,21 +535,16 @@ pub fn create_hash_and_sign_event(
         .unwrap_or_else(|| 0)
         + 1;
 
-    let mut unsigned = unsigned.unwrap_or_default();
-
     if let Some(state_key) = &state_key {
         if let Ok(prev_pdu) = super::get_state(room_id, &event_type.to_string().into(), state_key, None) {
-            unsigned.insert(
-                "prev_content".to_owned(),
-                serde_json::from_str(prev_pdu.content.get()).expect("string is valid json"),
-            );
+            unsigned.insert("prev_content".to_owned(), prev_pdu.content.clone());
             unsigned.insert(
                 "prev_sender".to_owned(),
-                serde_json::to_value(&prev_pdu.sender).expect("UserId::to_value always works"),
+                to_raw_value(&prev_pdu.sender).expect("UserId::to_value always works"),
             );
             unsigned.insert(
                 "replaces_state".to_owned(),
-                serde_json::to_value(&prev_pdu.event_id).expect("EventId is valid json"),
+                to_raw_value(&prev_pdu.event_id).expect("EventId is valid json"),
             );
         }
     }
@@ -569,11 +564,7 @@ pub fn create_hash_and_sign_event(
         depth,
         auth_events: auth_events.values().map(|pdu| pdu.event_id.clone()).collect(),
         redacts,
-        unsigned: if unsigned.is_empty() {
-            None
-        } else {
-            Some(to_raw_value(&unsigned).expect("to_raw_value always works"))
-        },
+        unsigned,
         hashes: EventHash {
             sha256: "aaa".to_owned(),
         },
@@ -903,7 +894,9 @@ pub fn get_pdus(
         };
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
-                if state::user_can_see_event(user_id, room_id, &pdu.event_id)? {
+                println!("ccccccccccccccccccChecking pdu: {event_id} in room {room_id}");
+                if pdu.user_can_see(user_id)? {
+                    println!("========pdu  {pdu:#?} in room {room_id}");
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
                     }

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 use salvo::prelude::*;
+use serde_json::value::to_raw_value;
 
 use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody, SendMessageResBody,
@@ -201,13 +202,16 @@ pub(super) async fn send_message(
     }
 
     let mut unsigned = BTreeMap::new();
-    unsigned.insert("transaction_id".to_owned(), args.txn_id.to_string().into());
+    unsigned.insert(
+        "transaction_id".to_owned(),
+        to_raw_value(&args.txn_id).expect("TxnId is valid json"),
+    );
 
     let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
-            unsigned: Some(unsigned),
+            unsigned,
             timestamp: if authed.appservice().is_some() {
                 args.timestamp
             } else {
@@ -266,7 +270,7 @@ pub(super) async fn post_message(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
-            unsigned: Some(BTreeMap::new()),
+            unsigned: BTreeMap::new(),
             ..Default::default()
         },
         authed.user_id(),
