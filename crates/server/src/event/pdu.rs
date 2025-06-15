@@ -262,6 +262,26 @@ impl PduEvent {
         Ok(())
     }
 
+    pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
+        if !state::user_can_see_event(user_id, &self.room_id, &self.event_id)? {
+            return Ok(false);
+        }
+
+        let membership =
+            if self.event_ty == TimelineEventType::RoomMember && self.state_key == Some(user_id.to_string()) {
+                self.content
+                    .get()
+                    .and_then(|c| c.get("membership"))
+                    .and_then(|m| m.as_str())
+            } else {
+                None
+            };
+        if let Some(membership) = membership {
+            self.unsigned.insert("membership".to_owned(), json!(membership));
+        }
+        Ok(true)
+    }
+
     #[tracing::instrument]
     pub fn to_sync_room_event(&self) -> RawJson<AnySyncTimelineEvent> {
         let mut json = json!({
