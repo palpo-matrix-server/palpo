@@ -21,13 +21,12 @@
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
-{"Action":"fail","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"fail","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
-{"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
+{"Action":"fail","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/interrupted_connectivity"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
@@ -263,6 +262,7 @@
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
+{"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
 {"Action":"pass","Test":"TestKnockRoomsInPublicRoomsDirectory"}
 {"Action":"pass","Test":"TestKnockRoomsInPublicRoomsDirectoryInMSC3787Room"}
@@ -323,6 +323,7 @@
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_locally"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_upload_without_a_file_name"}
+{"Action":"pass","Test":"TestMembershipOnEvents"}
 {"Action":"pass","Test":"TestMembersLocal"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel/Existing_members_see_new_members'_join_events"}
@@ -566,7 +567,6 @@
 {"Action":"pass","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"pass","Test":"TestTentativeEventualJoiningAfterRejecting"}
 {"Action":"pass","Test":"TestThreadedReceipts"}
-{"Action":"pass","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation/good_connectivity"}
