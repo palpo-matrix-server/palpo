@@ -29,7 +29,7 @@ pub(super) fn get_state(
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
 
-    let until_sn = if !state::user_can_see_events(&authed.user_id(), &room_id)? {
+    let until_sn = if !state::user_can_see_events(sender_id, &room_id)? {
         if let Ok(leave_sn) = room::user::leave_sn(sender_id, &room_id) {
             Some(leave_sn)
         } else {

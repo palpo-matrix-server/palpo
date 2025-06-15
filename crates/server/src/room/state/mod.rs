@@ -407,13 +407,13 @@ where
 }
 
 /// Get membership for given user in state
-fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
+pub fn user_membership(frame_id: i64, user_id: &UserId) -> AppResult<MembershipState> {
     get_state_content::<RoomMemberEventContent>(frame_id, &StateEventType::RoomMember, user_id.as_str())
         .map(|c: RoomMemberEventContent| c.membership)
 }
 
 /// The user was a joined member at this state (potentially in the past)
-fn user_was_joined(frame_id: i64, user_id: &UserId) -> bool {
+pub fn user_was_joined(frame_id: i64, user_id: &UserId) -> bool {
     user_membership(frame_id, user_id)
         .map(|s| s == MembershipState::Join)
         .unwrap_or_default() // Return sensible default, i.e. false
@@ -421,7 +421,7 @@ fn user_was_joined(frame_id: i64, user_id: &UserId) -> bool {
 
 /// The user was an invited or joined room member at this state (potentially
 /// in the past)
-fn user_was_invited(frame_id: i64, user_id: &UserId) -> bool {
+pub fn user_was_invited(frame_id: i64, user_id: &UserId) -> bool {
     user_membership(frame_id, user_id)
         .map(|s| s == MembershipState::Join || s == MembershipState::Invite)
         .unwrap_or_default() // Return sensible default, i.e. false

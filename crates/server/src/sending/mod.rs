@@ -311,12 +311,8 @@ async fn send_events(
 
             for pdu in pdus {
                 // Redacted events are not notification targets (we don't send push for them)
-                if let Some(unsigned) = &pdu.unsigned {
-                    if let Ok(unsigned) = serde_json::from_str::<serde_json::Value>(unsigned.get()) {
-                        if unsigned.get("redacted_because").is_some() {
-                            continue;
-                        }
-                    }
+                if pdu.unsigned.get("redacted_because").is_some() {
+                    continue;
                 }
                 let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
                     .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
@@ -333,8 +329,8 @@ async fn send_events(
                 .map(|content: PushRulesEventContent| content.global)
                 .unwrap_or_else(|| push::Ruleset::server_default(user_id));
 
-                let notify_summary = crate::room::user::notify_summary(user_id, &pdu.room_id)
-                    .map_err(|e| (kind.clone(), e.into()))?;
+                let notify_summary =
+                    crate::room::user::notify_summary(user_id, &pdu.room_id).map_err(|e| (kind.clone(), e.into()))?;
 
                 let max_request = crate::sending::max_request();
                 let permit = max_request.acquire().await;

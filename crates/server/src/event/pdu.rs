@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::events::room::member::RoomMemberEventContent;
@@ -16,6 +16,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, UserId};
 use crate::event::pdu;
+use crate::room::state;
 use crate::{AppError, AppResult};
 
 /// Content hashes of a PDU.
@@ -35,6 +36,37 @@ pub struct SnPduEvent {
 impl SnPduEvent {
     pub fn new(pdu: PduEvent, event_sn: Seqnum) -> Self {
         Self { pdu, event_sn }
+    }
+
+    pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
+        if !state::user_can_see_event(user_id, &self.room_id, &self.event_id)? {
+            return Ok(false);
+        }
+
+        #[derive(Deserialize)]
+        struct ExtractMemebership {
+            membership: String,
+        }
+        let membership =
+            if self.event_ty == TimelineEventType::RoomMember && self.state_key == Some(user_id.to_string()) {
+                self.get_content::<ExtractMemebership>().map(|m| m.membership).ok()
+            } else if let Ok(frame_id) = crate::event::get_frame_id(&self.room_id, self.event_sn) {
+                state::user_membership(frame_id, user_id).ok().map(|m| m.to_string())
+            } else {
+                None
+            };
+        if let Some(membership) = membership {
+            self.unsigned.insert(
+                "membership".to_owned(),
+                to_raw_value(&membership).expect("should always work"),
+            );
+        } else {
+            self.unsigned.insert(
+                "membership".to_owned(),
+                to_raw_value("leave").expect("should always work"),
+            );
+        }
+        Ok(true)
     }
 
     pub fn from_canonical_object(
@@ -163,8 +195,8 @@ pub struct PduEvent {
     pub auth_events: Vec<OwnedEventId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redacts: Option<OwnedEventId>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unsigned: Option<Box<RawJsonValue>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub unsigned: BTreeMap<String, Box<RawJsonValue>>,
     pub hashes: EventHash,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signatures: Option<Box<RawJsonValue>>, // BTreeMap<Box<ServerName>, BTreeMap<ServerSigningKeyId, String>>
@@ -178,8 +210,6 @@ pub struct PduEvent {
 impl PduEvent {
     #[tracing::instrument]
     pub fn redact(&mut self, reason: &PduEvent) -> AppResult<()> {
-        self.unsigned = None;
-
         let allowed: &[&str] = match self.event_ty {
             TimelineEventType::RoomMember => &["join_authorised_via_users_server", "membership"],
             TimelineEventType::RoomCreate => &["creator"],
@@ -209,11 +239,10 @@ impl PduEvent {
             }
         }
 
-        self.unsigned = Some(
-            to_raw_value(&json!({
-                "redacted_because": serde_json::to_value(reason).expect("to_value(PduEvent) always works")
-            }))
-            .expect("to string always works"),
+        self.unsigned = BTreeMap::new();
+        self.unsigned.insert(
+            "redacted_because".to_owned(),
+            to_raw_value(reason).expect("to_raw_value(PduEvent) always works"),
         );
 
         self.content = to_raw_value(&new_content).expect("to string always works");
@@ -235,51 +264,18 @@ impl PduEvent {
     }
 
     pub fn remove_transaction_id(&mut self) -> AppResult<()> {
-        if let Some(unsigned) = &self.unsigned {
-            let mut unsigned: BTreeMap<String, Box<RawJsonValue>> = serde_json::from_str(unsigned.get())
-                .map_err(|_| AppError::internal("invalid unsigned in pdu event"))?;
-            unsigned.remove("transaction_id");
-            self.unsigned = Some(to_raw_value(&unsigned).expect("unsigned is valid"));
-        }
-
+        self.unsigned.remove("transaction_id");
         Ok(())
     }
 
     pub fn add_age(&mut self) -> AppResult<()> {
-        let mut unsigned: BTreeMap<String, Box<RawJsonValue>> = self
-            .unsigned
-            .as_ref()
-            .map_or_else(|| Ok(BTreeMap::new()), |u| serde_json::from_str(u.get()))
-            .map_err(|_| AppError::internal("Invalid unsigned in pdu event"))?;
-
         let now: i128 = UnixMillis::now().get().into();
         let then: i128 = self.origin_server_ts.get().into();
         let age = now.saturating_sub(then);
 
-        unsigned.insert("age".to_owned(), to_raw_value(&age).unwrap());
-        self.unsigned = Some(to_raw_value(&unsigned).expect("unsigned is valid"));
+        self.unsigned.insert("age".to_owned(), to_raw_value(&age).unwrap());
 
         Ok(())
-    }
-
-    pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
-        if !state::user_can_see_event(user_id, &self.room_id, &self.event_id)? {
-            return Ok(false);
-        }
-
-        let membership =
-            if self.event_ty == TimelineEventType::RoomMember && self.state_key == Some(user_id.to_string()) {
-                self.content
-                    .get()
-                    .and_then(|c| c.get("membership"))
-                    .and_then(|m| m.as_str())
-            } else {
-                None
-            };
-        if let Some(membership) = membership {
-            self.unsigned.insert("membership".to_owned(), json!(membership));
-        }
-        Ok(true)
     }
 
     #[tracing::instrument]
@@ -292,8 +288,8 @@ impl PduEvent {
             "origin_server_ts": self.origin_server_ts,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            json["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            json["unsigned"] = json!(self.unsigned);
         }
         if let Some(state_key) = &self.state_key {
             json["state_key"] = json!(state_key);
@@ -317,8 +313,8 @@ impl PduEvent {
             "room_id": self.room_id,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            data["unsigned"] = json!(self.unsigned);
         }
         if let Some(state_key) = &self.state_key {
             data["state_key"] = json!(state_key);
@@ -341,8 +337,8 @@ impl PduEvent {
             "room_id": self.room_id,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            data["unsigned"] = json!(self.unsigned);
         }
         if let Some(state_key) = &self.state_key {
             data["state_key"] = json!(state_key);
@@ -365,8 +361,8 @@ impl PduEvent {
             "room_id": self.room_id,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            data["unsigned"] = json!(self.unsigned);
         }
         if let Some(state_key) = &self.state_key {
             data["state_key"] = json!(state_key);
@@ -396,8 +392,8 @@ impl PduEvent {
             panic!("Invalid JSON value, never happened!");
         };
 
-        if let Some(unsigned) = &self.unsigned {
-            data.insert("unsigned".into(), json!(unsigned));
+        if !self.unsigned.is_empty() {
+            data.insert("unsigned".into(), json!(self.unsigned));
         }
 
         for (key, value) in &self.extra_data {
@@ -420,8 +416,8 @@ impl PduEvent {
             "state_key": self.state_key,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            data["unsigned"] = json!(self.unsigned);
         }
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
@@ -465,8 +461,8 @@ impl PduEvent {
             "state_key": self.state_key,
         });
 
-        if let Some(unsigned) = &self.unsigned {
-            data["unsigned"] = json!(unsigned);
+        if !self.unsigned.is_empty() {
+            data["unsigned"] = json!(self.unsigned);
         }
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
@@ -572,7 +568,8 @@ pub struct PduBuilder {
     #[serde(rename = "type")]
     pub event_type: TimelineEventType,
     pub content: Box<RawJsonValue>,
-    pub unsigned: Option<BTreeMap<String, serde_json::Value>>,
+    #[serde(default)]
+    pub unsigned: BTreeMap<String, Box<RawJsonValue>>,
     pub state_key: Option<String>,
     pub redacts: Option<OwnedEventId>,
     pub timestamp: Option<UnixMillis>,
@@ -608,7 +605,7 @@ impl Default for PduBuilder {
         Self {
             event_type: "m.room.message".into(),
             content: Box::<RawJsonValue>::default(),
-            unsigned: None,
+            unsigned: Default::default(),
             state_key: None,
             redacts: None,
             timestamp: None,

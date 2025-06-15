@@ -119,7 +119,7 @@ pub async fn sync_events(
                 event_ty: TimelineEventType::RoomMember,
                 content: serde_json::from_str(r#"{"membership":"leave"}"#).expect("this is valid JSON"),
                 state_key: Some(sender_id.to_string()),
-                unsigned: None,
+                unsigned: Default::default(),
                 // The following keys are dropped on conversion
                 room_id: room_id.clone(),
                 prev_events: vec![],

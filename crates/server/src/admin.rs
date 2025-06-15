@@ -795,7 +795,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&content).expect("event is valid, we just created it"),
-            unsigned: None,
+            unsigned: Default::default(),
             state_key: Some("".to_owned()),
             redacts: None,
             timestamp: None,
@@ -841,7 +841,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
                 ..Default::default()
             })
             .expect("event is valid, we just created it"),
-            unsigned: None,
+            unsigned: Default::default(),
             state_key: Some("".to_owned()),
             redacts: None,
             timestamp: None,

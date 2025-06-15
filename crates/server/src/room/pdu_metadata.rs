@@ -147,7 +147,7 @@ pub fn get_relations(
             if pdu.sender != user_id {
                 pdu.remove_transaction_id()?;
             }
-            if state::user_can_see_event(user_id, &room_id, &pdu.event_id).unwrap_or(false) {
+            if pdu.user_can_see(user_id).unwrap_or(false) {
                 pdus.push((relation.child_sn, pdu));
             }
         }
