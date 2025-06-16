@@ -176,7 +176,7 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 pub fn append_pdu<'a, L>(
     pdu: &'a SnPduEvent,
     mut pdu_json: CanonicalJsonObject,
-    leaves: L,
+    leafs: L,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<()>
 where
@@ -217,7 +217,7 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
+    state::set_forward_extremities(&pdu.room_id, leafs, state_lock)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(

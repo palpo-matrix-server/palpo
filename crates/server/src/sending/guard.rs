@@ -80,7 +80,7 @@ async fn process() -> AppResult<()> {
                         }
                     }
                     Err((outgoing_kind, event)) => {
-                        tracing::error!("Failed to send event: {:?}", event);
+                        error!("failed to send event: {:?}", event);
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => TransactionStatus::Failed(1, Instant::now()),
                             TransactionStatus::Retrying(n) => TransactionStatus::Failed(n.saturating_add(1), Instant::now()),

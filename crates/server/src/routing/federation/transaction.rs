@@ -97,19 +97,19 @@ async fn process_pdus(
             "Finished PDU {event_id}",
         );
 
-        if result.is_ok() {
-            resolved_map.insert(event_id, Ok(()));
-        }
-        // resolved_map.insert(event_id, result);
+        // if result.is_ok() {
+        //     resolved_map.insert(event_id, Ok(()));
+        // }
+        resolved_map.insert(event_id, result);
     }
 
-    // for (id, result) in &resolved_map {
-    //     if let Err(e) = result {
-    //         if matches!(e, AppError::Matrix(_)) {
-    //             warn!("Incoming PDU failed {id}: {e:?}");
-    //         }
-    //     }
-    // }
+    for (id, result) in &resolved_map {
+        if let Err(e) = result {
+            if matches!(e, AppError::Matrix(_)) {
+                warn!("Incoming PDU failed {id}: {e:?}");
+            }
+        }
+    }
 
     Ok(resolved_map)
 }

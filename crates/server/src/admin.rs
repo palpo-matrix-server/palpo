@@ -233,13 +233,13 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
 pub fn process_message(room_message: String) -> AppResult<()> {
     sender()
         .send(AdminRoomEvent::ProcessMessage(room_message))
-        .map_err(|e| AppError::internal(format!("Failed to process message to admin room: {e}")))
+        .map_err(|e| AppError::internal(format!("failed to process message to admin room: {e}")))
 }
 
 pub fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
     sender()
         .send(AdminRoomEvent::SendMessage(message_content))
-        .map_err(|e| AppError::internal(format!("Failed to send message to admin room: {e}")))
+        .map_err(|e| AppError::internal(format!("failed to send message to admin room: {e}")))
 }
 
 // Parse and process a message from the admin room
