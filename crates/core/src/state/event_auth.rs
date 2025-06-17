@@ -116,7 +116,7 @@ pub fn auth_check<E: Event>(
     current_third_party_invite: Option<impl Event>,
     fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
 ) -> MatrixResult<()> {
-    tracing::info!(
+    info!(
         "auth_check beginning for {} ({})",
         incoming_event.event_id(),
         incoming_event.event_type()
@@ -143,7 +143,7 @@ pub fn auth_check<E: Event>(
             creator: Option<RawJson<IgnoredAny>>,
         }
 
-        tracing::info!("start m.room.create check");
+        info!("start m.room.create check");
 
         // If it has any previous events, reject
         if incoming_event.prev_events().next().is_some() {
@@ -184,7 +184,7 @@ pub fn auth_check<E: Event>(
             }
         }
 
-        tracing::info!("m.room.create event was allowed");
+        info!("m.room.create event was allowed");
         return Ok(());
     }
 

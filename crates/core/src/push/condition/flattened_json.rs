@@ -81,8 +81,8 @@ fn escape_key(key: &str) -> String {
 #[derive(Debug, Error)]
 #[allow(clippy::exhaustive_enums)]
 enum IntoJsonSubsetError {
-    /// The numeric value failed conversion to js_int::Int.
-    #[error("number found is not a valid `js_int::Int`")]
+    /// The numeric value failed conversion to int.
+    #[error("number found is not a valid `int`")]
     IntConvert,
 
     /// The JSON type is not accepted in this subset.

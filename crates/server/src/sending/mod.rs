@@ -412,7 +412,7 @@ async fn send_events(
                 .map(|response| {
                     for pdu in response.pdus {
                         if pdu.1.is_err() {
-                            warn!("Failed to send to {}: {:?}", server, pdu);
+                            warn!("failed to send to {}: {:?}", server, pdu);
                         }
                     }
                     kind.clone()

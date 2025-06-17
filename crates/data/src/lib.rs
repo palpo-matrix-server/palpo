@@ -8,6 +8,8 @@ use scheduled_thread_pool::ScheduledThreadPool;
 use url::Url;
 
 #[macro_use]
+extern crate tracing;
+#[macro_use]
 mod macros;
 mod config;
 pub use palpo_core as core;

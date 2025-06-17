@@ -511,11 +511,28 @@ CREATE TABLE event_backward_extremities
     room_id text NOT NULL,
     CONSTRAINT event_backward_extremities_udx UNIQUE (event_id, room_id)
 );
-CREATE INDEX ev_backward_extrem_id
+CREATE INDEX event_backward_extremities_event_id
     ON event_backward_extremities USING btree
     (event_id ASC NULLS LAST);
 
-CREATE INDEX ev_backward_extrem_room_id
+CREATE INDEX event_backward_extremities_room_id
+    ON event_backward_extremities USING btree
+    (room_id ASC NULLS LAST);
+
+
+DROP TABLE IF EXISTS event_backward_extremities CASCADE;
+CREATE TABLE event_backward_extremities
+(
+    id bigserial NOT NULL PRIMARY KEY,
+    event_id text NOT NULL,
+    room_id text NOT NULL,
+    CONSTRAINT event_backward_extremities_udx UNIQUE (event_id, room_id)
+);
+CREATE INDEX event_backward_extremities_event_id
+    ON event_backward_extremities USING btree
+    (event_id ASC NULLS LAST);
+
+CREATE INDEX event_backward_extremities_room_id
     ON event_backward_extremities USING btree
     (room_id ASC NULLS LAST);
 
@@ -529,10 +546,10 @@ CREATE TABLE event_forward_extremities
     CONSTRAINT event_forward_extremities_udx UNIQUE (event_id, room_id)
 );
 
-CREATE INDEX ev_forward_extrem_id
+CREATE INDEX event_forward_extremities_event_id
     ON event_forward_extremities USING btree
     (event_id ASC NULLS LAST);
-CREATE INDEX ev_forward_extrem_room_id
+CREATE INDEX event_forward_extremities_room_id
     ON event_forward_extremities USING btree
     (room_id ASC NULLS LAST);
 

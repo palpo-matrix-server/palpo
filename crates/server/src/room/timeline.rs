@@ -176,7 +176,7 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 pub fn append_pdu<'a, L>(
     pdu: &'a SnPduEvent,
     mut pdu_json: CanonicalJsonObject,
-    leaves: L,
+    leafs: L,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<()>
 where
@@ -217,7 +217,7 @@ where
             error!("Invalid unsigned type in pdu.");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
+    state::set_forward_extremities(&pdu.room_id, leafs, state_lock)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
@@ -353,10 +353,6 @@ where
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
-                println!(
-                    "==========udpate memembship to : {:?}  {}",
-                    content.membership, pdu.event_sn
-                );
                 membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
@@ -402,7 +398,6 @@ where
         _ => {}
     }
 
-    println!("===========save pdu data: {:?}", pdu.event_id);
     DbEventData {
         event_id: pdu.event_id.clone(),
         event_sn: pdu.event_sn,
@@ -761,7 +756,6 @@ pub fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    println!("=====================send_pdu_servers:  {:?}  pdu:{pdu:#?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
@@ -894,9 +888,7 @@ pub fn get_pdus(
         };
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
-                println!("ccccccccccccccccccChecking pdu: {event_id} in room {room_id}");
                 if pdu.user_can_see(user_id)? {
-                    println!("========pdu  {pdu:#?} in room {room_id}");
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
                     }

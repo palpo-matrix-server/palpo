@@ -29,6 +29,8 @@ pub mod error;
 pub use error::{MatrixError, UnknownVersionError};
 #[macro_use]
 pub mod sending;
+#[macro_use]
+extern crate tracing;
 pub mod http_headers;
 pub mod media;
 pub mod state;

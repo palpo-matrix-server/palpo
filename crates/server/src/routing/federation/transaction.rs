@@ -34,15 +34,13 @@ async fn send_message(
     let body = body.into_inner();
     if &body.origin != origin {
         return Err(
-            MatrixError::forbidden("Not allowed to send transactions on behalf of other servers.", None).into(),
+            MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into(),
         );
     }
 
-    println!("=====================send_message:  curren server:{}  {:?}  body:{body:#?}", crate::config::server_name(), origin);
-
     if body.pdus.len() > PDU_LIMIT {
         return Err(MatrixError::forbidden(
-            "Not allowed to send more than {PDU_LIMIT} PDUs in one transaction",
+            "not allowed to send more than {PDU_LIMIT} PDUs in one transaction",
             None,
         )
         .into());
@@ -50,7 +48,7 @@ async fn send_message(
 
     if body.edus.len() > EDU_LIMIT {
         return Err(MatrixError::forbidden(
-            "Not allowed to send more than {EDU_LIMIT} EDUs in one transaction",
+            "not allowed to send more than {EDU_LIMIT} EDUs in one transaction",
             None,
         )
         .into());
@@ -78,7 +76,7 @@ async fn process_pdus(
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
-                warn!("Could not parse PDU: {e}");
+                warn!("could not parse PDU: {e}");
                 continue;
             }
         });
@@ -97,19 +95,19 @@ async fn process_pdus(
             "Finished PDU {event_id}",
         );
 
-        if result.is_ok() {
-            resolved_map.insert(event_id, Ok(()));
-        }
-        // resolved_map.insert(event_id, result);
+        // if result.is_ok() {
+        //     resolved_map.insert(event_id, Ok(()));
+        // }
+        resolved_map.insert(event_id, result);
     }
 
-    // for (id, result) in &resolved_map {
-    //     if let Err(e) = result {
-    //         if matches!(e, AppError::Matrix(_)) {
-    //             warn!("Incoming PDU failed {id}: {e:?}");
-    //         }
-    //     }
-    // }
+    for (id, result) in &resolved_map {
+        if let Err(e) = result {
+            if matches!(e, AppError::Matrix(_)) {
+                warn!("incoming PDU failed {id}: {e:?}");
+            }
+        }
+    }
 
     Ok(resolved_map)
 }

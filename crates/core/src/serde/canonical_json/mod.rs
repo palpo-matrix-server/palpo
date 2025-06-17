@@ -23,7 +23,7 @@ pub enum CanonicalJsonError {
 impl fmt::Display for CanonicalJsonError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CanonicalJsonError::IntConvert => f.write_str("number found is not a valid `js_int::Int`"),
+            CanonicalJsonError::IntConvert => f.write_str("number found is not a valid `int`"),
             CanonicalJsonError::SerDe(err) => write!(f, "serde Error: {err}"),
         }
     }
