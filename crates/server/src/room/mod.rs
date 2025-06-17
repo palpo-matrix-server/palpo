@@ -343,7 +343,6 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
             map
         })?;
     let mut room_events = HashMap::new();
-        println!("llllllllllllllllleft room_event_ids: {:#?}", room_event_ids);
     for (room_id, event_ids) in room_event_ids {
         let events = event_datas::table
             .filter(event_datas::event_id.eq_any(&event_ids))
@@ -352,7 +351,6 @@ pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJso
             .into_iter()
             .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())
             .collect::<Vec<_>>();
-        println!("=======lllllll=========events: {:#?}", events);
         room_events.insert(room_id, events);
     }
     Ok(room_events)

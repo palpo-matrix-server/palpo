@@ -266,7 +266,7 @@ pub async fn join_room(
         }
     }
     if let Err(e) =
-        fetch_and_process_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu).await
+        fetch_and_process_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu, &mut Default::default()).await
     {
         error!("Failed to fetch missing prev events for join: {e}");
     }
