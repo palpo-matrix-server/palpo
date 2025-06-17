@@ -841,7 +841,6 @@ pub async fn fetch_and_process_missing_prev_events(
         {
             continue;
         }
-        println!("EEEEEEEEEVents: {event_id}  earliest_events:{earliest_events:?} {prev_events:#?}");
         let missing_events: Vec<_> = prev_events
             .into_iter()
             .filter(|id| !exist_events.contains(id))
@@ -914,7 +913,6 @@ pub async fn fetch_and_process_missing_prev_events(
         let depth2 = v2.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
         depth1.cmp(&depth2)
     });
-    println!("========fetched_events  {}: {fetched_events:#?}", incoming_pdu.event_id);
     Box::pin(async move {
         for (event_id, event_val) in fetched_events {
             exist_events.insert(event_id.clone());
@@ -982,10 +980,10 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
         Err(_) => return Ok(()),
     };
 
-    let acl_event_content: RoomServerAclEventContent = match serde_json::from_str(acl_event.content.get()) {
+    let acl_event_content: RoomServerAclEventContent = match acl_event.get_content::<RoomServerAclEventContent>() {
         Ok(content) => content,
         Err(_) => {
-            warn!("Invalid ACL event");
+            warn!("invalid ACL event");
             return Ok(());
         }
     };
@@ -998,14 +996,14 @@ pub fn acl_check(server_name: &ServerName, room_id: &RoomId) -> AppResult<()> {
     if acl_event_content.is_allowed(server_name) {
         Ok(())
     } else {
-        info!("Server {} was denied by room ACL in {}", server_name, room_id);
-        Err(MatrixError::forbidden("Server was denied by room ACL", None).into())
+        info!("server {} was denied by room ACL in {}", server_name, room_id);
+        Err(MatrixError::forbidden("server was denied by room ACL", None).into())
     }
 }
 
 fn check_room_id(room_id: &RoomId, pdu: &PduEvent) -> AppResult<()> {
     if pdu.room_id != room_id {
-        warn!("Found event from room {} in room {}", pdu.room_id, room_id);
+        warn!("found event from room {} in room {}", pdu.room_id, room_id);
         return Err(MatrixError::invalid_param("Event has wrong room id").into());
     }
     Ok(())

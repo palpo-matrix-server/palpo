@@ -419,8 +419,9 @@ pub(super) async fn ban_user(
     let room_state = room::get_state(&room_id, &StateEventType::RoomMember, body.user_id.as_ref(), None).ok();
 
     let event = if let Some(room_state) = room_state {
-        let event = serde_json::from_str::<RoomMemberEventContent>(room_state.content.get())
-            .map_err(|_| AppError::internal("Invalid member event in database."))?;
+        let event = room_state
+            .get_content::<RoomMemberEventContent>()
+            .map_err(|_| AppError::internal("invalid member event in database."))?;
 
         // If they are already banned and the reason is unchanged, there isn't any point in sending a new event.
         if event.membership == MembershipState::Ban && event.reason == body.reason {

@@ -91,7 +91,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             return Ok(());
         };
 
-        let mut event: RoomMemberEventContent = serde_json::from_str(member_event.content.get())
+        let mut event = member_event
+            .get_content::<RoomMemberEventContent>()
             .map_err(|_| AppError::public("Invalid member event in database."))?;
 
         event.membership = MembershipState::Leave;

@@ -111,7 +111,6 @@ pub async fn sync_events(
         }
 
         if !room::room_exists(room_id)? {
-            println!("===========Room {} does not exist anymore, skipping", room_id);
             let event = PduEvent {
                 event_id: EventId::new(config::server_name()).into(),
                 sender: sender_id.to_owned(),
@@ -444,8 +443,7 @@ async fn load_joined_room(
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                     .map(|(_, pdu)| {
-                        let content: RoomMemberEventContent = serde_json::from_str(pdu.content.get())
-                            .map_err(|_| AppError::public("Invalid member event in database."))?;
+                        let content = pdu.get_content::<RoomMemberEventContent>()?;
 
                         if let Some(state_key) = &pdu.state_key {
                             let user_id = UserId::parse(state_key.clone())
@@ -613,14 +611,15 @@ async fn load_joined_room(
 
                 if let Some(state_key) = &state_event.state_key {
                     let user_id = UserId::parse(state_key.clone())
-                        .map_err(|_| AppError::public("Invalid UserId in member PDU."))?;
+                        .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
 
                     if user_id == sender_id {
                         continue;
                     }
 
-                    let new_membership = serde_json::from_str::<RoomMemberEventContent>(state_event.content.get())
-                        .map_err(|_| AppError::public("Invalid PDU in database."))?
+                    let new_membership = state_event
+                        .get_content::<RoomMemberEventContent>()
+                        .map_err(|_| AppError::public("invalid PDU in database."))?
                         .membership;
 
                     match new_membership {
