@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
-use crate::core::UnixMillis;
+use crate::core::{Seqnum, UnixMillis};
 use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson, json};
@@ -135,8 +135,8 @@ pub fn get_global_data<E: DeserializeOwned>(user_id: &UserId, kind: &str) -> Dat
 pub fn data_changes(
     room_id: Option<&RoomId>,
     user_id: &UserId,
-    since_sn: i64,
-    until_sn: Option<i64>,
+    since_sn: Seqnum,
+    until_sn: Option<Seqnum>,
 ) -> DataResult<Vec<AnyRawAccountDataEvent>> {
     let mut user_datas = Vec::new();
 

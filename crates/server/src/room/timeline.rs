@@ -905,11 +905,9 @@ pub fn get_pdus(
             }
         }
     }
-
     if dir == Direction::Backward {
         list.reverse();
     }
-
     Ok(list)
 }
 

@@ -802,11 +802,6 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     exist_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
-    println!(
-        "\n\n\n\nfetch_and_process_missing_prev_events: {}",
-        incoming_pdu.event_id
-    );
-
     let conf = crate::config();
     let room_version_id = &room::get_version(room_id)?;
 
