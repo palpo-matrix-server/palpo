@@ -214,7 +214,7 @@ where
                 }
             }
         } else {
-            error!("Invalid unsigned type in pdu.");
+            error!("invalid unsigned type in pdu");
         }
     }
     state::set_forward_extremities(&pdu.room_id, leafs, state_lock)?;
@@ -264,7 +264,6 @@ where
     }
 
     let sync_pdu = pdu.to_sync_room_event();
-
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
@@ -298,7 +297,6 @@ where
         if notify {
             notifies.push(user_id.clone());
         }
-
         if highlight {
             highlights.push(user_id.clone());
         }

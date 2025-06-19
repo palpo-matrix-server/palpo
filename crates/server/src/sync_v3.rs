@@ -413,9 +413,7 @@ async fn load_joined_room(
         _ => false,
     };
 
-    println!("=============load_joined_room 2");
     let current_frame_id = room::get_frame_id(&room_id, None)?;
-    println!("=============load_joined_room 3");
     let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn).ok();
 
     println!("=============load_joined_room 4");
@@ -791,7 +789,6 @@ pub(crate) fn load_timeline(
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
-    println!("=============load_timeline 0");
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
         if let Some(until_sn) = until_sn {
             let (min_sn, max_sn) = if until_sn > since_sn {
@@ -804,24 +801,11 @@ pub(crate) fn load_timeline(
             timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
         }
     } else {
-        println!("=============load_timeline 2");
-        let join_sn = if let Ok(room_create) = room::get_state(room_id, &StateEventType::RoomCreate, "", None) {
-            // TestRoomCreationReportsEventsToMyself/parallel/Room_creation_reports_m.room.create_to_myself
-            // room create event is before the join event
-            if room_create.sender == user_id {
-                room_create.event_sn
-            } else {
-                room::user::join_sn(&room_create.sender, room_id).unwrap_or_default()
-            }
-        } else {
-            println!("=============load_timeline 3");
-            room::user::join_sn(user_id, room_id).unwrap_or_default()
-        };
-        println!("=============load_timeline 4");
-        timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
+        let join_sn = room::user::join_sn(user_id, room_id).unwrap_or_default();
+          timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
             .into_iter()
             .filter(|(sn, pdu)| {
-                if *sn < join_sn && pdu.state_key.is_some() {
+                if *sn < join_sn && pdu.state_key.is_some() && pdu.event_ty != TimelineEventType::RoomCreate {
                     false
                 } else {
                     true
