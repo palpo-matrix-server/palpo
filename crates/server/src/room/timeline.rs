@@ -669,7 +669,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.", None).into());
                 }
 
-                let count = super::get_joined_users(pdu.room_id(), None)?
+                let count = super::joined_users(pdu.room_id(), None)?
                     .iter()
                     .filter(|m| m.server_name() == server_name)
                     .filter(|m| m.as_str() != target)
@@ -686,7 +686,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                     return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.", None).into());
                 }
 
-                let count = super::get_joined_users(pdu.room_id(), None)?
+                let count = super::joined_users(pdu.room_id(), None)?
                     .iter()
                     .filter(|m| m.server_name() == server_name)
                     .filter(|m| m.as_str() != target)

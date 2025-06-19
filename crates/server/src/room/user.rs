@@ -1,10 +1,10 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
 use palpo_data::room::DbEvent;
 
 use crate::core::Seqnum;
-use crate::core::events::AnyStrippedStateEvent;
+use crate::core::events::{AnySyncStateEvent, AnyStrippedStateEvent};
 use crate::core::events::room::member::MembershipState;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
@@ -93,7 +93,7 @@ pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
         .map_err(Into::into)
 }
 
-pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
+pub fn last_read_notification(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
     event_receipts::table
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::room_id.eq(room_id))
@@ -105,7 +105,7 @@ pub fn last_notification_read(user_id: &UserId, room_id: &RoomId) -> AppResult<S
         .map_err(Into::into)
 }
 
-pub fn get_shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
+pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     let mut user_rooms: Vec<(OwnedUserId, Vec<OwnedRoomId>)> = Vec::new();
     for user_id in user_ids {
         let room_ids = room_users::table
@@ -292,4 +292,45 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
     } else {
         Err(MatrixError::not_found(format!("User {} is not a member of room {}", user_id, room_id)).into())
     }
+}
+/// Returns an iterator over all rooms a user left.
+#[tracing::instrument]
+pub fn left_rooms(
+    user_id: &UserId,
+    since_sn: Option<Seqnum>,
+) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
+    let query = room_users::table
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq_any(vec![
+            MembershipState::Leave.to_string(),
+            MembershipState::Ban.to_string(),
+        ]))
+        .into_boxed();
+    let query = if let Some(since_sn) = since_sn {
+        query.filter(room_users::event_sn.ge(since_sn))
+    } else {
+        query.filter(room_users::forgotten.eq(false))
+    };
+    let room_event_ids = query
+        .select((room_users::room_id, room_users::event_id))
+        .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)
+        .map(|rows| {
+            let mut map: HashMap<OwnedRoomId, Vec<OwnedEventId>> = HashMap::new();
+            for (room_id, event_id) in rows {
+                map.entry(room_id).or_default().push(event_id);
+            }
+            map
+        })?;
+    let mut room_events = HashMap::new();
+    for (room_id, event_ids) in room_event_ids {
+        let events = event_datas::table
+            .filter(event_datas::event_id.eq_any(&event_ids))
+            .select(event_datas::json_data)
+            .load::<JsonValue>(&mut connect()?)?
+            .into_iter()
+            .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())
+            .collect::<Vec<_>>();
+        room_events.insert(room_id, events);
+    }
+    Ok(room_events)
 }

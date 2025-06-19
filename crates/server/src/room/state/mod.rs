@@ -510,18 +510,18 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         HistoryVisibility::WorldReadable | HistoryVisibility::Shared => true,
         HistoryVisibility::Invited => {
             // Allow if any member on requesting server was AT LEAST invited, else deny
-            room::get_invited_users(room_id, None)?
+            room::invited_users(room_id, None)?
                 .into_iter()
                 .filter(|member| member.server_name() == origin)
                 .any(|member| user_was_invited(frame_id, &member))
-                || room::get_joined_users(room_id, None)?
+                || room::joined_users(room_id, None)?
                     .into_iter()
                     .filter(|member| member.server_name() == origin)
                     .any(|member| user_was_joined(frame_id, &member))
         }
         HistoryVisibility::Joined => {
             // Allow if any member on requested server was joined, else deny
-            room::get_joined_users(room_id, None)?
+            room::joined_users(room_id, None)?
                 .into_iter()
                 .filter(|member| member.server_name() == origin)
                 .any(|member| user_was_joined(frame_id, &member))
@@ -548,7 +548,7 @@ pub fn server_can_see_user(origin: &ServerName, user_id: &UserId) -> AppResult<b
 }
 #[tracing::instrument(skip(sender_id, user_id))]
 pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool> {
-    super::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()]).map(|rooms| !rooms.is_empty())
+    super::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()]).map(|rooms| !rooms.is_empty())
 }
 
 /// Whether a user is allowed to see an event, based on

@@ -109,7 +109,7 @@ pub async fn sync_events(
     }
 
     let mut left_rooms = BTreeMap::new();
-    let all_left_rooms = room::rooms_left(sender_id, since_sn)?;
+    let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
 
     for room_id in all_left_rooms.keys() {
         let mut left_state_events = Vec::new();
@@ -260,8 +260,8 @@ pub async fn sync_events(
         .collect();
 
     for left_room in left_rooms.keys() {
-        for user_id in room::get_joined_users(left_room, None)? {
-            let dont_share_encrypted_room = room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
+        for user_id in room::joined_users(left_room, None)? {
+            let dont_share_encrypted_room = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
                 .into_iter()
                 .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())
                 .all(|encrypted| !encrypted);
@@ -273,7 +273,7 @@ pub async fn sync_events(
         }
     }
     for user_id in left_users {
-        let dont_share_encrypted_room = room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
+        let dont_share_encrypted_room = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
             .into_iter()
             .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())
             .all(|encrypted| !encrypted);
@@ -429,7 +429,7 @@ async fn load_joined_room(
     };
 
     let send_notification_counts =
-        !timeline_pdus.is_empty() || room::user::last_notification_read(sender_id, &room_id)? >= since_sn;
+        !timeline_pdus.is_empty() || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
@@ -542,7 +542,7 @@ async fn load_joined_room(
 
             // && encrypted_room || new_encrypted_room {
             // If the user is in a new encrypted room, give them all joined users
-            *joined_users = room::get_joined_users(&room_id, None)?
+            *joined_users = room::joined_users(&room_id, None)?
                 .into_iter()
                 .filter(|user_id| {
                     // Don't send key updates from the sender to the sender
@@ -635,7 +635,7 @@ async fn load_joined_room(
                         MembershipState::Join => {
                             // A new user joined an encrypted room
                             // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                            if !room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty()
+                            if !room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty()
                             {
                                 device_list_updates.insert(user_id.clone());
                                 joined_users.insert(user_id);
@@ -655,7 +655,7 @@ async fn load_joined_room(
                 // && encrypted_room || new_encrypted_room {
                 // If the user is in a new encrypted room, give them all joined users
                 device_list_updates.extend(
-                    room::get_joined_users(&room_id, None)?.into_iter().filter(|user_id| {
+                    room::joined_users(&room_id, None)?.into_iter().filter(|user_id| {
                         // Don't send key updates from the sender to the sender
                         sender_id != user_id
                     }), // .filter(|user_id| {
@@ -824,7 +824,7 @@ pub(crate) fn share_encrypted_room(
     user_id: &UserId,
     ignore_room: Option<&RoomId>,
 ) -> AppResult<bool> {
-    let shared_rooms = room::user::get_shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
+    let shared_rooms = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)
         .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())

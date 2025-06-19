@@ -163,7 +163,7 @@ pub(super) fn joined_members(
     }
 
     let mut joined = BTreeMap::new();
-    for user_id in crate::room::get_joined_users(&room_id, None)? {
+    for user_id in crate::room::joined_users(&room_id, None)? {
         if let Some(DbProfile {
             display_name,
             avatar_url,

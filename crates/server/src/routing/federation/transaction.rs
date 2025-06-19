@@ -183,7 +183,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                 continue;
             }
 
-            if room::get_joined_users(&room_id, None)
+            if room::joined_users(&room_id, None)
                 .unwrap_or_default()
                 .iter()
                 .any(|member| member.server_name() == user_id.server_name())
