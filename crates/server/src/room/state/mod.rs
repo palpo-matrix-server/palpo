@@ -87,7 +87,7 @@ pub fn force_state(
                     membership: MembershipState,
                 }
 
-                let membership = match serde_json::from_str::<ExtractMembership>(pdu.content.get()) {
+                let membership = match pdu.get_content::<ExtractMembership>() {
                     Ok(e) => e.membership,
                     Err(_) => continue,
                 };
@@ -402,8 +402,7 @@ pub fn get_state_content<T>(frame_id: i64, event_type: &StateEventType, state_ke
 where
     T: DeserializeOwned,
 {
-    let state = get_state(frame_id, event_type, state_key)?;
-    Ok(serde_json::from_str(state.content.get())?)
+    Ok(get_state(frame_id, event_type, state_key)?.get_content()?)
 }
 
 /// Get membership for given user in state

@@ -214,7 +214,7 @@ where
                 }
             }
         } else {
-            error!("Invalid unsigned type in pdu.");
+            error!("invalid unsigned type in pdu");
         }
     }
     state::set_forward_extremities(&pdu.room_id, leafs, state_lock)?;
@@ -239,7 +239,7 @@ where
     }
     let mut relates_added = false;
     let mut thread_id = None;
-    if let Ok(content) = serde_json::from_str::<ExtractRelatesTo>(pdu.content.get()) {
+    if let Ok(content) = pdu.get_content::<ExtractRelatesTo>() {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
             Relation::Reply { in_reply_to } => {
@@ -258,13 +258,12 @@ where
         }
     }
     if !relates_added {
-        if let Ok(content) = serde_json::from_str::<ExtractRelatesToEventId>(pdu.content.get()) {
+        if let Ok(content) = pdu.get_content::<ExtractRelatesToEventId>() {
             super::pdu_metadata::add_relation(&pdu.room_id, &content.relates_to.event_id, &pdu.event_id, None)?;
         }
     }
 
     let sync_pdu = pdu.to_sync_room_event();
-
     let mut notifies = Vec::new();
     let mut highlights = Vec::new();
 
@@ -298,7 +297,6 @@ where
         if notify {
             notifies.push(user_id.clone());
         }
-
         if highlight {
             highlights.push(user_id.clone());
         }
@@ -337,7 +335,8 @@ where
                 // if the state_key fails
                 let target_user_id = UserId::parse(state_key.clone()).expect("This state_key was previously validated");
 
-                let content = serde_json::from_str::<ExtractMembership>(pdu.content.get())
+                let content = pdu
+                    .get_content::<ExtractMembership>()
                     .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
                 let stripped_state = match content.membership {
@@ -370,7 +369,8 @@ where
                 body: Option<String>,
             }
 
-            let content = serde_json::from_str::<ExtractBody>(pdu.content.get())
+            let content = pdu
+                .get_content::<ExtractBody>()
                 .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
             if let Some(body) = content.body {
@@ -463,15 +463,16 @@ where
                 .iter()
                 .any(|room_alias| appservice.aliases.is_match(room_alias.as_str()))
                 || if let Ok(pdu) = super::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None) {
-                    serde_json::from_str::<RoomCanonicalAliasEventContent>(pdu.content.get()).map_or(false, |content| {
-                        content
-                            .alias
-                            .map_or(false, |alias| appservice.aliases.is_match(alias.as_str()))
-                            || content
-                                .alt_aliases
-                                .iter()
-                                .any(|alias| appservice.aliases.is_match(alias.as_str()))
-                    })
+                    pdu.get_content::<RoomCanonicalAliasEventContent>()
+                        .map_or(false, |content| {
+                            content
+                                .alias
+                                .map_or(false, |alias| appservice.aliases.is_match(alias.as_str()))
+                                || content
+                                    .alt_aliases
+                                    .iter()
+                                    .any(|alias| appservice.aliases.is_match(alias.as_str()))
+                        })
                 } else {
                     false
                 }
@@ -658,8 +659,9 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                 .unwrap_or(sender.as_str().to_owned());
             let server_name = &conf.server_name;
             let server_user = format!("@palpo:{}", server_name);
-            let content = serde_json::from_str::<ExtractMembership>(pdu.content.get())
-                .map_err(|_| AppError::internal("Invalid content in pdu."))?;
+            let content = pdu
+                .get_content::<ExtractMembership>()
+                .map_err(|_| AppError::internal("invalid content in pdu."))?;
 
             if content.membership == MembershipState::Leave {
                 if target == server_user {
@@ -901,11 +903,9 @@ pub fn get_pdus(
             }
         }
     }
-
     if dir == Direction::Backward {
         list.reverse();
     }
-
     Ok(list)
 }
 
@@ -1005,7 +1005,8 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
             body: Option<String>,
         }
 
-        let content = serde_json::from_str::<ExtractBody>(pdu.content.get())
+        let content = pdu
+            .get_content::<ExtractBody>()
             .map_err(|_| AppError::internal("Invalid content in pdu."))?;
     }
 

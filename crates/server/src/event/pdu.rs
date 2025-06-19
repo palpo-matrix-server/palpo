@@ -228,7 +228,7 @@ impl PduEvent {
             _ => &[],
         };
 
-        let mut old_content: BTreeMap<String, serde_json::Value> = serde_json::from_str(self.content.get())
+        let mut old_content  = self.get_content::<BTreeMap<String, serde_json::Value>>()
             .map_err(|_| AppError::internal("PDU in db has invalid content."))?;
 
         let mut new_content = serde_json::Map::new();
