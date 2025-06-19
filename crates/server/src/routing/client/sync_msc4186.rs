@@ -307,7 +307,7 @@ async fn process_rooms(
             crate::sync_v3::load_timeline(
                 sender_id,
                 &room_id,
-                *room_since_sn,
+                Some(*room_since_sn),
                 Some(Seqnum::MAX),
                 None,
                 *timeline_limit,

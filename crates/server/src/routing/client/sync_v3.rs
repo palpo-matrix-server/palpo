@@ -71,6 +71,6 @@ pub(super) async fn sync_events_v3(
         // Retry returning data
         body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
     }
-    println!("=================body: {body:#?}");
+    println!("============={sender_id}====body: {body:#?}");
     json_ok(body)
 }

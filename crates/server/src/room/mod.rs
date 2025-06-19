@@ -43,8 +43,8 @@ pub mod timeline;
 pub mod typing;
 pub mod user;
 pub use current::*;
-pub mod thread;
 pub mod push_action;
+pub mod thread;
 pub use state::get_room_frame_id as get_frame_id;
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
@@ -326,13 +326,23 @@ pub fn invited_member_count(room_id: &RoomId) -> AppResult<u64> {
 
 /// Returns an iterator over all rooms a user left.
 #[tracing::instrument]
-pub fn rooms_left(user_id: &UserId) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
-    let room_event_ids = room_users::table
+pub fn rooms_left(
+    user_id: &UserId,
+    since_sn: Option<Seqnum>,
+) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
+    let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq_any(vec![
             MembershipState::Leave.to_string(),
             MembershipState::Ban.to_string(),
         ]))
+        .into_boxed();
+    let query = if let Some(since_sn) = since_sn {
+        query.filter(room_users::event_sn.ge(since_sn))
+    } else {
+        query.filter(room_users::forgotten.eq(false))
+    };
+    let room_event_ids = query
         .select((room_users::room_id, room_users::event_id))
         .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)
         .map(|rows| {

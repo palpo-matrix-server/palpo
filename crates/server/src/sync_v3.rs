@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
+use std::i64;
 use std::sync::Arc;
 
 use diesel::prelude::*;
@@ -108,7 +109,8 @@ pub async fn sync_events(
     }
 
     let mut left_rooms = BTreeMap::new();
-    let all_left_rooms = room::rooms_left(sender_id)?;
+    println!("==============filter.room.include_leave: {}", filter.room.include_leave);
+    let all_left_rooms = room::rooms_left(sender_id, since_sn)?;
 
     for room_id in all_left_rooms.keys() {
         let mut left_state_events = Vec::new();
@@ -396,9 +398,11 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
+    println!("=============load_joined_room 0");
     if since_sn > Some(data::curr_sn()?) {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
+    println!("=============load_joined_room 1");
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
@@ -409,15 +413,12 @@ async fn load_joined_room(
         _ => false,
     };
 
+    println!("=============load_joined_room 2");
     let current_frame_id = room::get_frame_id(&room_id, None)?;
+    println!("=============load_joined_room 3");
     let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn).ok();
 
-    let since_sn = if let Some(since_sn) = since_sn {
-        since_sn
-    } else {
-        crate::room::user::join_sn(sender_id, room_id)?
-    };
-
+    println!("=============load_joined_room 4");
     let (timeline_pdus, limited) = load_timeline(
         sender_id,
         room_id,
@@ -427,14 +428,20 @@ async fn load_joined_room(
         10,
     )?;
 
+    let since_sn = if let Some(since_sn) = since_sn {
+        since_sn
+    } else {
+        crate::room::user::join_sn(sender_id, room_id).unwrap_or_default()
+    };
+
     let send_notification_counts =
         !timeline_pdus.is_empty() || room::user::last_notification_read(sender_id, &room_id)? >= since_sn;
-
     let mut timeline_users = HashSet::new();
+    let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
         timeline_users.insert(event.sender.as_str().to_owned());
+        timeline_pdu_ids.insert(event.event_id.clone());
     }
-
     room::lazy_loading::lazy_load_confirm_delivery(sender_id, &device_id, &room_id, since_sn)?;
 
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) = if timeline_pdus
@@ -490,7 +497,6 @@ async fn load_joined_room(
                     heroes.push(hero);
                 }
             }
-
             Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
         };
 
@@ -498,20 +504,21 @@ async fn load_joined_room(
         if since_sn == 0 || joined_since_last_sync {
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
-
-            let current_state_ids = state::get_full_state_ids(current_frame_id)?;
-
+            let current_state_ids = state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
 
             for (state_key_id, id) in current_state_ids {
+                if timeline_pdu_ids.contains(&id) {
+                    continue;
+                }
                 let DbRoomStateField {
                     event_ty, state_key, ..
                 } = state::get_field(state_key_id)?;
 
                 if event_ty != StateEventType::RoomMember {
                     let Ok(pdu) = timeline::get_pdu(&id) else {
-                        error!("Pdu in state not found: {}", id);
+                        error!("pdu in state not found: {}", id);
                         continue;
                     };
                     state_events.push(pdu);
@@ -522,7 +529,7 @@ async fn load_joined_room(
                     || *sender_id == state_key
                 {
                     let Ok(pdu) = timeline::get_pdu(&id) else {
-                        error!("Pdu in state not found: {}", id);
+                        error!("pdu in state not found: {}", id);
                         continue;
                     };
 
@@ -536,7 +543,6 @@ async fn load_joined_room(
 
             // Reset lazy loading because this is an initial sync
             room::lazy_loading::lazy_load_reset(sender_id, device_id, &room_id)?;
-
             // The state_events above should contain all timeline_users, let's mark them as lazy loaded.
             room::lazy_loading::lazy_load_mark_sent(sender_id, device_id, &room_id, lazy_loaded, next_batch);
 
@@ -570,20 +576,18 @@ async fn load_joined_room(
                         let pdu = match timeline::get_pdu(&id) {
                             Ok(pdu) => pdu,
                             Err(_) => {
-                                error!("Pdu in state not found: {}", id);
+                                error!("pdu in state not found: {}", id);
                                 continue;
                             }
                         };
-
                         if pdu.event_ty == TimelineEventType::RoomMember {
-                            match UserId::parse(pdu.state_key.as_ref().expect("State event has state key").clone()) {
+                            match UserId::parse(pdu.state_key.as_ref().expect("state event has state key").clone()) {
                                 Ok(state_key_user_id) => {
                                     lazy_loaded.insert(state_key_user_id);
                                 }
-                                Err(e) => error!("Invalid state key for member event: {}", e),
+                                Err(e) => error!("invalid state key for member event: {}", e),
                             }
                         }
-
                         state_events.push(pdu);
                     }
                 }
@@ -593,7 +597,6 @@ async fn load_joined_room(
                 if lazy_loaded.contains(&event.sender) {
                     continue;
                 }
-
                 if !room::lazy_loading::lazy_load_was_sent_before(sender_id, device_id, &room_id, &event.sender)?
                     || lazy_load_send_redundant
                 {
@@ -687,11 +690,7 @@ async fn load_joined_room(
     };
 
     // Look for device list updates in this room
-    device_list_updates.extend(room::user::keys_changed_users(
-        room_id,
-        since_sn,
-        None,
-    )?);
+    device_list_updates.extend(room::user::keys_changed_users(room_id, since_sn, None)?);
 
     let room_events: Vec<_> = timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect();
     let mut limited = limited || joined_since_last_sync;
@@ -716,7 +715,6 @@ async fn load_joined_room(
         };
         edus.push(RawJson::new(&receipt)?.cast());
     }
-
     if room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(
             serde_json::from_str(&serde_json::to_string(&room::typing::all_typings(&room_id).await?)?)
@@ -728,7 +726,6 @@ async fn load_joined_room(
         .into_iter()
         .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
         .collect();
-
     let notify_summary = room::user::notify_summary(sender_id, &room_id)?;
     let mut notification_count = None;
     let mut highlight_count = None;
@@ -789,20 +786,48 @@ async fn load_joined_room(
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
-    since_sn: Seqnum,
+    since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
-    let mut timeline_pdus = if let Some(until_sn) = until_sn {
-        let (min_sn, max_sn) = if until_sn > since_sn {
-            (since_sn, until_sn)
+    println!("=============load_timeline 0");
+    let mut timeline_pdus = if let Some(since_sn) = since_sn {
+        if let Some(until_sn) = until_sn {
+            let (min_sn, max_sn) = if until_sn > since_sn {
+                (since_sn, until_sn)
+            } else {
+                (until_sn, since_sn)
+            };
+            timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
         } else {
-            (until_sn, since_sn)
-        };
-        timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
+            timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+        }
     } else {
-        timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+        println!("=============load_timeline 2");
+        let join_sn = if let Ok(room_create) = room::get_state(room_id, &StateEventType::RoomCreate, "", None) {
+            // TestRoomCreationReportsEventsToMyself/parallel/Room_creation_reports_m.room.create_to_myself
+            // room create event is before the join event
+            if room_create.sender == user_id {
+                room_create.event_sn
+            } else {
+                room::user::join_sn(&room_create.sender, room_id).unwrap_or_default()
+            }
+        } else {
+            println!("=============load_timeline 3");
+            room::user::join_sn(user_id, room_id).unwrap_or_default()
+        };
+        println!("=============load_timeline 4");
+        timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
+            .into_iter()
+            .filter(|(sn, pdu)| {
+                if *sn < join_sn && pdu.state_key.is_some() {
+                    false
+                } else {
+                    true
+                }
+            })
+            .collect()
     };
 
     if timeline_pdus.len() > limit {
