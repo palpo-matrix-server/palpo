@@ -109,7 +109,6 @@ pub async fn sync_events(
     }
 
     let mut left_rooms = BTreeMap::new();
-    println!("==============filter.room.include_leave: {}", filter.room.include_leave);
     let all_left_rooms = room::rooms_left(sender_id, since_sn)?;
 
     for room_id in all_left_rooms.keys() {
@@ -398,11 +397,9 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
-    println!("=============load_joined_room 0");
     if since_sn > Some(data::curr_sn()?) {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
-    println!("=============load_joined_room 1");
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
@@ -416,7 +413,6 @@ async fn load_joined_room(
     let current_frame_id = room::get_frame_id(&room_id, None)?;
     let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn).ok();
 
-    println!("=============load_joined_room 4");
     let (timeline_pdus, limited) = load_timeline(
         sender_id,
         room_id,
