@@ -236,17 +236,6 @@ pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .filter(room_users::membership.eq(MembershipState::Knock.to_string()));
     diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
-
-#[tracing::instrument]
-pub fn once_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    let query = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::membership.eq(MembershipState::Join.to_string()));
-
-    diesel_exists!(query, &mut connect()?).map_err(Into::into)
-}
-
 #[tracing::instrument]
 pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     let joined = room_users::table
@@ -259,6 +248,17 @@ pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .optional()?
         .unwrap_or(false);
     Ok(joined)
+}
+
+#[tracing::instrument]
+pub fn left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Seqnum> {
+    room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::user_id.eq(user_id))
+        .filter(room_users::membership.eq("leave").or(room_users::membership.eq("ban")))
+        .select(room_users::event_sn)
+        .first::<Seqnum>(&mut connect()?)
+        .map_err(Into::into)
 }
 
 #[tracing::instrument(level = "trace")]

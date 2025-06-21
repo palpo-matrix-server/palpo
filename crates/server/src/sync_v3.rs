@@ -58,9 +58,11 @@ pub async fn sync_events(
         None => FilterDefinition::default(),
         Some(Filter::FilterDefinition(filter)) => filter.to_owned(),
         Some(Filter::FilterId(filter_id)) => {
-            data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?.unwrap_or_default()
+            println!("==========filter_id: {filter_id}");
+            data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?
         }
     };
+    println!("=========fffffilter: {:#?}", filter);
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
@@ -112,18 +114,14 @@ pub async fn sync_events(
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
 
     for room_id in all_left_rooms.keys() {
-        let left_sn = room::get_left_sn(&room_id, sender_id)?;
-
-        // Left before last sync
-        if since_sn > left_sn {
-            continue;
-        }
-
-        let Some(left_sn) = left_sn else {
-            tracing::warn!("Left room {} without a left_sn, skipping", room_id);
+        let Ok(left_sn) = room::user::left_sn(&room_id, sender_id) else {
+            tracing::warn!("left room {} without a left_sn, skipping", room_id);
             continue;
         };
-
+        // Left before last sync
+        if since_sn > Some(left_sn) {
+            continue;
+        }
         let left_room = match load_left_room(
             sender_id,
             device_id,
@@ -301,6 +299,7 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
+    println!("=============load_joined_room====fffffilter: {:#?}", filter);
     if since_sn > Some(data::curr_sn()?) {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
@@ -410,6 +409,11 @@ async fn load_joined_room(
                 if timeline_pdu_ids.contains(&event_id) {
                     continue;
                 }
+                if let Some(state_limit) = filter.room.state.limit {
+                    if state_events.len() >= state_limit {
+                        break;
+                    }
+                }
                 let DbRoomStateField {
                     event_ty, state_key, ..
                 } = state::get_field(state_key_id)?;
@@ -419,7 +423,9 @@ async fn load_joined_room(
                         error!("pdu in state not found: {}", event_id);
                         continue;
                     };
-                    state_events.push(pdu);
+                    if pdu.can_pass_filter(&filter.room.state) {
+                        state_events.push(pdu);
+                    }
                 } else if !lazy_load_enabled
                     || full_state
                     || timeline_users.contains(&state_key)
@@ -435,7 +441,9 @@ async fn load_joined_room(
                     if let Ok(uid) = UserId::parse(&state_key) {
                         lazy_loaded.insert(uid);
                     }
-                    state_events.push(pdu);
+                    if pdu.can_pass_filter(&filter.room.state) {
+                        state_events.push(pdu);
+                    }
                 }
             }
 
@@ -470,6 +478,11 @@ async fn load_joined_room(
                 let since_state_ids = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
+                    if let Some(state_limit) = filter.room.state.limit {
+                        if state_events.len() >= state_limit {
+                            break;
+                        }
+                    }
                     if full_state || since_state_ids.get(&key) != Some(&id) {
                         let pdu = match timeline::get_pdu(&id) {
                             Ok(pdu) => pdu,
@@ -486,12 +499,19 @@ async fn load_joined_room(
                                 Err(e) => error!("invalid state key for member event: {}", e),
                             }
                         }
-                        state_events.push(pdu);
+                        if pdu.can_pass_filter(&filter.room.state) {
+                            state_events.push(pdu);
+                        }
                     }
                 }
             }
 
             for (_, event) in &timeline_pdus {
+                if let Some(state_limit) = filter.room.state.limit {
+                    if state_events.len() >= state_limit {
+                        break;
+                    }
+                }
                 if lazy_loaded.contains(&event.sender) {
                     continue;
                 }
@@ -502,7 +522,9 @@ async fn load_joined_room(
                         room::get_state(&room_id, &StateEventType::RoomMember, event.sender.as_str(), None)
                     {
                         lazy_loaded.insert(event.sender.clone());
-                        state_events.push(member_event);
+                        if member_event.can_pass_filter(&filter.room.state) {
+                            state_events.push(member_event);
+                        }
                     }
                 }
             }
@@ -691,6 +713,7 @@ async fn load_left_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::LeftRoom> {
+    println!("=============load_left_room====fffffilter: {:#?}", filter);
     if !room::room_exists(room_id)? {
         let event = PduEvent {
             event_id: EventId::new(config::server_name()).into(),
@@ -733,29 +756,8 @@ async fn load_left_room(
     let curr_frame_id = room::get_frame_id(room_id, None)?;
     let left_event_id = state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?;
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    // if let Ok(since_frame_id) = since_frame_id {
-    //     if left_frame_id < since_frame_id {
-    //         return Ok(None);
-    //     }
-    // } else {
-    //     let forgotten = room_users::table
-    //         .filter(room_users::room_id.eq(room_id))
-    //         .filter(room_users::user_id.eq(sender_id))
-    //         .select(room_users::forgotten)
-    //         .first::<bool>(&mut connect()?)
-    //         .optional()?;
-    //     if let Some(true) = forgotten {
-    //         return Ok(None);
-    //     }
-    // }
-    let (timeline_pdus, mut limited) = load_timeline(
-        sender_id,
-        room_id,
-        since_sn,
-        Some(next_batch),
-        Some(&filter.room.timeline),
-        10,
-    )?;
+    let (timeline_pdus, mut limited) =
+        load_timeline(sender_id, room_id, since_sn, None, Some(&filter.room.timeline), 10)?;
 
     let since_sn = if let Some(since_sn) = since_sn {
         since_sn
@@ -778,6 +780,11 @@ async fn load_left_room(
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
     for (key, event_id) in left_state_ids {
+        if let Some(state_limit) = filter.room.state.limit {
+            if state_events.len() >= state_limit {
+                break;
+            }
+        }
         if full_state || since_state_ids.get(&key) != Some(&event_id) {
             if timeline_pdu_ids.contains(&event_id) {
                 continue;
@@ -799,7 +806,9 @@ async fn load_left_room(
                     }
                 };
 
-                state_events.push(pdu);
+                if pdu.can_pass_filter(&filter.room.state) {
+                    state_events.push(pdu);
+                }
             }
         }
     }
@@ -844,22 +853,13 @@ pub(crate) fn load_timeline(
             } else {
                 (until_sn, since_sn)
             };
+
             timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
         } else {
-            timeline::get_pdus_backward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+            timeline::get_pdus_forward(user_id, &room_id, since_sn, None, filter, limit + 1)?
         }
     } else {
-        let join_sn = room::user::join_sn(user_id, room_id).unwrap_or_default();
         timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
-            .into_iter()
-            .filter(|(sn, pdu)| {
-                if *sn < join_sn && pdu.state_key.is_some() && pdu.event_ty != TimelineEventType::RoomCreate {
-                    false
-                } else {
-                    true
-                }
-            })
-            .collect()
     };
 
     if timeline_pdus.len() > limit {

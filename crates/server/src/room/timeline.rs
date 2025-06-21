@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+use palpo_data::room::DbEvent;
 use palpo_data::schema::events::rejection_reason;
 use salvo::server;
 use serde::Deserialize;
@@ -800,7 +801,6 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
-    // let forget_before_sn = crate::user::forget_before_sn(user_id, room_id)?.unwrap_or_default();
     let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.max(10).min(100));
     let mut start_sn = if dir == Direction::Forward {
         0
@@ -854,8 +854,8 @@ pub fn get_pdus(
             }
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
-            events::table
-                .filter(events::id.eq_any(query.filter(events::sn.gt(start_sn)).select(events::id)))
+            query
+                .filter(events::sn.gt(start_sn))
                 .order((events::topological_ordering.asc(), events::stream_ordering.asc()))
                 // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
@@ -863,8 +863,8 @@ pub fn get_pdus(
                 .into_iter()
                 .collect()
         } else {
-            events::table
-                .filter(events::id.eq_any(query.filter(events::sn.lt(start_sn)).select(events::id)))
+            query
+                .filter(events::sn.lt(start_sn))
                 .order((events::topological_ordering.desc(), events::stream_ordering.desc()))
                 // .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))

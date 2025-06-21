@@ -11,11 +11,7 @@ use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, data, json_ok};
 #[endpoint]
 pub(super) fn get_filter(_aa: AuthArgs, filter_id: PathParam<i64>, depot: &mut Depot) -> JsonResult<FilterResBody> {
     let authed = depot.authed_info()?;
-    let filter = match data::user::get_filter(authed.user_id(), filter_id.into_inner())? {
-        Some(filter) => filter,
-        None => return Err(MatrixError::not_found("Filter not found.").into()),
-    };
-
+    let filter = data::user::get_filter(authed.user_id(), filter_id.into_inner())?;
     json_ok(FilterResBody::new(filter))
 }
 

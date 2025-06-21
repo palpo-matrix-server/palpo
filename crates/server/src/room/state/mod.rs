@@ -573,9 +573,17 @@ pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId
                 c.history_visibility
             });
 
+    println!("============visibility: {history_visibility:?}");
+
     let visibility = match history_visibility {
         HistoryVisibility::WorldReadable => true,
-        HistoryVisibility::Shared => crate::room::user::is_joined(&user_id, &room_id)?,
+        HistoryVisibility::Shared => {
+            let Ok(membership) = user_membership(frame_id, user_id) else {
+                return Ok(false);
+            };
+            println!("============membership: {membership:?}");
+            membership == MembershipState::Join
+        }
         HistoryVisibility::Invited => {
             // Allow if any member on requesting server was AT LEAST invited, else deny
             user_was_invited(frame_id, &user_id)

@@ -4,6 +4,7 @@ use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 use serde::{Deserialize, Serialize, de};
 use serde_json::{json, value::to_raw_value};
 
+use crate::core::client::filter::RoomEventFilter;
 use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
@@ -228,7 +229,8 @@ impl PduEvent {
             _ => &[],
         };
 
-        let mut old_content  = self.get_content::<BTreeMap<String, serde_json::Value>>()
+        let mut old_content = self
+            .get_content::<BTreeMap<String, serde_json::Value>>()
             .map_err(|_| AppError::internal("PDU in db has invalid content."))?;
 
         let mut new_content = serde_json::Map::new();
@@ -496,6 +498,49 @@ impl PduEvent {
 
     pub fn is_rejected(&self) -> bool {
         self.rejection_reason.is_some()
+    }
+
+    pub fn is_state(&self) -> bool {
+        self.state_key.is_some()
+    }
+
+    pub fn can_pass_filter(&self, filter: &RoomEventFilter) -> bool {
+        println!("===================can_pass_filter: {:?}", filter);
+        if filter.not_types.contains(&self.event_ty.to_string()) {
+            return false;
+        }
+        if filter.not_rooms.contains(&self.room_id) {
+            return false;
+        }
+        if filter.not_senders.contains(&self.sender) {
+            return false;
+        }
+
+        if let Some(rooms) = &filter.rooms {
+            if !rooms.contains(&self.room_id) {
+                return false;
+            }
+        }
+        if let Some(senders) = &filter.senders {
+            if !senders.contains(&self.sender) {
+                return false;
+            }
+        }
+        if let Some(types) = &filter.types {
+            println!("===================types: {:?}  {}", types, self.event_ty.to_string());
+            if !types.contains(&self.event_ty.to_string()) {
+                return false;
+            }
+        }
+        // TODO: url filter
+        // if let Some(url_filter) = &filter.url_filter {
+        //     match url_filter {
+        //         UrlFilter::EventsWithUrl => if !self.events::contains_url.eq(true)),
+        //         UrlFilter::EventsWithoutUrl => query = query.filter(events::contains_url.eq(false)),
+        //     }
+        // }
+
+        true
     }
 }
 

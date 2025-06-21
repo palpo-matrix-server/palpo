@@ -24,18 +24,13 @@ pub struct NewDbUserFilter {
     pub created_at: UnixMillis,
 }
 
-pub fn get_filter(user_id: &UserId, filter_id: i64) -> DataResult<Option<FilterDefinition>> {
+pub fn get_filter(user_id: &UserId, filter_id: i64) -> DataResult<FilterDefinition> {
     let filter = user_filters::table
         .filter(user_filters::id.eq(filter_id))
         .filter(user_filters::user_id.eq(user_id))
         .select(user_filters::filter)
-        .first(&mut connect()?)
-        .optional()?;
-    if let Some(filter) = filter {
-        Ok(Some(serde_json::from_value(filter)?))
-    } else {
-        Ok(None)
-    }
+        .first(&mut connect()?)?;
+    Ok(serde_json::from_value(filter)?)
 }
 
 pub fn create_filter(user_id: &UserId, filter: &FilterDefinition) -> DataResult<i64> {
