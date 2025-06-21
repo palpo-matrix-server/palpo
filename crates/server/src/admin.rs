@@ -382,7 +382,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 let elapsed = start.elapsed();
                 RoomMessageEventContent::text_plain(format!("Loaded auth chain with length {count} in {elapsed:?}"))
             } else {
-                RoomMessageEventContent::text_plain("Event not found.")
+                RoomMessageEventContent::text_plain("event not found")
             }
         }
         AdminCommand::ParsePdu => {

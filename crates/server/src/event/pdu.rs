@@ -56,10 +56,12 @@ impl SnPduEvent {
                 return Ok(true);
             }
         }
+        println!("uuuuuuuuuuuuuuuuuuu 4");
         let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
             return Ok(false);
         };
 
+        println!("uuuuuuuuuuuuuuuuuuu 5");
         if let Some(visibility) = state::USER_VISIBILITY_CACHE
             .lock()
             .unwrap()
@@ -68,6 +70,7 @@ impl SnPduEvent {
             return Ok(*visibility);
         }
 
+        println!("uuuuuuuuuuuuuuuuuuu 6");
         let history_visibility = state::get_state_content::<RoomHistoryVisibilityEventContent>(
             frame_id,
             &StateEventType::RoomHistoryVisibility,
@@ -77,19 +80,25 @@ impl SnPduEvent {
             c.history_visibility
         });
 
+        println!("uuuuuuuuuuuuuuuuuuu 7");
         let visibility = match history_visibility {
             HistoryVisibility::WorldReadable => true,
             HistoryVisibility::Shared => {
+                println!("uuuuuuuuuuuuuuuuuuu 7 -1");
                 let Ok(membership) = state::user_membership(frame_id, user_id) else {
-                    return Ok(false);
+                    println!("uuuuuuuuuuuuuuuuuuu 7 -2");
+                    return crate::room::user::is_joined(user_id, &self.room_id);
                 };
-                membership == MembershipState::Join
+                println!("uuuuuuuuuuuuuuuuuuu 7 -3");
+                membership == MembershipState::Join || crate::room::user::is_joined(user_id, &self.room_id)?
             }
             HistoryVisibility::Invited => {
+                println!("uuuuuuuuuuuuuuuuuuu 7 -4");
                 // Allow if any member on requesting server was AT LEAST invited, else deny
                 state::user_was_invited(frame_id, &user_id)
             }
             HistoryVisibility::Joined => {
+                println!("uuuuuuuuuuuuuuuuuuu 7 -5");
                 // Allow if any member on requested server was joined, else deny
                 state::user_was_joined(frame_id, &user_id) || state::user_was_joined(frame_id - 1, &user_id)
             }
@@ -99,11 +108,13 @@ impl SnPduEvent {
             }
         };
 
+        println!("uuuuuuuuuuuuuuuuuuu 7 -6");
         state::USER_VISIBILITY_CACHE
             .lock()
-            .unwrap()
+            .expect("should locked")
             .insert((user_id.to_owned(), frame_id), visibility);
 
+        println!("uuuuuuuuuuuuuuuuuuu 8");
         if !visibility {
             return Ok(false);
         }
@@ -120,6 +131,7 @@ impl SnPduEvent {
             } else {
                 None
             };
+        println!("uuuuuuuuuuuuuuuuuuu 9");
         if let Some(membership) = membership {
             self.unsigned.insert(
                 "membership".to_owned(),

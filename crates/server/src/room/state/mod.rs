@@ -548,7 +548,6 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
     let mut pdu = timeline::get_pdu(event_id)?;
     pdu.user_can_see(user_id)
-    
 }
 
 /// Whether a user is allowed to see an event, based on

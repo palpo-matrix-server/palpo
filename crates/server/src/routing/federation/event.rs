@@ -34,22 +34,22 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
     let origin = depot.origin()?;
     let event = DbEvent::get_by_id(&args.event_id)?;
     if event.rejection_reason.is_some() {
-        warn!("Event {} is rejected, returning 404", &args.event_id);
-        return Err(MatrixError::not_found("Event not found.").into());
+        warn!("event {} is rejected, returning 404", &args.event_id);
+        return Err(MatrixError::not_found("event not found").into());
     }
 
     let event_json = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
-        warn!("Event not found, event ID: {:?}", &args.event_id);
-        MatrixError::not_found("Event not found.")
+        warn!("event not found, event id: {:?}", &args.event_id);
+        MatrixError::not_found("event not found")
     })?;
 
     let room_id_str = event_json
         .get("room_id")
         .and_then(|val| val.as_str())
-        .ok_or_else(|| AppError::internal("Invalid event in database"))?;
+        .ok_or_else(|| AppError::internal("invalid event in database"))?;
 
     let room_id = <&RoomId>::try_from(room_id_str)
-        .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
+        .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
     crate::federation::access_check(origin, room_id, Some(&args.event_id))?;
     json_ok(EventResBody {
@@ -73,17 +73,17 @@ fn auth_chain(
     crate::federation::access_check(origin, &args.room_id, None)?;
 
     let event = timeline::get_pdu_json(&args.event_id)?.ok_or_else(|| {
-        warn!("Event not found, event ID: {:?}", &args.event_id);
-        MatrixError::not_found("Event not found.")
+        warn!("event not found, event id: {:?}", &args.event_id);
+        MatrixError::not_found("event not found")
     })?;
 
     let room_id_str = event
         .get("room_id")
         .and_then(|val| val.as_str())
-        .ok_or_else(|| AppError::internal("Invalid event in database"))?;
+        .ok_or_else(|| AppError::internal("invalid event in database"))?;
 
     let room_id = <&RoomId>::try_from(room_id_str)
-        .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
+        .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
     let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
@@ -136,17 +136,17 @@ fn missing_events(
             let room_id_str = pdu
                 .get("room_id")
                 .and_then(|val| val.as_str())
-                .ok_or_else(|| AppError::internal("Invalid event in database"))?;
+                .ok_or_else(|| AppError::internal("invalid event in database"))?;
 
             let event_room_id = <&RoomId>::try_from(room_id_str)
-                .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
+                .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
             if event_room_id != &room_id {
                 warn!(
-                    "Evil event detected: Event {} found while searching in room {}",
+                    "evil event detected: Event {} found while searching in room {}",
                     event_id, &room_id
                 );
-                return Err(MatrixError::invalid_param("Evil event detected").into());
+                return Err(MatrixError::invalid_param("evil event detected").into());
             }
 
             if body.earliest_events.contains(&event_id) {
@@ -163,13 +163,13 @@ fn missing_events(
                     )
                     .expect("canonical json is valid json value"),
                 )
-                .map_err(|_| AppError::internal("Invalid prev_events content in pdu in db::"))?,
+                .map_err(|_| AppError::internal("invalid prev_events content in pdu in db::"))?,
             );
             if i >= body.latest_events.len() {
                 events.push((event_id, crate::sending::convert_to_outgoing_federation_event(pdu)));
             }
         } else {
-            warn!("Event not found, event ID: {:?}", event_id);
+            warn!("event not found, event id: {:?}", event_id);
         }
         i += 1;
     }
