@@ -58,11 +58,9 @@ pub async fn sync_events(
         None => FilterDefinition::default(),
         Some(Filter::FilterDefinition(filter)) => filter.to_owned(),
         Some(Filter::FilterId(filter_id)) => {
-            println!("==========filter_id: {filter_id}");
             data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?
         }
     };
-    println!("=========fffffilter: {:#?}", filter);
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
@@ -299,7 +297,6 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::JoinedRoom> {
-    println!("=============load_joined_room====fffffilter: {:#?}", filter);
     if since_sn > Some(data::curr_sn()?) {
         return Ok(sync_events::v3::JoinedRoom::default());
     }
@@ -322,7 +319,6 @@ async fn load_joined_room(
         since_sn,
         Some(next_batch),
         Some(&filter.room.timeline),
-        10,
     )?;
 
     let since_sn = if let Some(since_sn) = since_sn {
@@ -756,14 +752,9 @@ async fn load_left_room(
     let curr_frame_id = room::get_frame_id(room_id, None)?;
     let left_event_id = state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?;
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    let (timeline_pdus, mut limited) =
-        load_timeline(sender_id, room_id, since_sn, None, Some(&filter.room.timeline), 10)?;
+    let (timeline_pdus, mut limited) = load_timeline(sender_id, room_id, since_sn, None, Some(&filter.room.timeline))?;
 
-    let since_sn = if let Some(since_sn) = since_sn {
-        since_sn
-    } else {
-        crate::room::user::join_sn(sender_id, room_id).unwrap_or_default()
-    };
+    let since_sn = since_sn.unwrap_or_default();
 
     let send_notification_counts =
         !timeline_pdus.is_empty() || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
@@ -779,13 +770,14 @@ async fn load_left_room(
     let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
+    println!("==========left_state_ids: {left_state_ids:?}  filter: {:#?}", filter.room.state);
+    println!("==========timeline_pdu_ids: {timeline_pdu_ids:?}");
     for (key, event_id) in left_state_ids {
         if let Some(state_limit) = filter.room.state.limit {
             if state_events.len() >= state_limit {
                 break;
             }
         }
-        if full_state || since_state_ids.get(&key) != Some(&event_id) {
             if timeline_pdu_ids.contains(&event_id) {
                 continue;
             }
@@ -793,10 +785,7 @@ async fn load_left_room(
                 event_ty, state_key, ..
             } = state::get_field(key)?;
 
-            if event_ty != StateEventType::RoomMember
-                    || full_state
-                    // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
-                    || *sender_id == state_key
+            if *sender_id == state_key
             {
                 let pdu = match timeline::get_pdu(&event_id) {
                     Ok(pdu) => pdu,
@@ -810,7 +799,6 @@ async fn load_left_room(
                     state_events.push(pdu);
                 }
             }
-        }
     }
 
     if let Some((_, first_event)) = timeline_pdus.first() {
@@ -844,8 +832,8 @@ pub(crate) fn load_timeline(
     since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
-    limit: usize,
 ) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
+    let limit = filter.map(|f| f.limit).flatten().unwrap_or(10);
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
         if let Some(until_sn) = until_sn {
             let (min_sn, max_sn) = if until_sn > since_sn {

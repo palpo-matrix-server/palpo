@@ -112,6 +112,7 @@ pub(super) fn report(
 #[endpoint]
 pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot) -> JsonResult<ContextResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
 
     let (lazy_load_enabled, lazy_load_send_redundant) = match &args.filter.lazy_load_options {
         LazyLoadOptions::Enabled {
@@ -121,19 +122,17 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     };
 
     let mut lazy_loaded = HashSet::new();
-
     let base_token =
         crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
-
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
 
-    if !state::user_can_see_event(authed.user_id(), &room_id, &args.event_id)? {
+    if !state::user_can_see_event(sender_id, &room_id, &args.event_id)? {
         return Err(MatrixError::forbidden("You don't have permission to view this event.", None).into());
     }
 
     if !crate::room::lazy_loading::lazy_load_was_sent_before(
-        authed.user_id(),
+        sender_id,
         authed.device_id(),
         &room_id,
         &base_event.sender,
@@ -144,18 +143,15 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
 
     // Use limit with maximum 100
     let limit = usize::from(args.limit).min(100);
-
     let base_event = base_event.to_room_event();
-
-    let events_before: Vec<_> =
-        timeline::get_pdus_backward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?
-            .into_iter()
-            .filter(|(_, pdu)| state::user_can_see_event(authed.user_id(), &room_id, &pdu.event_id).unwrap_or(false))
-            .collect();
+    let events_before = timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
+        .into_iter()
+        .filter(|(_, pdu)| state::user_can_see_event(sender_id, &room_id, &pdu.event_id).unwrap_or(false))
+        .collect::<Vec<_>>();
 
     for (_, event) in &events_before {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
-            authed.user_id(),
+            sender_id,
             authed.device_id(),
             &room_id,
             &event.sender,
@@ -169,14 +165,15 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         .last()
         .map(|(count, _)| count.to_string())
         .unwrap_or_else(|| base_token.to_string());
-
-    let events_before: Vec<_> = events_before.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
-
-    let events_after = timeline::get_pdus_forward(authed.user_id(), &room_id, base_token, None, None, limit / 2)?;
+    let events_before = events_before
+        .into_iter()
+        .map(|(_, pdu)| pdu.to_room_event())
+        .collect::<Vec<_>>();
+    let events_after = timeline::get_pdus_forward(sender_id, &room_id, base_token, None, None, limit / 2)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
-            authed.user_id(),
+            sender_id,
             authed.device_id(),
             &room_id,
             &event.sender,
@@ -190,16 +187,12 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         Ok(s) => s,
         Err(_) => crate::room::get_frame_id(&room_id, None)?,
     };
-
     let state_ids = state::get_full_state_ids(frame_id)?;
-
     let end_token = events_after
         .last()
         .map(|(count, _)| count.to_string())
         .unwrap_or_else(|| base_token.to_string());
-
     let events_after: Vec<_> = events_after.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
-
     let mut state = Vec::new();
 
     for (field_id, event_id) in state_ids {
@@ -211,7 +204,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
             let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 Err(_) => {
-                    error!("Pdu in state not found: {}", event_id);
+                    error!("pdu in state not found: {}", event_id);
                     continue;
                 }
             };
@@ -220,7 +213,7 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
             let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 Err(_) => {
-                    error!("Pdu in state not found: {}", event_id);
+                    error!("pdu in state not found: {}", event_id);
                     continue;
                 }
             };

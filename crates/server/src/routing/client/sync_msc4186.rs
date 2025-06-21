@@ -7,6 +7,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::Seqnum;
+use crate::core::client::filter::RoomEventFilter;
 use crate::core::client::sync_events::{self, v5::*};
 use crate::core::device::DeviceLists;
 use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_contents};
@@ -309,8 +310,7 @@ async fn process_rooms(
                 &room_id,
                 Some(*room_since_sn),
                 Some(Seqnum::MAX),
-                None,
-                *timeline_limit,
+                Some(&RoomEventFilter::with_limit(*timeline_limit)),
             )?
         };
 

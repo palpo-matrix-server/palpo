@@ -133,6 +133,13 @@ impl RoomEventFilter {
         }
     }
 
+    pub fn with_limit(limit: usize) -> Self {
+        Self {
+            limit: Some(limit),
+            ..Default::default()
+        }
+    }
+
     /// Returns `true` if all fields are empty.
     pub fn is_empty(&self) -> bool {
         self.not_types.is_empty()

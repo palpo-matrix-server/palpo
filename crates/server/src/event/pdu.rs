@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize, de};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::client::filter::RoomEventFilter;
-use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
@@ -40,7 +41,70 @@ impl SnPduEvent {
     }
 
     pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
-        if !state::user_can_see_event(user_id, &self.room_id, &self.event_id)? {
+        println!("Checking if user {} can see event {:?}", user_id, self);
+        if self.event_ty == TimelineEventType::RoomMember && self.state_key.as_deref() == Some(user_id.as_str()) {
+            return Ok(true);
+        }
+        println!("uuuuuuuuuuuuuuuuuuu 0");
+        if self.is_room_state() {
+            println!("uuuuuuuuuuuuuuuuuuu 1");
+            if crate::room::is_world_readable(&self.room_id) {
+                println!("uuuuuuuuuuuuuuuuuuu 2");
+                return Ok(!crate::room::user::is_banned(user_id, &self.room_id)?);
+            } else if crate::room::user::is_joined(user_id, &self.room_id)? {
+                println!("uuuuuuuuuuuuuuuuuuu 3");
+                return Ok(true);
+            }
+        }
+        let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
+            return Ok(false);
+        };
+
+        if let Some(visibility) = state::USER_VISIBILITY_CACHE
+            .lock()
+            .unwrap()
+            .get_mut(&(user_id.to_owned(), frame_id))
+        {
+            return Ok(*visibility);
+        }
+
+        let history_visibility = state::get_state_content::<RoomHistoryVisibilityEventContent>(
+            frame_id,
+            &StateEventType::RoomHistoryVisibility,
+            "",
+        )
+        .map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| {
+            c.history_visibility
+        });
+
+        let visibility = match history_visibility {
+            HistoryVisibility::WorldReadable => true,
+            HistoryVisibility::Shared => {
+                let Ok(membership) = state::user_membership(frame_id, user_id) else {
+                    return Ok(false);
+                };
+                membership == MembershipState::Join
+            }
+            HistoryVisibility::Invited => {
+                // Allow if any member on requesting server was AT LEAST invited, else deny
+                state::user_was_invited(frame_id, &user_id)
+            }
+            HistoryVisibility::Joined => {
+                // Allow if any member on requested server was joined, else deny
+                state::user_was_joined(frame_id, &user_id) || state::user_was_joined(frame_id - 1, &user_id)
+            }
+            _ => {
+                error!("unknown history visibility {history_visibility}");
+                false
+            }
+        };
+
+        state::USER_VISIBILITY_CACHE
+            .lock()
+            .unwrap()
+            .insert((user_id.to_owned(), frame_id), visibility);
+
+        if !visibility {
             return Ok(false);
         }
 
@@ -500,12 +564,14 @@ impl PduEvent {
         self.rejection_reason.is_some()
     }
 
-    pub fn is_state(&self) -> bool {
-        self.state_key.is_some()
+    pub fn is_room_state(&self) -> bool {
+        self.state_key.as_deref() == Some("")
+    }
+    pub fn is_user_state(&self) -> bool {
+        self.state_key.is_some() && self.state_key.as_deref() != Some("")
     }
 
     pub fn can_pass_filter(&self, filter: &RoomEventFilter) -> bool {
-        println!("===================can_pass_filter: {:?}", filter);
         if filter.not_types.contains(&self.event_ty.to_string()) {
             return false;
         }

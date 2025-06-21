@@ -495,15 +495,6 @@ pub fn server_can_see_event(origin: &ServerName, room_id: &RoomId, event_id: &Ev
         Ok(frame_id) => frame_id,
         Err(_) => return Ok(true),
     };
-
-    // if let Some(visibility) = SERVER_VISIBILITY_CACHE
-    //     .lock()
-    //     .unwrap()
-    //     .get_mut(&(origin.to_owned(), frame_id))
-    // {
-    //     return Ok(*visibility);
-    // }
-
     let history_visibility = super::get_history_visibility(room_id)?;
 
     let visibility = match history_visibility {
@@ -555,55 +546,9 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id, event_id))]
 pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
-    let Ok(frame_id) = get_pdu_frame_id(event_id) else {
-        return Ok(true);
-    };
-
-    if let Some(visibility) = USER_VISIBILITY_CACHE
-        .lock()
-        .unwrap()
-        .get_mut(&(user_id.to_owned(), frame_id))
-    {
-        return Ok(*visibility);
-    }
-
-    let history_visibility =
-        get_state_content::<RoomHistoryVisibilityEventContent>(frame_id, &StateEventType::RoomHistoryVisibility, "")
-            .map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| {
-                c.history_visibility
-            });
-
-    println!("============visibility: {history_visibility:?}");
-
-    let visibility = match history_visibility {
-        HistoryVisibility::WorldReadable => true,
-        HistoryVisibility::Shared => {
-            let Ok(membership) = user_membership(frame_id, user_id) else {
-                return Ok(false);
-            };
-            println!("============membership: {membership:?}");
-            membership == MembershipState::Join
-        }
-        HistoryVisibility::Invited => {
-            // Allow if any member on requesting server was AT LEAST invited, else deny
-            user_was_invited(frame_id, &user_id)
-        }
-        HistoryVisibility::Joined => {
-            // Allow if any member on requested server was joined, else deny
-            user_was_joined(frame_id, &user_id) || user_was_joined(frame_id - 1, &user_id)
-        }
-        _ => {
-            error!("Unknown history visibility {history_visibility}");
-            false
-        }
-    };
-
-    USER_VISIBILITY_CACHE
-        .lock()
-        .unwrap()
-        .insert((user_id.to_owned(), frame_id), visibility);
-
-    Ok(visibility)
+    let mut pdu = timeline::get_pdu(event_id)?;
+    pdu.user_can_see(user_id)
+    
 }
 
 /// Whether a user is allowed to see an event, based on
