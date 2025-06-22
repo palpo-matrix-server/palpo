@@ -830,20 +830,18 @@ pub async fn fetch_and_process_missing_prev_events(
             .load::<OwnedEventId>(&mut connect()?)?;
 
         exist_events.extend(earliest_events.iter().cloned());
-        if prev_events
-            .iter()
-            .all(|id| exist_events.contains(id))
-        {
+        if prev_events.iter().all(|id| exist_events.contains(id)) {
             continue;
         }
-        let missing_events: Vec<_> = prev_events
+        let missing_events = prev_events
             .into_iter()
             .filter(|id| !exist_events.contains(id))
-            .collect();
+            .collect::<Vec<_>>();
         if missing_events.is_empty() {
             continue;
         }
 
+        println!("==================missing_events_request: {earliest_events:#?}  latest_events:{:?}", incoming_pdu.event_id);
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
@@ -861,6 +859,7 @@ pub async fn fetch_and_process_missing_prev_events(
             .await?;
 
         for event in res_body.events {
+            println!("==================missing event: {event:#?}");
             let (event_id, event_val, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
 
             if fetched_events.contains_key(&event_id)

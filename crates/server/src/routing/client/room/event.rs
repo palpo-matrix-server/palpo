@@ -30,24 +30,18 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
     let authed = depot.authed_info()?;
 
     let event = DbEvent::get_by_id(&args.event_id)?;
-    println!("=================gggggggggg 0");
     if event.rejection_reason.is_some() {
-        println!("=================gggggggggg 1");
         warn!("event {} is rejected", &args.event_id);
         return Err(MatrixError::not_found("event not found").into());
     }
     if event.is_outlier {
-        println!("=================gggggggggg 2");
         warn!("event {} is outlier", &args.event_id);
         return Err(MatrixError::not_found("event not found").into());
     }
 
-    println!("=================gggggggggg 3");
     let event = timeline::get_pdu(&args.event_id)?;
-    println!("=================gggggggggg 4");
 
     if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
-        println!("=================gggggggggg 5");
         return Err(MatrixError::not_found("event not found").into());
     }
 
