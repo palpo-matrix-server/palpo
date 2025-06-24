@@ -770,7 +770,10 @@ async fn load_left_room(
     let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
-    println!("==========left_state_ids: {left_state_ids:?}  filter: {:#?}", filter.room.state);
+    println!(
+        "==========left_state_ids: {left_state_ids:?}  filter: {:#?}",
+        filter.room.state
+    );
     println!("==========timeline_pdu_ids: {timeline_pdu_ids:?}");
     for (key, event_id) in left_state_ids {
         if let Some(state_limit) = filter.room.state.limit {
@@ -778,27 +781,26 @@ async fn load_left_room(
                 break;
             }
         }
-            if timeline_pdu_ids.contains(&event_id) {
-                continue;
-            }
-            let DbRoomStateField {
-                event_ty, state_key, ..
-            } = state::get_field(key)?;
+        if timeline_pdu_ids.contains(&event_id) {
+            continue;
+        }
+        let DbRoomStateField {
+            event_ty, state_key, ..
+        } = state::get_field(key)?;
 
-            if *sender_id == state_key
-            {
-                let pdu = match timeline::get_pdu(&event_id) {
-                    Ok(pdu) => pdu,
-                    _ => {
-                        error!("pdu in state not found: {}", event_id);
-                        continue;
-                    }
-                };
-
-                if pdu.can_pass_filter(&filter.room.state) {
-                    state_events.push(pdu);
+        if *sender_id == state_key {
+            let pdu = match timeline::get_pdu(&event_id) {
+                Ok(pdu) => pdu,
+                _ => {
+                    error!("pdu in state not found: {}", event_id);
+                    continue;
                 }
+            };
+
+            if pdu.can_pass_filter(&filter.room.state) {
+                state_events.push(pdu);
             }
+        }
     }
 
     if let Some((_, first_event)) = timeline_pdus.first() {
@@ -844,7 +846,7 @@ pub(crate) fn load_timeline(
 
             timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
         } else {
-            timeline::get_pdus_forward(user_id, &room_id, since_sn, None, filter, limit + 1)?
+            timeline::get_pdus_backward(user_id, &room_id, i64::MAX, Some(since_sn), filter, limit + 1)?
         }
     } else {
         timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
