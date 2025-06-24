@@ -429,7 +429,7 @@ pub fn get_first_user_can_issue_invite(
         .iter()
         .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
     {
-        for joined_user in room::get_joined_users(room_id, None)? {
+        for joined_user in room::joined_users(room_id, None)? {
             if joined_user.server_name() == config::server_name()
                 && room::user_can_invite(room_id, &joined_user, invitee_id)
             {
@@ -449,7 +449,7 @@ pub fn get_users_can_issue_invite(
         .iter()
         .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
     {
-        for joined_user in room::get_joined_users(room_id, None)? {
+        for joined_user in room::joined_users(room_id, None)? {
             if joined_user.server_name() == config::server_name()
                 && room::user_can_invite(room_id, &joined_user, invitee_id)
             {

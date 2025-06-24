@@ -324,52 +324,10 @@ pub fn invited_member_count(room_id: &RoomId) -> AppResult<u64> {
         .map_err(Into::into)
 }
 
-/// Returns an iterator over all rooms a user left.
-#[tracing::instrument]
-pub fn rooms_left(
-    user_id: &UserId,
-    since_sn: Option<Seqnum>,
-) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
-    let query = room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::membership.eq_any(vec![
-            MembershipState::Leave.to_string(),
-            MembershipState::Ban.to_string(),
-        ]))
-        .into_boxed();
-    let query = if let Some(since_sn) = since_sn {
-        query.filter(room_users::event_sn.ge(since_sn))
-    } else {
-        query.filter(room_users::forgotten.eq(false))
-    };
-    let room_event_ids = query
-        .select((room_users::room_id, room_users::event_id))
-        .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)
-        .map(|rows| {
-            let mut map: HashMap<OwnedRoomId, Vec<OwnedEventId>> = HashMap::new();
-            for (room_id, event_id) in rows {
-                map.entry(room_id).or_default().push(event_id);
-            }
-            map
-        })?;
-    let mut room_events = HashMap::new();
-    for (room_id, event_ids) in room_event_ids {
-        let events = event_datas::table
-            .filter(event_datas::event_id.eq_any(&event_ids))
-            .select(event_datas::json_data)
-            .load::<JsonValue>(&mut connect()?)?
-            .into_iter()
-            .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())
-            .collect::<Vec<_>>();
-        room_events.insert(room_id, events);
-    }
-    Ok(room_events)
-}
-
-pub fn get_joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     get_state_users(room_id, &MembershipState::Join, until_sn)
 }
-pub fn get_invited_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn invited_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     get_state_users(room_id, &MembershipState::Invite, until_sn)
 }
 

@@ -4,7 +4,9 @@ use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 use serde::{Deserialize, Serialize, de};
 use serde_json::{json, value::to_raw_value};
 
-use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::client::filter::RoomEventFilter;
+use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
@@ -39,7 +41,65 @@ impl SnPduEvent {
     }
 
     pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
-        if !state::user_can_see_event(user_id, &self.room_id, &self.event_id)? {
+        if self.event_ty == TimelineEventType::RoomMember && self.state_key.as_deref() == Some(user_id.as_str()) {
+            return Ok(true);
+        }
+        if self.is_room_state() {
+            if crate::room::is_world_readable(&self.room_id) {
+                return Ok(!crate::room::user::is_banned(user_id, &self.room_id)?);
+            } else if crate::room::user::is_joined(user_id, &self.room_id)? {
+                return Ok(true);
+            }
+        }
+        let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
+            return Ok(false);
+        };
+
+        if let Some(visibility) = state::USER_VISIBILITY_CACHE
+            .lock()
+            .unwrap()
+            .get_mut(&(user_id.to_owned(), frame_id))
+        {
+            return Ok(*visibility);
+        }
+
+        let history_visibility = state::get_state_content::<RoomHistoryVisibilityEventContent>(
+            frame_id,
+            &StateEventType::RoomHistoryVisibility,
+            "",
+        )
+        .map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| {
+            c.history_visibility
+        });
+
+        let visibility = match history_visibility {
+            HistoryVisibility::WorldReadable => true,
+            HistoryVisibility::Shared => {
+                let Ok(membership) = state::user_membership(frame_id, user_id) else {
+                    return crate::room::user::is_joined(user_id, &self.room_id);
+                };
+                membership == MembershipState::Join || crate::room::user::is_joined(user_id, &self.room_id)?
+            }
+            HistoryVisibility::Invited => {
+                // Allow if any member on requesting server was AT LEAST invited, else deny
+                state::user_was_invited(frame_id, &user_id)
+            }
+            HistoryVisibility::Joined => {
+                // Allow if any member on requested server was joined, else deny
+                state::user_was_joined(frame_id, &user_id) || state::user_was_joined(frame_id - 1, &user_id)
+            }
+            _ => {
+                error!("unknown history visibility {history_visibility}");
+                false
+            }
+        };
+
+        state::USER_VISIBILITY_CACHE
+            .lock()
+            .expect("should locked")
+            .insert((user_id.to_owned(), frame_id), visibility);
+
+        if !visibility {
             return Ok(false);
         }
 
@@ -228,7 +288,8 @@ impl PduEvent {
             _ => &[],
         };
 
-        let mut old_content  = self.get_content::<BTreeMap<String, serde_json::Value>>()
+        let mut old_content = self
+            .get_content::<BTreeMap<String, serde_json::Value>>()
             .map_err(|_| AppError::internal("PDU in db has invalid content."))?;
 
         let mut new_content = serde_json::Map::new();
@@ -496,6 +557,50 @@ impl PduEvent {
 
     pub fn is_rejected(&self) -> bool {
         self.rejection_reason.is_some()
+    }
+
+    pub fn is_room_state(&self) -> bool {
+        self.state_key.as_deref() == Some("")
+    }
+    pub fn is_user_state(&self) -> bool {
+        self.state_key.is_some() && self.state_key.as_deref() != Some("")
+    }
+
+    pub fn can_pass_filter(&self, filter: &RoomEventFilter) -> bool {
+        if filter.not_types.contains(&self.event_ty.to_string()) {
+            return false;
+        }
+        if filter.not_rooms.contains(&self.room_id) {
+            return false;
+        }
+        if filter.not_senders.contains(&self.sender) {
+            return false;
+        }
+
+        if let Some(rooms) = &filter.rooms {
+            if !rooms.contains(&self.room_id) {
+                return false;
+            }
+        }
+        if let Some(senders) = &filter.senders {
+            if !senders.contains(&self.sender) {
+                return false;
+            }
+        }
+        if let Some(types) = &filter.types {
+            if !types.contains(&self.event_ty.to_string()) {
+                return false;
+            }
+        }
+        // TODO: url filter
+        // if let Some(url_filter) = &filter.url_filter {
+        //     match url_filter {
+        //         UrlFilter::EventsWithUrl => if !self.events::contains_url.eq(true)),
+        //         UrlFilter::EventsWithoutUrl => query = query.filter(events::contains_url.eq(false)),
+        //     }
+        // }
+
+        true
     }
 }
 

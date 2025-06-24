@@ -830,16 +830,13 @@ pub async fn fetch_and_process_missing_prev_events(
             .load::<OwnedEventId>(&mut connect()?)?;
 
         exist_events.extend(earliest_events.iter().cloned());
-        if prev_events
-            .iter()
-            .all(|id| exist_events.contains(id))
-        {
+        if prev_events.iter().all(|id| exist_events.contains(id)) {
             continue;
         }
-        let missing_events: Vec<_> = prev_events
+        let missing_events = prev_events
             .into_iter()
             .filter(|id| !exist_events.contains(id))
-            .collect();
+            .collect::<Vec<_>>();
         if missing_events.is_empty() {
             continue;
         }

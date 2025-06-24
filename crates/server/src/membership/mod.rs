@@ -130,10 +130,7 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !room::user::once_joined(user_id, room_id)? {
-                // Add the user ID to the join list then
-                // db::mark_as_once_joined(user_id, room_id)?;
-
+            if !(room::user::is_joined(user_id, room_id)? || room::user::is_left(user_id, room_id)?) {
                 // Check if the room has a predecessor
                 if let Ok(Some(predecessor)) =
                     room::get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
