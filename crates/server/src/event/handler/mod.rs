@@ -841,7 +841,6 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
-        println!("==================missing_events_request: {earliest_events:#?}  latest_events:{:?}", incoming_pdu.event_id);
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
@@ -859,7 +858,6 @@ pub async fn fetch_and_process_missing_prev_events(
             .await?;
 
         for event in res_body.events {
-            println!("==================missing event: {event:#?}");
             let (event_id, event_val, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
 
             if fetched_events.contains_key(&event_id)

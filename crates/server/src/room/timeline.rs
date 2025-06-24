@@ -899,8 +899,6 @@ pub fn get_pdus(
                     if list.len() >= limit {
                         break;
                     }
-                } else {
-                    println!("DDDDDDDDDDDDDDDDDDDDDDDDD {pdu:#?}");
                 }
             }
         }

@@ -709,7 +709,6 @@ async fn load_left_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<sync_events::v3::LeftRoom> {
-    println!("=============load_left_room====fffffilter: {:#?}", filter);
     if !room::room_exists(room_id)? {
         let event = PduEvent {
             event_id: EventId::new(config::server_name()).into(),
@@ -770,11 +769,6 @@ async fn load_left_room(
     let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
-    println!(
-        "==========left_state_ids: {left_state_ids:?}  filter: {:#?}",
-        filter.room.state
-    );
-    println!("==========timeline_pdu_ids: {timeline_pdu_ids:?}");
     for (key, event_id) in left_state_ids {
         if let Some(state_limit) = filter.room.state.limit {
             if state_events.len() >= state_limit {
