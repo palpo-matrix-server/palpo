@@ -296,9 +296,9 @@ async fn load_joined_room(
     device_list_updates: &mut HashSet<OwnedUserId>,
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-) -> AppResult<sync_events::v3::JoinedRoom> {
+) -> AppResult<JoinedRoom> {
     if since_sn > Some(data::curr_sn()?) {
-        return Ok(sync_events::v3::JoinedRoom::default());
+        return Ok(JoinedRoom::default());
     }
     let lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
@@ -708,7 +708,7 @@ async fn load_left_room(
     device_list_updates: &mut HashSet<OwnedUserId>,
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-) -> AppResult<sync_events::v3::LeftRoom> {
+) -> AppResult<LeftRoom> {
     println!("=============load_left_room====fffffilter: {:#?}", filter);
     if !room::room_exists(room_id)? {
         let event = PduEvent {
