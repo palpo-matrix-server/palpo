@@ -158,7 +158,7 @@ pub(crate) async fn process_pulled_pdu(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
-    exist_events: &mut HashSet<OwnedEventId>,
+    known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(origin, &room_id)?;
@@ -183,7 +183,7 @@ pub(crate) async fn process_pulled_pdu(
     }
 
     let (incoming_pdu, val, event_guard) =
-        process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value, exist_events).await?;
+        process_to_outlier_pdu(origin, event_id, room_id, room_version_id, value, known_events).await?;
 
     // Skip old events
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
@@ -214,7 +214,7 @@ fn process_to_outlier_pdu<'a>(
     room_id: &'a RoomId,
     room_version_id: &'a RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
-    exist_events: &'a mut HashSet<OwnedEventId>,
+    known_events: &'a mut HashSet<OwnedEventId>,
 ) -> Pin<
     Box<
         impl Future<
@@ -297,7 +297,7 @@ fn process_to_outlier_pdu<'a>(
         check_room_id(room_id, &incoming_pdu)?;
 
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        fetch_and_process_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu, exist_events).await?;
+        fetch_and_process_missing_prev_events(origin, room_id, room_version_id, &incoming_pdu, known_events).await?;
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("auth check for {} based on auth events", incoming_pdu.event_id);
@@ -800,7 +800,7 @@ pub async fn fetch_and_process_missing_prev_events(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     incoming_pdu: &PduEvent,
-    exist_events: &mut HashSet<OwnedEventId>,
+    known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
     let conf = crate::config();
     let room_version_id = &room::get_version(room_id)?;
@@ -810,32 +810,17 @@ pub async fn fetch_and_process_missing_prev_events(
         .and_then(|pdu| pdu.map(|p| p.depth))
         .unwrap_or(0);
     let forward_extremities = room::state::get_forward_extremities(room_id)?;
-    let mut fetched_events = IndexMap::with_capacity(100);
+    let mut fetched_events = IndexMap::with_capacity(10);
 
     let mut missing_stack = IndexMap::new();
     missing_stack.insert(incoming_pdu.event_id.clone(), incoming_pdu.prev_events.clone());
 
     while let Some((event_id, prev_events)) = missing_stack.pop() {
         let mut earliest_events = forward_extremities.clone();
-        for prev_event in &prev_events {
-            if exist_events.contains(prev_event) {
-                earliest_events.push(prev_event.clone());
-            }
-        }
-
-        let mut earliest_events: Vec<OwnedEventId> = events::table
-            .filter(events::room_id.eq(room_id))
-            .filter(events::id.eq_any(&earliest_events))
-            .select(events::id)
-            .load::<OwnedEventId>(&mut connect()?)?;
-
-        exist_events.extend(earliest_events.iter().cloned());
-        if prev_events.iter().all(|id| exist_events.contains(id)) {
-            continue;
-        }
+        earliest_events.extend(known_events.iter().cloned());
         let missing_events = prev_events
             .into_iter()
-            .filter(|id| !exist_events.contains(id))
+            .filter(|id| !earliest_events.contains(id) && !fetched_events.contains_key(id))
             .collect::<Vec<_>>();
         if missing_events.is_empty() {
             continue;
@@ -852,6 +837,8 @@ pub async fn fetch_and_process_missing_prev_events(
             },
         )?
         .into_inner();
+
+        known_events.insert(event_id.clone());
         let res_body = crate::sending::send_federation_request(&origin, request)
             .await?
             .json::<MissingEventsResBody>()
@@ -863,10 +850,11 @@ pub async fn fetch_and_process_missing_prev_events(
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
                 || incoming_pdu.event_id == event_id
-                || exist_events.contains(&event_id)
+                || known_events.contains(&event_id)
             {
                 continue;
             }
+
             let prev_events = event_val
                 .get("prev_events")
                 .and_then(|v| v.as_array())
@@ -884,7 +872,8 @@ pub async fn fetch_and_process_missing_prev_events(
                         if !fetched_events.contains_key(&id)
                             && !missing_stack.contains_key(&id)
                             && incoming_pdu.event_id != id
-                            && !exist_events.contains(&id)
+                            && !known_events.contains(&id)
+                            && !missing_events.contains(&id)
                         {
                             Some(id)
                         } else {
@@ -892,14 +881,16 @@ pub async fn fetch_and_process_missing_prev_events(
                         }
                     })
                     .collect::<Vec<_>>();
-                if !prev_events.is_empty() {
+                if !prev_events.is_empty() && !missing_events.contains(&event_id) && !known_events.contains(&event_id) {
                     missing_stack.insert(event_id.clone(), prev_events);
                 }
-                fetched_events.insert(event_id, event_val);
+                fetched_events.insert(event_id.clone(), event_val);
             }
+            known_events.insert(event_id.clone());
         }
     }
 
+    known_events.insert(incoming_pdu.event_id.clone());
     fetched_events.sort_by(|_x1, v1, _k2, v2| {
         let depth1 = v1.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
         let depth2 = v2.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
@@ -907,7 +898,6 @@ pub async fn fetch_and_process_missing_prev_events(
     });
     Box::pin(async move {
         for (event_id, event_val) in fetched_events {
-            exist_events.insert(event_id.clone());
             if !diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))
@@ -920,7 +910,7 @@ pub async fn fetch_and_process_missing_prev_events(
                     &room_id,
                     &room_version_id,
                     event_val.clone(),
-                    exist_events,
+                    known_events,
                 )
                 .await?;
             }
@@ -939,7 +929,7 @@ pub async fn fetch_and_process_auth_chain(origin: &ServerName, room_id: &RoomId,
         .json::<EventAuthorizationResBody>()
         .await?;
     Box::pin(async move {
-        let mut exist_events = HashSet::new();
+        let mut known_events = HashSet::new();
         for event in res_body.auth_chain {
             let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
             if !diesel_exists!(
@@ -954,7 +944,7 @@ pub async fn fetch_and_process_auth_chain(origin: &ServerName, room_id: &RoomId,
                     &room_id,
                     &room_version_id,
                     event_value,
-                    &mut exist_events,
+                    &mut known_events,
                 )
                 .await?;
             }

@@ -24,7 +24,7 @@ use crate::serde::RawJsonValue;
 // };
 
 pub fn event_authorization_request(origin: &str, room_id: &RoomId, event_id: &EventId) -> SendResult<SendRequest> {
-    let mut url = Url::parse(&format!(
+    let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/event_auth/{}/{}",
         room_id, event_id
     ))?;
