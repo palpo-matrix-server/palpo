@@ -815,7 +815,6 @@ pub async fn fetch_and_process_missing_prev_events(
     let mut missing_stack = IndexMap::new();
     missing_stack.insert(incoming_pdu.event_id.clone(), incoming_pdu.prev_events.clone());
 
-    println!(":>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>fetch_and_process_missing_prev_events");
     while let Some((event_id, prev_events)) = missing_stack.pop() {
         let mut earliest_events = forward_extremities.clone();
         earliest_events.extend(known_events.iter().cloned());
@@ -827,10 +826,6 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
-        println!(
-            "==================missing_events_request: {known_events:#?}  incoming_pdu:{:?}  curent id: {event_id}  missing_events: {missing_events:?}",
-            incoming_pdu.event_id
-        );
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
@@ -887,7 +882,6 @@ pub async fn fetch_and_process_missing_prev_events(
                     })
                     .collect::<Vec<_>>();
                 if !prev_events.is_empty() && !missing_events.contains(&event_id) && !known_events.contains(&event_id) {
-                    println!("iiiiiiiiiiiiiiinsert event_id: {event_id}  prev_events: {prev_events:#?}");
                     missing_stack.insert(event_id.clone(), prev_events);
                 }
                 fetched_events.insert(event_id.clone(), event_val);
