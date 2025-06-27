@@ -89,7 +89,7 @@ All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.resul
 - [ ] Complement tests `TestJumpToDateEndpoint/*`.
 - [ ] Complement tests `TestKnockingInMSC3787Room/*`.
 - [ ] Complement tests `TestClientSpacesSummary/*`.
-- [ ] Complement tests `TestArchivedRoomsHistory/*`.
+- [x] Complement tests `TestArchivedRoomsHistory/*`.
 - [ ] Other complement tests.
 
 We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing. 
