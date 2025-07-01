@@ -56,6 +56,71 @@ trusted_servers = ["matrix.org"]
 url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
 pool_size = 1
 
+[jwt]
+# Enable JWT logins
+#
+#enable = false
+
+# Validation key, also called 'secret' in Synapse config. The type of key
+# can be configured in 'format', but defaults to the common HMAC which
+# is a plaintext shared-secret, so you should keep this value private.
+#
+#key =
+
+# Format of the 'key'. Only HMAC, ECDSA, and B64HMAC are supported
+# Binary keys cannot be pasted into this config, so B64HMAC is an
+# alternative to HMAC for properly random secret strings.
+# - HMAC is a plaintext shared-secret private-key.
+# - B64HMAC is a base64-encoded version of HMAC.
+# - ECDSA is a PEM-encoded public-key.
+#
+#format = "HMAC"
+
+# Automatically create new user from a valid claim, otherwise access is
+# denied for an unknown even with an authentic token.
+#
+#register_user = true
+
+# JWT algorithm
+#
+#algorithm = "HS256"
+
+# Optional audience claim list. The token must claim one or more values
+# from this list when set.
+#
+#audience = []
+
+# Optional issuer claim list. The token must claim one or more values
+# from this list when set.
+#
+#issuer = []
+
+# Require expiration claim in the token. This defaults to false for
+# synapse migration compatibility.
+#
+#require_exp = false
+
+# Require not-before claim in the token. This defaults to false for
+# synapse migration compatibility.
+#
+#require_nbf = false
+
+# Validate expiration time of the token when present. Whether or not it is
+# required depends on require_exp, but when present this ensures the token
+# is not used after a time.
+#
+#validate_exp = true
+
+# Validate not-before time of the token when present. Whether or not it is
+# required depends on require_nbf, but when present this ensures the token
+# is not used before a time.
+#
+#validate_nbf = true
+
+# Bypass validation for diagnostic/debug use only.
+#
+#validate_signature = true
+
 [well_known]
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access palpo with the host
 # server_name and port 443 by default.

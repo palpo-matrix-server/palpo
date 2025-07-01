@@ -8,6 +8,12 @@ use ipaddress::IPAddress;
 
 mod server_config;
 pub use server_config::*;
+mod ldap_config;
+pub use ldap_config::*;
+mod jwt_config;
+pub use jwt_config::*;
+mod blurhash_config;
+pub use blurhash_config::*;
 
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
@@ -95,6 +101,22 @@ pub fn keypair() -> &'static Ed25519KeyPair {
             crate::utils::generate_keypair()
         }
     })
+}
+
+pub fn enabled_ldap() -> Option<&'static LdapConfig> {
+    if let Some(ldap) = get().ldap.as_ref() {
+        if ldap.enable { Some(ldap) } else { None }
+    } else {
+        None
+    }
+}
+
+pub fn enabled_jwt() -> Option<&'static JwtConfig> {
+    if let Some(jwt) = get().jwt.as_ref() {
+        if jwt.enable { Some(jwt) } else { None }
+    } else {
+        None
+    }
 }
 
 pub fn well_known_client() -> String {
@@ -195,9 +217,9 @@ pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
     JWT_DECODING_KEY
         .get_or_init(|| {
             get()
-                .jwt_secret
+                .jwt
                 .as_ref()
-                .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()))
+                .map(|jwt| jsonwebtoken::DecodingKey::from_secret(jwt.secret.as_bytes()))
         })
         .as_ref()
 }

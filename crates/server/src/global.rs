@@ -437,3 +437,7 @@ pub fn get_servers_from_users(users: &[OwnedUserId]) -> Vec<OwnedServerName> {
     }
     servers.into_iter().collect()
 }
+
+pub fn palpo_user(server_name: &ServerName) -> OwnedUserId {
+   UserId::parse_with_server_name("palpo", server_name).expect("@palpo:server_name is valid")
+}
