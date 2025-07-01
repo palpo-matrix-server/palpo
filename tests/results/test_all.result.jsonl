@@ -1,4 +1,6 @@
 {"Action":"fail","Test":"TestClientSpacesSummary"}
+{"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
+{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -22,7 +24,6 @@
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/interrupted_connectivity"}
-{"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
@@ -96,8 +97,6 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
-{"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
-{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -572,6 +571,7 @@
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation/good_connectivity"}
+{"Action":"pass","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestTxnIdempotency"}
 {"Action":"pass","Test":"TestTxnIdempotencyScopedToDevice"}
 {"Action":"pass","Test":"TestTxnIdWithRefreshToken"}

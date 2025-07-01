@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use reqwest::Proxy;
 use serde::Deserialize;
 use url::Url;
 

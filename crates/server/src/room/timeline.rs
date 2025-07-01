@@ -4,7 +4,6 @@ use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
-use palpo_data::room::DbEvent;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -236,7 +235,7 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
-    let thread_id;
+    // let thread_id;
     if let Ok(content) = pdu.get_content::<ExtractRelatesTo>() {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
@@ -249,7 +248,7 @@ where
                 super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
                 println!("Adding to thread: {:?}", thread.event_id);
-                thread_id = Some(thread.event_id.clone());
+                // thread_id = Some(thread.event_id.clone());
                 super::thread::add_to_thread(&thread.event_id, &pdu)?;
             }
             _ => {} // TODO: Aggregate other types
@@ -1002,7 +1001,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
             body: Option<String>,
         }
 
-        let content = pdu
+        let _content = pdu
             .get_content::<ExtractBody>()
             .map_err(|_| AppError::internal("Invalid content in pdu."))?;
     }

@@ -83,9 +83,9 @@ async fn validate_and_add_event_id(
         )
     };
 
-    let unfiltered_keys = (*pub_key_map.read().await).clone();
+    // let unfiltered_keys = (*pub_key_map.read().await).clone();
 
-    let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
+    // let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
     // TODO
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {

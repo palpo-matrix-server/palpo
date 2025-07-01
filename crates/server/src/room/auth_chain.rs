@@ -95,7 +95,7 @@ where
             );
         }
 
-        cache_auth_chain(bucket_key, bucket_cache.as_slice());
+        let _ = cache_auth_chain(bucket_key, bucket_cache.as_slice());
         debug!(
             bucket_cache_length = ?bucket_cache.len(),
             elapsed = ?started.elapsed(),

@@ -337,7 +337,7 @@ pub fn add_cross_signing_keys(
     if let Some(self_signing_key) = self_signing_key {
         let mut self_signing_key_ids = self_signing_key.keys.values();
 
-        let self_signing_key_id = self_signing_key_ids
+        let _self_signing_key_id = self_signing_key_ids
             .next()
             .ok_or(MatrixError::invalid_param("Self signing key contained no key."))?;
 
@@ -358,7 +358,7 @@ pub fn add_cross_signing_keys(
     if let Some(user_signing_key) = user_signing_key {
         let mut user_signing_key_ids = user_signing_key.keys.values();
 
-        let user_signing_key_id = user_signing_key_ids
+        let _user_signing_key_id = user_signing_key_ids
             .next()
             .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
 
@@ -469,7 +469,7 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
         let content = SigningKeyUpdateContent::new(user_id.to_owned());
         let edu = Edu::SigningKeyUpdate(content);
 
-        sending::send_edu_servers(remote_servers.into_iter(), &edu);
+        let _ = sending::send_edu_servers(remote_servers.into_iter(), &edu);
     }
 
     Ok(())

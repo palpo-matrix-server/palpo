@@ -214,7 +214,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            handler::process_incoming_pdu(
+            let _ = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
@@ -222,8 +222,7 @@ pub async fn knock_room(
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )
-            .await
-            .map(|_| ());
+            .await;
             timeline::get_pdu(&event_id)?
         };
 

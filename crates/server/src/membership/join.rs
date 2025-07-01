@@ -247,11 +247,11 @@ pub async fn join_room(
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(state)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {

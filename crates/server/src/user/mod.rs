@@ -153,7 +153,9 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
         }
     }
 
-    crate::membership::leave_all_rooms(user_id).await;
+    if let Err(e) = crate::membership::leave_all_rooms(user_id).await {
+        tracing::warn!(%user_id, "failed to leave all rooms during deactivation: {e}");
+    }
 
     Ok(())
 }

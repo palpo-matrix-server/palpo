@@ -45,7 +45,7 @@ use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, config, data, empty_ok,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok,
     hoops, json_ok, room,
 };
 

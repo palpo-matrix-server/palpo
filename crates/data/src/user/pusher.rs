@@ -55,7 +55,6 @@ impl TryInto<Pusher> for DbPusher {
     type Error = DataError;
     fn try_into(self) -> DataResult<Pusher> {
         let Self {
-            user_id,
             profile_tag,
             kind,
             app_id,

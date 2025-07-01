@@ -409,7 +409,6 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
-    let timer = Instant::now();
     let room_version_id = &room::get_version(room_id)?;
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
@@ -799,7 +798,6 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
-    let conf = crate::config();
     let room_version_id = &room::get_version(room_id)?;
 
     let min_depth = timeline::first_pdu_in_room(room_id)
@@ -842,7 +840,7 @@ pub async fn fetch_and_process_missing_prev_events(
             .await?;
 
         for event in res_body.events {
-            let (event_id, event_val, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
+            let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(&event)?;
 
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
