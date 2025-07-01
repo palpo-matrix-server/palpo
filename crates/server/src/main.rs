@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         )
         .hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
-    crate::data::user::unset_all_presences();
+    let _ = crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
     println!("Listening on {}", config::listen_addr());

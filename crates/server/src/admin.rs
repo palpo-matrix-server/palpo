@@ -1055,9 +1055,12 @@ pub async fn revoke_admin(user_id: &UserId) -> AppResult<()> {
     let state_lock = room::lock_state(&room_id).await;
 
     let event = match room::get_member(&room_id, user_id) {
-        Err(e) => return Err(AppError::public("failure occurred while attempting revoke")),
+        Err(_e) => return Err(AppError::public("failure occurred while attempting revoke")),
         Ok(event) if !matches!(event.membership, Invite | Knock | Join) => {
-            return Err(AppError::public(format!("cannot revoke {user_id} in membership state {:?}.", event.membership)));
+            return Err(AppError::public(format!(
+                "cannot revoke {user_id} in membership state {:?}.",
+                event.membership
+            )));
         }
         Ok(event) => {
             assert!(

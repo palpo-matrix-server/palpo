@@ -20,8 +20,7 @@ use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler}
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, SnPduEvent,
-    config, data,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent, config, data,
 };
 
 pub async fn knock_room(

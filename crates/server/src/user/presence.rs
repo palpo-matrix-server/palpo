@@ -43,7 +43,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
             user_id: user_id.to_owned(),
             stream_id: None,
             state: Some(new_state.to_string()),
-            status_msg: None,
+            status_msg,
             last_active_at: Some(UnixMillis::now()),
             last_federation_update_at: None,
             last_user_sync_at: None,

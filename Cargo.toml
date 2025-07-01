@@ -65,7 +65,7 @@ itertools = "0.14"
 jsonwebtoken = { version = "9.1", default-features = false, features = ["use_pem"] }
 js_option = "0.1.0"
 konst = "0.3"
-ldap3 = { git = "https://github.com/palpo-matrix-server/ldap3", branch = "main", default-features = false, features = ["sync", "tls-rustls"] }
+# ldap3 = { git = "https://github.com/palpo-matrix-server/ldap3", branch = "main", default-features = false, features = ["sync", "tls-rustls"] }
 lru-cache = "0.1"
 maplit = "1"
 mime = "0.3.16"

@@ -1,6 +1,4 @@
-use reqwest::{Proxy, Url};
 use serde::Deserialize;
-
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct JwtConfig {
@@ -93,5 +91,9 @@ pub struct JwtConfig {
     pub validate_signature: bool,
 }
 
-fn default_jwt_algorithm() -> String { "HS256".to_owned() }
-fn default_jwt_format() -> String { "HMAC".to_owned() }
+fn default_jwt_algorithm() -> String {
+    "HS256".to_owned()
+}
+fn default_jwt_format() -> String {
+    "HMAC".to_owned()
+}

@@ -3,13 +3,13 @@ use std::collections::{BTreeMap, HashSet};
 use diesel::prelude::*;
 
 use crate::core::events::AnySyncEphemeralRoomEvent;
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
+use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
 use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
-use crate::{DataResult, connect, next_sn};
+use crate::{DataResult, connect};
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {

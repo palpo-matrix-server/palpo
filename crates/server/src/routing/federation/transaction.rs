@@ -33,9 +33,7 @@ async fn send_message(
     let origin = depot.origin()?;
     let body = body.into_inner();
     if &body.origin != origin {
-        return Err(
-            MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into(),
-        );
+        return Err(MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into());
     }
 
     if body.pdus.len() > PDU_LIMIT {

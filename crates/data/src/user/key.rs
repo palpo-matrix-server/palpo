@@ -303,7 +303,11 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> DataR
     Ok(Some(device_keys))
 }
 
-pub fn keys_changed_users(user_id: &UserId, since_sn: Seqnum, until_sn: Option<Seqnum>) -> DataResult<Vec<OwnedUserId>> {
+pub fn keys_changed_users(
+    user_id: &UserId,
+    since_sn: Seqnum,
+    until_sn: Option<Seqnum>,
+) -> DataResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id)?;
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table

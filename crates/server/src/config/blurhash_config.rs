@@ -1,4 +1,3 @@
-use reqwest::{Proxy, Url};
 use serde::Deserialize;
 
 #[derive(Clone, Copy, Debug, Deserialize, Default)]
@@ -26,8 +25,14 @@ pub struct BlurhashConfig {
 
 // blurhashing defaults recommended by https://blurha.sh/
 // 2^25
-fn default_blurhash_max_raw_size() -> u64 { 33_554_432 }
+fn default_blurhash_max_raw_size() -> u64 {
+    33_554_432
+}
 
-fn default_blurhash_x_component() -> u32 { 4 }
+fn default_blurhash_x_component() -> u32 {
+    4
+}
 
-fn default_blurhash_y_component() -> u32 { 3 }
+fn default_blurhash_y_component() -> u32 {
+    3
+}

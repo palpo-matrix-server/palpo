@@ -197,11 +197,11 @@ pub async fn claim_one_time_keys(
                 Ok(keys) => {
                     one_time_keys.extend(keys.one_time_keys);
                 }
-                Err(e) => {
+                Err(_e) => {
                     failures.insert(server.to_string(), json!({}));
                 }
             },
-            Err(e) => {
+            Err(_e) => {
                 failures.insert(server.to_string(), json!({}));
             }
         }

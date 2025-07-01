@@ -1,6 +1,6 @@
 FROM rust:latest
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade && apt-get install -y --no-install-recommends \
     libclang-dev postgresql postgresql-contrib debian-keyring \
     debian-archive-keyring apt-transport-https \
     curl \

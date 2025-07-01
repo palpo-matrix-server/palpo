@@ -1,10 +1,10 @@
 use diesel::prelude::*;
 use serde::de::DeserializeOwned;
 
-use crate::core::{Seqnum, UnixMillis};
 use crate::core::events::{AnyRawAccountDataEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson, json};
+use crate::core::{Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{DataResult, connect};
 

@@ -105,7 +105,7 @@ itertools = { workspace = true }
 image = { workspace = true }
 indexmap = { workspace = true }
 jsonwebtoken = { workspace = true }
-ldap3 = { workspace = true }
+# ldap3 = { workspace = true }
 lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }

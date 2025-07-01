@@ -9,12 +9,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use cookie::time::error;
 use diesel::prelude::*;
 use fetch_state::fetch_state;
 use indexmap::IndexMap;
-use palpo_core::events::call::reject;
-use palpo_data::room::DbEvent;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -34,8 +31,8 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
-use crate::utils::{SeqnumQueueFuture, SeqnumQueueGuard};
-use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
+use crate::utils::SeqnumQueueGuard;
+use crate::{AppError, AppResult, MatrixError, exts::*, room};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -752,7 +749,7 @@ pub(crate) async fn fetch_and_process_outliers(
             trace!("Found {id} in db");
             pdus.push((local_pdu.clone(), None, None));
         }
-        for (next_id, mut value) in events_in_reverse_order.into_iter().rev() {
+        for (next_id, value) in events_in_reverse_order.into_iter().rev() {
             if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id) {
                 // Exponential backoff
                 let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);

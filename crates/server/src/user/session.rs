@@ -1,26 +1,10 @@
 use std::str::FromStr;
-use std::time::Duration;
 
-use diesel::prelude::*;
-use jsonwebtoken::{Algorithm, Validation};
-use salvo::oapi::extract::*;
-use salvo::prelude::*;
+use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 
 use crate::config::JwtConfig;
-use crate::core::UnixMillis;
-use crate::core::client::session::*;
-use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo, UserIdentifier};
-use crate::core::identifiers::*;
-use crate::core::serde::CanonicalJsonValue;
-use crate::data::connect;
-use crate::data::schema::*;
-use crate::data::user::{DbUser, NewDbUser};
-use crate::{
-    AppError, AppResult, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH,
-    TOKEN_LENGTH, admin, config, data, empty_ok, hoops, json_ok, user, utils,
-};
-use jsonwebtoken::DecodingKey;
+use crate::{AppError, AppResult, MatrixError};
 
 #[derive(Debug, Deserialize)]
 pub struct JwtClaims {
@@ -46,10 +30,10 @@ fn init_jwt_verifier(config: &JwtConfig) -> AppResult<DecodingKey> {
         "HMAC" => DecodingKey::from_secret(secret.as_bytes()),
 
         "HMACB64" => DecodingKey::from_base64_secret(secret.as_str())
-            .map_err(|e| AppError::public("jwt secret is not valid base64"))?,
+            .map_err(|_e| AppError::public("jwt secret is not valid base64"))?,
 
         "ECDSA" => {
-            DecodingKey::from_ec_pem(secret.as_bytes()).map_err(|e| AppError::public("JWT key is not valid PEM"))?
+            DecodingKey::from_ec_pem(secret.as_bytes()).map_err(|_e| AppError::public("jwt key is not valid PEM"))?
         }
 
         _ => return Err(AppError::public("jwt secret format is not supported")),
@@ -59,7 +43,7 @@ fn init_jwt_verifier(config: &JwtConfig) -> AppResult<DecodingKey> {
 fn init_jwt_validator(config: &JwtConfig) -> AppResult<Validation> {
     let alg = config.algorithm.as_str();
     let alg =
-        Algorithm::from_str(alg).map_err(|e| AppError::public("JWT algorithm is not recognized or configured"))?;
+        Algorithm::from_str(alg).map_err(|_e| AppError::public("jwt algorithm is not recognized or configured"))?;
 
     let mut validator = Validation::new(alg);
     let mut required_spec_claims: Vec<_> = ["sub"].into();

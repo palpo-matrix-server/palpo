@@ -1,26 +1,21 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
-use std::i64;
-use std::sync::Arc;
 
-use diesel::prelude::*;
 use palpo_core::Seqnum;
 use palpo_core::events::receipt::ReceiptEvent;
 use state::DbRoomStateField;
 
 use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
+use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
     Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState, KnockedRoom, LeftRoom,
     Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs, SyncEventsResBody, Timeline, ToDevice,
 };
-use crate::core::client::sync_events::{self, UnreadNotificationsCount};
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::data::connect;
-use crate::data::schema::*;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};

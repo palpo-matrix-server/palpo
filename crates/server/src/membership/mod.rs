@@ -13,10 +13,9 @@ use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{UnixMillis, federation};
+use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::room::state;
 use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
 
 mod banned;

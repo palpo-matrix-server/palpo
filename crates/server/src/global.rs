@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::net::IpAddr;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, LazyLock, Mutex, OnceLock, RwLock};
+use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 use std::time::Instant;
 
 use diesel::prelude::*;
@@ -13,11 +13,11 @@ use salvo::oapi::ToSchema;
 use serde::Serialize;
 use tokio::sync::{Semaphore, broadcast};
 
-use crate::core::{Seqnum, UnixMillis};
 use crate::core::appservice::Registration;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
+use crate::core::{Seqnum, UnixMillis};
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::data::user::{NewDbUser, NewDbUserDevice};
@@ -439,5 +439,5 @@ pub fn get_servers_from_users(users: &[OwnedUserId]) -> Vec<OwnedServerName> {
 }
 
 pub fn palpo_user(server_name: &ServerName) -> OwnedUserId {
-   UserId::parse_with_server_name("palpo", server_name).expect("@palpo:server_name is valid")
+    UserId::parse_with_server_name("palpo", server_name).expect("@palpo:server_name is valid")
 }

@@ -8,12 +8,11 @@ use crate::core::events::receipt::{
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::core::serde::JsonValue;
+use crate::data::connect;
 use crate::data::room::NewDbReceipt;
 use crate::data::schema::*;
-use crate::data::{connect, next_sn};
 use crate::room::timeline;
-use crate::{AppResult, data, room, sending};
+use crate::{AppResult, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]

@@ -1,12 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::iter::once;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use palpo_data::room::DbEvent;
-use palpo_data::schema::events::rejection_reason;
-use salvo::server;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -31,12 +29,11 @@ use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, ensure_event_sn, handler};
-use crate::room::state::CompressedState;
+use crate::event::{EventHash, PduBuilder, PduEvent, handler};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
+    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
@@ -239,7 +236,7 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
-    let mut thread_id = None;
+    let thread_id;
     if let Ok(content) = pdu.get_content::<ExtractRelatesTo>() {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
@@ -409,7 +406,7 @@ where
     }
     .save()?;
     diesel::update(events::table.find(&*pdu.event_id))
-        .set((events::is_outlier.eq(false)))
+        .set(events::is_outlier.eq(false))
         .execute(&mut connect()?)?;
 
     // Update Relationships
@@ -989,7 +986,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(pdu) = timeline::get_pdu(&event_id) {
+    if timeline::get_pdu(&event_id).is_ok() {
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }

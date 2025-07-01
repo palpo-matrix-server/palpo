@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::room::timeline;
-use crate::{AppResult, MatrixError, room};
+use crate::{AppResult, MatrixError};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]

@@ -1,4 +1,3 @@
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -15,8 +14,6 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
-use crate::data::connect;
-use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
 use crate::event::handler;
 use crate::room::{state, timeline};

@@ -1,17 +1,16 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
-use palpo_data::room::DbEvent;
 
 use crate::core::Seqnum;
-use crate::core::events::{AnySyncStateEvent, AnyStrippedStateEvent};
 use crate::core::events::room::member::MembershipState;
+use crate::core::events::{AnyStrippedStateEvent, AnySyncStateEvent};
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::data::room::DbEventPushSummary;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, config, room};
+use crate::{AppResult, MatrixError};
 
 #[derive(Debug, Clone)]
 pub struct UserNotifySummary {

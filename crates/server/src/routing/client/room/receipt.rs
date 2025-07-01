@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use diesel::prelude::*;
 use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
@@ -11,9 +10,8 @@ use crate::core::events::receipt::{
     CreateReceiptReqBody, Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType, SendReceiptReqArgs,
 };
 use crate::core::presence::PresenceState;
-use crate::data::schema::*;
-use crate::room::{push_action, timeline};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, core, data, empty_ok, room};
+use crate::room::push_action;
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, data, empty_ok, room};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
@@ -27,7 +25,7 @@ pub(super) fn send_receipt(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let body = body.into_inner();
-    let mut thread_id = match &body.thread {
+    let thread_id = match &body.thread {
         ReceiptThread::Thread(id) => Some(&**id),
         _ => None,
     };

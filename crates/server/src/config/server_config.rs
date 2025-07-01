@@ -771,17 +771,16 @@ impl ServerConfig {
 
         if self.max_request_size < 10_000_000 {
             return Err(AppError::internal(
-                "Max request size is less than 10MB. Please increase it as this is too low for \
-                 operable federation.",
+                "max request size is less than 10MB. Please increase it as this is too low for operable federation",
             ));
         }
 
         // check if user specified valid IP CIDR ranges on startup
         for cidr in &self.ip_range_denylist {
             if let Err(e) = ipaddress::IPAddress::parse(cidr) {
-                return Err(AppError::internal(
-                    "Parsing specified IP CIDR range from string failed: {e}.",
-                ));
+                return Err(AppError::internal(format!(
+                    "parsing specified IP CIDR range from string failed: {e}"
+                )));
             }
         }
 

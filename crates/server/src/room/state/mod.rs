@@ -15,8 +15,7 @@ pub use frame::*;
 mod graph;
 pub use graph::*;
 
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::HistoryVisibility;
 use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomMembership};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};

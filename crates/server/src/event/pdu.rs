@@ -1,7 +1,8 @@
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
-use serde::{Deserialize, Serialize, de};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::client::filter::RoomEventFilter;
@@ -17,7 +18,6 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, UserId};
-use crate::event::pdu;
 use crate::room::state;
 use crate::{AppError, AppResult};
 
@@ -132,7 +132,7 @@ impl SnPduEvent {
     pub fn from_canonical_object(
         event_id: &EventId,
         event_sn: Seqnum,
-        mut json: CanonicalJsonObject,
+        json: CanonicalJsonObject,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(event_id, json)?;
         Ok(Self::new(pdu, event_sn))
