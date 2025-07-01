@@ -14,7 +14,6 @@
 {"Action":"fail","Test":"TestKnocking/A_user_can_knock_on_a_room_without_a_reason#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason#01"}
-{"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
@@ -327,6 +326,7 @@
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_locally"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_upload_without_a_file_name"}
+{"Action":"pass","Test":"TestMembershipOnEvents"}
 {"Action":"pass","Test":"TestMembersLocal"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel/Existing_members_see_new_members'_join_events"}

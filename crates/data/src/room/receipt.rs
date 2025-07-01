@@ -2,10 +2,9 @@ use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
 
-use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
+use crate::core::serde::{JsonValue, };
 use crate::core::{Seqnum, UnixMillis};
 use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
@@ -26,7 +25,7 @@ pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<
 
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
     for mut receipt in receipts {
-        if let Some(thread_id) = &receipt.thread_id {
+        if receipt.thread_id.is_some() {
             if unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone())) {
                 receipt.thread_id = None;
             }

@@ -891,6 +891,7 @@ pub fn get_pdus(
                         pdu.remove_transaction_id()?;
                     }
                     pdu.add_age()?;
+                    pdu.add_unsigned_membership(user_id)?;
                     list.push((event_sn, pdu));
                     if list.len() >= limit {
                         break;
