@@ -22,10 +22,8 @@ palpo-macros = { workspace = true }
 anyhow = { workspace = true }
 base64 = { workspace = true }
 byteorder = { workspace = true }
-cruet = { workspace = true }
 async-trait = { workspace = true }
 bcrypt = { workspace = true }
-bigdecimal = { workspace = true, features = ["serde"] }
 blurhash = { workspace = true }
 bytes = { workspace = true }
 chksum = { workspace = true }

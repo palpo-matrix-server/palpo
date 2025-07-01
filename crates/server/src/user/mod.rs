@@ -4,6 +4,10 @@ pub mod key;
 pub mod pusher;
 pub use key::*;
 pub mod presence;
+mod ldap;
+pub use ldap::*;
+pub mod session;
+
 use std::collections::BTreeMap;
 use std::mem;
 use std::sync::{Arc, LazyLock, Mutex};

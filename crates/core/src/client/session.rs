@@ -206,6 +206,9 @@ pub enum LoginInfo {
     /// Token-based login.
     Token(Token),
 
+    /// JSON Web Token
+    Jwt(Token),
+
     /// Application Service-specific login.
     Appservice(Appservice),
 
@@ -245,6 +248,7 @@ impl fmt::Debug for LoginInfo {
         match self {
             Self::Password(inner) => inner.fmt(f),
             Self::Token(inner) => inner.fmt(f),
+            Self::Jwt(inner) => inner.fmt(f),
             Self::Appservice(inner) => inner.fmt(f),
             Self::_Custom(inner) => inner.fmt(f),
         }
@@ -269,6 +273,7 @@ impl<'de> Deserialize<'de> for LoginInfo {
         match login_type {
             "m.login.password" => from_json_value(json).map(Self::Password),
             "m.login.token" => from_json_value(json).map(Self::Token),
+            "org.matrix.login.jwt" => from_json_value(json).map(Self::Jwt),
             "m.login.application_service" => from_json_value(json).map(Self::Appservice),
             _ => from_json_value(json).map(Self::_Custom),
         }
@@ -454,6 +459,9 @@ pub enum LoginType {
     /// Token-based login.
     Token(TokenLoginType),
 
+    /// JSON Web Token type.
+    Jwt(JwtLoginType),
+
     /// SSO-based login.
     Sso(SsoLoginType),
 
@@ -472,6 +480,9 @@ impl LoginType {
     pub fn appservice() -> Self {
         Self::Appservice(AppserviceLoginType::new())
     }
+    pub fn jwt() -> Self {
+        Self::Jwt(JwtLoginType::new())
+    }
     /// Creates a new `LoginType` with the given `login_type` string and data.
     ///
     /// Prefer to use the public variants of `LoginType` where possible; this
@@ -485,6 +496,7 @@ impl LoginType {
         Ok(match login_type {
             "m.login.password" => Self::Password(from_json_object(data)?),
             "m.login.token" => Self::Token(from_json_object(data)?),
+            "org.matrix.login.jwt" => Self::Jwt(from_json_object(data)?),
             "m.login.sso" => Self::Sso(from_json_object(data)?),
             "m.login.application_service" => Self::Appservice(from_json_object(data)?),
             _ => Self::_Custom(Box::new(CustomLoginType {
@@ -499,6 +511,7 @@ impl LoginType {
         match self {
             Self::Password(_) => "m.login.password",
             Self::Token(_) => "m.login.token",
+            Self::Jwt(_) => "org.matrix.login.jwt",
             Self::Sso(_) => "m.login.sso",
             Self::Appservice(_) => "m.login.application_service",
             Self::_Custom(c) => &c.type_,
@@ -520,6 +533,7 @@ impl LoginType {
         match self {
             Self::Password(d) => Cow::Owned(serialize(d)),
             Self::Token(d) => Cow::Owned(serialize(d)),
+            Self::Jwt(d) => Cow::Owned(serialize(d)),
             Self::Sso(d) => Cow::Owned(serialize(d)),
             Self::Appservice(d) => Cow::Owned(serialize(d)),
             Self::_Custom(c) => Cow::Borrowed(&c.data),
@@ -552,6 +566,18 @@ impl TokenLoginType {
     /// Creates a new `TokenLoginType`.
     pub fn new() -> Self {
         Self { get_login_token: false }
+    }
+}
+
+/// The payload for JWT-based login.
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(tag = "type", rename = "org.matrix.login.jwt")]
+pub struct JwtLoginType {}
+
+impl JwtLoginType {
+    /// Creates a new `JwtLoginType`.
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -732,6 +758,10 @@ impl TokenResBody {
         Duration::from_secs(2 * 60)
     }
 }
+
+
+
+
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;

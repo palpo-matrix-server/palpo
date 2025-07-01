@@ -89,9 +89,7 @@ as_variant = { workspace = true }
 async-trait = { workspace = true }
 base64.workspace = true
 bytes = { workspace = true }
-cruet = { workspace = true }
 bcrypt = { workspace = true }
-bigdecimal = { workspace = true, features = ["serde"] }
 chrono = { workspace = true, features = ["serde"] }
 config = { workspace = true }
 cookie = { workspace = true }
