@@ -86,7 +86,7 @@ where
             }
 
             let auth_chain = get_event_auth_chain(room_id, event_id)?;
-            cache_auth_chain(vec![event_sn], auth_chain.as_slice());
+            let _ = cache_auth_chain(vec![event_sn], auth_chain.as_slice());
             bucket_cache.extend(auth_chain);
             debug!(
                 ?event_id,

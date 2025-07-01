@@ -11,7 +11,6 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::room::NewDbReceipt;
 use crate::data::schema::*;
-use crate::room::timeline;
 use crate::{AppResult, sending};
 
 /// Replaces the previous read receipt.
