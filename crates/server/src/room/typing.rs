@@ -147,6 +147,7 @@ async fn federation_send(room_id: &RoomId, user_id: &UserId, typing: bool) -> Ap
 
     let content = TypingContent::new(room_id.to_owned(), user_id.to_owned(), typing);
     let edu = Edu::Typing(content);
+    println!("======federation_send");
     sending::send_edu_room(room_id, &edu)?;
 
     Ok(())

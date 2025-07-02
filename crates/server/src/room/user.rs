@@ -129,24 +129,6 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     Ok(shared_rooms)
 }
 
-pub fn keys_changed_users(room_id: &RoomId, from_sn: i64, to_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
-    if let Some(to_sn) = to_sn {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
-            .filter(e2e_key_changes::occur_sn.le(to_sn))
-            .select(e2e_key_changes::user_id)
-            .load::<OwnedUserId>(&mut connect()?)
-            .map_err(Into::into)
-    } else {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id.as_str()))
-            .filter(e2e_key_changes::occur_sn.ge(from_sn))
-            .select(e2e_key_changes::user_id)
-            .load::<OwnedUserId>(&mut connect()?)
-            .map_err(Into::into)
-    }
-}
 
 pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
     room_users::table

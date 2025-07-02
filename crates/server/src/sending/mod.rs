@@ -169,6 +169,7 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id:
 
 #[tracing::instrument(skip(room_id, edu), level = "debug")]
 pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
+    println!("==========send_edu_room");
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.ne(config::server_name()))
@@ -179,6 +180,7 @@ pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
 
 #[tracing::instrument(skip(servers, edu), level = "debug")]
 pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, edu: &Edu) -> AppResult<()> {
+   println!("==========send_edu_servers  {edu:#?}");
     let mut serialized = EduBuf::new();
     serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
 
@@ -202,6 +204,7 @@ pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, edu: &E
 }
 #[tracing::instrument(skip(server, edu), level = "debug")]
 pub fn send_edu_server(server: &ServerName, edu: &Edu) -> AppResult<()> {
+    println!("==========send_edu_server  {server} {edu:#?}");
     let mut serialized = EduBuf::new();
     serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
 

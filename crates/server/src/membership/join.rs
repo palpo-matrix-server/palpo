@@ -417,6 +417,7 @@ pub async fn join_room(
             data::next_sn()? as u64,
         );
         let edu = Edu::DeviceListUpdate(content);
+        println!("cccccccccccccccall send_edu_server");
         send_edu_server(room_server_id, &edu)?;
     }
     Ok(JoinRoomResBody::new(room_id.to_owned()))

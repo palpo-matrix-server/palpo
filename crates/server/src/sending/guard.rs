@@ -17,7 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::presence::{PresenceContent, PresenceUpdate};
 use crate::core::{Seqnum, device_id};
 use crate::room::state;
-use crate::{AppResult, data, exts::*};
+use crate::{AppResult, room,  data, exts::*};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -178,11 +178,11 @@ fn select_edus_device_changes(
 
     let mut device_list_changes = HashSet::<OwnedUserId>::new();
     for room_id in server_rooms {
-        let keys_changed = data::user::room_keys_changed(&room_id, since_sn, None)?
+        let keys_changed = room::keys_changed_users(&room_id, since_sn, None)?
             .into_iter()
-            .filter(|(user_id, _)| user_id.is_local());
+            .filter(|user_id| user_id.is_local());
 
-        for (user_id, event_sn) in keys_changed {
+        for user_id in keys_changed {
             // max_edu_sn.fetch_max(event_sn, Ordering::Relaxed);
             if !device_list_changes.insert(user_id.clone()) {
                 continue;
@@ -203,6 +203,7 @@ fn select_edus_device_changes(
             let mut buf = EduBuf::new();
             serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
 
+        println!("ccc=== select_edus_device_changes");
             events.push(buf);
             if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
                 return Ok(events);

@@ -312,6 +312,7 @@ pub fn claim_one_time_key(
 }
 
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
+    println!("=====add_device_keys  {user_id} {device_id}=====");
     data::user::add_device_keys(user_id, device_id, device_keys)?;
     mark_device_key_update(user_id, device_id)?;
     Ok(())
@@ -418,6 +419,10 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
     let changed_at = UnixMillis::now();
 
     let joined_rooms = data::user::joined_rooms(user_id)?;
+    println!(
+        "Mmmmmmmmmmmmmarking signing key update for user: {}, rooms: {:?}",
+        user_id, joined_rooms
+    );
     for room_id in &joined_rooms {
         // // Don't send key updates to unencrypted rooms
         // if state::get_state(&room_id, &StateEventType::RoomEncryption, "")?.is_none() {
@@ -479,6 +484,11 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
     let changed_at = UnixMillis::now();
 
     let joined_rooms = data::user::joined_rooms(user_id)?;
+    println!(
+        "Mmmmmmmmmmmmmarking device key update for user: {}, rooms: {:?}   {}",
+        user_id, joined_rooms, crate::data::curr_sn()?
+    );
+    let occur_sn = data::next_sn()?;
     for room_id in &joined_rooms {
         // comment for testing
         // // Don't send key updates to unencrypted rooms
@@ -490,7 +500,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
             user_id: user_id.to_owned(),
             room_id: Some(room_id.to_owned()),
             changed_at,
-            occur_sn: data::next_sn()?,
+            occur_sn,
         };
 
         diesel::delete(
@@ -508,7 +518,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         user_id: user_id.to_owned(),
         room_id: None,
         changed_at,
-        occur_sn: data::next_sn()?,
+        occur_sn,
     };
 
     diesel::delete(
@@ -521,11 +531,13 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         .values(&change)
         .execute(&mut connect()?)?;
 
+    println!("cccccccall mark_device_list_update_with_joined_rooms  0");
     mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
 }
 
 pub fn mark_device_list_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let joined_rooms = data::user::joined_rooms(user_id)?;
+    println!("cccccccall mark_device_list_update_with_joined_rooms  1");
     mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
 }
 
@@ -546,5 +558,6 @@ fn mark_device_list_update_with_joined_rooms(
     let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
     let edu = Edu::DeviceListUpdate(content);
 
+    println!(" mark_device_list_update_with_joined_rooms  {edu:#?}");
     sending::send_edu_servers(remote_servers.into_iter(), &edu)
 }
