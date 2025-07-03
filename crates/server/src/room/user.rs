@@ -129,7 +129,6 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     Ok(shared_rooms)
 }
 
-
 pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))

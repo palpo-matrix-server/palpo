@@ -12,7 +12,7 @@ use crate::core::client::key::{
     UploadKeysResBody,
 };
 use crate::user::key;
-use crate::{AuthArgs, CjsonResult, DepotExt, JsonResult, cjson_ok, data, room, json_ok};
+use crate::{AuthArgs, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok, room};
 
 pub fn authed_router() -> Router {
     Router::with_path("keys")

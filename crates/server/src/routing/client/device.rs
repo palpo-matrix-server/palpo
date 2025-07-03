@@ -90,7 +90,7 @@ fn update_device(
                 user_devices::last_seen_at.eq(UnixMillis::now()),
             ))
             .execute(&mut connect()?)?;
-        crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+        crate::user::key::send_device_key_update(&device.user_id, &device_id)?;
     } else {
         let Some(appservice) = authed.appservice() else {
             return Err(MatrixError::not_found("Device is not found.").into());
@@ -113,7 +113,7 @@ fn update_device(
             None,
             Some(req.remote_addr().to_string()),
         )?;
-        crate::user::key::mark_device_list_update(&device.user_id, &device_id)?;
+        crate::user::key::send_device_key_update(&device.user_id, &device_id)?;
     }
 
     empty_ok()

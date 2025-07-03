@@ -17,7 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::presence::{PresenceContent, PresenceUpdate};
 use crate::core::{Seqnum, device_id};
 use crate::room::state;
-use crate::{AppResult, room,  data, exts::*};
+use crate::{AppResult, data, exts::*, room};
 
 pub fn start() {
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -203,7 +203,7 @@ fn select_edus_device_changes(
             let mut buf = EduBuf::new();
             serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
 
-        println!("ccc=== select_edus_device_changes");
+            println!("ccc=== select_edus_device_changes");
             events.push(buf);
             if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
                 return Ok(events);

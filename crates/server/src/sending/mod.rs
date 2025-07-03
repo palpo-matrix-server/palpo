@@ -180,7 +180,7 @@ pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
 
 #[tracing::instrument(skip(servers, edu), level = "debug")]
 pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, edu: &Edu) -> AppResult<()> {
-   println!("==========send_edu_servers  {edu:#?}");
+    println!("==========send_edu_servers  {edu:#?}");
     let mut serialized = EduBuf::new();
     serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
 

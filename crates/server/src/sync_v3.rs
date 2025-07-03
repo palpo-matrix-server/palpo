@@ -568,8 +568,8 @@ async fn load_joined_room(
                             {
                                 println!("iiiiiiiiiiinerst {user_id}  state_event： {state_event:#?}");
                                 // if user_id.is_local() {
-                                    // check for test TestDeviceListsUpdateOverFederation
-                                    device_list_updates.insert(user_id.clone());
+                                // check for test TestDeviceListsUpdateOverFederation
+                                // device_list_updates.insert(user_id.clone());
                                 // }
                                 joined_users.insert(user_id);
                             }

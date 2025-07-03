@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
+use palpo_core::client::device;
 use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
@@ -44,10 +45,11 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
+    let sender_id = authed.user_id();
+    let device_id = authed.device_id();
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
-    let sender_id = authed.user_id();
     if room::user::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
@@ -96,6 +98,8 @@ pub async fn join_room(
             &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
+                println!("XXXXXXXXX  1");
+                crate::user::mark_device_key_update_with_joined_rooms(&sender_id, &device_id, &[room_id.to_owned()])?;
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
@@ -417,7 +421,6 @@ pub async fn join_room(
             data::next_sn()? as u64,
         );
         let edu = Edu::DeviceListUpdate(content);
-        println!("cccccccccccccccall send_edu_server");
         send_edu_server(room_server_id, &edu)?;
     }
     Ok(JoinRoomResBody::new(room_id.to_owned()))
