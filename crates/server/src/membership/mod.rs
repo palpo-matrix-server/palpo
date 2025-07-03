@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use diesel::prelude::*;
+use palpo_data::user;
 use tokio::sync::RwLock;
 
 use crate::core::events::GlobalAccountDataEventType;

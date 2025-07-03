@@ -4,7 +4,7 @@ use diesel::prelude::*;
 
 use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, };
+use crate::core::serde::JsonValue;
 use crate::core::{Seqnum, UnixMillis};
 use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;

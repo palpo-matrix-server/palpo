@@ -6,7 +6,6 @@ use std::sync::{LazyLock, Mutex};
 use diesel::prelude::*;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use tracing::{error, info, warn};
 use ulid::Ulid;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
