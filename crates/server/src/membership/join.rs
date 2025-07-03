@@ -98,7 +98,6 @@ pub async fn join_room(
             &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
-                println!("XXXXXXXXX  1");
                 crate::user::mark_device_key_update_with_joined_rooms(&sender_id, &device_id, &[room_id.to_owned()])?;
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }

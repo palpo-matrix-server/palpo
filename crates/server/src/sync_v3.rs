@@ -72,14 +72,12 @@ pub async fn sync_events(
     let mut device_list_updates = HashSet::new();
     let mut device_list_left = HashSet::new();
 
-    println!("\n\n\n\nssssssssss==============device_list_updates {device_list_updates:?}");
     // Look for device list updates of this account
     device_list_updates.extend(data::user::keys_changed_users(
         sender_id,
         since_sn.unwrap_or_default(),
         None,
     )?);
-    println!("\n\n\n\n==============device_list_updates0 {device_list_updates:?}");
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
@@ -270,7 +268,6 @@ pub async fn sync_events(
         events: data::user::device::get_to_device_events(sender_id, device_id, since_sn, Some(next_batch))?,
     };
 
-    println!("====================curr_sn: {curr_sn} next_batch: {next_batch} since_sn: {since_sn:?}\n\n\n");
     let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
@@ -299,7 +296,6 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<JoinedRoom> {
-    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>load_joined_room device_list_updates:{device_list_updates:?}");
     if since_sn > Some(data::curr_sn()?) {
         return Ok(JoinedRoom::default());
     }
@@ -398,7 +394,6 @@ async fn load_joined_room(
 
         let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
         if since_sn == 0 || joined_since_last_sync {
-            println!("MMMMMMMMMMMMMM  0");
             // Probably since = 0, we will do an initial sync
             let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
             let current_state_ids = state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
@@ -469,7 +464,6 @@ async fn load_joined_room(
             );
             (heroes, joined_member_count, invited_member_count, true, state_events)
         } else if let Some(since_frame_id) = since_frame_id {
-            println!("MMMMMMMMMMMMMM  1");
             // Incremental /sync
             let mut state_events = Vec::new();
             let mut lazy_loaded = HashSet::new();
@@ -562,11 +556,9 @@ async fn load_joined_room(
                         MembershipState::Join => {
                             // A new user joined an encrypted room
                             // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                            println!("iiiiiiiisince_sn : {since_sn}");
                             if since_sn <= state_event.event_sn
                                 && !room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty()
                             {
-                                println!("iiiiiiiiiiinerst {user_id}  state_event： {state_event:#?}");
                                 // if user_id.is_local() {
                                 // check for test TestDeviceListsUpdateOverFederation
                                 // device_list_updates.insert(user_id.clone());
@@ -584,9 +576,6 @@ async fn load_joined_room(
             }
             // }
 
-            println!(
-                "=========x  {sender_id} joined_since_last_sync: {joined_since_last_sync}  device_list_updates：{device_list_updates:?}"
-            );
             if joined_since_last_sync {
                 // && encrypted_room || new_encrypted_room {
                 // If the user is in a new encrypted room, give them all joined users
@@ -621,18 +610,6 @@ async fn load_joined_room(
 
     // Look for device list updates in this room
     device_list_updates.extend(room::keys_changed_users(room_id, since_sn, None)?);
-
-    println!(
-        "keys_changed_users: user_id: {sender_id}, since_sn: {since_sn}, until_sn: {until_sn:?},  all changes:{:#?}",
-        e2e_key_changes::table
-            .select((
-                e2e_key_changes::user_id,
-                e2e_key_changes::room_id,
-                e2e_key_changes::occur_sn
-            ))
-            .load::<(OwnedUserId, Option<String>, i64)>(&mut connect()?)
-    );
-    println!("=========XXXXXXXXXX final {sender_id} device_list_updates：{device_list_updates:?}");
 
     let mut limited = limited || joined_since_last_sync;
     if let Some((_, first_event)) = timeline_pdus.first() {

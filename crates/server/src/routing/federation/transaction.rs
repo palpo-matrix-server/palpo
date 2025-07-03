@@ -58,20 +58,7 @@ async fn send_message(
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
 
-    println!("======process_edus {} {body:#?}=====", crate::data::curr_sn()?);
-    println!(
-        "cccccccc  keys_changed_users: curr_sn: {},  all changes:{:#?}",
-        crate::data::curr_sn()?,
-        e2e_key_changes::table
-            .select((
-                e2e_key_changes::user_id,
-                e2e_key_changes::room_id,
-                e2e_key_changes::occur_sn
-            ))
-            .load::<(OwnedUserId, Option<String>, i64)>(&mut connect()?)
-    );
     process_edus(body.edus, &body.origin).await;
-    println!("======curr_sn {} =====", crate::data::curr_sn()?);
 
     json_ok(SendMessageResBody {
         pdus: resolved_map

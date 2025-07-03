@@ -203,7 +203,6 @@ fn select_edus_device_changes(
             let mut buf = EduBuf::new();
             serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
 
-            println!("ccc=== select_edus_device_changes");
             events.push(buf);
             if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
                 return Ok(events);
