@@ -233,8 +233,8 @@ pub fn delete_refresh_tokens(user_id: &UserId, device_id: &DeviceId) -> DataResu
 pub fn get_to_device_events(
     user_id: &UserId,
     device_id: &DeviceId,
-    since_sn: Option<Seqnum>,
-    until_sn: Option<Seqnum>,
+    _since_sn: Option<Seqnum>,
+    _until_sn: Option<Seqnum>,
 ) -> DataResult<Vec<RawJson<AnyToDeviceEvent>>> {
     device_inboxes::table
         .filter(device_inboxes::user_id.eq(user_id))

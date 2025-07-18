@@ -1,4 +1,3 @@
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -15,8 +14,6 @@ use crate::core::federation::knock::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::JsonObject;
-use crate::data::connect;
-use crate::data::schema::*;
 use crate::event::gen_event_id_canonical_json;
 use crate::event::handler;
 use crate::room::{state, timeline};
@@ -108,7 +105,7 @@ async fn get_filtered_public_rooms(
 async fn send_knock(
     _aa: AuthArgs,
     args: SendKnockReqArgs,
-    req: &mut Request,
+    _req: &mut Request,
     body: JsonBody<SendKnockReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendKnockResBody> {
@@ -269,7 +266,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         }
     }
 
-    let (_pdu, mut pdu_json, event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),

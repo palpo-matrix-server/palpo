@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use diesel::prelude::*;
+use palpo_core::MatrixError;
 use tokio::sync::RwLock;
 
 use crate::core::events::GlobalAccountDataEventType;
@@ -15,9 +16,9 @@ use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, Raw
 use crate::core::{UnixMillis, federation};
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::room::state;
-use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
+use crate::data::connect;
+use crate::room;
+use crate::{AppError, AppResult, SigningKeys};
 
 mod banned;
 mod forget;
@@ -86,7 +87,7 @@ async fn validate_and_add_event_id(
 
     let unfiltered_keys = (*pub_key_map.read().await).clone();
 
-    let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
+    let _keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
     // TODO
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {
@@ -116,7 +117,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !data::user::user_exists(user_id)? {
+    if user_id.server_name() != &conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }

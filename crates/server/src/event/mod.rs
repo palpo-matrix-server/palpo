@@ -4,16 +4,15 @@ pub use pdu::*;
 pub mod search;
 
 use diesel::prelude::*;
-use serde_json::json;
 
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{Direction, Seqnum, UnixMillis, signatures};
 use crate::data::connect;
-use crate::data::room::{DbEvent, NewDbEventPushAction};
+use crate::data::room::DbEvent;
 use crate::data::schema::*;
 use crate::utils::SeqnumQueueGuard;
-use crate::{AppError, AppResult, MatrixError, data};
+use crate::{AppError, AppResult, MatrixError};
 
 /// Generates a correct eventId for the incoming pdu.
 ///
@@ -186,7 +185,7 @@ pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterIt
 }
 
 #[inline]
-pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
+pub fn is_ignored_pdu(pdu: &SnPduEvent, _user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
     if pdu.event_ty.to_string() == "org.matrix.dummy_event" {

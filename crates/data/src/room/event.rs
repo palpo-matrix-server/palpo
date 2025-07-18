@@ -1,15 +1,9 @@
-use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::events::AnySyncEphemeralRoomEvent;
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
-use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
-use crate::core::{Seqnum, UnixMillis};
-use crate::room::{DbReceipt, NewDbEventPushAction, NewDbReceipt};
+use crate::room::NewDbEventPushAction;
 use crate::schema::*;
-use crate::{DataResult, connect, next_sn};
+use crate::{DataResult, connect};
 
 #[tracing::instrument]
 pub fn upsert_push_action(action: &NewDbEventPushAction) -> DataResult<()> {

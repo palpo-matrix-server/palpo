@@ -1,14 +1,12 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::{
     fmt::Debug,
-    hash::Hash,
-    sync::{Arc, TryLockError::WouldBlock},
+    sync::Arc,
 };
 
-use crate::core::{Seqnum, UnixMillis};
-use crate::{AppError, AppResult};
+use crate::core::Seqnum;
 
 #[derive(Debug, Default)]
 pub struct SeqnumQueue {

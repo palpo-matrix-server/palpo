@@ -31,7 +31,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
         return Ok(());
     }
 
-    let status_msg = match last_presence {
+    let _status_msg = match last_presence {
         Ok(presence) => presence.content.status_msg.clone(),
         Err(_) => Some(String::new()),
     };

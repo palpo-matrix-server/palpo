@@ -1,4 +1,3 @@
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
@@ -9,12 +8,9 @@ use crate::core::federation::event::{
     MissingEventsResBody,
 };
 use crate::core::identifiers::*;
-use crate::core::room::RoomEventReqArgs;
-use crate::data::connect;
 use crate::data::room::DbEvent;
-use crate::data::schema::*;
 use crate::room::{state, timeline};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, event, json_ok};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
 
 pub fn router() -> Router {
     Router::new()

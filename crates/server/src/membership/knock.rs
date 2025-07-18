@@ -20,8 +20,8 @@ use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler}
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, SnPduEvent,
-    config, data,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
+    config,
 };
 
 pub async fn knock_room(
@@ -71,9 +71,9 @@ pub async fn knock_room(
         }
 
         let content = RoomMemberEventContent {
-            display_name: data::user::display_name(sender_id).ok().flatten(),
-            avatar_url: data::user::avatar_url(sender_id).ok().flatten(),
-            blurhash: data::user::blurhash(sender_id).ok().flatten(),
+            display_name: crate::data::user::display_name(sender_id).ok().flatten(),
+            avatar_url: crate::data::user::avatar_url(sender_id).ok().flatten(),
+            blurhash: crate::data::user::blurhash(sender_id).ok().flatten(),
             reason: reason.clone(),
             ..RoomMemberEventContent::new(MembershipState::Knock)
         };
@@ -128,9 +128,9 @@ pub async fn knock_room(
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
-            display_name: data::user::display_name(sender_id).ok().flatten(),
-            avatar_url: data::user::avatar_url(sender_id).ok().flatten(),
-            blurhash: data::user::blurhash(sender_id).ok().flatten(),
+            display_name: crate::data::user::display_name(sender_id).ok().flatten(),
+            avatar_url: crate::data::user::avatar_url(sender_id).ok().flatten(),
+            blurhash: crate::data::user::blurhash(sender_id).ok().flatten(),
             reason,
             ..RoomMemberEventContent::new(MembershipState::Knock)
         })
@@ -198,11 +198,11 @@ pub async fn knock_room(
             continue;
         };
 
-        let Ok(state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
+        let Ok(_state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
             warn!("send_knock stripped state event has invalid state_key: {value:?}");
             continue;
         };
-        let Ok(event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into()) else {
+        let Ok(_event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into()) else {
             warn!("send_knock stripped state event has invalid event type: {value:?}");
             continue;
         };
@@ -215,7 +215,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            handler::process_incoming_pdu(
+            let _ = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
@@ -268,7 +268,7 @@ pub async fn knock_room(
     info!("Compressing state from send_knock");
     let compressed = state_map
         .into_iter()
-        .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
+        .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
         .collect::<AppResult<_>>()?;
 
     debug!("Saving compressed state");
@@ -297,7 +297,7 @@ pub async fn knock_room(
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
-    state::set_room_state(room_id, frame_id);
+    let _ = state::set_room_state(room_id, frame_id);
 
     drop(event_guard);
     Ok(())

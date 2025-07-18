@@ -6,7 +6,6 @@ pub use key::*;
 pub mod presence;
 use std::collections::BTreeMap;
 use std::mem;
-use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
 pub use presence::*;
@@ -150,7 +149,7 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
         }
     }
 
-    crate::membership::leave_all_rooms(user_id).await;
+    let _ = crate::membership::leave_all_rooms(user_id).await;
 
     Ok(())
 }

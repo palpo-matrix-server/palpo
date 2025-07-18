@@ -1,12 +1,9 @@
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::iter::once;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
-use palpo_data::room::DbEvent;
-use palpo_data::schema::events::rejection_reason;
-use salvo::server;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tracing::{error, info, warn};
@@ -31,12 +28,11 @@ use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, ensure_event_sn, handler};
-use crate::room::state::CompressedState;
+use crate::event::{EventHash, PduBuilder, PduEvent, handler};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
+    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default);
@@ -239,7 +235,7 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
-    let mut thread_id = None;
+    // let thread_id;
     if let Ok(content) = pdu.get_content::<ExtractRelatesTo>() {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
@@ -252,7 +248,7 @@ where
                 super::pdu_metadata::add_relation(&pdu.room_id, &thread.event_id, &pdu.event_id, rel_type)?;
                 relates_added = true;
                 println!("Adding to thread: {:?}", thread.event_id);
-                thread_id = Some(thread.event_id.clone());
+                // thread_id = Some(thread.event_id.clone());
                 super::thread::add_to_thread(&thread.event_id, &pdu)?;
             }
             _ => {} // TODO: Aggregate other types
@@ -391,7 +387,7 @@ where
                     let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
                     if to_palpo && !from_palpo && admin_room == pdu.room_id {
-                        crate::admin::process_message(body);
+                        let _ = crate::admin::process_message(body);
                     }
                 }
             }
@@ -409,7 +405,7 @@ where
     }
     .save()?;
     diesel::update(events::table.find(&*pdu.event_id))
-        .set((events::is_outlier.eq(false)))
+        .set(events::is_outlier.eq(false))
         .execute(&mut connect()?)?;
 
     // Update Relationships
@@ -490,7 +486,7 @@ pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
-    state_lock: &RoomMutexGuard,
+    _state_lock: &RoomMutexGuard,
 ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
     let PduBuilder {
         event_type,
@@ -718,7 +714,7 @@ pub fn build_and_append_pdu(
         }
     }
 
-    let (pdu, pdu_json, event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
+    let (pdu, pdu_json, _event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
 
     let conf = crate::config();
     // let admin_room = super::resolve_local_alias(
@@ -989,14 +985,14 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(pdu) = timeline::get_pdu(&event_id) {
+    if let Ok(_pdu) = timeline::get_pdu(&event_id) {
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
 
     handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
-    let value = get_pdu_json(&event_id)?.expect("we just created it");
+    let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;
 
     if pdu.event_ty == TimelineEventType::RoomMessage {
@@ -1005,7 +1001,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
             body: Option<String>,
         }
 
-        let content = pdu
+        let _content = pdu
             .get_content::<ExtractBody>()
             .map_err(|_| AppError::internal("Invalid content in pdu."))?;
     }

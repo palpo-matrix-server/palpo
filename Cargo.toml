@@ -45,6 +45,7 @@ cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 date_header = "1.0.5"
 diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
+diesel-async ={ version = "0.5.2"}
 # diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2"
 dotenvy = "0.15.0"

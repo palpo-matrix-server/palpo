@@ -1,12 +1,10 @@
-use hickory_resolver::proto::rr::rdata::A;
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
 use crate::core::authorization::XMatrix;
 use crate::core::error::AuthenticateError;
 use crate::core::error::ErrorKind;
-use crate::core::events::StateEventType;
-use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::{AllowRule, JoinRule};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::JsonValue;

@@ -14,7 +14,7 @@ use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, SnPduEvent, config,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent, config,
     empty_ok, json_ok, membership, room, utils,
 };
 
@@ -236,7 +236,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
-    let (_pdu, mut pdu_json, event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Leave),

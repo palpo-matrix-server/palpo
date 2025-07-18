@@ -305,7 +305,7 @@ pub async fn preview_url(
     args: MediaPreviewReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<MediaPreviewResBody> {
-    let sender_id = depot.authed_info()?.user_id();
+    let _sender_id = depot.authed_info()?.user_id();
 
     let url =
         Url::parse(&args.url).map_err(|e| MatrixError::invalid_param(format!("Requested URL is not valid: {e}")))?;
@@ -386,7 +386,7 @@ pub async fn get_thumbnail(
             );
 
             res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-            let file = NamedFile::builder(&thumb_path)
+            let _file = NamedFile::builder(&thumb_path)
                 .content_type(
                     Mime::from_str(&content_type)
                         .ok()
@@ -429,7 +429,7 @@ pub async fn get_thumbnail(
 
         Ok(())
     } else if let Ok(Some(DbMetadata {
-        disposition_type,
+        disposition_type: _,
         content_type,
         ..
     })) = crate::data::media::get_metadata(&args.server_name, &args.media_id)

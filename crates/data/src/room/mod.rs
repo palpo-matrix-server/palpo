@@ -322,7 +322,7 @@ pub struct NewDbEventPushAction{
     pub thread_id: Option<OwnedEventId>,
 }
 
-pub fn is_disabled(room_id: &RoomId) -> DataResult<bool> {
+pub fn is_disabled(_room_id: &RoomId) -> DataResult<bool> {
     let query = rooms::table.filter(rooms::disabled.eq(true));
     Ok(diesel_exists!(query, &mut connect()?)?)
 }

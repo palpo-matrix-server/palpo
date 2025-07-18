@@ -11,7 +11,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::room::timeline;
-use crate::{AppResult, MatrixError, room};
+use crate::{AppResult, MatrixError};
 
 // #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
 // #[diesel(table_name = event_auth_chains, primary_key(event_id))]
@@ -86,7 +86,7 @@ where
             }
 
             let auth_chain = get_event_auth_chain(room_id, event_id)?;
-            cache_auth_chain(vec![event_sn], auth_chain.as_slice());
+            let _ = cache_auth_chain(vec![event_sn], auth_chain.as_slice());
             bucket_cache.extend(auth_chain);
             debug!(
                 ?event_id,
@@ -95,7 +95,7 @@ where
             );
         }
 
-        cache_auth_chain(bucket_key, bucket_cache.as_slice());
+        let _ = cache_auth_chain(bucket_key, bucket_cache.as_slice());
         debug!(
             bucket_cache_length = ?bucket_cache.len(),
             elapsed = ?started.elapsed(),

@@ -45,9 +45,10 @@ use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, config, data, empty_ok,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok,
     hoops, json_ok, room,
 };
+use crate::data;
 
 const LIMIT_MAX: usize = 100;
 
@@ -206,7 +207,7 @@ fn set_read_markers(
     }
 
     if let Some(event_id) = &body.private_read_receipt {
-        let (event_sn, event_guard) = crate::event::ensure_event_sn(&room_id, &event_id)?;
+        let (event_sn, _event_guard) = crate::event::ensure_event_sn(&room_id, &event_id)?;
         data::room::receipt::set_private_read(&room_id, sender_id, event_id, event_sn)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
         push_action::refresh_notify_summary(sender_id, &room_id)?;
@@ -367,11 +368,11 @@ async fn upgrade(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: data::user::display_name(authed.user_id()).ok().flatten(),
-                avatar_url: data::user::avatar_url(authed.user_id()).ok().flatten(),
+                display_name: crate::data::user::display_name(authed.user_id()).ok().flatten(),
+                avatar_url: crate::data::user::avatar_url(authed.user_id()).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: data::user::blurhash(authed.user_id()).ok().flatten(),
+                blurhash: crate::data::user::blurhash(authed.user_id()).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
                 extra_data: Default::default(),
@@ -608,11 +609,11 @@ pub(super) async fn create_room(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: data::user::display_name(sender_id).ok().flatten(),
-                avatar_url: data::user::avatar_url(sender_id).ok().flatten(),
+                display_name: crate::data::user::display_name(sender_id).ok().flatten(),
+                avatar_url: crate::data::user::avatar_url(sender_id).ok().flatten(),
                 is_direct: Some(body.is_direct),
                 third_party_invite: None,
-                blurhash: data::user::blurhash(sender_id).ok().flatten(),
+                blurhash: crate::data::user::blurhash(sender_id).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
                 extra_data: Default::default(),

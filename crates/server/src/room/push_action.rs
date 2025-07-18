@@ -1,40 +1,12 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::iter::once;
-use std::sync::{Arc, LazyLock, Mutex};
-
 use diesel::prelude::*;
-use palpo_data::schema::events::rejection_reason;
-use salvo::server;
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
+use palpo_data::room::NewDbEventPushAction;
 
-use crate::core::client::filter::{RoomEventFilter, UrlFilter};
-use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::encrypted::Relation;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
-use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::BackfillReqArgs;
-use crate::core::federation::backfill::{BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
-use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value};
-use crate::core::state::Event;
-use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis};
-use crate::data::room::{DbEventData, NewDbEvent, NewDbEventPushAction};
+use crate::core::Seqnum;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, ensure_event_sn, handler};
-use crate::room::state::CompressedState;
-use crate::room::{state, timeline};
-use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, room, utils,
-};
+use crate::{data::connect}
+;
+use crate::AppResult;
 
 pub fn increment_notification_counts(
     event_id: &EventId,
@@ -134,7 +106,7 @@ pub fn upsert_push_action(
         .select((events::topological_ordering, events::stream_ordering))
         .first::<(i64, i64)>(&mut connect()?)?;
 
-    data::room::event::upsert_push_action(&NewDbEventPushAction {
+    crate::data::room::event::upsert_push_action(&NewDbEventPushAction {
         room_id: room_id.to_owned(),
         event_id: event_id.to_owned(),
         event_sn,

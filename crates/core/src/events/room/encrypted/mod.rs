@@ -266,8 +266,8 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
     fn from(init: MegolmV1AesSha2ContentInit) -> Self {
         let MegolmV1AesSha2ContentInit {
             ciphertext,
-            sender_key,
-            device_id,
+            sender_key: _,
+            device_id: _,
             session_id,
         } = init;
         Self { ciphertext, session_id }
@@ -290,8 +290,8 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
 //             scheme: EncryptedEventScheme::MegolmV1AesSha2(
 //                 MegolmV1AesSha2ContentInit {
 //                     ciphertext: "ciphertext".into(),
-//                     sender_key: "sender_key".into(),
-//                     device_id: "device_id".into(),
+//          _           sender_key: "sender_key".into(),
+//          _           device_id: "device_id".into(),
 //                     session_id: "session_id".into(),
 //                 }
 //                 .into(),

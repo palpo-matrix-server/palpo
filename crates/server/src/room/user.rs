@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
-use palpo_data::room::DbEvent;
 
 use crate::core::Seqnum;
 use crate::core::events::{AnySyncStateEvent, AnyStrippedStateEvent};
@@ -11,7 +10,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::data::room::DbEventPushSummary;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, config, room};
+use crate::{AppResult, MatrixError};
 
 #[derive(Debug, Clone)]
 pub struct UserNotifySummary {
@@ -119,7 +118,7 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     if shared_rooms.is_empty() {
         return Ok(shared_rooms);
     }
-    while let Some((user_id, room_ids)) = user_rooms.pop() {
+    while let Some((_user_id, room_ids)) = user_rooms.pop() {
         let set1: HashSet<_> = shared_rooms.into_iter().collect();
         let set2: HashSet<_> = room_ids.into_iter().collect();
         shared_rooms = set1.intersection(&set2).cloned().collect();

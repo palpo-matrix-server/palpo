@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};

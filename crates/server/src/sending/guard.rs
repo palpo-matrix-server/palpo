@@ -156,7 +156,7 @@ fn select_events(
         }
 
         if let OutgoingKind::Normal(server_name) = outgoing_kind {
-            if let Ok((select_edus, last_count)) = select_edus(server_name) {
+            if let Ok((select_edus, _last_count)) = select_edus(server_name) {
                 events.extend(select_edus.into_iter().map(SendingEventType::Edu));
             }
         }
@@ -166,11 +166,11 @@ fn select_events(
 }
 
 /// Look for device changes
-#[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
+#[tracing::instrument(level = "trace", skip(server_name))]
 fn select_edus_device_changes(
     server_name: &ServerName,
     since_sn: Seqnum,
-    max_edu_sn: &Seqnum,
+    _max_edu_sn: &Seqnum,
     events_len: &AtomicUsize,
 ) -> AppResult<EduVec> {
     let mut events = EduVec::new();
@@ -182,7 +182,7 @@ fn select_edus_device_changes(
             .into_iter()
             .filter(|(user_id, _)| user_id.is_local());
 
-        for (user_id, event_sn) in keys_changed {
+        for (user_id, _event_sn) in keys_changed {
             // max_edu_sn.fetch_max(event_sn, Ordering::Relaxed);
             if !device_list_changes.insert(user_id.clone()) {
                 continue;
@@ -238,11 +238,11 @@ fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
     Ok(Some(buf))
 }
 /// Look for read receipts in this room
-#[tracing::instrument(level = "trace", skip(since_sn, max_edu_sn))]
+#[tracing::instrument(level = "trace", skip(since_sn))]
 fn select_edus_receipts_room(
     room_id: &RoomId,
     since_sn: Seqnum,
-    max_edu_sn: &Seqnum,
+    _max_edu_sn: &Seqnum,
     num: &mut usize,
 ) -> AppResult<ReceiptMap> {
     let receipts = data::room::receipt::read_receipts(room_id, since_sn)?;
@@ -301,8 +301,8 @@ fn select_edus_receipts_room(
 }
 
 /// Look for presence
-#[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
-fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
+#[tracing::instrument(level = "trace", skip(server_name))]
+fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, _max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
     let presences_since = crate::data::user::presences_since(since_sn)?;
 
     let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();

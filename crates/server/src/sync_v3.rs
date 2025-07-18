@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 use std::i64;
-use std::sync::Arc;
 
-use diesel::prelude::*;
 use palpo_core::Seqnum;
 use palpo_core::events::receipt::ReceiptEvent;
 use state::DbRoomStateField;
@@ -13,14 +11,12 @@ use crate::core::client::sync_events::v3::{
     Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState, KnockedRoom, LeftRoom,
     Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs, SyncEventsResBody, Timeline, ToDevice,
 };
-use crate::core::client::sync_events::{self, UnreadNotificationsCount};
+use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::device::DeviceLists;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
-use crate::data::connect;
-use crate::data::schema::*;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
@@ -61,7 +57,7 @@ pub async fn sync_events(
             data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?
         }
     };
-    let lazy_load_enabled =
+    let _lazy_load_enabled =
         filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
 
     let full_state = args.full_state;
@@ -529,7 +525,7 @@ async fn load_joined_room(
             let encrypted_room = state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
             let since_encryption = state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
             // Calculations:
-            let new_encrypted_room = encrypted_room && since_encryption.is_none();
+            let _new_encrypted_room = encrypted_room && since_encryption.is_none();
             let send_member_count = state_events
                 .iter()
                 .any(|event| event.event_ty == TimelineEventType::RoomMember);
@@ -697,17 +693,17 @@ async fn load_joined_room(
 #[tracing::instrument(skip_all)]
 async fn load_left_room(
     sender_id: &UserId,
-    device_id: &DeviceId,
+    _device_id: &DeviceId,
     room_id: &RoomId,
     since_sn: Option<Seqnum>,
-    until_sn: Option<Seqnum>,
-    left_sn: Seqnum,
+    _until_sn: Option<Seqnum>,
+    _left_sn: Seqnum,
     next_batch: Seqnum,
-    full_state: bool,
+    _full_state: bool,
     filter: &FilterDefinition,
-    device_list_updates: &mut HashSet<OwnedUserId>,
-    joined_users: &mut HashSet<OwnedUserId>,
-    left_users: &mut HashSet<OwnedUserId>,
+    _device_list_updates: &mut HashSet<OwnedUserId>,
+    _joined_users: &mut HashSet<OwnedUserId>,
+    _left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<LeftRoom> {
     if !room::room_exists(room_id)? {
         let event = PduEvent {
@@ -743,7 +739,7 @@ async fn load_left_room(
     }
 
     let since_frame_id = crate::event::get_last_frame_id(&room_id, since_sn);
-    let since_state_ids = match since_frame_id {
+    let _since_state_ids = match since_frame_id {
         Ok(s) => state::get_full_state_ids(s)?,
         _ => HashMap::new(),
     };
@@ -755,7 +751,7 @@ async fn load_left_room(
 
     let since_sn = since_sn.unwrap_or_default();
 
-    let send_notification_counts =
+    let _send_notification_counts =
         !timeline_pdus.is_empty() || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
@@ -779,7 +775,7 @@ async fn load_left_room(
             continue;
         }
         let DbRoomStateField {
-            event_ty, state_key, ..
+             state_key, ..
         } = state::get_field(key)?;
 
         if *sender_id == state_key {
@@ -808,7 +804,7 @@ async fn load_left_room(
         timeline_pdus.last().map(|(sn, _)| sn.to_string())
     };
 
-    let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+    let _left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {

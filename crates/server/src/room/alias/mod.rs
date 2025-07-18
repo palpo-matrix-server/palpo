@@ -14,7 +14,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUser;
 use crate::exts::*;
-use crate::room::{StateEventType, state, timeline};
+use crate::room::{StateEventType, timeline};
 use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduBuilder, config};
 
 mod remote;

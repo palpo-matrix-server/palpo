@@ -1,40 +1,17 @@
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap};
-use std::iter::once;
-use std::sync::Arc;
+use palpo_core::events::room::member::{MembershipState, RoomMemberEventContent};
 
-use diesel::prelude::*;
-use palpo_core::serde::JsonValue;
-use salvo::http::StatusError;
-use tokio::sync::RwLock;
-use tracing_subscriber::fmt::format;
-
-use crate::appservice::RegistrationInfo;
-use crate::core::UnixMillis;
-use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
-use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::StateEventType;
 use crate::core::federation::membership::{
-    MakeJoinReqArgs, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
+    RoomStateV1, RoomStateV2,
 };
-use crate::core::federation::transaction::Edu;
+use crate::core::serde::{to_raw_json_value, RawJsonValue};
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
-};
-use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::event::{PduBuilder, PduEvent, gen_event_id_canonical_json, handler};
-use crate::federation::maybe_strip_event_id;
-use crate::room::state::CompressedEvent;
-use crate::room::state::DeltaInfo;
+use crate::{core::serde::
+    CanonicalJsonValue, event::{gen_event_id_canonical_json, handler}}
+;
 use crate::room::{state, timeline};
-use crate::sending::send_edu_server;
 use crate::{
-    AppError, AppResult, AuthedInfo, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, config, data, room,
+    AppResult, IsRemoteOrLocal, MatrixError, room,
 };
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {

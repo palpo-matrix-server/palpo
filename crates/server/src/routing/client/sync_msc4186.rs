@@ -1,6 +1,5 @@
 use std::cmp::{self, Ordering};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
@@ -47,7 +46,7 @@ pub(super) async fn sync_events_v5(
 
     let next_batch = data::curr_sn()? + 1;
 
-    let conn_id = body.conn_id.clone();
+    let _conn_id = body.conn_id.clone();
 
     let global_since_sn: i64 = args
         .pos

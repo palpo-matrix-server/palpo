@@ -21,7 +21,7 @@ use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
-use crate::event::{PduBuilder, PduEvent, SnPduEvent};
+use crate::event::{PduBuilder, SnPduEvent};
 use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};

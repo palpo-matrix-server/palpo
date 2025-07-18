@@ -14,7 +14,7 @@ use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::room::{state, timeline};
-use crate::{AppResult, MatrixError, PduEvent, SnPduEvent};
+use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
     let filter = &criteria.filter;
@@ -64,7 +64,7 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
             .then_order_by(event_searches::event_sn.desc())
             .load::<(f32, OwnedEventId, i64, i64)>(&mut connect()?)?
     };
-    let ids: Vec<i64> = event_searches::table.select(event_searches::id).load(&mut connect()?)?;
+    let _ids: Vec<i64> = event_searches::table.select(event_searches::id).load(&mut connect()?)?;
     let count: i64 = base_query.count().first(&mut connect()?)?;
     let next_batch = if items.len() < limit {
         None
@@ -137,7 +137,7 @@ fn calc_event_context(
         }
     }
 
-    let mut context = EventContextResult {
+    let context = EventContextResult {
         start: before_pdus.first().map(|(sn, _)| sn.to_string()),
         end: after_pdus.last().map(|(sn, _)| sn.to_string()),
         events_before: before_pdus.into_iter().rev().map(|(_, pdu)| pdu.to_room_event()).collect(),

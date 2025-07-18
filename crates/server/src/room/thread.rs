@@ -8,12 +8,12 @@ use crate::core::serde::CanonicalJsonValue;
 use crate::data::connect;
 use crate::data::room::DbThread;
 use crate::data::schema::*;
-use crate::room::{state, timeline};
-use crate::{AppResult, MatrixError, PduEvent, SnPduEvent};
+use crate::room::timeline;
+use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn get_threads(
     room_id: &RoomId,
-    include: &IncludeThreads,
+    _include: &IncludeThreads,
     limit: i64,
     from_token: Option<i64>,
 ) -> AppResult<(Vec<(OwnedEventId, SnPduEvent)>, Option<i64>)> {

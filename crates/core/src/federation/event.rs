@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::sending::{SendRequest, SendResult};
 use crate::{Direction, serde::RawJsonValue};
-use crate::{EventId, OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
+use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
 
 /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 ///

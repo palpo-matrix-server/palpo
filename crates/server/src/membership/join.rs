@@ -8,28 +8,28 @@ use indexmap::IndexMap;
 use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
-use tracing_subscriber::fmt::format;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::room::member::{MembershipState};
+use crate::core::events::room::member::RoomMemberEventContent;
+use crate::core::events::TimelineEventType;
 use crate::core::federation::membership::{
-    MakeJoinReqArgs, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
+    MakeJoinReqArgs, MakeJoinResBody, SendJoinReqBody, SendJoinResBodyV2,
 };
+use crate::core::federation::membership::SendJoinArgs;
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
+    CanonicalJsonObject, CanonicalJsonValue, to_canonical_value, to_raw_json_value
 };
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
-use crate::event::{self, PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
@@ -44,7 +44,7 @@ pub async fn join_room(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
-    third_party_signed: Option<&ThirdPartySigned>,
+    _third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
@@ -251,11 +251,11 @@ pub async fn join_room(
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(state)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
@@ -370,7 +370,7 @@ pub async fn join_room(
         Arc::new(
             state
                 .into_iter()
-                .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
+                .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
                 .collect::<AppResult<_>>()?,
         ),
     )?;
