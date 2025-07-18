@@ -13,7 +13,7 @@ use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn get_threads(
     room_id: &RoomId,
-    include: &IncludeThreads,
+    _include: &IncludeThreads,
     limit: i64,
     from_token: Option<i64>,
 ) -> AppResult<(Vec<(OwnedEventId, SnPduEvent)>, Option<i64>)> {

@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use palpo_core::client::device;
 use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
@@ -41,7 +40,7 @@ pub async fn join_room(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
-    third_party_signed: Option<&ThirdPartySigned>,
+    _third_party_signed: Option<&ThirdPartySigned>,
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
@@ -375,7 +374,7 @@ pub async fn join_room(
         Arc::new(
             state
                 .into_iter()
-                .map(|(k, (event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
+                .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
                 .collect::<AppResult<_>>()?,
         ),
     )?;

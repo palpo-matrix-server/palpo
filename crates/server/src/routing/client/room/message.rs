@@ -63,7 +63,7 @@ pub(super) async fn get_messages(
             crate::core::Direction::Forward => 0,
             crate::core::Direction::Backward => i64::MAX,
         });
-    let to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
+    let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(authed.user_id(), authed.device_id(), &args.room_id, from)?;
 

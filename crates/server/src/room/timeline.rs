@@ -386,7 +386,7 @@ where
                     let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
                     if to_palpo && !from_palpo && admin_room == pdu.room_id {
-                        crate::admin::process_message(body);
+                        let _ = crate::admin::process_message(body);
                     }
                 }
             }
@@ -485,7 +485,7 @@ pub fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
-    state_lock: &RoomMutexGuard,
+    _state_lock: &RoomMutexGuard,
 ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
     let PduBuilder {
         event_type,
@@ -713,7 +713,7 @@ pub fn build_and_append_pdu(
         }
     }
 
-    let (pdu, pdu_json, event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
+    let (pdu, pdu_json, _event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
 
     let conf = crate::config();
     // let admin_room = super::resolve_local_alias(
@@ -992,7 +992,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
 
     handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false).await?;
 
-    let value = get_pdu_json(&event_id)?.expect("we just created it");
+    let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;
 
     if pdu.event_ty == TimelineEventType::RoomMessage {

@@ -7,8 +7,7 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use scheduled_thread_pool::ScheduledThreadPool;
 use url::Url;
 
-// #[macro_use]
-// extern crate tracing;
+extern crate tracing;
 #[macro_use]
 mod macros;
 mod config;

@@ -24,7 +24,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     sender_id: Option<&UserId>,
     device_keys_input: &BTreeMap<OwnedUserId, Vec<OwnedDeviceId>>,
     allowed_signatures: F,
-    include_display_names: bool,
+    _include_display_names: bool,
 ) -> AppResult<client::key::KeysResBody> {
     let mut master_keys = BTreeMap::new();
     let mut self_signing_keys = BTreeMap::new();
@@ -476,7 +476,7 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
     Ok(())
 }
 
-pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
+pub fn mark_device_key_update(user_id: &UserId, _device_id: &DeviceId) -> AppResult<()> {
     let changed_at = UnixMillis::now();
     let joined_rooms = data::user::joined_rooms(user_id)?;
     let occur_sn = data::next_sn()?;
@@ -527,7 +527,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
 
 pub fn mark_device_key_update_with_joined_rooms(
     user_id: &UserId,
-    device_id: &DeviceId,
+    _device_id: &DeviceId,
     joined_rooms: &[OwnedRoomId],
 ) -> AppResult<()> {
     let changed_at = UnixMillis::now();

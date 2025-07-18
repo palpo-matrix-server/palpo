@@ -118,7 +118,7 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     if shared_rooms.is_empty() {
         return Ok(shared_rooms);
     }
-    while let Some((user_id, room_ids)) = user_rooms.pop() {
+    while let Some((_user_id, room_ids)) = user_rooms.pop() {
         let set1: HashSet<_> = shared_rooms.into_iter().collect();
         let set2: HashSet<_> = room_ids.into_iter().collect();
         shared_rooms = set1.intersection(&set2).cloned().collect();

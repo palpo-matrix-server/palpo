@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use diesel::prelude::*;
-use palpo_data::user;
 use tokio::sync::RwLock;
 
 use crate::core::events::GlobalAccountDataEventType;
@@ -17,7 +16,7 @@ use crate::core::{UnixMillis, federation};
 use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
-use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
+use crate::{AppError, AppResult, MatrixError, SigningKeys, room};
 
 mod banned;
 mod forget;
@@ -35,7 +34,7 @@ pub use leave::*;
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,
     room_version: &RoomVersionId,
-    pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
+    _pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let mut value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
         error!("Invalid PDU in server response: {:?}: {:?}", pdu, e);
@@ -73,7 +72,7 @@ async fn validate_and_add_event_id(
         MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
     })?;
 
-    let origin_server_ts: UnixMillis = {
+    let _origin_server_ts: UnixMillis = {
         let ts = origin_server_ts
             .as_integer()
             .ok_or_else(|| MatrixError::invalid_param("origin_server_ts must be an integer"))?;
@@ -116,7 +115,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !data::user::user_exists(user_id)? {
+    if user_id.server_name() != &conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }

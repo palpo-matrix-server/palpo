@@ -21,7 +21,7 @@ pub(super) async fn get_hierarchy(
 
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+    let _skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
     let limit = args.limit.unwrap_or(10).min(100) as usize;
     let max_depth = args.max_depth.map_or(3, usize::from).min(10);
     let pagination_token = args.from.as_ref().and_then(|s| PaginationToken::from_str(s).ok());

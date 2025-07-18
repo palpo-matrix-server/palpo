@@ -185,7 +185,7 @@ pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterIt
 }
 
 #[inline]
-pub fn is_ignored_pdu(pdu: &SnPduEvent, user_id: &UserId) -> bool {
+pub fn is_ignored_pdu(pdu: &SnPduEvent, _user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
     if pdu.event_ty.to_string() == "org.matrix.dummy_event" {

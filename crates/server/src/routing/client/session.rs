@@ -178,7 +178,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
                     appservice_id: None,
                     created_at: UnixMillis::now(),
                 };
-                let user = diesel::insert_into(users::table)
+                let _user = diesel::insert_into(users::table)
                     .values(&new_user)
                     .on_conflict(users::id)
                     .do_update()
@@ -292,7 +292,7 @@ async fn get_access_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -
         }
     } else if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(&payload) {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        crate::uiaa::create_session(sender_id, device_id, &uiaa_info, json);
+        let _ = crate::uiaa::create_session(sender_id, device_id, &uiaa_info, json);
         return Err(AppError::Uiaa(uiaa_info));
     } else {
         return Err(MatrixError::not_json("No JSON body was sent when required.").into());
@@ -380,7 +380,7 @@ async fn refresh_access_token(
 }
 
 #[endpoint]
-async fn redirect(_aa: AuthArgs, redirect_url: QueryParam<String>) -> EmptyResult {
+async fn redirect(_aa: AuthArgs, _redirect_url: QueryParam<String>) -> EmptyResult {
     // TODO: todo
     empty_ok()
 }

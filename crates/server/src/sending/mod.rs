@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::room::timeline;
 use crate::sending::resolver::Resolver;
-use crate::{AppError, AppResult, ServerConfig, TlsNameMap, config, data, exts::*, utils};
+use crate::{config, data, utils, AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap};
 
 mod dest;
 pub use dest::*;
@@ -643,7 +643,7 @@ pub fn convert_to_outgoing_federation_event(mut pdu_json: CanonicalJsonObject) -
     to_raw_value(&pdu_json).expect("CanonicalJson is valid serde_json::Value")
 }
 
-fn reqwest_client_builder(config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
+fn reqwest_client_builder(_config: &ServerConfig) -> AppResult<reqwest::ClientBuilder> {
     let reqwest_client_builder = reqwest::Client::builder()
         .pool_max_idle_per_host(0)
         .connect_timeout(Duration::from_secs(30))

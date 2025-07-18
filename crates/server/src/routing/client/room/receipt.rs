@@ -11,7 +11,7 @@ use crate::core::events::receipt::{
 };
 use crate::core::presence::PresenceState;
 use crate::room::push_action;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, data, empty_ok, room};
+use crate::{AppError, AuthArgs, DepotExt, EmptyResult, empty_ok, room};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/receipt/{receipt_type}/{event_id}
 /// Sets private read marker and public read receipt EDU.
@@ -75,7 +75,7 @@ pub(super) fn send_receipt(
         ReceiptType::ReadPrivate => {
             // let count = timeline::get_event_sn(&args.event_id)?
             //     .ok_or(MatrixError::invalid_param("Event does not exist."))?;
-            data::room::receipt::set_private_read(&args.room_id, sender_id, &args.event_id, event_sn)?;
+            crate::data::room::receipt::set_private_read(&args.room_id, sender_id, &args.event_id, event_sn)?;
             push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
         _ => return Err(AppError::internal("Unsupported receipt type")),

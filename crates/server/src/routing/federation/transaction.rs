@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use crate::data::connect;
-use crate::data::schema::*;
-use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
@@ -297,7 +294,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
             let ev_type = ev_type.to_string();
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => {
-                    data::user::device::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
+                    let _ = data::user::device::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
                 }
 
                 DeviceIdOrAllDevices::AllDevices => {
@@ -306,7 +303,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
                         .unwrap_or_default()
                         .iter()
                         .for_each(|target_device_id| {
-                            data::user::device::add_to_device_event(
+                            let _ = data::user::device::add_to_device_event(
                                 sender,
                                 target_user_id,
                                 target_device_id,
@@ -320,7 +317,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
     }
 
     // Save transaction id with empty data
-    crate::transaction_id::add_txn_id(&message_id, &sender, None, None, None);
+    let _ = crate::transaction_id::add_txn_id(&message_id, &sender, None, None, None);
 }
 
 async fn process_edu_signing_key_update(origin: &ServerName, content: SigningKeyUpdateContent) {

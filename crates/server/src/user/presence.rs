@@ -31,7 +31,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
         return Ok(());
     }
 
-    let status_msg = match last_presence {
+    let _status_msg = match last_presence {
         Ok(presence) => presence.content.status_msg.clone(),
         Err(_) => Some(String::new()),
     };
@@ -43,7 +43,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
             user_id: user_id.to_owned(),
             stream_id: None,
             state: Some(new_state.to_string()),
-            status_msg,
+            status_msg: None,
             last_active_at: Some(UnixMillis::now()),
             last_federation_update_at: None,
             last_user_sync_at: None,
