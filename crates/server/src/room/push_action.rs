@@ -1,11 +1,10 @@
 use diesel::prelude::*;
-use palpo_data::room::NewDbEventPushAction;
 
-use crate::core::identifiers::*;
 use crate::core::Seqnum;
+use crate::core::identifiers::*;
+use crate::data::connect;
+use crate::data::room::NewDbEventPushAction;
 use crate::data::schema::*;
-use crate::{data::connect}
-;
 use crate::AppResult;
 
 pub fn increment_notification_counts(

@@ -78,10 +78,8 @@ palpo-data = { workspace = true }
 anyhow = { workspace = true }
 base64 = { workspace = true }
 byteorder = { workspace = true }
-cruet = { workspace = true }
 async-trait = { workspace = true }
 bcrypt = { workspace = true }
-bigdecimal = { workspace = true, features = ["serde"] }
 blurhash = { workspace = true }
 bytes = { workspace = true }
 chksum = { workspace = true }
@@ -99,14 +97,15 @@ fast32 = { workspace = true }
 figment = { workspace = true, features = ["env", "toml", "yaml"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
+hickory-resolver = { workspace = true }
+hmac = { workspace = true }
+hyper-util = { workspace = true, features = ["client"] }
 ipaddress = { workspace = true }
 itertools = { workspace = true }
-hickory-resolver = { workspace = true }
-hyper-util = { workspace = true, features = ["client"] }
-hmac = { workspace = true }
 image = { workspace = true }
 indexmap = { workspace = true }
 jsonwebtoken = { workspace = true }
+# ldap3 = { workspace = true }
 lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }

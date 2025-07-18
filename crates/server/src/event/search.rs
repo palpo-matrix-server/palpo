@@ -140,7 +140,11 @@ fn calc_event_context(
     let context = EventContextResult {
         start: before_pdus.first().map(|(sn, _)| sn.to_string()),
         end: after_pdus.last().map(|(sn, _)| sn.to_string()),
-        events_before: before_pdus.into_iter().rev().map(|(_, pdu)| pdu.to_room_event()).collect(),
+        events_before: before_pdus
+            .into_iter()
+            .rev()
+            .map(|(_, pdu)| pdu.to_room_event())
+            .collect(),
         events_after: after_pdus.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect(),
         profile_info: BTreeMap::new(),
     };

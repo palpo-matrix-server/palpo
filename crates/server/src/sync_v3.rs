@@ -1,18 +1,17 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
-use std::i64;
 
 use palpo_core::Seqnum;
-use palpo_core::events::receipt::ReceiptEvent;
 use state::DbRoomStateField;
 
 use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
+use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
     Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState, KnockedRoom, LeftRoom,
     Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs, SyncEventsResBody, Timeline, ToDevice,
 };
-use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::device::DeviceLists;
+use crate::core::events::receipt::ReceiptEvent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
@@ -446,13 +445,13 @@ async fn load_joined_room(
 
             // && encrypted_room || new_encrypted_room {
             // If the user is in a new encrypted room, give them all joined users
-            *joined_users = room::joined_users(&room_id, None)?
-                .into_iter()
-                .filter(|user_id| {
-                    // Don't send key updates from the sender to the sender
-                    sender_id != user_id
-                })
-                .collect();
+            *joined_users = room::joined_users(&room_id, None)?.into_iter().collect();
+            // .into_iter()
+            // .filter(|user_id| {
+            //     // Don't send key updates from the sender to the sender
+            //     sender_id != user_id
+            // })
+            // .collect();
             device_list_updates.extend(
                 joined_users.clone().into_iter(), // .filter(|user_id| {
                                                   // Only send keys if the sender doesn't share an encrypted room with the target already
@@ -553,8 +552,13 @@ async fn load_joined_room(
                         MembershipState::Join => {
                             // A new user joined an encrypted room
                             // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                            if !room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty() {
-                                device_list_updates.insert(user_id.clone());
+                            if since_sn <= state_event.event_sn
+                                && !room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty()
+                            {
+                                // if user_id.is_local() {
+                                // check for test TestDeviceListsUpdateOverFederation
+                                // device_list_updates.insert(user_id.clone());
+                                // }
                                 joined_users.insert(user_id);
                             }
                         }
@@ -601,7 +605,7 @@ async fn load_joined_room(
     };
 
     // Look for device list updates in this room
-    device_list_updates.extend(room::user::keys_changed_users(room_id, since_sn, None)?);
+    device_list_updates.extend(room::keys_changed_users(room_id, since_sn, None)?);
 
     let mut limited = limited || joined_since_last_sync;
     if let Some((_, first_event)) = timeline_pdus.first() {

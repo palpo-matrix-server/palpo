@@ -33,9 +33,7 @@ async fn send_message(
     let origin = depot.origin()?;
     let body = body.into_inner();
     if &body.origin != origin {
-        return Err(
-            MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into(),
-        );
+        return Err(MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into());
     }
 
     if body.pdus.len() > PDU_LIMIT {
@@ -56,6 +54,7 @@ async fn send_message(
 
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
+
     process_edus(body.edus, &body.origin).await;
 
     json_ok(SendMessageResBody {

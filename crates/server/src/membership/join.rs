@@ -13,18 +13,14 @@ use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::member::{MembershipState};
-use crate::core::events::room::member::RoomMemberEventContent;
 use crate::core::events::TimelineEventType;
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::federation::membership::{
-    MakeJoinReqArgs, MakeJoinResBody, SendJoinReqBody, SendJoinResBodyV2,
+    MakeJoinReqArgs, MakeJoinResBody, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
 };
-use crate::core::federation::membership::SendJoinArgs;
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, to_canonical_value, to_raw_json_value
-};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value, to_raw_json_value};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -48,10 +44,11 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
+    let sender_id = authed.user_id();
+    let device_id = authed.device_id();
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
-    let sender_id = authed.user_id();
     if room::user::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
@@ -100,6 +97,7 @@ pub async fn join_room(
             &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
+                crate::user::mark_device_key_update_with_joined_rooms(&sender_id, &device_id, &[room_id.to_owned()])?;
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
@@ -265,8 +263,14 @@ pub async fn join_room(
             error!("Failed to fetch missing prev events for join: {e}");
         }
     }
-    if let Err(e) =
-        fetch_and_process_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu, &mut Default::default()).await
+    if let Err(e) = fetch_and_process_missing_prev_events(
+        &remote_server,
+        room_id,
+        &room_version_id,
+        &parsed_join_pdu,
+        &mut Default::default(),
+    )
+    .await
     {
         error!("Failed to fetch missing prev events for join: {e}");
     }

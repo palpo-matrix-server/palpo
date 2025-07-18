@@ -1,10 +1,7 @@
 use std::collections::BTreeSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::{
-    fmt::Debug,
-    sync::Arc,
-};
+use std::{fmt::Debug, sync::Arc};
 
 use crate::core::Seqnum;
 

@@ -303,7 +303,11 @@ pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> DataR
     Ok(Some(device_keys))
 }
 
-pub fn keys_changed_users(user_id: &UserId, since_sn: Seqnum, until_sn: Option<Seqnum>) -> DataResult<Vec<OwnedUserId>> {
+pub fn keys_changed_users(
+    user_id: &UserId,
+    since_sn: Seqnum,
+    until_sn: Option<Seqnum>,
+) -> DataResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id)?;
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table
@@ -319,29 +323,6 @@ pub fn keys_changed_users(user_id: &UserId, since_sn: Seqnum, until_sn: Option<S
             .filter(e2e_key_changes::occur_sn.ge(since_sn))
             .select(e2e_key_changes::user_id)
             .load::<OwnedUserId>(&mut connect()?)
-            .map_err(Into::into)
-    }
-}
-
-pub fn room_keys_changed(
-    room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<Seqnum>,
-) -> DataResult<Vec<(OwnedUserId, Seqnum)>> {
-    if let Some(until_sn) = until_sn {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .filter(e2e_key_changes::occur_sn.le(until_sn))
-            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
-            .load::<(OwnedUserId, i64)>(&mut connect()?)
-            .map_err(Into::into)
-    } else {
-        e2e_key_changes::table
-            .filter(e2e_key_changes::room_id.eq(room_id))
-            .filter(e2e_key_changes::occur_sn.ge(since_sn))
-            .select((e2e_key_changes::user_id, e2e_key_changes::occur_sn))
-            .load::<(OwnedUserId, i64)>(&mut connect()?)
             .map_err(Into::into)
     }
 }

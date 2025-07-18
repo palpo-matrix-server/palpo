@@ -279,7 +279,7 @@ impl ConditionalPushRule {
             ],
         }
     }
-    
+
     /// Matches any message whose content is unencrypted and contains the text `@room`, signifying
     /// the whole room should be notified of the event.
     ///
@@ -294,7 +294,10 @@ impl ConditionalPushRule {
             enabled: true,
             rule_id: PredefinedOverrideRuleId::RoomNotif.to_string(),
             conditions: vec![
-                EventMatch { key: "content.body".into(), pattern: "@room".into() },
+                EventMatch {
+                    key: "content.body".into(),
+                    pattern: "@room".into(),
+                },
                 SenderNotificationPermission { key: "room".into() },
             ],
         }

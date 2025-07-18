@@ -1,5 +1,6 @@
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
-use std::{cmp::Ordering, collections::BTreeMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
@@ -39,7 +40,7 @@ impl SnPduEvent {
         Self { pdu, event_sn }
     }
 
-    pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
+    pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
         if self.event_ty == TimelineEventType::RoomMember && self.state_key.as_deref() == Some(user_id.as_str()) {
             return Ok(true);
         }
@@ -97,11 +98,10 @@ impl SnPduEvent {
             .lock()
             .expect("should locked")
             .insert((user_id.to_owned(), frame_id), visibility);
+        Ok(visibility)
+    }
 
-        if !visibility {
-            return Ok(false);
-        }
-
+    pub fn add_unsigned_membership(&mut self, user_id: &UserId) -> AppResult<()> {
         #[derive(Deserialize)]
         struct ExtractMemebership {
             membership: String,
@@ -125,7 +125,7 @@ impl SnPduEvent {
                 to_raw_value("leave").expect("should always work"),
             );
         }
-        Ok(true)
+        Ok(())
     }
 
     pub fn from_canonical_object(

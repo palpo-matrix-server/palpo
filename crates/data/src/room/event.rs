@@ -1,4 +1,3 @@
-
 use diesel::prelude::*;
 
 use crate::room::NewDbEventPushAction;

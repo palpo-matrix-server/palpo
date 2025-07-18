@@ -1,24 +1,21 @@
 use std::time::Duration;
 
+use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
-use serde::Deserialize;
 
 use crate::core::UnixMillis;
 use crate::core::client::session::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo, UserIdentifier};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
+use crate::data::connect;
+use crate::data::schema::*;
+use crate::data::user::{DbUser, NewDbUser};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH,
-    TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, utils,
+    TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, user, utils,
 };
-
-#[derive(Debug, Deserialize)]
-struct Claims {
-    sub: String,
-    //exp: usize,
-}
 
 pub fn public_router() -> Router {
     Router::new().push(
@@ -81,20 +78,114 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             };
             let user_id = UserId::parse_with_server_name(username, config::server_name())
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
+
+            // if let Some(ldap) = config::enabled_ldap() {
+            //     let (user_dn, is_ldap_admin) = match ldap.bind_dn.as_ref() {
+            //         Some(bind_dn) if bind_dn.contains("{username}") => {
+            //             (bind_dn.replace("{username}", user_id.localpart()), false)
+            //         }
+            //         _ => {
+            //             debug!("searching user in LDAP");
+
+            //             let dns = user::search_ldap(&user_id).await?;
+            //             if dns.len() >= 2 {
+            //                 return Err(MatrixError::forbidden("LDAP search returned two or more results", None).into());
+            //             }
+
+            //             if let Some((user_dn, is_admin)) = dns.first() {
+            //                 (user_dn.clone(), *is_admin)
+            //             } else {
+            //                 let Some(user) = data::user::get_user(&user_id)? else {
+            //                     return Err(MatrixError::forbidden("user not found.", None).into());
+            //                 };
+            //                 if let Err(_e) = user::vertify_password(&user, password) {
+            //                     res.status_code(StatusCode::FORBIDDEN); //for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
+            //                     return Err(MatrixError::forbidden("wrong username or password.", None).into());
+            //                 }
+            //                 (user_id.to_string(), false)
+            //             }
+            //         }
+            //     };
+
+            //     let user_id = user::auth_ldap(&user_dn, password).await.map(|()| user_id.to_owned())?;
+
+            //     // LDAP users are automatically created on first login attempt. This is a very
+            //     // common feature that can be seen on many services using a LDAP provider for
+            //     // their users (synapse, Nextcloud, Jellyfin, ...).
+            //     //
+            //     // LDAP users are crated with a dummy password but non empty because an empty
+            //     // password is reserved for deactivated accounts. The tuwunel password field
+            //     // will never be read to login a LDAP user so it's not an issue.
+            //     if !data::user::user_exists(&user_id)? {
+            //         let new_user = NewDbUser {
+            //             id: user_id.clone(),
+            //             ty: Some("ldap".to_owned()),
+            //             is_admin: false,
+            //             is_guest: false,
+            //             appservice_id: None,
+            //             created_at: UnixMillis::now(),
+            //         };
+            //         let user = diesel::insert_into(users::table)
+            //             .values(&new_user)
+            //             .on_conflict(users::id)
+            //             .do_update()
+            //             .set(&new_user)
+            //             .get_result::<DbUser>(&mut connect()?)?;
+            //     }
+
+            //     let is_palpo_admin = data::user::is_admin(&user_id)?;
+            //     if is_ldap_admin && !is_palpo_admin {
+            //         admin::make_admin(&user_id).await?;
+            //     } else if !is_ldap_admin && is_palpo_admin {
+            //         admin::revoke_admin(&user_id).await?;
+            //     }
+            // } else {
             let Some(user) = data::user::get_user(&user_id)? else {
                 return Err(MatrixError::forbidden("User not found.", None).into());
             };
-            if let Err(_e) = crate::user::vertify_password(&user, &password) {
+            if let Err(_e) = user::vertify_password(&user, &password) {
                 res.status_code(StatusCode::FORBIDDEN); //for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
                 return Err(MatrixError::forbidden("Wrong username or password.", None).into());
             }
+            // }
+
             user_id
         }
         LoginInfo::Token(Token { token }) => {
             if !crate::config().login_via_existing_session {
                 return Err(MatrixError::unknown("Token login is not enabled.").into());
             }
-            crate::user::take_login_token(token)?
+            user::take_login_token(token)?
+        }
+        LoginInfo::Jwt(info) => {
+            let config = config::enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
+
+            let claim = user::session::validate_jwt_token(config, &info.token)?;
+            let local = claim.sub.to_lowercase();
+            let user_id = UserId::parse_with_server_name(local, config::server_name())
+                .map_err(|e| MatrixError::invalid_username(format!("JWT subject is not a valid user MXID: {e}")))?;
+
+            if !data::user::user_exists(&user_id)? {
+                if !config.register_user {
+                    return Err(MatrixError::not_found("user is not registered on this server.").into());
+                }
+
+                let new_user = NewDbUser {
+                    id: user_id.clone(),
+                    ty: Some("jwt".to_owned()),
+                    is_admin: false,
+                    is_guest: false,
+                    appservice_id: None,
+                    created_at: UnixMillis::now(),
+                };
+                let _user = diesel::insert_into(users::table)
+                    .values(&new_user)
+                    .on_conflict(users::id)
+                    .do_update()
+                    .set(&new_user)
+                    .get_result::<DbUser>(&mut connect()?)?;
+            }
+            user_id
         }
         LoginInfo::Appservice(Appservice { identifier }) => {
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {

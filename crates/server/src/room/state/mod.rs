@@ -545,7 +545,7 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, event_id))]
 pub fn user_can_see_event(user_id: &UserId, _room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
-    let mut pdu = timeline::get_pdu(event_id)?;
+    let pdu = timeline::get_pdu(event_id)?;
     pdu.user_can_see(user_id)
 }
 

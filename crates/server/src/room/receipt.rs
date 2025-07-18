@@ -8,10 +8,9 @@ use crate::core::events::receipt::{
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
+use crate::data::connect;
 use crate::data::room::NewDbReceipt;
 use crate::data::schema::*;
-use crate::data::connect;
-use crate::room::timeline;
 use crate::{AppResult, sending};
 
 /// Replaces the previous read receipt.
@@ -54,6 +53,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
         )])),
     )]);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));
+    print!("uppppppppppdate read");
     sending::send_edu_room(room_id, &edu)?;
     Ok(())
 }
@@ -71,7 +71,7 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
     // let room_sn = crate::room::get_room_sn(room_id)
     //     .map_err(|e| MatrixError::bad_state(format!("room does not exist in database for {room_id}: {e}")))?;
 
-    let _pdu = timeline::get_pdu(&event_id)?;
+    // let pdu = timeline::get_pdu(&event_id)?;
 
     let user_id: OwnedUserId = user_id.to_owned();
     let content: BTreeMap<OwnedEventId, Receipts> = BTreeMap::from_iter([(

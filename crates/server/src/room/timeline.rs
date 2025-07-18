@@ -6,7 +6,6 @@ use std::sync::{LazyLock, Mutex};
 use diesel::prelude::*;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
-use tracing::{error, info, warn};
 use ulid::Ulid;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
@@ -891,6 +890,7 @@ pub fn get_pdus(
                         pdu.remove_transaction_id()?;
                     }
                     pdu.add_age()?;
+                    pdu.add_unsigned_membership(user_id)?;
                     list.push((event_sn, pdu));
                     if list.len() >= limit {
                         break;
@@ -985,7 +985,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if let Ok(_pdu) = timeline::get_pdu(&event_id) {
+    if timeline::get_pdu(&event_id).is_ok() {
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }

@@ -1,18 +1,11 @@
-use palpo_core::events::room::member::{MembershipState, RoomMemberEventContent};
-
 use crate::core::events::StateEventType;
-use crate::core::federation::membership::{
-    RoomStateV1, RoomStateV2,
-};
-use crate::core::serde::{to_raw_json_value, RawJsonValue};
+use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::federation::membership::{RoomStateV1, RoomStateV2};
 use crate::core::identifiers::*;
-use crate::{core::serde::
-    CanonicalJsonValue, event::{gen_event_id_canonical_json, handler}}
-;
+use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
+use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{
-    AppResult, IsRemoteOrLocal, MatrixError, room,
-};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, room};
 
 pub async fn send_join_v1(origin: &ServerName, room_id: &RoomId, pdu: &RawJsonValue) -> AppResult<RoomStateV1> {
     if !room::room_exists(room_id)? {

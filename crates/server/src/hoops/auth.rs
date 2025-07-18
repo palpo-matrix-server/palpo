@@ -28,7 +28,7 @@ pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request,
 }
 
 #[handler]
-pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot, _req: &mut Request) -> AppResult<()> {
+pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<()> {
     auth_by_access_token_inner(aa, depot).await
 }
 #[handler]

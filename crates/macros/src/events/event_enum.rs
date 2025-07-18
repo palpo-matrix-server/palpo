@@ -163,7 +163,6 @@ fn expand_deserialize_impl(
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
-    let _serde_json = quote! { #palpo_core::__private::serde_json };
 
     let ident = kind.to_event_enum_ident(var.into())?;
 
@@ -343,7 +342,6 @@ fn expand_content_enum(
 
     let serialize_custom_event_error_path = quote! { #palpo_core::events::serialize_custom_event_error }.to_string();
     // Generate an `EventContentFromType` implementation.
-    let _serde_json = quote! { #palpo_core::exports::serde_json };
     let event_type_match_arms: TokenStream = events
         .iter()
         .map(|event| {
