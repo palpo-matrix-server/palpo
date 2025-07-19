@@ -6,8 +6,8 @@ CREATE SEQUENCE IF NOT EXISTS occur_sn_seq
     NO MAXVALUE
     CACHE 1;
 
-drop table if exists media_metadatas CASCADE;
-CREATE TABLE media_metadatas (
+drop table if exists media_metadata CASCADE;
+CREATE TABLE media_metadata (
     id bigserial not null PRIMARY KEY,
     media_id text NOT NULL,
     origin_server text NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE media_metadatas (
     created_by text,
     created_at bigint NOT NULL
 );
-CREATE UNIQUE INDEX media_metadatas_udx ON media_metadatas USING btree (media_id, origin_server);
+CREATE UNIQUE INDEX media_metadata_udx ON media_metadata USING btree (media_id, origin_server);
 
 drop table if exists media_thumbnails CASCADE;
 CREATE TABLE media_thumbnails (
@@ -36,8 +36,8 @@ CREATE TABLE media_thumbnails (
 );
 CREATE UNIQUE INDEX media_thumbnails_udx ON media_thumbnails USING btree (media_id, origin_server, width, height, resize_method);
 
-drop table if exists user_datas CASCADE;
-CREATE TABLE user_datas (
+drop table if exists user_data CASCADE;
+CREATE TABLE user_data (
     id bigserial not null PRIMARY KEY,
     user_id text NOT NULL,
     room_id text,
@@ -45,9 +45,9 @@ CREATE TABLE user_datas (
     json_data json NOT NULL,
     occur_sn bigint not null default nextval('occur_sn_seq'),
     created_at bigint NOT NULL,
-    CONSTRAINT user_datas_udx UNIQUE (user_id, room_id, data_type)
+    CONSTRAINT user_data_udx UNIQUE (user_id, room_id, data_type)
 );
--- CREATE UNIQUE INDEX user_datas_idx ON user_datas USING btree (user_id, room_id, data_type);
+-- CREATE UNIQUE INDEX user_data_idx ON user_data USING btree (user_id, room_id, data_type);
 
 drop table if exists user_devices CASCADE;
 CREATE TABLE user_devices
@@ -417,8 +417,8 @@ CREATE TABLE events (
     CONSTRAINT events_id_sn_udx UNIQUE (id, sn)
 );
 
-drop table if exists event_datas CASCADE;
-CREATE TABLE event_datas
+drop table if exists event_data CASCADE;
+CREATE TABLE event_data
 (
     event_id text NOT NULL PRIMARY KEY,
     event_sn bigint NOT NULL,
@@ -426,7 +426,7 @@ CREATE TABLE event_datas
     internal_metadata json,
     format_version bigint,
     json_data json NOT NULL,
-    CONSTRAINT event_datas_udx UNIQUE (event_id, event_sn)
+    CONSTRAINT event_data_udx UNIQUE (event_id, event_sn)
 );
 
 DROP TABLE IF EXISTS event_points CASCADE;
@@ -889,14 +889,14 @@ CREATE TABLE appservice_registrations (
     device_management boolean NOT NULL DEFAULT false
 );
 
-drop table if exists user_uiaa_datas CASCADE;
-CREATE TABLE user_uiaa_datas (
+drop table if exists user_uiaa_data CASCADE;
+CREATE TABLE user_uiaa_data (
     id bigserial NOT NULL PRIMARY KEY,
     user_id text NOT NULL,
     device_id text NOT NULL,
     session text NOT NULL,
     uiaa_info json NOT NULL,
-    CONSTRAINT user_uiaa_datas_udx UNIQUE (user_id, device_id, session)
+    CONSTRAINT user_uiaa_data_udx UNIQUE (user_id, device_id, session)
 );
 
 drop table if exists outgoing_requests CASCADE;

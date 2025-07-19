@@ -30,8 +30,6 @@ extend-exclude = [
 # Custom dictionary - add project-specific correct words
 [default.extend-words]
 # Add project-specific terms here if needed
-# Temporarily allow incorrect plural forms until database refactoring
-datas = "datas"
 # Project-specific abbreviations for test categories
 ftyp = "ftyp"  # federation typing
 typ = "typ"    # typing notifications

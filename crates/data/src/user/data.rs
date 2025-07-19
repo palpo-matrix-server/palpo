@@ -138,7 +138,7 @@ pub fn data_changes(
     since_sn: Seqnum,
     until_sn: Option<Seqnum>,
 ) -> DataResult<Vec<AnyRawAccountDataEvent>> {
-    let mut user_datas = Vec::new();
+    let mut user_data = Vec::new();
 
     let query = user_data::table
         .filter(user_data::user_id.eq(user_id))
@@ -163,11 +163,11 @@ pub fn data_changes(
             "content": db_data.json_data
         });
         if db_data.room_id.is_none() {
-            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&account_data)?));
+            user_data.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&account_data)?));
         } else {
-            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&account_data)?));
+            user_data.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&account_data)?));
         }
     }
 
-    Ok(user_datas)
+    Ok(user_data)
 }
