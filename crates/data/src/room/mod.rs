@@ -191,7 +191,7 @@ pub struct DbThread {
 }
 
 #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
-#[diesel(table_name = event_datas, primary_key(event_id))]
+#[diesel(table_name = event_data, primary_key(event_id))]
 pub struct DbEventData {
     pub event_id: OwnedEventId,
     pub event_sn: Seqnum,
@@ -203,9 +203,9 @@ pub struct DbEventData {
 
 impl DbEventData {
     pub fn save(&self) -> DataResult<()> {
-        diesel::insert_into(event_datas::table)
+        diesel::insert_into(event_data::table)
             .values(self)
-            .on_conflict(event_datas::event_id)
+            .on_conflict(event_data::event_id)
             .do_update()
             .set(self)
             .execute(&mut connect()?)?;

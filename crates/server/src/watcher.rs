@@ -41,11 +41,11 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .first::<Seqnum>(&mut connect()?)
         .unwrap_or_default();
 
-    let push_rule_sn = user_datas::table
-        .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::data_type.eq("m.push_rules"))
-        .order_by(user_datas::occur_sn.desc())
-        .select(user_datas::occur_sn)
+    let push_rule_sn = user_data::table
+        .filter(user_data::user_id.eq(user_id))
+        .filter(user_data::data_type.eq("m.push_rules"))
+        .order_by(user_data::occur_sn.desc())
+        .select(user_data::occur_sn)
         .first::<i64>(&mut connect()?)
         .unwrap_or_default();
 
@@ -101,11 +101,11 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                 return Ok(());
             }
             if push_rule_sn
-                < user_datas::table
-                    .filter(user_datas::user_id.eq(user_id))
-                    .filter(user_datas::data_type.eq("m.push_rules"))
-                    .order_by(user_datas::occur_sn.desc())
-                    .select(user_datas::occur_sn)
+                < user_data::table
+                    .filter(user_data::user_id.eq(user_id))
+                    .filter(user_data::data_type.eq("m.push_rules"))
+                    .order_by(user_data::occur_sn.desc())
+                    .select(user_data::occur_sn)
                     .first::<i64>(&mut connect()?)
                     .unwrap_or_default()
             {
