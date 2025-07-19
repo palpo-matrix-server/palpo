@@ -24,7 +24,7 @@ palpo-macros = { version = "0.0.2", path = "crates/macros" }
 palpo-data = { version = "0.0.2", path = "crates/data" }
 palpo-identifiers-validation = { version = "0.0.2", path = "crates/identifiers-validation" }
 
-rust-argon2 = "2.1.0"
+rust-argon2 = "3.0.0"
 anyhow = "1.0.44"
 assert_matches2 = "0.1.0"
 async-trait = "0.1.48"
@@ -36,18 +36,18 @@ bytes = "1.1.0"
 byteorder = "1.5.0"
 chksum = "0.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
-clap = { version = "4.5.40", default-features = false }
-config = "0.15.11"
+clap = { version = "4.5.41", default-features = false }
+config = "0.15.13"
 cookie = "0.18.0"
 cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 date_header = "1.0.5"
 diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
-diesel-async ={ version = "0.5.2"}
+diesel-async ={ version = "0.6.1"}
 # diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2"
 dotenvy = "0.15.0"
-ed25519-dalek = "2.1.1"
+ed25519-dalek = "2.2.0"
 either = { version = "1.15.0", default-features = false }
 fast32 = "1"
 figment = "0.10.8"
@@ -76,17 +76,17 @@ percent-encoding = "2"
 phf = { version = "0.11.1", features = ["macros"] }
 pkcs8 = "0.10.2"
 pulldown-cmark = { version = "0.13.0", default-features = false }
-rand = "0.9.0"
+rand = "0.9.1"
 rand_core = "0.6.4"
 regex = "1.6.0"
-reqwest = { version = "0.12.20", features = ["json"] }
+reqwest = { version = "0.12.22", features = ["json"] }
 ring = "0.17.14"
-salvo = { version = "0.79.0", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
+salvo = { version = "0.81.0", features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "cors", "rustls", "size-limiter"] }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.10.3"
 serde = { version = "1.0.118", features = ["derive"] }
-serde_json = { version = "1.0.140" }
+serde_json = { version = "1.0.141" }
 serde_yaml = { version = "0.9.32" }
 serde_regex = { version = "1.1.0" }
 smallvec = { version = "1.15.1" }
@@ -99,7 +99,7 @@ subslice = "0.2.3"
 tempfile = "3.6.0"
 textnonce = "1.0.0"
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["macros", "parking_lot", "process"] }
+tokio = { version = "1.46.1", features = ["macros", "parking_lot", "process"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
 tower-service = "0.3"
 tokio-util = { version = "0.7.4", features = ["io"] }
