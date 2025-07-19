@@ -53,7 +53,7 @@ pub fn init() {
         }
     };
 
-    crate::config::CONFIG.set(conf).expect("config should be set");
+    CONFIG.set(conf).expect("config should be set");
 }
 pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()

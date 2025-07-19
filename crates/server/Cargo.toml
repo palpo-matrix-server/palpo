@@ -13,9 +13,44 @@ rust-version.workspace = true
 # [features]
 # manage = []
 
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+base64 = { workspace = true }
+bcrypt = { workspace = true }
+blurhash = { workspace = true }
+byteorder = { workspace = true }
+bytes = { workspace = true }
+chksum = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["std", "derive", "help", "usage", "error-context"] }
+config = { workspace = true }
+cookie = { workspace = true }
+cyborgtime = { workspace = true }
+data-encoding = { workspace = true }
+diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
+diesel_migrations = { workspace = true }
+dotenvy = { workspace = true }
+either = { workspace = true, features = ["serde"] }
+fast32 = { workspace = true }
+figment = { workspace = true, features = ["env", "toml", "yaml"] }
+futures-util = { workspace = true, features = ["io"] }
+globwalk = { workspace = true }
+hickory-resolver = { workspace = true }
+hmac = { workspace = true }
+hyper-util = { workspace = true, features = ["client"] }
+image = { workspace = true }
+indexmap = { workspace = true }
+ipaddress = { workspace = true }
+itertools = { workspace = true }
+jsonwebtoken = { workspace = true }
+# ldap3 = { workspace = true }
+lru-cache = { workspace = true }
+maplit = { workspace = true }
+mime = { workspace = true }
+mime-infer = { workspace = true }
 palpo-core = { workspace = true, features = [
     "markdown",
     "html",
@@ -72,44 +107,8 @@ palpo-core = { workspace = true, features = [
     "unstable-pdu",
     "unstable-unspecified",
 ] }
-palpo-macros = { workspace = true }
 palpo-data = { workspace = true }
-
-anyhow = { workspace = true }
-base64 = { workspace = true }
-byteorder = { workspace = true }
-async-trait = { workspace = true }
-bcrypt = { workspace = true }
-blurhash = { workspace = true }
-bytes = { workspace = true }
-chksum = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
-clap = { workspace = true, features = ["std", "derive", "help", "usage", "error-context"] }
-config = { workspace = true }
-cookie = { workspace = true }
-cyborgtime = { workspace = true }
-data-encoding = { workspace = true }
-dotenvy = { workspace = true }
-diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
-diesel_migrations = { workspace = true }
-either = { workspace = true, features = ["serde"] }
-fast32 = { workspace = true }
-figment = { workspace = true, features = ["env", "toml", "yaml"] }
-futures-util = { workspace = true, features = ["io"] }
-globwalk = { workspace = true }
-hickory-resolver = { workspace = true }
-hmac = { workspace = true }
-hyper-util = { workspace = true, features = ["client"] }
-ipaddress = { workspace = true }
-itertools = { workspace = true }
-image = { workspace = true }
-indexmap = { workspace = true }
-jsonwebtoken = { workspace = true }
-# ldap3 = { workspace = true }
-lru-cache = { workspace = true }
-maplit = { workspace = true }
-mime = { workspace = true }
-mime-infer = { workspace = true }
+palpo-macros = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }
@@ -122,9 +121,9 @@ sanitize-filename = { workspace = true }
 scheduled-thread-pool = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
-serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_regex = { workspace = true }
+serde_yaml = { workspace = true }
 sha1 = { workspace = true }
 smallvec = { workspace = true }
 strum = { workspace = true }
@@ -132,18 +131,16 @@ strum_macros = { workspace = true }
 tempfile = { workspace = true }
 textnonce = { workspace = true }
 thiserror = { workspace = true }
-tower-service = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }
+tower-service = { workspace = true }
 tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 tracing-futures = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+ulid = { workspace = true }
 url = { workspace = true }
 uuid = { version = "1.1.2", features = ["v4"] }
-serde_with = { workspace = true }
-serde_yaml = { workspace = true }
-ulid = { workspace = true }
 webpage = { workspace = true }
 # notify = "5.1.0"
 

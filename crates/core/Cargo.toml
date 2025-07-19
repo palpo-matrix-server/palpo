@@ -81,15 +81,12 @@ unstable-pdu = []
 unstable-unspecified = []
 
 [dependencies]
-palpo-macros = { workspace = true }
-palpo-identifiers-validation = { workspace = true }
-
 
 as_variant = { workspace = true }
 async-trait = { workspace = true }
 base64.workspace = true
-bytes = { workspace = true }
 bcrypt = { workspace = true }
+bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 config = { workspace = true }
 cookie = { workspace = true }
@@ -97,25 +94,27 @@ date_header = { workspace = true }
 diesel = { workspace = true }
 dotenvy = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["pkcs8", "rand_core"] }
-futures-util = { workspace = true, features = ["io"] }
 form_urlencoded = { workspace = true }
+futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
 html5ever = { workspace = true }
 http = { workspace = true }
 http-auth = { version = "0.1.9", default-features = false }
 indexmap = { workspace = true }
-itertools ={ workspace = true }
-jsonwebtoken = { workspace = true }
+itertools = { workspace = true }
 js_option = { workspace = true }
+jsonwebtoken = { workspace = true }
 konst = { workspace = true }
-maplit ={ workspace = true }
+maplit = { workspace = true }
 mime = { workspace = true }
+palpo-identifiers-validation = { workspace = true }
+palpo-macros = { workspace = true }
 # oauth2 = { workspace = true }
 path-slash = { workspace = true }
 percent-encoding = { workspace = true }
 phf = { workspace = true, features = ["macros"] }
 pkcs8 = { workspace = true, features = ["alloc"] }
-pulldown-cmark = { workspace = true, optional = true, features = ["html"]}
+pulldown-cmark = { workspace = true, optional = true, features = ["html"] }
 rand = { workspace = true }
 rand_core = { workspace = true }
 # redis = { workspace = true }
@@ -124,7 +123,6 @@ reqwest = { workspace = true, features = ["json"] }
 salvo = { workspace = true, features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
 sanitize-filename = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde-aux = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 smallstr = { workspace = true }
@@ -140,10 +138,9 @@ tokio-util = { workspace = true, features = ["io"] }
 tracing = { workspace = true, features = ["release_max_level_debug", "attributes", "max_level_debug"] }
 tracing-futures = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+ulid = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-serde_with = { workspace = true }
-ulid = { workspace = true }
 web-time = { workspace = true }
 wildmatch = { workspace = true }
 
