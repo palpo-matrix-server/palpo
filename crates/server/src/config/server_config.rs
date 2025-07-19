@@ -777,10 +777,10 @@ impl ServerConfig {
 
         // check if user specified valid IP CIDR ranges on startup
         for cidr in &self.ip_range_denylist {
-            if let Err(e) = ipaddress::IPAddress::parse(cidr) {
-                return Err(AppError::internal(format!(
-                    "parsing specified IP CIDR range from string failed: {e}"
-                )));
+            if let Err(_e) = ipaddress::IPAddress::parse(cidr) {
+                return Err(AppError::internal(
+                    "Parsing specified IP CIDR range from string failed: {e}.",
+                ));
             }
         }
 

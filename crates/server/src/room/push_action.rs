@@ -5,7 +5,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::room::NewDbEventPushAction;
 use crate::data::schema::*;
-use crate::{AppResult, data};
+use crate::AppResult;
 
 pub fn increment_notification_counts(
     event_id: &EventId,
@@ -105,7 +105,7 @@ pub fn upsert_push_action(
         .select((events::topological_ordering, events::stream_ordering))
         .first::<(i64, i64)>(&mut connect()?)?;
 
-    data::room::event::upsert_push_action(&NewDbEventPushAction {
+    crate::data::room::event::upsert_push_action(&NewDbEventPushAction {
         room_id: room_id.to_owned(),
         event_id: event_id.to_owned(),
         event_sn,

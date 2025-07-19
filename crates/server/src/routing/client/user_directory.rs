@@ -25,7 +25,7 @@ pub fn authed_router() -> Router {
 #[endpoint]
 fn search(
     _aa: AuthArgs,
-    args: SearchUsersReqArgs,
+    _args: SearchUsersReqArgs,
     body: JsonBody<SearchUsersReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SearchUsersResBody> {

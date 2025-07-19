@@ -9,7 +9,7 @@ use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
 
 pub async fn get_remote_content(
-    mxc: &str,
+    _mxc: &str,
     server_name: &ServerName,
     media_id: &str,
     res: &mut Response,

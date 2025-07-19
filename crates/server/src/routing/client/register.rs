@@ -51,7 +51,7 @@ async fn register(
     body: JsonBody<RegisterReqBody>,
     req: &mut Request,
     depot: &mut Depot,
-    res: &mut Response,
+    _res: &mut Response,
 ) -> JsonResult<RegisterResBody> {
     let body = body.into_inner();
     // For complement test `TestRequestEncodingFails`.
@@ -228,7 +228,7 @@ async fn register(
                 warn!("Granting {} admin privileges as the first user", user_id);
             } else if body.login_type != Some(LoginType::Appservice) {
                 info!("New user {} registered on this server.", user_id);
-                crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
+                let _ = crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
                     "New user {user_id} registered on this server."
                 )));
             }

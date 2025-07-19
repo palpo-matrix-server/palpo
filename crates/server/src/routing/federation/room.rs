@@ -105,7 +105,7 @@ async fn get_filtered_public_rooms(
 async fn send_knock(
     _aa: AuthArgs,
     args: SendKnockReqArgs,
-    req: &mut Request,
+    _req: &mut Request,
     body: JsonBody<SendKnockReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<SendKnockResBody> {
@@ -266,7 +266,7 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
         }
     }
 
-    let (_pdu, mut pdu_json, event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),

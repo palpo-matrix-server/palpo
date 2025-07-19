@@ -68,7 +68,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
 pub async fn get_thumbnail(
     _aa: AuthArgs,
     args: ThumbnailReqArgs,
-    req: &mut Request,
+    _req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
     let server_name = config::server_name();
@@ -116,7 +116,7 @@ pub async fn get_thumbnail(
         });
         Ok(())
     } else if let Ok(Some(DbMetadata {
-        disposition_type,
+        disposition_type: _,
         content_type,
         ..
     })) = crate::data::media::get_metadata(server_name, &args.media_id)

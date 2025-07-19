@@ -246,7 +246,7 @@ fn process_to_outlier_pdu<'a>(
             MatrixError::missing_param("invalid PDU, no origin_server_ts field")
         })?;
 
-        let origin_server_ts = {
+        let _origin_server_ts = {
             let ts = origin_server_ts
                 .as_integer()
                 .ok_or_else(|| MatrixError::invalid_param("origin_server_ts must be an integer"))?;
@@ -299,7 +299,7 @@ fn process_to_outlier_pdu<'a>(
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("auth check for {} based on auth events", incoming_pdu.event_id);
 
-        let (auth_events, missing_auth_event_ids) = timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
+        let (_auth_events, missing_auth_event_ids) = timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
 
         if !missing_auth_event_ids.is_empty() {
             fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await?;
@@ -403,7 +403,7 @@ pub async fn process_to_timeline_pdu(
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
-    let event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
+    let _event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
 
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
@@ -794,7 +794,7 @@ pub(crate) async fn fetch_and_process_outliers(
 pub async fn fetch_and_process_missing_prev_events(
     origin: &ServerName,
     room_id: &RoomId,
-    room_version_id: &RoomVersionId,
+    _room_version_id: &RoomVersionId,
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {

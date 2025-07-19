@@ -2,7 +2,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::filter::{CreateFilterReqBody, CreateFilterResBody, FilterResBody};
-use crate::{AuthArgs, DepotExt, JsonResult, data, json_ok};
+use crate::{AuthArgs, DepotExt, JsonResult, json_ok, data};
 
 /// #GET /_matrix/client/r0/user/{user_id}/filter/{filter_id}
 /// Loads a filter that was previously created.
@@ -11,7 +11,7 @@ use crate::{AuthArgs, DepotExt, JsonResult, data, json_ok};
 #[endpoint]
 pub(super) fn get_filter(_aa: AuthArgs, filter_id: PathParam<i64>, depot: &mut Depot) -> JsonResult<FilterResBody> {
     let authed = depot.authed_info()?;
-    let filter = data::user::get_filter(authed.user_id(), filter_id.into_inner())?;
+    let filter = crate::data::user::get_filter(authed.user_id(), filter_id.into_inner())?;
     json_ok(FilterResBody::new(filter))
 }
 

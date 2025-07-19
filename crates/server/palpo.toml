@@ -50,7 +50,7 @@ log_format = "pretty" # pretty, json, compact
 #log = "warn,state=warn,rocket=off,_=off,sled=off"
 
 [db]
-url = "postgres://postgres:root@127.0.0.1:5432/palpo_main_local"
+url = "postgres://palpo:palpo_pass@db:5432/palpo_db"
 pool_size = 1
 
 [well_known]

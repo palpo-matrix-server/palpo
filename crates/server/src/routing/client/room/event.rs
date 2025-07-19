@@ -71,7 +71,7 @@ pub(super) fn report(
         return Err(MatrixError::invalid_param("Reason too long, should be 250 characters or fewer").into());
     };
 
-    crate::admin::send_message(RoomMessageEventContent::text_html(
+    let _ = crate::admin::send_message(RoomMessageEventContent::text_html(
         format!(
             "Report received from: {}\n\n\
                 Event ID: {:?}\n\

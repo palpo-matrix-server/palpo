@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
+use crate::core::serde::RawJson;
 
+use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
@@ -12,6 +14,7 @@ use crate::{DataResult, connect};
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
+    let _list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
         .filter(event_receipts::event_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))

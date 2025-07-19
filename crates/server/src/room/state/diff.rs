@@ -68,7 +68,7 @@ pub fn compress_events(room_id: &RoomId, events: impl Iterator<Item = (i64, Seqn
     Ok(compressed)
 }
 
-pub fn compress_event(room_id: &RoomId, field_id: i64, event_sn: Seqnum) -> AppResult<CompressedEvent> {
+pub fn compress_event(_room_id: &RoomId, field_id: i64, event_sn: Seqnum) -> AppResult<CompressedEvent> {
     Ok(CompressedEvent::new(field_id, event_sn))
 }
 
