@@ -323,9 +323,9 @@ pub fn left_rooms(
         })?;
     let mut room_events = HashMap::new();
     for (room_id, event_ids) in room_event_ids {
-        let events = event_datas::table
-            .filter(event_datas::event_id.eq_any(&event_ids))
-            .select(event_datas::json_data)
+        let events = event_data::table
+            .filter(event_data::event_id.eq_any(&event_ids))
+            .select(event_data::json_data)
             .load::<JsonValue>(&mut connect()?)?
             .into_iter()
             .filter_map(|value| RawJson::<AnySyncStateEvent>::from_value(&value).ok())

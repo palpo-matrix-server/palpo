@@ -55,8 +55,8 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<(Seqnu
             .set(events::sn.eq(sn))
             .execute(&mut connect()?)?;
 
-        diesel::update(event_datas::table.find(event_id))
-            .set(event_datas::event_sn.eq(sn))
+        diesel::update(event_data::table.find(event_id))
+            .set(event_data::event_sn.eq(sn))
             .execute(&mut connect()?)?;
 
         Ok((sn, Some(crate::queue_seqnum(sn))))

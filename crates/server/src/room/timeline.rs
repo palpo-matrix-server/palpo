@@ -44,10 +44,10 @@ pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>>
 
 #[tracing::instrument]
 pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
-    event_datas::table
-        .filter(event_datas::room_id.eq(room_id))
-        .order(event_datas::event_sn.asc())
-        .select((event_datas::event_id, event_datas::json_data))
+    event_data::table
+        .filter(event_data::room_id.eq(room_id))
+        .order(event_data::event_sn.asc())
+        .select((event_data::event_id, event_data::json_data))
         .first::<(OwnedEventId, JsonValue)>(&mut connect()?)
         .optional()?
         .map(|(event_id, json)| {
@@ -69,9 +69,9 @@ pub fn last_event_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
 
 /// Returns the json of a pdu.
 pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>> {
-    event_datas::table
-        .filter(event_datas::event_id.eq(event_id))
-        .select(event_datas::json_data)
+    event_data::table
+        .filter(event_data::event_id.eq(event_id))
+        .select(event_data::json_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| serde_json::from_value(json).map_err(|_e| AppError::internal("Invalid PDU in db.")))
@@ -91,9 +91,9 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
     else {
         return Ok(None);
     };
-    event_datas::table
-        .filter(event_datas::event_id.eq(event_id))
-        .select(event_datas::json_data)
+    event_data::table
+        .filter(event_data::event_id.eq(event_id))
+        .select(event_data::json_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
@@ -113,9 +113,9 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 }
 
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
-    let (event_sn, json) = event_datas::table
-        .filter(event_datas::event_id.eq(event_id))
-        .select((event_datas::event_sn, event_datas::json_data))
+    let (event_sn, json) = event_data::table
+        .filter(event_data::event_id.eq(event_id))
+        .select((event_data::event_sn, event_data::json_data))
         .first::<(Seqnum, JsonValue)>(&mut connect()?)?;
     let pdu = PduEvent::from_json_value(event_id, json).map_err(|_e| AppError::internal("Invalid PDU in db."))?;
     Ok(SnPduEvent::new(pdu, event_sn))
@@ -125,10 +125,10 @@ pub fn get_may_missing_pdus(
     room_id: &RoomId,
     event_ids: &[OwnedEventId],
 ) -> AppResult<(Vec<SnPduEvent>, Vec<OwnedEventId>)> {
-    let events = event_datas::table
-        .filter(event_datas::room_id.eq(room_id))
-        .filter(event_datas::event_id.eq_any(event_ids))
-        .select((event_datas::event_id, event_datas::event_sn, event_datas::json_data))
+    let events = event_data::table
+        .filter(event_data::room_id.eq(room_id))
+        .filter(event_data::event_id.eq_any(event_ids))
+        .select((event_data::event_id, event_data::event_sn, event_data::json_data))
         .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
 
     let mut pdus = Vec::with_capacity(events.len());
@@ -150,7 +150,7 @@ pub fn get_may_missing_pdus(
 
 pub fn has_pdu(event_id: &EventId) -> bool {
     if let Ok(mut conn) = connect() {
-        diesel_exists!(event_datas::table.filter(event_datas::event_id.eq(event_id)), &mut conn).unwrap_or(false)
+        diesel_exists!(event_data::table.filter(event_data::event_id.eq(event_id)), &mut conn).unwrap_or(false)
     } else {
         false
     }
@@ -159,8 +159,8 @@ pub fn has_pdu(event_id: &EventId) -> bool {
 /// Removes a pdu and creates a new one with the same id.
 #[tracing::instrument]
 pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppResult<()> {
-    diesel::update(event_datas::table.filter(event_datas::event_id.eq(event_id)))
-        .set(event_datas::json_data.eq(serde_json::to_value(pdu_json)?))
+    diesel::update(event_data::table.filter(event_data::event_id.eq(event_id)))
+        .set(event_data::json_data.eq(serde_json::to_value(pdu_json)?))
         .execute(&mut connect()?)?;
     // PDU_CACHE.lock().unwrap().remove(&(*pdu.event_id).to_owned());
 
@@ -177,7 +177,7 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 pub fn append_pdu<'a, L>(
     pdu: &'a SnPduEvent,
     mut pdu_json: CanonicalJsonObject,
-    leafs: L,
+    leaves: L,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<()>
 where
@@ -218,7 +218,7 @@ where
             error!("invalid unsigned type in pdu");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leafs, state_lock)?;
+    state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
 
     // See if the event matches any known pushers
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(

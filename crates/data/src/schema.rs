@@ -187,7 +187,7 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_datas (event_id) {
+    event_data (event_id) {
         event_id -> Text,
         event_sn -> Int8,
         room_id -> Text,
@@ -718,7 +718,7 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    user_datas (id) {
+    user_data (id) {
         id -> Int8,
         user_id -> Text,
         room_id -> Nullable<Text>,
@@ -939,7 +939,7 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    user_uiaa_datas (id) {
+    user_uiaa_data (id) {
         id -> Int8,
         user_id -> Text,
         device_id -> Text,
@@ -986,7 +986,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     e2e_room_keys_versions,
     event_auth_chains,
     event_backward_extremities,
-    event_datas,
+    event_data,
     event_edges,
     event_forward_extremities,
     event_idempotents,
@@ -1021,7 +1021,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     threepid_validation_sessions,
     threepid_validation_tokens,
     user_access_tokens,
-    user_datas,
+    user_data,
     user_dehydrated_devices,
     user_devices,
     user_filters,
@@ -1036,6 +1036,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_registration_tokens,
     user_sessions,
     user_threepids,
-    user_uiaa_datas,
+    user_uiaa_data,
     users,
 );

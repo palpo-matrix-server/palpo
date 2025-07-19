@@ -9,7 +9,7 @@ use crate::schema::*;
 use crate::{DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = user_datas)]
+#[diesel(table_name = user_data)]
 pub struct DbUserData {
     pub id: i64,
     pub user_id: OwnedUserId,
@@ -20,7 +20,7 @@ pub struct DbUserData {
     pub created_at: UnixMillis,
 }
 #[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = user_datas)]
+#[diesel(table_name = user_data)]
 pub struct NewDbUserData {
     pub user_id: OwnedUserId,
     pub room_id: Option<OwnedRoomId>,
@@ -39,10 +39,10 @@ pub fn set_data(
     json_data: JsonValue,
 ) -> DataResult<DbUserData> {
     if let Some(room_id) = &room_id {
-        let user_data = user_datas::table
-            .filter(user_datas::user_id.eq(user_id))
-            .filter(user_datas::room_id.eq(room_id))
-            .filter(user_datas::data_type.eq(event_type))
+        let user_data = user_data::table
+            .filter(user_data::user_id.eq(user_id))
+            .filter(user_data::room_id.eq(room_id))
+            .filter(user_data::data_type.eq(event_type))
             .first::<DbUserData>(&mut connect()?)
             .optional()?;
         if let Some(user_data) = user_data {
@@ -51,10 +51,10 @@ pub fn set_data(
             }
         }
     } else {
-        let user_data = user_datas::table
-            .filter(user_datas::user_id.eq(user_id))
-            .filter(user_datas::room_id.is_null())
-            .filter(user_datas::data_type.eq(event_type))
+        let user_data = user_data::table
+            .filter(user_data::user_id.eq(user_id))
+            .filter(user_data::room_id.is_null())
+            .filter(user_data::data_type.eq(event_type))
             .first::<DbUserData>(&mut connect()?)
             .optional()?;
         if let Some(user_data) = user_data {
@@ -72,9 +72,9 @@ pub fn set_data(
         occur_sn: None,
         created_at: UnixMillis::now(),
     };
-    diesel::insert_into(user_datas::table)
+    diesel::insert_into(user_data::table)
         .values(&new_data)
-        .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
+        .on_conflict((user_data::user_id, user_data::room_id, user_data::data_type))
         .do_update()
         .set(&new_data)
         .get_result::<DbUserData>(&mut connect()?)
@@ -83,11 +83,11 @@ pub fn set_data(
 
 #[tracing::instrument]
 pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>, kind: &str) -> DataResult<Option<E>> {
-    let row = user_datas::table
-        .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
-        .filter(user_datas::data_type.eq(kind))
-        .order_by(user_datas::id.desc())
+    let row = user_data::table
+        .filter(user_data::user_id.eq(user_id))
+        .filter(user_data::room_id.eq(room_id).or(user_data::room_id.is_null()))
+        .filter(user_data::data_type.eq(kind))
+        .order_by(user_data::id.desc())
         .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
@@ -100,11 +100,11 @@ pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>,
 /// Searches the account data for a specific kind.
 #[tracing::instrument]
 pub fn get_room_data<E: DeserializeOwned>(user_id: &UserId, room_id: &RoomId, kind: &str) -> DataResult<Option<E>> {
-    let row = user_datas::table
-        .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.eq(room_id))
-        .filter(user_datas::data_type.eq(kind))
-        .order_by(user_datas::id.desc())
+    let row = user_data::table
+        .filter(user_data::user_id.eq(user_id))
+        .filter(user_data::room_id.eq(room_id))
+        .filter(user_data::data_type.eq(kind))
+        .order_by(user_data::id.desc())
         .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
@@ -116,11 +116,11 @@ pub fn get_room_data<E: DeserializeOwned>(user_id: &UserId, room_id: &RoomId, ki
 
 #[tracing::instrument]
 pub fn get_global_data<E: DeserializeOwned>(user_id: &UserId, kind: &str) -> DataResult<Option<E>> {
-    let row = user_datas::table
-        .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.is_null())
-        .filter(user_datas::data_type.eq(kind))
-        .order_by(user_datas::id.desc())
+    let row = user_data::table
+        .filter(user_data::user_id.eq(user_id))
+        .filter(user_data::room_id.is_null())
+        .filter(user_data::data_type.eq(kind))
+        .order_by(user_data::id.desc())
         .first::<DbUserData>(&mut connect()?)
         .optional()?;
     if let Some(row) = row {
@@ -140,23 +140,23 @@ pub fn data_changes(
 ) -> DataResult<Vec<AnyRawAccountDataEvent>> {
     let mut user_datas = Vec::new();
 
-    let query = user_datas::table
-        .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
-        .filter(user_datas::occur_sn.ge(since_sn))
+    let query = user_data::table
+        .filter(user_data::user_id.eq(user_id))
+        .filter(user_data::room_id.eq(room_id).or(user_data::room_id.is_null()))
+        .filter(user_data::occur_sn.ge(since_sn))
         .into_boxed();
-    let db_datas = if let Some(until_sn) = until_sn {
+    let db_data = if let Some(until_sn) = until_sn {
         query
-            .filter(user_datas::occur_sn.le(until_sn))
-            .order_by(user_datas::occur_sn.asc())
+            .filter(user_data::occur_sn.le(until_sn))
+            .order_by(user_data::occur_sn.asc())
             .load::<DbUserData>(&mut connect()?)?
     } else {
         query
-            .order_by(user_datas::occur_sn.asc())
+            .order_by(user_data::occur_sn.asc())
             .load::<DbUserData>(&mut connect()?)?
     };
 
-    for db_data in db_datas {
+    for db_data in db_data {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);
         let account_data = json!({
             "type": kind,

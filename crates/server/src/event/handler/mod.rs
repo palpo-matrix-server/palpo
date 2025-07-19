@@ -229,9 +229,9 @@ fn process_to_outlier_pdu<'a>(
     >,
 > {
     Box::pin(async move {
-        if let Some((event_sn, event_data)) = event_datas::table
-            .filter(event_datas::event_id.eq(event_id))
-            .select((event_datas::event_sn, event_datas::json_data))
+        if let Some((event_sn, event_data)) = event_data::table
+            .filter(event_data::event_id.eq(event_id))
+            .select((event_data::event_sn, event_data::json_data))
             .first::<(Seqnum, JsonValue)>(&mut connect()?)
             .optional()?
         {

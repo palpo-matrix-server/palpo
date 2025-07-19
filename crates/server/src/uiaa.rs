@@ -45,38 +45,38 @@ pub fn update_session(
 ) -> AppResult<()> {
     if let Some(uiaa_info) = uiaa_info {
         let uiaa_info = serde_json::to_value(uiaa_info)?;
-        diesel::insert_into(user_uiaa_datas::table)
+        diesel::insert_into(user_uiaa_data::table)
             .values((
-                user_uiaa_datas::user_id.eq(user_id),
-                user_uiaa_datas::device_id.eq(device_id),
-                user_uiaa_datas::session.eq(session),
-                user_uiaa_datas::uiaa_info.eq(&uiaa_info),
+                user_uiaa_data::user_id.eq(user_id),
+                user_uiaa_data::device_id.eq(device_id),
+                user_uiaa_data::session.eq(session),
+                user_uiaa_data::uiaa_info.eq(&uiaa_info),
             ))
             .on_conflict((
-                user_uiaa_datas::user_id,
-                user_uiaa_datas::device_id,
-                user_uiaa_datas::session,
+                user_uiaa_data::user_id,
+                user_uiaa_data::device_id,
+                user_uiaa_data::session,
             ))
             .do_update()
-            .set(user_uiaa_datas::uiaa_info.eq(&uiaa_info))
+            .set(user_uiaa_data::uiaa_info.eq(&uiaa_info))
             .execute(&mut connect()?)?;
     } else {
         diesel::delete(
-            user_uiaa_datas::table
-                .filter(user_uiaa_datas::user_id.eq(user_id))
-                .filter(user_uiaa_datas::device_id.eq(user_id))
-                .filter(user_uiaa_datas::session.eq(session)),
+            user_uiaa_data::table
+                .filter(user_uiaa_data::user_id.eq(user_id))
+                .filter(user_uiaa_data::device_id.eq(user_id))
+                .filter(user_uiaa_data::session.eq(session)),
         )
         .execute(&mut connect()?)?;
     };
     Ok(())
 }
 pub fn get_session(user_id: &UserId, device_id: &DeviceId, session: &str) -> AppResult<UiaaInfo> {
-    let uiaa_info = user_uiaa_datas::table
-        .filter(user_uiaa_datas::user_id.eq(user_id))
-        .filter(user_uiaa_datas::device_id.eq(device_id))
-        .filter(user_uiaa_datas::session.eq(session))
-        .select(user_uiaa_datas::uiaa_info)
+    let uiaa_info = user_uiaa_data::table
+        .filter(user_uiaa_data::user_id.eq(user_id))
+        .filter(user_uiaa_data::device_id.eq(device_id))
+        .filter(user_uiaa_data::session.eq(session))
+        .select(user_uiaa_data::uiaa_info)
         .first::<JsonValue>(&mut connect()?)?;
     Ok(serde_json::from_value(uiaa_info)?)
 }
