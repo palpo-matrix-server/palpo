@@ -14,7 +14,7 @@ use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::room::{state, timeline};
-use crate::{AppResult, MatrixError, PduEvent, SnPduEvent};
+use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
     let filter = &criteria.filter;
@@ -137,10 +137,14 @@ fn calc_event_context(
         }
     }
 
-    let mut context = EventContextResult {
+    let context = EventContextResult {
         start: before_pdus.first().map(|(sn, _)| sn.to_string()),
         end: after_pdus.last().map(|(sn, _)| sn.to_string()),
-        events_before: before_pdus.into_iter().rev().map(|(_, pdu)| pdu.to_room_event()).collect(),
+        events_before: before_pdus
+            .into_iter()
+            .rev()
+            .map(|(_, pdu)| pdu.to_room_event())
+            .collect(),
         events_after: after_pdus.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect(),
         profile_info: BTreeMap::new(),
     };

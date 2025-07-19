@@ -15,8 +15,7 @@ pub use frame::*;
 mod graph;
 pub use graph::*;
 
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::HistoryVisibility;
 use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomMembership};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
@@ -546,7 +545,7 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id, event_id))]
 pub fn user_can_see_event(user_id: &UserId, room_id: &RoomId, event_id: &EventId) -> AppResult<bool> {
-    let mut pdu = timeline::get_pdu(event_id)?;
+    let pdu = timeline::get_pdu(event_id)?;
     pdu.user_can_see(user_id)
 }
 

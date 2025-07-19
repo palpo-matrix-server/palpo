@@ -4,16 +4,15 @@ pub use pdu::*;
 pub mod search;
 
 use diesel::prelude::*;
-use serde_json::json;
 
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{Direction, Seqnum, UnixMillis, signatures};
 use crate::data::connect;
-use crate::data::room::{DbEvent, NewDbEventPushAction};
+use crate::data::room::DbEvent;
 use crate::data::schema::*;
 use crate::utils::SeqnumQueueGuard;
-use crate::{AppError, AppResult, MatrixError, data};
+use crate::{AppError, AppResult, MatrixError};
 
 /// Generates a correct eventId for the incoming pdu.
 ///

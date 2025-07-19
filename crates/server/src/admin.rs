@@ -951,14 +951,14 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
 /// Invite the user to the palpo admin room.
 ///
 /// In palpo, this is equivalent to granting admin privileges.
-pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> AppResult<()> {
+pub(crate) async fn make_admin(user_id: &UserId) -> AppResult<()> {
     let conf = crate::config();
 
     let room_id = get_admin_room()?;
     let state_lock = room::lock_state(&room_id).await;
 
     // Use the server user to grant the new admin's power level
-    let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
+    let palpo_user = crate::palpo_user(&conf.server_name);
 
     // Invite and join the real user
     timeline::build_and_append_pdu(
@@ -988,7 +988,7 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: Some(display_name),
+                display_name: None,
                 avatar_url: None,
                 is_direct: None,
                 third_party_invite: None,
@@ -1042,5 +1042,53 @@ pub(crate) async fn make_user_admin(user_id: &UserId, display_name: String) -> A
             &room_id,
             &state_lock,
         )?;
+    Ok(())
+}
+
+pub async fn revoke_admin(user_id: &UserId) -> AppResult<()> {
+    use MembershipState::{Invite, Join, Knock, Leave};
+
+    let Ok(room_id) = get_admin_room() else {
+        return Err(AppError::public("No admin room available or created."));
+    };
+
+    let state_lock = room::lock_state(&room_id).await;
+
+    let event = match room::get_member(&room_id, user_id) {
+        Err(_e) => return Err(AppError::public("failure occurred while attempting revoke")),
+        Ok(event) if !matches!(event.membership, Invite | Knock | Join) => {
+            return Err(AppError::public(format!(
+                "cannot revoke {user_id} in membership state {:?}.",
+                event.membership
+            )));
+        }
+        Ok(event) => {
+            assert!(
+                matches!(event.membership, Invite | Knock | Join),
+                "Incorrect membership state to remove user."
+            );
+
+            event
+        }
+    };
+
+    let conf = crate::config();
+    let palpo_user = crate::palpo_user(&conf.server_name);
+    timeline::build_and_append_pdu(
+        PduBuilder::state(
+            user_id.to_string(),
+            &RoomMemberEventContent {
+                membership: Leave,
+                reason: Some("Admin Revoked".into()),
+                is_direct: None,
+                join_authorized_via_users_server: None,
+                third_party_invite: None,
+                ..event
+            },
+        ),
+        &palpo_user,
+        &room_id,
+        &state_lock,
+    )?;
     Ok(())
 }

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, hash_map};
-use std::sync::Arc;
 
 use crate::core::ServerName;
 use crate::core::federation::event::{RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request};

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use diesel::prelude::*;
+use palpo_data::user;
 use tokio::sync::RwLock;
 
 use crate::core::events::GlobalAccountDataEventType;
@@ -13,10 +14,9 @@ use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{UnixMillis, federation};
+use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::room::state;
 use crate::{AppError, AppResult, MatrixError, SigningKeys, data, room};
 
 mod banned;
@@ -84,9 +84,9 @@ async fn validate_and_add_event_id(
         )
     };
 
-    let unfiltered_keys = (*pub_key_map.read().await).clone();
+    // let unfiltered_keys = (*pub_key_map.read().await).clone();
 
-    let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
+    // let keys = crate::filter_keys_server_map(unfiltered_keys, origin_server_ts, room_version);
 
     // TODO
     // if let Err(e) = crate::core::signatures::verify_event(&keys, &value, room_version) {

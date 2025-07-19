@@ -9,8 +9,8 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::room::{DbEventRelation, NewDbEventRelation};
 use crate::data::schema::*;
-use crate::event::{PduEvent, SnPduEvent};
-use crate::room::{state, timeline};
+use crate::event::SnPduEvent;
+use crate::room::timeline;
 
 #[derive(Clone, Debug, Deserialize)]
 struct ExtractRelType {

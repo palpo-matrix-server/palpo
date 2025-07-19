@@ -7,7 +7,7 @@ use crate::core::UnixMillis;
 use crate::core::events::AnySyncTimelineEvent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::identifiers::*;
-use crate::core::push::{Action, PushConditionPowerLevelsCtx, RoomVersionFeature, PushConditionRoomCtx, Pusher, PusherKind, Ruleset};
+use crate::core::push::{Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset};
 use crate::core::serde::{JsonValue, RawJson};
 use crate::schema::*;
 use crate::{DataError, DataResult, connect};
@@ -55,7 +55,6 @@ impl TryInto<Pusher> for DbPusher {
     type Error = DataError;
     fn try_into(self) -> DataResult<Pusher> {
         let Self {
-            user_id,
             profile_tag,
             kind,
             app_id,

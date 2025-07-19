@@ -5,15 +5,13 @@
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
 {"Action":"fail","Test":"TestClientSpacesSummary/suggested_only"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation"}
-{"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
-{"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
+{"Action":"fail","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"fail","Test":"TestKnocking"}
 {"Action":"fail","Test":"TestKnocking/A_user_can_knock_on_a_room_without_a_reason#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason#01"}
-{"Action":"fail","Test":"TestMembershipOnEvents"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
@@ -23,7 +21,6 @@
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation"}
 {"Action":"fail","Test":"TestToDeviceMessagesOverFederation/interrupted_connectivity"}
-{"Action":"fail","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
@@ -109,7 +106,9 @@
 {"Action":"pass","Test":"TestDeactivateAccount/Can't_deactivate_account_with_wrong_password"}
 {"Action":"pass","Test":"TestDeactivateAccount/Password_flow_is_available"}
 {"Action":"pass","Test":"TestDemotingUsersViaUsersDefault"}
+{"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
+{"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestDeviceListUpdates"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_local_user"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_remote_user"}
@@ -144,7 +143,6 @@
 {"Action":"pass","Test":"TestFederationKeyUploadQuery"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_claim_remote_one_time_key_using_POST"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}
-{"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel"}
@@ -328,6 +326,7 @@
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_locally"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_download_without_a_file_name_over_federation"}
 {"Action":"pass","Test":"TestMediaWithoutFileName/parallel/Can_upload_without_a_file_name"}
+{"Action":"pass","Test":"TestMembershipOnEvents"}
 {"Action":"pass","Test":"TestMembersLocal"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel/Existing_members_see_new_members'_join_events"}
@@ -572,6 +571,7 @@
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation/good_connectivity"}
+{"Action":"pass","Test":"TestToDeviceMessagesOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestTxnIdempotency"}
 {"Action":"pass","Test":"TestTxnIdempotencyScopedToDevice"}
 {"Action":"pass","Test":"TestTxnIdWithRefreshToken"}

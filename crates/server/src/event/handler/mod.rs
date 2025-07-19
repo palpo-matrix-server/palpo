@@ -9,12 +9,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use cookie::time::error;
 use diesel::prelude::*;
 use fetch_state::fetch_state;
 use indexmap::IndexMap;
-use palpo_core::events::call::reject;
-use palpo_data::room::DbEvent;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
@@ -34,8 +31,8 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
-use crate::utils::{SeqnumQueueFuture, SeqnumQueueGuard};
-use crate::{AppError, AppResult, MatrixError, data, exts::*, room};
+use crate::utils::SeqnumQueueGuard;
+use crate::{AppError, AppResult, MatrixError, exts::*, room};
 
 /// When receiving an event one needs to:
 /// 0. Check the server is in the room
@@ -412,7 +409,6 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
-    let timer = Instant::now();
     let room_version_id = &room::get_version(room_id)?;
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
@@ -752,7 +748,7 @@ pub(crate) async fn fetch_and_process_outliers(
             trace!("Found {id} in db");
             pdus.push((local_pdu.clone(), None, None));
         }
-        for (next_id, mut value) in events_in_reverse_order.into_iter().rev() {
+        for (next_id, value) in events_in_reverse_order.into_iter().rev() {
             if let Some((time, tries)) = crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id) {
                 // Exponential backoff
                 let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
@@ -802,7 +798,6 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
-    let conf = crate::config();
     let room_version_id = &room::get_version(room_id)?;
 
     let min_depth = timeline::first_pdu_in_room(room_id)
@@ -845,7 +840,7 @@ pub async fn fetch_and_process_missing_prev_events(
             .await?;
 
         for event in res_body.events {
-            let (event_id, event_val, room_id, room_version_id) = crate::parse_incoming_pdu(&event)?;
+            let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(&event)?;
 
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)

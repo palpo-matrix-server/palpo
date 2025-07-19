@@ -20,8 +20,7 @@ use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler}
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, RoomMutexGuard, SnPduEvent,
-    config, data,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent, config, data,
 };
 
 pub async fn knock_room(
@@ -215,7 +214,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            handler::process_incoming_pdu(
+            let _ = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 &room_id,
@@ -223,8 +222,7 @@ pub async fn knock_room(
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )
-            .await
-            .map(|_| ());
+            .await;
             timeline::get_pdu(&event_id)?
         };
 
@@ -297,7 +295,7 @@ pub async fn knock_room(
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
-    state::set_room_state(room_id, frame_id);
+    let _ = state::set_room_state(room_id, frame_id);
 
     drop(event_guard);
     Ok(())

@@ -5,31 +5,28 @@ use std::sync::Arc;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
+use palpo_core::client::device;
 use palpo_core::serde::JsonValue;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
-use tracing_subscriber::fmt::format;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::UnixMillis;
 use crate::core::client::membership::{JoinRoomResBody, ThirdPartySigned};
 use crate::core::device::DeviceListUpdateContent;
-use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::TimelineEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{
-    MakeJoinReqArgs, MakeJoinResBody, RoomStateV1, RoomStateV2, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
+    MakeJoinReqArgs, MakeJoinResBody, SendJoinArgs, SendJoinReqBody, SendJoinResBodyV2,
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, RawJsonValue, to_canonical_value, to_raw_json_value,
-};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value, to_raw_json_value};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
-use crate::event::{self, PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
@@ -48,10 +45,11 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
+    let sender_id = authed.user_id();
+    let device_id = authed.device_id();
     if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
-    let sender_id = authed.user_id();
     if room::user::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
@@ -100,6 +98,7 @@ pub async fn join_room(
             &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
+                crate::user::mark_device_key_update_with_joined_rooms(&sender_id, &device_id, &[room_id.to_owned()])?;
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
@@ -251,11 +250,11 @@ pub async fn join_room(
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
-        let (event_id, event_value, room_id, room_version_id) = crate::parse_incoming_pdu(state)?;
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
@@ -265,8 +264,14 @@ pub async fn join_room(
             error!("Failed to fetch missing prev events for join: {e}");
         }
     }
-    if let Err(e) =
-        fetch_and_process_missing_prev_events(&remote_server, room_id, &room_version_id, &parsed_join_pdu, &mut Default::default()).await
+    if let Err(e) = fetch_and_process_missing_prev_events(
+        &remote_server,
+        room_id,
+        &room_version_id,
+        &parsed_join_pdu,
+        &mut Default::default(),
+    )
+    .await
     {
         error!("Failed to fetch missing prev events for join: {e}");
     }

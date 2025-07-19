@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use diesel::prelude::*;
@@ -6,6 +6,7 @@ use serde::de::DeserializeOwned;
 
 use crate::appservice::RegistrationInfo;
 use crate::core::directory::RoomTypeFilter;
+use crate::core::events::StateEventType;
 use crate::core::events::room::avatar::RoomAvatarEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
@@ -16,17 +17,15 @@ use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
-use crate::core::events::{AnySyncStateEvent, StateEventType};
 use crate::core::identifiers::*;
 use crate::core::room::RoomType;
-use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{Seqnum, UnixMillis};
-use crate::data::room::{DbRoom, DbRoomCurrent, NewDbRoom};
+use crate::data::room::{DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppError, AppResult, IsRemoteOrLocal, PduEvent, RoomMutexGuard, RoomMutexMap, SnPduEvent,
-    config, data, membership, room, utils,
+    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, RoomMutexGuard, RoomMutexMap, SnPduEvent, config, data,
+    membership, room, utils,
 };
 
 pub mod alias;
@@ -554,4 +553,23 @@ pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
         .select(room_users::user_id)
         .load::<OwnedUserId>(&mut connect()?)
         .map_err(Into::into)
+}
+
+pub fn keys_changed_users(room_id: &RoomId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+    if let Some(until_sn) = until_sn {
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq(room_id))
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
+            .filter(e2e_key_changes::occur_sn.le(until_sn))
+            .select(e2e_key_changes::user_id)
+            .load::<OwnedUserId>(&mut connect()?)
+            .map_err(Into::into)
+    } else {
+        e2e_key_changes::table
+            .filter(e2e_key_changes::room_id.eq(room_id.as_str()))
+            .filter(e2e_key_changes::occur_sn.ge(since_sn))
+            .select(e2e_key_changes::user_id)
+            .load::<OwnedUserId>(&mut connect()?)
+            .map_err(Into::into)
+    }
 }

@@ -197,11 +197,11 @@ pub async fn claim_one_time_keys(
                 Ok(keys) => {
                     one_time_keys.extend(keys.one_time_keys);
                 }
-                Err(e) => {
+                Err(_e) => {
                     failures.insert(server.to_string(), json!({}));
                 }
             },
-            Err(e) => {
+            Err(_e) => {
                 failures.insert(server.to_string(), json!({}));
             }
         }
@@ -314,6 +314,7 @@ pub fn claim_one_time_key(
 pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
     data::user::add_device_keys(user_id, device_id, device_keys)?;
     mark_device_key_update(user_id, device_id)?;
+    send_device_key_update(user_id, device_id)?;
     Ok(())
 }
 
@@ -337,7 +338,7 @@ pub fn add_cross_signing_keys(
     if let Some(self_signing_key) = self_signing_key {
         let mut self_signing_key_ids = self_signing_key.keys.values();
 
-        let self_signing_key_id = self_signing_key_ids
+        let _self_signing_key_id = self_signing_key_ids
             .next()
             .ok_or(MatrixError::invalid_param("Self signing key contained no key."))?;
 
@@ -358,7 +359,7 @@ pub fn add_cross_signing_keys(
     if let Some(user_signing_key) = user_signing_key {
         let mut user_signing_key_ids = user_signing_key.keys.values();
 
-        let user_signing_key_id = user_signing_key_ids
+        let _user_signing_key_id = user_signing_key_ids
             .next()
             .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
 
@@ -469,7 +470,7 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
         let content = SigningKeyUpdateContent::new(user_id.to_owned());
         let edu = Edu::SigningKeyUpdate(content);
 
-        sending::send_edu_servers(remote_servers.into_iter(), &edu);
+        let _ = sending::send_edu_servers(remote_servers.into_iter(), &edu);
     }
 
     Ok(())
@@ -477,8 +478,8 @@ pub fn mark_signing_key_update(user_id: &UserId) -> AppResult<()> {
 
 pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let changed_at = UnixMillis::now();
-
     let joined_rooms = data::user::joined_rooms(user_id)?;
+    let occur_sn = data::next_sn()?;
     for room_id in &joined_rooms {
         // comment for testing
         // // Don't send key updates to unencrypted rooms
@@ -490,7 +491,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
             user_id: user_id.to_owned(),
             room_id: Some(room_id.to_owned()),
             changed_at,
-            occur_sn: data::next_sn()?,
+            occur_sn,
         };
 
         diesel::delete(
@@ -508,7 +509,7 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         user_id: user_id.to_owned(),
         room_id: None,
         changed_at,
-        occur_sn: data::next_sn()?,
+        occur_sn,
     };
 
     diesel::delete(
@@ -521,15 +522,43 @@ pub fn mark_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResu
         .values(&change)
         .execute(&mut connect()?)?;
 
-    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+    Ok(())
 }
 
-pub fn mark_device_list_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
+pub fn mark_device_key_update_with_joined_rooms(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    joined_rooms: &[OwnedRoomId],
+) -> AppResult<()> {
+    let changed_at = UnixMillis::now();
+    let occur_sn = data::next_sn()?;
+    for room_id in joined_rooms {
+        let change = NewDbKeyChange {
+            user_id: user_id.to_owned(),
+            room_id: Some(room_id.to_owned()),
+            changed_at,
+            occur_sn,
+        };
+
+        diesel::delete(
+            e2e_key_changes::table
+                .filter(e2e_key_changes::user_id.eq(user_id))
+                .filter(e2e_key_changes::room_id.eq(room_id)),
+        )
+        .execute(&mut connect()?)?;
+        diesel::insert_into(e2e_key_changes::table)
+            .values(&change)
+            .execute(&mut connect()?)?;
+    }
+    Ok(())
+}
+
+pub fn send_device_key_update(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
     let joined_rooms = data::user::joined_rooms(user_id)?;
-    mark_device_list_update_with_joined_rooms(user_id, device_id, &joined_rooms)
+    send_device_key_update_with_joined_rooms(user_id, device_id, &joined_rooms)
 }
 
-fn mark_device_list_update_with_joined_rooms(
+fn send_device_key_update_with_joined_rooms(
     user_id: &UserId,
     device_id: &DeviceId,
     joined_rooms: &[OwnedRoomId],

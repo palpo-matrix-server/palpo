@@ -265,10 +265,7 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
     /// Creates a new `MegolmV1AesSha2Content` from the given init struct.
     fn from(init: MegolmV1AesSha2ContentInit) -> Self {
         let MegolmV1AesSha2ContentInit {
-            ciphertext,
-            sender_key,
-            device_id,
-            session_id,
+            ciphertext, session_id, ..
         } = init;
         Self { ciphertext, session_id }
     }

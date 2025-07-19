@@ -21,7 +21,9 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::{Action, FlattenedJson, MissingPatternError,PredefinedContentRuleId, PushConditionRoomCtx, PushRule, condition};
+use crate::push::{
+    Action, FlattenedJson, MissingPatternError, PredefinedContentRuleId, PushConditionRoomCtx, PushRule, condition,
+};
 
 /// Like `SimplePushRule`, but with an additional `pattern` field.
 ///

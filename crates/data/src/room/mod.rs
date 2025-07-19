@@ -9,8 +9,8 @@ use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::{DataResult, connect};
 
-pub mod receipt;
 pub mod event;
+pub mod receipt;
 
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = rooms)]
@@ -304,10 +304,9 @@ pub struct NewDbEventIdempotent {
     pub created_at: UnixMillis,
 }
 
-
 #[derive(Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = event_push_actions)]
-pub struct NewDbEventPushAction{
+pub struct NewDbEventPushAction {
     pub room_id: OwnedRoomId,
     pub event_id: OwnedEventId,
     pub event_sn: Seqnum,
@@ -323,7 +322,9 @@ pub struct NewDbEventPushAction{
 }
 
 pub fn is_disabled(room_id: &RoomId) -> DataResult<bool> {
-    let query = rooms::table.filter(rooms::disabled.eq(true));
+    let query = rooms::table
+        .filter(rooms::id.eq(room_id))
+        .filter(rooms::disabled.eq(true));
     Ok(diesel_exists!(query, &mut connect()?)?)
 }
 

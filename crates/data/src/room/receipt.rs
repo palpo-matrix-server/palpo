@@ -2,18 +2,16 @@ use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
 
-use crate::core::events::AnySyncEphemeralRoomEvent;
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptType};
+use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
-use crate::core::serde::{JsonValue, RawJson};
+use crate::core::serde::JsonValue;
 use crate::core::{Seqnum, UnixMillis};
 use crate::room::{DbReceipt, NewDbReceipt};
 use crate::schema::*;
-use crate::{DataResult, connect, next_sn};
+use crate::{DataResult, connect};
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
-    let list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
         .filter(event_receipts::event_sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))
@@ -27,7 +25,7 @@ pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<
 
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
     for mut receipt in receipts {
-        if let Some(thread_id) = &receipt.thread_id {
+        if receipt.thread_id.is_some() {
             if unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone())) {
                 receipt.thread_id = None;
             }

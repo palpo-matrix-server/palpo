@@ -1,6 +1,5 @@
 use std::cmp::{self, Ordering};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
@@ -611,7 +610,7 @@ fn collect_e2ee<'a>(
             }
         }
         // Look for device list updates in this room
-        device_list_changes.extend(crate::room::user::keys_changed_users(room_id, global_since_sn, None)?);
+        device_list_changes.extend(crate::room::keys_changed_users(room_id, global_since_sn, None)?);
     }
 
     for user_id in left_encrypted_users {

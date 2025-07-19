@@ -9,6 +9,7 @@ use salvo::http::HeaderValue;
 use serde::Deserialize;
 use serde::de::IgnoredAny;
 
+use super::{BlurhashConfig, JwtConfig, LdapConfig};
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
@@ -89,7 +90,13 @@ pub struct ServerConfig {
 
     // #[serde(default)]
     // pub proxy: ProxyConfig,
-    pub jwt_secret: Option<String>,
+    pub ldap: Option<LdapConfig>,
+
+    pub jwt: Option<JwtConfig>,
+
+    #[serde(default)]
+    pub blurhashing: BlurhashConfig,
+
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
     #[serde(default = "default_rust_log")]
@@ -764,17 +771,16 @@ impl ServerConfig {
 
         if self.max_request_size < 10_000_000 {
             return Err(AppError::internal(
-                "Max request size is less than 10MB. Please increase it as this is too low for \
-                 operable federation.",
+                "max request size is less than 10MB. Please increase it as this is too low for operable federation",
             ));
         }
 
         // check if user specified valid IP CIDR ranges on startup
         for cidr in &self.ip_range_denylist {
             if let Err(e) = ipaddress::IPAddress::parse(cidr) {
-                return Err(AppError::internal(
-                    "Parsing specified IP CIDR range from string failed: {e}.",
-                ));
+                return Err(AppError::internal(format!(
+                    "parsing specified IP CIDR range from string failed: {e}"
+                )));
             }
         }
 
@@ -906,8 +912,8 @@ impl fmt::Display for ServerConfig {
             ("Allow federation", &self.allow_federation.to_string()),
             ("Allow room creation", &self.allow_room_creation.to_string()),
             (
-                "JWT secret",
-                match self.jwt_secret {
+                "JWT config",
+                match self.jwt {
                     Some(_) => "set",
                     None => "not set",
                 },

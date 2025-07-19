@@ -1,7 +1,8 @@
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
-use serde::{Deserialize, Serialize, de};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::client::filter::RoomEventFilter;
@@ -17,7 +18,6 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, UserId};
-use crate::event::pdu;
 use crate::room::state;
 use crate::{AppError, AppResult};
 
@@ -40,7 +40,7 @@ impl SnPduEvent {
         Self { pdu, event_sn }
     }
 
-    pub fn user_can_see(&mut self, user_id: &UserId) -> AppResult<bool> {
+    pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
         if self.event_ty == TimelineEventType::RoomMember && self.state_key.as_deref() == Some(user_id.as_str()) {
             return Ok(true);
         }
@@ -98,11 +98,10 @@ impl SnPduEvent {
             .lock()
             .expect("should locked")
             .insert((user_id.to_owned(), frame_id), visibility);
+        Ok(visibility)
+    }
 
-        if !visibility {
-            return Ok(false);
-        }
-
+    pub fn add_unsigned_membership(&mut self, user_id: &UserId) -> AppResult<()> {
         #[derive(Deserialize)]
         struct ExtractMemebership {
             membership: String,
@@ -126,13 +125,13 @@ impl SnPduEvent {
                 to_raw_value("leave").expect("should always work"),
             );
         }
-        Ok(true)
+        Ok(())
     }
 
     pub fn from_canonical_object(
         event_id: &EventId,
         event_sn: Seqnum,
-        mut json: CanonicalJsonObject,
+        json: CanonicalJsonObject,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(event_id, json)?;
         Ok(Self::new(pdu, event_sn))

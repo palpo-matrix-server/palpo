@@ -152,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::sending::guard::start();
 
     let router = routing::router();
-    let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
+    // let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
     // let router = router
     //     .unshift(doc.into_router("/api-doc/openapi.json"))
     //     .unshift(
@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         )
         .hoop(hoops::remove_json_utf8);
     crate::admin::supervise();
-    crate::data::user::unset_all_presences();
+    let _ = crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
     println!("Listening on {}", config::listen_addr());

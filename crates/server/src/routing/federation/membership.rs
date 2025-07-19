@@ -14,8 +14,8 @@ use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, SnPduEvent, config,
-    empty_ok, json_ok, membership, room, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent, config, empty_ok, json_ok,
+    membership, room, utils,
 };
 
 pub fn router_v1() -> Router {
