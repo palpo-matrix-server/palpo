@@ -1,0 +1,37 @@
+[default]
+# Ignore specific spell checking patterns
+extend-ignore-identifiers-re = [
+    # Ignore common patterns in base64 encoding and hash values
+    "[A-Za-z0-9+/]{8,}={0,2}",  # base64 encoding
+    "[A-Fa-f0-9]{8,}",          # hexadecimal hash
+    "[A-Za-z0-9_-]{20,}",       # long random strings
+]
+
+# Ignore specific regex patterns in content
+extend-ignore-re = [
+    # Ignore hash values and encoded strings (base64 patterns)
+    "(?i)[A-Za-z0-9+/]{8,}={0,2}",
+    # Ignore long strings in quotes (usually hash or base64)
+    '"[A-Za-z0-9+/=_-]{8,}"',
+    # Ignore IV values and similar cryptographic strings
+    '"[A-Za-z0-9+/=]{12,}"',
+    # Ignore cryptographic signatures and keys (including partial strings)
+    "[A-Za-z0-9+/]{6,}[A-Za-z0-9+/=]*",
+    # Ignore base64-like strings in comments (common in examples)
+    "//.*[A-Za-z0-9+/]{8,}[A-Za-z0-9+/=]*",
+]
+
+# Ignore spell checking in specific files
+[files]
+extend-exclude = [
+    # Add file patterns to completely ignore here
+]
+
+# Custom dictionary - add project-specific correct words
+[default.extend-words]
+# Add project-specific terms here if needed
+# Project-specific abbreviations for test categories
+ftyp = "ftyp"  # federation typing
+typ = "typ"    # typing notifications
+# Allow project-specific table naming convention
+datas = "datas"  # used in table names like event_datas, user_datas
