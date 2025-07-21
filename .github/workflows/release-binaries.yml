@@ -52,10 +52,16 @@ jobs:
       RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build deb packages
+      # - name: Build deb packages
+      #   run: |
+      #     docker buildx create --driver=docker-container --use
+      #     docker buildx bake --pull ubuntu-focal-binary
+      - name: Install dependencies
         run: |
-          docker buildx create --driver=docker-container --use
-          docker buildx bake --pull ubuntu-focal-binary
+        apt update && apt install -y libpq-dev build-essential pkg-config
+
+      - name: Build
+        run: cargo cargo build --frozen --profile release
 
       - name: Gzip
         run: |
@@ -76,69 +82,68 @@ jobs:
             ./palpo-linux-*.tar.gz
           retention-days: 1
 
-  macos:
-    runs-on: macos-latest
-    needs: tag_name
-    env:
-      RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
+  # macos:
+  #   runs-on: macos-latest
+  #   needs: tag_name
+  #   env:
+  #     RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.version }}
-          components: rustfmt, clippy
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@master
+  #       with:
+  #         toolchain: ${{ matrix.version }}
+  #         components: rustfmt, clippy
 
-      - name: Build
-        run: cargo build --frozen --profile release
+  #     - name: Build
+  #       run: cargo build --frozen --profile release
 
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: palpo-macos
+  #         path: |
+  #           ./target/release/macos/palpo
+  #         retention-days: 3
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: palpo-macos
-          path: |
-            ./target/release/macos/palpo
-          retention-days: 3
+  # windows:
+  #   runs-on: windows-latest
+  #   needs: tag_name
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       version:
+  #         - stable
+  #       target:
+  #         - x86_64-pc-windows-msvc
+  #   env:
+  #     RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
 
-  windows:
-    runs-on: windows-latest
-    needs: tag_name
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - stable
-        target:
-          - x86_64-pc-windows-msvc
-    env:
-      RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
+  #   defaults:
+  #     run:
+  #       shell: bash
 
-    defaults:
-      run:
-        shell: bash
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@master
+  #       with:
+  #         toolchain: ${{ matrix.version }}
+  #         components: rustfmt, clippy
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.version }}
-          components: rustfmt, clippy
+  #     - name: Build
+  #       run: cargo build --frozen --profile release
 
-      - name: Build
-        run: cargo build --frozen --profile release
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: palpo-windows
-          path: |
-            ./palpo.exe
-          retention-days: 1
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: palpo-windows
+  #         path: |
+  #           ./palpo.exe
+  #         retention-days: 1
 
   publish:
     needs:
       - linux
-      - windows
-      - macos
+      # - windows
+      # - macos
     runs-on: ubuntu-latest
     env:
       GH_REPO: ${{ github.repository }}
@@ -189,9 +194,9 @@ jobs:
           DEBUG: api
         run: |
           gh release create $TAG_NAME $PRERELEASE --title "$TAG_NAME" --target $GITHUB_SHA \
-            palpo-macos/* \
-            palpo-linux/* \
-            palpo-debian*/*/* \
-            palpo-ubuntu*/*/* \
-            palpo-fedora*/* \
+            # palpo-macos/* \
+            # palpo-linux/* \
+            # palpo-debian*/*/* \
+            # palpo-ubuntu*/*/* \
+            # palpo-fedora*/* \
             palpo-windows/*
