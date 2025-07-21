@@ -57,7 +57,7 @@ jobs:
       #     docker buildx create --driver=docker-container --use
       #     docker buildx bake --pull ubuntu-focal-binary
       - name: Install dependencies
-        run: "sudo apt update && sudo apt install -y libpq-dev build-essential pkg-config"
+        run: "sudo apt update && sudo apt install -y --no-install-recommends libclang-dev libpq-dev cmake postgresql postgresql-contrib"
 
       - name: Build
         run: cargo build --profile release

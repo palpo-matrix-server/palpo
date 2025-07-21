@@ -47,7 +47,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install dependencies
-        run: "sudo apt update && sudo apt install -y libpq-dev build-essential pkg-config"
+        run: "sudo apt update && sudo apt install -y --no-install-recommends libclang-dev libpq-dev cmake postgresql postgresql-contrib"
 
       - name: Check build
         run: cargo check --all --bins --examples --tests
