@@ -26,9 +26,9 @@ jobs:
           - platform: linux/amd64
             runs_on: ubuntu-latest
             suffix: linux-amd64
-          - platform: linux/arm64
-            runs_on: ubuntu-latest-arm
-            suffix: linux-arm64
+          # - platform: linux/arm64
+          #   runs_on: ubuntu-latest-arm
+          #   suffix: linux-arm64
     steps:
       - name: Set up Docker Buildx
         id: buildx
@@ -86,7 +86,7 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
-  
+
   merge:
     name: Push merged images to ${{ matrix.repository }}
     runs-on: ubuntu-latest
