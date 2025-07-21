@@ -1,6 +1,6 @@
 # GitHub actions workflow which builds the release artifacts.
 
-name: Build release artifacts
+name: Release binaary artifacts
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
         run: "sudo apt update && sudo apt install -y libpq-dev build-essential pkg-config"
 
       - name: Build
-        run: cargo build --frozen --profile release
+        run: cargo build --profile release
 
       - name: Gzip
         run: |
@@ -89,7 +89,7 @@ jobs:
   #         components: rustfmt, clippy
 
   #     - name: Build
-  #       run: cargo build --frozen --profile release
+  #       run: cargo build --profile release
 
   #     - uses: actions/upload-artifact@v4
   #       with:
@@ -123,7 +123,7 @@ jobs:
   #         components: rustfmt, clippy
 
   #     - name: Build
-  #       run: cargo build --frozen --profile release
+  #       run: cargo build --profile release
 
   #     - uses: actions/upload-artifact@v4
   #       with:

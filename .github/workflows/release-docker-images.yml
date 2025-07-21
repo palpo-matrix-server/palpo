@@ -1,7 +1,4 @@
-# GitHub actions workflow which builds and publishes the docker images.
-# Based on https://github.com/docker/build-push-action
-
-name: Build and publish docker images
+name: Release docker images
 
 on:
   push:
@@ -16,8 +13,8 @@ permissions:
   id-token: write # needed for signing the images with GitHub OIDC Token
 
 env:
-  DOCKER_NAMESPACE: chrislearn
-  DOCKER_HUB_USER: chrislearn
+  DOCKERHUB_NAMESPACE: chrislearn
+  DOCKERHUB_USER: chrislearn
 
 jobs:
   build:
@@ -50,7 +47,7 @@ jobs:
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKER_HUB_USER }}
+          username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GHCR
