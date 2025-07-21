@@ -40,18 +40,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract version from pyproject.toml
+      - name: Extract version from Cargo.toml
         # Note: explicitly requesting bash will mean bash is invoked with `-eo pipefail`, see
         # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell
         shell: bash
         run: |
-          echo "PALPO_VERSION=$(sed -nE 's/^\s*version = "(.*?)"/\1/p' Cargo.toml) >> $GITHUB_ENV
+          echo "PALPO_VERSION=$(sed -nE 's/^\s*version = "(.*?)"/\1/p' Cargo.toml)" >> $GITHUB_ENV
 
-      # - name: Log in to DockerHub
-      #   uses: docker/login-action@v3
-      #   with:
-      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -97,7 +97,7 @@ jobs:
       matrix:
         repository:
           - docker.io/chrislearn/palpo
-          - ghcr.io/element-hq/palpo
+          - ghcr.io/palpo-im/palpo
 
     needs:
       - build
@@ -113,7 +113,7 @@ jobs:
         uses: docker/login-action@v3
         if: ${{ startsWith(matrix.repository, 'docker.io') }}
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GHCR

@@ -32,7 +32,7 @@ jobs:
         run: echo "sha_short=${GITHUB_SHA::7}" | tee -a $GITHUB_OUTPUT
 
       - if: github.event_name == 'workflow_dispatch'
-        run: echo "TAG_NAME=${{ github.event.inputs.tag_name }}" | tee -a $GITHUB_ENV
+        run: echo "TAG_NAME=manual-${GITHUB_SHA::7}" | tee -a $GITHUB_ENV
 
       # - if: github.event_name == 'schedule' || github.event_name == 'pull_request'
       #   run: echo 'TAG_NAME=nightly-${{ steps.vars.outputs.sha_short }}' | tee -a $GITHUB_ENV
@@ -57,22 +57,16 @@ jobs:
       #     docker buildx create --driver=docker-container --use
       #     docker buildx bake --pull ubuntu-focal-binary
       - name: Install dependencies
-        run: "apt update && apt install -y libpq-dev build-essential pkg-config"
+        run: "sudo apt update && sudo apt install -y libpq-dev build-essential pkg-config"
 
       - name: Build
-        run: cargo cargo build --frozen --profile release
+        run: cargo build --frozen --profile release
 
       - name: Gzip
         run: |
           mkdir palpo
-          cp ./target/linux_amd64/palpo palpo/
+          cp ./target/release/palpo palpo/
           tar -zcvf ./palpo-linux-amd64.tar.gz palpo
-
-          rm -rf palpo
-
-          mkdir palpo
-          cp ./target/linux_arm64/palpo palpo/
-          tar -zcvf ./palpo-linux-arm64.tar.gz palpo
 
       - uses: actions/upload-artifact@v4
         with:
@@ -157,7 +151,7 @@ jobs:
       - uses: actions/download-artifact@v4
 
       - if: github.event_name == 'workflow_dispatch'
-        run: echo "TAG_NAME=${{ github.event.inputs.tag_name }}" | tee -a $GITHUB_ENV
+        run: echo "TAG_NAME=manual-${GITHUB_SHA::7}" | tee -a $GITHUB_ENV
 
       # - if: github.event_name == 'schedule'
       #   run: echo 'TAG_NAME=nightly' | tee -a $GITHUB_ENV
@@ -193,9 +187,4 @@ jobs:
           DEBUG: api
         run: |
           gh release create $TAG_NAME $PRERELEASE --title "$TAG_NAME" --target $GITHUB_SHA \
-            # palpo-macos/* \
-            # palpo-linux/* \
-            # palpo-debian*/*/* \
-            # palpo-ubuntu*/*/* \
-            # palpo-fedora*/* \
-            palpo-windows/*
+            palpo-linux/*
