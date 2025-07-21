@@ -47,8 +47,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install dependencies
-        run: |
-        apt update && apt install -y libpq-dev build-essential pkg-config
+        run: "apt update && apt install -y libpq-dev build-essential pkg-config"
 
       - name: Check build
         run: cargo check --all --bins --examples --tests
