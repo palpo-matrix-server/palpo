@@ -38,11 +38,10 @@ mod test {
     use std::collections::BTreeSet;
 
     use assert_matches2::assert_matches;
-    use palpo_common::user_id;
     use serde_json::{from_value as from_json_value, json};
 
     use super::*;
-    use crate::AnyStateEvent;
+    use crate::{user_id, events::AnyStateEvent};
 
     #[test]
     fn deserialize() {
@@ -66,7 +65,7 @@ mod test {
             from_json_value::<AnyStateEvent>(data).expect("We should be able to deserialize the member hints event");
 
         assert_matches!(event, AnyStateEvent::MemberHints(event));
-        assert_matches!(event, crate::StateEvent::Original(event));
+        assert_matches!(event, crate::events::StateEvent::Original(event));
 
         assert!(event.content.service_members.contains(user_id));
 
@@ -88,7 +87,7 @@ mod test {
             from_json_value::<AnyStateEvent>(data).expect("We should be able to deserialize the member hints event");
 
         assert_matches!(event, AnyStateEvent::MemberHints(event));
-        assert_matches!(event, crate::StateEvent::Original(event));
+        assert_matches!(event, crate::events::StateEvent::Original(event));
 
         assert!(event.content.service_members.contains(user_id));
     }

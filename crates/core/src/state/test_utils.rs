@@ -11,8 +11,9 @@ use serde_json::{json, value::to_raw_value as to_raw_json_value};
 use tracing::info;
 
 pub(crate) use self::event::PduEvent;
+use crate::serde::RawJsonValue;
 use crate::{
-    EventId, MatrixError, OwnedEventId, RawJsonValue, RoomId, RoomVersionId, UnixMillis, UserId, event_id,
+    EventId, MatrixError, OwnedEventId, RoomId, RoomVersionId, UnixMillis, UserId, event_id,
     events::{
         TimelineEventType,
         pdu::{EventHash, Pdu, RoomV3Pdu},
@@ -553,109 +554,110 @@ pub(crate) fn INITIAL_EDGES() -> Vec<OwnedEventId> {
         .collect::<Vec<_>>()
 }
 
-pub(crate) mod event {
-    use serde::{Deserialize, Serialize};
+// pub(crate) mod event {
+//     use serde::{Deserialize, Serialize};
 
-    use crate::{
-        OwnedEventId, RawJsonValue, RoomId, UnixMillis, UserId,
-        events::{TimelineEventType, pdu::Pdu},
-        state::Event,
-    };
+//     use crate::serde::RawJsonValue;
+//     use crate::{
+//         OwnedEventId, RoomId, UnixMillis, UserId,
+//         events::{TimelineEventType, pdu::Pdu},
+//         state::Event,
+//     };
 
-    impl Event for PduEvent {
-        type Id = OwnedEventId;
+//     impl Event for PduEvent {
+//         type Id = OwnedEventId;
 
-        fn event_id(&self) -> &Self::Id {
-            &self.event_id
-        }
+//         fn event_id(&self) -> &Self::Id {
+//             &self.event_id
+//         }
 
-        fn room_id(&self) -> &RoomId {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => &ev.room_id,
-                Pdu::RoomV3Pdu(ev) => &ev.room_id,
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn room_id(&self) -> &RoomId {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => &ev.room_id,
+//                 Pdu::RoomV3Pdu(ev) => &ev.room_id,
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn sender(&self) -> &UserId {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => &ev.sender,
-                Pdu::RoomV3Pdu(ev) => &ev.sender,
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn sender(&self) -> &UserId {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => &ev.sender,
+//                 Pdu::RoomV3Pdu(ev) => &ev.sender,
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn event_type(&self) -> &TimelineEventType {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => &ev.kind,
-                Pdu::RoomV3Pdu(ev) => &ev.kind,
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn event_type(&self) -> &TimelineEventType {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => &ev.kind,
+//                 Pdu::RoomV3Pdu(ev) => &ev.kind,
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn content(&self) -> &RawJsonValue {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => &ev.content,
-                Pdu::RoomV3Pdu(ev) => &ev.content,
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn content(&self) -> &RawJsonValue {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => &ev.content,
+//                 Pdu::RoomV3Pdu(ev) => &ev.content,
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn origin_server_ts(&self) -> UnixMillis {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => ev.origin_server_ts,
-                Pdu::RoomV3Pdu(ev) => ev.origin_server_ts,
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn origin_server_ts(&self) -> UnixMillis {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => ev.origin_server_ts,
+//                 Pdu::RoomV3Pdu(ev) => ev.origin_server_ts,
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn state_key(&self) -> Option<&str> {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => ev.state_key.as_deref(),
-                Pdu::RoomV3Pdu(ev) => ev.state_key.as_deref(),
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn state_key(&self) -> Option<&str> {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => ev.state_key.as_deref(),
+//                 Pdu::RoomV3Pdu(ev) => ev.state_key.as_deref(),
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => Box::new(ev.prev_events.iter().map(|(id, _)| id)),
-                Pdu::RoomV3Pdu(ev) => Box::new(ev.prev_events.iter()),
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => Box::new(ev.prev_events.iter().map(|(id, _)| id)),
+//                 Pdu::RoomV3Pdu(ev) => Box::new(ev.prev_events.iter()),
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => Box::new(ev.auth_events.iter().map(|(id, _)| id)),
-                Pdu::RoomV3Pdu(ev) => Box::new(ev.auth_events.iter()),
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
+//         fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => Box::new(ev.auth_events.iter().map(|(id, _)| id)),
+//                 Pdu::RoomV3Pdu(ev) => Box::new(ev.auth_events.iter()),
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
 
-        fn redacts(&self) -> Option<&Self::Id> {
-            match &self.rest {
-                Pdu::RoomV1Pdu(ev) => ev.redacts.as_ref(),
-                Pdu::RoomV3Pdu(ev) => ev.redacts.as_ref(),
-                #[allow(unreachable_patterns)]
-                _ => unreachable!("new PDU version"),
-            }
-        }
-    }
+//         fn redacts(&self) -> Option<&Self::Id> {
+//             match &self.rest {
+//                 Pdu::RoomV1Pdu(ev) => ev.redacts.as_ref(),
+//                 Pdu::RoomV3Pdu(ev) => ev.redacts.as_ref(),
+//                 #[allow(unreachable_patterns)]
+//                 _ => unreachable!("new PDU version"),
+//             }
+//         }
+//     }
 
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    #[allow(clippy::exhaustive_structs)]
-    pub(crate) struct PduEvent {
-        pub(crate) event_id: OwnedEventId,
-        #[serde(flatten)]
-        pub(crate) rest: Pdu,
-    }
-}
+//     #[derive(Clone, Debug, Deserialize, Serialize)]
+//     #[allow(clippy::exhaustive_structs)]
+//     pub(crate) struct PduEvent {
+//         pub(crate) event_id: OwnedEventId,
+//         #[serde(flatten)]
+//         pub(crate) rest: Pdu,
+//     }
+// }

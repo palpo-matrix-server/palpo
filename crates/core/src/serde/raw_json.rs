@@ -282,7 +282,7 @@ mod tests {
     use serde::Deserialize;
     use serde_json::from_str as from_json_str;
 
-    use crate::{RawJson, RawJsonValue};
+    use crate::serde::{RawJson, RawJsonValue};
 
     #[test]
     fn get_field() -> serde_json::Result<()> {

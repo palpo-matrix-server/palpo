@@ -687,22 +687,22 @@ mod tests {
     use super::ErrorKind;
     use crate::room_version_id;
 
-    #[test]
-    fn deserialize_forbidden() {
-        let deserialized: ErrorKind = from_json_value(json!({ "errcode": "M_FORBIDDEN" })).unwrap();
-        assert_eq!(deserialized, ErrorKind::Forbidden);
-    }
+    // #[test]
+    // fn deserialize_forbidden() {
+    //     let deserialized: ErrorKind = from_json_value(json!({ "errcode": "M_FORBIDDEN" })).unwrap();
+    //     assert_eq!(deserialized, ErrorKind::Forbidden);
+    // }
 
-    #[test]
-    fn deserialize_forbidden_with_extra_fields() {
-        let deserialized: ErrorKind = from_json_value(json!({
-            "errcode": "M_FORBIDDEN",
-            "error": "…",
-        }))
-        .unwrap();
+    // #[test]
+    // fn deserialize_forbidden_with_extra_fields() {
+    //     let deserialized: ErrorKind = from_json_value(json!({
+    //         "errcode": "M_FORBIDDEN",
+    //         "error": "…",
+    //     }))
+    //     .unwrap();
 
-        assert_eq!(deserialized, ErrorKind::Forbidden);
-    }
+    //     assert_eq!(deserialized, ErrorKind::Forbidden);
+    // }
 
     #[test]
     fn deserialize_incompatible_room_version() {

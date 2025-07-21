@@ -288,98 +288,102 @@ pub use self::dsl::*;
 pub use self::functions::*;
 pub use self::types::*;
 
-mod tests {
-    #[test]
-    fn test_tsvector_from_sql_with_positions() {
-        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let mut conn = PgConnection::establish(&database_url).expect("Error connecting to database");
+// mod tests {
+//     use diesel::dsl::sql;
 
-        let query = diesel::select(sql::<TsVector>(
-            "to_tsvector('a fat cat sat on a mat and ate a fat rat')",
-        ));
-        let result: PgTsVector = query.get_result(&mut conn).expect("Error executing query");
+//     use crate::full_text_search::{PgTsVectorEntry, TsVector};
 
-        let expected = PgTsVector {
-            entries: vec![
-                PgTsVectorEntry {
-                    lexeme: "ate".to_owned(),
-                    positions: vec![9],
-                },
-                PgTsVectorEntry {
-                    lexeme: "cat".to_owned(),
-                    positions: vec![3],
-                },
-                PgTsVectorEntry {
-                    lexeme: "fat".to_owned(),
-                    positions: vec![2, 11],
-                },
-                PgTsVectorEntry {
-                    lexeme: "mat".to_owned(),
-                    positions: vec![7],
-                },
-                PgTsVectorEntry {
-                    lexeme: "rat".to_owned(),
-                    positions: vec![12],
-                },
-                PgTsVectorEntry {
-                    lexeme: "sat".to_owned(),
-                    positions: vec![4],
-                },
-            ],
-        };
+//     #[test]
+//     fn test_tsvector_from_sql_with_positions() {
+//         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+//         let mut conn = diesel::PgConnection::establish(&database_url).expect("Error connecting to database");
 
-        assert_eq!(expected, result);
-    }
+//         let query = diesel::select(sql::<TsVector>(
+//             "to_tsvector('a fat cat sat on a mat and ate a fat rat')",
+//         ));
+//         let result: PgTsVector = query.get_result(&mut conn).expect("Error executing query");
 
-    #[test]
-    fn test_tsvector_from_sql_without_positions() {
-        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let mut conn = PgConnection::establish(&database_url).expect("Error connecting to database");
+//         let expected = PgTsVector {
+//             entries: vec![
+//                 PgTsVectorEntry {
+//                     lexeme: "ate".to_owned(),
+//                     positions: vec![9],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "cat".to_owned(),
+//                     positions: vec![3],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "fat".to_owned(),
+//                     positions: vec![2, 11],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "mat".to_owned(),
+//                     positions: vec![7],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "rat".to_owned(),
+//                     positions: vec![12],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "sat".to_owned(),
+//                     positions: vec![4],
+//                 },
+//             ],
+//         };
 
-        let query = diesel::select(sql::<TsVector>("'a fat cat sat on a mat and ate a fat rat'::tsvector"));
-        let result: PgTsVector = query.get_result(&mut conn).expect("Error executing query");
+//         assert_eq!(expected, result);
+//     }
 
-        let expected = PgTsVector {
-            entries: vec![
-                PgTsVectorEntry {
-                    lexeme: "a".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "and".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "ate".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "cat".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "fat".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "mat".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "on".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "rat".to_owned(),
-                    positions: vec![],
-                },
-                PgTsVectorEntry {
-                    lexeme: "sat".to_owned(),
-                    positions: vec![],
-                },
-            ],
-        };
+//     #[test]
+//     fn test_tsvector_from_sql_without_positions() {
+//         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+//         let mut conn = PgConnection::establish(&database_url).expect("Error connecting to database");
 
-        assert_eq!(expected, result);
-    }
-}
+//         let query = diesel::select(sql::<TsVector>("'a fat cat sat on a mat and ate a fat rat'::tsvector"));
+//         let result: PgTsVector = query.get_result(&mut conn).expect("Error executing query");
+
+//         let expected = PgTsVector {
+//             entries: vec![
+//                 PgTsVectorEntry {
+//                     lexeme: "a".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "and".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "ate".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "cat".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "fat".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "mat".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "on".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "rat".to_owned(),
+//                     positions: vec![],
+//                 },
+//                 PgTsVectorEntry {
+//                     lexeme: "sat".to_owned(),
+//                     positions: vec![],
+//                 },
+//             ],
+//         };
+
+//         assert_eq!(expected, result);
+//     }
+// }

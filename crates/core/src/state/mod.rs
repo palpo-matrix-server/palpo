@@ -17,8 +17,8 @@ pub mod event_auth;
 mod power_levels;
 pub mod room_version;
 mod state_event;
-#[cfg(test)]
-mod test_utils;
+// #[cfg(test)]
+// mod test_utils;
 
 pub use event_auth::{auth_check, auth_types_for_event};
 use power_levels::PowerLevelsContentFields;

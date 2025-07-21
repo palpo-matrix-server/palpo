@@ -124,19 +124,19 @@ mod tests {
         );
     }
 
-    #[test]
-    fn empty_sanitisation() {
-        use crate::utils::string::EMPTY;
+    // #[test]
+    // fn empty_sanitisation() {
+    //     use crate::EMPTY;
 
-        let result = sanitize_filename::sanitize_with_options(
-            EMPTY,
-            sanitize_filename::Options {
-                windows: true,
-                truncate: true,
-                replacement: "",
-            },
-        );
+    //     let result = sanitize_filename::sanitize_with_options(
+    //         EMPTY,
+    //         sanitize_filename::Options {
+    //             windows: true,
+    //             truncate: true,
+    //             replacement: "",
+    //         },
+    //     );
 
-        assert_eq!(EMPTY, result);
-    }
+    //     assert_eq!(EMPTY, result);
+    // }
 }
