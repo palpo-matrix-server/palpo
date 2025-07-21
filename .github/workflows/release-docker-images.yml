@@ -1,0 +1,162 @@
+# GitHub actions workflow which builds and publishes the docker images.
+# Based on https://github.com/docker/build-push-action
+
+name: "Build and publish docker images"
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+    branches: [main, next]
+  workflow_dispatch: # A build was manually requested
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write # needed for signing the images with GitHub OIDC Token
+
+env:
+  DOCKER_NAMESPACE: chrislearn
+  DOCKER_HUB_USER: chrislearn
+
+jobs:
+  build:
+    name: Build and push image for ${{ matrix.platform }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runs_on: ubuntu-latest
+            suffix: linux-amd64
+          - platform: linux/arm64
+            runs_on: ubuntu-latest-arm
+            suffix: linux-arm64
+    steps:
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from pyproject.toml
+        # Note: explicitly requesting bash will mean bash is invoked with `-eo pipefail`, see
+        # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell
+        shell: bash
+        run: |
+          echo "PALPO_VERSION=$(sed -nE 's/^\s*version = "(.*?)"/\1/p' Cargo.toml) >> $GITHUB_ENV
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          labels: |
+            gitsha1=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.PALPO_VERSION }}
+          tags: |
+            docker.io/chrislearn/palpo
+            ghcr.io/palpo-im/palpo
+          context: .
+          file: ./build/docker/Dockerfile.palpo
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.suffix }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+  
+  merge:
+    name: Push merged images to ${{ matrix.repository }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repository:
+          - docker.io/chrislearn/palpo
+          - ghcr.io/element-hq/palpo
+
+    needs:
+      - build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        if: ${{ startsWith(matrix.repository, 'docker.io') }}
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        if: ${{ startsWith(matrix.repository, 'ghcr.io') }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Calculate docker image tag
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.repository }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=next,enable=${{ github.ref == 'refs/heads/next' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=pep440,pattern={{raw}}
+            type=sha
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          REPOSITORY: ${{ matrix.repository }}
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "$REPOSITORY@sha256:%s " *)
+
+      - name: Sign each manifest
+        env:
+          REPOSITORY: ${{ matrix.repository }}
+        run: |
+          DIGESTS=""
+          for TAG in $(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]'); do
+            DIGEST="$(docker buildx imagetools inspect $TAG --format '{{json .Manifest}}' | jq -r '.digest')"
+            DIGESTS="$DIGESTS $REPOSITORY@$DIGEST"
+          done
+          cosign sign --yes $DIGESTS
