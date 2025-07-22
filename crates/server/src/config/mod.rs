@@ -21,6 +21,10 @@ mod turn;
 pub use turn::*;
 mod media;
 pub use media::*;
+mod dns;
+pub use dns::*;
+mod proxy;
+pub use proxy::*;
 
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;

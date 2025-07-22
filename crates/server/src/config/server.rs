@@ -31,13 +31,14 @@ pub struct KeypairConfig {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
-    pub tls: Option<TlsConfig>,
 
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
     #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
+
     pub db: DbConfig,
+
     #[serde(default = "default_false")]
     pub enable_lightning_bolt: bool,
     #[serde(default = "default_true")]
@@ -89,21 +90,10 @@ pub struct ServerConfig {
 
     pub appservice_registration_dir: Option<String>,
 
-    // #[serde(default)]
-    // pub proxy: ProxyConfig,
-    pub ldap: Option<LdapConfig>,
-
-    pub jwt: Option<JwtConfig>,
-
-    #[serde(default)]
-    pub blurhash: BlurhashConfig,
 
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
-    #[serde(default = "default_rust_log")]
-    pub rust_log: String,
-    #[serde(default = "default_log_format")]
-    pub log_format: String,
+
 
     /// OpenID token expiration/TTL in seconds.
     ///
@@ -139,7 +129,6 @@ pub struct ServerConfig {
     #[serde(default = "default_session_ttl")]
     pub session_ttl: u64,
 
-    pub turn: TurnConfig,
 
     /// List/vector of room IDs or room aliases that conduwuit will make newly
     /// registered users join. The rooms specified must be rooms that you have
@@ -173,50 +162,6 @@ pub struct ServerConfig {
 
     pub emergency_password: Option<String>,
 
-    /// Allow local (your server only) presence updates/requests.
-    ///
-    /// Note that presence on conduwuit is very fast unlike Synapse's. If using
-    /// outgoing presence, this MUST be enabled.
-    #[serde(default = "default_true")]
-    pub allow_local_presence: bool,
-
-    /// Allow incoming federated presence updates/requests.
-    ///
-    /// This option receives presence updates from other servers, but does not
-    /// send any unless `allow_outgoing_presence` is true. Note that presence on
-    /// conduwuit is very fast unlike Synapse's.
-    #[serde(default = "default_true")]
-    pub allow_incoming_presence: bool,
-
-    /// Allow outgoing presence updates/requests.
-    ///
-    /// This option sends presence updates to other servers, but does not
-    /// receive any unless `allow_incoming_presence` is true. Note that presence
-    /// on conduwuit is very fast unlike Synapse's. If using outgoing presence,
-    /// you MUST enable `allow_local_presence` as well.
-    #[serde(default = "default_true")]
-    pub allow_outgoing_presence: bool,
-
-    /// How many seconds without presence updates before you become idle.
-    /// Defaults to 5 minutes.
-    ///
-    /// default: 300
-    #[serde(default = "default_presence_idle_timeout_s")]
-    pub presence_idle_timeout_s: u64,
-
-    /// How many seconds without presence updates before you become offline.
-    /// Defaults to 30 minutes.
-    ///
-    /// default: 1800
-    #[serde(default = "default_presence_offline_timeout_s")]
-    pub presence_offline_timeout_s: u64,
-
-    /// Controls whether admin room notices like account registrations, password
-    /// changes, account deactivations, room directory publications, etc will be
-    /// sent to the admin room. Update notices and normal admin command
-    /// responses will still be sent.
-    #[serde(default = "default_true")]
-    pub admin_room_notices: bool,
 
     /// Config option to control maximum time federation user can indicate
     /// typing.
@@ -239,35 +184,6 @@ pub struct ServerConfig {
     #[serde(default = "default_typing_client_timeout_max_s")]
     pub typing_client_timeout_max_s: u64,
 
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// zstd. This option does nothing if palpo was not built with
-    /// `zstd_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-    /// before deciding to enable this.
-    #[serde(default)]
-    pub zstd_compression: bool,
-
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// gzip. This option does nothing if palpo was not built with
-    /// `gzip_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH before
-    /// deciding to enable this.
-    ///
-    /// If you are in a large amount of rooms, you may find that enabling this
-    /// is necessary to reduce the significantly large response bodies.
-    #[serde(default)]
-    pub gzip_compression: bool,
-
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// brotli. This option does nothing if palpo was not built with
-    /// `brotli_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-    /// before deciding to enable this.
-    #[serde(default)]
-    pub brotli_compression: bool,
 
     /// Set to true to allow user type "guest" registrations. Some clients like
     /// Element attempt to register guest users automatically.
@@ -284,8 +200,6 @@ pub struct ServerConfig {
     #[serde(default)]
     pub allow_guests_auto_join_rooms: bool,
 
-    #[serde(default)]
-    pub media: MediaConfig,
 
     /// List of forbidden server names via regex patterns that we will block
     /// incoming AND outgoing federation with, and block client room joins /
@@ -354,14 +268,7 @@ pub struct ServerConfig {
     #[serde(default = "default_space_path")]
     pub space_path: String,
 
-    pub keypair: Option<KeypairConfig>,
-
-    #[serde(default)]
-    pub well_known: WellKnownConfig,
-
     pub auto_acme: Option<String>,
-    #[serde(default = "default_false")]
-    pub enable_tls: bool,
 
     /// Whether to query the servers listed in trusted_servers first or query
     /// the origin server first. For best security, querying the origin server
@@ -433,6 +340,39 @@ pub struct ServerConfig {
     /// default: 50
     #[serde(default = "default_startup_netburst_keep")]
     pub startup_netburst_keep: i64,
+
+    #[serde(default)]
+    pub logger: LoggerConfig,
+
+    pub tls: Option<TlsConfig>,
+    pub jwt: Option<JwtConfig>,
+    #[serde(default)]
+    pub proxy: Option<ProxyConfig>,
+    pub ldap: Option<LdapConfig>,
+
+    pub keypair: Option<KeypairConfig>,
+    #[serde(default)]
+    pub blurhash: BlurhashConfig,
+    #[serde(default)]
+    pub media: MediaConfig,
+    pub turn: Option<TurnConfig>,
+
+    #[serde(default)]
+    pub admin: AdminConfig,
+    #[serde(default)]
+    pub presence: PresenceConfig,
+    #[serde(default)]
+    pub read_receipts: ReadReceiptsConfig,
+    #[serde(default)]
+    pub typing: TypingConfig,
+
+    #[serde(default)]
+    pub compression: CompressionConfig,
+
+    #[serde(default)]
+    pub well_known: WellKnownConfig,
+
+
 
     #[serde(flatten)]
     #[allow(clippy::zero_sized_map_values)]
@@ -870,8 +810,19 @@ impl AllowedOrigins {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct TlsConfig {
+	/// Path to a valid TLS certificate file.
+	///
+	/// example: "/path/to/my/certificate.crt"
     pub certs: String,
+
+	/// Path to a valid TLS certificate private key.
+	///
+	/// example: "/path/to/my/certificate.key"
     pub key: String,
+
+	/// Whether to listen and allow for HTTP and HTTPS connections (insecure!)
+	#[serde(default)]
+	pub dual_protocol: bool,
 }
 
 fn default_listen_addr() -> String {
