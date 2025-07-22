@@ -151,7 +151,7 @@ jobs:
         uses: docker/login-action@v3
         if: ${{ startsWith(matrix.repository, 'docker.io') }}
         with:
-          username: ${{ env.DOCKER_HUB_USER }}
+          username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GHCR
