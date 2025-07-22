@@ -73,11 +73,11 @@ jobs:
             echo "stable=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Docker meta
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: getmeili/palpo
+          images: ${{ env.DOCKERHUB_USER }}/palpo
           # Prevent `latest` to be updated for each new tag pushed.
           # We need latest and `vX.Y` tags to only be pushed for the stable Palpo releases.
           flavor: latest=false
