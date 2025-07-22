@@ -8,8 +8,8 @@ use crate::{OwnedEventId, events::relation::CustomRelation, serde::JsonObject};
 ///
 /// Use it like this:
 /// ```
-/// # use serde::{Deserialize, Serialize};
-/// use crate::events::room::message::{MessageType, Relation, deserialize_relation};
+/// use serde::{Deserialize, Serialize};
+/// use palpo_core::events::room::message::{MessageType, Relation, deserialize_relation};
 ///
 /// #[derive(Deserialize, Serialize)]
 /// struct MyEventContent {

@@ -64,7 +64,7 @@ static REFERENCE_HASH_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 /// A homeserver signs JSON with a key pair:
 ///
 /// ```rust
-/// # use crate::serde::base64::Base64;
+/// # use palpo_core::serde::base64::Base64;
 /// #
 /// const PKCS8: &str = "\
 ///     MFECAQEwBQYDK2VwBCIEINjozvdfbsGEt6DD+7Uf4PiJ/YvTNXV2mIPc/\
@@ -74,7 +74,7 @@ static REFERENCE_HASH_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 /// let document: Base64 = Base64::parse(PKCS8).unwrap();
 ///
 /// // Create an Ed25519 key pair.
-/// let keypair = palpo_signatures::Ed25519KeyPair::from_der(
+/// let keypair = palpo_core::signatures::Ed25519KeyPair::from_der(
 ///     document.as_bytes(),
 ///     "1".into(), // The "version" of the key.
 /// )
@@ -84,7 +84,7 @@ static REFERENCE_HASH_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 /// let mut value = serde_json::from_str("{}").unwrap();
 ///
 /// // Sign the JSON with the key pair.
-/// assert!(palpo_signatures::sign_json("domain", &keypair, &mut value).is_ok());
+/// assert!(palpo_core::signatures::sign_json("domain", &keypair, &mut value).is_ok());
 /// ```
 ///
 /// This will modify the JSON from an empty object to a structure like this:
@@ -155,7 +155,7 @@ where
 /// }"#;
 ///
 /// let object = serde_json::from_str(input).unwrap();
-/// let canonical = palpo_signatures::canonical_json(&object).unwrap();
+/// let canonical = palpo_core::signatures::canonical_json(&object).unwrap();
 ///
 /// assert_eq!(canonical, r#"{"日":1,"本":2}"#);
 /// ```
@@ -188,7 +188,7 @@ pub fn canonical_json(object: &CanonicalJsonObject) -> Result<String, Error> {
 /// ```rust
 /// use std::collections::BTreeMap;
 ///
-/// use crate::serde::Base64;
+/// use palpo_core::serde::Base64;
 ///
 /// const PUBLIC_KEY: &[u8] = b"XGX0JRS2Af3be3knz2fBiRbApjm2Dh61gXDJA8kcJNI";
 ///
@@ -210,7 +210,7 @@ pub fn canonical_json(object: &CanonicalJsonObject) -> Result<String, Error> {
 /// public_key_map.insert("domain".into(), public_key_set);
 ///
 /// // Verify at least one signature for each entity in `public_key_map`.
-/// assert!(palpo_signatures::verify_json(&public_key_map, &object).is_ok());
+/// assert!(palpo_core::signatures::verify_json(&public_key_map, &object).is_ok());
 /// ```
 pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) -> Result<(), Error> {
     let signature_map = match object.get("signatures") {
@@ -362,8 +362,8 @@ pub fn reference_hash(value: &CanonicalJsonObject, version: &RoomVersionId) -> R
 /// # Examples
 ///
 /// ```rust
-/// # use crate::{RoomVersionId, serde::base64::Base64};
-/// # use palpo_signatures::{hash_and_sign_event, Ed25519KeyPair};
+/// # use palpo_core::{RoomVersionId, serde::base64::Base64};
+/// # use palpo_core::signatures::{hash_and_sign_event, Ed25519KeyPair};
 /// #
 /// const PKCS8: &str = "\
 ///     MFECAQEwBQYDK2VwBCIEINjozvdfbsGEt6DD+7Uf4PiJ/YvTNXV2mIPc/\
@@ -488,9 +488,8 @@ where
 ///
 /// ```rust
 /// # use std::collections::BTreeMap;
-/// # crateRoomVersionId;
-/// # use crate::serde::Base64;
-/// # use palpo_signatures::{verify_event, Verified};
+/// # use palpo_core::{RoomVersionId, serde::Base64};
+/// # use palpo_core::signatures::{verify_event, Verified};
 /// #
 /// const PUBLIC_KEY: &[u8] = b"XGX0JRS2Af3be3knz2fBiRbApjm2Dh61gXDJA8kcJNI";
 ///

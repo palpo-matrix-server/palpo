@@ -30,7 +30,7 @@ use crate::serde::{JsonValue, RawJsonValue};
 ///
 /// ```no_run
 /// # use serde::Deserialize;
-/// #  use   crate::serde::RawJson;
+/// # use palpo_core::serde::RawJson;
 /// # #[derive(Deserialize)]
 /// # struct AnyTimelineEvent;
 ///

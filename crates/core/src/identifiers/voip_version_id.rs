@@ -23,7 +23,7 @@ use crate::{IdParseError, PrivOwnedStr};
 /// or serialized back into a string as needed.
 ///
 /// ```
-/// # crateVoipVersionId;
+/// # use palpo_core::VoipVersionId;
 /// assert_eq!(VoipVersionId::try_from("1").unwrap().as_ref(), "1");
 /// ```
 ///

@@ -28,7 +28,8 @@
 //! ```rust
 //! use serde::{Deserialize, Serialize};
 //!
-//! use crate::events::macros::EventContent;
+//! use palpo_macros::EventContent;
+//! use palpo_core::RoomVersionId;
 //!
 //! #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 //! #[palpo_event(type = "org.example.event", kind = State, state_key_type = String)]
@@ -45,8 +46,9 @@
 //! [`OriginalMessageLikeEvent`] struct would work.
 //!
 //! ```rust
-//!  use   crate::OwnedEventId;
-//! use crate::events::{macros::EventContent, OriginalSyncMessageLikeEvent};
+//! use palpo_core::{RoomVersionId, OwnedEventId};
+//! use palpo_core::events::{EventContent, OriginalSyncMessageLikeEvent};
+//! use palpo_macros::EventContent;
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Clone, Debug, Deserialize, Serialize)]

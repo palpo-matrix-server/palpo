@@ -495,7 +495,7 @@ fn generate_redacted_event_content<'a>(
         impl #palpo_core::events::RedactContent for #ident {
             type Redacted = #redacted_ident;
 
-            fn redact(self, version: &crate::RoomVersionId) -> #redacted_ident {
+            fn redact(self, version: &#palpo_core::RoomVersionId) -> #redacted_ident {
                 #redacted_ident {
                     #( #redaction_struct_fields: self.#redaction_struct_fields, )*
                 }

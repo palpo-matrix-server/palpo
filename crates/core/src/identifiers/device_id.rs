@@ -11,7 +11,7 @@ use super::generate_localpart;
 /// # Example
 ///
 /// ```
-/// use crate::{DeviceId, OwnedDeviceId, device_id};
+/// use palpo_core::{DeviceId, OwnedDeviceId, device_id};
 ///
 /// # #[cfg(feature = "rand")] {
 /// let random_id = DeviceId::new();

@@ -12,7 +12,7 @@ use crate::RoomOrAliasId;
 /// be converted back into a string as needed.
 ///
 /// ```
-/// # crateRoomId;
+/// # use palpo_core::RoomId;
 /// assert_eq!(<&RoomId>::try_from("!n8f893n9:example.com").unwrap(), "!n8f893n9:example.com");
 /// ```
 ///
@@ -47,7 +47,7 @@ impl RoomId {
     /// # Example
     ///
     /// ```
-    /// use crate::{room_id, server_name};
+    /// use palpo_core::{room_id, server_name};
     ///
     /// assert_eq!(
     ///     room_id!("!somewhere:example.org").matrix_to_uri().to_string(),
@@ -70,7 +70,7 @@ impl RoomId {
     /// # Example
     ///
     /// ```
-    /// use crate::{room_id, server_name};
+    /// use palpo_core::{room_id, server_name};
     ///
     /// assert_eq!(
     ///     room_id!("!somewhere:example.org")
@@ -130,7 +130,7 @@ impl RoomId {
     /// # Example
     ///
     /// ```
-    /// use crate::{room_id, server_name};
+    /// use palpo_core::{room_id, server_name};
     ///
     /// assert_eq!(
     ///     room_id!("!somewhere:example.org").matrix_uri(false).to_string(),
@@ -155,7 +155,7 @@ impl RoomId {
     /// # Example
     ///
     /// ```
-    /// use crate::{room_id, server_name};
+    /// use palpo_core::{room_id, server_name};
     ///
     /// assert_eq!(
     ///     room_id!("!somewhere:example.org")

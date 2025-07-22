@@ -11,7 +11,7 @@ use super::{MatrixToUri, MatrixUri, OwnedEventId, matrix_uri::UriAction, server_
 /// into a string as needed.
 ///
 /// ```
-/// # crateRoomAliasId;
+/// # use palpo_core::RoomAliasId;
 /// assert_eq!(<&RoomAliasId>::try_from("#palpo:example.com").unwrap(), "#palpo:example.com");
 /// ```
 ///

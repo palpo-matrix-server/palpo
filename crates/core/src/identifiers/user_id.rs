@@ -12,7 +12,7 @@ use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAct
 /// be converted back into a string as needed.
 ///
 /// ```
-/// # crateUserId;
+/// # use palpo_core::UserId;
 /// assert_eq!(<&UserId>::try_from("@carl:example.com").unwrap(), "@carl:example.com");
 /// ```
 ///
@@ -116,7 +116,7 @@ impl UserId {
     /// # Example
     ///
     /// ```
-    /// crateuser_id;
+    /// use palpo_core::user_id;
     ///
     /// let message = format!(
     ///     r#"Thanks for the update <a href="{link}">{display_name}</a>."#,
@@ -136,7 +136,7 @@ impl UserId {
     /// # Example
     ///
     /// ```
-    /// crateuser_id;
+    /// use palpo_core::user_id;
     ///
     /// let message = format!(
     ///     r#"Thanks for the update <a href="{link}">{display_name}</a>."#,

@@ -39,23 +39,23 @@ pub enum ComparisonOperator {
 ///
 /// Can be constructed from a number or a range:
 /// ```
-/// cratepush::RoomMemberCountIs;
+/// use palpo_core::push::RoomMemberCountIs;
 ///
 /// // equivalent to `is: "3"` or `is: "==3"`
-/// let exact = RoomMemberCountIs::from(u3);
+/// let exact = RoomMemberCountIs::from(3);
 ///
 /// // equivalent to `is: ">=3"`
-/// let greater_or_equal = RoomMemberCountIs::from(u3..);
+/// let greater_or_equal = RoomMemberCountIs::from(3..);
 ///
 /// // equivalent to `is: "<3"`
-/// let less = RoomMemberCountIs::from(..u3);
+/// let less = RoomMemberCountIs::from(..3);
 ///
 /// // equivalent to `is: "<=3"`
-/// let less_or_equal = RoomMemberCountIs::from(..=u3);
+/// let less_or_equal = RoomMemberCountIs::from(..=3);
 ///
 /// // An exclusive range can be constructed with `RoomMemberCountIs::gt`:
 /// // (equivalent to `is: ">3"`)
-/// let greater = RoomMemberCountIs::gt(u3);
+/// let greater = RoomMemberCountIs::gt(3);
 /// ```
 #[derive(ToSchema, Copy, Clone, Debug, Eq, PartialEq)]
 #[allow(clippy::exhaustive_structs)]

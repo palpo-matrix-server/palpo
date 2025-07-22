@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{serde::Base64, RoomVersionId, ServerSigningKeyId, SigningKeyAlgorithm};
-use palpo_signatures::{sign_json, verify_event, Ed25519KeyPair, PublicKeyMap, Verified};
+use palpo_core::signatures::{sign_json, verify_event, Ed25519KeyPair, PublicKeyMap, Verified};
 
 static PKCS8_ED25519_DER: &[u8] = include_bytes!("./keys/ed25519.der");
 

@@ -17,7 +17,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!(null).try_into().unwrap();
     /// ```
     #[default]
@@ -27,7 +27,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!(true).try_into().unwrap();
     /// ```
     Bool(bool),
@@ -36,7 +36,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!(12).try_into().unwrap();
     /// ```
     Integer(i64),
@@ -45,7 +45,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!("a string").try_into().unwrap();
     /// ```
     String(String),
@@ -54,7 +54,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!(["an", "array"]).try_into().unwrap();
     /// ```
     Array(Vec<CanonicalJsonValue>),
@@ -65,7 +65,7 @@ pub enum CanonicalJsonValue {
     ///
     /// ```
     /// # use serde_json::json;
-    /// # use crate::core::CanonicalJsonValue;
+    /// # use palpo_core::serde::CanonicalJsonValue;
     /// let v: CanonicalJsonValue = json!({ "an": "object" }).try_into().unwrap();
     /// ```
     Object(CanonicalJsonObject),

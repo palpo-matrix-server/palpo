@@ -14,7 +14,7 @@ use super::IdParseError;
 /// and can be converted or serialized back into a string as needed.
 ///
 /// ```
-/// # crateRoomVersionId;
+/// # use palpo_core::RoomVersionId;
 /// assert_eq!(RoomVersionId::try_from("1").unwrap().as_str(), "1");
 /// ```
 ///

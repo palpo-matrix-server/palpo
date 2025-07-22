@@ -10,7 +10,7 @@ pub type EntitySignatures<K> = BTreeMap<OwnedSigningKeyId<K>, String>;
 /// Map of all signatures, grouped by entity
 ///
 /// ```
-/// # use crate::{server_name, KeyId, Signatures, SigningKeyAlgorithm};
+/// # use palpo_core::{server_name, KeyId, Signatures, SigningKeyAlgorithm};
 /// let key_identifier = KeyId::from_parts(SigningKeyAlgorithm::Ed25519, "1");
 /// let mut signatures = Signatures::new();
 /// let server_name = server_name!("example.org");

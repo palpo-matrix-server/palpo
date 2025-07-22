@@ -203,7 +203,7 @@ pub fn room_version_id(input: TokenStream) -> TokenStream {
     );
 
     let output = quote! {
-        <#dollar_crate::RoomVersionId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
+        <palpo_core::RoomVersionId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
     };
 
     output.into()

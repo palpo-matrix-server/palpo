@@ -21,7 +21,7 @@ use super::ServerName;
 /// format.
 ///
 /// ```
-/// # crateEventId;
+/// # use palpo_core::EventId;
 /// // Original format
 /// assert_eq!(<&EventId>::try_from("$h29iv0s8:example.com").unwrap(), "$h29iv0s8:example.com");
 /// // Room version 3 format

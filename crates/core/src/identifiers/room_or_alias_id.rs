@@ -16,7 +16,7 @@ use super::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId, server_name::Ser
 /// determined by the leading sigil character.
 ///
 /// ```
-/// # crateRoomOrAliasId;
+/// # use palpo_core::RoomOrAliasId;
 /// assert_eq!(<&RoomOrAliasId>::try_from("#palpo:example.com").unwrap(), "#palpo:example.com");
 ///
 /// assert_eq!(
