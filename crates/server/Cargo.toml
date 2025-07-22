@@ -35,7 +35,7 @@ diesel_migrations = { workspace = true }
 dotenvy = { workspace = true }
 either = { workspace = true, features = ["serde"] }
 fast32 = { workspace = true }
-figment = { workspace = true, features = ["env", "toml", "yaml"] }
+figment = { workspace = true, features = ["env", "toml", "yaml", "json"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
 hickory-resolver = { workspace = true }
@@ -134,6 +134,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }
+toml = { workspace = true, features = ["serde"] }
 tower-service = { workspace = true }
 tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 tracing-futures = { workspace = true }

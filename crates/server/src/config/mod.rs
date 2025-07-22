@@ -1,22 +1,30 @@
+use std::fs;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
 
 use figment::Figment;
-use figment::providers::{Env, Format, Toml};
+use figment::providers::{Env, Format, Yaml, Json, Toml};
 use ipaddress::IPAddress;
 
-mod server_config;
-pub use server_config::*;
-mod ldap_config;
-pub use ldap_config::*;
-mod jwt_config;
-pub use jwt_config::*;
-mod blurhash_config;
-pub use blurhash_config::*;
+mod server;
+pub use server::*;
+mod ldap;
+pub use ldap::*;
+mod jwt;
+pub use jwt::*;
+mod blurhash;
+pub use blurhash::*;
+mod url_preview;
+pub use url_preview::*;
+mod turn;
+pub use turn::*;
+mod media;
+pub use media::*;
 
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
+use crate::AppResult;
 pub use crate::data::DbConfig;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
@@ -40,11 +48,41 @@ pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(
     ]
 });
 
-pub fn init() {
-    let raw_config = Figment::new()
-        .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
-        .merge(Env::prefixed("PALPO_").global());
+fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
+    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
+    match ext {
+        "yaml" | "yml" => Figment::new().merge(Yaml::file(path)),
+        "json" => Figment::new().merge(Json::file(path)),
+        "toml" => Figment::new().merge(Toml::file(path)),
+        _ => panic!("Unsupported config file format: {ext}"),
+    }
+}
 
+fn write_default_config<P: AsRef<Path>>(path: P)  {
+    let config = ServerConfig::default();
+    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
+    let data = match ext {
+        "yaml" | "yml" => serde_yaml::to_string(&config).expect("failed to serialize config to YAML"),
+        "json" => serde_json::to_string_pretty(&config).expect("failed to serialize config to YAML"),
+        "toml" => toml::to_string_pretty(&config).expect("failed to serialize config to YAML"),
+        _ => panic!("Unsupported config file format: {ext}"),
+    };
+    fs::write(path, data).expect("msg: failed to write default config file");
+}
+
+pub fn init() {
+    let config_file = Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into());
+
+    let config_path = PathBuf::from(config_file);
+    if !config_path.exists() {
+        warn!(
+            "Config file not found: `{}`, new default file will be created",
+            config_path.display()
+        );
+        write_default_config(&config_path);
+    }
+
+    let raw_config = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
     let conf = match raw_config.extract::<ServerConfig>() {
         Ok(s) => s,
         Err(e) => {

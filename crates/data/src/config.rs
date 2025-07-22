@@ -19,6 +19,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::serde::default_false;
 
+fn default_db_url() -> String {
+    "postgres://palpo:changeme@postgres:5432/palpo".to_owned()
+}
 fn default_db_pool_size() -> u32 {
     10
 }
@@ -40,6 +43,7 @@ pub struct DbConfig {
     /// Settings for the primary database. This is usually writeable, but will be read-only in
     /// some configurations.
     /// An optional follower database. Always read-only.
+    #[serde(default = "default_db_url")]
     pub url: String,
     #[serde(default = "default_db_pool_size")]
     pub pool_size: u32,

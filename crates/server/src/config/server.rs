@@ -6,10 +6,10 @@ use std::path::PathBuf;
 use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
-use serde::Deserialize;
 use serde::de::IgnoredAny;
+use serde::{Deserialize, Serialize};
 
-use super::{BlurhashConfig, JwtConfig, LdapConfig};
+use super::{BlurhashConfig, JwtConfig, UrlPreviewConfig, LdapConfig};
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
@@ -29,12 +29,13 @@ pub struct KeypairConfig {
     pub version: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub tls: Option<TlsConfig>,
 
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
+    #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
     pub db: DbConfig,
     #[serde(default = "default_false")]
@@ -95,7 +96,7 @@ pub struct ServerConfig {
     pub jwt: Option<JwtConfig>,
 
     #[serde(default)]
-    pub blurhashing: BlurhashConfig,
+    pub blurhash: BlurhashConfig,
 
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
@@ -138,56 +139,7 @@ pub struct ServerConfig {
     #[serde(default = "default_session_ttl")]
     pub session_ttl: u64,
 
-    /// Static TURN username to provide the client if not using a shared secret
-    /// ("turn_secret"), It is recommended to use a shared secret over static
-    /// credentials.
-    #[serde(default)]
-    pub turn_username: String,
-
-    /// Static TURN password to provide the client if not using a shared secret
-    /// ("turn_secret"). It is recommended to use a shared secret over static
-    /// credentials.
-    ///
-    /// display: sensitive
-    #[serde(default)]
-    pub turn_password: String,
-
-    /// Vector list of TURN URIs/servers to use.
-    ///
-    /// Replace "example.turn.uri" with your TURN domain, such as the coturn
-    /// "realm" config option. If using TURN over TLS, replace the URI prefix
-    /// "turn:" with "turns:".
-    ///
-    /// example: ["turn:example.turn.uri?transport=udp",
-    /// "turn:example.turn.uri?transport=tcp"]
-    ///
-    /// default: []
-    #[serde(default = "Vec::new")]
-    pub turn_uris: Vec<String>,
-
-    /// TURN secret to use for generating the HMAC-SHA1 hash apart of username
-    /// and password generation.
-    ///
-    /// This is more secure, but if needed you can use traditional static
-    /// username/password credentials.
-    ///
-    /// display: sensitive
-    #[serde(default)]
-    pub turn_secret: String,
-
-    /// TURN secret to use that's read from the file path specified.
-    ///
-    /// This takes priority over "turn_secret" first, and falls back to
-    /// "turn_secret" if invalid or failed to open.
-    ///
-    /// example: "/etc/conduwuit/.turn_secret"
-    pub turn_secret_file: Option<PathBuf>,
-
-    /// TURN TTL, in seconds.
-    ///
-    /// default: 86400
-    #[serde(default = "default_turn_ttl")]
-    pub turn_ttl: u64,
+    pub turn: TurnConfig,
 
     /// List/vector of room IDs or room aliases that conduwuit will make newly
     /// registered users join. The rooms specified must be rooms that you have
@@ -332,69 +284,8 @@ pub struct ServerConfig {
     #[serde(default)]
     pub allow_guests_auto_join_rooms: bool,
 
-    /// Enable the legacy unauthenticated Matrix media repository endpoints.
-    /// These endpoints consist of:
-    /// - /_matrix/media/*/config
-    /// - /_matrix/media/*/upload
-    /// - /_matrix/media/*/preview_url
-    /// - /_matrix/media/*/download/*
-    /// - /_matrix/media/*/thumbnail/*
-    ///
-    /// The authenticated equivalent endpoints are always enabled.
-    ///
-    /// Defaults to true for now, but this is highly subject to change, likely
-    /// in the next release.
-    #[serde(default = "default_true")]
-    pub allow_legacy_media: bool,
-
-    #[serde(default = "default_true")]
-    pub freeze_legacy_media: bool,
-
-    /// Check consistency of the media directory at startup:
-    /// 1. When `media_compat_file_link` is enabled, this check will upgrade
-    ///    media when switching back and forth between Conduit and palpo.
-    ///    Both options must be enabled to handle this.
-    /// 2. When media is deleted from the directory, this check will also delete
-    ///    its database entry.
-    ///
-    /// If none of these checks apply to your use cases, and your media
-    /// directory is significantly large setting this to false may reduce
-    /// startup time.
-    #[serde(default = "default_true")]
-    pub media_startup_check: bool,
-
-    /// Enable backward-compatibility with Conduit's media directory by creating
-    /// symlinks of media.
-    ///
-    /// This option is only necessary if you plan on using Conduit again.
-    /// Otherwise setting this to false reduces filesystem clutter and overhead
-    /// for managing these symlinks in the directory. This is now disabled by
-    /// default. You may still return to upstream Conduit but you have to run
-    /// palpo at least once with this set to true and allow the
-    /// media_startup_check to take place before shutting down to return to
-    /// Conduit.
     #[serde(default)]
-    pub media_compat_file_link: bool,
-
-    /// Prune missing media from the database as part of the media startup
-    /// checks.
-    ///
-    /// This means if you delete files from the media directory the
-    /// corresponding entries will be removed from the database. This is
-    /// disabled by default because if the media directory is accidentally moved
-    /// or inaccessible, the metadata entries in the database will be lost with
-    /// sadness.
-    #[serde(default)]
-    pub prune_missing_media: bool,
-
-    /// Vector list of regex patterns of server names that palpo will refuse
-    /// to download remote media from.
-    ///
-    /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
-    ///
-    /// default: []
-    #[serde(default, with = "serde_regex")]
-    pub prevent_media_downloads_from: RegexSet,
+    pub media: MediaConfig,
 
     /// List of forbidden server names via regex patterns that we will block
     /// incoming AND outgoing federation with, and block client room joins /
@@ -443,93 +334,6 @@ pub struct ServerConfig {
     /// "2001:db8::/32", "ff00::/8", "fec0::/10"]
     #[serde(default = "default_ip_range_denylist")]
     pub ip_range_denylist: Vec<String>,
-
-    /// Optional IP address or network interface-name to bind as the source of
-    /// URL preview requests. If not set, it will not bind to a specific
-    /// address or interface.
-    ///
-    /// Interface names only supported on Linux, Android, and Fuchsia platforms;
-    /// all other platforms can specify the IP address. To list the interfaces
-    /// on your system, use the command `ip link show`.
-    ///
-    /// example: `"eth0"` or `"1.2.3.4"`
-    ///
-    /// default:
-    #[serde(default, with = "either::serde_untagged_optional")]
-    pub url_preview_bound_interface: Option<Either<IpAddr, String>>,
-
-    /// Vector list of domains allowed to send requests to for URL previews.
-    ///
-    /// This is a *contains* match, not an explicit match. Putting "google.com"
-    /// will match "https://google.com" and
-    /// "http://mymaliciousdomainexamplegoogle.com" Setting this to "*" will
-    /// allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_contains_allowlist: Vec<String>,
-
-    /// Vector list of explicit domains allowed to send requests to for URL
-    /// previews.
-    ///
-    /// This is an *explicit* match, not a contains match. Putting "google.com"
-    /// will match "https://google.com", "http://google.com", but not
-    /// "https://mymaliciousdomainexamplegoogle.com". Setting this to "*" will
-    /// allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_explicit_allowlist: Vec<String>,
-
-    /// Vector list of explicit domains not allowed to send requests to for URL
-    /// previews.
-    ///
-    /// This is an *explicit* match, not a contains match. Putting "google.com"
-    /// will match "https://google.com", "http://google.com", but not
-    /// "https://mymaliciousdomainexamplegoogle.com". The denylist is checked
-    /// first before allowlist. Setting this to "*" will not do anything.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_explicit_denylist: Vec<String>,
-
-    /// Vector list of URLs allowed to send requests to for URL previews.
-    ///
-    /// Note that this is a *contains* match, not an explicit match. Putting
-    /// "google.com" will match "https://google.com/",
-    /// "https://google.com/url?q=https://mymaliciousdomainexample.com", and
-    /// "https://mymaliciousdomainexample.com/hi/google.com" Setting this to "*"
-    /// will allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_url_contains_allowlist: Vec<String>,
-
-    /// Maximum amount of bytes allowed in a URL preview body size when
-    /// spidering. Defaults to 256KB in bytes.
-    ///
-    /// default: 256000
-    #[serde(default = "default_url_preview_max_spider_size")]
-    pub url_preview_max_spider_size: usize,
-
-    /// Option to decide whether you would like to run the domain allowlist
-    /// checks (contains and explicit) on the root domain or not. Does not apply
-    /// to URL contains allowlist. Defaults to false.
-    ///
-    /// Example usecase: If this is enabled and you have "wikipedia.org" allowed
-    /// in the explicit and/or contains domain allowlist, it will allow all
-    /// subdomains under "wikipedia.org" such as "en.m.wikipedia.org" as the
-    /// root domain is checked and matched. Useful if the domain contains
-    /// allowlist is still too broad for you but you still want to allow all the
-    /// subdomains under a root domain.
-    #[serde(default)]
-    pub url_preview_check_root_domain: bool,
 
     /// List of forbidden room aliases and room IDs as strings of regex
     /// patterns.
@@ -635,6 +439,7 @@ pub struct ServerConfig {
     // this is a catchall, the map shouldn't be zero at runtime
     catch_others: BTreeMap<String, IgnoredAny>,
 }
+
 impl ServerConfig {
     pub fn check(&self) -> AppResult<()> {
         if cfg!(debug_assertions) {
@@ -964,6 +769,87 @@ impl fmt::Display for ServerConfig {
     }
 }
 
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            tls: None,
+            listen_addr: default_listen_addr(),
+            server_name: default_server_name(),
+            db: DbConfig::default(),
+            enable_lightning_bolt: false,
+            allow_check_for_updates: true,
+            pdu_cache_capacity: default_pdu_cache_capacity(),
+            cleanup_second_interval: default_cleanup_second_interval(),
+            max_request_size: default_max_request_size(),
+            max_concurrent_requests: default_max_concurrent_requests(),
+            max_fetch_prev_events: default_max_fetch_prev_events(),
+            allow_registration: false,
+            allow_outgoing_read_receipts: false,
+            allow_outgoing_typing: true,
+            allow_incoming_typing: true,
+            registration_token: None,
+            allow_encryption: true,
+            allow_federation: false,
+            allow_room_creation: true,
+            allow_unstable_room_versions: true,
+            default_room_version: default_default_room_version(),
+            well_known_client: None,
+            allow_jaeger: false,
+            tracing_flame: false,
+enable_admin_room: true,
+appservice_registration_dir: None,
+ldap: None,
+jwt: None,
+blurhash: BlurhashConfig::default(),
+trusted_servers: default_trusted_servers(),
+rust_log: default_rust_log(),
+openid_token_ttl: default_openid_token_ttl(),
+login_via_existing_session: true,
+login_token_ttl:default_login_token_ttl(),
+refresh_token_ttl: default_refresh_token_ttl(),
+session_ttl: default_session_ttl(),
+turn: TurnConfig::default(),
+
+auto_join_rooms: vec![],
+auto_deactivate_banned_room_attempts: false,
+emergency_password: None,
+allow_local_presence: true,
+allow_incoming_presence: true,
+allow_outgoing_presence: true,
+presence_idle_timeout_s: default_presence_idle_timeout_s(),
+presence_offline_timeout_s: default_presence_offline_timeout_s(),
+admin_room_notices: true,
+typing_federation_timeout_s: default_typing_federation_timeout_s(),
+typing_client_timeout_min_s: default_typing_client_timeout_min_s(),
+typing_client_timeout_max_s: default_typing_client_timeout_max_s(),
+zstd_compression: false,
+gzip_compression: false,brotli_compression: false,allow_guest_registration: false,
+log_guest_registrations: false,allow_guests_auto_join_rooms: false ,allow_legacy_media: true,
+freeze_legacy_media: true,media_startup_check: true,media_compat_file_link: false,
+prune_missing_media: false,prevent_media_downloads_from:?,forbidden_remote_server_names:?,
+forbidden_remote_room_directory_server_names:?,ip_range_denylist: default_ip_range_denylist(),
+
+url_preview_bound_interface:?
+
+,url_preview_domain_contains_allowlist: Default::default(),
+
+url_preview_domain_explicit_allowlist: Default::default(),
+url_preview_domain_explicit_denylist: Default::default(),
+url_preview_url_contains_allowlist: Default::default(),
+url_preview_max_spider_size: default_url_preview_max_spider_size(),
+url_preview_check_root_domain: false,forbidden_alias_names:?,
+space_path: default_space_path(),keypair:  None, well_known: WellKnownConfig::default(),
+enable_tls: false, query_trusted_key_servers_first: false,
+query_trusted_key_servers_first_on_join: true,only_query_trusted_key_servers: false,
+trusted_server_batch_size: default_trusted_server_batch_size(),
+forbidden_usernames:?,
+startup_netburst: true,
+startup_netburst_keep: default_startup_netburst_keep(),
+catch_others: Default::default(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct AllowedOrigins(Vec<String>);
 
@@ -990,6 +876,9 @@ pub struct TlsConfig {
 
 fn default_listen_addr() -> String {
     "127.0.0.1:8008".into()
+}
+fn default_server_name() -> OwnedServerName {
+    OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
 }
 
 fn default_database_backend() -> String {
@@ -1060,10 +949,6 @@ fn default_log_format() -> String {
     "json".to_owned()
 }
 
-fn default_turn_ttl() -> u64 {
-    60 * 60 * 24
-}
-
 fn default_presence_idle_timeout_s() -> u64 {
     5 * 60
 }
@@ -1088,9 +973,6 @@ fn default_default_room_version() -> RoomVersionId {
     RoomVersionId::V11
 }
 
-fn default_url_preview_max_spider_size() -> usize {
-    256_000 // 256KB
-}
 fn default_ip_range_denylist() -> Vec<String> {
     vec![
         "127.0.0.0/8".to_owned(),
