@@ -13,6 +13,7 @@ permissions:
   id-token: write # needed for signing the images with GitHub OIDC Token
 
 env:
+  REGISTRY: ghcr.io
   DOCKERHUB_NAMESPACE: chrislearn
   DOCKERHUB_USER: chrislearn
 
@@ -77,16 +78,19 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USER }}/palpo
+          images: palpo-im/palpo
           # Prevent `latest` to be updated for each new tag pushed.
           # We need latest and `vX.Y` tags to only be pushed for the stable Palpo releases.
           flavor: latest=false
           tags: |
+            type=sha
             type=ref,event=tag
-            type=raw,value=nightly,enable=${{ github.event_name != 'push' }}
-            type=semver,pattern=v{{major}}.{{minor}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
-            type=semver,pattern=v{{major}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
-            type=raw,value=latest,enable=${{ steps.check-tag-format.outputs.stable == 'true' && steps.check-tag-format.outputs.latest == 'true' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # type=raw,value=nightly,enable=${{ github.event_name != 'push' }}
+            # type=semver,pattern=v{{major}}.{{minor}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
+            # type=semver,pattern=v{{major}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
+            # type=raw,value=latest,enable=${{ steps.check-tag-format.outputs.stable == 'true' && steps.check-tag-format.outputs.latest == 'true' }}
 
       - name: Build and push by digest
         id: build

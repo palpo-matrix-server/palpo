@@ -21,10 +21,10 @@ get_latest() {
         exit 1
     fi
 
-    if [ -z "$GITHUB_TOKEN" ]; then
+    if [ -z "$GITHUB_PAT" ]; then
         curl -s "$latest_release" > "$temp_file" || return 1
     else
-        curl -H "Authorization: token $GITHUB_TOKEN" -s "$latest_release" > "$temp_file" || return 1
+        curl -H "Authorization: token $GITHUB_PAT" -s "$latest_release" > "$temp_file" || return 1
     fi
 
     latest="$(cat "$temp_file" | grep '"tag_name":' | cut -d ':' -f2 | tr -d '"' | tr -d ',' | tr -d ' ')"
