@@ -87,6 +87,8 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=next,enable=${{ github.ref == 'refs/heads/next' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             # type=raw,value=nightly,enable=${{ github.event_name != 'push' }}
             # type=semver,pattern=v{{major}}.{{minor}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
             # type=semver,pattern=v{{major}},enable=${{ steps.check-tag-format.outputs.stable == 'true' }}
@@ -100,7 +102,9 @@ jobs:
           labels: |
             gitsha1=${{ github.sha }}
             org.opencontainers.image.version=${{ env.PALPO_VERSION }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            docker.io/chrislearn/palpo
+            ghcr.io/palpo-im/palpo
           context: .
           file: ./build/docker/Dockerfile.palpo
           platforms: ${{ matrix.platform }}
