@@ -1,10 +1,10 @@
 //! Matrix room identifiers.
 
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 use super::{MatrixToUri, MatrixUri, OwnedEventId, OwnedServerName, ServerName, matrix_uri::UriAction};
 use crate::RoomOrAliasId;
+use crate::macros::IdZst;
 
 /// A Matrix [room ID].
 ///

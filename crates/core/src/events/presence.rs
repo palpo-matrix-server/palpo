@@ -2,7 +2,7 @@
 //!
 //! The only content valid for this event is `PresenceEventContent`.
 
-use palpo_macros::{Event, EventContent};
+use crate::macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 

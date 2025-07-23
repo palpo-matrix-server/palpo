@@ -1,7 +1,7 @@
 //! Types for the `org.matrix.msc3381.poll.end` event, the unstable version of
 //! `m.poll.end`.
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

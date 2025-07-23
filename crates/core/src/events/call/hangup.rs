@@ -2,7 +2,7 @@
 //!
 //! [`m.call.hangup`]: https://spec.matrix.org/latest/client-server-api/#mcallhangup
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

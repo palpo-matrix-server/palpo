@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use palpo_macros::DisplayAsRefStr;
+use crate::macros::DisplayAsRefStr;
 use salvo::oapi::ToSchema;
 use serde::{
     Deserialize, Deserializer, Serialize,

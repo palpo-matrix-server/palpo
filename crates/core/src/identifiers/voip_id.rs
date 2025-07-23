@@ -1,7 +1,7 @@
 //! VoIP identifier.
 
+use crate::macros::IdZst;
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 /// A VoIP identifier.
 ///

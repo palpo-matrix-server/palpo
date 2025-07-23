@@ -3,8 +3,8 @@
 
 use std::hint::unreachable_unchecked;
 
+use crate::macros::IdZst;
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 use super::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId, server_name::ServerName};
 

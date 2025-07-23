@@ -1,7 +1,7 @@
 //! Identifiers for device keys for end-to-end encryption.
 
+use crate::macros::IdZst;
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 use super::{DeviceId, crypto_algorithms::DeviceKeyAlgorithm};
 

@@ -1,13 +1,15 @@
 use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+use crate::core::serde::{default_false, default_true};
+
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct TypingConfig {
 	/// Allow incoming typing updates from federation.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub allow_incoming: bool,
 
 	/// Allow outgoing typing updates to federation.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub allow_outgoing: bool,
 
 	/// Maximum time federation user can indicate typing.
@@ -29,18 +31,4 @@ pub struct TypingConfig {
 	/// default: 45
 	#[serde(default = "default_typing_client_timeout_max_s")]
 	pub client_timeout_max_s: u64,
-}
-
-// blurhash defaults recommended by https://blurha.sh/
-// 2^25
-fn default_blurhash_max_raw_size() -> u64 {
-    33_554_432
-}
-
-fn default_components_x() -> u32 {
-    4
-}
-
-fn default_components_y() -> u32 {
-    3
 }

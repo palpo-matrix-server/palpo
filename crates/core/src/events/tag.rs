@@ -4,7 +4,7 @@
 
 use std::{collections::BTreeMap, error::Error, fmt, str::FromStr};
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

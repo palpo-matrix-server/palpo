@@ -2,7 +2,7 @@
 //!
 //! [`m.typing`]: https://spec.matrix.org/latest/client-server-api/#mtyping
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 

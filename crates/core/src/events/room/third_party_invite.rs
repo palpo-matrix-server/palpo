@@ -2,7 +2,7 @@
 //!
 //! [`m.room.third_party_invite`]: https://spec.matrix.org/latest/client-server-api/#mroomthird_party_invite
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

@@ -4,8 +4,8 @@
 
 use std::{fmt, num::NonZeroU8};
 
+use crate::macros::IdZst;
 use palpo_identifiers_validation::{error::MxcUriError, mxc_uri::validate};
-use palpo_macros::IdZst;
 use serde::{Serialize, Serializer};
 
 use super::ServerName;

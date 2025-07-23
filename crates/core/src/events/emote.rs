@@ -2,11 +2,11 @@
 //!
 //! [MSC3954]: https://github.com/matrix-org/matrix-spec-proposals/pull/3954
 
-use palpo_macros::EventContent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{message::TextContentBlock, room::message::Relation};
+use crate::macros::EventContent;
 
 /// The payload for an extensible emote message.
 ///

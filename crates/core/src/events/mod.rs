@@ -28,7 +28,7 @@
 //! ```rust
 //! use serde::{Deserialize, Serialize};
 //!
-//! use palpo_macros::EventContent;
+//! use crate::macros::EventContent;
 //! use palpo_core::RoomVersionId;
 //!
 //! #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
@@ -48,7 +48,7 @@
 //! ```rust
 //! use palpo_core::{RoomVersionId, OwnedEventId};
 //! use palpo_core::events::{EventContent, OriginalSyncMessageLikeEvent};
-//! use palpo_macros::EventContent;
+//! use crate::macros::EventContent;
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Clone, Debug, Deserialize, Serialize)]

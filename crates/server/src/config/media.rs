@@ -3,11 +3,11 @@ use std::fmt;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::Deserialize; use regex::RegexSet;
 
 use crate::core::serde::{default_false, default_true};
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct MediaConfig {
     /// Enable the legacy unauthenticated Matrix media repository endpoints.
     /// These endpoints consist of:

@@ -6,8 +6,8 @@
 
 use std::time::Duration;
 
+use crate::macros::EventContent;
 use as_variant::as_variant;
-use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::warn;

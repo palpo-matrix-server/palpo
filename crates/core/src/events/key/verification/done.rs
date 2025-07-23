@@ -2,7 +2,7 @@
 //!
 //! [`m.key.verification.done`]: https://spec.matrix.org/latest/client-server-api/#mkeyverificationdone
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

@@ -114,7 +114,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             //     // their users (synapse, Nextcloud, Jellyfin, ...).
             //     //
             //     // LDAP users are crated with a dummy password but non empty because an empty
-            //     // password is reserved for deactivated accounts. The tuwunel password field
+            //     // password is reserved for deactivated accounts. The palpo password field
             //     // will never be read to login a LDAP user so it's not an issue.
             //     if !data::user::user_exists(&user_id)? {
             //         let new_user = NewDbUser {

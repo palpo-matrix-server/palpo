@@ -1,29 +1,31 @@
 use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+use crate::core::serde::{default_false, default_true};
+
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct PresenceConfig {
     	/// Allow local (your server only) presence updates/requests.
 	///
-	/// Note that presence on tuwunel is very fast unlike Synapse's. If using
+	/// Note that presence on palpo is very fast unlike Synapse's. If using
 	/// outgoing presence, this MUST be enabled.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub allow_local: bool,
 
 	/// Allow incoming federated presence updates/requests.
 	///
 	/// This option receives presence updates from other servers, but does not
 	/// send any unless `allow_outgoing_presence` is true. Note that presence on
-	/// tuwunel is very fast unlike Synapse's.
-	#[serde(default = "true_fn")]
+	/// palpo is very fast unlike Synapse's.
+	#[serde(default = "default_true")]
 	pub allow_incoming: bool,
 
 	/// Allow outgoing presence updates/requests.
 	///
 	/// This option sends presence updates to other servers, but does not
 	/// receive any unless `allow_incoming_presence` is true. Note that presence
-	/// on tuwunel is very fast unlike Synapse's. If using outgoing presence,
+	/// on palpo is very fast unlike Synapse's. If using outgoing presence,
 	/// you MUST enable `allow_local_presence` as well.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub allow_outgoing: bool,
 
 	/// How many seconds without presence updates before you become idle.
@@ -46,20 +48,6 @@ pub struct PresenceConfig {
 	/// many large rooms or when resources are limited. Disabling it may cause
 	/// incorrect presence states (i.e. stuck online) to be seen for some remote
 	/// users.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub timeout_remote_users: bool,
-}
-
-// blurhash defaults recommended by https://blurha.sh/
-// 2^25
-fn default_blurhash_max_raw_size() -> u64 {
-    33_554_432
-}
-
-fn default_components_x() -> u32 {
-    4
-}
-
-fn default_components_y() -> u32 {
-    3
 }

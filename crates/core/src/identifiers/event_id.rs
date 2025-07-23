@@ -1,7 +1,7 @@
 //! Matrix event identifiers.
 
+use crate::macros::IdZst;
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 use super::ServerName;
 

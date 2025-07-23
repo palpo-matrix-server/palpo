@@ -4,31 +4,49 @@ use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
 
 use figment::Figment;
-use figment::providers::{Env, Format, Yaml, Json, Toml};
+use figment::providers::{Env, Format, Json, Toml, Yaml};
 use ipaddress::IPAddress;
 
-mod server;
-pub use server::*;
-mod ldap;
-pub use ldap::*;
+mod admin;
+pub use admin::*;
+mod appservice;
+pub use appservice::*;
 mod jwt;
 pub use jwt::*;
 mod blurhash;
 pub use blurhash::*;
-mod url_preview;
-pub use url_preview::*;
-mod turn;
-pub use turn::*;
-mod media;
-pub use media::*;
+mod compression;
+pub use compression::*;
 mod dns;
 pub use dns::*;
+mod federation;
+pub use federation::*;
+mod ldap;
+pub use ldap::*;
+mod logger;
+pub use logger::*;
+mod media;
+pub use media::*;
+mod presence;
+pub use presence::*;
 mod proxy;
 pub use proxy::*;
+mod read_receipt;
+pub use read_receipt::*;
+mod request;
+pub use request::*;
+mod server;
+pub use server::*;
+mod turn;
+pub use turn::*;
+mod typing;
+pub use typing::*;
+mod url_preview;
+pub use url_preview::*;
 
+use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
-use crate::AppResult;
 pub use crate::data::DbConfig;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
@@ -62,7 +80,7 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
     }
 }
 
-fn write_default_config<P: AsRef<Path>>(path: P)  {
+fn write_default_config<P: AsRef<Path>>(path: P) {
     let config = ServerConfig::default();
     let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
     let data = match ext {

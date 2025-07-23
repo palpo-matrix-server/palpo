@@ -112,7 +112,7 @@ where
     serde_json::from_str(val.get()).map_err(E::custom)
 }
 
-pub use palpo_macros::{
+pub use crate::macros::{
     AsRefStr, DebugAsRefStr, DeserializeFromCowStr, DisplayAsRefStr, FromString, OrdAsRefStr, PartialEqAsRefStr,
     PartialOrdAsRefStr, SerializeAsRefStr, StringEnum,
 };

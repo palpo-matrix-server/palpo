@@ -1,6 +1,6 @@
 //! Key algorithms used in Matrix spec.
 
-use palpo_macros::StringEnum;
+use crate::macros::StringEnum;
 use salvo::prelude::*;
 
 use crate::PrivOwnedStr;

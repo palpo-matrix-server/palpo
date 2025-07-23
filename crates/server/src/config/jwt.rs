@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::core::serde::{default_false, default_true};
+
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct JwtConfig {
     /// Enable JWT logins

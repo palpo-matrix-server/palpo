@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::core::serde::{default_false, default_true};
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct DnsConfig {
     /// Maximum entries stored in DNS memory-cache. The size of an entry may
     /// vary so please take care if raising this value excessively. Only

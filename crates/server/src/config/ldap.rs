@@ -85,7 +85,7 @@ pub struct LdapConfig {
     #[serde(default)]
     pub admin_base_dn: String,
 
-    /// The LDAP search filter to find administrative users for tuwunel.
+    /// The LDAP search filter to find administrative users for palpo.
     ///
     /// If left blank, administrative state must be configured manually for each
     /// user.
@@ -93,7 +93,7 @@ pub struct LdapConfig {
     /// You can use the variable `{username}` that will be replaced by the
     /// entered username for more complex filters.
     ///
-    /// example: "(objectClass=tuwunelAdmin)" or "(uid={username})"
+    /// example: "(objectClass=palpoAdmin)" or "(uid={username})"
     #[serde(default)]
     pub admin_filter: String,
 }

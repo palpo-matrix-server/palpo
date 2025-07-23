@@ -55,8 +55,7 @@ pub use core::error::MatrixError;
 pub use error::AppError;
 pub use palpo_core as core;
 pub use palpo_data as data;
-#[macro_use]
-mod macros;
+pub use palpo_server_macros as macros;
 
 use std::time::Duration;
 

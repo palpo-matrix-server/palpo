@@ -2,7 +2,7 @@
 //!
 //! [`m.secret.request`]: https://spec.matrix.org/latest/client-server-api/#msecretrequest
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 

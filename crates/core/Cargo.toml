@@ -108,7 +108,7 @@ konst = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }
 palpo-identifiers-validation = { workspace = true }
-palpo-macros = { workspace = true }
+palpo-core-macros = { workspace = true }
 # oauth2 = { workspace = true }
 path-slash = { workspace = true }
 percent-encoding = { workspace = true }

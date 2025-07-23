@@ -1,4 +1,4 @@
-use palpo_macros::{EventEnumFromEvent, event_enum};
+use crate::macros::{EventEnumFromEvent, event_enum};
 use salvo::prelude::*;
 use serde::{Deserialize, de};
 

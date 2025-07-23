@@ -90,7 +90,7 @@
 //! [MSC3381]: https://github.com/matrix-org/matrix-spec-proposals/pull/3381
 use std::ops::Deref;
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

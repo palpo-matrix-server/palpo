@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct BlurhashConfig {
     /// blurhash x component, 4 is recommended by https://blurha.sh/
     ///

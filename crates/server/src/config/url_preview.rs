@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use url::Url;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

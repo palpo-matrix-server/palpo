@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
-use diesel::prelude::*;
 use crate::core::serde::RawJson;
+use diesel::prelude::*;
 
 use crate::core::events::AnySyncEphemeralRoomEvent;
 use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};

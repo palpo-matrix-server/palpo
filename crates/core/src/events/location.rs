@@ -2,7 +2,7 @@
 //!
 //! [MSC3488]: https://github.com/matrix-org/matrix-spec-proposals/pull/3488
 
-use palpo_macros::{EventContent, StringEnum};
+use crate::macros::{EventContent, StringEnum};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

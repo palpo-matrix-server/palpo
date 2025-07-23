@@ -1,7 +1,7 @@
 use reqwest::{Proxy, Url};
 use serde::Deserialize;
 
-use crate::Result;
+use crate::AppResult;
 
 /// ## Examples:
 /// - No proxy (default):
@@ -38,7 +38,7 @@ pub enum ProxyConfig {
     ByDomain(Vec<PartialProxyConfig>),
 }
 impl ProxyConfig {
-    pub fn to_proxy(&self) -> Result<Option<Proxy>> {
+    pub fn to_proxy(&self) -> AppResult<Option<Proxy>> {
         Ok(match self.clone() {
             ProxyConfig::None => None,
             ProxyConfig::Global { url } => Some(Proxy::all(url)?),

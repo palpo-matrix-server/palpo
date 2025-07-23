@@ -1,8 +1,10 @@
 use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+use crate::core::serde::{default_false, default_true};
+
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct LoggerConfig {
-	/// Max log level for tuwunel. Allows debug, info, warn, or error.
+	/// Max log level for palpo. Allows debug, info, warn, or error.
 	///
 	/// See also:
 	/// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
@@ -17,8 +19,11 @@ pub struct LoggerConfig {
 	#[serde(default = "default_level")]
 	pub level: String,
 
+	#[serde(default = "default_format")]
+	pub format: String,
+
 	/// Output logs with ANSI colours.
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub ansi_colors: bool,
 
 	/// Configures the span events which will be outputted with the log.
@@ -31,7 +36,7 @@ pub struct LoggerConfig {
 	/// expressions. See the tracing_subscriber documentation on Directives.
 	///
 	/// default: true
-	#[serde(default = "true_fn")]
+	#[serde(default = "default_true")]
 	pub filter_regex: bool,
 
 	/// Toggles the display of ThreadId in tracing log output.
@@ -45,16 +50,18 @@ pub struct LoggerConfig {
     pub guest_registrations: bool,
 }
 
-// blurhash defaults recommended by https://blurha.sh/
-// 2^25
-fn default_blurhash_max_raw_size() -> u64 {
-    33_554_432
+
+/// do debug logging by default for debug builds
+#[must_use]
+pub fn default_level() -> String {
+	cfg!(debug_assertions)
+		.then_some("debug")
+		.unwrap_or("info")
+		.to_owned()
 }
 
-fn default_components_x() -> u32 {
-    4
-}
-
-fn default_components_y() -> u32 {
-    3
+/// do compact logging by default
+#[must_use]
+pub fn default_format() -> String {
+	"compact".to_owned()
 }
