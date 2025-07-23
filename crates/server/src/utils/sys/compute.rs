@@ -129,36 +129,36 @@ pub fn cores_available() -> impl Iterator<Item = Id> {
     from_mask(*CORES_AVAILABLE)
 }
 
-#[cfg(target_os = "linux")]
-#[inline]
-pub fn getcpu() -> Result<usize> {
-    use crate::{Error, utils::math};
+// #[cfg(target_os = "linux")]
+// #[inline]
+// pub fn getcpu() -> Result<usize> {
+//     use crate::{Error, utils::math};
 
-    // SAFETY: This is part of an interface with many low-level calls taking many
-    // raw params, but it's unclear why this specific call is unsafe. Nevertheless
-    // the value obtained here is semantically unsafe because it can change on the
-    // instruction boundary trailing its own acquisition and also any other time.
-    let ret: i32 = unsafe { libc::sched_getcpu() };
+//     // SAFETY: This is part of an interface with many low-level calls taking many
+//     // raw params, but it's unclear why this specific call is unsafe. Nevertheless
+//     // the value obtained here is semantically unsafe because it can change on the
+//     // instruction boundary trailing its own acquisition and also any other time.
+//     let ret: i32 = unsafe { nix::libc::sched_getcpu() };
 
-    #[cfg(target_os = "linux")]
-    // SAFETY: On modern linux systems with a vdso if we can optimize away the branch checking
-    // for error (see getcpu(2)) then this system call becomes a memory access.
-    unsafe {
-        std::hint::assert_unchecked(ret >= 0);
-    };
+//     #[cfg(target_os = "linux")]
+//     // SAFETY: On modern linux systems with a vdso if we can optimize away the branch checking
+//     // for error (see getcpu(2)) then this system call becomes a memory access.
+//     unsafe {
+//         std::hint::assert_unchecked(ret >= 0);
+//     };
 
-    if ret == -1 {
-        return Err(Error::from_errno());
-    }
+//     if ret == -1 {
+//         return Err(Error::from_errno());
+//     }
 
-    math::try_into(ret)
-}
+//     math::try_into(ret)
+// }
 
-#[cfg(not(target_os = "linux"))]
-#[inline]
-pub fn getcpu() -> Result<usize, IoError> {
-    Err(IoError::new(ErrorKind::Unsupported, "not supported").into())
-}
+// #[cfg(not(target_os = "linux"))]
+// #[inline]
+// pub fn getcpu() -> Result<usize, IoError> {
+//     Err(IoError::new(ErrorKind::Unsupported, "not supported").into())
+// }
 
 fn query_cores_available() -> impl Iterator<Item = Id> {
     core_affinity::get_core_ids()

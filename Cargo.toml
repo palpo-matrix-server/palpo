@@ -73,6 +73,7 @@ lru-cache = "0.1"
 maplit = "1"
 mime = "0.3.16"
 mime-infer = "4.0.0"
+# nix = "0.26.1"
 path-slash = "0.2.1"
 percent-encoding = "2"
 phf = { version = "0.11.1", features = ["macros"] }

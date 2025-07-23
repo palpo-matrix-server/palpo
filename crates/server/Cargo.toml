@@ -52,6 +52,7 @@ lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }
 mime-infer = { workspace = true }
+# nix = { workspace = true }
 palpo-core = { workspace = true, features = [
     "markdown",
     "html",
