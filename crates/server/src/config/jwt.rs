@@ -1,11 +1,15 @@
 use serde::Deserialize;
 
+use crate::core::serde::default_true;
+use crate::macros::config_example;
+
+#[config_example(filename = "palpo-example.toml", section = "jwt")]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct JwtConfig {
     /// Enable JWT logins
     ///
     /// default: false
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub enable: bool,
 
     /// Validation secret key. The type of key can be configured in 'format', but defaults to the common HMAC which

@@ -2,7 +2,7 @@
 //!
 //! [`m.call.candidates`]: https://spec.matrix.org/latest/client-server-api/#mcallcandidates
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

@@ -299,7 +299,8 @@ fn process_to_outlier_pdu<'a>(
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!("auth check for {} based on auth events", incoming_pdu.event_id);
 
-        let (_auth_events, missing_auth_event_ids) = timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
+        let (_auth_events, missing_auth_event_ids) =
+            timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
 
         if !missing_auth_event_ids.is_empty() {
             fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await?;

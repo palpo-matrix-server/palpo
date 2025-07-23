@@ -48,7 +48,7 @@ pub async fn get_remote_content(
 }
 
 fn get_media_path(key: &str) -> String {
-    join_path!(&crate::config().space_path, "media", key)
+    join_path!(&crate::config::get().space_path, "media", key)
 }
 
 /// Returns width, height of the thumbnail and whether it should be cropped. Returns None when

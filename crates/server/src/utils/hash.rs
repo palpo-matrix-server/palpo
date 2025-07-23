@@ -45,13 +45,13 @@ pub fn hash_string(bytes: &[u8]) -> String {
 
 /// Calculate a new has h for the given password
 pub fn hash_password(password: &str) -> Result<String, argon2::Error> {
-    let hashing_config = argon2::Config {
+    let hashing_conf = argon2::Config {
         variant: argon2::Variant::Argon2id,
         ..Default::default()
     };
 
     let salt = super::random_string(32);
-    argon2::hash_encoded(password.as_bytes(), salt.as_bytes(), &hashing_config)
+    argon2::hash_encoded(password.as_bytes(), salt.as_bytes(), &hashing_conf)
 }
 
 #[tracing::instrument(skip(keys))]

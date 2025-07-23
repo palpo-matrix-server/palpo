@@ -206,8 +206,8 @@ where
 }
 
 pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
-    let notary_first = crate::config().query_trusted_key_servers_first;
-    let notary_only = crate::config().only_query_trusted_key_servers;
+    let notary_first = crate::config::get().query_trusted_key_servers_first;
+    let notary_only = crate::config::get().only_query_trusted_key_servers;
 
     if let Some(result) = verify_keys_for(origin).remove(key_id) {
         return Ok(result);
@@ -236,7 +236,7 @@ pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) ->
 }
 
 async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
-    for notary in &crate::config().trusted_servers {
+    for notary in &crate::config::get().trusted_servers {
         if let Ok(server_keys) = notary_request(notary, origin).await {
             for server_key in server_keys.clone() {
                 add_signing_keys(server_key)?;
@@ -264,12 +264,17 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
 pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
-    signatures::sign_json(config::server_name().as_str(), config::keypair(), object).map_err(Into::into)
+    signatures::sign_json(config::get().server_name.as_str(), config::keypair(), object).map_err(Into::into)
 }
 
 pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
     room_version: &RoomVersionId,
 ) -> Result<(), crate::core::signatures::Error> {
-    signatures::hash_and_sign_event(config::server_name().as_str(), config::keypair(), object, room_version)
+    signatures::hash_and_sign_event(
+        config::get().server_name.as_str(),
+        config::keypair(),
+        object,
+        room_version,
+    )
 }

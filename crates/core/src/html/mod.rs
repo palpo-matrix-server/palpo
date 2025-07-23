@@ -91,13 +91,13 @@ impl Html {
     /// This is equivalent to calling [`Self::sanitize_with()`] with a `config` value of
     /// `SanitizerConfig::compat().remove_reply_fallback()`.
     pub fn sanitize(&self) {
-        let config = SanitizerConfig::compat().remove_reply_fallback();
-        self.sanitize_with(&config);
+        let conf = SanitizerConfig::compat().remove_reply_fallback();
+        self.sanitize_with(&conf);
     }
 
     /// Sanitize this HTML according to the given configuration.
-    pub fn sanitize_with(&self, config: &SanitizerConfig) {
-        config.clean(self);
+    pub fn sanitize_with(&self, conf: &SanitizerConfig) {
+        conf.clean(self);
     }
 
     /// Get the root node of the HTML.

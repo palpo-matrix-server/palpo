@@ -123,11 +123,11 @@ pub fn url_preview_allowed(url: &Url) -> bool {
         Some(h) => h.to_owned(),
     };
 
-    let conf = crate::config();
-    let allowlist_domain_contains = &conf.url_preview_domain_contains_allowlist;
-    let allowlist_domain_explicit = &conf.url_preview_domain_explicit_allowlist;
-    let denylist_domain_explicit = &conf.url_preview_domain_explicit_denylist;
-    let allowlist_url_contains = &conf.url_preview_url_contains_allowlist;
+    let conf = crate::config::get();
+    let allowlist_domain_contains = &conf.url_preview.domain_contains_allowlist;
+    let allowlist_domain_explicit = &conf.url_preview.domain_explicit_allowlist;
+    let denylist_domain_explicit = &conf.url_preview.domain_explicit_denylist;
+    let allowlist_url_contains = &conf.url_preview.url_contains_allowlist;
 
     if allowlist_domain_contains.contains(&"*".to_owned())
         || allowlist_domain_explicit.contains(&"*".to_owned())
@@ -180,7 +180,7 @@ pub fn url_preview_allowed(url: &Url) -> bool {
         }
 
         // check root domain if available and if user has root domain checks
-        if conf.url_preview_check_root_domain {
+        if conf.url_preview.check_root_domain {
             debug!("Checking root domain");
             match host.split_once('.') {
                 None => return false,
@@ -277,7 +277,7 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
 async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
     use image::ImageReader;
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let image = client().get(url.to_owned()).send().await?;
     let content_type = image.headers().get(reqwest::header::CONTENT_TYPE);
     let content_type = content_type.and_then(|ct| ct.to_str().ok()).map(|c| c.to_owned());
@@ -332,19 +332,19 @@ async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
 async fn download_html(url: &Url) -> AppResult<UrlPreviewData> {
     use webpage::HTML;
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let client = client();
     let mut response = client.get(url.to_owned()).send().await?;
 
     let mut bytes: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await? {
         bytes.extend_from_slice(&chunk);
-        if bytes.len() > conf.url_preview_max_spider_size {
+        if bytes.len() > conf.url_preview.max_spider_size {
             debug!(
-                "Response body from URL {} exceeds url_preview_max_spider_size ({}), not \
+                "Response body from URL {} exceeds url_preview.max_spider_size ({}), not \
 				 processing the rest of the response body and assuming our necessary data is in \
 				 this range.",
-                url, conf.url_preview_max_spider_size
+                url, conf.url_preview.max_spider_size
             );
             break;
         }

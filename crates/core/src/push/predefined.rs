@@ -2,7 +2,7 @@
 //!
 //! [predefined push rules]: https://spec.matrix.org/latest/client-server-api/#predefined-rules
 
-use palpo_macros::StringEnum;
+use crate::macros::StringEnum;
 
 use super::{
     Action, ConditionalPushRule, PatternedPushRule, PushCondition::*, RoomMemberCountIs, RuleKind, Ruleset, Tweak,

@@ -2,8 +2,8 @@
 //!
 //! [predefined push rules]: https://spec.matrix.org/latest/client-server-api/#predefined-rules
 
+use crate::macros::StringEnum;
 use indexmap::IndexSet;
-use palpo_macros::StringEnum;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;

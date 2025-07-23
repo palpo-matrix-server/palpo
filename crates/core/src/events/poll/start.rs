@@ -2,7 +2,7 @@
 
 use std::ops::Deref;
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

@@ -1,11 +1,11 @@
 use diesel::prelude::*;
 
+use crate::AppResult;
 use crate::core::Seqnum;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::room::NewDbEventPushAction;
 use crate::data::schema::*;
-use crate::AppResult;
 
 pub fn increment_notification_counts(
     event_id: &EventId,

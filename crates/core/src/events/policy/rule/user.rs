@@ -2,7 +2,7 @@
 //!
 //! [`m.policy.rule.user`]: https://spec.matrix.org/latest/client-server-api/#mpolicyruleuser
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

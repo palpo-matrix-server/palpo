@@ -94,7 +94,7 @@ pub fn try_auth(
     if uiaa_info.session.is_none() {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
     }
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     match auth {
         // Find out what the user completed

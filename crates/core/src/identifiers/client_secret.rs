@@ -1,6 +1,6 @@
 //! Client secret identifier.
 
-use palpo_macros::IdZst;
+use crate::macros::IdZst;
 
 /// A client secret.
 ///

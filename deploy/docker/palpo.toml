@@ -30,13 +30,7 @@ max_request_size = 20_000_000 # in bytes
 # Enables registration. If set to false, no users can register on this server.
 allow_registration = true
 
-allow_federation = true
 allow_check_for_updates = true
-
-# Enable the display name lightning bolt on registration.
-enable_lightning_bolt = true
-
-allow_local_presence = true
 
 # Servers listed here will be used to gather public keys of other servers.
 # Generally, copying this exactly should be enough. (Currently, Palpo doesn't
@@ -50,6 +44,12 @@ trusted_servers = ["matrix.org"]
 
 # max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 # log = "warn,state=warn,rocket=off,_=off,sled=off"
+
+[presence]
+allow_local = true
+
+[federation]
+enable = true
 
 [db]
 url = "postgres://palpo:changeme@postgres:5432/palpo"

@@ -2,7 +2,7 @@
 //!
 //! [MSC3956]: https://github.com/matrix-org/matrix-spec-proposals/pull/3956
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

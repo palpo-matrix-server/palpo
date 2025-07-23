@@ -185,7 +185,7 @@ pub async fn find_from_openid_token(token: &str) -> AppResult<OwnedUserId> {
 pub fn create_login_token(user_id: &UserId, token: &str) -> AppResult<u64> {
     use std::num::Saturating as Sat;
 
-    let expires_in = crate::config().login_token_ttl;
+    let expires_in = crate::config::get().login_token_ttl;
     let expires_at = (Sat(UnixMillis::now().get()) + Sat(expires_in)).0 as i64;
 
     diesel::insert_into(user_login_tokens::table)

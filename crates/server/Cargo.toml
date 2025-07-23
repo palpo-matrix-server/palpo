@@ -27,6 +27,7 @@ chksum = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["std", "derive", "help", "usage", "error-context"] }
 config = { workspace = true }
+core_affinity = { workspace = true }
 cookie = { workspace = true }
 cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
@@ -35,7 +36,7 @@ diesel_migrations = { workspace = true }
 dotenvy = { workspace = true }
 either = { workspace = true, features = ["serde"] }
 fast32 = { workspace = true }
-figment = { workspace = true, features = ["env", "toml", "yaml"] }
+figment = { workspace = true, features = ["env", "toml", "yaml", "json"] }
 futures-util = { workspace = true, features = ["io"] }
 globwalk = { workspace = true }
 hickory-resolver = { workspace = true }
@@ -51,6 +52,7 @@ lru-cache = { workspace = true }
 maplit = { workspace = true }
 mime = { workspace = true }
 mime-infer = { workspace = true }
+# nix = { workspace = true }
 palpo-core = { workspace = true, features = [
     "markdown",
     "html",
@@ -108,7 +110,7 @@ palpo-core = { workspace = true, features = [
     "unstable-unspecified",
 ] }
 palpo-data = { workspace = true }
-palpo-macros = { workspace = true }
+palpo-server-macros = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }
@@ -134,6 +136,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }
+toml = { workspace = true, features = ["serde"] }
 tower-service = { workspace = true }
 tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 tracing-futures = { workspace = true }

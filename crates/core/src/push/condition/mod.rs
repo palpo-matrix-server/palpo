@@ -1,12 +1,12 @@
 use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
 
-use palpo_macros::StringEnum;
 use regex::bytes::Regex;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
+use crate::macros::StringEnum;
 use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId, power_levels::NotificationPowerLevels};
 
 mod flattened_json;

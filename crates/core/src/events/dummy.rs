@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{
     de::{self, Deserialize, Deserializer},

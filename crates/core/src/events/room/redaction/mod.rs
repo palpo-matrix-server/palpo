@@ -2,8 +2,8 @@
 //!
 //! [`m.room.redaction`]: https://spec.matrix.org/latest/client-server-api/#mroomredaction
 
+use crate::macros::{Event, EventContent};
 use as_variant::as_variant;
-use palpo_macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::error;

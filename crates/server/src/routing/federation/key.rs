@@ -43,7 +43,7 @@ async fn query_keys_from_server(_aa: AuthArgs) -> EmptyResult {
 // Response type for this endpoint is Json because we need to calculate a signature for the response
 #[endpoint]
 async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
-    let conf = crate::config();
+    let conf = crate::config::get();
     let mut verify_keys: BTreeMap<OwnedServerSigningKeyId, VerifyKey> = BTreeMap::new();
     verify_keys.insert(
         format!("ed25519:{}", config::keypair().version())

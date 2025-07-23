@@ -1,4 +1,4 @@
-use palpo_macros::IdZst;
+use crate::macros::IdZst;
 
 /// A Matrix key identifier.
 ///

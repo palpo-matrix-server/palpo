@@ -4,8 +4,8 @@
 
 use std::borrow::Cow;
 
+use crate::macros::EventContent;
 use as_variant::as_variant;
-use palpo_macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;

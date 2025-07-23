@@ -1,7 +1,7 @@
 //! Matrix room alias identifiers.
 
+use crate::macros::IdZst;
 use diesel::expression::AsExpression;
-use palpo_macros::IdZst;
 
 use super::{MatrixToUri, MatrixUri, OwnedEventId, matrix_uri::UriAction, server_name::ServerName};
 

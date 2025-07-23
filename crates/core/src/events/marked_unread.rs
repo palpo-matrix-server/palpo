@@ -2,7 +2,7 @@
 //!
 //! [`m.marked_unread`]: https://spec.matrix.org/latest/client-server-api/#unread-markers
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

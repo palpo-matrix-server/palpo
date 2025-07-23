@@ -36,7 +36,7 @@ pub mod media;
 pub mod state;
 pub mod user;
 
-pub use palpo_macros as macros;
+pub use palpo_core_macros as macros;
 
 pub use crate::state::RoomVersion;
 
@@ -160,9 +160,9 @@ impl<T> ReasonBool<T> {
 /// It is not considered part of this module's public API.
 #[doc(hidden)]
 pub mod __private {
+    pub use crate::macros;
     pub use bytes;
     pub use http;
-    pub use palpo_macros as macros;
     pub use serde;
     pub use serde_json;
 }

@@ -24,15 +24,20 @@ pub fn authed_router() -> Router {
 async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerResBody> {
     let authed = depot.authed_info()?;
 
+    let conf = config::get();
+    let turn_conf = conf
+        .enabled_turn()
+        .ok_or_else(|| MatrixError::not_found("TURN server is not configured"))?;
+
     // MSC4166: return M_NOT_FOUND 404 if no TURN URIs are specified in any way
-    if config::turn_uris().is_empty() {
+    if turn_conf.uris.is_empty() {
         return Err(MatrixError::not_found("turn_uris is empty").into());
     }
 
-    let turn_secret = config::turn_secret().clone();
+    let turn_secret = turn_conf.secret.clone();
 
     let (username, password) = if !turn_secret.is_empty() {
-        let expiry = UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(config::turn_ttl()))
+        let expiry = UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(turn_conf.ttl))
             .expect("time is valid");
 
         let username = format!("{}:{}", expiry.get(), authed.user_id());
@@ -44,13 +49,13 @@ async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerR
 
         (username, password)
     } else {
-        (config::turn_username().to_owned(), config::turn_password().to_owned())
+        (turn_conf.username.clone(), turn_conf.password.clone())
     };
 
     json_ok(TurnServerResBody {
         username,
         password,
-        uris: config::turn_uris().to_vec(),
-        ttl: Duration::from_secs(config::turn_ttl()),
+        uris: turn_conf.uris.clone(),
+        ttl: Duration::from_secs(turn_conf.ttl),
     })
 }

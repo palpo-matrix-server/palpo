@@ -1,7 +1,7 @@
 #![allow(clippy::exhaustive_structs)]
 
+use crate::macros::Event;
 use as_variant::as_variant;
-use palpo_macros::Event;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 

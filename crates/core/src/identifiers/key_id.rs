@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use palpo_macros::IdZst;
+use crate::macros::IdZst;
 
 use super::{DeviceId, ServerSigningKeyVersion, crypto_algorithms::SigningKeyAlgorithm};
 

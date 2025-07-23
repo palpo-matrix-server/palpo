@@ -96,10 +96,6 @@ pub fn seqnum_reach(sn: Seqnum) -> SeqnumQueueFuture {
     SEQNUM_QUEUE.reach(sn)
 }
 
-pub fn config() -> &'static crate::config::ServerConfig {
-    crate::config::get()
-}
-
 pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
     static DNS_RESOLVER: OnceLock<HickoryResolver<TokioConnectionProvider>> = OnceLock::new();
     DNS_RESOLVER.get_or_init(|| {
@@ -173,7 +169,7 @@ pub fn appservices() -> &'static Vec<Registration> {
             let user_id = OwnedUserId::try_from(format!(
                 "@{}:{}",
                 registration.sender_localpart,
-                crate::config::server_name()
+                crate::config::get().server_name
             ))
             .unwrap();
             let mut conn = connect().expect("db connect failed");

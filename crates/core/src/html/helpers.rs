@@ -11,16 +11,16 @@ use crate::html::{Html, HtmlSanitizerMode, SanitizerConfig};
 /// [tags and attributes]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
 /// [rich reply]: https://spec.matrix.org/latest/client-server-api/#rich-replies
 pub fn sanitize_html(s: &str, mode: HtmlSanitizerMode, remove_reply_fallback: RemoveReplyFallback) -> String {
-    let mut config = match mode {
+    let mut conf = match mode {
         HtmlSanitizerMode::Strict => SanitizerConfig::strict(),
         HtmlSanitizerMode::Compat => SanitizerConfig::compat(),
     };
 
     if remove_reply_fallback == RemoveReplyFallback::Yes {
-        config = config.remove_reply_fallback();
+        conf = conf.remove_reply_fallback();
     }
 
-    sanitize_inner(s, &config)
+    sanitize_inner(s, &conf)
 }
 
 /// Whether to remove the [rich reply] fallback while sanitizing.
@@ -43,12 +43,12 @@ pub enum RemoveReplyFallback {
 ///
 /// [rich reply]: https://spec.matrix.org/latest/client-server-api/#rich-replies
 pub fn remove_html_reply_fallback(s: &str) -> String {
-    let config = SanitizerConfig::new().remove_reply_fallback();
-    sanitize_inner(s, &config)
+    let conf = SanitizerConfig::new().remove_reply_fallback();
+    sanitize_inner(s, &conf)
 }
 
-fn sanitize_inner(s: &str, config: &SanitizerConfig) -> String {
+fn sanitize_inner(s: &str, conf: &SanitizerConfig) -> String {
     let html = Html::parse(s);
-    html.sanitize_with(config);
+    html.sanitize_with(conf);
     html.to_string()
 }

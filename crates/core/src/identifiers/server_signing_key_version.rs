@@ -1,4 +1,4 @@
-use palpo_macros::IdZst;
+use crate::macros::IdZst;
 
 /// The version of a [homeserver signing key].
 ///

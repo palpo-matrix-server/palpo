@@ -2,7 +2,7 @@
 
 use std::{cmp::Ordering, str::FromStr};
 
-use palpo_macros::DisplayAsRefStr;
+use crate::macros::DisplayAsRefStr;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

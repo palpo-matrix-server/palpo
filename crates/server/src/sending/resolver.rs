@@ -63,7 +63,3 @@ impl Resolve for Resolver {
             })
     }
 }
-
-pub fn config() -> &'static crate::config::ServerConfig {
-    crate::config::get()
-}

@@ -1,19 +1,22 @@
 use std::collections::BTreeMap;
 use std::fmt;
-use std::net::IpAddr;
 use std::path::PathBuf;
 
 use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
-use serde::Deserialize;
 use serde::de::IgnoredAny;
+use serde::{Deserialize, Serialize};
 
-use super::{BlurhashConfig, JwtConfig, LdapConfig};
+use super::{
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LdapConfig, LoggerConfig,
+    MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+};
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
-use crate::data::DbConfig;
 use crate::env_vars::required_var;
+use crate::macros::config_example;
+use crate::utils::sys;
 use crate::{AppError, AppResult};
 
 const DEPRECATED_KEYS: &[&str; 0] = &[];
@@ -29,52 +32,287 @@ pub struct KeypairConfig {
     pub version: String,
 }
 
+#[config_example(
+    filename = "palpo-example.toml",
+    undocumented = "# This item is undocumented. Please contribute documentation for it.",
+    header = r#"### Palpo Configuration
+###
+### THIS FILE IS GENERATED. CHANGES/CONTRIBUTIONS IN THE REPO WILL BE
+### OVERWRITTEN!
+###
+### You should rename this file before configuring your server. Changes to
+### documentation and defaults can be contributed in source code at
+### crate/server/config/server.rs. This file is generated when building.
+###
+### Any values pre-populated are the default values for said config option.
+###
+### At the minimum, you MUST edit all the config options to your environment
+### that say "YOU NEED TO EDIT THIS".
+###
+### For more information, see:
+### https://palpo.im/guide/configuration.html
+"#,
+    ignore = "catch_others federation well_known compression typing read_receipt presence \
+            admin url_preview turn media blurhash keypair ldap proxy jwt tls logger db\
+	        appservice"
+)]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-    pub tls: Option<TlsConfig>,
-
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
+    #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
+
+    // display: hidden
     pub db: DbConfig,
-    #[serde(default = "default_false")]
-    pub enable_lightning_bolt: bool,
+
     #[serde(default = "default_true")]
     pub allow_check_for_updates: bool,
-    #[serde(default = "default_pdu_cache_capacity")]
-    pub pdu_cache_capacity: u32,
-    #[serde(default = "default_cleanup_second_interval")]
-    pub cleanup_second_interval: u32,
-    #[serde(default = "default_max_request_size")]
-    pub max_request_size: u32,
     #[serde(default = "default_max_concurrent_requests")]
     pub max_concurrent_requests: u16,
+
+    /// Text which will be added to the end of the user's displayname upon
+    /// registration with a space before the text. In Conduit, this was the
+    /// lightning bolt emoji.
+    ///
+    /// To disable, set this to "" (an empty string).
+    ///
+    /// default: "💕"
+    #[serde(default = "default_new_user_displayname_suffix")]
+    pub new_user_displayname_suffix: String,
+
+    // /// The UNIX socket palpo will listen on.
+    // ///
+    // /// palpo cannot listen on both an IP address and a UNIX socket. If
+    // /// listening on a UNIX socket, you MUST remove/comment the `address` key.
+    // ///
+    // /// Remember to make sure that your reverse proxy has access to this socket
+    // /// file, either by adding your reverse proxy to the 'palpo' group or
+    // /// granting world R/W permissions with `unix_socket_perms` (666 minimum).
+    // ///
+    // /// example: "/run/palpo/palpo.sock"
+    // pub unix_socket_path: Option<PathBuf>,
+
+    // /// The default permissions (in octal) to create the UNIX socket with.
+    // ///
+    // /// default: 660
+    // #[serde(default = "default_unix_socket_perms")]
+    // pub unix_socket_perms: u32,
+    /// Enable to query all nameservers until the domain is found. Referred to
+    /// as "trust_negative_responses" in hickory_resolver. This can avoid
+    /// useless DNS queries if the first nameserver responds with NXDOMAIN or
+    /// an empty NOERROR response.
+    #[serde(default = "default_true")]
+    pub query_all_nameservers: bool,
+
+    /// Enable using *only* TCP for querying your specified nameservers instead
+    /// of UDP.
+    ///
+    /// If you are running palpo in a container environment, this config
+    /// option may need to be enabled. For more details, see:
+    /// https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
+    #[serde(default)]
+    pub query_over_tcp_only: bool,
+
+    /// DNS A/AAAA record lookup strategy
+    ///
+    /// Takes a number of one of the following options:
+    /// 1 - Ipv4Only (Only query for A records, no AAAA/IPv6)
+    ///
+    /// 2 - Ipv6Only (Only query for AAAA records, no A/IPv4)
+    ///
+    /// 3 - Ipv4AndIpv6 (Query for A and AAAA records in parallel, uses whatever
+    /// returns a successful response first)
+    ///
+    /// 4 - Ipv6thenIpv4 (Query for AAAA record, if that fails then query the A
+    /// record)
+    ///
+    /// 5 - Ipv4thenIpv6 (Query for A record, if that fails then query the AAAA
+    /// record)
+    ///
+    /// If you don't have IPv6 networking, then for better DNS performance it
+    /// may be suitable to set this to Ipv4Only (1) as you will never ever use
+    /// the AAAA record contents even if the AAAA record is successful instead
+    /// of the A record.
+    ///
+    /// default: 5
+    #[serde(default = "default_ip_lookup_strategy")]
+    pub ip_lookup_strategy: u8,
+
+    /// Max request size for file uploads in bytes. Defaults to 20MB.
+    ///
+    /// default: 20971520
+    #[serde(default = "default_max_request_size")]
+    pub max_request_size: u32,
+
+    /// default: 192
     #[serde(default = "default_max_fetch_prev_events")]
     pub max_fetch_prev_events: u16,
+
+    /// Default/base connection timeout (seconds). This is used only by URL
+    /// previews and update/news endpoint checks.
+    ///
+    /// default: 10
+    #[serde(default = "default_request_conn_timeout")]
+    pub request_conn_timeout: u64,
+
+    /// Default/base request timeout (seconds). The time waiting to receive more
+    /// data from another server. This is used only by URL previews,
+    /// update/news, and misc endpoint checks.
+    ///
+    /// default: 35
+    #[serde(default = "default_request_timeout")]
+    pub request_timeout: u64,
+
+    /// Default/base request total timeout (seconds). The time limit for a whole
+    /// request. This is set very high to not cancel healthy requests while
+    /// serving as a backstop. This is used only by URL previews and update/news
+    /// endpoint checks.
+    ///
+    /// default: 320
+    #[serde(default = "default_request_total_timeout")]
+    pub request_total_timeout: u64,
+
+    /// Default/base idle connection pool timeout (seconds). This is used only
+    /// by URL previews and update/news endpoint checks.
+    ///
+    /// default: 5
+    #[serde(default = "default_request_idle_timeout")]
+    pub request_idle_timeout: u64,
+
+    /// Default/base max idle connections per host. This is used only by URL
+    /// previews and update/news endpoint checks. Defaults to 1 as generally the
+    /// same open connection can be re-used.
+    ///
+    /// default: 1
+    #[serde(default = "default_request_idle_per_host")]
+    pub request_idle_per_host: u16,
+
+    /// Appservice URL request connection timeout. Defaults to 35 seconds as
+    /// generally appservices are hosted within the same network.
+    ///
+    /// default: 35
+    #[serde(default = "default_appservice_timeout")]
+    pub appservice_timeout: u64,
+
+    /// Appservice URL idle connection pool timeout (seconds).
+    ///
+    /// default: 300
+    #[serde(default = "default_appservice_idle_timeout")]
+    pub appservice_idle_timeout: u64,
+
+    /// Notification gateway pusher idle connection pool timeout.
+    ///
+    /// default: 15
+    #[serde(default = "default_pusher_idle_timeout")]
+    pub pusher_idle_timeout: u64,
+
+    /// Maximum time to receive a request from a client (seconds).
+    ///
+    /// default: 75
+    #[serde(default = "default_client_receive_timeout")]
+    pub client_receive_timeout: u64,
+
+    /// Maximum time to process a request received from a client (seconds).
+    ///
+    /// default: 180
+    #[serde(default = "default_client_request_timeout")]
+    pub client_request_timeout: u64,
+
+    /// Maximum time to transmit a response to a client (seconds)
+    ///
+    /// default: 120
+    #[serde(default = "default_client_response_timeout")]
+    pub client_response_timeout: u64,
+
+    /// Grace period for clean shutdown of client requests (seconds).
+    ///
+    /// default: 10
+    #[serde(default = "default_client_shutdown_timeout")]
+    pub client_shutdown_timeout: u64,
+
+    /// Grace period for clean shutdown of federation requests (seconds).
+    ///
+    /// default: 5
+    #[serde(default = "default_sender_shutdown_timeout")]
+    pub sender_shutdown_timeout: u64,
+
+    /// Path to a file on the system that gets read for additional registration
+    /// tokens. Multiple tokens can be added if you separate them with
+    /// whitespace
+    ///
+    /// palpo must be able to access the file, and it must not be empty
+    ///
+    /// example: "/etc/palpo/.reg_token"
+    pub registration_token_file: Option<PathBuf>,
+
+    /// Always calls /forget on behalf of the user if leaving a room. This is a
+    /// part of MSC4267 "Automatically forgetting rooms on leave"
+    #[serde(default)]
+    pub forget_forced_upon_leave: bool,
+
+    /// Set this to true to require authentication on the normally
+    /// unauthenticated profile retrieval endpoints (GET)
+    /// "/_matrix/client/v3/profile/{userId}".
+    ///
+    /// This can prevent profile scraping.
+    #[serde(default)]
+    pub require_auth_for_profile_requests: bool,
+
+    /// Enables registration. If set to false, no users can register on this
+    /// server.
+    ///
+    /// If set to true without a token configured, users can register with no
+    /// form of 2nd-step only if you set the following option to true:
+    /// `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`
+    ///
+    /// If you would like registration only via token reg, please configure
+    /// `registration_token` or `registration_token_file`.
     #[serde(default = "default_false")]
     pub allow_registration: bool,
 
-    /// Allow sending read receipts to remote servers.
-    #[serde(default = "default_false")]
-    pub allow_outgoing_read_receipts: bool,
+    /// Enabling this setting opens registration to anyone without restrictions.
+    /// This makes your server vulnerable to abuse
+    #[serde(default)]
+    pub yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse: bool,
 
-    /// Allow outgoing typing updates to federation.
-    #[serde(default = "default_true")]
-    pub allow_outgoing_typing: bool,
-
-    /// Allow incoming typing updates from federation.
-    #[serde(default = "default_true")]
-    pub allow_incoming_typing: bool,
-
+    /// A static registration token that new users will have to provide when
+    /// creating an account. If unset and `allow_registration` is true,
+    /// you must set
+    /// `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`
+    /// to true to allow open registration without any conditions.
+    ///
+    /// YOU NEED TO EDIT THIS OR USE registration_token_file.
+    ///
+    /// example: "o&^uCtes4HPf0Vu@F20jQeeWE7"
+    ///
+    /// display: sensitive
     pub registration_token: Option<String>,
+
+    /// Controls whether encrypted rooms and events are allowed.
     #[serde(default = "default_true")]
     pub allow_encryption: bool,
-    #[serde(default = "default_false")]
-    pub allow_federation: bool,
+
+    /// Allow standard users to create rooms. Appservices and admins are always
+    /// allowed to create rooms
     #[serde(default = "default_true")]
     pub allow_room_creation: bool,
+
+    /// Set to false to disable users from joining or creating room versions
+    /// that aren't officially supported by palpo.
+    ///
+    /// palpo officially supports room versions 6 - 11.
+    ///
+    /// palpo has slightly experimental (though works fine in practice)
+    /// support for versions 3 - 5.
     #[serde(default = "default_true")]
     pub allow_unstable_room_versions: bool,
+
+    /// Default room version palpo will create rooms with.
+    ///
+    /// Per spec, room version 11 is the default.
+    ///
+    /// default: 11
     #[serde(default = "default_default_room_version")]
     pub default_room_version: RoomVersionId,
     pub well_known_client: Option<String>,
@@ -88,21 +326,17 @@ pub struct ServerConfig {
 
     pub appservice_registration_dir: Option<String>,
 
-    // #[serde(default)]
-    // pub proxy: ProxyConfig,
-    pub ldap: Option<LdapConfig>,
-
-    pub jwt: Option<JwtConfig>,
-
-    #[serde(default)]
-    pub blurhashing: BlurhashConfig,
-
+    /// Servers listed here will be used to gather public keys of other servers
+    /// (notary trusted key servers).
+    ///
+    /// Currently, palpo doesn't support inbound batched key requests, so
+    /// this list should only contain other Synapse servers.
+    ///
+    /// example: ["matrix.org", "tchncs.de"]
+    ///
+    /// default: ["matrix.org"]
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
-    #[serde(default = "default_rust_log")]
-    pub rust_log: String,
-    #[serde(default = "default_log_format")]
-    pub log_format: String,
 
     /// OpenID token expiration/TTL in seconds.
     ///
@@ -138,57 +372,6 @@ pub struct ServerConfig {
     #[serde(default = "default_session_ttl")]
     pub session_ttl: u64,
 
-    /// Static TURN username to provide the client if not using a shared secret
-    /// ("turn_secret"), It is recommended to use a shared secret over static
-    /// credentials.
-    #[serde(default)]
-    pub turn_username: String,
-
-    /// Static TURN password to provide the client if not using a shared secret
-    /// ("turn_secret"). It is recommended to use a shared secret over static
-    /// credentials.
-    ///
-    /// display: sensitive
-    #[serde(default)]
-    pub turn_password: String,
-
-    /// Vector list of TURN URIs/servers to use.
-    ///
-    /// Replace "example.turn.uri" with your TURN domain, such as the coturn
-    /// "realm" config option. If using TURN over TLS, replace the URI prefix
-    /// "turn:" with "turns:".
-    ///
-    /// example: ["turn:example.turn.uri?transport=udp",
-    /// "turn:example.turn.uri?transport=tcp"]
-    ///
-    /// default: []
-    #[serde(default = "Vec::new")]
-    pub turn_uris: Vec<String>,
-
-    /// TURN secret to use for generating the HMAC-SHA1 hash apart of username
-    /// and password generation.
-    ///
-    /// This is more secure, but if needed you can use traditional static
-    /// username/password credentials.
-    ///
-    /// display: sensitive
-    #[serde(default)]
-    pub turn_secret: String,
-
-    /// TURN secret to use that's read from the file path specified.
-    ///
-    /// This takes priority over "turn_secret" first, and falls back to
-    /// "turn_secret" if invalid or failed to open.
-    ///
-    /// example: "/etc/conduwuit/.turn_secret"
-    pub turn_secret_file: Option<PathBuf>,
-
-    /// TURN TTL, in seconds.
-    ///
-    /// default: 86400
-    #[serde(default = "default_turn_ttl")]
-    pub turn_ttl: u64,
-
     /// List/vector of room IDs or room aliases that conduwuit will make newly
     /// registered users join. The rooms specified must be rooms that you have
     /// joined at least once on the server, and must be public.
@@ -219,103 +402,58 @@ pub struct ServerConfig {
     #[serde(default)]
     pub auto_deactivate_banned_room_attempts: bool,
 
+    /// Enable the tokio-console. This option is only relevant to developers.
+    ///
+    ///	For more information, see:
+    /// https://palpo.chat/development.html#debugging-with-tokio-console
+    #[serde(default)]
+    pub tokio_console: bool,
+
+    /// Block non-admin local users from sending room invites (local and
+    /// remote), and block non-admin users from receiving remote room invites.
+    ///
+    /// Admins are always allowed to send and receive all room invites.
+    #[serde(default)]
+    pub block_non_admin_invites: bool,
+
+    /// Set this to true to allow your server's public room directory to be
+    /// federated. Set this to false to protect against /publicRooms spiders,
+    /// but will forbid external users from viewing your server's public room
+    /// directory. If federation is disabled entirely (`allow_federation`), this
+    /// is inherently false.
+    #[serde(default)]
+    pub allow_public_room_directory_over_federation: bool,
+
+    /// Set this to true to allow your server's public room directory to be
+    /// queried without client authentication (access token) through the Client
+    /// APIs. Set this to false to protect against /publicRooms spiders.
+    #[serde(default)]
+    pub allow_public_room_directory_without_auth: bool,
+
+    /// Set this to true to lock down your server's public room directory and
+    /// only allow admins to publish rooms to the room directory. Unpublishing
+    /// is still allowed by all users with this enabled.
+    #[serde(default)]
+    pub lockdown_public_room_directory: bool,
+
+    /// This is a password that can be configured that will let you login to the
+    /// server bot account (currently `@conduit`) for emergency troubleshooting
+    /// purposes such as recovering/recreating your admin room, or inviting
+    /// yourself back.
+    ///
+    /// See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
+    ///
+    /// Once this password is unset, all sessions will be logged out for
+    /// security purposes.
+    ///
+    /// example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
+    ///
+    /// display: sensitive
     pub emergency_password: Option<String>,
 
-    /// Allow local (your server only) presence updates/requests.
-    ///
-    /// Note that presence on conduwuit is very fast unlike Synapse's. If using
-    /// outgoing presence, this MUST be enabled.
-    #[serde(default = "default_true")]
-    pub allow_local_presence: bool,
-
-    /// Allow incoming federated presence updates/requests.
-    ///
-    /// This option receives presence updates from other servers, but does not
-    /// send any unless `allow_outgoing_presence` is true. Note that presence on
-    /// conduwuit is very fast unlike Synapse's.
-    #[serde(default = "default_true")]
-    pub allow_incoming_presence: bool,
-
-    /// Allow outgoing presence updates/requests.
-    ///
-    /// This option sends presence updates to other servers, but does not
-    /// receive any unless `allow_incoming_presence` is true. Note that presence
-    /// on conduwuit is very fast unlike Synapse's. If using outgoing presence,
-    /// you MUST enable `allow_local_presence` as well.
-    #[serde(default = "default_true")]
-    pub allow_outgoing_presence: bool,
-
-    /// How many seconds without presence updates before you become idle.
-    /// Defaults to 5 minutes.
-    ///
-    /// default: 300
-    #[serde(default = "default_presence_idle_timeout_s")]
-    pub presence_idle_timeout_s: u64,
-
-    /// How many seconds without presence updates before you become offline.
-    /// Defaults to 30 minutes.
-    ///
-    /// default: 1800
-    #[serde(default = "default_presence_offline_timeout_s")]
-    pub presence_offline_timeout_s: u64,
-
-    /// Controls whether admin room notices like account registrations, password
-    /// changes, account deactivations, room directory publications, etc will be
-    /// sent to the admin room. Update notices and normal admin command
-    /// responses will still be sent.
-    #[serde(default = "default_true")]
-    pub admin_room_notices: bool,
-
-    /// Config option to control maximum time federation user can indicate
-    /// typing.
-    ///
-    /// default: 30
-    #[serde(default = "default_typing_federation_timeout_s")]
-    pub typing_federation_timeout_s: u64,
-
-    /// Minimum time local client can indicate typing. This does not override a
-    /// client's request to stop typing. It only enforces a minimum value in
-    /// case of no stop request.
-    ///
-    /// default: 15
-    #[serde(default = "default_typing_client_timeout_min_s")]
-    pub typing_client_timeout_min_s: u64,
-
-    /// Maximum time local client can indicate typing.
-    ///
-    /// default: 45
-    #[serde(default = "default_typing_client_timeout_max_s")]
-    pub typing_client_timeout_max_s: u64,
-
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// zstd. This option does nothing if palpo was not built with
-    /// `zstd_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-    /// before deciding to enable this.
-    #[serde(default)]
-    pub zstd_compression: bool,
-
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// gzip. This option does nothing if palpo was not built with
-    /// `gzip_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH before
-    /// deciding to enable this.
-    ///
-    /// If you are in a large amount of rooms, you may find that enabling this
-    /// is necessary to reduce the significantly large response bodies.
-    #[serde(default)]
-    pub gzip_compression: bool,
-
-    /// Set this to true for palpo to compress HTTP response bodies using
-    /// brotli. This option does nothing if palpo was not built with
-    /// `brotli_compression` feature. Please be aware that enabling HTTP
-    /// compression may weaken TLS. Most users should not need to enable this.
-    /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-    /// before deciding to enable this.
-    #[serde(default)]
-    pub brotli_compression: bool,
+    /// default: "/_matrix/push/v1/notify"
+    #[serde(default = "default_notification_push_path")]
+    pub notification_push_path: String,
 
     /// Set to true to allow user type "guest" registrations. Some clients like
     /// Element attempt to register guest users automatically.
@@ -331,70 +469,6 @@ pub struct ServerConfig {
     /// specified in `auto_join_rooms`.
     #[serde(default)]
     pub allow_guests_auto_join_rooms: bool,
-
-    /// Enable the legacy unauthenticated Matrix media repository endpoints.
-    /// These endpoints consist of:
-    /// - /_matrix/media/*/config
-    /// - /_matrix/media/*/upload
-    /// - /_matrix/media/*/preview_url
-    /// - /_matrix/media/*/download/*
-    /// - /_matrix/media/*/thumbnail/*
-    ///
-    /// The authenticated equivalent endpoints are always enabled.
-    ///
-    /// Defaults to true for now, but this is highly subject to change, likely
-    /// in the next release.
-    #[serde(default = "default_true")]
-    pub allow_legacy_media: bool,
-
-    #[serde(default = "default_true")]
-    pub freeze_legacy_media: bool,
-
-    /// Check consistency of the media directory at startup:
-    /// 1. When `media_compat_file_link` is enabled, this check will upgrade
-    ///    media when switching back and forth between Conduit and palpo.
-    ///    Both options must be enabled to handle this.
-    /// 2. When media is deleted from the directory, this check will also delete
-    ///    its database entry.
-    ///
-    /// If none of these checks apply to your use cases, and your media
-    /// directory is significantly large setting this to false may reduce
-    /// startup time.
-    #[serde(default = "default_true")]
-    pub media_startup_check: bool,
-
-    /// Enable backward-compatibility with Conduit's media directory by creating
-    /// symlinks of media.
-    ///
-    /// This option is only necessary if you plan on using Conduit again.
-    /// Otherwise setting this to false reduces filesystem clutter and overhead
-    /// for managing these symlinks in the directory. This is now disabled by
-    /// default. You may still return to upstream Conduit but you have to run
-    /// palpo at least once with this set to true and allow the
-    /// media_startup_check to take place before shutting down to return to
-    /// Conduit.
-    #[serde(default)]
-    pub media_compat_file_link: bool,
-
-    /// Prune missing media from the database as part of the media startup
-    /// checks.
-    ///
-    /// This means if you delete files from the media directory the
-    /// corresponding entries will be removed from the database. This is
-    /// disabled by default because if the media directory is accidentally moved
-    /// or inaccessible, the metadata entries in the database will be lost with
-    /// sadness.
-    #[serde(default)]
-    pub prune_missing_media: bool,
-
-    /// Vector list of regex patterns of server names that palpo will refuse
-    /// to download remote media from.
-    ///
-    /// example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
-    ///
-    /// default: []
-    #[serde(default, with = "serde_regex")]
-    pub prevent_media_downloads_from: RegexSet,
 
     /// List of forbidden server names via regex patterns that we will block
     /// incoming AND outgoing federation with, and block client room joins /
@@ -444,120 +518,10 @@ pub struct ServerConfig {
     #[serde(default = "default_ip_range_denylist")]
     pub ip_range_denylist: Vec<String>,
 
-    /// Optional IP address or network interface-name to bind as the source of
-    /// URL preview requests. If not set, it will not bind to a specific
-    /// address or interface.
-    ///
-    /// Interface names only supported on Linux, Android, and Fuchsia platforms;
-    /// all other platforms can specify the IP address. To list the interfaces
-    /// on your system, use the command `ip link show`.
-    ///
-    /// example: `"eth0"` or `"1.2.3.4"`
-    ///
-    /// default:
-    #[serde(default, with = "either::serde_untagged_optional")]
-    pub url_preview_bound_interface: Option<Either<IpAddr, String>>,
-
-    /// Vector list of domains allowed to send requests to for URL previews.
-    ///
-    /// This is a *contains* match, not an explicit match. Putting "google.com"
-    /// will match "https://google.com" and
-    /// "http://mymaliciousdomainexamplegoogle.com" Setting this to "*" will
-    /// allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_contains_allowlist: Vec<String>,
-
-    /// Vector list of explicit domains allowed to send requests to for URL
-    /// previews.
-    ///
-    /// This is an *explicit* match, not a contains match. Putting "google.com"
-    /// will match "https://google.com", "http://google.com", but not
-    /// "https://mymaliciousdomainexamplegoogle.com". Setting this to "*" will
-    /// allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_explicit_allowlist: Vec<String>,
-
-    /// Vector list of explicit domains not allowed to send requests to for URL
-    /// previews.
-    ///
-    /// This is an *explicit* match, not a contains match. Putting "google.com"
-    /// will match "https://google.com", "http://google.com", but not
-    /// "https://mymaliciousdomainexamplegoogle.com". The denylist is checked
-    /// first before allowlist. Setting this to "*" will not do anything.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_domain_explicit_denylist: Vec<String>,
-
-    /// Vector list of URLs allowed to send requests to for URL previews.
-    ///
-    /// Note that this is a *contains* match, not an explicit match. Putting
-    /// "google.com" will match "https://google.com/",
-    /// "https://google.com/url?q=https://mymaliciousdomainexample.com", and
-    /// "https://mymaliciousdomainexample.com/hi/google.com" Setting this to "*"
-    /// will allow all URL previews. Please note that this opens up significant
-    /// attack surface to your server, you are expected to be aware of the risks
-    /// by doing so.
-    ///
-    /// default: []
-    #[serde(default)]
-    pub url_preview_url_contains_allowlist: Vec<String>,
-
-    /// Maximum amount of bytes allowed in a URL preview body size when
-    /// spidering. Defaults to 256KB in bytes.
-    ///
-    /// default: 256000
-    #[serde(default = "default_url_preview_max_spider_size")]
-    pub url_preview_max_spider_size: usize,
-
-    /// Option to decide whether you would like to run the domain allowlist
-    /// checks (contains and explicit) on the root domain or not. Does not apply
-    /// to URL contains allowlist. Defaults to false.
-    ///
-    /// Example usecase: If this is enabled and you have "wikipedia.org" allowed
-    /// in the explicit and/or contains domain allowlist, it will allow all
-    /// subdomains under "wikipedia.org" such as "en.m.wikipedia.org" as the
-    /// root domain is checked and matched. Useful if the domain contains
-    /// allowlist is still too broad for you but you still want to allow all the
-    /// subdomains under a root domain.
-    #[serde(default)]
-    pub url_preview_check_root_domain: bool,
-
-    /// List of forbidden room aliases and room IDs as strings of regex
-    /// patterns.
-    ///
-    /// Regex can be used or explicit contains matches can be done by just
-    /// specifying the words (see example).
-    ///
-    /// This is checked upon room alias creation, custom room ID creation if
-    /// used, and startup as warnings if any room aliases in your database have
-    /// a forbidden room alias/ID.
-    ///
-    /// example: ["19dollarfortnitecards", "b[4a]droom", "badphrase"]
-    ///
-    /// default: []
-    #[serde(default, with = "serde_regex")]
-    pub forbidden_alias_names: RegexSet,
-
     #[serde(default = "default_space_path")]
     pub space_path: String,
 
-    pub keypair: Option<KeypairConfig>,
-
-    #[serde(default)]
-    pub well_known: WellKnownConfig,
-
     pub auto_acme: Option<String>,
-    #[serde(default = "default_false")]
-    pub enable_tls: bool,
 
     /// Whether to query the servers listed in trusted_servers first or query
     /// the origin server first. For best security, querying the origin server
@@ -595,6 +559,22 @@ pub struct ServerConfig {
     #[serde(default = "default_trusted_server_batch_size")]
     pub trusted_server_batch_size: usize,
 
+    /// List of forbidden room aliases and room IDs as strings of regex
+    /// patterns.
+    ///
+    /// Regex can be used or explicit contains matches can be done by just
+    /// specifying the words (see example).
+    ///
+    /// This is checked upon room alias creation, custom room ID creation if
+    /// used, and startup as warnings if any room aliases in your database have
+    /// a forbidden room alias/ID.
+    ///
+    /// example: ["19dollarfortnitecards", "b[4a]droom", "badphrase"]
+    ///
+    /// default: []
+    #[serde(default, with = "serde_regex")]
+    pub forbidden_alias_names: RegexSet,
+
     /// List of forbidden username patterns/strings.
     ///
     /// Regex can be used or explicit contains matches can be done by just
@@ -630,12 +610,166 @@ pub struct ServerConfig {
     #[serde(default = "default_startup_netburst_keep")]
     pub startup_netburst_keep: i64,
 
+    // external structure; separate section
+    #[serde(default)]
+    pub logger: LoggerConfig,
+
+    // external structure; separate section
+    pub tls: Option<TlsConfig>,
+    // external structure; separate section
+    pub jwt: Option<JwtConfig>,
+
+    // external structure; separate section
+    pub proxy: Option<ProxyConfig>,
+
+    // external structure; separate section
+    pub ldap: Option<LdapConfig>,
+
+    // external structure; separate section
+    // display: hidden
+    pub keypair: Option<KeypairConfig>,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub blurhash: BlurhashConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub media: MediaConfig,
+
+    // external structure; separate section
+    pub turn: Option<TurnConfig>,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub url_preview: UrlPreviewConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub admin: AdminConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub presence: PresenceConfig,
+
+    // external structure; separate section
+    // display: hidden
+    #[serde(default)]
+    pub read_receipt: ReadReceiptConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub typing: TypingConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub compression: CompressionConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub well_known: WellKnownConfig,
+
+    // external structure; separate section
+    pub federation: Option<FederationConfig>,
+
+    /// Enables configuration reload when the server receives SIGUSR1 on
+    /// supporting platforms.
+    ///
+    /// default: true
+    #[serde(default = "default_true")]
+    pub config_reload_signal: bool,
+
+    /// Toggles ignore checking/validating TLS certificates
+    ///
+    /// This applies to everything, including URL previews, federation requests,
+    /// etc. This is a hidden argument that should NOT be used in production as
+    /// it is highly insecure and I will personally yell at you if I catch you
+    /// using this.
+    #[serde(default)]
+    pub allow_invalid_tls_certificates: bool,
+
+    /// Number of sender task workers; determines sender parallelism. Default is
+    /// '0' which means the value is determined internally, likely matching the
+    /// number of tokio worker-threads or number of cores, etc. Override by
+    /// setting a non-zero value.
+    ///
+    /// default: 0
+    #[serde(default)]
+    pub sender_workers: usize,
+
+    // // external structure; separate section
+    // #[serde(default)]
+    // pub appservice: BTreeMap<String, AppService>,
     #[serde(flatten)]
     #[allow(clippy::zero_sized_map_values)]
     // this is a catchall, the map shouldn't be zero at runtime
     catch_others: BTreeMap<String, IgnoredAny>,
 }
+
 impl ServerConfig {
+    pub fn enabled_ldap(&self) -> Option<&LdapConfig> {
+        if let Some(ldap) = self.ldap.as_ref() {
+            if ldap.enable { Some(ldap) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_jwt(&self) -> Option<&JwtConfig> {
+        if let Some(jwt) = self.jwt.as_ref() {
+            if jwt.enable { Some(jwt) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
+        if let Some(tls) = self.tls.as_ref() {
+            if tls.enable { Some(tls) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_turn(&self) -> Option<&TurnConfig> {
+        if let Some(turn) = self.turn.as_ref() {
+            if turn.enable { Some(turn) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_federation(&self) -> Option<&FederationConfig> {
+        if let Some(federation) = self.federation.as_ref() {
+            if federation.enable { Some(federation) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn well_known_client(&self) -> String {
+        if let Some(url) = &self.well_known.client {
+            url.to_string()
+        } else {
+            format!("https://{}", self.server_name)
+        }
+    }
+
+    pub fn well_known_server(&self) -> OwnedServerName {
+        match &self.well_known.server {
+            Some(server_name) => server_name.to_owned(),
+            None => {
+                if self.server_name.port().is_some() {
+                    self.server_name.to_owned()
+                } else {
+                    format!("{}:443", self.server_name.host())
+                        .try_into()
+                        .expect("Host from valid hostname + :443 must be valid")
+                }
+            }
+        }
+    }
+
     pub fn check(&self) -> AppResult<()> {
         if cfg!(debug_assertions) {
             tracing::warn!("Note: conduwuit was built without optimisations (i.e. debug build)");
@@ -814,36 +948,14 @@ impl ServerConfig {
         //     );
         // }
 
-        if self.allow_outgoing_presence && !self.allow_local_presence {
+        if self.presence.allow_outgoing && !self.presence.allow_local {
             return Err(AppError::internal(
                 "Outgoing presence requires allowing local presence. Please enable \
                  'allow_local_presence' or disable outgoing presence.",
             ));
         }
 
-        if self.url_preview_domain_contains_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_domain_contains_allowlist\" to \"*\". This opens up significant \
-                 attack surface to your server. You are expected to be aware of the risks by doing \
-                 this."
-            );
-        }
-        if self.url_preview_domain_explicit_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_domain_explicit_allowlist\" to \"*\". This opens up significant \
-                 attack surface to your server. You are expected to be aware of the risks by doing \
-                 this."
-            );
-        }
-        if self.url_preview_url_contains_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_url_contains_allowlist\" to \"*\". This opens up significant attack \
-                 surface to your server. You are expected to be aware of the risks by doing this."
-            );
-        }
+        self.url_preview.check();
 
         // if let Some(Either::Right(_)) = self.url_preview_bound_interface.as_ref() {
         //     if !matches!(OS, "android" | "fuchsia" | "linux") {
@@ -897,73 +1009,6 @@ impl ServerConfig {
     }
 }
 
-impl fmt::Display for ServerConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Prepare a list of config values to show
-        let lines = [
-            ("Server name", self.server_name.host()),
-            ("PDU cache capacity", &self.pdu_cache_capacity.to_string()),
-            ("Cleanup interval in seconds", &self.cleanup_second_interval.to_string()),
-            ("Maximum request size", &self.max_request_size.to_string()),
-            ("Maximum concurrent requests", &self.max_concurrent_requests.to_string()),
-            ("Allow registration", &self.allow_registration.to_string()),
-            ("Enabled lightning bolt", &self.enable_lightning_bolt.to_string()),
-            ("Allow encryption", &self.allow_encryption.to_string()),
-            ("Allow federation", &self.allow_federation.to_string()),
-            ("Allow room creation", &self.allow_room_creation.to_string()),
-            (
-                "JWT config",
-                match self.jwt {
-                    Some(_) => "set",
-                    None => "not set",
-                },
-            ),
-            ("Trusted servers", {
-                let mut lst = vec![];
-                for server in &self.trusted_servers {
-                    lst.push(server.host());
-                }
-                &lst.join(", ")
-            }),
-            (
-                "TURN username",
-                if self.turn_username.is_empty() {
-                    "not set"
-                } else {
-                    &self.turn_username
-                },
-            ),
-            ("TURN password", {
-                if self.turn_password.is_empty() {
-                    "not set"
-                } else {
-                    "set"
-                }
-            }),
-            ("TURN secret", {
-                if self.turn_secret.is_empty() { "not set" } else { "set" }
-            }),
-            ("Turn TTL", &self.turn_ttl.to_string()),
-            ("Turn URIs", {
-                let mut lst = vec![];
-                for item in self.turn_uris.iter().cloned().enumerate() {
-                    let (_, uri): (usize, String) = item;
-                    lst.push(uri);
-                }
-                &lst.join(", ")
-            }),
-        ];
-
-        let mut msg: String = "Active config values:\n\n".to_owned();
-
-        for line in lines.into_iter().enumerate() {
-            msg += &format!("{}: {}\n", line.1.0, line.1.1);
-        }
-
-        write!(f, "{msg}")
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct AllowedOrigins(Vec<String>);
 
@@ -982,14 +1027,32 @@ impl AllowedOrigins {
     }
 }
 
+#[config_example(filename = "palpo-example.toml", section = "tls")]
 #[derive(Clone, Debug, Deserialize)]
 pub struct TlsConfig {
-    pub certs: String,
+    #[serde(default = "default_true")]
+    pub enable: bool,
+
+    /// Path to a valid TLS certificate file.
+    ///
+    /// example: "/path/to/my/certificate.crt"
+    pub cert: String,
+
+    /// Path to a valid TLS certificate private key.
+    ///
+    /// example: "/path/to/my/certificate.key"
     pub key: String,
+
+    /// Whether to listen and allow for HTTP and HTTPS connections (insecure!)
+    #[serde(default)]
+    pub dual_protocol: bool,
 }
 
 fn default_listen_addr() -> String {
     "127.0.0.1:8008".into()
+}
+fn default_server_name() -> OwnedServerName {
+    OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
 }
 
 fn default_database_backend() -> String {
@@ -1020,20 +1083,27 @@ fn default_startup_netburst_keep() -> i64 {
     50
 }
 fn default_login_token_ttl() -> u64 {
-    2 * 60 * 1000
+    2 * 60_000
 }
 fn default_refresh_token_ttl() -> u64 {
-    2 * 60 * 1000
+    2 * 60_000
 }
 fn default_session_ttl() -> u64 {
-    60 * 60 * 1000
+    60 * 60_000
 }
 fn default_openid_token_ttl() -> u64 {
     60 * 60
 }
 
-fn default_cleanup_second_interval() -> u32 {
-    60 // every minute
+fn default_ip_lookup_strategy() -> u8 {
+    5
+}
+
+fn default_cleanup_interval() -> u32 {
+    60_000 // every minute
+}
+fn default_request_timeout() -> u64 {
+    35_000
 }
 
 fn default_max_request_size() -> u32 {
@@ -1048,6 +1118,13 @@ fn default_max_fetch_prev_events() -> u16 {
     100_u16
 }
 
+fn default_auth_chain_cache_capacity() -> u32 {
+    parallelism_scaled_u32(10_000).saturating_add(100_000)
+}
+fn default_roomid_space_hierarchy_cache_capacity() -> u32 {
+    parallelism_scaled_u32(1000)
+}
+
 fn default_trusted_servers() -> Vec<OwnedServerName> {
     vec![OwnedServerName::try_from("matrix.org").unwrap()]
 }
@@ -1060,37 +1137,30 @@ fn default_log_format() -> String {
     "json".to_owned()
 }
 
-fn default_turn_ttl() -> u64 {
-    60 * 60 * 24
-}
-
 fn default_presence_idle_timeout_s() -> u64 {
-    5 * 60
+    5 * 60_000
 }
 
 fn default_presence_offline_timeout_s() -> u64 {
-    30 * 60
+    30 * 60_000
 }
 
 fn default_typing_federation_timeout_s() -> u64 {
-    30
+    30_000
 }
 
 fn default_typing_client_timeout_min_s() -> u64 {
-    15
+    15_000
 }
 
 fn default_typing_client_timeout_max_s() -> u64 {
-    45
+    45_000
 }
 
 fn default_default_room_version() -> RoomVersionId {
     RoomVersionId::V11
 }
 
-fn default_url_preview_max_spider_size() -> usize {
-    256_000 // 256KB
-}
 fn default_ip_range_denylist() -> Vec<String> {
     vec![
         "127.0.0.0/8".to_owned(),
@@ -1113,4 +1183,70 @@ fn default_ip_range_denylist() -> Vec<String> {
         "ff00::/8".to_owned(),
         "fec0::/10".to_owned(),
     ]
+}
+
+fn parallelism_scaled_u32(val: u32) -> u32 {
+    let val = val.try_into().expect("failed to cast u32 to usize");
+    parallelism_scaled(val).try_into().unwrap_or(u32::MAX)
+}
+fn parallelism_scaled(val: usize) -> usize {
+    val.saturating_mul(sys::available_parallelism())
+}
+
+fn default_server_name_event_data_cache_capacity() -> u32 {
+    parallelism_scaled_u32(100_000).saturating_add(500_000)
+}
+fn default_new_user_displayname_suffix() -> String {
+    "💕".to_owned()
+}
+
+fn default_request_total_timeout() -> u64 {
+    320_000
+}
+
+fn default_request_conn_timeout() -> u64 {
+    10_000
+}
+
+fn default_request_idle_timeout() -> u64 {
+    5_000
+}
+
+fn default_request_idle_per_host() -> u16 {
+    1_000
+}
+fn default_appservice_timeout() -> u64 {
+    35_000
+}
+
+fn default_appservice_idle_timeout() -> u64 {
+    300_000
+}
+
+fn default_client_receive_timeout() -> u64 {
+    75_000
+}
+
+fn default_client_request_timeout() -> u64 {
+    180_000
+}
+
+fn default_client_response_timeout() -> u64 {
+    120_000
+}
+
+fn default_client_shutdown_timeout() -> u64 {
+    15_000
+}
+
+fn default_sender_shutdown_timeout() -> u64 {
+    5_000
+}
+
+fn default_notification_push_path() -> String {
+    "/_matrix/push/v1/notify".to_owned()
+}
+
+fn default_pusher_idle_timeout() -> u64 {
+    15
 }

@@ -2,7 +2,7 @@
 //!
 //! [`m.space.child`]: https://spec.matrix.org/latest/client-server-api/#mspacechild
 
-use palpo_macros::{Event, EventContent};
+use crate::macros::{Event, EventContent};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 

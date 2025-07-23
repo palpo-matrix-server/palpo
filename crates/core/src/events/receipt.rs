@@ -10,7 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

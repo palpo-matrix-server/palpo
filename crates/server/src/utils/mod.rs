@@ -19,6 +19,7 @@ mod mutex_map;
 pub use mutex_map::{MutexMap, MutexMapGuard};
 mod sequm_queue;
 pub use sequm_queue::*;
+pub mod sys;
 
 #[macro_export]
 macro_rules! extract_variant {

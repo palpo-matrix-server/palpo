@@ -2,7 +2,7 @@
 //!
 //! [`m.room.server_acl`]: https://spec.matrix.org/latest/client-server-api/#mroomserver_acl
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use wildmatch::WildMatch;

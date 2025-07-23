@@ -32,7 +32,7 @@ pub async fn get_summary_msc_3266(
         return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
     }
 
-    if room::is_server_joined(config::server_name(), &room_id)? {
+    if room::is_server_joined(&config::get().server_name, &room_id)? {
         let res_body = local_room_summary(&room_id, sender_id).await?;
         json_ok(res_body)
     } else {
@@ -118,8 +118,8 @@ async fn remote_room_summary_hierarchy(
         ?servers,
         "Sending remote room summary response for {room_id:?}"
     );
-    let conf = crate::config();
-    if !conf.allow_federation {
+    let conf = crate::config::get();
+    if conf.enabled_federation().is_none(){
         return Err(MatrixError::forbidden("Federation is disabled.", None).into());
     }
 

@@ -141,7 +141,7 @@ pub async fn all_typings(room_id: &RoomId) -> AppResult<SyncEphemeralRoomEvent<T
 async fn federation_send(room_id: &RoomId, user_id: &UserId, typing: bool) -> AppResult<()> {
     debug_assert!(user_id.is_local(), "tried to broadcast typing status of remote user",);
 
-    if !crate::config().allow_outgoing_typing {
+    if !crate::config::get().typing.allow_outgoing {
         return Ok(());
     }
 

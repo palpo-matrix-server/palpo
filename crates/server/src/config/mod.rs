@@ -1,23 +1,53 @@
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
 
 use figment::Figment;
-use figment::providers::{Env, Format, Toml};
+use figment::providers::{Env, Format, Json, Toml, Yaml};
 use ipaddress::IPAddress;
 
-mod server_config;
-pub use server_config::*;
-mod ldap_config;
-pub use ldap_config::*;
-mod jwt_config;
-pub use jwt_config::*;
-mod blurhash_config;
-pub use blurhash_config::*;
+mod server;
+pub use server::*;
+mod admin;
+pub use admin::*;
+// mod appservice;
+// pub use appservice::*;
+mod jwt;
+pub use jwt::*;
+mod blurhash;
+pub use blurhash::*;
+mod cache;
+pub use cache::*;
+mod compression;
+pub use compression::*;
+mod db;
+pub use db::*;
+mod dns;
+pub use dns::*;
+mod federation;
+pub use federation::*;
+mod ldap;
+pub use ldap::*;
+mod logger;
+pub use logger::*;
+mod media;
+pub use media::*;
+mod presence;
+pub use presence::*;
+mod proxy;
+pub use proxy::*;
+mod read_receipt;
+pub use read_receipt::*;
+mod turn;
+pub use turn::*;
+mod typing;
+pub use typing::*;
+mod url_preview;
+pub use url_preview::*;
 
+use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
-pub use crate::data::DbConfig;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 
@@ -40,12 +70,29 @@ pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(
     ]
 });
 
-pub fn init() {
-    let raw_config = Figment::new()
-        .merge(Toml::file(Env::var("PALPO_CONFIG").as_deref().unwrap_or("palpo.toml")))
-        .merge(Env::prefixed("PALPO_").global());
+fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
+    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
+    match ext {
+        "yaml" | "yml" => Figment::new().merge(Yaml::file(path)),
+        "json" => Figment::new().merge(Json::file(path)),
+        "toml" => Figment::new().merge(Toml::file(path)),
+        _ => panic!("Unsupported config file format: {ext}"),
+    }
+}
 
-    let conf = match raw_config.extract::<ServerConfig>() {
+pub fn init() {
+    let config_file = Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into());
+
+    let config_path = PathBuf::from(config_file);
+    if !config_path.exists() {
+        panic!(
+            "Config file not found: `{}`, new default file will be created",
+            config_path.display()
+        );
+    }
+
+    let raw_conf = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
+    let conf = match raw_conf.extract::<ServerConfig>() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("It looks like your config is invalid. The following error occurred: {e}");
@@ -60,7 +107,7 @@ pub fn get() -> &'static ServerConfig {
 }
 
 pub fn server_user() -> String {
-    format!("@palpo:{}", server_name())
+    format!("@palpo:{}", get().server_name)
 }
 
 pub fn space_path() -> &'static str {
@@ -68,7 +115,7 @@ pub fn space_path() -> &'static str {
 }
 
 pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
-    let server_name = if server_name == self::server_name().as_str() {
+    let server_name = if server_name == &get().server_name {
         "_"
     } else {
         server_name.as_str()
@@ -103,47 +150,6 @@ pub fn keypair() -> &'static Ed25519KeyPair {
     })
 }
 
-pub fn enabled_ldap() -> Option<&'static LdapConfig> {
-    if let Some(ldap) = get().ldap.as_ref() {
-        if ldap.enable { Some(ldap) } else { None }
-    } else {
-        None
-    }
-}
-
-pub fn enabled_jwt() -> Option<&'static JwtConfig> {
-    if let Some(jwt) = get().jwt.as_ref() {
-        if jwt.enable { Some(jwt) } else { None }
-    } else {
-        None
-    }
-}
-
-pub fn well_known_client() -> String {
-    let config = get();
-    if let Some(url) = &config.well_known.client {
-        url.to_string()
-    } else {
-        format!("https://{}", config.server_name)
-    }
-}
-
-pub fn well_known_server() -> OwnedServerName {
-    let config = get();
-    match &config.well_known.server {
-        Some(server_name) => server_name.to_owned(),
-        None => {
-            if config.server_name.port().is_some() {
-                config.server_name.to_owned()
-            } else {
-                format!("{}:443", config.server_name.host())
-                    .try_into()
-                    .expect("Host from valid hostname + :443 must be valid")
-            }
-        }
-    }
-}
-
 pub fn valid_cidr_range(ip: &IPAddress) -> bool {
     cidr_range_denylist().iter().all(|cidr| !cidr.includes(ip))
 }
@@ -161,57 +167,6 @@ pub fn cidr_range_denylist() -> &'static [IPAddress] {
     })
 }
 
-pub fn server_name() -> &'static ServerName {
-    get().server_name.as_ref()
-}
-pub fn listen_addr() -> &'static str {
-    get().listen_addr.deref()
-}
-
-pub fn max_request_size() -> u32 {
-    get().max_request_size
-}
-
-pub fn max_fetch_prev_events() -> u16 {
-    get().max_fetch_prev_events
-}
-
-pub fn allow_registration() -> bool {
-    get().allow_registration
-}
-
-pub fn allow_encryption() -> bool {
-    get().allow_encryption
-}
-
-pub fn allow_federation() -> bool {
-    get().allow_federation
-}
-
-pub fn allow_room_creation() -> bool {
-    get().allow_room_creation
-}
-
-pub fn allow_unstable_room_versions() -> bool {
-    get().allow_unstable_room_versions
-}
-
-pub fn default_room_version() -> RoomVersionId {
-    get().default_room_version.clone()
-}
-
-pub fn enable_lightning_bolt() -> bool {
-    get().enable_lightning_bolt
-}
-
-pub fn allow_check_for_updates() -> bool {
-    get().allow_check_for_updates
-}
-
-pub fn trusted_servers() -> &'static [OwnedServerName] {
-    &get().trusted_servers
-}
-
 pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
     static JWT_DECODING_KEY: OnceLock<Option<jsonwebtoken::DecodingKey>> = OnceLock::new();
     JWT_DECODING_KEY
@@ -222,50 +177,6 @@ pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
                 .map(|jwt| jsonwebtoken::DecodingKey::from_secret(jwt.secret.as_bytes()))
         })
         .as_ref()
-}
-
-pub fn turn_password() -> &'static str {
-    &get().turn_password
-}
-
-pub fn turn_ttl() -> u64 {
-    get().turn_ttl
-}
-
-pub fn turn_uris() -> &'static [String] {
-    &get().turn_uris
-}
-
-pub fn turn_username() -> &'static str {
-    &get().turn_username
-}
-
-pub fn turn_secret() -> &'static String {
-    &get().turn_secret
-}
-
-pub fn emergency_password() -> Option<&'static str> {
-    get().emergency_password.as_deref()
-}
-
-pub fn allow_local_presence() -> bool {
-    get().allow_local_presence
-}
-
-pub fn allow_incoming_presence() -> bool {
-    get().allow_incoming_presence
-}
-
-pub fn allow_outcoming_presence() -> bool {
-    get().allow_outgoing_presence
-}
-
-pub fn presence_idle_timeout_s() -> u64 {
-    get().presence_idle_timeout_s
-}
-
-pub fn presence_offline_timeout_s() -> u64 {
-    get().presence_offline_timeout_s
 }
 
 pub fn supported_room_versions() -> Vec<RoomVersionId> {

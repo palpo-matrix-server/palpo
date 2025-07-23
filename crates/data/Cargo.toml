@@ -48,7 +48,6 @@ maplit = { workspace = true }
 mime = { workspace = true }
 mime-infer = { workspace = true }
 palpo-core = { workspace = true, features = ["unstable-msc2654"] }
-palpo-macros = { workspace = true }
 path-slash = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }

@@ -45,7 +45,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     }
 
     json_ok(BackfillResBody {
-        origin: config::server_name().to_owned(),
+        origin: config::get().server_name.to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdus: events,
     })

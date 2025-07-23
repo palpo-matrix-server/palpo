@@ -6,7 +6,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use palpo_macros::StringEnum;
 use serde::{
     de::{self, Deserialize, Deserializer, MapAccess, Visitor},
     ser::{self, Serialize, SerializeMap, Serializer},
@@ -17,6 +16,7 @@ use super::ErrorKind;
 use crate::PrivOwnedStr;
 use crate::client::http_header::{http_date_to_system_time, system_time_to_http_date};
 use crate::error::{HeaderDeserializationError, HeaderSerializationError};
+use crate::macros::StringEnum;
 
 enum Field<'de> {
     ErrorCode,

@@ -4,7 +4,7 @@
 
 use std::{collections::BTreeMap, fmt};
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;

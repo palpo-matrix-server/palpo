@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +41,7 @@ mod test {
     use serde_json::{from_value as from_json_value, json};
 
     use super::*;
-    use crate::{user_id, events::AnyStateEvent};
+    use crate::{events::AnyStateEvent, user_id};
 
     #[test]
     fn deserialize() {

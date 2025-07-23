@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::room::timeline;
 use crate::sending::resolver::Resolver;
-use crate::{config, data, utils, AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap};
+use crate::{AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap, config, data, utils};
 
 mod dest;
 pub use dest::*;
@@ -83,7 +83,7 @@ pub enum SendingEventType {
 pub fn max_request() -> Arc<Semaphore> {
     static MAX_REQUESTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
     MAX_REQUESTS
-        .get_or_init(|| Arc::new(Semaphore::new(crate::config().max_concurrent_requests as usize)))
+        .get_or_init(|| Arc::new(Semaphore::new(crate::config::get().max_concurrent_requests as usize)))
         .clone()
 }
 
@@ -99,7 +99,7 @@ pub fn default_client() -> reqwest::Client {
     static DEFAULT_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     DEFAULT_CLIENT
         .get_or_init(|| {
-            reqwest_client_builder(crate::config())
+            reqwest_client_builder(crate::config::get())
                 .expect("failed to build request clinet")
                 .build()
                 .expect("failed to build request clinet")
@@ -112,7 +112,7 @@ pub fn federation_client() -> reqwest::Client {
     static FEDERATION_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     FEDERATION_CLIENT
         .get_or_init(|| {
-            let conf = crate::config();
+            let conf = crate::config::get();
             // Client is cheap to clone (Arc wrapper) and avoids lifetime issues
             let tls_name_override = Arc::new(RwLock::new(TlsNameMap::new()));
 
@@ -147,7 +147,7 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
-        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .filter(room_joined_servers::server_id.ne(&config::get().server_name))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_pdu_servers(servers.into_iter(), pdu_id)
@@ -171,7 +171,7 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id:
 pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
-        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .filter(room_joined_servers::server_id.ne(&config::get().server_name))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_edu_servers(servers.into_iter(), edu)
@@ -396,7 +396,7 @@ async fn send_events(
                 &server.origin().await,
                 txn_id,
                 SendMessageReqBody {
-                    origin: config::server_name().to_owned(),
+                    origin: config::get().server_name.to_owned(),
                     pdus: pdu_jsons,
                     edus: edu_jsons,
                     origin_server_ts: UnixMillis::now(),

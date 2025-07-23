@@ -2,9 +2,9 @@
 //!
 //! [spaces]: https://spec.matrix.org/latest/client-server-api/#spaces
 
-use palpo_macros::StringEnum;
 use salvo::prelude::*;
 
+use crate::macros::StringEnum;
 use crate::{PrivOwnedStr, events::room::join_rule::JoinRule};
 
 /// The rule used for users wishing to join a room.

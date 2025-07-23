@@ -20,11 +20,11 @@ pub(crate) async fn send_request(
     destination: &ServerName,
     mut request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
-    if !crate::config().allow_federation {
+    if crate::config::get().enabled_federation().is_none() {
         return Err(AppError::public("Federation is disabled."));
     }
 
-    if destination == config::server_name() {
+    if destination == config::get().server_name {
         return Err(AppError::public("Won't send federation request to ourselves"));
     }
 
@@ -49,12 +49,12 @@ pub(crate) async fn send_request(
         )
         .into(),
     );
-    request_map.insert("origin".to_owned(), config::server_name().as_str().into());
+    request_map.insert("origin".to_owned(), config::get().server_name.as_str().into());
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
     let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
 
-    signatures::sign_json(config::server_name().as_str(), config::keypair(), &mut request_json)
+    signatures::sign_json(config::get().server_name.as_str(), config::keypair(), &mut request_json)
         .expect("our request json is what palpo expects");
 
     let request_json: serde_json::Map<String, serde_json::Value> =
@@ -72,7 +72,7 @@ pub(crate) async fn send_request(
                 AUTHORIZATION,
                 XMatrix::parse(&format!(
                     "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
-                    config::server_name(),
+                    config::get().server_name,
                     destination,
                     s.0,
                     s.1
@@ -179,7 +179,7 @@ pub(crate) async fn user_can_perform_restricted_join(
             }
         })
         .any(|m| {
-            room::is_server_joined(config::server_name(), &m.room_id).unwrap_or(false)
+            room::is_server_joined(&config::get().server_name, &m.room_id).unwrap_or(false)
                 && room::user::is_joined(user_id, &m.room_id).unwrap_or(false)
         })
     {

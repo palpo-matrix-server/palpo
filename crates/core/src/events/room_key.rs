@@ -2,7 +2,7 @@
 //!
 //! [`m.room_key`]: https://spec.matrix.org/latest/client-server-api/#mroom_key
 
-use palpo_macros::EventContent;
+use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 

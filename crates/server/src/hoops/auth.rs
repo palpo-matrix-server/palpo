@@ -104,7 +104,7 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
     let mut authorization = BTreeMap::from_iter([
         (
             "destination".to_owned(),
-            CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
+            CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
         ),
         (
             "method".to_owned(),

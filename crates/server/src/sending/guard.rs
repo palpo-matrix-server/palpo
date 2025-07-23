@@ -347,7 +347,7 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, _max_edu_sn:
 #[tracing::instrument(skip(server_name))]
 pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
     let max_edu_sn = data::curr_sn()?;
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     let since_sn = data::curr_sn()?;
 
@@ -355,13 +355,13 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
     let device_changes = select_edus_device_changes(server_name, since_sn, &max_edu_sn, &events_len)?;
 
     let mut events = device_changes;
-    if conf.allow_outgoing_read_receipts {
+    if conf.read_receipt.allow_outgoing {
         if let Some(receipts) = select_edus_receipts(server_name, since_sn, &max_edu_sn)? {
             events.push(receipts);
         }
     }
 
-    if conf.allow_outgoing_presence {
+    if conf.presence.allow_outgoing {
         if let Some(presence) = select_edus_presence(server_name, since_sn, &max_edu_sn)? {
             events.push(presence);
         }

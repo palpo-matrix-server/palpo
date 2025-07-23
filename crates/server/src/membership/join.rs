@@ -132,7 +132,7 @@ pub async fn join_room(
     // TODO: Is origin needed?
     join_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
     );
     join_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -434,7 +434,7 @@ pub fn get_first_user_can_issue_invite(
         .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
     {
         for joined_user in room::joined_users(room_id, None)? {
-            if joined_user.server_name() == config::server_name()
+            if joined_user.server_name() == config::get().server_name
                 && room::user_can_invite(room_id, &joined_user, invitee_id)
             {
                 return Ok(joined_user);
@@ -454,7 +454,7 @@ pub fn get_users_can_issue_invite(
         .any(|restriction_room_id| room::user::is_joined(invitee_id, restriction_room_id).unwrap_or(false))
     {
         for joined_user in room::joined_users(room_id, None)? {
-            if joined_user.server_name() == config::server_name()
+            if joined_user.server_name() == config::get().server_name
                 && room::user_can_invite(room_id, &joined_user, invitee_id)
             {
                 users.push(joined_user);
@@ -474,7 +474,7 @@ async fn make_join_request(
         .into());
 
     for remote_server in servers {
-        if remote_server == config::server_name() {
+        if remote_server == &config::get().server_name {
             continue;
         }
         info!("Asking {remote_server} for make_join");

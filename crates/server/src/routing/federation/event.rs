@@ -49,7 +49,7 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
 
     crate::federation::access_check(origin, room_id, Some(&args.event_id))?;
     json_ok(EventResBody {
-        origin: config::server_name().to_owned(),
+        origin: config::get().server_name.to_owned(),
         origin_server_ts: UnixMillis::now(),
         pdu: crate::sending::convert_to_outgoing_federation_event(event_json),
     })

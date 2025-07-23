@@ -36,12 +36,13 @@ where
     while let Some(batch) = server_keys
         .keys()
         .rev()
-        .take(crate::config().trusted_server_batch_size)
+        .take(crate::config::get().trusted_server_batch_size)
         .last()
         .cloned()
     {
+        let origin = batch.origin().await;
         let request = remote_server_keys_batch_request(
-            &notary.origin().await,
+            &origin,
             RemoteServerKeysBatchReqBody {
                 server_keys: server_keys.split_off(&batch),
             },

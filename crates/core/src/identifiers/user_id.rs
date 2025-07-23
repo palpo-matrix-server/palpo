@@ -153,8 +153,8 @@ impl UserId {
     }
 }
 
+use crate::macros::IdZst;
 pub use palpo_identifiers_validation::user_id::localpart_is_fully_conforming;
-use palpo_macros::IdZst;
 
 #[cfg(test)]
 mod tests {
