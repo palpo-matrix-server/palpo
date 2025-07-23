@@ -9,12 +9,11 @@ use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, FederationConfig, JwtConfig, LdapConfig, LoggerConfig, MediaConfig,
-    PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LdapConfig, LoggerConfig,
+    MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
-use crate::data::DbConfig;
 use crate::env_vars::required_var;
 use crate::macros::config_example;
 use crate::utils::sys;
@@ -33,7 +32,30 @@ pub struct KeypairConfig {
     pub version: String,
 }
 
-#[config_example(filename = "palpo-example.toml")]
+#[config_example(
+    filename = "palpo-example.toml",
+    undocumented = "# This item is undocumented. Please contribute documentation for it.",
+    header = r#"### Palpo Configuration
+###
+### THIS FILE IS GENERATED. CHANGES/CONTRIBUTIONS IN THE REPO WILL BE
+### OVERWRITTEN!
+###
+### You should rename this file before configuring your server. Changes to
+### documentation and defaults can be contributed in source code at
+### crate/server/config/server.rs. This file is generated when building.
+###
+### Any values pre-populated are the default values for said config option.
+###
+### At the minimum, you MUST edit all the config options to your environment
+### that say "YOU NEED TO EDIT THIS".
+###
+### For more information, see:
+### https://palpo.im/guide/configuration.html
+"#,
+    ignore = "catch_others federation well_known compression typing read_receipt presence \
+            admin url_preview turn media blurhash keypair ldap proxy jwt tls logger db\
+	        appservice"
+)]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
     #[serde(default = "default_listen_addr")]
@@ -41,6 +63,7 @@ pub struct ServerConfig {
     #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
 
+    // display: hidden
     pub db: DbConfig,
 
     #[serde(default = "default_true")]
@@ -592,65 +615,58 @@ pub struct ServerConfig {
     #[serde(default = "default_startup_netburst_keep")]
     pub startup_netburst_keep: i64,
 
+    // external structure; separate section
     #[serde(default)]
     pub logger: LoggerConfig,
 
+    // external structure; separate section
     pub tls: Option<TlsConfig>,
+    // external structure; separate section
     pub jwt: Option<JwtConfig>,
 
-    /// Examples:
-    ///
-    /// - No proxy (default):
-    ///
-    ///       proxy = "none"
-    ///
-    /// - For global proxy, create the section at the bottom of this file:
-    ///
-    ///       [global.proxy]
-    ///       global = { url = "socks5h://localhost:9050" }
-    ///
-    /// - To proxy some domains:
-    ///
-    ///       [global.proxy]
-    ///       [[global.proxy.by_domain]]
-    ///       url = "socks5h://localhost:9050"
-    ///       include = ["*.onion", "matrix.myspecial.onion"]
-    ///       exclude = ["*.myspecial.onion"]
-    ///
-    /// Include vs. Exclude:
-    ///
-    /// - If include is an empty list, it is assumed to be `["*"]`.
-    ///
-    /// - If a domain matches both the exclude and include list, the proxy will
-    ///   only be used if it was included because of a more specific rule than
-    ///   it was excluded. In the above example, the proxy would be used for
-    ///   `ordinary.onion`, `matrix.myspecial.onion`, but not
-    ///   `hello.myspecial.onion`.
-    ///
-    /// default: "none"
+    // external structure; separate section
     pub proxy: Option<ProxyConfig>,
 
+    // external structure; separate section
     pub ldap: Option<LdapConfig>,
 
+    // external structure; separate section
+    // display: hidden
     pub keypair: Option<KeypairConfig>,
+
+    // external structure; separate section
     #[serde(default)]
     pub blurhash: BlurhashConfig,
+
+    // external structure; separate section
     #[serde(default)]
     pub media: MediaConfig,
+
+    // external structure; separate section
     pub turn: Option<TurnConfig>,
 
+    // external structure; separate section
     #[serde(default)]
     pub url_preview: UrlPreviewConfig,
 
+    // external structure; separate section
     #[serde(default)]
     pub admin: AdminConfig,
+
+    // external structure; separate section
     #[serde(default)]
     pub presence: PresenceConfig,
+
+    // external structure; separate section
+    // display: hidden
     #[serde(default)]
     pub read_receipt: ReadReceiptConfig,
+
+    // external structure; separate section
     #[serde(default)]
     pub typing: TypingConfig,
 
+    // external structure; separate section
     #[serde(default)]
     pub compression: CompressionConfig,
 
@@ -658,6 +674,7 @@ pub struct ServerConfig {
     #[serde(default)]
     pub well_known: WellKnownConfig,
 
+    // external structure; separate section
     pub federation: Option<FederationConfig>,
 
     /// Enables configuration reload when the server receives SIGUSR1 on
@@ -1015,6 +1032,7 @@ impl AllowedOrigins {
     }
 }
 
+#[config_example(filename = "palpo-example.toml", section = "tls")]
 #[derive(Clone, Debug, Deserialize)]
 pub struct TlsConfig {
     #[serde(default = "default_true")]

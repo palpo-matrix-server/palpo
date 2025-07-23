@@ -65,7 +65,7 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
         }
 
         if let Some(section) = section {
-            file.write_fmt(format_args!("\n#[{section}]\n"))
+            file.write_fmt(format_args!("\n# [{section}]\n"))
                 .expect("written to config file");
         }
     }
@@ -109,7 +109,7 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
             if let Some(file) = file.as_mut() {
                 file.write_fmt(format_args!("\n{doc}")).expect("written to config file");
 
-                file.write_fmt(format_args!("#{ident} ={default}\n"))
+                file.write_fmt(format_args!("# {ident} = {default}\n"))
                     .expect("written to config file");
             }
 
@@ -126,7 +126,7 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
                 let value = if display_directive("sensitive") {
                     quote! { "***********" }
                 } else {
-                    quote! { format_args!("{:?}", self.#ident) }
+                    quote! { format_args!(" {:?}", self.#ident) }
                 };
 
                 let name = ident.to_string();

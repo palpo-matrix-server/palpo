@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     }
 
-    crate::data::init(&conf.db);
+    crate::data::init(&conf.db.clone().into_data_db_config());
 
     crate::sending::guard::start();
 

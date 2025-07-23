@@ -6,6 +6,8 @@ use figment::Figment;
 use figment::providers::{Env, Format, Json, Toml, Yaml};
 use ipaddress::IPAddress;
 
+mod server;
+pub use server::*;
 mod admin;
 pub use admin::*;
 // mod appservice;
@@ -18,6 +20,8 @@ mod cache;
 pub use cache::*;
 mod compression;
 pub use compression::*;
+mod db;
+pub use db::*;
 mod dns;
 pub use dns::*;
 mod federation;
@@ -34,8 +38,6 @@ mod proxy;
 pub use proxy::*;
 mod read_receipt;
 pub use read_receipt::*;
-mod server;
-pub use server::*;
 mod turn;
 pub use turn::*;
 mod typing;
@@ -46,7 +48,6 @@ pub use url_preview::*;
 use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
-pub use crate::data::DbConfig;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 
