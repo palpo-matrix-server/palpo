@@ -22,7 +22,7 @@ use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
 use crate::room::timeline;
 use crate::sending::resolver::Resolver;
-use crate::{config, data, utils, AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap};
+use crate::{AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap, config, data, utils};
 
 mod dest;
 pub use dest::*;

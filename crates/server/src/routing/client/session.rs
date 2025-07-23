@@ -159,7 +159,9 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
         }
         LoginInfo::Jwt(info) => {
             let conf = config::get();
-            let jwt_conf = conf.enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
+            let jwt_conf = conf
+                .enabled_jwt()
+                .ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
 
             let claim = user::session::validate_jwt_token(jwt_conf, &info.token)?;
             let local = claim.sub.to_lowercase();

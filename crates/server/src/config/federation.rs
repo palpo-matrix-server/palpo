@@ -4,15 +4,16 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
-use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
+use crate::core::serde::{default_false, default_true};
+use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "federation")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct FederationConfig {
-	/// Controls whether federation is allowed or not. It is not recommended to
-	/// disable this after the fact due to potential federation breakage.
-	#[serde(default = "default_true")]
-	pub enable: bool,
+    /// Controls whether federation is allowed or not. It is not recommended to
+    /// disable this after the fact due to potential federation breakage.
+    #[serde(default = "default_true")]
+    pub enable: bool,
 
     /// Allows federation requests to be made to itself
     ///
@@ -22,59 +23,59 @@ pub struct FederationConfig {
     #[serde(default)]
     pub allow_loopback: bool,
 
-	/// Federation well-known resolution connection timeout (seconds).
-	///
-	/// default: 6
-	#[serde(default = "default_well_known_conn_timeout")]
-	pub well_known_conn_timeout: u64,
+    /// Federation well-known resolution connection timeout (seconds).
+    ///
+    /// default: 6
+    #[serde(default = "default_well_known_conn_timeout")]
+    pub well_known_conn_timeout: u64,
 
-	/// Federation HTTP well-known resolution request timeout (seconds).
-	///
-	/// default: 10
-	#[serde(default = "default_well_known_timeout")]
-	pub well_known_timeout: u64,
+    /// Federation HTTP well-known resolution request timeout (seconds).
+    ///
+    /// default: 10
+    #[serde(default = "default_well_known_timeout")]
+    pub well_known_timeout: u64,
 
-	/// Federation client request timeout (seconds). You most definitely want
-	/// this to be high to account for extremely large room joins, slow
-	/// homeservers, your own resources etc.
-	///
-	/// default: 300
-	#[serde(default = "default_client_timeout")]
-	pub client_timeout: u64,
+    /// Federation client request timeout (seconds). You most definitely want
+    /// this to be high to account for extremely large room joins, slow
+    /// homeservers, your own resources etc.
+    ///
+    /// default: 300
+    #[serde(default = "default_client_timeout")]
+    pub client_timeout: u64,
 
-	/// Federation client idle connection pool timeout (seconds).
-	///
-	/// default: 25
-	#[serde(default = "default_client_idle_timeout")]
-	pub client_idle_timeout: u64,
+    /// Federation client idle connection pool timeout (seconds).
+    ///
+    /// default: 25
+    #[serde(default = "default_client_idle_timeout")]
+    pub client_idle_timeout: u64,
 
-	/// Federation client max idle connections per host. Defaults to 1 as
-	/// generally the same open connection can be re-used.
-	///
-	/// default: 1
-	#[serde(default = "default_client_idle_per_host")]
-	pub client_idle_per_host: u16,
+    /// Federation client max idle connections per host. Defaults to 1 as
+    /// generally the same open connection can be re-used.
+    ///
+    /// default: 1
+    #[serde(default = "default_client_idle_per_host")]
+    pub client_idle_per_host: u16,
 
-	/// Federation sender request timeout (seconds). The time it takes for the
-	/// remote server to process sent transactions can take a while.
-	///
-	/// default: 180
-	#[serde(default = "default_sender_timeout")]
-	pub sender_timeout: u64,
+    /// Federation sender request timeout (seconds). The time it takes for the
+    /// remote server to process sent transactions can take a while.
+    ///
+    /// default: 180
+    #[serde(default = "default_sender_timeout")]
+    pub sender_timeout: u64,
 
-	/// Federation sender idle connection pool timeout (seconds).
-	///
-	/// default: 180
-	#[serde(default = "default_sender_idle_timeout")]
-	pub sender_idle_timeout: u64,
+    /// Federation sender idle connection pool timeout (seconds).
+    ///
+    /// default: 180
+    #[serde(default = "default_sender_idle_timeout")]
+    pub sender_idle_timeout: u64,
 
-	/// Federation sender transaction retry backoff limit (seconds).
-	///
-	/// default: 86400
-	#[serde(default = "default_sender_retry_backoff_limit")]
-	pub sender_retry_backoff_limit: u64,
+    /// Federation sender transaction retry backoff limit (seconds).
+    ///
+    /// default: 86400
+    #[serde(default = "default_sender_retry_backoff_limit")]
+    pub sender_retry_backoff_limit: u64,
 
-	 /// Set this to true to allow federating device display names / allow
+    /// Set this to true to allow federating device display names / allow
     /// external users to see your device display name. If federation is
     /// disabled entirely (`allow_federation`), this is inherently false. For
     /// privacy reasons, this is best left disabled.
@@ -95,19 +96,34 @@ pub struct FederationConfig {
     pub allow_inbound_profile_lookup: bool,
 }
 
+fn default_well_known_conn_timeout() -> u64 {
+    6
+}
 
-fn default_well_known_conn_timeout() -> u64 { 6 }
+fn default_well_known_timeout() -> u64 {
+    10
+}
 
-fn default_well_known_timeout() -> u64 { 10 }
+fn default_client_timeout() -> u64 {
+    25
+}
 
-fn default_client_timeout() -> u64 { 25 }
+fn default_client_idle_timeout() -> u64 {
+    25
+}
 
-fn default_client_idle_timeout() -> u64 { 25 }
+fn default_client_idle_per_host() -> u16 {
+    1
+}
 
-fn default_client_idle_per_host() -> u16 { 1 }
+fn default_sender_timeout() -> u64 {
+    180
+}
 
-fn default_sender_timeout() -> u64 { 180 }
+fn default_sender_idle_timeout() -> u64 {
+    180
+}
 
-fn default_sender_idle_timeout() -> u64 { 180 }
-
-fn default_sender_retry_backoff_limit() -> u64 { 86400 }
+fn default_sender_retry_backoff_limit() -> u64 {
+    86400
+}

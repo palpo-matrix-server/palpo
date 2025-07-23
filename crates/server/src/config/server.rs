@@ -16,9 +16,9 @@ use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
 use crate::env_vars::required_var;
+use crate::macros::config_example;
 use crate::utils::sys;
 use crate::{AppError, AppResult};
-use crate::macros::config_example;
 
 const DEPRECATED_KEYS: &[&str; 0] = &[];
 
@@ -997,7 +997,6 @@ impl ServerConfig {
     }
 }
 
-
 #[derive(Clone, Debug, Default)]
 pub struct AllowedOrigins(Vec<String>);
 
@@ -1235,4 +1234,6 @@ fn default_notification_push_path() -> String {
     "/_matrix/push/v1/notify".to_owned()
 }
 
-fn default_pusher_idle_timeout() -> u64 { 15 }
+fn default_pusher_idle_timeout() -> u64 {
+    15
+}

@@ -271,5 +271,10 @@ pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
     room_version: &RoomVersionId,
 ) -> Result<(), crate::core::signatures::Error> {
-    signatures::hash_and_sign_event(config::get().server_name.as_str(), config::keypair(), object, room_version)
+    signatures::hash_and_sign_event(
+        config::get().server_name.as_str(),
+        config::keypair(),
+        object,
+        room_version,
+    )
 }

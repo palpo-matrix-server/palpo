@@ -294,7 +294,13 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
             let ev_type = ev_type.to_string();
             match target_device_id_maybe {
                 DeviceIdOrAllDevices::DeviceId(target_device_id) => {
-                    let _ = data::user::device::add_to_device_event(&sender, target_user_id, target_device_id, &ev_type, event);
+                    let _ = data::user::device::add_to_device_event(
+                        &sender,
+                        target_user_id,
+                        target_device_id,
+                        &ev_type,
+                        event,
+                    );
                 }
 
                 DeviceIdOrAllDevices::AllDevices => {

@@ -1,7 +1,8 @@
 use reqwest::{Proxy, Url};
 use serde::Deserialize;
 
-use crate::AppResult;use crate::macros::config_example;
+use crate::AppResult;
+use crate::macros::config_example;
 
 /// ## Examples:
 /// - No proxy (default):
@@ -116,9 +117,7 @@ impl WildCardedDomain {
             (WildCardedDomain::WildCard, WildCardedDomain::WildCard) => false,
             (_, WildCardedDomain::WildCard) => true,
             (WildCardedDomain::Exact(a), WildCardedDomain::WildCarded(_)) => other.matches(a),
-            (WildCardedDomain::WildCarded(a), WildCardedDomain::WildCarded(b)) => {
-                a != b && a.ends_with(b)
-            }
+            (WildCardedDomain::WildCarded(a), WildCardedDomain::WildCarded(b)) => a != b && a.ends_with(b),
             _ => false,
         }
     }

@@ -779,9 +779,7 @@ async fn load_left_room(
         if timeline_pdu_ids.contains(&event_id) {
             continue;
         }
-        let DbRoomStateField {
-             state_key, ..
-        } = state::get_field(key)?;
+        let DbRoomStateField { state_key, .. } = state::get_field(key)?;
 
         if *sender_id == state_key {
             let pdu = match timeline::get_pdu(&event_id) {

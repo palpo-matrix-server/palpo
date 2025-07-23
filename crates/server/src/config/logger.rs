@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
-use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
+use crate::core::serde::{default_false, default_true};
+use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "logger")]
 #[derive(Clone, Debug, Deserialize, Default)]

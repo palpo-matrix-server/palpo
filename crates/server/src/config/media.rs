@@ -3,9 +3,11 @@ use std::fmt;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use serde::Deserialize; use regex::RegexSet;
+use regex::RegexSet;
+use serde::Deserialize;
 
-use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
+use crate::core::serde::{default_false, default_true};
+use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "media")]
 #[derive(Clone, Debug, Deserialize, Default)]

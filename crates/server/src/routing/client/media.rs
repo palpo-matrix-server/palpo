@@ -237,10 +237,7 @@ pub async fn upload_content(
     let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let conf = crate::config::get();
-    let payload = req
-        .payload_with_max_size(conf.max_request_size as usize)
-        .await
-        .unwrap();
+    let payload = req.payload_with_max_size(conf.max_request_size as usize).await.unwrap();
 
     // let mxc = format!("mxc://{}/{}", crate::config::get().server_name, args.media_id);
 

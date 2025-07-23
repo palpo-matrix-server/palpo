@@ -220,9 +220,11 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
     if let Some(b) = maybe {
         Ok(b)
     } else {
-        let bridge_user_id =
-            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), &config::get().server_name)
-                .ok();
+        let bridge_user_id = UserId::parse_with_server_name(
+            appservice.registration.sender_localpart.as_str(),
+            &config::get().server_name,
+        )
+        .ok();
 
         let in_room = bridge_user_id.map_or(false, |id| user::is_joined(&id, room_id).unwrap_or(false)) || {
             let user_ids = room_users::table
