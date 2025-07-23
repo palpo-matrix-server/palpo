@@ -1032,7 +1032,7 @@
 # Set to true to log guest registrations in the admin room. Note that
 # these may be noisy or unnecessary if you're a public homeserver.
 #
-# guest_registrations = 
+# guest_registrations =  false
 
 # [media]
 

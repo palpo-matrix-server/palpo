@@ -49,6 +49,7 @@ pub struct LoggerConfig {
 
     /// Set to true to log guest registrations in the admin room. Note that
     /// these may be noisy or unnecessary if you're a public homeserver.
+    #[serde(default)]
     pub guest_registrations: bool,
 }
 
