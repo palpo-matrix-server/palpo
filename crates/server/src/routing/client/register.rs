@@ -133,7 +133,7 @@ async fn register(
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
-                &UserId::parse_with_server_name("", config::server_name()).expect("we know this is valid"),
+                &UserId::parse_with_server_name("", &config().server_name).expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
                 uiaa_info.session.as_ref().expect("session is always set"),
                 Some(&uiaa_info),
@@ -150,10 +150,10 @@ async fn register(
     // Default to pretty display_name
     let mut display_name = user_id.localpart().to_owned();
 
-    // If enabled append lightning bolt to display name (default true)
-    if config::enable_lightning_bolt() {
-        display_name.push_str(" ⚡️");
-    }
+    // // If enabled append lightning bolt to display name (default true)
+    // if config::enable_lightning_bolt() {
+    //     display_name.push_str(" ⚡️");
+    // }
 
     diesel::insert_into(user_profiles::table)
         .values(NewDbProfile {
@@ -257,7 +257,7 @@ async fn register(
 async fn available(username: QueryParam<String, true>) -> JsonResult<AvailableResBody> {
     let username = username.into_inner().to_lowercase();
     // Validate user id
-    let server_name = config::server_name();
+    let server_name = &config().server_name;
     let user_id = UserId::parse_with_server_name(username, server_name)
         .ok()
         .filter(|user_id| !user_id.is_historical() && user_id.server_name() == server_name)

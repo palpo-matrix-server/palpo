@@ -1,11 +1,10 @@
 pub mod compute;
-pub mod storage;
 
 use std::path::PathBuf;
 
 pub use compute::available_parallelism;
 
-use crate::{Result, debug};
+use crate::{AppResult, };
 
 /// This is needed for opening lots of file descriptors, which tends to
 /// happen more often when using RocksDB and making lots of federation
@@ -22,7 +21,7 @@ pub fn maximize_fd_limit() -> Result<(), nix::errno::Errno> {
 	if soft_limit < hard_limit {
 		setrlimit(NOFILE, hard_limit, hard_limit)?;
 		assert_eq!((hard_limit, hard_limit), getrlimit(NOFILE)?, "getrlimit != setrlimit");
-		debug!(to = hard_limit, from = soft_limit, "Raised RLIMIT_NOFILE",);
+		tracing::debug!(to = hard_limit, from = soft_limit, "Raised RLIMIT_NOFILE",);
 	}
 
 	Ok(())
@@ -35,7 +34,7 @@ pub fn maximize_fd_limit() -> Result<(), nix::errno::Errno> {
 /// This function is declared unsafe because the original result was altered for
 /// security purposes, and altering it back ignores those urposes and should be
 /// understood by the user.
-pub unsafe fn current_exe() -> Result<PathBuf> {
+pub unsafe fn current_exe() -> AppResult<PathBuf> {
 	let exe = std::env::current_exe()?;
 	match exe.to_str() {
 		| None => Ok(exe),

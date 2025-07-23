@@ -33,7 +33,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut get_over_federation = HashMap::new();
 
     for (user_id, device_ids) in device_keys_input {
-        if user_id.server_name() != config::server_name() {
+        if user_id.server_name() != config().server_name {
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)

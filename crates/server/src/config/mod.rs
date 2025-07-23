@@ -9,8 +9,8 @@ use ipaddress::IPAddress;
 
 mod admin;
 pub use admin::*;
-mod appservice;
-pub use appservice::*;
+// mod appservice;
+// pub use appservice::*;
 mod jwt;
 pub use jwt::*;
 mod blurhash;
@@ -33,8 +33,6 @@ mod proxy;
 pub use proxy::*;
 mod read_receipt;
 pub use read_receipt::*;
-mod request;
-pub use request::*;
 mod server;
 pub use server::*;
 mod turn;
@@ -80,28 +78,15 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
     }
 }
 
-fn write_default_config<P: AsRef<Path>>(path: P) {
-    let config = ServerConfig::default();
-    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
-    let data = match ext {
-        "yaml" | "yml" => serde_yaml::to_string(&config).expect("failed to serialize config to YAML"),
-        "json" => serde_json::to_string_pretty(&config).expect("failed to serialize config to YAML"),
-        "toml" => toml::to_string_pretty(&config).expect("failed to serialize config to YAML"),
-        _ => panic!("Unsupported config file format: {ext}"),
-    };
-    fs::write(path, data).expect("msg: failed to write default config file");
-}
-
 pub fn init() {
     let config_file = Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into());
 
     let config_path = PathBuf::from(config_file);
     if !config_path.exists() {
-        warn!(
+        panic!(
             "Config file not found: `{}`, new default file will be created",
             config_path.display()
         );
-        write_default_config(&config_path);
     }
 
     let raw_config = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
@@ -120,7 +105,7 @@ pub fn get() -> &'static ServerConfig {
 }
 
 pub fn server_user() -> String {
-    format!("@palpo:{}", server_name())
+    format!("@palpo:{}", get().server_name)
 }
 
 pub fn space_path() -> &'static str {
@@ -128,7 +113,7 @@ pub fn space_path() -> &'static str {
 }
 
 pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
-    let server_name = if server_name == self::server_name().as_str() {
+    let server_name = if server_name == &get().server_name {
         "_"
     } else {
         server_name.as_str()
@@ -163,47 +148,6 @@ pub fn keypair() -> &'static Ed25519KeyPair {
     })
 }
 
-pub fn enabled_ldap() -> Option<&'static LdapConfig> {
-    if let Some(ldap) = get().ldap.as_ref() {
-        if ldap.enable { Some(ldap) } else { None }
-    } else {
-        None
-    }
-}
-
-pub fn enabled_jwt() -> Option<&'static JwtConfig> {
-    if let Some(jwt) = get().jwt.as_ref() {
-        if jwt.enable { Some(jwt) } else { None }
-    } else {
-        None
-    }
-}
-
-pub fn well_known_client() -> String {
-    let config = get();
-    if let Some(url) = &config.well_known.client {
-        url.to_string()
-    } else {
-        format!("https://{}", config.server_name)
-    }
-}
-
-pub fn well_known_server() -> OwnedServerName {
-    let config = get();
-    match &config.well_known.server {
-        Some(server_name) => server_name.to_owned(),
-        None => {
-            if config.server_name.port().is_some() {
-                config.server_name.to_owned()
-            } else {
-                format!("{}:443", config.server_name.host())
-                    .try_into()
-                    .expect("Host from valid hostname + :443 must be valid")
-            }
-        }
-    }
-}
-
 pub fn valid_cidr_range(ip: &IPAddress) -> bool {
     cidr_range_denylist().iter().all(|cidr| !cidr.includes(ip))
 }
@@ -221,57 +165,6 @@ pub fn cidr_range_denylist() -> &'static [IPAddress] {
     })
 }
 
-pub fn server_name() -> &'static ServerName {
-    get().server_name.as_ref()
-}
-pub fn listen_addr() -> &'static str {
-    get().listen_addr.deref()
-}
-
-pub fn max_request_size() -> u32 {
-    get().max_request_size
-}
-
-pub fn max_fetch_prev_events() -> u16 {
-    get().max_fetch_prev_events
-}
-
-pub fn allow_registration() -> bool {
-    get().allow_registration
-}
-
-pub fn allow_encryption() -> bool {
-    get().allow_encryption
-}
-
-pub fn allow_federation() -> bool {
-    get().allow_federation
-}
-
-pub fn allow_room_creation() -> bool {
-    get().allow_room_creation
-}
-
-pub fn allow_unstable_room_versions() -> bool {
-    get().allow_unstable_room_versions
-}
-
-pub fn default_room_version() -> RoomVersionId {
-    get().default_room_version.clone()
-}
-
-pub fn enable_lightning_bolt() -> bool {
-    get().enable_lightning_bolt
-}
-
-pub fn allow_check_for_updates() -> bool {
-    get().allow_check_for_updates
-}
-
-pub fn trusted_servers() -> &'static [OwnedServerName] {
-    &get().trusted_servers
-}
-
 pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
     static JWT_DECODING_KEY: OnceLock<Option<jsonwebtoken::DecodingKey>> = OnceLock::new();
     JWT_DECODING_KEY
@@ -282,50 +175,6 @@ pub fn jwt_decoding_key() -> Option<&'static jsonwebtoken::DecodingKey> {
                 .map(|jwt| jsonwebtoken::DecodingKey::from_secret(jwt.secret.as_bytes()))
         })
         .as_ref()
-}
-
-pub fn turn_password() -> &'static str {
-    &get().turn_password
-}
-
-pub fn turn_ttl() -> u64 {
-    get().turn_ttl
-}
-
-pub fn turn_uris() -> &'static [String] {
-    &get().turn_uris
-}
-
-pub fn turn_username() -> &'static str {
-    &get().turn_username
-}
-
-pub fn turn_secret() -> &'static String {
-    &get().turn_secret
-}
-
-pub fn emergency_password() -> Option<&'static str> {
-    get().emergency_password.as_deref()
-}
-
-pub fn allow_local_presence() -> bool {
-    get().allow_local_presence
-}
-
-pub fn allow_incoming_presence() -> bool {
-    get().allow_incoming_presence
-}
-
-pub fn allow_outcoming_presence() -> bool {
-    get().allow_outgoing_presence
-}
-
-pub fn presence_idle_timeout_s() -> u64 {
-    get().presence_idle_timeout_s
-}
-
-pub fn presence_offline_timeout_s() -> u64 {
-    get().presence_offline_timeout_s
 }
 
 pub fn supported_room_versions() -> Vec<RoomVersionId> {

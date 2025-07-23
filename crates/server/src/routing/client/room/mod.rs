@@ -41,14 +41,13 @@ use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEven
 use crate::core::identifiers::*;
 use crate::core::room::Visibility;
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
+use crate::data;
 use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok,
-    hoops, json_ok, room,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok, room,
 };
-use crate::data;
 
 const LIMIT_MAX: usize = 100;
 
@@ -286,7 +285,7 @@ async fn upgrade(
     }
 
     // Create a replacement room
-    let replacement_room = RoomId::new(config::server_name());
+    let replacement_room = RoomId::new(&config().server_name);
     room::ensure_room(&replacement_room, &config::default_room_version())?;
 
     let state_lock = room::lock_state(&room_id).await;
@@ -509,18 +508,19 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let room_id = RoomId::new(config::server_name());
+    let room_id = RoomId::new(&config().server_name);
 
     let state_lock = room::lock_state(&room_id).await;
     room::ensure_room(&room_id, &config::default_room_version())?;
 
-    if !config::allow_room_creation() && authed.appservice.is_none() && !authed.is_admin() {
+    let config = config();
+    if !config.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
-        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config::server_name()))
+        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config.server_name))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
         if room::resolve_local_alias(&alias).is_ok() {
@@ -542,7 +542,7 @@ pub(super) async fn create_room(
                 );
             }
         }
-        None => config::default_room_version(),
+        None => config.default_room_version,
     };
 
     let content = match &body.creation_content {

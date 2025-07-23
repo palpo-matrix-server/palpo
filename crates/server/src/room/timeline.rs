@@ -445,11 +445,11 @@ where
             }
         }
         let matching_users = || {
-            config::server_name() == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
+            config().server_name == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
                     && pdu.state_key.as_ref().map_or(false, |state_key| {
                         UserId::parse(state_key).map_or(false, |user_id| {
-                            config::server_name() == user_id.server_name() && appservice.is_user_match(&user_id)
+                            config().server_name == user_id.server_name() && appservice.is_user_match(&user_id)
                         })
                     })
         };
@@ -942,7 +942,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         .filter(|(_, level)| **level > power_levels.users_default)
         .map(|(user_id, _)| user_id.server_name())
         .collect::<HashSet<_>>();
-    admin_servers.remove(&config::server_name());
+    admin_servers.remove(&config().server_name);
 
     // Request backfill
     for backfill_server in admin_servers {

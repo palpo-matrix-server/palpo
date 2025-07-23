@@ -36,61 +36,61 @@ pub trait IsRemoteOrLocal {
 }
 impl IsRemoteOrLocal for UserId {
     fn is_remote(&self) -> bool {
-        self.server_name() != config::server_name()
+        self.server_name() != config::get().server_name
     }
     fn is_local(&self) -> bool {
-        self.server_name() == config::server_name()
+        self.server_name() == config().server_name
     }
 }
 impl IsRemoteOrLocal for OwnedUserId {
     fn is_remote(&self) -> bool {
-        self.server_name() != config::server_name()
+        self.server_name() != config().server_name
     }
     fn is_local(&self) -> bool {
-        self.server_name() == config::server_name()
+        self.server_name() == config().server_name
     }
 }
 
 impl IsRemoteOrLocal for RoomId {
     fn is_remote(&self) -> bool {
-        self.server_name().map(|s| s != config::server_name()).unwrap_or(false)
+        self.server_name().map(|s| s != config().server_name).unwrap_or(false)
     }
     fn is_local(&self) -> bool {
-        self.server_name().map(|s| s == config::server_name()).unwrap_or(false)
+        self.server_name().map(|s| s == config().server_name).unwrap_or(false)
     }
 }
 impl IsRemoteOrLocal for OwnedRoomId {
     fn is_remote(&self) -> bool {
-        self.server_name().map(|s| s != config::server_name()).unwrap_or(false)
+        self.server_name().map(|s| s != config().server_name).unwrap_or(false)
     }
     fn is_local(&self) -> bool {
-        self.server_name().map(|s| s == config::server_name()).unwrap_or(false)
+        self.server_name().map(|s| s == config().server_name).unwrap_or(false)
     }
 }
 
 impl IsRemoteOrLocal for RoomAliasId {
     fn is_remote(&self) -> bool {
-        self.server_name() != config::server_name()
+        self.server_name() != config().server_name
     }
     fn is_local(&self) -> bool {
-        self.server_name() == config::server_name()
+        self.server_name() == config().server_name
     }
 }
 
 impl IsRemoteOrLocal for OwnedRoomAliasId {
     fn is_remote(&self) -> bool {
-        self.server_name() != config::server_name()
+        self.server_name() != config().server_name
     }
     fn is_local(&self) -> bool {
-        self.server_name() == config::server_name()
+        self.server_name() == config().server_name
     }
 }
 
 impl IsRemoteOrLocal for ServerName {
     fn is_remote(&self) -> bool {
-        self != config::server_name()
+        self != config().server_name
     }
     fn is_local(&self) -> bool {
-        self == config::server_name()
+        self == config().server_name
     }
 }

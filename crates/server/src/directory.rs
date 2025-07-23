@@ -13,7 +13,7 @@ pub async fn get_public_rooms(
     filter: &PublicRoomFilter,
     network: &RoomNetwork,
 ) -> AppResult<PublicRoomsResBody> {
-    if let Some(other_server) = server.filter(|server| *server != config::server_name().as_str()) {
+    if let Some(other_server) = server.filter(|server| *server != config().server_name.as_str()) {
         let body = public_rooms_request(
             &other_server.origin().await,
             PublicRoomsReqBody {

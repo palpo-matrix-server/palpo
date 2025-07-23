@@ -186,7 +186,7 @@ fn sender() -> &'static mpsc::UnboundedSender<AdminRoomEvent> {
 async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
     // TODO: Use futures when we have long admin commands
     //let mut futures = FuturesUnordered::new();
-    let conf = crate::config();
+    let conf = crate::config::get();
     if !conf.enable_admin_room {
         return;
     }
@@ -499,10 +499,10 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             // Default to pretty display_name
             let mut display_name = user_id.localpart().to_owned();
 
-            // If enabled append lightning bolt to display name (default false)
-            if conf.enable_lightning_bolt {
-                display_name.push_str(" ⚡️");
-            }
+            // // If enabled append lightning bolt to display name (default false)
+            // if conf.enable_lightning_bolt {
+            //     display_name.push_str(" ⚡️");
+            // }
 
             data::user::set_display_name(&user_id, Some(&*display_name))?;
 
@@ -612,7 +612,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 match serde_json::from_str(&string) {
                     Ok(mut value) => {
                         crate::core::signatures::sign_json(
-                            config::server_name().as_str(),
+                            config().server_name.as_str(),
                             config::keypair(),
                             &mut value,
                         )
@@ -762,9 +762,9 @@ pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
 pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     use RoomVersionId::*;
 
-    let conf = crate::config();
-    let room_id = RoomId::new(&conf.server_name);
-    let room_version = config::default_room_version();
+    let config = crate::config();
+    let room_id = RoomId::new(&config.server_name);
+    let room_version = config.default_room_version;
 
     if room::room_exists(&room_id)? {
         return Ok(room_id);
@@ -775,7 +775,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     let state_lock = room::lock_state(&room_id).await;
 
     // Create a user for the server
-    let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
+    let palpo_user = UserId::parse_with_server_name("palpo", &config.server_name).expect("@palpo:server_name is valid");
 
     if let Err(e) = crate::user::create_user(&palpo_user, None) {
         tracing::error!(error = ?e, "create palpo admin user failed.");
@@ -894,7 +894,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 5. Events implied by name and topic
-    let room_name = format!("{} Admin Room", &conf.server_name);
+    let room_name = format!("{} Admin Room", &config.server_name);
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomName,
@@ -911,7 +911,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         PduBuilder {
             event_type: TimelineEventType::RoomTopic,
             content: to_raw_value(&RoomTopicEventContent {
-                topic: format!("Manage {}", &conf.server_name),
+                topic: format!("Manage {}", &config.server_name),
             })
             .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
@@ -923,7 +923,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 6. Room alias
-    let alias: OwnedRoomAliasId = format!("#admins:{}", &conf.server_name)
+    let alias: OwnedRoomAliasId = format!("#admins:{}", &config.server_name)
         .try_into()
         .expect("#admins:server_name is a valid alias name");
 

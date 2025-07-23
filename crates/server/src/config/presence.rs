@@ -31,16 +31,16 @@ pub struct PresenceConfig {
 	/// How many seconds without presence updates before you become idle.
 	/// Defaults to 5 minutes.
 	///
-	/// default: 300
-	#[serde(default = "default_presence_idle_timeout_s")]
-	pub idle_timeout_secs: u64,
+	/// default: 300_000
+	#[serde(default = "default_presence_idle_timeout")]
+	pub idle_timeout: u64,
 
 	/// How many seconds without presence updates before you become offline.
 	/// Defaults to 30 minutes.
 	///
-	/// default: 1800
-	#[serde(default = "default_presence_offline_timeout_s")]
-	pub offline_timeout_secs: u64,
+	/// default: 1800_000
+	#[serde(default = "default_presence_offline_timeout")]
+	pub offline_timeout: u64,
 
 	/// Enable the presence idle timer for remote users.
 	///
@@ -51,3 +51,7 @@ pub struct PresenceConfig {
 	#[serde(default = "default_true")]
 	pub timeout_remote_users: bool,
 }
+
+fn default_presence_offline_timeout() -> u64 { 30 * 60 * 1000 }
+
+fn default_presence_idle_timeout() -> u64 { 5 * 60 * 1000 }

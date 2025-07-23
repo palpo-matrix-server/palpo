@@ -40,6 +40,7 @@ chrono = { version = "0.4.19", features = ["serde"] }
 clap = { version = "4.5.41", default-features = false }
 config = "0.15.13"
 cookie = "0.18.0"
+core_affinity = "0.8.3"
 cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 date_header = "1.0.5"

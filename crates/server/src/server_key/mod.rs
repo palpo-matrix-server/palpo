@@ -264,12 +264,12 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
 pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
-    signatures::sign_json(config::server_name().as_str(), config::keypair(), object).map_err(Into::into)
+    signatures::sign_json(config().server_name.as_str(), conf::keypair(), object).map_err(Into::into)
 }
 
 pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
     room_version: &RoomVersionId,
 ) -> Result<(), crate::core::signatures::Error> {
-    signatures::hash_and_sign_event(config::server_name().as_str(), config::keypair(), object, room_version)
+    signatures::hash_and_sign_event(config().server_name.as_str(), conf::keypair(), object, room_version)
 }

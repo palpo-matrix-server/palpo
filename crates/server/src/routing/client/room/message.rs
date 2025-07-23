@@ -252,9 +252,10 @@ pub(super) async fn post_message(
 ) -> JsonResult<SendMessageResBody> {
     let authed = depot.authed_info()?;
 
+    let config = config();
     let state_lock = room::lock_state(&args.room_id).await;
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config::allow_encryption() {
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !config.allow_encryption {
         return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 

@@ -10,7 +10,7 @@ use crate::{AppResult, config, data, sending};
 
 /// Resets the presence timeout, so the user will stay in their current presence state.
 pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<()> {
-    if !config::allow_local_presence() {
+    if !config().presence.allow_local {
         return Ok(());
     }
 
@@ -62,7 +62,7 @@ pub fn set_presence(
     status_msg: Option<String>,
     force: bool,
 ) -> AppResult<bool> {
-    if !config::allow_local_presence() {
+    if !config().presence.allow_local {
         return Ok(false);
     }
 

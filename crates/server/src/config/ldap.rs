@@ -8,7 +8,7 @@ pub struct LdapConfig {
     /// Whether to enable LDAP login.
     ///
     /// example: "true"
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub enable: bool,
 
     /// URI of the LDAP server.

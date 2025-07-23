@@ -147,7 +147,7 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
-        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .filter(room_joined_servers::server_id.ne(&config().server_name))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_pdu_servers(servers.into_iter(), pdu_id)
@@ -171,7 +171,7 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id:
 pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
-        .filter(room_joined_servers::server_id.ne(config::server_name()))
+        .filter(room_joined_servers::server_id.ne(&config().server_name))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_edu_servers(servers.into_iter(), edu)
@@ -396,7 +396,7 @@ async fn send_events(
                 &server.origin().await,
                 txn_id,
                 SendMessageReqBody {
-                    origin: config::server_name().to_owned(),
+                    origin: config().server_name.to_owned(),
                     pdus: pdu_jsons,
                     edus: edu_jsons,
                     origin_server_ts: UnixMillis::now(),

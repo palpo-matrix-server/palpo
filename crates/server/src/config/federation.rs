@@ -9,6 +9,11 @@ use crate::core::serde::{default_false, default_true};
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct FederationConfig {
+	/// Controls whether federation is allowed or not. It is not recommended to
+	/// disable this after the fact due to potential federation breakage.
+	#[serde(default = "default_true")]
+	pub enable: bool,
+
     /// Allows federation requests to be made to itself
     ///
     /// This isn't intended and is very likely a bug if federation requests are
@@ -68,6 +73,27 @@ pub struct FederationConfig {
 	/// default: 86400
 	#[serde(default = "default_sender_retry_backoff_limit")]
 	pub sender_retry_backoff_limit: u64,
+
+	 /// Set this to true to allow federating device display names / allow
+    /// external users to see your device display name. If federation is
+    /// disabled entirely (`allow_federation`), this is inherently false. For
+    /// privacy reasons, this is best left disabled.
+    #[serde(default)]
+    pub allow_device_name: bool,
+
+	
+    /// Config option to allow or disallow incoming federation requests that
+    /// obtain the profiles of our local users from
+    /// `/_matrix/federation/v1/query/profile`
+    ///
+    /// Increases privacy of your local user's such as display names, but some
+    /// remote users may get a false "this user does not exist" error when they
+    /// try to invite you to a DM or room. Also can protect against profile
+    /// spiders.
+    ///
+    /// This is inherently false if `allow_federation` is disabled
+    #[serde(default = "default_true")]
+    pub allow_inbound_profile_lookup: bool,
 }
 
 

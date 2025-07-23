@@ -9,7 +9,10 @@ use salvo::http::HeaderValue;
 use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 
-use super::{BlurhashConfig, JwtConfig, LdapConfig, UrlPreviewConfig};
+use super::{
+    AdminConfig, BlurhashConfig, CompressionConfig, FederationConfig, JwtConfig, LdapConfig, LoggerConfig, MediaConfig,
+    PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+};
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
 use crate::data::DbConfig;
@@ -40,12 +43,8 @@ pub struct ServerConfig {
 
     pub db: DbConfig,
 
-    #[serde(default = "default_false")]
-    pub enable_lightning_bolt: bool,
     #[serde(default = "default_true")]
     pub allow_check_for_updates: bool,
-    #[serde(default = "default_cleanup_second_interval")]
-    pub cleanup_second_interval: u32,
     #[serde(default = "default_max_concurrent_requests")]
     pub max_concurrent_requests: u16,
 
@@ -59,67 +58,23 @@ pub struct ServerConfig {
     #[serde(default = "default_new_user_displayname_suffix")]
     pub new_user_displayname_suffix: String,
 
-    /// The UNIX socket palpo will listen on.
-    ///
-    /// palpo cannot listen on both an IP address and a UNIX socket. If
-    /// listening on a UNIX socket, you MUST remove/comment the `address` key.
-    ///
-    /// Remember to make sure that your reverse proxy has access to this socket
-    /// file, either by adding your reverse proxy to the 'palpo' group or
-    /// granting world R/W permissions with `unix_socket_perms` (666 minimum).
-    ///
-    /// example: "/run/palpo/palpo.sock"
-    pub unix_socket_path: Option<PathBuf>,
+    // /// The UNIX socket palpo will listen on.
+    // ///
+    // /// palpo cannot listen on both an IP address and a UNIX socket. If
+    // /// listening on a UNIX socket, you MUST remove/comment the `address` key.
+    // ///
+    // /// Remember to make sure that your reverse proxy has access to this socket
+    // /// file, either by adding your reverse proxy to the 'palpo' group or
+    // /// granting world R/W permissions with `unix_socket_perms` (666 minimum).
+    // ///
+    // /// example: "/run/palpo/palpo.sock"
+    // pub unix_socket_path: Option<PathBuf>,
 
-    /// The default permissions (in octal) to create the UNIX socket with.
-    ///
-    /// default: 660
-    #[serde(default = "default_unix_socket_perms")]
-    pub unix_socket_perms: u32,
-
-    /// Set this to any float value to multiply palpo's in-memory LRU caches
-    /// with such as "auth_chain_cache_capacity".
-    ///
-    /// May be useful if you have significant memory to spare to increase
-    /// performance.
-    ///
-    /// If you have low memory, reducing this may be viable.
-    ///
-    /// By default, the individual caches such as "auth_chain_cache_capacity"
-    /// are scaled by your CPU core count.
-    ///
-    /// default: 1.0
-    #[serde(
-        default = "default_cache_capacity_modifier",
-        alias = "conduit_cache_capacity_modifier"
-    )]
-    pub cache_capacity_modifier: f64,
-
-    /// default: varies by system
-    #[serde(default = "default_pdu_cache_capacity")]
-    pub pdu_cache_capacity: u32,
-
-    /// default: varies by system
-    #[serde(default = "default_auth_chain_cache_capacity")]
-    pub auth_chain_cache_capacity: u32,
-
-
-    /// default: varies by system
-    #[serde(default = "default_eventid_pdu_cache_capacity")]
-    pub eventid_pdu_cache_capacity: u32,
-
-    /// default: varies by system
-    #[serde(default = "default_server_name_event_data_cache_capacity")]
-    pub servernameevent_data_cache_capacity: u32,
-
-    /// default: varies by system
-    #[serde(default = "default_stateinfo_cache_capacity")]
-    pub stateinfo_cache_capacity: u32,
-
-    /// default: varies by system
-    #[serde(default = "default_roomid_space_hierarchy_cache_capacity")]
-    pub roomid_space_hierarchy_cache_capacity: u32,
-
+    // /// The default permissions (in octal) to create the UNIX socket with.
+    // ///
+    // /// default: 660
+    // #[serde(default = "default_unix_socket_perms")]
+    // pub unix_socket_perms: u32,
     /// Enable to query all nameservers until the domain is found. Referred to
     /// as "trust_negative_responses" in hickory_resolver. This can avoid
     /// useless DNS queries if the first nameserver responds with NXDOMAIN or
@@ -463,26 +418,6 @@ pub struct ServerConfig {
     #[serde(default)]
     pub lockdown_public_room_directory: bool,
 
-    /// Set this to true to allow federating device display names / allow
-    /// external users to see your device display name. If federation is
-    /// disabled entirely (`allow_federation`), this is inherently false. For
-    /// privacy reasons, this is best left disabled.
-    #[serde(default)]
-    pub allow_device_name_federation: bool,
-
-    /// Config option to allow or disallow incoming federation requests that
-    /// obtain the profiles of our local users from
-    /// `/_matrix/federation/v1/query/profile`
-    ///
-    /// Increases privacy of your local user's such as display names, but some
-    /// remote users may get a false "this user does not exist" error when they
-    /// try to invite you to a DM or room. Also can protect against profile
-    /// spiders.
-    ///
-    /// This is inherently false if `allow_federation` is disabled
-    #[serde(default = "default_true", alias = "allow_profile_lookup_federation_requests")]
-    pub allow_inbound_profile_lookup_federation_requests: bool,
-
     /// This is a password that can be configured that will let you login to the
     /// server bot account (currently `@conduit`) for emergency troubleshooting
     /// purposes such as recovering/recreating your admin room, or inviting
@@ -705,6 +640,9 @@ pub struct ServerConfig {
     pub turn: Option<TurnConfig>,
 
     #[serde(default)]
+    pub url_preview: UrlPreviewConfig,
+
+    #[serde(default)]
     pub admin: AdminConfig,
     #[serde(default)]
     pub presence: PresenceConfig,
@@ -719,6 +657,8 @@ pub struct ServerConfig {
     // external structure; separate section
     #[serde(default)]
     pub well_known: WellKnownConfig,
+
+    pub federation: Option<FederationConfig>,
 
     /// Enables configuration reload when the server receives SIGUSR1 on
     /// supporting platforms.
@@ -745,10 +685,9 @@ pub struct ServerConfig {
     #[serde(default)]
     pub sender_workers: usize,
 
-    // external structure; separate section
-    #[serde(default)]
-    pub appservice: BTreeMap<String, AppService>,
-
+    // // external structure; separate section
+    // #[serde(default)]
+    // pub appservice: BTreeMap<String, AppService>,
     #[serde(flatten)]
     #[allow(clippy::zero_sized_map_values)]
     // this is a catchall, the map shouldn't be zero at runtime
@@ -756,6 +695,61 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+    pub fn enabled_ldap(&self) -> Option<&LdapConfig> {
+        if let Some(ldap) = self.ldap.as_ref() {
+            if ldap.enable { Some(ldap) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_jwt(&self) -> Option<&JwtConfig> {
+        if let Some(jwt) = self.jwt.as_ref() {
+            if jwt.enable { Some(jwt) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
+        if let Some(tls) = self.tls.as_ref() {
+            if tls.enable { Some(tls) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_federation(&self) -> Option<&FederationConfig> {
+        if let Some(federation) = self.federation.as_ref() {
+            if federation.enable { Some(federation) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn well_known_client(&self) -> String {
+        if let Some(url) = &self.well_known.client {
+            url.to_string()
+        } else {
+            format!("https://{}", self.server_name)
+        }
+    }
+
+    pub fn well_known_server(&self) -> OwnedServerName {
+        match &self.well_known.server {
+            Some(server_name) => server_name.to_owned(),
+            None => {
+                if self.server_name.port().is_some() {
+                    self.server_name.to_owned()
+                } else {
+                    format!("{}:443", self.server_name.host())
+                        .try_into()
+                        .expect("Host from valid hostname + :443 must be valid")
+                }
+            }
+        }
+    }
+
     pub fn check(&self) -> AppResult<()> {
         if cfg!(debug_assertions) {
             tracing::warn!("Note: conduwuit was built without optimisations (i.e. debug build)");
@@ -934,36 +928,14 @@ impl ServerConfig {
         //     );
         // }
 
-        if self.allow_outgoing_presence && !self.allow_local_presence {
+        if self.presence.allow_outgoing && !self.presence.allow_local {
             return Err(AppError::internal(
                 "Outgoing presence requires allowing local presence. Please enable \
                  'allow_local_presence' or disable outgoing presence.",
             ));
         }
 
-        if self.url_preview_domain_contains_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_domain_contains_allowlist\" to \"*\". This opens up significant \
-                 attack surface to your server. You are expected to be aware of the risks by doing \
-                 this."
-            );
-        }
-        if self.url_preview_domain_explicit_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_domain_explicit_allowlist\" to \"*\". This opens up significant \
-                 attack surface to your server. You are expected to be aware of the risks by doing \
-                 this."
-            );
-        }
-        if self.url_preview_url_contains_allowlist.contains(&"*".to_owned()) {
-            warn!(
-                "All URLs are allowed for URL previews via setting \
-                 \"url_preview_url_contains_allowlist\" to \"*\". This opens up significant attack \
-                 surface to your server. You are expected to be aware of the risks by doing this."
-            );
-        }
+        self.url_preview.check();
 
         // if let Some(Either::Right(_)) = self.url_preview_bound_interface.as_ref() {
         //     if !matches!(OS, "android" | "fuchsia" | "linux") {
@@ -1027,7 +999,6 @@ impl fmt::Display for ServerConfig {
             ("Maximum request size", &self.max_request_size.to_string()),
             ("Maximum concurrent requests", &self.max_concurrent_requests.to_string()),
             ("Allow registration", &self.allow_registration.to_string()),
-            ("Enabled lightning bolt", &self.enable_lightning_bolt.to_string()),
             ("Allow encryption", &self.allow_encryption.to_string()),
             ("Allow federation", &self.allow_federation.to_string()),
             ("Allow room creation", &self.allow_room_creation.to_string()),
@@ -1045,33 +1016,7 @@ impl fmt::Display for ServerConfig {
                 }
                 &lst.join(", ")
             }),
-            (
-                "TURN username",
-                if self.turn_username.is_empty() {
-                    "not set"
-                } else {
-                    &self.turn_username
-                },
-            ),
-            ("TURN password", {
-                if self.turn_password.is_empty() {
-                    "not set"
-                } else {
-                    "set"
-                }
-            }),
-            ("TURN secret", {
-                if self.turn_secret.is_empty() { "not set" } else { "set" }
-            }),
-            ("Turn TTL", &self.turn_ttl.to_string()),
-            ("Turn URIs", {
-                let mut lst = vec![];
-                for item in self.turn_uris.iter().cloned().enumerate() {
-                    let (_, uri): (usize, String) = item;
-                    lst.push(uri);
-                }
-                &lst.join(", ")
-            }),
+            ("TURN ", if let Some(turn) = &self.turn { "set" } else { "not set" }),
         ];
 
         let mut msg: String = "Active config values:\n\n".to_owned();
@@ -1104,10 +1049,13 @@ impl AllowedOrigins {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct TlsConfig {
+    #[serde(default = "default_true")]
+    pub enable: bool,
+
     /// Path to a valid TLS certificate file.
     ///
     /// example: "/path/to/my/certificate.crt"
-    pub certs: String,
+    pub cert: String,
 
     /// Path to a valid TLS certificate private key.
     ///
@@ -1154,13 +1102,13 @@ fn default_startup_netburst_keep() -> i64 {
     50
 }
 fn default_login_token_ttl() -> u64 {
-    2 * 60 * 1000
+    2 * 60_000
 }
 fn default_refresh_token_ttl() -> u64 {
-    2 * 60 * 1000
+    2 * 60_000
 }
 fn default_session_ttl() -> u64 {
-    60 * 60 * 1000
+    60 * 60_000
 }
 fn default_openid_token_ttl() -> u64 {
     60 * 60
@@ -1170,16 +1118,11 @@ fn default_ip_lookup_strategy() -> u8 {
     5
 }
 
-fn default_cleanup_second_interval() -> u32 {
-    60 // every minute
+fn default_cleanup_interval() -> u32 {
+    60_000 // every minute
 }
-
-fn default_request_conn_timeout() -> u64 {
-    10
-}
-
 fn default_request_timeout() -> u64 {
-    35
+    35_000
 }
 
 fn default_max_request_size() -> u32 {
@@ -1214,23 +1157,23 @@ fn default_log_format() -> String {
 }
 
 fn default_presence_idle_timeout_s() -> u64 {
-    5 * 60
+    5 * 60_000
 }
 
 fn default_presence_offline_timeout_s() -> u64 {
-    30 * 60
+    30 * 60_000
 }
 
 fn default_typing_federation_timeout_s() -> u64 {
-    30
+    30_000
 }
 
 fn default_typing_client_timeout_min_s() -> u64 {
-    15
+    15_000
 }
 
 fn default_typing_client_timeout_max_s() -> u64 {
-    45
+    45_000
 }
 
 fn default_default_room_version() -> RoomVersionId {
@@ -1270,6 +1213,57 @@ fn parallelism_scaled(val: usize) -> usize {
 }
 
 fn default_server_name_event_data_cache_capacity() -> u32 {
-	parallelism_scaled_u32(100_000).saturating_add(500_000)
+    parallelism_scaled_u32(100_000).saturating_add(500_000)
 }
-fn default_new_user_displayname_suffix() -> String { "💕".to_owned() }
+fn default_new_user_displayname_suffix() -> String {
+    "💕".to_owned()
+}
+
+fn default_request_total_timeout() -> u64 {
+    320_000
+}
+
+fn default_request_conn_timeout() -> u64 {
+    10_000
+}
+
+fn default_request_idle_timeout() -> u64 {
+    5_000
+}
+
+fn default_request_idle_per_host() -> u16 {
+    1_000
+}
+fn default_appservice_timeout() -> u64 {
+    35_000
+}
+
+fn default_appservice_idle_timeout() -> u64 {
+    300_000
+}
+
+fn default_client_receive_timeout() -> u64 {
+    75_000
+}
+
+fn default_client_request_timeout() -> u64 {
+    180_000
+}
+
+fn default_client_response_timeout() -> u64 {
+    120_000
+}
+
+fn default_client_shutdown_timeout() -> u64 {
+    15_000
+}
+
+fn default_sender_shutdown_timeout() -> u64 {
+    5_000
+}
+
+fn default_notification_push_path() -> String {
+    "/_matrix/push/v1/notify".to_owned()
+}
+
+fn default_pusher_idle_timeout() -> u64 { 15 }

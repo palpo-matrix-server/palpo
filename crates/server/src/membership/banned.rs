@@ -35,7 +35,7 @@ pub async fn banned_room_check(
             if conf.auto_deactivate_banned_room_attempts {
                 warn!("Automatically deactivating user {user_id} due to attempted banned room join");
 
-                if conf.admin_room_notices {
+                if conf.admin.room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
 							 room join from IP {client_addr}"
@@ -59,7 +59,7 @@ pub async fn banned_room_check(
 
             if conf.auto_deactivate_banned_room_attempts {
                 warn!("Automatically deactivating user {user_id} due to attempted banned room join");
-                if conf.admin_room_notices {
+                if conf.admin.room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
 							 room join from IP {client_addr}"

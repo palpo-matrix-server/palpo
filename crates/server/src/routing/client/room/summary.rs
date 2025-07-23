@@ -32,7 +32,7 @@ pub async fn get_summary_msc_3266(
         return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
     }
 
-    if room::is_server_joined(config::server_name(), &room_id)? {
+    if room::is_server_joined(&config().server_name, &room_id)? {
         let res_body = local_room_summary(&room_id, sender_id).await?;
         json_ok(res_body)
     } else {

@@ -6,8 +6,12 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
+use crate::core::serde::{default_false, default_true};
+
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct TurnConfig {
+    #[serde(default = "default_true")]
+    pub enable: bool,
     /// Static TURN username to provide the client if not using a shared secret
     /// ("turn_secret"), It is recommended to use a shared secret over static
     /// credentials.

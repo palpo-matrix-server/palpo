@@ -53,7 +53,7 @@ pub async fn knock_room(
         }
     }
 
-    if room::is_server_joined(config::server_name(), room_id).unwrap_or(false) {
+    if room::is_server_joined(&config().server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
         info!("We can knock locally");
         let room_version_id = room::get_version(room_id)?;
@@ -118,7 +118,7 @@ pub async fn knock_room(
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(config::server_name().as_str().to_owned()),
+        CanonicalJsonValue::String(config().server_name.as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),

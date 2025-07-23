@@ -122,9 +122,8 @@ pub fn is_admin_room(room_id: &RoomId) -> bool {
 }
 
 pub fn admin_room_id() -> AppResult<OwnedRoomId> {
-    let server_name = config::server_name();
     crate::room::resolve_local_alias(
-        <&RoomAliasId>::try_from(format!("#admins:{}", server_name).as_str())
+        <&RoomAliasId>::try_from(format!("#admins:{}", &config().server_name).as_str())
             .expect("#admins:server_name is a valid room alias"),
     )
 }
@@ -151,7 +150,7 @@ pub fn set_alias(
 }
 
 pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<AliasResBody> {
-    if room_alias.server_name() != config::server_name() {
+    if room_alias.server_name() != config().server_name {
         let request = directory_request(&room_alias.server_name().origin().await, &room_alias)?.into_inner();
         let mut body = crate::sending::send_federation_request(room_alias.server_name(), request)
             .await?
@@ -192,7 +191,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
         None => return Err(MatrixError::not_found("Room with alias not found.").into()),
     };
 
-    Ok(AliasResBody::new(room_id, vec![config::server_name().to_owned()]))
+    Ok(AliasResBody::new(room_id, vec![config().server_name.to_owned()]))
 }
 
 #[tracing::instrument]

@@ -1,6 +1,8 @@
+use std::net::IpAddr;
 use std::path::PathBuf;
 
-use serde::{Serialize, Deserialize};
+use either::Either;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -76,7 +78,7 @@ pub struct UrlPreviewConfig {
     /// spidering. Defaults to 256KB in bytes.
     ///
     /// default: 256000
-    #[serde(default = "default_url_preview_max_spider_size")]
+    #[serde(default = "default_max_spider_size")]
     pub max_spider_size: usize,
 
     /// Option to decide whether you would like to run the domain allowlist
@@ -93,6 +95,34 @@ pub struct UrlPreviewConfig {
     pub check_root_domain: bool,
 }
 
-fn default_url_preview_max_spider_size() -> usize {
+impl UrlPreviewConfig {
+    pub fn check(&self) {
+        if self.domain_contains_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview.domain_contains_allowlist\" to \"*\". This opens up significant \
+                 attack surface to your server. You are expected to be aware of the risks by doing \
+                 this."
+            );
+        }
+        if self.domain_explicit_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview.domain_explicit_allowlist\" to \"*\". This opens up significant \
+                 attack surface to your server. You are expected to be aware of the risks by doing \
+                 this."
+            );
+        }
+        if self.url_contains_allowlist.contains(&"*".to_owned()) {
+            warn!(
+                "All URLs are allowed for URL previews via setting \
+                 \"url_preview.url_contains_allowlist\" to \"*\". This opens up significant attack \
+                 surface to your server. You are expected to be aware of the risks by doing this."
+            );
+        }
+    }
+}
+
+fn default_max_spider_size() -> usize {
     256_000 // 256KB
 }

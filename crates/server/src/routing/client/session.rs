@@ -76,7 +76,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
                 warn!("Bad login type: {:?}", &body.login_info);
                 return Err(MatrixError::forbidden("Bad login type.", None).into());
             };
-            let user_id = UserId::parse_with_server_name(username, config::server_name())
+            let user_id = UserId::parse_with_server_name(username, &config().server_name)
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
 
             // if let Some(ldap) = config::enabled_ldap() {
@@ -158,11 +158,11 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             user::take_login_token(token)?
         }
         LoginInfo::Jwt(info) => {
-            let config = config::enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
+            let jwt_config = config().enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
 
-            let claim = user::session::validate_jwt_token(config, &info.token)?;
+            let claim = user::session::validate_jwt_token(jwt_config, &info.token)?;
             let local = claim.sub.to_lowercase();
-            let user_id = UserId::parse_with_server_name(local, config::server_name())
+            let user_id = UserId::parse_with_server_name(local, &config().server_name)
                 .map_err(|e| MatrixError::invalid_username(format!("JWT subject is not a valid user MXID: {e}")))?;
 
             if !data::user::user_exists(&user_id)? {
@@ -193,7 +193,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             } else {
                 return Err(MatrixError::forbidden("Bad login type.", None).into());
             };
-            let user_id = UserId::parse_with_server_name(username, config::server_name())
+            let user_id = UserId::parse_with_server_name(username, &config().server_name)
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             user_id
         }

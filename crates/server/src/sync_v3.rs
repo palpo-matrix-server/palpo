@@ -198,7 +198,7 @@ pub async fn sync_events(
         },
     );
 
-    if config::allow_local_presence() {
+    if config().presence.allow_local {
         // Take presence updates from this room
         for (user_id, presence_event) in crate::data::user::presences_since(since_sn.unwrap_or_default())? {
             if user_id == sender_id || !state::user_can_see_user(sender_id, &user_id)? {
@@ -709,9 +709,10 @@ async fn load_left_room(
     _joined_users: &mut HashSet<OwnedUserId>,
     _left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<LeftRoom> {
+    let config = crate::config();
     if !room::room_exists(room_id)? {
         let event = PduEvent {
-            event_id: EventId::new(config::server_name()).into(),
+            event_id: EventId::new(&config.server_name).into(),
             sender: sender_id.to_owned(),
             origin_server_ts: UnixMillis::now(),
             event_ty: TimelineEventType::RoomMember,
