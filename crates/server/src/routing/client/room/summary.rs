@@ -119,7 +119,7 @@ async fn remote_room_summary_hierarchy(
         "Sending remote room summary response for {room_id:?}"
     );
     let conf = crate::config::get();
-    if !conf.allow_federation {
+    if conf.enabled_federation().is_none(){
         return Err(MatrixError::forbidden("Federation is disabled.", None).into());
     }
 

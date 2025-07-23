@@ -293,11 +293,6 @@ pub struct ServerConfig {
     #[serde(default = "default_true")]
     pub allow_encryption: bool,
 
-    /// Controls whether federation is allowed or not. It is not recommended to
-    /// disable this after the fact due to potential federation breakage.
-    #[serde(default = "default_false")]
-    pub allow_federation: bool,
-
     /// Allow standard users to create rooms. Appservices and admins are always
     /// allowed to create rooms
     #[serde(default = "default_true")]

@@ -13,7 +13,7 @@ pub struct CompressionConfig {
     /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
     /// before deciding to enable this.
     #[serde(default)]
-    pub zstd_enabled: bool,
+    pub enable_zstd: bool,
 
     /// Set this to true for palpo to compress HTTP response bodies using
     /// gzip. This option does nothing if palpo was not built with
@@ -25,7 +25,7 @@ pub struct CompressionConfig {
     /// If you are in a large amount of rooms, you may find that enabling this
     /// is necessary to reduce the significantly large response bodies.
     #[serde(default)]
-    pub zip_enabled: bool,
+    pub enable_zip: bool,
 
     /// Set this to true for palpo to compress HTTP response bodies using
     /// brotli. This option does nothing if palpo was not built with
@@ -34,7 +34,7 @@ pub struct CompressionConfig {
     /// See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
     /// before deciding to enable this.
     #[serde(default)]
-    pub brotli_enabled: u64,
+    pub enable_brotli: u64,
 }
 
 fn default_typing_federation_timeout_s() -> u64 {

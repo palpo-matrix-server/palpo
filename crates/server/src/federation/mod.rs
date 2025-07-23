@@ -20,7 +20,7 @@ pub(crate) async fn send_request(
     destination: &ServerName,
     mut request: reqwest::Request,
 ) -> AppResult<reqwest::Response> {
-    if !crate::config::get().allow_federation {
+    if crate::config::get().enabled_federation().is_none() {
         return Err(AppError::public("Federation is disabled."));
     }
 
