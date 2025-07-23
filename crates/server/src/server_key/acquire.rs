@@ -187,7 +187,7 @@ where
             .map(|(server, keys)| (server.borrow(), keys.iter().map(Borrow::borrow)));
 
         match batch_notary_request(notary, batch).await {
-            Err(e) => error!("Failed to contact notary {notary:?}: {e}"),
+            Err(e) => error!("failed to contact notary {notary:?}: {e}"),
             Ok(results) => {
                 for server_keys in results {
                     acquire_notary_result(&mut missing, server_keys).await;

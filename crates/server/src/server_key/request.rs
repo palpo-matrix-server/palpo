@@ -40,8 +40,9 @@ where
         .last()
         .cloned()
     {
+        let origin = batch.origin().await;
         let request = remote_server_keys_batch_request(
-            &notary.origin().await,
+            &origin,
             RemoteServerKeysBatchReqBody {
                 server_keys: server_keys.split_off(&batch),
             },

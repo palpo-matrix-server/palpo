@@ -719,7 +719,7 @@
 # See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
 # before deciding to enable this.
 #
-# zstd_enabled =  false
+# enable_zstd =  false
 
 # Set this to true for palpo to compress HTTP response bodies using
 # gzip. This option does nothing if palpo was not built with
@@ -731,7 +731,7 @@
 # If you are in a large amount of rooms, you may find that enabling this
 # is necessary to reduce the significantly large response bodies.
 #
-# zip_enabled =  false
+# enable_zip =  false
 
 # Set this to true for palpo to compress HTTP response bodies using
 # brotli. This option does nothing if palpo was not built with
@@ -740,7 +740,7 @@
 # See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
 # before deciding to enable this.
 #
-# brotli_enabled =  false
+# enable_brotli =  false
 
 # [db]
 

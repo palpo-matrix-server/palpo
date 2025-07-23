@@ -304,7 +304,6 @@ pub(crate) async fn join_room_by_id_or_alias(
     req: &mut Request,
     depot: &mut Depot,
 ) -> JsonResult<JoinRoomResBody> {
-    println!("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id_or_alias = room_id_or_alias.into_inner();

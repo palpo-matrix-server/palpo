@@ -124,7 +124,6 @@ macro_rules! join_path {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("ZZZZZZZZZZZZZZZZZzz");
     // if dotenvy::from_filename(".env.local").is_err() {
     //     println!(".env.local file is not found");
     // }
