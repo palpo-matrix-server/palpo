@@ -109,7 +109,7 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
             if let Some(file) = file.as_mut() {
                 file.write_fmt(format_args!("\n{doc}")).expect("written to config file");
 
-                file.write_fmt(format_args!("# {ident} = {default}\n"))
+                file.write_fmt(format_args!("# {ident} ={default}\n"))
                     .expect("written to config file");
             }
 
