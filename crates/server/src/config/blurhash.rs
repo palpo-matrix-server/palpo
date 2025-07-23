@@ -1,5 +1,8 @@
 use serde::Deserialize;
 
+use crate::macros::config_example;
+
+#[config_example(filename = "palpo-example.toml", section = "blurhash")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct BlurhashConfig {
     /// blurhash x component, 4 is recommended by https://blurha.sh/

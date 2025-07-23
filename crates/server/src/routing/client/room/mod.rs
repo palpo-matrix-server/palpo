@@ -284,9 +284,10 @@ async fn upgrade(
         return Err(MatrixError::unsupported_room_version("This server does not support that room version.").into());
     }
 
+    let conf = config::get();
     // Create a replacement room
-    let replacement_room = RoomId::new(&config().server_name);
-    room::ensure_room(&replacement_room, &config::default_room_version())?;
+    let replacement_room = RoomId::new(&conf.server_name);
+    room::ensure_room(&replacement_room, &conf.default_room_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
@@ -508,19 +509,19 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let room_id = RoomId::new(&config().server_name);
+    let room_id = RoomId::new(&config::get().server_name);
 
+    let conf = config::get();
     let state_lock = room::lock_state(&room_id).await;
-    room::ensure_room(&room_id, &config::default_room_version())?;
+    room::ensure_room(&room_id, &conf.default_room_version)?;
 
-    let config = config();
-    if !config.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
+    if !conf.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
         // TODO: Check for invalid characters and maximum length
-        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, config.server_name))
+        let alias = RoomAliasId::parse(format!("#{}:{}", localpart, &conf.server_name))
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
         if room::resolve_local_alias(&alias).is_ok() {
@@ -542,7 +543,7 @@ pub(super) async fn create_room(
                 );
             }
         }
-        None => config.default_room_version,
+        None => conf.default_room_version.clone(),
     };
 
     let content = match &body.creation_content {
@@ -757,7 +758,7 @@ pub(super) async fn create_room(
         pdu_builder.state_key.get_or_insert_with(|| "".to_owned());
 
         // Silently skip encryption events if they are not allowed
-        if pdu_builder.event_type == TimelineEventType::RoomEncryption && !config::allow_encryption() {
+        if pdu_builder.event_type == TimelineEventType::RoomEncryption && !conf.allow_encryption {
             continue;
         }
 

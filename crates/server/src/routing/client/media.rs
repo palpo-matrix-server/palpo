@@ -78,7 +78,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
         } else {
             Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
         }
-    } else if &*args.server_name != config().server_name && args.allow_remote {
+    } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
@@ -133,7 +133,7 @@ pub async fn get_content_with_filename(
         file.send(req.headers(), res).await;
 
         Ok(())
-    } else if &*args.server_name != config().server_name && args.allow_remote {
+    } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
@@ -143,7 +143,7 @@ pub async fn get_content_with_filename(
 #[endpoint]
 pub fn create_mxc_uri(_aa: AuthArgs) -> JsonResult<CreateMxcUriResBody> {
     let media_id = utils::random_string(crate::MXC_LENGTH);
-    let mxc = format!("mxc://{}/{}", config().server_name, media_id);
+    let mxc = format!("mxc://{}/{}", config::get().server_name, media_id);
     Ok(Json(CreateMxcUriResBody {
         content_uri: OwnedMxcUri::from(mxc),
         unused_expires_at: None,
@@ -167,7 +167,7 @@ pub async fn create_content(
     let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let payload = req
-        .payload_with_max_size(config().max_request_size as usize)
+        .payload_with_max_size(config::get().max_request_size as usize)
         .await
         .unwrap();
     // let checksum = utils::hash::hash_data_sha2_256(payload)?;
@@ -175,11 +175,11 @@ pub async fn create_content(
 
     let media_id = utils::base32_crockford(Uuid::new_v4().as_bytes());
     let mxc = Mxc {
-        server_name: &config().server_name,
+        server_name: &config::get().server_name,
         media_id: &media_id,
     };
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let dest_path = config::media_path(&conf.server_name, &media_id);
 
     // let dest_path = Path::new(&dest_path);
@@ -236,15 +236,15 @@ pub async fn upload_content(
     let file_name = args.filename.clone();
     let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
-    let config = crate::config();
+    let conf = crate::config::get();
     let payload = req
-        .payload_with_max_size(config.max_request_size as usize)
+        .payload_with_max_size(conf.max_request_size as usize)
         .await
         .unwrap();
 
-    // let mxc = format!("mxc://{}/{}", crate::config().server_name, args.media_id);
+    // let mxc = format!("mxc://{}/{}", crate::config::get().server_name, args.media_id);
 
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     let dest_path = config::media_path(&conf.server_name, &args.media_id);
     let dest_path = Path::new(&dest_path);
@@ -293,7 +293,7 @@ pub async fn upload_content(
 #[endpoint]
 pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
     json_ok(ConfigResBody {
-        upload_size: config().max_request_size.into(),
+        upload_size: config::get().max_request_size.into(),
     })
 }
 

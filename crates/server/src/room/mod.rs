@@ -221,7 +221,7 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
         Ok(b)
     } else {
         let bridge_user_id =
-            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), &config().server_name)
+            UserId::parse_with_server_name(appservice.registration.sender_localpart.as_str(), &config::get().server_name)
                 .ok();
 
         let in_room = bridge_user_id.map_or(false, |id| user::is_joined(&id, room_id).unwrap_or(false)) || {
@@ -259,7 +259,7 @@ pub fn should_join_on_remote_servers(
     if room_id.is_local() {
         return Ok((false, vec![]));
     }
-    if !is_server_joined(&config().server_name, room_id).unwrap_or(false) {
+    if !is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {
         return Ok((true, servers.to_vec()));
     }
     let Ok(join_rule) = room::get_join_rule(room_id) else {
@@ -412,7 +412,7 @@ pub async fn room_available_servers(
     match servers.iter().position(|server_name| server_name.is_local()) {
         Some(server_index) => {
             servers.swap_remove(server_index);
-            servers.insert(0, config().server_name.to_owned());
+            servers.insert(0, config::get().server_name.to_owned());
         }
         _ => match servers.iter().position(|server| server == room_alias.server_name()) {
             Some(alias_server_index) => {
@@ -538,7 +538,7 @@ pub fn is_encrypted(room_id: &RoomId) -> bool {
 pub fn local_users_in_room<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::user_server_id.eq(&config().server_name))
+        .filter(room_users::user_server_id.eq(&config::get().server_name))
         .select(room_users::user_id)
         .load::<OwnedUserId>(&mut connect()?)
         .map_err(Into::into)

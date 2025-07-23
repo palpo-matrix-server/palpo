@@ -76,7 +76,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
                 warn!("Bad login type: {:?}", &body.login_info);
                 return Err(MatrixError::forbidden("Bad login type.", None).into());
             };
-            let user_id = UserId::parse_with_server_name(username, &config().server_name)
+            let user_id = UserId::parse_with_server_name(username, &config::get().server_name)
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
 
             // if let Some(ldap) = config::enabled_ldap() {
@@ -152,21 +152,22 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             user_id
         }
         LoginInfo::Token(Token { token }) => {
-            if !crate::config().login_via_existing_session {
+            if !crate::config::get().login_via_existing_session {
                 return Err(MatrixError::unknown("Token login is not enabled.").into());
             }
             user::take_login_token(token)?
         }
         LoginInfo::Jwt(info) => {
-            let jwt_config = config().enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
+            let conf = config::get();
+            let jwt_conf = conf.enabled_jwt().ok_or_else(|| MatrixError::unknown("JWT login is not enabled."))?;
 
-            let claim = user::session::validate_jwt_token(jwt_config, &info.token)?;
+            let claim = user::session::validate_jwt_token(jwt_conf, &info.token)?;
             let local = claim.sub.to_lowercase();
-            let user_id = UserId::parse_with_server_name(local, &config().server_name)
+            let user_id = UserId::parse_with_server_name(local, &conf.server_name)
                 .map_err(|e| MatrixError::invalid_username(format!("JWT subject is not a valid user MXID: {e}")))?;
 
             if !data::user::user_exists(&user_id)? {
-                if !config.register_user {
+                if !jwt_conf.register_user {
                     return Err(MatrixError::not_found("user is not registered on this server.").into());
                 }
 
@@ -193,7 +194,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             } else {
                 return Err(MatrixError::forbidden("Bad login type.", None).into());
             };
-            let user_id = UserId::parse_with_server_name(username, &config().server_name)
+            let user_id = UserId::parse_with_server_name(username, &config::get().server_name)
                 .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
             user_id
         }
@@ -214,8 +215,8 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
 
     let (refresh_token, refresh_token_id) = if body.refresh_token {
         let refresh_token = utils::random_string(TOKEN_LENGTH);
-        let expires_at = UnixMillis::now().get() + crate::config().refresh_token_ttl;
-        let ultimate_session_expires_at = UnixMillis::now().get() + crate::config().session_ttl;
+        let expires_at = UnixMillis::now().get() + crate::config::get().refresh_token_ttl;
+        let ultimate_session_expires_at = UnixMillis::now().get() + crate::config::get().session_ttl;
         let refresh_token_id = data::user::device::set_refresh_token(
             &user_id,
             &device_id,
@@ -261,7 +262,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
 /// <https://spec.matrix.org/v1.13/client-server-api/#post_matrixclientv1loginget_token>
 #[endpoint]
 async fn get_access_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonResult<TokenResBody> {
-    let conf = crate::config();
+    let conf = crate::config::get();
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let device_id = authed.device_id();
@@ -358,8 +359,8 @@ async fn refresh_access_token(
 
     let access_token = utils::random_string(TOKEN_LENGTH);
     let refresh_token = utils::random_string(TOKEN_LENGTH);
-    let expires_at = UnixMillis::now().get() + crate::config().refresh_token_ttl;
-    let ultimate_session_expires_at = UnixMillis::now().get() + crate::config().session_ttl;
+    let expires_at = UnixMillis::now().get() + crate::config::get().refresh_token_ttl;
+    let ultimate_session_expires_at = UnixMillis::now().get() + crate::config::get().session_ttl;
     let refresh_token_id = data::user::device::set_refresh_token(
         user_id,
         device_id,

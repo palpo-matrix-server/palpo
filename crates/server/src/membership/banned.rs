@@ -20,7 +20,7 @@ pub async fn banned_room_check(
         return Ok(());
     }
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     if let Some(room_id) = room_id {
         if data::room::is_disabled(room_id)?
             || conf

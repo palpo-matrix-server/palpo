@@ -129,7 +129,7 @@ fn search(
 #[endpoint]
 async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     let mut available = BTreeMap::new();
-    let config = crate::config();
+    let conf = crate::config::get();
     for room_version in &*config::UNSTABLE_ROOM_VERSIONS {
         available.insert(room_version.clone(), RoomVersionStability::Unstable);
     }
@@ -139,7 +139,7 @@ async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     json_ok(CapabilitiesResBody {
         capabilities: Capabilities {
             room_versions: RoomVersionsCapability {
-                default: config.default_room_version,
+                default: conf.default_room_version.clone(),
                 available,
             },
             ..Default::default()

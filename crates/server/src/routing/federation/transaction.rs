@@ -128,7 +128,7 @@ async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
 }
 
 async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
-    if !crate::config().presence.allow_incoming {
+    if !crate::config::get().presence.allow_incoming {
         return;
     }
 
@@ -160,7 +160,7 @@ async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
 }
 
 async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
-    // if !crate::config().allow_incoming_read_receipts() {
+    // if !crate::config::get().allow_incoming_read_receipts() {
     // 	return;
     // }
 
@@ -210,7 +210,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
 }
 
 async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
-    // if !crate::config().allow_incoming_typing {
+    // if !crate::config::get().allow_incoming_typing {
     //     return;
     // }
 
@@ -234,7 +234,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
         if typing.typing {
             let timeout = UnixMillis::now()
                 .get()
-                .saturating_add(crate::config().typing.federation_timeout.saturating_mul(1000));
+                .saturating_add(crate::config::get().typing.federation_timeout.saturating_mul(1000));
             let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
         } else {
             let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;

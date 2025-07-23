@@ -36,7 +36,7 @@ where
     while let Some(batch) = server_keys
         .keys()
         .rev()
-        .take(crate::config().trusted_server_batch_size)
+        .take(crate::config::get().trusted_server_batch_size)
         .last()
         .cloned()
     {

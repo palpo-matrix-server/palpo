@@ -1,7 +1,8 @@
 use serde::Deserialize;
 
-use crate::core::serde::{default_false, default_true};
+use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
 
+#[config_example(filename = "palpo-example.toml", section = "read_receipt")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct ReadReceiptConfig {
 	/// Allow receiving incoming read receipts from remote servers.

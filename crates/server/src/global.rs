@@ -169,7 +169,7 @@ pub fn appservices() -> &'static Vec<Registration> {
             let user_id = OwnedUserId::try_from(format!(
                 "@{}:{}",
                 registration.sender_localpart,
-                crate::config().server_name
+                crate::config::get().server_name
             ))
             .unwrap();
             let mut conn = connect().expect("db connect failed");

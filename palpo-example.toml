@@ -1,1235 +1,790 @@
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
-#
-#room_notices =
-
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
-#
-#console_automatic = false
-
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# This item is undocumented. Please contribute documentation for it.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
-
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
+#listen_addr =
 
-# List of admin commands to execute on SIGUSR2.
-#
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# This item is undocumented. Please contribute documentation for it.
 #
-#signal_execute = []
+#server_name =
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# This item is undocumented. Please contribute documentation for it.
 #
-#log_capture = "info"
+#db =
 
-# The default room tag to apply on the admin room.
+# This item is undocumented. Please contribute documentation for it.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
-#
-#room_tag = "m.server_notice"
-
-#[admin]
+#allow_check_for_updates =
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# This item is undocumented. Please contribute documentation for it.
 #
-#room_notices =
+#max_concurrent_requests =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Text which will be added to the end of the user's displayname upon
+# registration with a space before the text. In Conduit, this was the
+# lightning bolt emoji.
 #
-# example: \\!admin debug ping puppygock.gay
+# To disable, set this to "" (an empty string).
 #
-#escape_commands =
+#new_user_displayname_suffix = "💕"
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
-#
-#console_automatic = false
-
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Enable to query all nameservers until the domain is found. Referred to
+# as "trust_negative_responses" in hickory_resolver. This can avoid
+# useless DNS queries if the first nameserver responds with NXDOMAIN or
+# an empty NOERROR response.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#query_all_nameservers =
 
-# Ignore errors in startup commands.
+# Enable using *only* TCP for querying your specified nameservers instead
+# of UDP.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# If you are running palpo in a container environment, this config
+# option may need to be enabled. For more details, see:
+# https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
 #
-#execute_errors_ignore = false
+#query_over_tcp_only = false
 
-# List of admin commands to execute on SIGUSR2.
+# DNS A/AAAA record lookup strategy
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# Takes a number of one of the following options:
+# 1 - Ipv4Only (Only query for A records, no AAAA/IPv6)
 #
-#signal_execute = []
-
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
-#
-#log_capture = "info"
-
-# The default room tag to apply on the admin room.
+# 2 - Ipv6Only (Only query for AAAA records, no A/IPv4)
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# 3 - Ipv4AndIpv6 (Query for A and AAAA records in parallel, uses whatever
+# returns a successful response first)
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# 4 - Ipv6thenIpv4 (Query for AAAA record, if that fails then query the A
+# record)
 #
-#room_notices =
-
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# 5 - Ipv4thenIpv6 (Query for A record, if that fails then query the AAAA
+# record)
 #
-# example: \\!admin debug ping puppygock.gay
+# If you don't have IPv6 networking, then for better DNS performance it
+# may be suitable to set this to Ipv4Only (1) as you will never ever use
+# the AAAA record contents even if the AAAA record is successful instead
+# of the A record.
 #
-#escape_commands =
+#ip_lookup_strategy = 5
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# Max request size for file uploads in bytes. Defaults to 20MB.
 #
-#console_automatic = false
+#max_request_size = 20971520
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# This item is undocumented. Please contribute documentation for it.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#max_fetch_prev_events = 192
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Default/base connection timeout (seconds). This is used only by URL
+# previews and update/news endpoint checks.
 #
-#execute_errors_ignore = false
+#request_conn_timeout = 10
 
-# List of admin commands to execute on SIGUSR2.
+# Default/base request timeout (seconds). The time waiting to receive more
+# data from another server. This is used only by URL previews,
+# update/news, and misc endpoint checks.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#request_timeout = 35
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Default/base request total timeout (seconds). The time limit for a whole
+# request. This is set very high to not cancel healthy requests while
+# serving as a backstop. This is used only by URL previews and update/news
+# endpoint checks.
 #
-#log_capture = "info"
+#request_total_timeout = 320
 
-# The default room tag to apply on the admin room.
+# Default/base idle connection pool timeout (seconds). This is used only
+# by URL previews and update/news endpoint checks.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
-#
-#room_tag = "m.server_notice"
-
-#[admin]
+#request_idle_timeout = 5
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Default/base max idle connections per host. This is used only by URL
+# previews and update/news endpoint checks. Defaults to 1 as generally the
+# same open connection can be re-used.
 #
-#room_notices =
+#request_idle_per_host = 1
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Appservice URL request connection timeout. Defaults to 35 seconds as
+# generally appservices are hosted within the same network.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
+#appservice_timeout = 35
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# Appservice URL idle connection pool timeout (seconds).
 #
-#console_automatic = false
+#appservice_idle_timeout = 300
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Notification gateway pusher idle connection pool timeout.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#pusher_idle_timeout = 15
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Maximum time to receive a request from a client (seconds).
 #
-#execute_errors_ignore = false
+#client_receive_timeout = 75
 
-# List of admin commands to execute on SIGUSR2.
+# Maximum time to process a request received from a client (seconds).
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#client_request_timeout = 180
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Maximum time to transmit a response to a client (seconds)
 #
-#log_capture = "info"
+#client_response_timeout = 120
 
-# The default room tag to apply on the admin room.
-#
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Grace period for clean shutdown of client requests (seconds).
 #
-#room_tag = "m.server_notice"
+#client_shutdown_timeout = 10
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Grace period for clean shutdown of federation requests (seconds).
 #
-#room_notices =
+#sender_shutdown_timeout = 5
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Path to a file on the system that gets read for additional registration
+# tokens. Multiple tokens can be added if you separate them with
+# whitespace
 #
-# example: \\!admin debug ping puppygock.gay
+# palpo must be able to access the file, and it must not be empty
 #
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# example: "/etc/palpo/.reg_token"
 #
-#console_automatic = false
+#registration_token_file =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Always calls /forget on behalf of the user if leaving a room. This is a
+# part of MSC4267 "Automatically forgetting rooms on leave"
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#forget_forced_upon_leave = false
 
-# Ignore errors in startup commands.
+# Set this to true to require authentication on the normally
+# unauthenticated profile retrieval endpoints (GET)
+# "/_matrix/client/v3/profile/{userId}".
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# This can prevent profile scraping.
 #
-#execute_errors_ignore = false
+#require_auth_for_profile_requests = false
 
-# List of admin commands to execute on SIGUSR2.
+# Enables registration. If set to false, no users can register on this
+# server.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# If set to true without a token configured, users can register with no
+# form of 2nd-step only if you set the following option to true:
+# `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`
 #
-#signal_execute = []
-
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# If you would like registration only via token reg, please configure
+# `registration_token` or `registration_token_file`.
 #
-#log_capture = "info"
+#allow_registration =
 
-# The default room tag to apply on the admin room.
+# Enabling this setting opens registration to anyone without restrictions.
+# This makes your server vulnerable to abuse
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
-#
-#room_tag = "m.server_notice"
-
-#[admin]
+#yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse = false
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# A static registration token that new users will have to provide when
+# creating an account. If unset and `allow_registration` is true,
+# you must set
+# `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`
+# to true to allow open registration without any conditions.
 #
-#room_notices =
-
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# YOU NEED TO EDIT THIS OR USE registration_token_file.
 #
-# example: \\!admin debug ping puppygock.gay
+# example: "o&^uCtes4HPf0Vu@F20jQeeWE7"
 #
-#escape_commands =
+#registration_token =
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# Controls whether encrypted rooms and events are allowed.
 #
-#console_automatic = false
+#allow_encryption =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Controls whether federation is allowed or not. It is not recommended to
+# disable this after the fact due to potential federation breakage.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#allow_federation =
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Allow standard users to create rooms. Appservices and admins are always
+# allowed to create rooms
 #
-#execute_errors_ignore = false
+#allow_room_creation =
 
-# List of admin commands to execute on SIGUSR2.
+# Set to false to disable users from joining or creating room versions
+# that aren't officially supported by palpo.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# palpo officially supports room versions 6 - 11.
 #
-#signal_execute = []
-
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# palpo has slightly experimental (though works fine in practice)
+# support for versions 3 - 5.
 #
-#log_capture = "info"
+#allow_unstable_room_versions =
 
-# The default room tag to apply on the admin room.
+# Default room version palpo will create rooms with.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Per spec, room version 11 is the default.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
+#default_room_version = 11
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# This item is undocumented. Please contribute documentation for it.
 #
-#room_notices =
+#well_known_client =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# This item is undocumented. Please contribute documentation for it.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
+#allow_jaeger =
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#tracing_flame =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# This item is undocumented. Please contribute documentation for it.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#enable_admin_room =
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# This item is undocumented. Please contribute documentation for it.
 #
-#execute_errors_ignore = false
+#appservice_registration_dir =
 
-# List of admin commands to execute on SIGUSR2.
+# Servers listed here will be used to gather public keys of other servers
+# (notary trusted key servers).
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# Currently, palpo doesn't support inbound batched key requests, so
+# this list should only contain other Synapse servers.
 #
-#signal_execute = []
-
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# example: ["matrix.org", "tchncs.de"]
 #
-#log_capture = "info"
+#trusted_servers = ["matrix.org"]
 
-# The default room tag to apply on the admin room.
+# OpenID token expiration/TTL in seconds.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# These are the OpenID tokens that are primarily used for Matrix account
+# integrations (e.g. Vector Integrations in Element), *not* OIDC/OpenID
+# Connect/etc.
 #
-#room_tag = "m.server_notice"
+#openid_token_ttl = 3600
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Allow an existing session to mint a login token for another client.
+# This requires interactive authentication, but has security ramifications
+# as a malicious client could use the mechanism to spawn more than one
+# session.
+# Enabled by default.
 #
-#room_notices =
+#login_via_existing_session =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
+# Login token expiration/TTL in milliseconds.
 #
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# These are short-lived tokens for the m.login.token endpoint.
+# This is used to allow existing sessions to create new sessions.
+# see login_via_existing_session.
 #
-#console_automatic = false
+#login_token_ttl = 120000
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# This item is undocumented. Please contribute documentation for it.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#refresh_token_ttl =
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# This item is undocumented. Please contribute documentation for it.
 #
-#execute_errors_ignore = false
+#session_ttl =
 
-# List of admin commands to execute on SIGUSR2.
+# List/vector of room IDs or room aliases that conduwuit will make newly
+# registered users join. The rooms specified must be rooms that you have
+# joined at least once on the server, and must be public.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# example: ["#conduwuit:puppygock.gay",
+# "!eoIzvAvVwY23LPDay8:puppygock.gay"]
 #
-#signal_execute = []
+#auto_join_rooms = []
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Config option to automatically deactivate the account of any user who
+# attempts to join a:
+# - banned room
+# - forbidden room alias
+# - room alias or ID with a forbidden server name
 #
-#log_capture = "info"
-
-# The default room tag to apply on the admin room.
+# This may be useful if all your banned lists consist of toxic rooms or
+# servers that no good faith user would ever attempt to join, and
+# to automatically remediate the problem without any admin user
+# intervention.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# This will also make the user leave all rooms. Federation (e.g. remote
+# room invites) are ignored here.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Defaults to false as rooms can be banned for non-moderation-related
+# reasons and this performs a full user deactivation.
 #
-#room_notices =
+#auto_deactivate_banned_room_attempts = false
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Enable the tokio-console. This option is only relevant to developers.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+#	For more information, see:
+# https://palpo.chat/development.html#debugging-with-tokio-console
 #
-#console_automatic = false
+#tokio_console = false
 
-# List of admin commands to execute on startup.
+# Block non-admin local users from sending room invites (local and
+# remote), and block non-admin users from receiving remote room invites.
 #
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Admins are always allowed to send and receive all room invites.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#block_non_admin_invites = false
 
-# Ignore errors in startup commands.
+# Set this to true to allow your server's public room directory to be
+# federated. Set this to false to protect against /publicRooms spiders,
+# but will forbid external users from viewing your server's public room
+# directory. If federation is disabled entirely (`allow_federation`), this
+# is inherently false.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
+#allow_public_room_directory_over_federation = false
 
-# List of admin commands to execute on SIGUSR2.
+# Set this to true to allow your server's public room directory to be
+# queried without client authentication (access token) through the Client
+# APIs. Set this to false to protect against /publicRooms spiders.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#allow_public_room_directory_without_auth = false
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Set this to true to lock down your server's public room directory and
+# only allow admins to publish rooms to the room directory. Unpublishing
+# is still allowed by all users with this enabled.
 #
-#log_capture = "info"
+#lockdown_public_room_directory = false
 
-# The default room tag to apply on the admin room.
-#
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# This is a password that can be configured that will let you login to the
+# server bot account (currently `@conduit`) for emergency troubleshooting
+# purposes such as recovering/recreating your admin room, or inviting
+# yourself back.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
 #
-#room_notices =
-
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Once this password is unset, all sessions will be logged out for
+# security purposes.
 #
-# example: \\!admin debug ping puppygock.gay
+# example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
 #
-#escape_commands =
+#emergency_password =
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#notification_push_path = "/_matrix/push/v1/notify"
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# Set to true to allow user type "guest" registrations. Some clients like
+# Element attempt to register guest users automatically.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#allow_guest_registration = false
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Set to true to log guest registrations in the admin room. Note that
+# these may be noisy or unnecessary if you're a public homeserver.
 #
-#execute_errors_ignore = false
+#log_guest_registrations = false
 
-# List of admin commands to execute on SIGUSR2.
+# Set to true to allow guest registrations/users to auto join any rooms
+# specified in `auto_join_rooms`.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#allow_guests_auto_join_rooms = false
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# List of forbidden server names via regex patterns that we will block
+# incoming AND outgoing federation with, and block client room joins /
+# remote user invites.
 #
-#log_capture = "info"
-
-# The default room tag to apply on the admin room.
+# This check is applied on the room ID, room alias, sender server name,
+# sender user's server name, inbound federation X-Matrix origin, and
+# outbound federation handler.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Basically "global" ACLs.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
 #
-#room_notices =
+#forbidden_remote_server_names = []
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
+# List of forbidden server names via regex patterns that we will block all
+# outgoing federated room directory requests for. Useful for preventing
+# our users from wandering into bad servers or spaces.
 #
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# example: ["badserver\.tld$", "badphrase", "19dollarfortnitecards"]
 #
-#console_automatic = false
+#forbidden_remote_room_directory_server_names = []
 
-# List of admin commands to execute on startup.
+# Vector list of IPv4 and IPv6 CIDR ranges / subnets *in quotes* that you
+# do not want palpo to send outbound requests to. Defaults to
+# RFC1918, unroutable, loopback, multicast, and testnet addresses for
+# security.
 #
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Please be aware that this is *not* a guarantee. You should be using a
+# firewall with zones as doing this on the application layer may have
+# bypasses.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# Currently this does not account for proxies in use like Synapse does.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
-
-# Ignore errors in startup commands.
+# To disable, set this to be an empty vector (`[]`).
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Defaults to:
+# ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12",
+# "192.168.0.0/16", "100.64.0.0/10", "192.0.0.0/24", "169.254.0.0/16",
+# "192.88.99.0/24", "198.18.0.0/15", "192.0.2.0/24", "198.51.100.0/24",
+# "203.0.113.0/24", "224.0.0.0/4", "::1/128", "fe80::/10", "fc00::/7",
+# "2001:db8::/32", "ff00::/8", "fec0::/10"]
 #
-#execute_errors_ignore = false
+#ip_range_denylist =
 
-# List of admin commands to execute on SIGUSR2.
+# This item is undocumented. Please contribute documentation for it.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#space_path =
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# This item is undocumented. Please contribute documentation for it.
 #
-#log_capture = "info"
+#auto_acme =
 
-# The default room tag to apply on the admin room.
-#
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Whether to query the servers listed in trusted_servers first or query
+# the origin server first. For best security, querying the origin server
+# first is advised to minimize the exposure to a compromised trusted
+# server. For maximum federation/join performance this can be set to true,
+# however other options exist to query trusted servers first under
+# specific high-load circumstances and should be evaluated before setting
+# this to true.
 #
-#room_tag = "m.server_notice"
+#query_trusted_key_servers_first = false
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Whether to query the servers listed in trusted_servers first
+# specifically on room joins. This option limits the exposure to a
+# compromised trusted server to room joins only. The join operation
+# requires gathering keys from many origin servers which can cause
+# significant delays. Therefor this defaults to true to mitigate
+# unexpected delays out-of-the-box. The security-paranoid or those
+# willing to tolerate delays are advised to set this to false. Note that
+# setting query_trusted_key_servers_first to true causes this option to
+# be ignored.
 #
-#room_notices =
+#query_trusted_key_servers_first_on_join =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Only query trusted servers for keys and never the origin server. This is
+# intended for clusters or custom deployments using their trusted_servers
+# as forwarding-agents to cache and deduplicate requests. Notary servers
+# do not act as forwarding-agents by default, therefor do not enable this
+# unless you know exactly what you are doing.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
+#only_query_trusted_key_servers = false
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# Maximum number of keys to request in each trusted server batch query.
 #
-#console_automatic = false
+#trusted_server_batch_size = 1024
 
-# List of admin commands to execute on startup.
+# List of forbidden room aliases and room IDs as strings of regex
+# patterns.
 #
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# Regex can be used or explicit contains matches can be done by just
+# specifying the words (see example).
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# This is checked upon room alias creation, custom room ID creation if
+# used, and startup as warnings if any room aliases in your database have
+# a forbidden room alias/ID.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# example: ["19dollarfortnitecards", "b[4a]droom", "badphrase"]
 #
-#startup_execute = []
+#forbidden_alias_names = []
 
-# Ignore errors in startup commands.
+# List of forbidden username patterns/strings.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Regex can be used or explicit contains matches can be done by just
+# specifying the words (see example).
 #
-#execute_errors_ignore = false
-
-# List of admin commands to execute on SIGUSR2.
+# This is checked upon username availability check, registration, and
+# startup as warnings if any local users in your database have a forbidden
+# username.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# example: ["administrator", "b[a4]dusernam[3e]", "badphrase"]
 #
-#signal_execute = []
+#forbidden_usernames = []
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Retry failed and incomplete messages to remote servers immediately upon
+# startup. This is called bursting. If this is disabled, said messages may
+# not be delivered until more messages are queued for that server. Do not
+# change this option unless server resources are extremely limited or the
+# scale of the server's deployment is huge. Do not disable this unless you
+# know what you are doing.
 #
-#log_capture = "info"
+#startup_netburst =
 
-# The default room tag to apply on the admin room.
+# Messages are dropped and not reattempted. The `startup_netburst` option
+# must be enabled for this value to have any effect. Do not change this
+# value unless you know what you are doing. Set this value to -1 to
+# reattempt every message without trimming the queues; this may consume
+# significant disk. Set this value to 0 to drop all messages without any
+# attempt at redelivery.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
-#
-#room_tag = "m.server_notice"
-
-#[admin]
+#startup_netburst_keep = 50
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# This item is undocumented. Please contribute documentation for it.
 #
-#room_notices =
+#logger = false
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# This item is undocumented. Please contribute documentation for it.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
+#tls =
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#jwt =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# Examples:
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# - No proxy (default):
 #
-#startup_execute = []
-
-# Ignore errors in startup commands.
+#       proxy = "none"
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# - For global proxy, create the section at the bottom of this file:
 #
-#execute_errors_ignore = false
-
-# List of admin commands to execute on SIGUSR2.
+#       [global.proxy]
+#       global = { url = "socks5h://localhost:9050" }
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# - To proxy some domains:
 #
-#signal_execute = []
-
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+#       [global.proxy]
+#       [[global.proxy.by_domain]]
+#       url = "socks5h://localhost:9050"
+#       include = ["*.onion", "matrix.myspecial.onion"]
+#       exclude = ["*.myspecial.onion"]
 #
-#log_capture = "info"
-
-# The default room tag to apply on the admin room.
+# Include vs. Exclude:
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# - If include is an empty list, it is assumed to be `["*"]`.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# - If a domain matches both the exclude and include list, the proxy will
+#   only be used if it was included because of a more specific rule than
+#   it was excluded. In the above example, the proxy would be used for
+#   `ordinary.onion`, `matrix.myspecial.onion`, but not
+#   `hello.myspecial.onion`.
 #
-#room_notices =
+#proxy = "none"
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
+# This item is undocumented. Please contribute documentation for it.
 #
-#escape_commands =
+#ldap =
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#keypair =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# This item is undocumented. Please contribute documentation for it.
 #
-#startup_execute = []
+#blurhash = false
 
-# Ignore errors in startup commands.
+# This item is undocumented. Please contribute documentation for it.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
+#media = false
 
-# List of admin commands to execute on SIGUSR2.
-#
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# This item is undocumented. Please contribute documentation for it.
 #
-#signal_execute = []
+#turn =
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# This item is undocumented. Please contribute documentation for it.
 #
-#log_capture = "info"
+#url_preview = false
 
-# The default room tag to apply on the admin room.
+# This item is undocumented. Please contribute documentation for it.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
-#
-#room_tag = "m.server_notice"
+#admin = false
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# This item is undocumented. Please contribute documentation for it.
 #
-#room_notices =
+#presence = false
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
+# This item is undocumented. Please contribute documentation for it.
 #
-#escape_commands =
+#read_receipt = false
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#typing = false
 
-# List of admin commands to execute on startup.
+# This item is undocumented. Please contribute documentation for it.
 #
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#compression = false
 
-# Ignore errors in startup commands.
+# This item is undocumented. Please contribute documentation for it.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
+#well_known = false
 
-# List of admin commands to execute on SIGUSR2.
-#
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# This item is undocumented. Please contribute documentation for it.
 #
-#signal_execute = []
+#federation =
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Enables configuration reload when the server receives SIGUSR1 on
+# supporting platforms.
 #
-#log_capture = "info"
+#config_reload_signal = true
 
-# The default room tag to apply on the admin room.
+# Toggles ignore checking/validating TLS certificates
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# This applies to everything, including URL previews, federation requests,
+# etc. This is a hidden argument that should NOT be used in production as
+# it is highly insecure and I will personally yell at you if I catch you
+# using this.
 #
-#room_tag = "m.server_notice"
+#allow_invalid_tls_certificates = false
 
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
-#
-#room_notices =
-
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Number of sender task workers; determines sender parallelism. Default is
+# '0' which means the value is determined internally, likely matching the
+# number of tokio worker-threads or number of cores, etc. Override by
+# setting a non-zero value.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
+#sender_workers = 0
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This item is undocumented. Please contribute documentation for it.
 #
-#console_automatic = false
+#catch_others = false
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
-#
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#[turn]
 
-# Ignore errors in startup commands.
+# This item is undocumented. Please contribute documentation for it.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
+#enable =
 
-# List of admin commands to execute on SIGUSR2.
-#
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# Static TURN username to provide the client if not using a shared secret
+# ("turn_secret"), It is recommended to use a shared secret over static
+# credentials.
 #
-#signal_execute = []
+#username = false
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Static TURN password to provide the client if not using a shared secret
+# ("turn_secret"). It is recommended to use a shared secret over static
+# credentials.
 #
-#log_capture = "info"
+#password = false
 
-# The default room tag to apply on the admin room.
+# Vector list of TURN URIs/servers to use.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Replace "example.turn.uri" with your TURN domain, such as the coturn
+# "realm" config option. If using TURN over TLS, replace the URI prefix
+# "turn:" with "turns:".
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# example: ["turn:example.turn.uri?transport=udp",
+# "turn:example.turn.uri?transport=tcp"]
 #
-#room_notices =
+#uris = []
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# TURN secret to use for generating the HMAC-SHA1 hash apart of username
+# and password generation.
 #
-# example: \\!admin debug ping puppygock.gay
+# This is more secure, but if needed you can use traditional static
+# username/password credentials.
 #
-#escape_commands =
+#secret = false
 
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
-#
-#console_automatic = false
-
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
+# TURN secret to use that's read from the file path specified.
 #
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# This takes priority over "tsecret" first, and falls back to
+# "secret" if invalid or failed to open.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# example: "/etc/palpo/.turn_secret"
 #
-#startup_execute = []
+#secret_file =
 
-# Ignore errors in startup commands.
+# TURN TTL, in seconds.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
-#
-#execute_errors_ignore = false
-
-# List of admin commands to execute on SIGUSR2.
-#
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#ttl = 86400
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Allow guests/unauthenticated users to access TURN credentials.
 #
-#log_capture = "info"
-
-# The default room tag to apply on the admin room.
+# This is the equivalent of Synapse's `turn_allow_guests` config option.
+# This allows any unauthenticated user to call the endpoint
+# `/_matrix/client/v3/voip/turnServer`.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# It is unlikely you need to enable this as all major clients support
+# authentication for this endpoint and prevents misuse of your TURN server
+# from potential bots.
 #
-#room_tag = "m.server_notice"
+#allow_guests = false
 
-#[admin]
+#[typing]
 
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# Allow incoming typing updates from federation.
 #
-#room_notices =
+#allow_incoming =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
+# Allow outgoing typing updates to federation.
 #
-# example: \\!admin debug ping puppygock.gay
-#
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
-#
-#console_automatic = false
+#allow_outgoing =
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# Maximum time federation user can indicate typing (seconds).
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
-#
-#startup_execute = []
+#federation_timeout = 30
 
-# Ignore errors in startup commands.
-#
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# Minimum time local client can indicate typing. This does not override a
+# client's request to stop typing. It only enforces a minimum value in
+# case of no stop request (seconds).
 #
-#execute_errors_ignore = false
+#client_timeout_min = 15
 
-# List of admin commands to execute on SIGUSR2.
+# Maximum time local client can indicate typing (seconds).
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
-#
-#signal_execute = []
+#client_timeout_max = 45
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
-#
-#log_capture = "info"
+#[url_preview]
 
-# The default room tag to apply on the admin room.
+# Optional IP address or network interface-name to bind as the source of
+# URL preview requests. If not set, it will not bind to a specific
+# address or interface.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Interface names only supported on Linux, Android, and Fuchsia platforms;
+# all other platforms can specify the IP address. To list the interfaces
+# on your system, use the command `ip link show`.
 #
-#room_tag = "m.server_notice"
-
-#[admin]
-
-# Controls whether admin room notices like account registrations, password
-# changes, account deactivations, room directory publications, etc will be
-# sent to the admin room. Update notices and normal admin command
-# responses will still be sent.
+# example: `"eth0"` or `"1.2.3.4"`
 #
-#room_notices =
+#bound_interface =
 
-# Allow admins to enter commands in rooms other than "#admins" (admin
-# room) by prefixing your message with "\!admin" or "\\!admin" followed up
-# a normal palpo admin command. The reply will be publicly visible to
-# the room, originating from the sender.
-#
-# example: \\!admin debug ping puppygock.gay
+# Vector list of domains allowed to send requests to for URL previews.
 #
-#escape_commands =
-
-# Automatically activate the palpo admin room console / CLI on
-# startup. This option can also be enabled with `--console` palpo
-# argument.
+# This is a *contains* match, not an explicit match. Putting "google.com"
+# will match "https://google.com" and
+# "http://mymaliciousdomainexamplegoogle.com" Setting this to "*" will
+# allow all URL previews. Please note that this opens up significant
+# attack surface to your server, you are expected to be aware of the risks
+# by doing so.
 #
-#console_automatic = false
+#domain_contains_allowlist = []
 
-# List of admin commands to execute on startup.
-#
-# This option can also be configured with the `--execute` palpo
-# argument and can take standard shell commands and environment variables
-#
-# For example: `./palpo --execute "server admin-notice palpo has
-# started up at $(date)"`
+# Vector list of explicit domains allowed to send requests to for URL
+# previews.
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# This is an *explicit* match, not a contains match. Putting "google.com"
+# will match "https://google.com", "http://google.com", but not
+# "https://mymaliciousdomainexamplegoogle.com". Setting this to "*" will
+# allow all URL previews. Please note that this opens up significant
+# attack surface to your server, you are expected to be aware of the risks
+# by doing so.
 #
-#startup_execute = []
+#domain_explicit_allowlist = []
 
-# Ignore errors in startup commands.
+# Vector list of explicit domains not allowed to send requests to for URL
+# previews.
 #
-# If false, palpo will error and fail to start if an admin execute
-# command (`--execute` / `admin_execute`) fails.
+# This is an *explicit* match, not a contains match. Putting "google.com"
+# will match "https://google.com", "http://google.com", but not
+# "https://mymaliciousdomainexamplegoogle.com". The denylist is checked
+# first before allowlist. Setting this to "*" will not do anything.
 #
-#execute_errors_ignore = false
+#domain_explicit_denylist = []
 
-# List of admin commands to execute on SIGUSR2.
+# Vector list of URLs allowed to send requests to for URL previews.
 #
-# Similar to admin_execute, but these commands are executed when the
-# server receives SIGUSR2 on supporting platforms.
+# Note that this is a *contains* match, not an explicit match. Putting
+# "google.com" will match "https://google.com/",
+# "https://google.com/url?q=https://mymaliciousdomainexample.com", and
+# "https://mymaliciousdomainexample.com/hi/google.com" Setting this to "*"
+# will allow all URL previews. Please note that this opens up significant
+# attack surface to your server, you are expected to be aware of the risks
+# by doing so.
 #
-#signal_execute = []
+#url_contains_allowlist = []
 
-# Controls the max log level for admin command log captures (logs
-# generated from running admin commands). Defaults to "info" on release
-# builds, else "debug" on debug builds.
+# Maximum amount of bytes allowed in a URL preview body size when
+# spidering. Defaults to 256KB in bytes.
 #
-#log_capture = "info"
+#max_spider_size = 256000
 
-# The default room tag to apply on the admin room.
+# Option to decide whether you would like to run the domain allowlist
+# checks (contains and explicit) on the root domain or not. Does not apply
+# to URL contains allowlist. Defaults to false.
 #
-# On some clients like Element, the room tag "m.server_notice" is a
-# special pinned room at the very bottom of your room list. The palpo
-# admin room can be pinned here so you always have an easy-to-access
-# shortcut dedicated to your admin room.
+# Example usecase: If this is enabled and you have "wikipedia.org" allowed
+# in the explicit and/or contains domain allowlist, it will allow all
+# subdomains under "wikipedia.org" such as "en.m.wikipedia.org" as the
+# root domain is checked and matched. Useful if the domain contains
+# allowlist is still too broad for you but you still want to allow all the
+# subdomains under a root domain.
 #
-#room_tag = "m.server_notice"
+#check_root_domain = false

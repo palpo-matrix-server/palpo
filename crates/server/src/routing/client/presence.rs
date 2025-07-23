@@ -21,7 +21,7 @@ pub fn authed_router() -> Router {
 /// - Only works if you share a room with the user
 #[endpoint]
 fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<PresenceResBody> {
-    if !crate::config().presence.allow_local {
+    if !crate::config::get().presence.allow_local {
         return Err(MatrixError::forbidden("Presence is disabled on this server", None).into());
     }
 
@@ -53,7 +53,7 @@ async fn set_status(
     body: JsonBody<SetPresenceReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
-    if !config().presence.allow_local {
+    if !config::get().presence.allow_local {
         return Err(MatrixError::forbidden("Presence is disabled on this server", None).into());
     }
 

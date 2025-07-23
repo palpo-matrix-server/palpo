@@ -45,9 +45,9 @@ where
     S: Iterator<Item = (&'a ServerName, K)> + Send + Clone,
     K: Iterator<Item = &'a ServerSigningKeyId> + Send + Clone,
 {
-    let notary_only = crate::config().only_query_trusted_key_servers;
-    let notary_first_always = crate::config().query_trusted_key_servers_first;
-    let notary_first_on_join = crate::config().query_trusted_key_servers_first_on_join;
+    let notary_only = crate::config::get().only_query_trusted_key_servers;
+    let notary_first_always = crate::config::get().query_trusted_key_servers_first;
+    let notary_first_on_join = crate::config::get().query_trusted_key_servers_first_on_join;
 
     let requested_servers = batch.clone().count();
     let requested_keys = batch.clone().flat_map(|(_, key_ids)| key_ids).count();
@@ -176,7 +176,8 @@ where
     I: Iterator<Item = (OwnedServerName, Vec<OwnedServerSigningKeyId>)> + Send,
 {
     let mut missing: Batch = batch.collect();
-    for notary in config::trusted_servers() {
+    let conf = config::get();
+    for notary in &conf.trusted_servers {
         let missing_keys = keys_count(&missing);
         let missing_servers = missing.len();
         debug!("Asking notary {notary} for {missing_keys} missing keys from {missing_servers} servers");

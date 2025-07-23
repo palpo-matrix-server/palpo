@@ -62,8 +62,8 @@ pub async fn limit_rate() -> AppResult<()> {
 
 #[endpoint]
 fn well_known_client() -> JsonResult<ClientWellKnownResBody> {
-    let config = config();
-    let client_url = config.well_known_client();
+    let conf = config::get();
+    let client_url = conf.well_known_client();
     json_ok(ClientWellKnownResBody {
         homeserver: HomeServerInfo {
             base_url: client_url.clone(),
@@ -77,6 +77,6 @@ fn well_known_client() -> JsonResult<ClientWellKnownResBody> {
 #[endpoint]
 fn well_known_server() -> JsonResult<ServerWellKnownResBody> {
     json_ok(ServerWellKnownResBody {
-        server: config::well_known_server(),
+        server: config::get().well_known_server(),
     })
 }

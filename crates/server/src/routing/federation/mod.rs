@@ -61,7 +61,8 @@ pub fn router() -> Router {
 
 #[handler]
 async fn check_federation_enabled() -> AppResult<()> {
-    if !config::allow_federation() {
+    let conf = config::get();
+    if conf.enabled_federation().is_none() {
         Err(AppError::public("Federation is disabled."))
     } else {
         Ok(())

@@ -1,4 +1,3 @@
-use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
@@ -15,6 +14,8 @@ mod jwt;
 pub use jwt::*;
 mod blurhash;
 pub use blurhash::*;
+mod cache;
+pub use cache::*;
 mod compression;
 pub use compression::*;
 mod dns;
@@ -89,8 +90,8 @@ pub fn init() {
         );
     }
 
-    let raw_config = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
-    let conf = match raw_config.extract::<ServerConfig>() {
+    let raw_conf = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
+    let conf = match raw_conf.extract::<ServerConfig>() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("It looks like your config is invalid. The following error occurred: {e}");

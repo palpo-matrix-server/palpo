@@ -1,8 +1,9 @@
 use serde::Deserialize;
 
 
-use crate::core::serde::{default_false, default_true};
+use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
 
+#[config_example(filename = "palpo-example.toml", section = "compression")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct CompressionConfig {
 	/// Set this to true for palpo to compress HTTP response bodies using

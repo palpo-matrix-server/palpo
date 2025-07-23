@@ -3,6 +3,10 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use url::Url;
 
+use crate::core::serde::default_true;use crate::macros::config_example;
+
+
+#[config_example(filename = "palpo-example.toml", section = "ldap")]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct LdapConfig {
     /// Whether to enable LDAP login.

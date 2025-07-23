@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::fmt;
-use std::net::IpAddr;
 use std::path::PathBuf;
 
 use either::Either;
@@ -19,6 +18,7 @@ use crate::data::DbConfig;
 use crate::env_vars::required_var;
 use crate::utils::sys;
 use crate::{AppError, AppResult};
+use crate::macros::config_example;
 
 const DEPRECATED_KEYS: &[&str; 0] = &[];
 
@@ -33,7 +33,7 @@ pub struct KeypairConfig {
     pub version: String,
 }
 
-#[config_example(filename = "palpo-example.toml", section = "admin")]
+#[config_example(filename = "palpo-example.toml")]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
     #[serde(default = "default_listen_addr")]
@@ -719,6 +719,14 @@ impl ServerConfig {
         }
     }
 
+    pub fn enabled_turn(&self) -> Option<&TurnConfig> {
+        if let Some(turn) = self.turn.as_ref() {
+            if turn.enable { Some(turn) } else { None }
+        } else {
+            None
+        }
+    }
+
     pub fn enabled_federation(&self) -> Option<&FederationConfig> {
         if let Some(federation) = self.federation.as_ref() {
             if federation.enable { Some(federation) } else { None }
@@ -989,45 +997,6 @@ impl ServerConfig {
     }
 }
 
-impl fmt::Display for ServerConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Prepare a list of config values to show
-        let lines = [
-            ("Server name", self.server_name.host()),
-            ("PDU cache capacity", &self.pdu_cache_capacity.to_string()),
-            ("Cleanup interval in seconds", &self.cleanup_second_interval.to_string()),
-            ("Maximum request size", &self.max_request_size.to_string()),
-            ("Maximum concurrent requests", &self.max_concurrent_requests.to_string()),
-            ("Allow registration", &self.allow_registration.to_string()),
-            ("Allow encryption", &self.allow_encryption.to_string()),
-            ("Allow federation", &self.allow_federation.to_string()),
-            ("Allow room creation", &self.allow_room_creation.to_string()),
-            (
-                "JWT config",
-                match self.jwt {
-                    Some(_) => "set",
-                    None => "not set",
-                },
-            ),
-            ("Trusted servers", {
-                let mut lst = vec![];
-                for server in &self.trusted_servers {
-                    lst.push(server.host());
-                }
-                &lst.join(", ")
-            }),
-            ("TURN ", if let Some(turn) = &self.turn { "set" } else { "not set" }),
-        ];
-
-        let mut msg: String = "Active config values:\n\n".to_owned();
-
-        for line in lines.into_iter().enumerate() {
-            msg += &format!("{}: {}\n", line.1.0, line.1.1);
-        }
-
-        write!(f, "{msg}")
-    }
-}
 
 #[derive(Clone, Debug, Default)]
 pub struct AllowedOrigins(Vec<String>);

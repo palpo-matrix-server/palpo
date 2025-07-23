@@ -38,13 +38,14 @@ fn allowed_to_send_state_event(
     state_key: &str,
     json: &RawJson<AnyStateEventContent>,
 ) -> AppResult<()> {
+    let conf = config::get();
     match event_type {
         StateEventType::RoomCreate => {
             return Err(MatrixError::bad_json("You cannot update m.room.create after a room has been created.").into());
         }
         // Forbid m.room.encryption if encryption is disabled
         StateEventType::RoomEncryption => {
-            if !config::allow_encryption() {
+            if !conf.allow_encryption {
                 return Err(MatrixError::forbidden("Encryption is disabled on this homeserver.", None).into());
             }
         }

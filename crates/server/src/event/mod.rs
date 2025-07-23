@@ -195,7 +195,7 @@ pub fn is_ignored_pdu(pdu: &SnPduEvent, _user_id: &UserId) -> bool {
     // TODO: fixme
     // let ignored_type = IGNORED_MESSAGE_TYPES.binary_search(&pdu.kind).is_ok();
 
-    // let ignored_server = crate::config()
+    // let ignored_server = crate::config::get()
     //     .forbidden_remote_server_names
     //     .contains(pdu.sender().server_name());
 

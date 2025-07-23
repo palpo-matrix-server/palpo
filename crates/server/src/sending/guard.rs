@@ -347,7 +347,7 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, _max_edu_sn:
 #[tracing::instrument(skip(server_name))]
 pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
     let max_edu_sn = data::curr_sn()?;
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     let since_sn = data::curr_sn()?;
 

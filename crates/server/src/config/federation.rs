@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
-use std::fmt;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
 use serde::Deserialize;
 
-use crate::core::serde::{default_false, default_true};
+use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
 
+#[config_example(filename = "palpo-example.toml", section = "federation")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct FederationConfig {
 	/// Controls whether federation is allowed or not. It is not recommended to
@@ -81,7 +81,6 @@ pub struct FederationConfig {
     #[serde(default)]
     pub allow_device_name: bool,
 
-	
     /// Config option to allow or disallow incoming federation requests that
     /// obtain the profiles of our local users from
     /// `/_matrix/federation/v1/query/profile`

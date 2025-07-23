@@ -55,7 +55,6 @@ pub use core::error::MatrixError;
 pub use error::AppError;
 pub use palpo_core as core;
 pub use palpo_data as data;
-#[macro_use]
 pub use palpo_server_macros as macros;
 
 use std::time::Duration;
@@ -133,20 +132,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     crate::config::init();
-    let config = crate::config();
-    config.check().expect("config is not valid!");
-    match &*config.logger.format {
+    let conf = crate::config::get();
+    conf.check().expect("config is not valid!");
+    match &*conf.logger.format {
         "json" => {
             tracing_subscriber::fmt()
                 .json()
-                .with_env_filter(&config.logger.level)
+                .with_env_filter(&conf.logger.level)
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
         }
         "compact" => {
             tracing_subscriber::fmt()
                 .compact()
-                .with_env_filter(&config.logger.level)
+                .with_env_filter(&conf.logger.level)
                 .without_time()
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
@@ -154,13 +153,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         _ => {
             tracing_subscriber::fmt()
                 .pretty()
-                .with_env_filter(&config.logger.level)
+                .with_env_filter(&conf.logger.level)
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
         }
     }
 
-    crate::data::init(&config.db);
+    crate::data::init(&conf.db);
 
     crate::sending::guard::start();
 
@@ -197,14 +196,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let _ = crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
-    let config = crate::config();
-    println!("Listening on {}", config::listen_addr);
-    if let Some(tls_config) = config.enabled_tls() {
-        let acceptor = TcpListener::new(&config.listen_addr)
+    let conf = crate::config::get();
+    println!("Listening on {}", conf.listen_addr);
+    if let Some(tls_conf) = conf.enabled_tls() {
+        let acceptor = TcpListener::new(&conf.listen_addr)
             .rustls(RustlsConfig::new(
                 Keycert::new()
-                    .cert_from_path(&tls_config.cert)?
-                    .key_from_path(&tls_config.key)?,
+                    .cert_from_path(&tls_conf.cert)?
+                    .key_from_path(&tls_conf.key)?,
             ))
             .bind()
             .await;
@@ -213,7 +212,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .instrument(tracing::info_span!("server.serve"))
             .await
     } else {
-        let acceptor = TcpListener::new(&config.listen_addr).bind().await;
+        let acceptor = TcpListener::new(&conf.listen_addr).bind().await;
         Server::new(acceptor)
             .serve(service)
             .instrument(tracing::info_span!("server.serve"))

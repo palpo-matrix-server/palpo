@@ -5,6 +5,9 @@ use either::Either;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::macros::config_example;
+
+#[config_example(filename = "palpo-example.toml", section = "url_preview")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UrlPreviewConfig {
     /// Optional IP address or network interface-name to bind as the source of

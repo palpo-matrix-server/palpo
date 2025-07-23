@@ -1,7 +1,7 @@
 use reqwest::{Proxy, Url};
 use serde::Deserialize;
 
-use crate::AppResult;
+use crate::AppResult;use crate::macros::config_example;
 
 /// ## Examples:
 /// - No proxy (default):

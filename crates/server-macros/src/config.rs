@@ -33,9 +33,7 @@ pub(super) fn generate_example(input: ItemStruct, args: &[Meta]) -> Result<Token
 fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Result<TokenStream2> {
     let settings = get_simple_settings(args);
 
-    let section = settings
-        .get("section")
-        .ok_or_else(|| Error::new(args[0].span(), "missing required 'section' attribute argument"))?;
+    let section = settings.get("section");
 
     let filename = settings
         .get("filename")
@@ -47,9 +45,9 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
 
     let fopts = OpenOptions::new()
         .write(true)
-        .create(section == "global")
-        .truncate(section == "global")
-        .append(section != "global")
+        .create(section.is_none())
+        .truncate(section.is_none())
+        .append(!section.is_none())
         .clone();
 
     let mut file = write
@@ -66,8 +64,10 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
             file.write_all(header.as_bytes()).expect("written to config file");
         }
 
-        file.write_fmt(format_args!("\n#[{section}]\n"))
-            .expect("written to config file");
+        if let Some(section) = section {
+            file.write_fmt(format_args!("\n#[{section}]\n"))
+                .expect("written to config file");
+        }
     }
 
     let mut summary: Vec<TokenStream2> = Vec::new();

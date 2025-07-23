@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use serde::Deserialize; use regex::RegexSet;
 
-use crate::core::serde::{default_false, default_true};
+use crate::core::serde::{default_false, default_true};use crate::macros::config_example;
 
+#[config_example(filename = "palpo-example.toml", section = "media")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct MediaConfig {
     /// Enable the legacy unauthenticated Matrix media repository endpoints.

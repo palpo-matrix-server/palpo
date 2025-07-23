@@ -1,7 +1,9 @@
 use serde::Deserialize;
 
 use crate::core::serde::{default_false, default_true};
+use crate::macros::config_example;
 
+#[config_example(filename = "palpo-example.toml", section = "typing")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct TypingConfig {
     /// Allow incoming typing updates from federation.

@@ -178,7 +178,7 @@ pub fn append_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     // Make unsigned fields correct. This is not properly documented in the spec, but state
     // events need to have previous content in the unsigned field, so clients can easily
@@ -445,11 +445,11 @@ where
             }
         }
         let matching_users = || {
-            config().server_name == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
+            config::get().server_name == pdu.sender.server_name() && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
                     && pdu.state_key.as_ref().map_or(false, |state_key| {
                         UserId::parse(state_key).map_or(false, |user_id| {
-                            config().server_name == user_id.server_name() && appservice.is_user_match(&user_id)
+                            config::get().server_name == user_id.server_name() && appservice.is_user_match(&user_id)
                         })
                     })
         };
@@ -499,7 +499,7 @@ pub fn create_hash_and_sign_event(
 
     let prev_events: Vec<_> = state::get_forward_extremities(room_id)?.into_iter().take(20).collect();
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
     let room_version_id = if let Ok(room_version_id) = super::get_version(room_id) {
@@ -636,7 +636,7 @@ pub fn create_hash_and_sign_event(
 }
 
 fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
-    let conf = crate::config();
+    let conf = crate::config::get();
     match pdu.event_type() {
         TimelineEventType::RoomEncryption => {
             warn!("Encryption is not allowed in the admins room");
@@ -715,7 +715,7 @@ pub fn build_and_append_pdu(
 
     let (pdu, pdu_json, _event_guard) = create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     // let admin_room = super::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
     //         .expect("#admins:server_name is a valid room alias"),
@@ -934,6 +934,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         return Ok(());
     }
 
+    let conf = config::get();
     let power_levels =
         super::get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)?;
     let mut admin_servers = power_levels
@@ -942,7 +943,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         .filter(|(_, level)| **level > power_levels.users_default)
         .map(|(user_id, _)| user_id.server_name())
         .collect::<HashSet<_>>();
-    admin_servers.remove(&config().server_name);
+    admin_servers.remove(&*conf.server_name);
 
     // Request backfill
     for backfill_server in admin_servers {

@@ -123,7 +123,7 @@ pub fn url_preview_allowed(url: &Url) -> bool {
         Some(h) => h.to_owned(),
     };
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let allowlist_domain_contains = &conf.url_preview.domain_contains_allowlist;
     let allowlist_domain_explicit = &conf.url_preview.domain_explicit_allowlist;
     let denylist_domain_explicit = &conf.url_preview.domain_explicit_denylist;
@@ -277,7 +277,7 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
 async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
     use image::ImageReader;
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let image = client().get(url.to_owned()).send().await?;
     let content_type = image.headers().get(reqwest::header::CONTENT_TYPE);
     let content_type = content_type.and_then(|ct| ct.to_str().ok()).map(|c| c.to_owned());
@@ -332,7 +332,7 @@ async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
 async fn download_html(url: &Url) -> AppResult<UrlPreviewData> {
     use webpage::HTML;
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let client = client();
     let mut response = client.get(url.to_owned()).send().await?;
 

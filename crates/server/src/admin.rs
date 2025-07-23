@@ -247,7 +247,7 @@ async fn process_admin_message(room_message: String) -> RoomMessageEventContent 
     let mut lines = room_message.lines().filter(|l| !l.trim().is_empty());
     let command_line = lines.next().expect("each string has at least one line");
     let body: Vec<_> = lines.collect();
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     let admin_command = match parse_admin_command(command_line) {
         Ok(command) => command,
@@ -300,13 +300,13 @@ fn parse_admin_command(command_line: &str) -> std::result::Result<AdminCommand, 
 }
 
 async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppResult<RoomMessageEventContent> {
-    let conf = crate::config();
+    let conf = crate::config::get();
     let reply_message_content = match command {
         AdminCommand::RegisterAppservice => {
             if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let appservice_config = body[1..body.len() - 1].join("\n");
-                let parsed_config = serde_yaml::from_str::<Registration>(&appservice_config);
-                match parsed_config {
+                let appservice_conf = body[1..body.len() - 1].join("\n");
+                let parsed_conf = serde_yaml::from_str::<Registration>(&appservice_conf);
+                match parsed_conf {
                     Ok(yaml) => match crate::appservice::register_appservice(yaml) {
                         Ok(id) => RoomMessageEventContent::text_plain(format!("Appservice registered with ID: {id}.")),
                         Err(e) => RoomMessageEventContent::text_plain(format!("Failed to register appservice: {e}")),
@@ -612,7 +612,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 match serde_json::from_str(&string) {
                     Ok(mut value) => {
                         crate::core::signatures::sign_json(
-                            config().server_name.as_str(),
+                            config::get().server_name.as_str(),
                             config::keypair(),
                             &mut value,
                         )
@@ -748,7 +748,7 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
 ///
 /// Errors are propagated from the database, and will have None if there is no admin room
 pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
-    let conf = crate::config();
+    let conf = crate::config::get();
     let admin_room_alias: Box<RoomAliasId> = format!("#admins:{}", &conf.server_name)
         .try_into()
         .expect("#admins:server_name is a valid alias name");
@@ -762,20 +762,20 @@ pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
 pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoomId> {
     use RoomVersionId::*;
 
-    let config = crate::config();
-    let room_id = RoomId::new(&config.server_name);
-    let room_version = config.default_room_version;
+    let conf = crate::config::get();
+    let room_id = RoomId::new(&conf.server_name);
+    let room_version = &conf.default_room_version;
 
     if room::room_exists(&room_id)? {
         return Ok(room_id);
     } else {
-        room::ensure_room(&room_id, &room_version)?;
+        room::ensure_room(&room_id, room_version)?;
     }
 
     let state_lock = room::lock_state(&room_id).await;
 
     // Create a user for the server
-    let palpo_user = UserId::parse_with_server_name("palpo", &config.server_name).expect("@palpo:server_name is valid");
+    let palpo_user = UserId::parse_with_server_name("palpo", &conf.server_name).expect("@palpo:server_name is valid");
 
     if let Err(e) = crate::user::create_user(&palpo_user, None) {
         tracing::error!(error = ?e, "create palpo admin user failed.");
@@ -788,7 +788,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     };
     content.federate = true;
     content.predecessor = None;
-    content.room_version = room_version;
+    content.room_version = room_version.to_owned();
 
     // 1. The room create event
     timeline::build_and_append_pdu(
@@ -894,7 +894,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 5. Events implied by name and topic
-    let room_name = format!("{} Admin Room", &config.server_name);
+    let room_name = format!("{} Admin Room", &conf.server_name);
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomName,
@@ -911,7 +911,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
         PduBuilder {
             event_type: TimelineEventType::RoomTopic,
             content: to_raw_value(&RoomTopicEventContent {
-                topic: format!("Manage {}", &config.server_name),
+                topic: format!("Manage {}", &conf.server_name),
             })
             .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
@@ -923,7 +923,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     )?;
 
     // 6. Room alias
-    let alias: OwnedRoomAliasId = format!("#admins:{}", &config.server_name)
+    let alias: OwnedRoomAliasId = format!("#admins:{}", &conf.server_name)
         .try_into()
         .expect("#admins:server_name is a valid alias name");
 
@@ -952,7 +952,7 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
 ///
 /// In palpo, this is equivalent to granting admin privileges.
 pub(crate) async fn make_admin(user_id: &UserId) -> AppResult<()> {
-    let conf = crate::config();
+    let conf = crate::config::get();
 
     let room_id = get_admin_room()?;
     let state_lock = room::lock_state(&room_id).await;
@@ -1072,7 +1072,7 @@ pub async fn revoke_admin(user_id: &UserId) -> AppResult<()> {
         }
     };
 
-    let conf = crate::config();
+    let conf = crate::config::get();
     let palpo_user = crate::palpo_user(&conf.server_name);
     timeline::build_and_append_pdu(
         PduBuilder::state(
