@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "blurhash")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct BlurhashConfig {
     /// blurhash x component, 4 is recommended by https://blurha.sh/
     ///
@@ -26,6 +26,16 @@ pub struct BlurhashConfig {
     /// default: 33554432
     #[serde(default = "default_blurhash_max_raw_size")]
     pub max_raw_size: u64,
+}
+
+impl Default for BlurhashConfig {
+    fn default() -> Self {
+        Self {
+            components_x: default_components_x(),
+            components_y: default_components_y(),
+            max_raw_size: default_blurhash_max_raw_size(),
+        }
+    }
 }
 
 // blurhash defaults recommended by https://blurha.sh/

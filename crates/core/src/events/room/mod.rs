@@ -169,54 +169,6 @@ pub struct EncryptedFile {
     pub v: String,
 }
 
-/// Initial set of fields of `EncryptedFile`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `EncryptedFile` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct EncryptedFileInit {
-    /// The URL to the file.
-    pub url: OwnedMxcUri,
-
-    /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
-    pub key: JsonWebKey,
-
-    /// The 128-bit unique counter block used by AES-CTR, encoded as unpadded
-    /// base64.
-    pub iv: Base64,
-
-    /// A map from an algorithm name to a hash of the ciphertext, encoded as
-    /// unpadded base64.
-    ///
-    /// Clients should support the SHA-256 hash, which uses the key sha256.
-    pub hashes: BTreeMap<String, Base64>,
-
-    /// Version of the encrypted attachments protocol.
-    ///
-    /// Must be `v2`.
-    pub v: String,
-}
-
-impl From<EncryptedFileInit> for EncryptedFile {
-    fn from(init: EncryptedFileInit) -> Self {
-        let EncryptedFileInit {
-            url,
-            key,
-            iv,
-            hashes,
-            v,
-        } = init;
-        Self {
-            url,
-            key,
-            iv,
-            hashes,
-            v,
-        }
-    }
-}
-
 /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
 ///
 /// To create an instance of this type, first create a `JsonWebKeyInit` and
@@ -246,57 +198,6 @@ pub struct JsonWebKey {
     /// Must be `true`. This is a
     /// [W3C extension](https://w3c.github.io/webcrypto/#iana-section-jwk).
     pub ext: bool,
-}
-
-/// Initial set of fields of `JsonWebKey`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `JsonWebKey` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct JsonWebKeyInit {
-    /// Key type.
-    ///
-    /// Must be `oct`.
-    pub kty: String,
-
-    /// Key operations.
-    ///
-    /// Must at least contain `encrypt` and `decrypt`.
-    pub key_ops: Vec<String>,
-
-    /// Algorithm.
-    ///
-    /// Must be `A256CTR`.
-    pub alg: String,
-
-    /// The key, encoded as url-safe unpadded base64.
-    pub k: Base64<UrlSafe>,
-
-    /// Extractable.
-    ///
-    /// Must be `true`. This is a
-    /// [W3C extension](https://w3c.github.io/webcrypto/#iana-section-jwk).
-    pub ext: bool,
-}
-
-impl From<JsonWebKeyInit> for JsonWebKey {
-    fn from(init: JsonWebKeyInit) -> Self {
-        let JsonWebKeyInit {
-            kty,
-            key_ops,
-            alg,
-            k,
-            ext,
-        } = init;
-        Self {
-            kty,
-            key_ops,
-            alg,
-            k,
-            ext,
-        }
-    }
 }
 
 // #[cfg(test)]

@@ -90,11 +90,13 @@
 //! [MSC3381]: https://github.com/matrix-org/matrix-spec-proposals/pull/3381
 use std::ops::Deref;
 
-use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::room::message::Relation;
+use crate::macros::EventContent;
+#[cfg(feature = "unstable-msc4095")]
+use crate::events::room::message::UrlPreview;
 
 mod historical_serde;
 
@@ -134,8 +136,18 @@ pub struct MessageEventContent {
         deserialize_with = "crate::events::room::message::relation_serde::deserialize_relation"
     )]
     pub relates_to: Option<Relation<MessageEventContentWithoutRelation>>,
+
+    /// [MSC4095](https://github.com/matrix-org/matrix-spec-proposals/pull/4095)-style bundled url previews
+    #[cfg(feature = "unstable-msc4095")]
+    #[serde(
+        rename = "com.beeper.linkpreviews",
+        skip_serializing_if = "Option::is_none",
+        alias = "m.url_previews"
+    )]
+    pub url_previews: Option<Vec<UrlPreview>>,
 }
 
+#[cfg(feature = "unstable-msc1767")]
 impl MessageEventContent {
     /// A convenience constructor to create a plain text message.
     pub fn plain(body: impl Into<String>) -> Self {
@@ -144,6 +156,8 @@ impl MessageEventContent {
             #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: None,
+            #[cfg(feature = "unstable-msc4095")]
+            url_previews: None,
         }
     }
 
@@ -154,6 +168,8 @@ impl MessageEventContent {
             #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: None,
+            #[cfg(feature = "unstable-msc4095")]
+            url_previews: None,
         }
     }
 
@@ -168,6 +184,8 @@ impl MessageEventContent {
             #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: None,
+            #[cfg(feature = "unstable-msc4095")]
+            url_previews: None,
         }
     }
 }
@@ -179,6 +197,8 @@ impl From<TextContentBlock> for MessageEventContent {
             #[cfg(feature = "unstable-msc3955")]
             automated: false,
             relates_to: None,
+            #[cfg(feature = "unstable-msc4095")]
+            url_previews: None,
         }
     }
 }

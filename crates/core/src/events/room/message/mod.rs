@@ -37,6 +37,10 @@ mod server_notice;
 mod text;
 mod video;
 mod without_relation;
+#[cfg(feature = "unstable-msc4095")]
+mod url_preview;
+#[cfg(feature = "unstable-msc4095")]
+pub use self::url_preview::{PreviewImage, PreviewImageSource, UrlPreview};
 
 pub use audio::{
     AudioInfo, AudioMessageEventContent, UnstableAmplitude, UnstableAudioDetailsContentBlock, UnstableVoiceContentBlock,

@@ -18,6 +18,7 @@ use crate::device::DeviceLists;
 use crate::events::receipt::SyncReceiptEvent;
 use crate::events::typing::SyncTypingEvent;
 use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyToDeviceEvent};
+use crate::serde::default_true;
 use crate::{
     OwnedMxcUri, Seqnum,
     directory::RoomTypeFilter,
@@ -389,7 +390,7 @@ pub struct ExtensionsConfig {
     pub receipts: ReceiptsConfig,
 
     /// Request to typing information with the given config.
-    #[serde(default, skip_serializing_if = "TypingConfig::is_empty")]
+    #[serde(default)]
     pub typing: TypingConfig,
 
     /// Extensions may add further fields to the list.
@@ -717,7 +718,7 @@ pub struct TypingConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
-
+    
     /// List of list names for which typing notifications should be enabled.
     ///
     /// If not defined, will be enabled for *all* the lists appearing in the

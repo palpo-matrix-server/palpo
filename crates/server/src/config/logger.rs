@@ -4,7 +4,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "logger")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LoggerConfig {
     /// Max log level for palpo. Allows debug, info, warn, or error.
     ///
@@ -51,6 +51,20 @@ pub struct LoggerConfig {
     /// these may be noisy or unnecessary if you're a public homeserver.
     #[serde(default)]
     pub guest_registrations: bool,
+}
+
+impl Default for LoggerConfig {
+    fn default() -> Self {
+        Self {
+            level: default_level(),
+            format: default_format(),
+            ansi_colors: true,
+            span_events: default_span_events(),
+            filter_regex: true,
+            thread_ids: false,
+            guest_registrations: false,
+        }
+    }
 }
 
 /// do debug logging by default for debug builds

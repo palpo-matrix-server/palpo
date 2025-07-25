@@ -36,7 +36,3 @@ pub struct CompressionConfig {
     #[serde(default)]
     pub enable_brotli: u64,
 }
-
-fn default_typing_federation_timeout_s() -> u64 {
-    30
-}

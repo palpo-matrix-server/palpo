@@ -107,7 +107,7 @@ async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> App
     })
 }
 
-/// used by MSC3266 to fetch a room's info if we do not know about it
+/// Used by MSC3266 to fetch a room's info if we do not know about it
 async fn remote_room_summary_hierarchy(
     room_id: &RoomId,
     servers: &[OwnedServerName],

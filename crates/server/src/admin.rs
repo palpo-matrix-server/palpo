@@ -910,10 +910,8 @@ pub(crate) async fn create_admin_room(created_by: &UserId) -> AppResult<OwnedRoo
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomTopic,
-            content: to_raw_value(&RoomTopicEventContent {
-                topic: format!("Manage {}", &conf.server_name),
-            })
-            .expect("event is valid, we just created it"),
+            content: to_raw_value(&RoomTopicEventContent::new(format!("Manage {}", &conf.server_name)))
+                .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
             ..Default::default()
         },
