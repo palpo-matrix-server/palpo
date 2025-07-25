@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::events::room::{EncryptedFile, OwnedMxcUri};
 
@@ -58,7 +58,13 @@ impl PreviewImage {
     }
 
     fn with_image(source: PreviewImageSource) -> Self {
-        PreviewImage { source, size: None, width: None, height: None, mimetype: None }
+        PreviewImage {
+            source,
+            size: None,
+            width: None,
+            height: None,
+            mimetype: None,
+        }
     }
 }
 
@@ -113,10 +119,7 @@ impl UrlPreview {
     /// Whether this preview contains an actual preview or the users homeserver
     /// should be asked for preview data instead.
     pub fn contains_preview(&self) -> bool {
-        self.url.is_some()
-            || self.title.is_some()
-            || self.description.is_some()
-            || self.image.is_some()
+        self.url.is_some() || self.title.is_some() || self.description.is_some() || self.image.is_some()
     }
 }
 

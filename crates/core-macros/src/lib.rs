@@ -196,7 +196,7 @@ pub fn room_id(input: TokenStream) -> TokenStream {
 /// Compile-time checked `RoomVersionId` construction.
 #[proc_macro]
 pub fn room_version_id(input: TokenStream) -> TokenStream {
-    let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
+    let IdentifierInput { dollar_crate: _, id } = parse_macro_input!(input as IdentifierInput);
     assert!(
         room_version_id::validate(&id.value()).is_ok(),
         "Invalid room_version_id"

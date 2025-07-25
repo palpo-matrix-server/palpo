@@ -26,7 +26,9 @@ use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, data, empty_ok, json_ok, room, utils};
+use crate::{
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok, json_ok, room, utils,
+};
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
 /// Lists all joined users in a room.
@@ -276,8 +278,13 @@ pub(super) async fn invite_user(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
+    let conf = config::get();
+    if conf.block_non_admin_invites && !authed.user.is_admin {
+        return Err(MatrixError::forbidden("you are not allowed to invite users", None).into());
+    }
+
     let InvitationRecipient::UserId { user_id } = &body.recipient else {
-        return Err(MatrixError::not_found("User not found.").into());
+        return Err(MatrixError::not_found("user not found").into());
     };
     crate::membership::invite_user(
         authed.user_id(),

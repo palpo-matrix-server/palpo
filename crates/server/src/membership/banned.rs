@@ -39,7 +39,8 @@ pub async fn banned_room_check(
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
 							 room join from IP {client_addr}"
-                    ))).await
+                    )))
+                    .await
                     .ok();
                 }
 

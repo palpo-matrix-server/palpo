@@ -717,7 +717,7 @@ pub struct TypingConfig {
     /// Activate or deactivate this extension. Sticky.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
-    
+
     /// List of list names for which typing notifications should be enabled.
     ///
     /// If not defined, will be enabled for *all* the lists appearing in the

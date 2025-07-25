@@ -35,10 +35,10 @@ pub(crate) mod relation_serde;
 pub mod sanitize;
 mod server_notice;
 mod text;
-mod video;
-mod without_relation;
 #[cfg(feature = "unstable-msc4095")]
 mod url_preview;
+mod video;
+mod without_relation;
 #[cfg(feature = "unstable-msc4095")]
 pub use self::url_preview::{PreviewImage, PreviewImageSource, UrlPreview};
 
