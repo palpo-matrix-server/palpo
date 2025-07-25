@@ -167,11 +167,10 @@ pub fn user_exists(user_id: &UserId) -> DataResult<bool> {
     diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
 
-pub fn get_user(user_id: &UserId) -> DataResult<Option<DbUser>> {
+pub fn get_user(user_id: &UserId) -> DataResult<DbUser> {
     users::table
         .find(user_id)
         .first::<DbUser>(&mut connect()?)
-        .optional()
         .map_err(Into::into)
 }
 

@@ -355,7 +355,7 @@ pub fn get_state_users(
     }
 }
 
-/// Returns an iterator of all servers participating in this room.
+/// Returns an list of all servers participating in this room.
 pub fn participating_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
     room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))

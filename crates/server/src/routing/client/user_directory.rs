@@ -58,7 +58,7 @@ fn search(
             return Some(user);
         }
 
-        let user_is_in_shared_rooms = !room::user::shared_rooms(vec![authed.user_id().clone(), user_id])
+        let user_is_in_shared_rooms = !room::user::shared_rooms(vec![authed.user_id().to_owned(), user_id])
             .ok()?
             .is_empty();
 

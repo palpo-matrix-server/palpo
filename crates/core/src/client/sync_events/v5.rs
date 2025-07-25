@@ -18,7 +18,6 @@ use crate::device::DeviceLists;
 use crate::events::receipt::SyncReceiptEvent;
 use crate::events::typing::SyncTypingEvent;
 use crate::events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyToDeviceEvent};
-use crate::serde::default_true;
 use crate::{
     OwnedMxcUri, Seqnum,
     directory::RoomTypeFilter,

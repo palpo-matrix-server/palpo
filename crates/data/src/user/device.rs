@@ -137,7 +137,7 @@ pub fn is_device_exists(user_id: &UserId, device_id: &DeviceId) -> DataResult<bo
     diesel_exists!(query, &mut connect()?).map_err(Into::into)
 }
 
-pub fn remove_device(user_id: &UserId, device_id: &OwnedDeviceId) -> DataResult<()> {
+pub fn remove_device(user_id: &UserId, device_id: &DeviceId) -> DataResult<()> {
     let count = diesel::delete(
         user_devices::table
             .filter(user_devices::user_id.eq(user_id))

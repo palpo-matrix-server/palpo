@@ -32,6 +32,7 @@ use crate::data::schema::*;
 use crate::room::timeline;
 use crate::utils::{self, HtmlEscape};
 use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, room};
+use crate::{AuthedInfo, membership};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]
@@ -236,7 +237,20 @@ pub fn process_message(room_message: String) -> AppResult<()> {
         .map_err(|e| AppError::internal(format!("failed to process message to admin room: {e}")))
 }
 
-pub fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
+/// Sends markdown notice to the admin room as the admin user.
+pub async fn send_notice(body: &str) -> AppResult<()> {
+    send_message(RoomMessageEventContent::notice_markdown(body)).await
+}
+
+/// Sends markdown message (not an m.notice for notification reasons) to the
+/// admin room as the admin user.
+pub async fn send_text(body: &str) -> AppResult<()> {
+    send_message(RoomMessageEventContent::text_markdown(body)).await
+}
+
+/// Sends a message to the admin room as the admin user (see send_text() for
+/// convenience).
+pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
     sender()
         .send(AdminRoomEvent::SendMessage(message_content))
         .map_err(|e| AppError::internal(format!("failed to send message to admin room: {e}")))
@@ -517,6 +531,51 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 .expect("to json value always works"),
             )?;
 
+            if !conf.auto_join_rooms.is_empty() {
+                let db_user = data::user::get_user(&user_id)?;
+                for room in &conf.auto_join_rooms {
+                    let Ok(room_id) = room::alias::resolve(room).await else {
+                        error!(
+                            %user_id,
+                            "failed to resolve room alias to room ID when attempting to auto join {room}, skipping"
+                        );
+                        continue;
+                    };
+
+                    if !room::is_server_joined(&conf.server_name, &room_id)? {
+                        warn!("skipping room {room} to automatically join as we have never joined before.");
+                        continue;
+                    }
+
+                    if let Ok(room_server_name) = room.server_name() {
+                        match membership::join_room(
+                            &db_user,
+                            None,
+                            &room_id,
+                            Some("automatically joining this room upon registration".to_owned()),
+                            &[conf.server_name.clone(), room_server_name.to_owned()],
+                            None,
+                            None,
+                            Default::default(),
+                        )
+                        .await
+                        {
+                            Ok(_response) => {
+                                info!("automatically joined room {room} for user {user_id}");
+                            }
+                            Err(e) => {
+                                // don't return this error so we don't fail registrations
+                                error!("failed to automatically join room {room} for user {user_id}: {e}");
+                                send_text(&format!(
+                                    "failed to automatically join room {room} for user {user_id}: \
+								 {e}"
+                                ))
+                                .await;
+                            }
+                        }
+                    }
+                }
+            }
             // we dont add a device since we're not the user, just the creator
 
             // Inhibit login does not work for guests
