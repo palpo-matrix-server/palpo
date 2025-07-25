@@ -4,7 +4,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "presence")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct PresenceConfig {
     /// Allow local (your server only) presence updates/requests.
     ///
@@ -54,10 +54,23 @@ pub struct PresenceConfig {
     pub timeout_remote_users: bool,
 }
 
+impl Default for PresenceConfig {
+    fn default() -> Self {
+        Self {
+            allow_local: true,
+            allow_incoming: true,
+            allow_outgoing: true,
+            idle_timeout: default_presence_idle_timeout(),
+            offline_timeout: default_presence_offline_timeout(),
+            timeout_remote_users: true,
+        }
+    }
+}
+
 fn default_presence_offline_timeout() -> u64 {
-    30 * 60 * 1000
+    30 * 60_000
 }
 
 fn default_presence_idle_timeout() -> u64 {
-    5 * 60 * 1000
+    5 * 60_000
 }

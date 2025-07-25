@@ -785,7 +785,7 @@ pub(super) async fn create_room(
         timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomTopic,
-                content: to_raw_value(&RoomTopicEventContent { topic: topic.clone() })
+                content: to_raw_value(&RoomTopicEventContent::new(topic.clone()))
                     .expect("event is valid, we just created it"),
                 state_key: Some("".to_owned()),
                 ..Default::default()

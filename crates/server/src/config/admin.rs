@@ -9,7 +9,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "admin")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct AdminConfig {
     /// Controls whether admin room notices like account registrations, password
     /// changes, account deactivations, room directory publications, etc will be
@@ -82,6 +82,21 @@ pub struct AdminConfig {
     /// default: "m.server_notice"
     #[serde(default = "default_room_tag")]
     pub room_tag: String,
+}
+
+impl Default for AdminConfig {
+    fn default() -> Self {
+        Self {
+            room_notices: true,
+            escape_commands: true,
+            console_automatic: false,
+            startup_execute: Vec::new(),
+            execute_errors_ignore: false,
+            signal_execute: Vec::new(),
+            log_capture: default_log_capture(),
+            room_tag: default_room_tag(),
+        }
+    }
 }
 
 fn default_log_capture() -> String {

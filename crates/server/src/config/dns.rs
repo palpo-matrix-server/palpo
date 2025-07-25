@@ -4,7 +4,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "dns")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DnsConfig {
     /// Maximum entries stored in DNS memory-cache. The size of an entry may
     /// vary so please take care if raising this value excessively. Only
@@ -58,6 +58,19 @@ pub struct DnsConfig {
     pub tcp_fallback: bool,
 }
 
+impl Default for DnsConfig {
+    fn default() -> Self {
+        Self {
+            cache_entries: default_cache_entries(),
+            min_ttl: default_min_ttl(),
+            min_ttl_nxdomain: default_min_ttl_nxdomain(),
+            attempts: default_attempts(),
+            timeout: default_timeout(),
+            tcp_fallback: true,
+        }
+    }
+}
+
 fn default_cache_entries() -> u32 {
     32768
 }
@@ -67,7 +80,7 @@ fn default_min_ttl() -> u64 {
 }
 
 fn default_min_ttl_nxdomain() -> u64 {
-    60 * 60 * 24 * 3
+    60 * 60 * 24 * 3_000
 }
 
 fn default_attempts() -> u16 {
@@ -75,5 +88,5 @@ fn default_attempts() -> u16 {
 }
 
 fn default_timeout() -> u64 {
-    10
+    10_000
 }

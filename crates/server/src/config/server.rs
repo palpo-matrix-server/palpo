@@ -149,34 +149,34 @@ pub struct ServerConfig {
     #[serde(default = "default_max_fetch_prev_events")]
     pub max_fetch_prev_events: u16,
 
-    /// Default/base connection timeout (seconds). This is used only by URL
+    /// Default/base connection timeout. This is used only by URL
     /// previews and update/news endpoint checks.
     ///
-    /// default: 10
+    /// default: 10_000
     #[serde(default = "default_request_conn_timeout")]
     pub request_conn_timeout: u64,
 
-    /// Default/base request timeout (seconds). The time waiting to receive more
+    /// Default/base request timeout. The time waiting to receive more
     /// data from another server. This is used only by URL previews,
     /// update/news, and misc endpoint checks.
     ///
-    /// default: 35
+    /// default: 35_000
     #[serde(default = "default_request_timeout")]
     pub request_timeout: u64,
 
-    /// Default/base request total timeout (seconds). The time limit for a whole
+    /// Default/base request total timeout. The time limit for a whole
     /// request. This is set very high to not cancel healthy requests while
     /// serving as a backstop. This is used only by URL previews and update/news
     /// endpoint checks.
     ///
-    /// default: 320
+    /// default: 320_000
     #[serde(default = "default_request_total_timeout")]
     pub request_total_timeout: u64,
 
-    /// Default/base idle connection pool timeout (seconds). This is used only
+    /// Default/base idle connection pool timeout. This is used only
     /// by URL previews and update/news endpoint checks.
     ///
-    /// default: 5
+    /// default: 5_000
     #[serde(default = "default_request_idle_timeout")]
     pub request_idle_timeout: u64,
 
@@ -195,45 +195,45 @@ pub struct ServerConfig {
     #[serde(default = "default_appservice_timeout")]
     pub appservice_timeout: u64,
 
-    /// Appservice URL idle connection pool timeout (seconds).
+    /// Appservice URL idle connection pool timeout
     ///
-    /// default: 300
+    /// default: 300_000
     #[serde(default = "default_appservice_idle_timeout")]
     pub appservice_idle_timeout: u64,
 
     /// Notification gateway pusher idle connection pool timeout.
     ///
-    /// default: 15
+    /// default: 15_000
     #[serde(default = "default_pusher_idle_timeout")]
     pub pusher_idle_timeout: u64,
 
-    /// Maximum time to receive a request from a client (seconds).
+    /// Maximum time to receive a request from a client
     ///
-    /// default: 75
+    /// default: 75_000
     #[serde(default = "default_client_receive_timeout")]
     pub client_receive_timeout: u64,
 
-    /// Maximum time to process a request received from a client (seconds).
+    /// Maximum time to process a request received from a client
     ///
-    /// default: 180
+    /// default: 180_000
     #[serde(default = "default_client_request_timeout")]
     pub client_request_timeout: u64,
 
-    /// Maximum time to transmit a response to a client (seconds)
+    /// Maximum time to transmit a response to a client
     ///
-    /// default: 120
+    /// default: 120_000
     #[serde(default = "default_client_response_timeout")]
     pub client_response_timeout: u64,
 
-    /// Grace period for clean shutdown of client requests (seconds).
+    /// Grace period for clean shutdown of client requests.
     ///
-    /// default: 10
+    /// default: 10_000
     #[serde(default = "default_client_shutdown_timeout")]
     pub client_shutdown_timeout: u64,
 
-    /// Grace period for clean shutdown of federation requests (seconds).
+    /// Grace period for clean shutdown of federation requests.
     ///
-    /// default: 5
+    /// default: 5_000
     #[serde(default = "default_sender_shutdown_timeout")]
     pub sender_shutdown_timeout: u64,
 
@@ -338,7 +338,7 @@ pub struct ServerConfig {
     #[serde(default = "default_trusted_servers")]
     pub trusted_servers: Vec<OwnedServerName>,
 
-    /// OpenID token expiration/TTL in seconds.
+    /// OpenID token expiration/TTL.
     ///
     /// These are the OpenID tokens that are primarily used for Matrix account
     /// integrations (e.g. Vector Integrations in Element), *not* OIDC/OpenID
@@ -1092,7 +1092,7 @@ fn default_session_ttl() -> u64 {
     60 * 60_000
 }
 fn default_openid_token_ttl() -> u64 {
-    60 * 60
+    60 * 60_000
 }
 
 fn default_ip_lookup_strategy() -> u8 {
@@ -1135,26 +1135,6 @@ fn default_rust_log() -> String {
 
 fn default_log_format() -> String {
     "json".to_owned()
-}
-
-fn default_presence_idle_timeout_s() -> u64 {
-    5 * 60_000
-}
-
-fn default_presence_offline_timeout_s() -> u64 {
-    30 * 60_000
-}
-
-fn default_typing_federation_timeout_s() -> u64 {
-    30_000
-}
-
-fn default_typing_client_timeout_min_s() -> u64 {
-    15_000
-}
-
-fn default_typing_client_timeout_max_s() -> u64 {
-    45_000
 }
 
 fn default_default_room_version() -> RoomVersionId {
@@ -1248,5 +1228,5 @@ fn default_notification_push_path() -> String {
 }
 
 fn default_pusher_idle_timeout() -> u64 {
-    15
+    15_000
 }

@@ -43,6 +43,11 @@ appservice_registration_dir = "/complement/appservice"
 
 ip_range_denylist = []
 
+
+[db]
+url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
+pool_size = 1
+
 [presence]
 allow_local = true
 
@@ -56,13 +61,11 @@ enable = true
 level = "warn,palpo=warn,salvo=error"
 format = "compact" # pretty, json
 
+# [typing]
+# allow_incoming = true
+# allow_outgoing = true
+
 # [keypair]
 # document = "MFECAQEwBQYDK2VwBCIEIJXK7IX/PTIr/9VrBwkdwJw+aeXjcNSSnAOetAY0Hfl/gSEAELqWFgDu6Ap47RzE1ehee2XCvGamRzu6u0N66lsgOJ0="
 # version = "1"
 
-#max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
-#log = "warn,state=warn,rocket=off,_=off,sled=off"
-
-[db]
-url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
-pool_size = 1

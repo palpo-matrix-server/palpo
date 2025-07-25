@@ -10,7 +10,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "media")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MediaConfig {
     /// Enable the legacy unauthenticated Matrix media repository endpoints.
     /// These endpoints consist of:
@@ -75,4 +75,17 @@ pub struct MediaConfig {
     /// default: []
     #[serde(default, with = "serde_regex")]
     pub prevent_downloads_from: RegexSet,
+}
+
+impl Default for MediaConfig {
+    fn default() -> Self {
+        Self {
+            allow_legacy: true,
+            freeze_legacy: true,
+            startup_check: true,
+            compat_file_link: false,
+            prune_missing: false,
+            prevent_downloads_from: Default::default(),
+        }
+    }
 }

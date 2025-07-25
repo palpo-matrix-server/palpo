@@ -8,7 +8,7 @@ use crate::core::serde::{default_false, default_true};
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "federation")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct FederationConfig {
     /// Controls whether federation is allowed or not. It is not recommended to
     /// disable this after the fact due to potential federation breakage.
@@ -23,27 +23,27 @@ pub struct FederationConfig {
     #[serde(default)]
     pub allow_loopback: bool,
 
-    /// Federation well-known resolution connection timeout (seconds).
+    /// Federation well-known resolution connection timeout.
     ///
-    /// default: 6
+    /// default: 6_000
     #[serde(default = "default_well_known_conn_timeout")]
     pub well_known_conn_timeout: u64,
 
-    /// Federation HTTP well-known resolution request timeout (seconds).
+    /// Federation HTTP well-known resolution request timeout.
     ///
-    /// default: 10
+    /// default: 10_000
     #[serde(default = "default_well_known_timeout")]
     pub well_known_timeout: u64,
 
-    /// Federation client request timeout (seconds). You most definitely want
+    /// Federation client request timeout. You most definitely want
     /// this to be high to account for extremely large room joins, slow
     /// homeservers, your own resources etc.
     ///
-    /// default: 300
+    /// default: 300_000
     #[serde(default = "default_client_timeout")]
     pub client_timeout: u64,
 
-    /// Federation client idle connection pool timeout (seconds).
+    /// Federation client idle connection pool timeout.
     ///
     /// default: 25
     #[serde(default = "default_client_idle_timeout")]
@@ -56,22 +56,22 @@ pub struct FederationConfig {
     #[serde(default = "default_client_idle_per_host")]
     pub client_idle_per_host: u16,
 
-    /// Federation sender request timeout (seconds). The time it takes for the
+    /// Federation sender request timeout. The time it takes for the
     /// remote server to process sent transactions can take a while.
     ///
-    /// default: 180
+    /// default: 180_000
     #[serde(default = "default_sender_timeout")]
     pub sender_timeout: u64,
 
-    /// Federation sender idle connection pool timeout (seconds).
+    /// Federation sender idle connection pool timeout.
     ///
-    /// default: 180
+    /// default: 180_000
     #[serde(default = "default_sender_idle_timeout")]
     pub sender_idle_timeout: u64,
 
-    /// Federation sender transaction retry backoff limit (seconds).
+    /// Federation sender transaction retry backoff limit.
     ///
-    /// default: 86400
+    /// default: 86400_000
     #[serde(default = "default_sender_retry_backoff_limit")]
     pub sender_retry_backoff_limit: u64,
 
@@ -96,20 +96,39 @@ pub struct FederationConfig {
     pub allow_inbound_profile_lookup: bool,
 }
 
+impl Default for FederationConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            allow_loopback: false,
+            well_known_conn_timeout: default_well_known_conn_timeout(),
+            well_known_timeout: default_well_known_timeout(),
+            client_timeout: default_client_timeout(),
+            client_idle_timeout: default_client_idle_timeout(),
+            client_idle_per_host: default_client_idle_per_host(),
+            sender_timeout: default_sender_timeout(),
+            sender_idle_timeout: default_sender_idle_timeout(),
+            sender_retry_backoff_limit: default_sender_retry_backoff_limit(),
+            allow_device_name: false,
+            allow_inbound_profile_lookup: true,
+        }
+    }
+}
+
 fn default_well_known_conn_timeout() -> u64 {
-    6
+    6_000
 }
 
 fn default_well_known_timeout() -> u64 {
-    10
+    10_000
 }
 
 fn default_client_timeout() -> u64 {
-    25
+    25_000
 }
 
 fn default_client_idle_timeout() -> u64 {
-    25
+    25_000
 }
 
 fn default_client_idle_per_host() -> u16 {
@@ -117,11 +136,11 @@ fn default_client_idle_per_host() -> u16 {
 }
 
 fn default_sender_timeout() -> u64 {
-    180
+    180_000
 }
 
 fn default_sender_idle_timeout() -> u64 {
-    180
+    180_000
 }
 
 fn default_sender_retry_backoff_limit() -> u64 {
