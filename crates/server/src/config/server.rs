@@ -372,12 +372,12 @@ pub struct ServerConfig {
     #[serde(default = "default_session_ttl")]
     pub session_ttl: u64,
 
-    /// List/vector of room IDs or room aliases that conduwuit will make newly
+    /// List/vector of room IDs or room aliases that palpo will make newly
     /// registered users join. The rooms specified must be rooms that you have
     /// joined at least once on the server, and must be public.
     ///
-    /// example: ["#conduwuit:puppygock.gay",
-    /// "!eoIzvAvVwY23LPDay8:puppygock.gay"]
+    /// example: ["#palpo:example.com",
+    /// "!eoIzvAvVwY23LPDay8:example.com"]
     ///
     /// default: []
     #[serde(default = "Vec::new")]
@@ -772,7 +772,7 @@ impl ServerConfig {
 
     pub fn check(&self) -> AppResult<()> {
         if cfg!(debug_assertions) {
-            tracing::warn!("Note: conduwuit was built without optimisations (i.e. debug build)");
+            tracing::warn!("Note: palpo was built without optimisations (i.e. debug build)");
         }
 
         // if self
@@ -843,7 +843,7 @@ impl ServerConfig {
         //                 error!(
         //                     "You are detected using Docker with a loopback/localhost listening \
         //                      address of {addr}. If you are using a reverse proxy on the host and \
-        //                      require communication to conduwuit in the Docker container via \
+        //                      require communication to palpo in the Docker container via \
         //                      NAT-based networking, this will NOT work. Please change this to \
         //                      \"0.0.0.0\". If this is expected, you can ignore.",
         //                 );
@@ -851,7 +851,7 @@ impl ServerConfig {
         //                 error!(
         //                     "You are detected using Podman with a loopback/localhost listening \
         //                      address of {addr}. If you are using a reverse proxy on the host and \
-        //                      require communication to conduwuit in the Podman container via \
+        //                      require communication to palpo in the Podman container via \
         //                      NAT-based networking, this will NOT work. Please change this to \
         //                      \"0.0.0.0\". If this is expected, you can ignore.",
         //                 );
@@ -863,7 +863,7 @@ impl ServerConfig {
         // yeah, unless the user built a debug build hopefully for local testing only
         if cfg!(not(debug_assertions)) && self.server_name == "your.server.name" {
             return Err(AppError::internal(
-                "You must specify a valid server name for production usage of conduwuit.",
+                "You must specify a valid server name for production usage of palpo.",
             ));
         }
 
@@ -925,9 +925,9 @@ impl ServerConfig {
         //     {
         //         return Err(AppError::internal(
         //             "!! You have `allow_registration` enabled without a token configured in your config \
-        //              which means you are allowing ANYONE to register on your conduwuit instance without \
+        //              which means you are allowing ANYONE to register on your palpo instance without \
         //              any 2nd-step (e.g. registration token). If this is not the intended behaviour, \
-        //              please set a registration token. For security and safety reasons, conduwuit will \
+        //              please set a registration token. For security and safety reasons, palpo will \
         //              shut down. If you are extra sure this is the desired behaviour you want, please \
         //              set the following config option to true:
         // `yes_i_am_very_very_sure_i_want_an_open_registration_server_prone_to_abuse`",
@@ -991,7 +991,7 @@ impl ServerConfig {
 
         if was_deprecated {
             warn!(
-                "Read conduwuit config documentation at https://conduwuit.puppyirl.gay/configuration.html and check your \
+                "Read palpo config documentation at https://palpo.im/guide/configuration.html and check your \
                  configuration if any new configuration parameters should be adjusted"
             );
         }
@@ -1004,7 +1004,7 @@ impl ServerConfig {
         for key in self.catch_others.keys().filter(
             |key| "config".to_owned().ne(key.to_owned()), /* "config" is expected */
         ) {
-            warn!("Config parameter \"{}\" is unknown to conduwuit, ignoring.", key);
+            warn!("Config parameter \"{}\" is unknown to palpo, ignoring.", key);
         }
     }
 }

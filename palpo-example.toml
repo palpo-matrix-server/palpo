@@ -291,12 +291,12 @@
 #
 # session_ttl =
 
-# List/vector of room IDs or room aliases that conduwuit will make newly
+# List/vector of room IDs or room aliases that palpo will make newly
 # registered users join. The rooms specified must be rooms that you have
 # joined at least once on the server, and must be public.
 #
-# example: ["#conduwuit:puppygock.gay",
-# "!eoIzvAvVwY23LPDay8:puppygock.gay"]
+# example: ["#palpo:example.com",
+# "!eoIzvAvVwY23LPDay8:example.com"]
 #
 # auto_join_rooms = []
 
@@ -574,7 +574,7 @@
 # a normal palpo admin command. The reply will be publicly visible to
 # the room, originating from the sender.
 #
-# example: \\!admin debug ping puppygock.gay
+# example: \\!admin debug ping example.com
 #
 # escape_commands =
 
@@ -592,7 +592,7 @@
 # For example: `./palpo --execute "server admin-notice palpo has
 # started up at $(date)"`
 #
-# example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+# example: admin_execute = ["debug ping example.com", "debug echo hi"]`
 #
 # startup_execute = []
 

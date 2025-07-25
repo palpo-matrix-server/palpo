@@ -23,7 +23,7 @@ pub struct AdminConfig {
     /// a normal palpo admin command. The reply will be publicly visible to
     /// the room, originating from the sender.
     ///
-    /// example: \\!admin debug ping puppygock.gay
+    /// example: \\!admin debug ping example.com
     #[serde(default = "default_true")]
     pub escape_commands: bool,
 
@@ -42,7 +42,7 @@ pub struct AdminConfig {
     /// For example: `./palpo --execute "server admin-notice palpo has
     /// started up at $(date)"`
     ///
-    /// example: admin_execute = ["debug ping puppygock.gay", "debug echo hi"]`
+    /// example: admin_execute = ["debug ping example.com", "debug echo hi"]`
     ///
     /// default: []
     #[serde(default)]

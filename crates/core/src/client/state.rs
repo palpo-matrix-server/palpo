@@ -42,8 +42,24 @@ pub struct StateEventsForKeyReqArgs {
     /// Optional parameter to return the event content
     /// or the full state event.
     #[salvo(parameter(parameter_in = Query))]
-    pub format: Option<String>,
+    pub format: Option<StateEventFormat>,
 }
+
+/// The format to use for the returned data.
+#[derive(ToSchema, Default, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum StateEventFormat {
+    /// Will return only the content of the state event.
+    ///
+    /// This is the default value if the format is unspecified in the request.
+    #[default]
+    Content,
+
+    /// Will return the entire event in the usual format suitable for clients, including fields
+    /// like event ID, sender and timestamp.
+    Event,
+}
+
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct StateEventsForEmptyKeyReqArgs {
     /// The room to look up the state for.
