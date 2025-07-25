@@ -701,8 +701,6 @@
 #
 # max_raw_size = 33554432
 
-# [cache]
-
 # [compression]
 
 # Set this to true for palpo to compress HTTP response bodies using

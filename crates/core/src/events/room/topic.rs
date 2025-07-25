@@ -27,10 +27,6 @@ pub struct RoomTopicEventContent {
     /// With the `compat-lax-room-topic-deser` cargo feature, this field is ignored if its
     /// deserialization fails.
     #[serde(rename = "m.topic", default, skip_serializing_if = "TopicContentBlock::is_empty")]
-    #[cfg_attr(
-        feature = "compat-lax-room-topic-deser",
-        serde(deserialize_with = "ruma_common::serde::default_on_error")
-    )]
     pub topic_block: TopicContentBlock,
 }
 

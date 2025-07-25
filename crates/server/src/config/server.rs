@@ -1,12 +1,10 @@
 use std::collections::BTreeMap;
-use std::fmt;
 use std::path::PathBuf;
 
-use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
+use serde::Deserialize;
 use serde::de::IgnoredAny;
-use serde::{Deserialize, Serialize};
 
 use super::{
     AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig, MediaConfig,

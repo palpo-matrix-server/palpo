@@ -1,9 +1,6 @@
 //! System utilities related to compute/processing
 
-use std::io::{Error as IoError, ErrorKind};
-use std::{cell::Cell, fmt::Debug, path::PathBuf, sync::LazyLock};
-
-use crate::AppResult;
+use std::{path::PathBuf, sync::LazyLock};
 
 type Id = usize;
 
@@ -22,83 +19,6 @@ static SMT_TOPOLOGY: LazyLock<Masks> = LazyLock::new(init_smt_topology);
 /// Stores the mask of logical-core associations on a node/socket. Bits are set
 /// for all logical cores within all physical cores of the node.
 static NODE_TOPOLOGY: LazyLock<Masks> = LazyLock::new(init_node_topology);
-
-thread_local! {
-    /// Tracks the affinity for this thread. This is updated when affinities
-    /// are set via our set_affinity() interface.
-    static CORE_AFFINITY: Cell<Mask> = const { Cell::new(0) };
-}
-
-/// Set the core affinity for this thread. The ID should be listed in
-/// CORES_AVAILABLE. Empty input is a no-op; prior affinity unchanged.
-#[tracing::instrument(
-	level = "debug",
-	skip_all,
-	fields(
-		id = ?std::thread::current().id(),
-		name = %std::thread::current().name().unwrap_or("None"),
-		set = ?ids.clone().collect::<Vec<_>>(),
-		CURRENT = %format!("[b{:b}]", CORE_AFFINITY.get()),
-		AVAILABLE = %format!("[b{:b}]", *CORES_AVAILABLE),
-	),
-)]
-pub fn set_affinity<I>(mut ids: I)
-where
-    I: Iterator<Item = Id> + Clone + Debug,
-{
-    // use core_affinity::{CoreId, set_for_current};
-
-    let n = ids.clone().count();
-    let mask: Mask = ids.clone().fold(0, |mask, id| {
-        debug_assert!(is_core_available(id), "setting affinity to unavailable core");
-        mask | (1 << id)
-    });
-
-    // TODO
-    // if n > 1 {
-    //     set_each_for_current(ids.map(|id| CoreId { id }));
-    // } else if n > 0 {
-    //     set_for_current(CoreId {
-    //         id: ids.next().expect("n > 0"),
-    //     });
-    // }
-
-    if mask.count_ones() > 0 {
-        CORE_AFFINITY.replace(mask);
-    }
-}
-
-/// Get the core affinity for this thread.
-pub fn get_affinity() -> impl Iterator<Item = Id> {
-    from_mask(CORE_AFFINITY.get())
-}
-
-/// List the cores sharing SMT-tier resources
-pub fn smt_siblings() -> impl Iterator<Item = Id> {
-    from_mask(get_affinity().fold(0_u128, |mask, id| {
-        mask | SMT_TOPOLOGY.get(id).expect("ID must not exceed max cpus")
-    }))
-}
-
-/// List the cores sharing Node-tier resources relative to this threads current
-/// affinity.
-pub fn node_siblings() -> impl Iterator<Item = Id> {
-    from_mask(get_affinity().fold(0_u128, |mask, id| {
-        mask | NODE_TOPOLOGY.get(id).expect("Id must not exceed max cpus")
-    }))
-}
-
-/// Get the cores sharing SMT resources relative to id.
-#[inline]
-pub fn smt_affinity(id: Id) -> impl Iterator<Item = Id> {
-    from_mask(*SMT_TOPOLOGY.get(id).expect("ID must not exceed max cpus"))
-}
-
-/// Get the cores sharing Node resources relative to id.
-#[inline]
-pub fn node_affinity(id: Id) -> impl Iterator<Item = Id> {
-    from_mask(*NODE_TOPOLOGY.get(id).expect("ID must not exceed max cpus"))
-}
 
 /// Get the number of threads which could execute in parallel based on hardware
 /// constraints of this system.

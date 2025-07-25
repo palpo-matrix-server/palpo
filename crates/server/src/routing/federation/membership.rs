@@ -184,8 +184,6 @@ async fn invite_user(
     )
     .map_err(|_| MatrixError::invalid_param("sender is not a user id."))?;
 
-    let sender = data::user::get_user(&sender_id).map_err(|_| MatrixError::not_found("sender user not found."))?;
-
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
     }
