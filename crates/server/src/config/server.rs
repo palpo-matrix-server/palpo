@@ -9,7 +9,7 @@ use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LdapConfig, LoggerConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig,
     MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
@@ -528,7 +528,7 @@ pub struct ServerConfig {
     #[serde(default = "default_space_path")]
     pub space_path: String,
 
-    pub auto_acme: Option<String>,
+    // pub auto_acme: Option<AcmeConfig>,
 
     /// Whether to query the servers listed in trusted_servers first or query
     /// the origin server first. For best security, querying the origin server
@@ -629,8 +629,8 @@ pub struct ServerConfig {
     // external structure; separate section
     pub proxy: Option<ProxyConfig>,
 
-    // external structure; separate section
-    pub ldap: Option<LdapConfig>,
+    // // external structure; separate section
+    // pub ldap: Option<LdapConfig>,
 
     // external structure; separate section
     // display: hidden
@@ -714,13 +714,13 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn enabled_ldap(&self) -> Option<&LdapConfig> {
-        if let Some(ldap) = self.ldap.as_ref() {
-            if ldap.enable { Some(ldap) } else { None }
-        } else {
-            None
-        }
-    }
+    // pub fn enabled_ldap(&self) -> Option<&LdapConfig> {
+    //     if let Some(ldap) = self.ldap.as_ref() {
+    //         if ldap.enable { Some(ldap) } else { None }
+    //     } else {
+    //         None
+    //     }
+    // }
 
     pub fn enabled_jwt(&self) -> Option<&JwtConfig> {
         if let Some(jwt) = self.jwt.as_ref() {

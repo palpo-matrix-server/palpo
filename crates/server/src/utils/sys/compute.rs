@@ -46,7 +46,7 @@ pub fn set_affinity<I>(mut ids: I)
 where
     I: Iterator<Item = Id> + Clone + Debug,
 {
-    use core_affinity::{CoreId, set_for_current};
+    // use core_affinity::{CoreId, set_for_current};
 
     let n = ids.clone().count();
     let mask: Mask = ids.clone().fold(0, |mask, id| {

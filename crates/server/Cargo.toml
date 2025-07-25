@@ -118,7 +118,7 @@ regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 ring = { workspace = true }
 rust-argon2 = { workspace = true }
-salvo = { workspace = true, features = ["jwt-auth", "logging", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
+salvo = { workspace = true, features = ["compression", "cors", "jwt-auth", "logging", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
 sanitize-filename = { workspace = true }
 scheduled-thread-pool = { workspace = true }
 secrecy = { workspace = true }
