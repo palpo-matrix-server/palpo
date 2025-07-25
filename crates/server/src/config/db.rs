@@ -11,9 +11,7 @@ use crate::macros::config_example;
 #[config_example(filename = "palpo-example.toml", section = "db")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct DbConfig {
-    /// Settings for the primary database. This is usually writeable, but will be read-only in
-    /// some configurations.
-    /// An optional follower database. Always read-only.
+    /// Settings for the primary database.
     pub url: String,
     #[serde(default = "default_db_pool_size")]
     pub pool_size: u32,

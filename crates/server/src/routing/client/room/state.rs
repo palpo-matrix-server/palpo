@@ -4,8 +4,8 @@ use salvo::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::client::room::ReportContentReqBody;
 use crate::core::client::state::{
-    SendStateEventReqBody, SendStateEventResBody, StateEventsForEmptyKeyReqArgs, StateEventsForKeyReqArgs,
-    StateEventsForKeyResBody, StateEventsResBody,
+    SendStateEventReqBody, SendStateEventResBody, StateEventFormat, StateEventsForEmptyKeyReqArgs,
+    StateEventsForKeyReqArgs, StateEventsForKeyResBody, StateEventsResBody,
 };
 use crate::core::client::typing::{CreateTypingEventReqBody, Typing};
 use crate::core::events::room::message::RoomMessageEventContent;
@@ -128,7 +128,7 @@ pub(super) fn state_for_key(
     };
 
     let event = room::get_state(&args.room_id, &args.event_type, &args.state_key, until_sn)?;
-    let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
+    let event_format = args.format.as_ref().is_some_and(|f| *f == StateEventFormat::Event);
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
         event: if event_format {
