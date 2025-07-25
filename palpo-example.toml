@@ -15,11 +15,15 @@
 ### For more information, see:
 ### https://palpo.im/guide/configuration.html
 
-# This item is undocumented. Please contribute documentation for it.
+# The default address (IPv4 or IPv6) and port palpo will listen on.
 #
 # listen_addr =
 
-# This item is undocumented. Please contribute documentation for it.
+# The server_name is the pretty name of this server. It is used as a
+# suffix for user and room IDs/aliases.
+# YOU NEED TO EDIT THIS.
+#
+# example: "palpo.im"
 #
 # server_name =
 
@@ -744,9 +748,7 @@
 
 # [db]
 
-# Settings for the primary database. This is usually writeable, but will be read-only in
-# some configurations.
-# An optional follower database. Always read-only.
+# Settings for the primary database.
 #
 # url =
 

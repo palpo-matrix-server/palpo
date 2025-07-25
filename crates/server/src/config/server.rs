@@ -58,8 +58,15 @@ pub struct KeypairConfig {
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
+	/// The default address (IPv4 or IPv6) and port palpo will listen on.
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
+
+	/// The server_name is the pretty name of this server. It is used as a
+	/// suffix for user and room IDs/aliases.
+	/// YOU NEED TO EDIT THIS.
+	///
+	/// example: "palpo.im"
     #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
 
