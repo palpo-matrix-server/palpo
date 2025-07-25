@@ -106,7 +106,7 @@ mod tests {
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::RoomTopicEventContent;
-    use crate::message::TextContentBlock;
+    use crate::events::message::TextContentBlock;
 
     #[test]
     fn serialize_content() {
