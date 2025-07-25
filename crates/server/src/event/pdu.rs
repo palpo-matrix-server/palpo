@@ -19,7 +19,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
 use crate::core::{Seqnum, UnixMillis, UserId};
 use crate::room::state;
-use crate::{AppError, AppResult};
+use crate::{AppError, AppResult, room};
 
 /// Content hashes of a PDU.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -45,9 +45,9 @@ impl SnPduEvent {
             return Ok(true);
         }
         if self.is_room_state() {
-            if crate::room::is_world_readable(&self.room_id) {
-                return Ok(!crate::room::user::is_banned(user_id, &self.room_id)?);
-            } else if crate::room::user::is_joined(user_id, &self.room_id)? {
+            if room::is_world_readable(&self.room_id) {
+                return Ok(!room::user::is_banned(user_id, &self.room_id)?);
+            } else if room::user::is_joined(user_id, &self.room_id)? {
                 return Ok(true);
             }
         }

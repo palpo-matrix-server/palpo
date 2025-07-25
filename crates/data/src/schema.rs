@@ -22,6 +22,18 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    banned_rooms (id) {
+        id -> Int8,
+        room_id -> Text,
+        created_by -> Nullable<Text>,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     device_inboxes (id) {
         id -> Int8,
         user_id -> Text,
@@ -974,6 +986,7 @@ diesel::table! {
 
 diesel::allow_tables_to_appear_in_same_query!(
     appservice_registrations,
+    banned_rooms,
     device_inboxes,
     device_streams,
     e2e_cross_signing_keys,

@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
-use std::fmt;
 use std::path::PathBuf;
 
-use either::Either;
 use regex::RegexSet;
 use salvo::http::HeaderValue;
+use serde::Deserialize;
 use serde::de::IgnoredAny;
-use serde::{Deserialize, Serialize};
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig,
-    MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig, MediaConfig,
+    PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
@@ -58,15 +56,15 @@ pub struct KeypairConfig {
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-	/// The default address (IPv4 or IPv6) and port palpo will listen on.
+    /// The default address (IPv4 or IPv6) and port palpo will listen on.
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
 
-	/// The server_name is the pretty name of this server. It is used as a
-	/// suffix for user and room IDs/aliases.
-	/// YOU NEED TO EDIT THIS.
-	///
-	/// example: "palpo.im"
+    /// The server_name is the pretty name of this server. It is used as a
+    /// suffix for user and room IDs/aliases.
+    /// YOU NEED TO EDIT THIS.
+    ///
+    /// example: "palpo.im"
     #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
 
@@ -409,13 +407,6 @@ pub struct ServerConfig {
     #[serde(default)]
     pub auto_deactivate_banned_room_attempts: bool,
 
-    /// Enable the tokio-console. This option is only relevant to developers.
-    ///
-    ///	For more information, see:
-    /// https://palpo.chat/development.html#debugging-with-tokio-console
-    #[serde(default)]
-    pub tokio_console: bool,
-
     /// Block non-admin local users from sending room invites (local and
     /// remote), and block non-admin users from receiving remote room invites.
     ///
@@ -529,7 +520,6 @@ pub struct ServerConfig {
     pub space_path: String,
 
     // pub auto_acme: Option<AcmeConfig>,
-
     /// Whether to query the servers listed in trusted_servers first or query
     /// the origin server first. For best security, querying the origin server
     /// first is advised to minimize the exposure to a compromised trusted

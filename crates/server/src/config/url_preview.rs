@@ -1,9 +1,7 @@
 use std::net::IpAddr;
-use std::path::PathBuf;
 
 use either::Either;
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::macros::config_example;
 

@@ -148,7 +148,7 @@ async fn register(
     let db_user = crate::user::create_user(user_id.clone(), password)?;
 
     // Default to pretty display_name
-    let mut display_name = user_id.localpart().to_owned();
+    let display_name = user_id.localpart().to_owned();
 
     // // If enabled append lightning bolt to display name (default true)
     // if config::enable_lightning_bolt() {

@@ -60,7 +60,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
                 metadata
                     .file_name
                     .as_ref()
-                    .map(|name| mime_infer::infer_mime_type(name))
+                    .map(|name| mime_infer::from_path(name).first_or_octet_stream())
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM)
             });
 
@@ -105,7 +105,7 @@ pub async fn get_content_with_filename(
         metadata
             .file_name
             .as_ref()
-            .map(|name| mime_infer::infer_mime_type(name))
+            .map(|name| mime_infer::from_path(name).first_or_octet_stream())
             .unwrap_or(mime::APPLICATION_OCTET_STREAM)
             .to_string()
     };

@@ -323,13 +323,6 @@
 #
 # auto_deactivate_banned_room_attempts = false
 
-# Enable the tokio-console. This option is only relevant to developers.
-#
-#	For more information, see:
-# https://palpo.chat/development.html#debugging-with-tokio-console
-#
-# tokio_console = false
-
 # Block non-admin local users from sending room invites (local and
 # remote), and block non-admin users from receiving remote room invites.
 #
@@ -707,8 +700,6 @@
 # is 33.55MB. Setting it to 0 disables blurhash.
 #
 # max_raw_size = 33554432
-
-# [cache]
 
 # [compression]
 

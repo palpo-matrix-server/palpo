@@ -94,9 +94,9 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::room::message::Relation;
-use crate::macros::EventContent;
 #[cfg(feature = "unstable-msc4095")]
 use crate::events::room::message::UrlPreview;
+use crate::macros::EventContent;
 
 mod historical_serde;
 

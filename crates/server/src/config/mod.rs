@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
 
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use figment::Figment;
 use figment::providers::{Env, Format, Json, Toml, Yaml};
 use ipaddress::IPAddress;
@@ -16,8 +17,8 @@ mod jwt;
 pub use jwt::*;
 mod blurhash;
 pub use blurhash::*;
-mod cache;
-pub use cache::*;
+// mod cache;
+// pub use cache::*;
 mod compression;
 pub use compression::*;
 mod db;
@@ -45,7 +46,6 @@ pub use typing::*;
 mod url_preview;
 pub use url_preview::*;
 
-use crate::AppResult;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
 
@@ -142,7 +142,9 @@ pub fn keypair() -> &'static Ed25519KeyPair {
     static KEYPAIR: OnceLock<Ed25519KeyPair> = OnceLock::new();
     KEYPAIR.get_or_init(|| {
         if let Some(keypair) = &get().keypair {
-            let bytes = base64::decode(&keypair.document).expect("server keypair is invalid base64 string");
+            let bytes = STANDARD
+                .decode(&keypair.document)
+                .expect("server keypair is invalid base64 string");
             Ed25519KeyPair::from_der(&bytes, keypair.version.clone()).expect("invalid server Ed25519KeyPair")
         } else {
             crate::utils::generate_keypair()

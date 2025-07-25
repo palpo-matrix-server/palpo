@@ -31,8 +31,7 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::room::timeline;
 use crate::utils::{self, HtmlEscape};
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, room};
-use crate::{AuthedInfo, membership};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership, room};
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Parser)]
@@ -511,7 +510,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             crate::user::create_user(&user_id, Some(password.as_str()))?;
 
             // Default to pretty display_name
-            let mut display_name = user_id.localpart().to_owned();
+            let display_name = user_id.localpart().to_owned();
 
             // // If enabled append lightning bolt to display name (default false)
             // if conf.enable_lightning_bolt {
@@ -570,7 +569,8 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                                     "failed to automatically join room {room} for user {user_id}: \
 								 {e}"
                                 ))
-                                .await;
+                                .await
+                                .ok();
                             }
                         }
                     }

@@ -27,23 +27,25 @@ pub struct RoomTopicEventContent {
     /// With the `compat-lax-room-topic-deser` cargo feature, this field is ignored if its
     /// deserialization fails.
     #[serde(rename = "m.topic", default, skip_serializing_if = "TopicContentBlock::is_empty")]
-    #[cfg_attr(
-        feature = "compat-lax-room-topic-deser",
-        serde(deserialize_with = "ruma_common::serde::default_on_error")
-    )]
     pub topic_block: TopicContentBlock,
 }
 
 impl RoomTopicEventContent {
     /// Creates a new `RoomTopicEventContent` with the given plain text topic.
     pub fn new(topic: String) -> Self {
-        Self { topic_block: TopicContentBlock::plain(topic.clone()), topic }
+        Self {
+            topic_block: TopicContentBlock::plain(topic.clone()),
+            topic,
+        }
     }
 
     /// Convenience constructor to create a new HTML topic with a plain text fallback.
     pub fn html(plain: impl Into<String>, html: impl Into<String>) -> Self {
         let plain = plain.into();
-        Self { topic: plain.clone(), topic_block: TopicContentBlock::html(plain, html) }
+        Self {
+            topic: plain.clone(),
+            topic_block: TopicContentBlock::html(plain, html),
+        }
     }
 
     /// Convenience constructor to create a topic from Markdown.
@@ -53,10 +55,12 @@ impl RoomTopicEventContent {
     #[cfg(feature = "markdown")]
     pub fn markdown(topic: impl AsRef<str> + Into<String>) -> Self {
         let plain = topic.as_ref().to_owned();
-        Self { topic: plain, topic_block: TopicContentBlock::markdown(topic) }
+        Self {
+            topic: plain,
+            topic_block: TopicContentBlock::markdown(topic),
+        }
     }
 }
-
 
 /// A block for topic content.
 ///
@@ -72,12 +76,16 @@ pub struct TopicContentBlock {
 impl TopicContentBlock {
     /// A convenience constructor to create a plain text `TopicContentBlock`.
     pub fn plain(body: impl Into<String>) -> Self {
-        Self { text: TextContentBlock::plain(body) }
+        Self {
+            text: TextContentBlock::plain(body),
+        }
     }
 
     /// A convenience constructor to create an HTML `TopicContentBlock`.
     pub fn html(body: impl Into<String>, html_body: impl Into<String>) -> Self {
-        Self { text: TextContentBlock::html(body, html_body) }
+        Self {
+            text: TextContentBlock::html(body, html_body),
+        }
     }
 
     /// A convenience constructor to create a `TopicContentBlock` from Markdown.
@@ -86,7 +94,9 @@ impl TopicContentBlock {
     /// only a plain text topic is included.
     #[cfg(feature = "markdown")]
     pub fn markdown(body: impl AsRef<str> + Into<String>) -> Self {
-        Self { text: TextContentBlock::markdown(body) }
+        Self {
+            text: TextContentBlock::markdown(body),
+        }
     }
 
     /// Whether this content block is empty.
@@ -213,10 +223,9 @@ mod tests {
         assert_eq!(content.topic_block.text.find_html(), None);
         assert_eq!(content.topic_block.text.find_plain(), None);
 
-        let content = serde_json::from_str::<RoomTopicEventContent>(
-            r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#,
-        )
-        .unwrap();
+        let content =
+            serde_json::from_str::<RoomTopicEventContent>(r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#)
+                .unwrap();
         assert_eq!(content.topic, "Hot Topic");
         assert_eq!(content.topic_block.text.find_html(), None);
         assert_eq!(content.topic_block.text.find_plain(), None);

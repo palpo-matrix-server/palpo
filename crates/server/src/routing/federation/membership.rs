@@ -14,8 +14,8 @@ use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::timeline;
 use crate::{
-    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent, config, empty_ok, json_ok,
-    membership, room, utils,
+    DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent, config, data, empty_ok,
+    json_ok, membership, room, utils,
 };
 
 pub fn router_v1() -> Router {
@@ -137,6 +137,7 @@ async fn invite_user(
 ) -> JsonResult<InviteUserResBodyV2> {
     let body = body.into_inner();
     let origin = depot.origin()?;
+    let conf = config::get();
     handler::acl_check(origin, &args.room_id)?;
 
     if !config::supported_room_versions().contains(&body.room_version) {
@@ -161,6 +162,7 @@ async fn invite_user(
     if invitee_id.server_name().is_remote() {
         return Err(MatrixError::invalid_param("Cannot invite remote users.").into());
     }
+    let invitee = data::user::get_user(&invitee_id).map_err(|_| MatrixError::not_found("Invitee user not found."))?;
 
     handler::acl_check(invitee_id.server_name(), &args.room_id)?;
 
@@ -173,7 +175,7 @@ async fn invite_user(
     // Add event_id back
     signed_event.insert("event_id".to_owned(), CanonicalJsonValue::String(event_id.to_string()));
 
-    let sender: OwnedUserId = serde_json::from_value(
+    let sender_id: OwnedUserId = serde_json::from_value(
         signed_event
             .get("sender")
             .ok_or(MatrixError::invalid_param("Event had no sender field."))?
@@ -181,6 +183,14 @@ async fn invite_user(
             .into(),
     )
     .map_err(|_| MatrixError::invalid_param("sender is not a user id."))?;
+
+    if data::room::is_banned(&args.room_id)? {
+        return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
+    }
+
+    if conf.block_non_admin_invites && !invitee.is_admin {
+        return Err(MatrixError::forbidden("this server does not allow room invites", None).into());
+    }
 
     let mut invite_state = body.invite_room_state.clone();
 
@@ -208,7 +218,7 @@ async fn invite_user(
             &args.room_id,
             &invitee_id,
             MembershipState::Invite,
-            &sender,
+            &sender_id,
             Some(invite_state),
         )?;
     }

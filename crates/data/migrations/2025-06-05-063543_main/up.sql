@@ -996,3 +996,14 @@ CREATE INDEX IF NOT EXISTS event_push_actions_stream_ordering ON event_push_acti
 
 CREATE INDEX IF NOT EXISTS event_push_actions_u_highlight ON event_push_actions
     (user_id ASC NULLS LAST, stream_ordering ASC NULLS LAST);
+
+
+DROP TABLE IF EXISTS banned_rooms;
+CREATE TABLE IF NOT EXISTS banned_rooms
+(
+    id bigserial NOT NULL PRIMARY KEY,
+    room_id text NOT NULL,
+    created_by text,
+    created_at bigint NOT NULL,
+    CONSTRAINT banned_rooms_room_id_ukey UNIQUE (room_id)
+);

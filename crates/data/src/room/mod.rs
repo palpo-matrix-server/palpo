@@ -339,3 +339,16 @@ pub fn add_joined_server(room_id: &RoomId, server_name: &ServerName) -> DataResu
         .execute(&mut connect()?)?;
     Ok(())
 }
+
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = banned_rooms)]
+pub struct NewDbBannedRoom {
+    pub room_id: OwnedRoomId,
+    pub created_by: Option<OwnedUserId>,
+    pub created_at: UnixMillis,
+}
+
+pub fn is_banned(room_id: &RoomId) -> DataResult<bool> {
+    let query = banned_rooms::table.filter(banned_rooms::room_id.eq(room_id));
+    Ok(diesel_exists!(query, &mut connect()?)?)
+}
