@@ -6,6 +6,7 @@ use std::sync::Arc;
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use palpo_core::serde::JsonValue;
+use palpo_data::user::DbUser;
 use salvo::http::StatusError;
 use tokio::sync::RwLock;
 
@@ -36,7 +37,8 @@ use crate::{
 };
 
 pub async fn join_room(
-    authed: &AuthedInfo,
+    sender: &DbUser,
+    device_id: Option<&DeviceId>,
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
@@ -44,11 +46,10 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
-    let sender_id = authed.user_id();
-    let device_id = authed.device_id();
-    if authed.user().is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
+    if sender.is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(MatrixError::forbidden("Guests are not allowed to join this room", None).into());
     }
+    let sender_id = &sender.id;
     if room::user::is_joined(sender_id, room_id)? {
         return Ok(JoinRoomResBody {
             room_id: room_id.into(),
@@ -97,7 +98,13 @@ pub async fn join_room(
             &room::lock_state(&room_id).await,
         ) {
             Ok(_) => {
-                crate::user::mark_device_key_update_with_joined_rooms(&sender_id, &device_id, &[room_id.to_owned()])?;
+                if let Some(device_id) = device_id {
+                    crate::user::mark_device_key_update_with_joined_rooms(
+                        &sender_id,
+                        device_id,
+                        &[room_id.to_owned()],
+                    )?;
+                }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
@@ -111,7 +118,6 @@ pub async fn join_room(
 
     info!("joining {room_id} over federation");
 
-    let sender_id = authed.user_id();
     let (make_join_response, remote_server) = make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make_join finished");
@@ -405,21 +411,20 @@ pub async fn join_room(
     state::set_room_state(room_id, frame_id_after_join)?;
     drop(state_lock);
 
-    let room_server_id = room_id
-        .server_name()
-        .map_err(|e| AppError::public(format!("bad server name: {e}")))?;
-    let query = room_users::table
-        .filter(room_users::room_id.ne(room_id))
-        .filter(room_users::user_id.eq(sender_id))
-        .filter(room_users::room_server_id.eq(room_server_id));
-    if !diesel_exists!(query, &mut connect()?)? {
-        let content = DeviceListUpdateContent::new(
-            sender_id.to_owned(),
-            authed.device_id().to_owned(),
-            data::next_sn()? as u64,
-        );
-        let edu = Edu::DeviceListUpdate(content);
-        send_edu_server(room_server_id, &edu)?;
+    if let Some(device_id) = device_id {
+        let room_server_id = room_id
+            .server_name()
+            .map_err(|e| AppError::public(format!("bad server name: {e}")))?;
+        let query = room_users::table
+            .filter(room_users::room_id.ne(room_id))
+            .filter(room_users::user_id.eq(sender_id))
+            .filter(room_users::room_server_id.eq(room_server_id));
+        if !diesel_exists!(query, &mut connect()?)? {
+            let content =
+                DeviceListUpdateContent::new(sender_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
+            let edu = Edu::DeviceListUpdate(content);
+            send_edu_server(room_server_id, &edu)?;
+        }
     }
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }

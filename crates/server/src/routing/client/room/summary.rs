@@ -24,7 +24,7 @@ pub async fn get_summary_msc_3266(
     depot: &mut Depot,
 ) -> JsonResult<SummaryMsc3266ResBody> {
     let authed = depot.authed_info().ok();
-    let sender_id = authed.map(|a| &**a.user_id());
+    let sender_id = authed.map(|a| a.user_id());
 
     let (room_id, servers) = room::alias::resolve_with_servers(&args.room_id_or_alias, Some(args.via.clone())).await?;
 

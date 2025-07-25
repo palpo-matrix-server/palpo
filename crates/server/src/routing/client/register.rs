@@ -18,7 +18,7 @@ use crate::data::user::{NewDbPresence, NewDbProfile};
 use crate::data::{connect, diesel_exists};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops, membership, room, utils,
 };
 
 pub fn public_router() -> Router {
@@ -145,7 +145,7 @@ async fn register(
     let password = if is_guest { None } else { body.password.as_deref() };
 
     // Create user
-    crate::user::create_user(user_id.clone(), password)?;
+    let db_user = crate::user::create_user(user_id.clone(), password)?;
 
     // Default to pretty display_name
     let mut display_name = user_id.localpart().to_owned();
@@ -231,6 +231,51 @@ async fn register(
                 let _ = crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
                     "New user {user_id} registered on this server."
                 )));
+            }
+        }
+    }
+
+    let from_appservice = if let Ok(authed) = depot.authed_info() {
+        authed.appservice.is_some()
+    } else {
+        false
+    };
+    if !from_appservice && !conf.auto_join_rooms.is_empty() && (conf.allow_guests_auto_join_rooms || !is_guest) {
+        for room in &conf.auto_join_rooms {
+            let Ok(room_id) = room::alias::resolve(room).await else {
+                error!(
+                    "Failed to resolve room alias to room ID when attempting to auto join \
+					 {room}, skipping"
+                );
+                continue;
+            };
+
+            if !room::is_server_joined(&conf.server_name, &room_id)? {
+                warn!("Skipping room {room} to automatically join as we have never joined before.");
+                continue;
+            }
+
+            if let Ok(room_server_name) = room.server_name() {
+                match membership::join_room(
+                    &db_user,
+                    Some(&device_id),
+                    &room_id,
+                    Some("Automatically joining this room upon registration".to_owned()),
+                    &[conf.server_name.clone(), room_server_name.to_owned()],
+                    None,
+                    None,
+                    Default::default(),
+                )
+                .await
+                {
+                    Err(e) => {
+                        // don't return this error so we don't fail registrations
+                        error!("Failed to automatically join room {room} for user {user_id}: {e}");
+                    }
+                    _ => {
+                        info!("Automatically joined room {room} for user {user_id}");
+                    }
+                }
             }
         }
     }

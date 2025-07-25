@@ -114,7 +114,7 @@ pub fn try_auth(
                 return Err(MatrixError::forbidden("User ID does not match.", None).into());
             }
 
-            let Some(user) = data::user::get_user(&auth_user_id)? else {
+            let Ok(user) = data::user::get_user(&auth_user_id) else {
                 return Err(MatrixError::unauthorized("User not found.").into());
             };
             crate::user::vertify_password(&user, &password)?;

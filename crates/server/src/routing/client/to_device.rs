@@ -40,7 +40,7 @@ fn send_to_device(
                 crate::sending::send_reliable_edu(
                     target_user_id.server_name(),
                     &Edu::DirectToDevice(DirectDeviceContent {
-                        sender: authed.user_id().clone(),
+                        sender: authed.user_id().to_owned(),
                         ev_type: args.event_type.clone(),
                         message_id: message_id.to_string().into(),
                         messages,

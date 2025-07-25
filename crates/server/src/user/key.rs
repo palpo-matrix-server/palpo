@@ -249,7 +249,7 @@ pub fn get_self_signing_key(
         Ok(None)
     }
 }
-pub fn get_user_signing_key(user_id: &OwnedUserId) -> AppResult<Option<CrossSigningKey>> {
+pub fn get_user_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKey>> {
     e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("user_signing"))
@@ -262,7 +262,7 @@ pub fn get_user_signing_key(user_id: &OwnedUserId) -> AppResult<Option<CrossSign
 }
 
 pub fn add_one_time_key(
-    user_id: &OwnedUserId,
+    user_id: &UserId,
     device_id: &DeviceId,
     key_id: &DeviceKeyId,
     one_time_key: &OneTimeKey,
@@ -289,7 +289,7 @@ pub fn add_one_time_key(
 }
 
 pub fn claim_one_time_key(
-    user_id: &OwnedUserId,
+    user_id: &UserId,
     device_id: &DeviceId,
     key_algorithm: &DeviceKeyAlgorithm,
 ) -> AppResult<Option<(OwnedDeviceKeyId, OneTimeKey)>> {

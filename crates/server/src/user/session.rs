@@ -9,7 +9,6 @@ use crate::{AppError, AppResult, MatrixError};
 #[derive(Debug, Deserialize)]
 pub struct JwtClaims {
     pub sub: String,
-    //exp: usize,
 }
 
 pub fn validate_jwt_token(config: &JwtConfig, token: &str) -> AppResult<JwtClaims> {

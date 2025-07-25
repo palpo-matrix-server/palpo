@@ -215,7 +215,7 @@ fn set_read_markers(
     if let Some(event) = &body.read_receipt {
         let mut user_receipts = BTreeMap::new();
         user_receipts.insert(
-            sender_id.clone(),
+            sender_id.to_owned(),
             Receipt {
                 ts: Some(UnixMillis::now()),
                 thread: ReceiptThread::Unthreaded,
@@ -568,7 +568,7 @@ pub(super) async fn create_room(
         None => {
             // TODO: Add correct value for v11
             let mut content = serde_json::from_str::<CanonicalJsonObject>(
-                to_raw_value(&RoomCreateEventContent::new_v1(sender_id.clone()))
+                to_raw_value(&RoomCreateEventContent::new_v1(sender_id.to_owned()))
                     .map_err(|_| MatrixError::bad_json("Invalid creation content"))?
                     .get(),
             )
@@ -637,14 +637,14 @@ pub(super) async fn create_room(
     });
 
     let mut users = BTreeMap::new();
-    users.insert(sender_id.clone(), 100);
+    users.insert(sender_id.to_owned(), 100);
 
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
             if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
                 continue;
             }
-            users.insert(invitee_id.clone(), 100);
+            users.insert(invitee_id.to_owned(), 100);
         }
     }
 

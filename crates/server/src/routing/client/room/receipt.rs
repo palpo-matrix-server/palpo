@@ -50,7 +50,7 @@ pub(super) fn send_receipt(
         ReceiptType::Read => {
             let mut user_receipts = BTreeMap::new();
             user_receipts.insert(
-                sender_id.clone(),
+                sender_id.to_owned(),
                 Receipt {
                     ts: Some(UnixMillis::now()),
                     thread: body.thread.clone(),
@@ -60,7 +60,7 @@ pub(super) fn send_receipt(
             receipts.insert(ReceiptType::Read, user_receipts);
 
             let mut receipt_content = BTreeMap::new();
-            receipt_content.insert(args.event_id.to_owned(), receipts);
+            receipt_content.insert(args.event_id.clone(), receipts);
 
             room::receipt::update_read(
                 sender_id,

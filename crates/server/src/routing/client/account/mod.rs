@@ -69,8 +69,8 @@ async fn whoami(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<WhoamiResBody> {
     let authed = depot.take_authed_info()?;
 
     json_ok(WhoamiResBody {
-        user_id: authed.user_id().clone(),
-        device_id: Some(authed.device_id().clone()),
+        user_id: authed.user_id().to_owned(),
+        device_id: Some(authed.device_id().to_owned()),
         is_guest: false,
     })
 }

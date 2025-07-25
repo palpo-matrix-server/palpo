@@ -18,10 +18,10 @@ impl AuthedInfo {
     pub fn user(&self) -> &DbUser {
         &self.user
     }
-    pub fn user_id(&self) -> &OwnedUserId {
+    pub fn user_id(&self) -> &UserId {
         &self.user.id
     }
-    pub fn device_id(&self) -> &OwnedDeviceId {
+    pub fn device_id(&self) -> &DeviceId {
         &self.user_device.device_id
     }
     pub fn access_token_id(&self) -> Option<i64> {

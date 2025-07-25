@@ -95,7 +95,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             //             if let Some((user_dn, is_admin)) = dns.first() {
             //                 (user_dn.clone(), *is_admin)
             //             } else {
-            //                 let Some(user) = data::user::get_user(&user_id)? else {
+            //                 let Ok(user) = data::user::get_user(&user_id)? else {
             //                     return Err(MatrixError::forbidden("user not found.", None).into());
             //                 };
             //                 if let Err(_e) = user::vertify_password(&user, password) {
@@ -140,7 +140,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             //         admin::revoke_admin(&user_id).await?;
             //     }
             // } else {
-            let Some(user) = data::user::get_user(&user_id)? else {
+            let Ok(user) = data::user::get_user(&user_id) else {
                 return Err(MatrixError::forbidden("User not found.", None).into());
             };
             if let Err(_e) = user::vertify_password(&user, &password) {

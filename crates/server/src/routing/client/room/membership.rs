@@ -252,7 +252,8 @@ pub(super) async fn join_room_by_id(
     servers.push(room_id.server_name().map_err(AppError::public)?.to_owned());
 
     crate::membership::join_room(
-        authed,
+        &authed.user,
+        Some(authed.device_id()),
         &room_id,
         body.as_ref().map(|body| body.reason.clone()).flatten(),
         &servers,
@@ -388,7 +389,8 @@ pub(crate) async fn join_room_by_id_or_alias(
     };
 
     let join_room_body = crate::membership::join_room(
-        authed,
+        authed.user(),
+        Some(authed.device_id()),
         &room_id,
         body.reason.clone(),
         &servers,
