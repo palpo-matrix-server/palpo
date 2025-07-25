@@ -438,10 +438,6 @@
 #
 # space_path =
 
-# This item is undocumented. Please contribute documentation for it.
-#
-# auto_acme =
-
 # Whether to query the servers listed in trusted_servers first or query
 # the origin server first. For best security, querying the origin server
 # first is advised to minimize the exposure to a compromised trusted
@@ -717,32 +713,20 @@
 # [compression]
 
 # Set this to true for palpo to compress HTTP response bodies using
-# zstd. This option does nothing if palpo was not built with
-# `zstd_compression` feature. Please be aware that enabling HTTP
-# compression may weaken TLS. Most users should not need to enable this.
-# See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-# before deciding to enable this.
+# zstd.
 #
 # enable_zstd = false
 
 # Set this to true for palpo to compress HTTP response bodies using
-# gzip. This option does nothing if palpo was not built with
-# `gzip_compression` feature. Please be aware that enabling HTTP
-# compression may weaken TLS. Most users should not need to enable this.
-# See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH before
-# deciding to enable this.
+# gzip.
 #
 # If you are in a large amount of rooms, you may find that enabling this
 # is necessary to reduce the significantly large response bodies.
 #
-# enable_zip = false
+# enable_gzip = false
 
 # Set this to true for palpo to compress HTTP response bodies using
-# brotli. This option does nothing if palpo was not built with
-# `brotli_compression` feature. Please be aware that enabling HTTP
-# compression may weaken TLS. Most users should not need to enable this.
-# See https://breachattack.com/ and https://wikipedia.org/wiki/BREACH
-# before deciding to enable this.
+# brotli.
 #
 # enable_brotli = false
 
@@ -788,49 +772,6 @@
 # Whether to enforce that all the database connections are encrypted with TLS.
 #
 # enforce_tls =
-
-# [dns]
-
-# Maximum entries stored in DNS memory-cache. The size of an entry may
-# vary so please take care if raising this value excessively. Only
-# decrease this when using an external DNS cache. Please note that
-# systemd-resolved does *not* count as an external cache, even when
-# configured to do so.
-#
-# cache_entries = 32768
-
-# Minimum time-to-live in seconds for entries in the DNS cache. The
-# default may appear high to most administrators; this is by design as the
-# majority of NXDOMAINs are correct for a long time (e.g. the server is no
-# longer running Matrix). Only decrease this if you are using an external
-# DNS cache.
-#
-# min_ttl = 10800
-
-# Minimum time-to-live in seconds for NXDOMAIN entries in the DNS cache.
-# This value is critical for the server to federate efficiently.
-# NXDOMAIN's are assumed to not be returning to the federation and
-# aggressively cached rather than constantly rechecked.
-#
-# Defaults to 3 days as these are *very rarely* false negatives.
-#
-# min_ttl_nxdomain = 259200
-
-# Number of DNS nameserver retries after a timeout or error.
-#
-# attempts = 10
-
-# The number of seconds to wait for a reply to a DNS query. Please note
-# that recursive queries can take up to several seconds for some domains,
-# so this value should not be too low, especially on slower hardware or
-# resolvers.
-#
-# timeout = 10
-
-# Fallback to TCP on DNS errors. Set this to false if unsupported by
-# nameserver.
-#
-# tcp_fallback =
 
 # [federation]
 
@@ -903,93 +844,6 @@
 #
 # allow_inbound_profile_lookup =
 
-# [ldap]
-
-# Whether to enable LDAP login.
-#
-# example: "true"
-#
-# enable =
-
-# URI of the LDAP server.
-#
-# example: "ldap://ldap.example.com:389"
-#
-# uri =
-
-# Root of the searches.
-#
-# example: "ou=users,dc=example,dc=org"
-#
-# base_dn = false
-
-# Bind DN if anonymous search is not enabled.
-#
-# You can use the variable `{username}` that will be replaced by the
-# entered username. In such case, the password used to bind will be the
-# one provided for the login and not the one given by
-# `bind_password_file`. Beware: automatically granting admin rights will
-# not work if you use this direct bind instead of a LDAP search.
-#
-# example: "cn=ldap-reader,dc=example,dc=org" or
-# "cn={username},ou=users,dc=example,dc=org"
-#
-# bind_dn = false
-
-# Path to a file on the system that contains the password for the
-# `bind_dn`.
-#
-# The server must be able to access the file, and it must not be empty.
-#
-# bind_password_file = false
-
-# Search filter to limit user searches.
-#
-# You can use the variable `{username}` that will be replaced by the
-# entered username for more complex filters.
-#
-# example: "(&(objectClass=person)(memberOf=matrix))"
-#
-# filter = "(objectClass=*)"
-
-# Attribute to use to uniquely identify the user.
-#
-# example: "uid" or "cn"
-#
-# uid_attribute = "uid"
-
-# Attribute containing the mail of the user.
-#
-# example: "mail"
-#
-# mail_attribute = "mail"
-
-# Attribute containing the distinguished name of the user.
-#
-# example: "givenName" or "sn"
-#
-# name_attribute = "givenName"
-
-# Root of the searches for admin users.
-#
-# Defaults to `base_dn` if empty.
-#
-# example: "ou=admins,dc=example,dc=org"
-#
-# admin_base_dn = false
-
-# The LDAP search filter to find administrative users for palpo.
-#
-# If left blank, administrative state must be configured manually for each
-# user.
-#
-# You can use the variable `{username}` that will be replaced by the
-# entered username for more complex filters.
-#
-# example: "(objectClass=palpoAdmin)" or "(uid={username})"
-#
-# admin_filter = false
-
 # [logger]
 
 # Max log level for palpo. Allows debug, info, warn, or error.
@@ -1017,8 +871,8 @@
 #
 # span_events = "none"
 
-# Configures whether TUWUNEL_LOG EnvFilter matches values using regular
-# expressions. See the tracing_subscriber documentation on Directives.
+# Configures whether EnvFilter matches values using regular expressions.
+# See the tracing_subscriber documentation on Directives.
 #
 # filter_regex = true
 

@@ -34,8 +34,8 @@ pub struct LoggerConfig {
     #[serde(default = "default_span_events")]
     pub span_events: String,
 
-    /// Configures whether TUWUNEL_LOG EnvFilter matches values using regular
-    /// expressions. See the tracing_subscriber documentation on Directives.
+    /// Configures whether EnvFilter matches values using regular expressions.
+    /// See the tracing_subscriber documentation on Directives.
     ///
     /// default: true
     #[serde(default = "default_true")]

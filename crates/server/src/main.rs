@@ -64,6 +64,7 @@ use dotenvy::dotenv;
 use salvo::catcher::Catcher;
 use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::cors::{self, AllowHeaders, Cors};
+use salvo::compression::{Compression, CompressionLevel};
 use salvo::http::Method;
 use salvo::logging::Logger;
 use salvo::prelude::*;
@@ -139,6 +140,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             tracing_subscriber::fmt()
                 .json()
                 .with_env_filter(&conf.logger.level)
+                .with_ansi(conf.logger.ansi_colors)
+                .with_thread_ids(conf.logger.thread_ids)
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
         }
@@ -146,6 +149,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             tracing_subscriber::fmt()
                 .compact()
                 .with_env_filter(&conf.logger.level)
+                .with_ansi(conf.logger.ansi_colors)
+                .with_thread_ids(conf.logger.thread_ids)
                 .without_time()
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
@@ -154,6 +159,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             tracing_subscriber::fmt()
                 .pretty()
                 .with_env_filter(&conf.logger.level)
+                .with_ansi(conf.logger.ansi_colors)
+                .with_thread_ids(conf.logger.thread_ids)
                 .with_span_events(FmtSpan::CLOSE)
                 .init();
         }
@@ -192,6 +199,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .into_handler(),
         )
         .hoop(hoops::remove_json_utf8);
+    let service = if conf.compression.is_enabled() {
+        let mut compression = Compression::new();
+        if conf.compression.enable_brotli {
+            compression = compression.enable_zstd(CompressionLevel::Fastest);
+        }
+        if conf.compression.enable_zstd {
+            compression = compression.enable_zstd(CompressionLevel::Fastest);
+        }
+        if conf.compression.enable_gzip {
+            compression = compression.enable_gzip(CompressionLevel::Fastest);
+        }
+        service.hoop(compression)
+    } else {
+        service
+    };
     crate::admin::supervise();
     let _ = crate::data::user::unset_all_presences();
 
