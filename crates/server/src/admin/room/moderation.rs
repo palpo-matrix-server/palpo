@@ -1,13 +1,10 @@
-use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};
 use clap::Subcommand;
 use futures_util::{FutureExt, StreamExt};
-use palpo_api::client::leave_room;
-use palpo_core::{
-    AppError, AppResult, debug,
-    warn,
-};
 
-use crate::{admin_command, admin_command_dispatch, get_room_info};
+use crate::admin::get_room_info;
+use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};
+use crate::macros::{admin_command, admin_command_dispatch, get_room_info};
+use crate::{AppError, AppResult, config};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -107,7 +104,9 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
                         room_id
                     }
                     Err(e) => {
-                        return Err(AppError::public(format!("Failed to resolve room alias {room_alias} to a room ID: {e}")));
+                        return Err(AppError::public(format!(
+                            "Failed to resolve room alias {room_alias} to a room ID: {e}"
+                        )));
                     }
                 }
             }
@@ -140,7 +139,7 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 			 evicting admins too)",
         );
 
-        if let Err(e) = leave_room(user_id, &room_id, None).boxed().await {
+        if let Err(e) = membership::leave_room(user_id, &room_id, None).boxed().await {
             warn!("Failed to leave room: {e}");
         }
 
@@ -156,7 +155,7 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
             self.services
                 .rooms
                 .alias
-                .remove_alias(&local_alias, &config::server_user)
+                .remove_alias(&local_alias, &config::server_user())
                 .await
                 .ok();
         })
@@ -175,7 +174,9 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 async fn ban_list_of_rooms(&self) -> AppResult<()> {
     if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
     {
-        return Err(AppError::public("Expected code block in command body. Add --help for details."));
+        return Err(AppError::public(
+            "Expected code block in command body. Add --help for details.",
+        ));
     }
 
     let rooms_s = self
@@ -291,7 +292,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
 				 evicting admins too)",
             );
 
-            if let Err(e) = leave_room(user_id, &room_id, None).boxed().await {
+            if let Err(e) = membership::leave_room(user_id, &room_id, None).boxed().await {
                 warn!("Failed to leave room: {e}");
             }
 
@@ -308,7 +309,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
                 self.services
                     .rooms
                     .alias
-                    .remove_alias(&local_alias, &config::server_user)
+                    .remove_alias(&local_alias, &config::server_user())
                     .await
                     .ok();
             })
@@ -380,7 +381,9 @@ async fn unban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
                         room_id
                     }
                     Err(e) => {
-                        return Err(AppError::public(format!("Failed to resolve room alias {room} to a room ID: {e}")));
+                        return Err(AppError::public(format!(
+                            "Failed to resolve room alias {room} to a room ID: {e}"
+                        )));
                     }
                 }
             }

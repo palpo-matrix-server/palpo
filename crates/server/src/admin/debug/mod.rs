@@ -122,26 +122,6 @@ pub(super) async fn get_pdu(&self, event_id: OwnedEventId) -> AppResult<()> {
 }
 
 #[admin_command]
-pub(super) async fn get_short_pdu(&self, shortroomid: ShortRoomId, shorteventid: ShortEventId) -> AppResult<()> {
-    let pdu_id: RawPduId = PduId {
-        shortroomid,
-        shorteventid: shorteventid.into(),
-    }
-    .into();
-
-    let pdu_json = self.services.rooms.timeline.get_pdu_json_from_id(&pdu_id).await;
-
-    match pdu_json {
-        Err(_) => return Err(AppError::public("PDU not found locally.")),
-        Ok(json) => {
-            let json_text = serde_json::to_string_pretty(&json)?;
-            write!(self, "```json\n{json_text}\n```")
-        }
-    }
-    .await
-}
-
-#[admin_command]
 pub(super) async fn get_remote_pdu_list(&self, server: OwnedServerName, force: bool) -> AppResult<()> {
     if !self.services.server.config.allow_federation {
         return Err(AppError::public("federation is disabled on this homeserver."));
@@ -237,9 +217,7 @@ pub(super) async fn get_remote_pdu(&self, event_id: OwnedEventId, server: OwnedS
                     "Requested event ID {event_id} from server but failed to convert from \
 						 RawValue to CanonicalJsonObject (malformed event/response?): {e}"
                 );
-                err!(Request(Unknown(
-                    "Received response from server but failed to parse PDU"
-                )))
+                AppError::public("Received response from server but failed to parse PDU")
             })?;
 
             trace!("Attempting to parse PDU: {:?}", &response.pdu);
@@ -296,7 +274,7 @@ pub(super) async fn get_room_state(&self, room: OwnedRoomOrAliasId) -> AppResult
     }
 
     let json = serde_json::to_string_pretty(&room_state).map_err(|e| {
-        err!(Database(
+        AppError::public(format!(
             "Failed to convert room state events to pretty JSON, possible invalid room state \
 			 events in our database {e}",
         ))
@@ -483,7 +461,7 @@ pub(super) async fn first_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult<
         .timeline
         .first_pdu_in_room(&room_id)
         .await
-        .map_err(|_| err!(Database("Failed to find the first PDU in database")))?;
+        .map_err(|_| AppError::public("Failed to find the first PDU in database"))?;
 
     let out = format!("{first_pdu:?}");
     self.write_str(&out).await
@@ -510,7 +488,7 @@ pub(super) async fn latest_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult
         .timeline
         .latest_pdu_in_room(&room_id)
         .await
-        .map_err(|_| err!(Database("Failed to find the latest PDU in database")))?;
+        .map_err(|_| AppError::public("Failed to find the latest PDU in database"))?;
 
     let out = format!("{latest_pdu:?}");
     self.write_str(&out).await
@@ -541,7 +519,7 @@ pub(super) async fn force_set_room_state_from_server(
         .timeline
         .latest_pdu_in_room(&room_id)
         .await
-        .map_err(|_| err!(Database("Failed to find the latest PDU in database")))?;
+        .map_err(|_| AppError::public("Failed to find the latest PDU in database"))?;
 
     let room_version = self.services.rooms.state.get_room_version(&room_id).await?;
 
@@ -580,10 +558,8 @@ pub(super) async fn force_set_room_state_from_server(
         };
 
         let pdu = PduEvent::from_id_val(&event_id, value.clone()).map_err(|e| {
-            debug_error!("Invalid PDU in fetching remote room state PDUs response: {value:#?}");
-            err!(BadServerResponse(debug_error!(
-                "Invalid PDU in send_join response: {e:?}"
-            )))
+            error!("Invalid PDU in fetching remote room state PDUs response: {value:#?}");
+            AppError::public(format!("Invalid PDU in send_join response: {e:?}"))
         })?;
 
         self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
@@ -789,13 +765,6 @@ pub(super) async fn database_files(&self, map: Option<String>, level: Option<i32
 }
 
 #[admin_command]
-pub(super) async fn trim_memory(&self) -> AppResult<()> {
-    crate::alloc::trim(None)?;
-
-    writeln!(self, "done").await
-}
-
-#[admin_command]
 pub(super) async fn create_jwt(
     &self,
     user: String,
@@ -824,12 +793,8 @@ pub(super) async fn create_jwt(
     }
 
     let key = EncodingKey::from_secret(config.key.as_ref());
-    let alg = Algorithm::from_str(config.algorithm.as_str()).map_err(|e| {
-        err!(Config(
-            "jwt.algorithm",
-            "JWT algorithm is not recognized or configured {e}"
-        ))
-    })?;
+    let alg = Algorithm::from_str(config.algorithm.as_str())
+        .map_err(|e| AppError::public(format!("JWT algorithm is not recognized or configured {e}")))?;
 
     let header = Header {
         alg,
@@ -856,7 +821,7 @@ pub(super) async fn create_jwt(
     };
 
     encode(&header, &claim, &key)
-        .map_err(|e| err!("Failed to encode JWT: {e}"))
+        .map_err(|e| AppError::public(format!("Failed to encode JWT: {e}")))
         .map(async |token| self.write_str(&token).await)?
         .await
 }

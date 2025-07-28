@@ -215,7 +215,7 @@ pub(super) async fn deactivate(&self, no_leave_rooms: bool, user_id: String) -> 
 pub(super) async fn reset_password(&self, username: String, password: Option<String>) -> AppResult<()> {
     let user_id = parse_local_user_id(&username)?;
 
-    if user_id == config::server_user {
+    if user_id == config::server_user() {
         return Err(AppError::public(
             "Not allowed to set the password for the server account. Please use the emergency password config option.",
         ));
@@ -282,7 +282,7 @@ pub(super) async fn deactivate_all(&self, no_leave_rooms: bool, force: bool) -> 
                 }
 
                 // don't deactivate the server service account
-                if user_id == config::server_user {
+                if user_id == config::server_user() {
                     self.services
                         .admin
                         .send_text(&format!("{username} is the server service account, skipping over"))
@@ -471,7 +471,7 @@ pub(super) async fn force_join_list_of_local_users(
     let mut successful_joins: usize = 0;
 
     for user_id in user_ids {
-        match join_room(
+        match membership::join_room(
             &user_id,
             &room_id,
             Some(String::from(BULK_JOIN_REASON)),
@@ -593,7 +593,7 @@ pub(super) async fn force_join_room(&self, user_id: String, room_id: OwnedRoomOr
     let (room_id, servers) = self.services.rooms.alias.resolve_with_servers(&room_id, None).await?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
-    join_room(&user_id, &room_id, None, &servers, None, &None).await?;
+    membership::join_room(&user_id, &room_id, None, &servers, None, &None).await?;
 
     self.write_str(&format!("{user_id} has been joined to {room_id}.",))
         .await

@@ -1,9 +1,9 @@
 use clap::Subcommand;
 use futures_util::{FutureExt, StreamExt, TryFutureExt};
 
-use crate::{AppError, AppResult, checked};
 use crate::admin_command;
 use crate::macros::admin_command_dispatch;
+use crate::{AppError, AppResult};
 
 #[derive(Debug, Subcommand)]
 #[admin_command_dispatch]
@@ -44,14 +44,20 @@ pub(super) async fn register(&self) -> AppResult<()> {
     let body = &self.body;
     let body_len = self.body.len();
     if body_len < 2 || !body[0].trim().starts_with("```") || body.last().unwrap_or(&"").trim() != "```" {
-        return Err(AppError::public("Expected code block in command body. Add --help for details."));
+        return Err(AppError::public(
+            "Expected code block in command body. Add --help for details.",
+        ));
     }
 
     let range = 1..checked!(body_len - 1)?;
     let appservice_config_body = body[range].join("\n");
     let parsed_config = serde_yaml::from_str(&appservice_config_body);
     match parsed_config {
-        Err(e) => return Err(AppError::public(format!("Could not parse appservice config as YAML: {e}"))),
+        Err(e) => {
+            return Err(AppError::public(format!(
+                "Could not parse appservice config as YAML: {e}"
+            )));
+        }
         Ok(registration) => match self
             .services
             .appservice

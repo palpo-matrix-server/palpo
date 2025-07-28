@@ -77,6 +77,8 @@ pub enum AppError {
     FmtError(#[from] std::fmt::Error),
     #[error("CargoTomlError: `{0}`")]
     CargoTomlError(#[from] cargo_toml::Error),
+    #[error("YamlError: `{0}`")]
+    YamlError(#[from] serde_yaml::Error),
 }
 
 impl AppError {

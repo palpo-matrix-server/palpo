@@ -180,7 +180,7 @@ pub(super) async fn delete_list(&self) -> AppResult<()> {
             mxc_s
                 .try_into()
                 .inspect_err(|e| {
-                    debug_warn!("Failed to parse user-provided MXC URI: {e}");
+                    warn!("Failed to parse user-provided MXC URI: {e}");
                     failed_parsed_mxcs = failed_parsed_mxcs.saturating_add(1);
                 })
                 .ok()
@@ -193,11 +193,11 @@ pub(super) async fn delete_list(&self) -> AppResult<()> {
         trace!(%failed_parsed_mxcs, %mxc_deletion_count, "Deleting MXC {mxc} in bulk");
         match self.services.media.delete(mxc).await {
             Ok(()) => {
-                debug_info!("Successfully deleted {mxc} from filesystem and database");
+                info!("Successfully deleted {mxc} from filesystem and database");
                 mxc_deletion_count = mxc_deletion_count.saturating_add(1);
             }
             Err(e) => {
-                debug_warn!("Failed to delete {mxc}, ignoring error and skipping: {e}");
+                warn!("Failed to delete {mxc}, ignoring error and skipping: {e}");
                 continue;
             }
         }
@@ -291,7 +291,7 @@ pub(super) async fn delete_all_from_server(
                 deleted_count = deleted_count.saturating_add(1);
             }
             Err(e) => {
-                debug_warn!("Failed to delete {mxc}, ignoring error and skipping: {e}");
+                warn!("Failed to delete {mxc}, ignoring error and skipping: {e}");
                 continue;
             }
         }

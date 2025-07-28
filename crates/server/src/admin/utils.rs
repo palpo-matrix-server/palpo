@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::core::{OwnedRoomId, OwnedUserId, RoomId, UserId};
-use crate::{AppError, AppResult, IsRemoteOrLocal, config};
+use crate::{AppError, data, AppResult, IsRemoteOrLocal, config};
 
 pub(crate) fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
@@ -28,11 +28,11 @@ pub(crate) fn parse_local_user_id(user_id: &str) -> AppResult<OwnedUserId> {
 pub(crate) async fn parse_active_local_user_id(user_id: &str) -> AppResult<OwnedUserId> {
     let user_id = parse_local_user_id(user_id)?;
 
-    if !services.users.exists(&user_id).await {
+    if !data::user::user_exists(&user_id)? {
         return Err(AppError::public("user {user_id:?} does not exist on this server."));
     }
 
-    if services.users.is_deactivated(&user_id).await? {
+    if data::user::is_deactivated(&user_id)? {
         return Err(AppError::public("user {user_id:?} is deactivated."));
     }
 
