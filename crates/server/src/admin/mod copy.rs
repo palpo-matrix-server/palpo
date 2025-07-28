@@ -1122,7 +1122,7 @@ pub async fn revoke_admin(user_id: &UserId) -> AppResult<()> {
         Ok(event) => {
             assert!(
                 matches!(event.membership, Invite | Knock | Join),
-                "Incorrect membership state to remove user."
+                "incorrect membership state to remove user."
             );
 
             event

@@ -35,6 +35,7 @@ bcrypt = "0.17.0"
 blurhash = "0.2"
 bytes = "1.1.0"
 byteorder = "1.5.0"
+cargo_toml = "0.22.3"
 chksum = "0.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 clap = { version = "4.5.41", default-features = false }
@@ -104,6 +105,7 @@ strum_macros = "0.27.2"
 subslice = "0.2.3"
 syn = "2.0.104"
 tempfile = "3.6.0"
+termimad = {version = "0.33.0", default-features  = false}
 textnonce = "1.0.0"
 thiserror = "2.0.12"
 tokio = { version = "1.46.1", features = ["macros", "parking_lot", "process"] }

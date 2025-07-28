@@ -73,6 +73,8 @@ pub enum AppError {
     ImageError(#[from] image::ImageError),
     #[error("Signatures: `{0}`")]
     Signatures(#[from] palpo_core::signatures::Error),
+    #[error("FmtError: `{0}`")]
+    FmtError(#[from] std::fmt::Error),
 }
 
 impl AppError {

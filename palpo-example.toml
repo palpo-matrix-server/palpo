@@ -59,7 +59,7 @@
 #
 # If you are running palpo in a container environment, this config
 # option may need to be enabled. For more details, see:
-# https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
+# https://palpo.im/troubleshooting.html#potential-dns-issues-when-using-docker
 #
 # query_over_tcp_only = false
 
@@ -355,12 +355,12 @@
 # purposes such as recovering/recreating your admin room, or inviting
 # yourself back.
 #
-# See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
+# See https://palpo.im/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
 #
 # Once this password is unset, all sessions will be logged out for
 # security purposes.
 #
-# example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
+# example: "x7k9m2p5#n8w1%q4r6"
 #
 # emergency_password =
 

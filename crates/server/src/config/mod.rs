@@ -1,3 +1,4 @@
+use std::iter::once;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
@@ -46,6 +47,7 @@ pub use typing::*;
 mod url_preview;
 pub use url_preview::*;
 
+use crate::core::client::discovery::RoomVersionStability;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
 
@@ -80,10 +82,8 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
     }
 }
 
-pub fn init() {
-    let config_file = Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into());
-
-    let config_path = PathBuf::from(config_file);
+pub fn init(config_path: impl AsRef<Path>) {
+    let config_path = config_path.as_ref();
     if !config_path.exists() {
         panic!(
             "Config file not found: `{}`, new default file will be created",
@@ -112,6 +112,9 @@ pub fn server_user() -> String {
 
 pub fn space_path() -> &'static str {
     get().space_path.deref()
+}
+pub fn server_name() -> &'static ServerName {
+    get().server_name.deref()
 }
 
 pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
@@ -165,7 +168,7 @@ pub fn cidr_range_denylist() -> &'static [IPAddress] {
             .map(IPAddress::parse)
             .inspect(|cidr| trace!("Denied CIDR range: {cidr:?}"))
             .collect::<Result<_, String>>()
-            .expect("Invalid CIDR range in config")
+            .expect("invalid CIDR range in config")
     })
 }
 
@@ -192,4 +195,23 @@ pub fn supported_room_versions() -> Vec<RoomVersionId> {
 
 pub fn supports_room_version(room_version: &RoomVersionId) -> bool {
     supported_room_versions().contains(room_version)
+}
+
+pub type RoomVersion = (RoomVersionId, RoomVersionStability);
+pub fn available_room_versions() -> impl Iterator<Item = RoomVersion> {
+    let unstable_room_versions = UNSTABLE_ROOM_VERSIONS
+        .iter()
+        .cloned()
+        .zip(once(RoomVersionStability::Unstable).cycle());
+
+    STABLE_ROOM_VERSIONS
+        .iter()
+        .cloned()
+        .zip(once(RoomVersionStability::Stable).cycle())
+        .chain(unstable_room_versions)
+}
+
+#[inline]
+fn supported_stability(stability: &RoomVersionStability) -> bool {
+    get().allow_unstable_room_versions || *stability == RoomVersionStability::Stable
 }

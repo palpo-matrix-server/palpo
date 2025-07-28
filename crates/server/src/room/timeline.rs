@@ -374,7 +374,7 @@ where
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
                         .expect("#admins:server_name is a valid room alias"),
                 ) {
-                    let server_user = format!("@palpo:{}", &conf.server_name);
+                    let server_user = config::server_user();
 
                     let to_palpo = body.starts_with(&format!("{server_user}: "))
                         || body.starts_with(&format!("{server_user} "))
@@ -654,7 +654,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                 .filter(|v| v.starts_with("@"))
                 .unwrap_or(sender.as_str().to_owned());
             let server_name = &conf.server_name;
-            let server_user = format!("@palpo:{}", server_name);
+            let server_user = config::server_user();
             let content = pdu
                 .get_content::<ExtractMembership>()
                 .map_err(|_| AppError::internal("invalid content in pdu."))?;

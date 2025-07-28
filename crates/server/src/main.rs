@@ -48,6 +48,7 @@ pub use event::{PduBuilder, PduEvent, SnPduEvent};
 pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;
+mod info;
 
 pub mod error;
 pub use core::error::MatrixError;
@@ -57,10 +58,13 @@ pub use palpo_core as core;
 pub use palpo_data as data;
 pub use palpo_server_macros as macros;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
+use clap::{ArgAction, Parser};
 pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
+use figment::providers::Env;
 use salvo::catcher::Catcher;
 use salvo::compression::{Compression, CompressionLevel};
 use salvo::conn::rustls::{Keycert, RustlsConfig};
@@ -71,6 +75,7 @@ use salvo::prelude::*;
 use tracing_futures::Instrument;
 use tracing_subscriber::fmt::format::FmtSpan;
 
+use crate::admin::Console;
 use crate::config::ServerConfig;
 
 pub type AppResult<T> = Result<T, crate::AppError>;
@@ -123,6 +128,27 @@ macro_rules! join_path {
     }
 }
 
+/// Commandline arguments
+#[derive(Parser, Debug)]
+#[clap(
+	about,
+	long_about = None,
+	name = "palpo",
+	version = crate::info::version(),
+)]
+pub(crate) struct Args {
+    #[arg(short, long)]
+    /// Path to the config TOML file (optional)
+    pub(crate) config: Option<PathBuf>,
+
+    /// Activate admin command console automatically after startup.
+    #[arg(long, num_args(0))]
+    pub(crate) console: bool,
+
+    #[arg(long, num_args(0), default_value_t = true)]
+    pub(crate) server: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // if dotenvy::from_filename(".env.local").is_err() {
@@ -132,7 +158,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         tracing::info!("dotenv error: {:?}", e);
     }
 
-    crate::config::init();
+    let args = Args::parse();
+    tracing::info!("Args: {:?}", args);
+
+    let config_path = if let Some(config) = &args.config {
+        config
+    } else {
+        &PathBuf::from(Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into()))
+    };
+
+    crate::config::init(config_path);
     let conf = crate::config::get();
     conf.check().expect("config is not valid!");
     match &*conf.logger.format {
@@ -167,6 +202,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     crate::data::init(&conf.db.clone().into_data_db_config());
+
+    if args.console {
+        tracing::info!("Starting admin console...");
+        let console = Console::new(conf.clone());
+
+        if !args.server {
+            console.start().await;
+            tracing::info!("Admin console stopped");
+            return Ok(());
+        } else {
+            tokio::spawn(async move {
+                console.start().await;
+                tracing::info!("Admin console stopped");
+            });
+        }
+    }
+    if !args.server {
+        tracing::info!("Server is not started, exiting...");
+        return Ok(());
+    }
 
     crate::sending::guard::start();
 
@@ -214,7 +269,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     } else {
         service
     };
-    crate::admin::supervise();
     let _ = crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
