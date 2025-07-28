@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
-use crate::core::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId};
 use clap::Subcommand;
 use futures_util::StreamExt;
-use palpo_core::{AppError, AppResult};
 
-use crate::Context;
+use crate::admin::Context;
+use crate::core::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId};
+use crate::{AppError, AppResult, config};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum RoomAliasCommand {
@@ -43,8 +43,7 @@ pub(crate) enum RoomAliasCommand {
 }
 
 pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) -> AppResult<()> {
-    let services = context.services;
-    let server_user = &services.globals.server_user;
+    let server_user = config::server_user();
 
     match command {
         RoomAliasCommand::Set {

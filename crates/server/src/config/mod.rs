@@ -47,10 +47,10 @@ pub use typing::*;
 mod url_preview;
 pub use url_preview::*;
 
+use crate::AppResult;
 use crate::core::client::discovery::RoomVersionStability;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
-use crate::AppResult;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 
@@ -111,7 +111,6 @@ pub fn reload(path: impl AsRef<Path>) -> AppResult<()> {
 pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()
 }
-
 
 pub static SERVER_USER: OnceLock<OwnedUserId> = OnceLock::new();
 pub fn server_user() -> &'static UserId {

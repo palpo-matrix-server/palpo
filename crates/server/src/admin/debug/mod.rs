@@ -311,12 +311,13 @@ pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResul
 }
 
 pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()> {
+    // TODO: admin
     // Force E2EE device list updates for all users
-    for user_id in crate::data::user::all_user_ids() {
-        if let Err(e) = crate::user::mark_device_key_update(user_id).await {
-            warn!("Failed to mark device key update for user {user_id}: {e}");
-        }
-    }
+    // for user_id in crate::data::user::all_user_ids() {
+    //     if let Err(e) = crate::user::mark_device_key_update(user_id) {
+    //         warn!("Failed to mark device key update for user {user_id}: {e}");
+    //     }
+    // }
 
     write!(ctx, "Marked all devices for all users as having new keys to update").await
 }
@@ -334,35 +335,37 @@ pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, 
             }
         };
 
-        match self.services.server.log.reload.reload(&old_filter_layer, Some(handles)) {
-            Err(e) => {
-                return Err(AppError::public(format!(
-                    "Failed to modify and reload the global tracing log level: {e}"
-                )));
-            }
-            Ok(()) => {
-                let value = &conf.logger.level;
-                let out = format!("Successfully changed log level back to config value {value}");
-                return ctx.write_str(&out).await;
-            }
-        }
+        // TODO: This is a workaround for the fact that we cannot reload the logger
+        // match crate::config::get().logger.reload(&old_filter_layer, Some(handles)) {
+        //     Err(e) => {
+        //         return Err(AppError::public(format!(
+        //             "Failed to modify and reload the global tracing log level: {e}"
+        //         )));
+        //     }
+        //     Ok(()) => {
+        //         let value = &conf.logger.level;
+        //         let out = format!("Successfully changed log level back to config value {value}");
+        //         return ctx.write_str(&out).await;
+        //     }
+        // }
     }
 
-    if let Some(filter) = filter {
-        let new_filter_layer = match EnvFilter::try_new(filter) {
-            Ok(s) => s,
-            Err(e) => return Err(AppError::public(format!("Invalid log level filter specified: {e}"))),
-        };
+    // TODO: This is a workaround for the fact that we cannot reload the logger
+    // if let Some(filter) = filter {
+    //     let new_filter_layer = match EnvFilter::try_new(filter) {
+    //         Ok(s) => s,
+    //         Err(e) => return Err(AppError::public(format!("Invalid log level filter specified: {e}"))),
+    //     };
 
-        match self.services.server.log.reload.reload(&new_filter_layer, Some(handles)) {
-            Ok(()) => return ctx.write_str("Successfully changed log level").await,
-            Err(e) => {
-                return Err(AppError::public(format!(
-                    "Failed to modify and reload the global tracing log level: {e}"
-                )));
-            }
-        }
-    }
+    //     match self.services.server.log.reload.reload(&new_filter_layer, Some(handles)) {
+    //         Ok(()) => return ctx.write_str("Successfully changed log level").await,
+    //         Err(e) => {
+    //             return Err(AppError::public(format!(
+    //                 "Failed to modify and reload the global tracing log level: {e}"
+    //             )));
+    //         }
+    //     }
+    // }
 
     Err(AppError::public("No log level was specified."))
 }
@@ -407,7 +410,9 @@ pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
 pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
     use crate::core::signatures::Verified;
 
-    let mut event = timeline::get_pdu_json(&event_id)?;
+    let Some(mut event) = timeline::get_pdu_json(&event_id)? else {
+        return Err(AppError::public("PDU not found in our database."));
+    };
 
     event.remove("event_id");
     let msg = match crate::server_key::verify_event(&event, None).await {
@@ -419,7 +424,6 @@ pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> App
     ctx.write_str(msg).await
 }
 
-#[tracing::instrument]
 pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public(
@@ -439,7 +443,6 @@ pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -
     ctx.write_str(&out).await
 }
 
-#[tracing::instrument]
 pub(super) async fn latest_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public(
@@ -510,7 +513,8 @@ pub(super) async fn force_set_room_state_from_server(
             AppError::public(format!("Invalid PDU in send_join response: {e:?}"))
         })?;
 
-        self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
+        // TODO: admin
+        // self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
 
         if let Some(state_key) = &pdu.state_key {
             let shortstatekey = self
@@ -525,17 +529,18 @@ pub(super) async fn force_set_room_state_from_server(
     }
 
     info!("Going through auth_chain response");
-    for result in remote_state_response
-        .auth_chain
-        .iter()
-        .map(|pdu| crate::server_key::validate_and_add_event_id(pdu, &room_version))
-    {
-        let Ok((event_id, value)) = result.await else {
-            continue;
-        };
+    // TODO: admin
+    // for result in remote_state_response
+    //     .auth_chain
+    //     .iter()
+    //     .map(|pdu| crate::server_key::validate_and_add_event_id(pdu, &room_version))
+    // {
+    //     let Ok((event_id, value)) = result.await else {
+    //         continue;
+    //     };
 
-        self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
-    }
+    //     self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
+    // }
 
     let new_room_state = crate::event::handler::resolve_state(&room_id, &room_version, state).await?;
 
@@ -548,13 +553,13 @@ pub(super) async fn force_set_room_state_from_server(
 
     let state_lock = crate::room::lock_state(&*room_id).await;
 
-    crate::room::state::force_state(room_id.clone().as_ref(), short_state_hash, added, removed, &state_lock)?;
+    crate::room::state::force_state(room_id.clone().as_ref(), short_state_hash, added, removed)?;
 
     info!(
         "Updating joined counts for room just in case (e.g. we may have found a difference in \
 		 the room's m.room.member state"
     );
-    self.services.rooms.state_cache.update_joined_count(&room_id).await;
+    crate::room::state::update_currents(&room_id)?;
     drop(state_lock);
     ctx.write_str("Successfully forced the room state from the requested remote server.")
         .await

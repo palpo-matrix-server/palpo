@@ -2,8 +2,8 @@ use clap::Subcommand;
 use futures_util::StreamExt;
 use palpo_core::{AppError, AppResult};
 
-use crate::admin::{Context, get_room_info};
 use crate::admin::admin_command_dispatch;
+use crate::admin::{Context, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::data;
 
@@ -27,29 +27,21 @@ pub(crate) enum RoomInfoCommand {
 }
 
 async fn list_joined_members(ctx: &Context<'_>, room_id: OwnedRoomId, local_only: bool) -> AppResult<()> {
-    let room_name = self
-        .services
-        .rooms
-        .state_accessor
-        .get_name(&room_id)
-        .await
-        .unwrap_or_else(|_| room_id.to_string());
+    let room_name = crate::room::get_name(&room_id).unwrap_or_else(|_| room_id.to_string());
 
-    let member_info: Vec<_> = self
-        .services
-        .rooms
-        .state_cache
-        .room_members(&room_id)
-        .ready_filter(|user_id| local_only.then(|| user_id.is_local()).unwrap_or(true))
-        .map(ToOwned::to_owned)
-        .filter_map(async |user_id| {
+    let member_info: Vec<_> = crate::room::joined_users(&room_id, None)?
+        .into_iter()
+        .filter(|user_id| user_id.is_local().unwrap_or(true))
+        .filter_map(|user_id| {
             Some((
-                data::user::display_name(&user_id).unwrap_or_else(|_| user_id.to_string()),
+                data::user::display_name(&user_id)
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|_| user_id.to_string()),
                 user_id,
             ))
         })
-        .collect()
-        .await;
+        .collect();
 
     let num = member_info.len();
     let body = member_info

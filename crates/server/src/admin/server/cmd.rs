@@ -2,7 +2,7 @@ use std::{fmt::Write, path::PathBuf, sync::Arc};
 
 use futures_util::TryStreamExt;
 
-use crate::admin::{Context, info, get_room_info};
+use crate::admin::{Context, get_room_info, info};
 use crate::macros::admin_command;
 use crate::{
     AppError, AppResult, config,
@@ -10,10 +10,12 @@ use crate::{
 };
 
 pub(super) async fn uptime(ctx: &Context<'_>) -> AppResult<()> {
-    let elapsed = self.services.server.started.elapsed().expect("standard duration");
+    // TODO: admin
+    // let elapsed = self.services.server.started.elapsed().expect("standard duration");
 
-    let result = time::pretty(elapsed);
-    ctx.write_str(&format!("{result}.")).await
+    // let result = time::pretty(elapsed);
+    // ctx.write_str(&format!("{result}.")).await
+    Ok(())
 }
 
 pub(super) async fn show_config(ctx: &Context<'_>) -> AppResult<()> {
@@ -21,8 +23,9 @@ pub(super) async fn show_config(ctx: &Context<'_>) -> AppResult<()> {
 }
 
 pub(super) async fn reload_config(ctx: &Context<'_>, path: Option<PathBuf>) -> AppResult<()> {
-    let path = path.as_deref().into_iter();
-    config::reload(path)?;
+    // TODO: admin
+    // let path = path.as_deref().into_iter();
+    // config::reload(path)?;
 
     ctx.write_str("Successfully reconfigured.").await
 }

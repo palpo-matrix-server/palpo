@@ -7,7 +7,7 @@ use crate::core::{OwnedRoomId, OwnedServerName, OwnedUserId};
 
 use crate::macros::admin_command_dispatch;
 
-use crate::{AppError, AppResult};
+use crate::{AppError, AppResult, data};
 
 use crate::admin::{Context, get_room_info};
 
@@ -124,15 +124,11 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
         ));
     }
 
-    if !crate::data::user::user_exists(&user_id)? {
+    if !data::user::user_exists(&user_id)? {
         return Err(AppError::public("Remote user does not exist in our database."));
     }
 
-    let mut rooms: Vec<(OwnedRoomId, u64, String)> = self
-        .services
-        .rooms
-        .state_cache
-        .rooms_joined(&user_id)
+    let mut rooms: Vec<(OwnedRoomId, u64, String)> = data::user::joined_rooms(&user_id)
         .then(|room_id| get_room_info(room_id))
         .collect()
         .await;

@@ -5,15 +5,6 @@ use syn::{Attribute, Error, Fields, Ident, ItemEnum, ItemFn, Meta, Variant, pars
 
 use crate::{Result, utils::camel_to_snake_string};
 
-pub(super) fn command(mut item: ItemFn, _args: &[Meta]) -> Result<TokenStream> {
-    let attr: Attribute = parse_quote! {
-        #[palpo_macros::implement(crate::Context, params = "<'_>")]
-    };
-
-    item.attrs.push(attr);
-    Ok(item.into_token_stream().into())
-}
-
 pub(super) fn command_dispatch(item: ItemEnum, _args: &[Meta]) -> Result<TokenStream> {
     let name = &item.ident;
     let arm: Vec<TokenStream2> = item.variants.iter().map(dispatch_arm).collect::<Result<Vec<_>>>()?;

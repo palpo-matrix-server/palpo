@@ -10,7 +10,7 @@ use futures_util::StreamExt;
 use self::{
     alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand, moderation::RoomModerationCommand,
 };
-use crate::admin::{PAGE_SIZE, Context, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
 use crate::{AppError, AppResult, config};

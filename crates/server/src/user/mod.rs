@@ -240,6 +240,14 @@ pub fn valid_refresh_token(user_id: &UserId, device_id: &DeviceId, token: &str) 
     Ok(())
 }
 
+pub fn make_user_admin(user_id: &UserId) -> AppResult<()> {
+    let user_id = user_id.to_owned();
+    diesel::update(users::table.filter(users::id.eq(&user_id)))
+        .set(users::is_admin.eq(true))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
 /// Places one event in the account data of the user and removes the previous entry.
 #[tracing::instrument(skip(room_id, user_id, event_type, json_data))]
 pub fn set_data(

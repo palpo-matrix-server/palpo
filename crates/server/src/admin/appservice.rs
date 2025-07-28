@@ -58,7 +58,7 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
             )));
         }
         Ok(registration) => match crate::appservice::register_appservice(&registration, &appservice_config_body)
-            .map(|()| registration.id)
+            .map(|_| registration.id)
         {
             Err(e) => return Err(AppError::public(format!("Failed to register appservice: {e}"))),
             Ok(id) => write!(ctx, "Appservice registered with ID: {id}"),
@@ -87,15 +87,8 @@ pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identif
 }
 
 pub(super) async fn list_registered(ctx: &Context<'_>) -> AppResult<()> {
-    self.services
-        .appservice
-        .iter_ids()
-        .collect()
-        .map(Ok)
-        .and_then(|appservices: Vec<_>| {
-            let len = appservices.len();
-            let list = appservices.join(", ");
-            write!(ctx, "Appservices ({len}): {list}")
-        })
-        .await
+    let appservices = crate::appservice::all()?.keys();
+    let len = appservices.len();
+    let list = appservices.join(", ");
+    write!(ctx, "Appservices ({len}): {list}")
 }

@@ -122,40 +122,41 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
         )));
     };
 
+    // TODO: this should be done
     debug!("Making all users leave the room {room_id} and forgetting it");
-    let mut users = self
-        .services
-        .rooms
-        .state_cache
-        .room_members(&room_id)
-        .map(ToOwned::to_owned)
-        .ready_filter(|user| user.is_local())
-        .boxed();
+    // let mut users = self
+    //     .services
+    //     .rooms
+    //     .state_cache
+    //     .room_members(&room_id)
+    //     .map(ToOwned::to_owned)
+    //     .ready_filter(|user| user.is_local())
+    //     .boxed();
 
-    while let Some(ref user_id) = users.next().await {
-        debug!(
-            "Attempting leave for user {user_id} in room {room_id} (ignoring all errors, \
-			 evicting admins too)",
-        );
+    // while let Some(ref user_id) = users.next().await {
+    //     debug!(
+    //         "Attempting leave for user {user_id} in room {room_id} (ignoring all errors, \
+    // 		 evicting admins too)",
+    //     );
 
-        if let Err(e) = membership::leave_room(user_id, &room_id, None).boxed().await {
-            warn!("Failed to leave room: {e}");
-        }
+    //     if let Err(e) = membership::leave_room(user_id, &room_id, None).boxed().await {
+    //         warn!("Failed to leave room: {e}");
+    //     }
 
-        crate::membership::forget_room(user_id, &room_id)?;
-    }
+    //     crate::membership::forget_room(user_id, &room_id)?;
+    // }
 
-    self.services
-        .rooms
-        .alias
-        .local_aliases_for_room(&room_id)
-        .map(ToOwned::to_owned)
-        .for_each(async |local_alias| {
-            if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
-                crate::room::remove_alias(&local_alias, &server_user).await.ok();
-            }
-        })
-        .await;
+    // self.services
+    //     .rooms
+    //     .alias
+    //     .local_aliases_for_room(&room_id)
+    //     .map(ToOwned::to_owned)
+    //     .for_each(async |local_alias| {
+    //         if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
+    //             crate::room::remove_alias(&local_alias, &server_user).await.ok();
+    //         }
+    //     })
+    //     .await;
 
     // unpublish from room directory
     crate::room::directory::set_public(&room_id, false)?;
@@ -271,16 +272,12 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
         room_ban_count = room_ban_count.saturating_add(1);
 
         debug!("Making all users leave the room {room_id} and forgetting it");
-        let mut users = self
-            .services
-            .rooms
-            .state_cache
-            .room_members(&room_id)
-            .map(ToOwned::to_owned)
-            .ready_filter(|user| user.is_local())
-            .boxed();
+        let mut users = crate::room::joined_users(&room_id)?
+            .into_iter()
+            .filter(|user| user.is_local())
+            .collect::<Vec<_>>();
 
-        while let Some(ref user_id) = users.next().await {
+        for user_id in &users {
             debug!(
                 "Attempting leave for user {user_id} in room {room_id} (ignoring all errors, \
 				 evicting admins too)",
@@ -293,18 +290,19 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
             membership::forget_room(user_id, &room_id)?;
         }
 
-        // remove any local aliases, ignore errors
-        self.services
-            .rooms
-            .alias
-            .local_aliases_for_room(&room_id)
-            .map(ToOwned::to_owned)
-            .for_each(async |local_alias| {
-                if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
-                    crate::room::remove_alias(&local_alias, &server_user).await.ok();
-                }
-            })
-            .await;
+        // TODO: admin
+        // // remove any local aliases, ignore errors
+        // self.services
+        //     .rooms
+        //     .alias
+        //     .local_aliases_for_room(&room_id)
+        //     .map(ToOwned::to_owned)
+        //     .for_each(async |local_alias| {
+        //         if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
+        //             crate::room::remove_alias(&local_alias, &server_user).await.ok();
+        //         }
+        //     })
+        //     .await;
 
         // unpublish from room directory, ignore errors
         crate::room::directory::set_public(&room_id, false)?;

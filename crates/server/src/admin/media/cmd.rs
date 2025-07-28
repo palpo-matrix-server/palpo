@@ -303,29 +303,26 @@ pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppRes
     ctx.write_str(&format!("```\n{metadata:#?}\n```")).await
 }
 
-pub(super) async fn get_remote_file(
-    ctx: &Context<'_>,
-    mxc: OwnedMxcUri,
-    server: Option<OwnedServerName>,
-    timeout: u32,
-) -> AppResult<()> {
-    let mxc: Mxc<'_> = mxc.as_str().try_into()?;
-    let timeout = Duration::from_millis(timeout.into());
-    let mut result = self
-        .services
-        .media
-        .fetch_remote_content(&mxc, None, server.as_deref(), timeout)
-        .await?;
+// pub(super) async fn get_remote_file(
+//     ctx: &Context<'_>,
+//     mxc: OwnedMxcUri,
+//     server: Option<OwnedServerName>,
+//     timeout: u32,
+// ) -> AppResult<()> {
+//     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
+//     let timeout = Duration::from_millis(timeout.into());
+//     let mut result = crate::media::get_remote_content(&mxc, &mxc.server_name, &mxc.media_id)
+//         .await?;
 
-    // Grab the length of the content before clearing it to not flood the output
-    let len = result.content.as_ref().expect("content").len();
-    result.content.as_mut().expect("content").clear();
+//     // Grab the length of the content before clearing it to not flood the output
+//     let len = result.content.as_ref().expect("content").len();
+//     result.content.as_mut().expect("content").clear();
 
-    ctx.write_str(&format!(
-        "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
-    ))
-    .await
-}
+//     ctx.write_str(&format!(
+//         "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
+//     ))
+//     .await
+// }
 
 pub(super) async fn get_remote_thumbnail(
     ctx: &Context<'_>,
