@@ -533,6 +533,14 @@ pub fn is_encrypted(room_id: &RoomId) -> bool {
     get_state(room_id, &StateEventType::RoomEncryption, "", None).is_ok()
 }
 
+
+/// Gets the room ID of the admin room
+///
+/// Errors are propagated from the database, and will have None if there is no admin room
+pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
+    crate::room::resolve_local_alias(config::admin_alias())
+}
+
 /// Returns an iterator of all our local users in the room, even if they're
 /// deactivated/guests
 #[tracing::instrument(level = "debug")]

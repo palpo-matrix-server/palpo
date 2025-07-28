@@ -251,3 +251,8 @@ pub fn set_data(
     let user_data = data::user::set_data(user_id, room_id, event_type, json_data)?;
     Ok(user_data)
 }
+
+pub async fn delete_all_media(user_id: &UserId) -> AppResult<i64> {
+    // TODO: Delete all media from disk
+    Ok(0)
+}

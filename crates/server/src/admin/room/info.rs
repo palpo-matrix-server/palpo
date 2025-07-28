@@ -26,8 +26,7 @@ pub(crate) enum RoomInfoCommand {
 	},
 }
 
-#[admin_command]
-async fn list_joined_members(&self, room_id: OwnedRoomId, local_only: bool) -> AppResult<()> {
+async fn list_joined_members(ctx: &Context<'_>, room_id: OwnedRoomId, local_only: bool) -> AppResult<()> {
 	let room_name = self
 		.services
 		.rooms
@@ -67,12 +66,11 @@ async fn list_joined_members(&self, room_id: OwnedRoomId, local_only: bool) -> A
 		.collect::<Vec<_>>()
 		.join("\n");
 
-	self.write_str(&format!("{num} Members in Room \"{room_name}\":\n```\n{body}\n```",))
+	ctx.write_str(&format!("{num} Members in Room \"{room_name}\":\n```\n{body}\n```",))
 		.await
 }
 
-#[admin_command]
-async fn view_room_topic(&self, room_id: OwnedRoomId) -> AppResult<()> {
+async fn view_room_topic(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
 	let Ok(room_topic) = self
 		.services
 		.rooms
@@ -83,6 +81,6 @@ async fn view_room_topic(&self, room_id: OwnedRoomId) -> AppResult<()> {
 		return Err(AppError::public("Room does not have a room topic set."));
 	};
 
-	self.write_str(&format!("Room topic:\n```\n{room_topic}\n```"))
+	ctx.write_str(&format!("Room topic:\n```\n{room_topic}\n```"))
 		.await
 }

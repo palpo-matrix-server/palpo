@@ -5,8 +5,18 @@ pub use preview::*;
 use salvo::Response;
 
 use crate::core::federation::media::ContentReqArgs;
+use crate::core::media::Method;
 use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
+
+
+/// Dimension specification for a thumbnail.
+#[derive(Debug)]
+pub struct Dimension {
+	pub width: u32,
+	pub height: u32,
+	pub method: Method,
+}
 
 pub async fn get_remote_content(
     _mxc: &str,
@@ -62,4 +72,9 @@ pub fn thumbnail_properties(width: u32, height: u32) -> Option<(u32, u32, bool)>
         (0..=800, 0..=600) => Some((800, 600, false)),
         _ => None,
     }
+}
+
+pub async fn delete_media(mxc: &str) -> AppResult<()> {
+    //TODO: Delete media from disk
+    Ok(())
 }

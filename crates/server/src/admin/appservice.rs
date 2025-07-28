@@ -1,7 +1,7 @@
 use clap::Subcommand;
 use futures_util::{FutureExt, StreamExt, TryFutureExt};
 
-use crate::admin_command;
+use crate::admin::Context;
 use crate::macros::admin_command_dispatch;
 use crate::{AppError, AppResult};
 
@@ -39,10 +39,9 @@ pub(super) enum AppserviceCommand {
     ListRegistered,
 }
 
-#[admin_command]
-pub(super) async fn register(&self) -> AppResult<()> {
-    let body = &self.body;
-    let body_len = self.body.len();
+pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
+    let body = &ctx.body;
+    let body_len = ctx.body.len();
     if body_len < 2 || !body[0].trim().starts_with("```") || body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -72,8 +71,7 @@ pub(super) async fn register(&self) -> AppResult<()> {
     .await
 }
 
-#[admin_command]
-pub(super) async fn unregister(&self, appservice_identifier: String) -> AppResult<()> {
+pub(super) async fn unregister(ctx: &Context<'_>,  appservice_identifier: String) -> AppResult<()> {
     match self
         .services
         .appservice
@@ -81,19 +79,18 @@ pub(super) async fn unregister(&self, appservice_identifier: String) -> AppResul
         .await
     {
         Err(e) => return Err(AppError::public(format!("Failed to unregister appservice: {e}"))),
-        Ok(()) => write!(self, "Appservice unregistered."),
+        Ok(()) => write!(ctx, "Appservice unregistered."),
     }
     .await
 }
 
-#[admin_command]
-pub(super) async fn show_appservice_config(&self, appservice_identifier: String) -> AppResult<()> {
+pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
     match self.services.appservice.get_registration(&appservice_identifier).await {
         None => return Err(AppError::public("Appservice does not exist.")),
         Some(config) => {
             let config_str = serde_yaml::to_string(&config)?;
             write!(
-                self,
+                ctx,
                 "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```"
             )
         }
@@ -101,8 +98,7 @@ pub(super) async fn show_appservice_config(&self, appservice_identifier: String)
     .await
 }
 
-#[admin_command]
-pub(super) async fn list_registered(&self) -> AppResult<()> {
+pub(super) async fn list_registered(ctx: &Context<'_>) -> AppResult<()> {
     self.services
         .appservice
         .iter_ids()
@@ -111,7 +107,7 @@ pub(super) async fn list_registered(&self) -> AppResult<()> {
         .and_then(|appservices: Vec<_>| {
             let len = appservices.len();
             let list = appservices.join(", ");
-            write!(self, "Appservices ({len}): {list}")
+            write!(ctx, "Appservices ({len}): {list}")
         })
         .await
 }

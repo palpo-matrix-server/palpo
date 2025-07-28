@@ -17,26 +17,23 @@ use crate::core::{
 use crate::room::state_compressor::HashSetCompressStateEvent;
 use crate::{
     AppError, AppResult,
-    admin::info,
+    admin::{Context, info},
     config, jwt,
     matrix::{
         Event,
         pdu::{PduEvent, PduId, RawPduId},
     },
+    room::timeline,
     utils,
 };
 
-use crate::admin_command;
-
-#[admin_command]
-pub(super) async fn echo(&self, message: Vec<String>) -> AppResult<()> {
+pub(super) async fn echo(ctx: &Context<'_>, message: Vec<String>) -> AppResult<()> {
     let message = message.join(" ");
-    self.write_str(&message).await
+    ctx.write_str(&message).await
 }
 
-#[admin_command]
-pub(super) async fn get_auth_chain(&self, event_id: OwnedEventId) -> AppResult<()> {
-    let Ok(event) = self.services.rooms.timeline.get_pdu_json(&event_id).await else {
+pub(super) async fn get_auth_chain(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
+    let Ok(event) = timeline::get_pdu_json(&event_id) else {
         return Err(AppError::public("Event not found."));
     };
 
@@ -61,27 +58,26 @@ pub(super) async fn get_auth_chain(&self, event_id: OwnedEventId) -> AppResult<(
     let elapsed = start.elapsed();
     let out = format!("Loaded auth chain with length {count} in {elapsed:?}");
 
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn parse_pdu(&self) -> AppResult<()> {
-    if self.body.len() < 2
-        || !self.body[0].trim().starts_with("```")
-        || self.body.last().unwrap_or(&EMPTY).trim() != "```"
+pub(super) async fn parse_pdu(ctx: &Context<'_>) -> AppResult<()> {
+    if ctx.body.len() < 2
+        || !ctx.body[0].trim().starts_with("```")
+        || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let string = self.body[1..self.body.len().saturating_sub(1)].join("\n");
+    let string = ctx.body[1..ctx.body.len().saturating_sub(1)].join("\n");
     match serde_json::from_str(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json in command body: {e}"))),
         Ok(value) => match crate::core::signatures::reference_hash(&value, &RoomVersionId::V6) {
             Err(e) => return Err(AppError::public(format!("Could not parse PDU JSON: {e:?}"))),
             Ok(hash) => {
-                let event_id = OwnedEventId::parse(format!("${hash}"));
+                let event_id = EventId::parse(format!("${hash}"));
                 match serde_json::from_value::<PduEvent>(serde_json::to_value(value)?) {
                     Err(e) => {
                         return Err(AppError::public(format!(
@@ -96,14 +92,13 @@ pub(super) async fn parse_pdu(&self) -> AppResult<()> {
     .await
 }
 
-#[admin_command]
-pub(super) async fn get_pdu(&self, event_id: OwnedEventId) -> AppResult<()> {
+pub(super) async fn get_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
     let mut outlier = false;
-    let mut pdu_json = self.services.rooms.timeline.get_non_outlier_pdu_json(&event_id).await;
+    let mut pdu_json = timeline::get_non_outlier_pdu_json(&event_id).await;
 
     if pdu_json.is_err() {
         outlier = true;
-        pdu_json = self.services.rooms.timeline.get_pdu_json(&event_id).await;
+        pdu_json = timeline::get_pdu_json(&event_id);
     }
 
     match pdu_json {
@@ -115,15 +110,15 @@ pub(super) async fn get_pdu(&self, event_id: OwnedEventId) -> AppResult<()> {
             } else {
                 "PDU found in our database"
             };
-            write!(self, "{msg}\n```json\n{text}\n```",)
+            write!(ctx, "{msg}\n```json\n{text}\n```",)
         }
     }
     .await
 }
 
-#[admin_command]
-pub(super) async fn get_remote_pdu_list(&self, server: OwnedServerName, force: bool) -> AppResult<()> {
-    if !self.services.server.config.allow_federation {
+pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerName, force: bool) -> AppResult<()> {
+    let conf = config::get();
+    if conf.enabled_federation().is_none() {
         return Err(AppError::public("federation is disabled on this homeserver."));
     }
 
@@ -134,20 +129,20 @@ pub(super) async fn get_remote_pdu_list(&self, server: OwnedServerName, force: b
         ));
     }
 
-    if self.body.len() < 2
-        || !self.body[0].trim().starts_with("```")
-        || self.body.last().unwrap_or(&EMPTY).trim() != "```"
+    if ctx.body.len() < 2
+        || !ctx.body[0].trim().starts_with("```")
+        || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let list = self
+    let list = ctx
         .body
         .iter()
         .collect::<Vec<_>>()
-        .drain(1..self.body.len().saturating_sub(1))
+        .drain(1..ctx.body.len().saturating_sub(1))
         .filter_map(|pdu| EventId::parse(pdu).ok())
         .collect::<Vec<_>>();
 
@@ -178,11 +173,10 @@ pub(super) async fn get_remote_pdu_list(&self, server: OwnedServerName, force: b
 
     let out = format!("Fetched {success_count} remote PDUs successfully with {failed_count} failures");
 
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn get_remote_pdu(&self, event_id: OwnedEventId, server: OwnedServerName) -> AppResult<()> {
+pub(super) async fn get_remote_pdu(ctx: &Context<'_>, event_id: OwnedEventId, server: OwnedServerName) -> AppResult<()> {
     if !self.services.server.config.allow_federation {
         return Err(AppError::public("Federation is disabled on this homeserver."));
     }
@@ -245,19 +239,18 @@ pub(super) async fn get_remote_pdu(&self, event_id: OwnedEventId, server: OwnedS
             };
 
             info!("Attempting to handle event ID {event_id} as backfilled PDU");
-            self.services.rooms.timeline.backfill_pdu(&server, response.pdu).await?;
+            timeline::backfill_pdu(&server, response.pdu).await?;
 
             let text = serde_json::to_string_pretty(&json)?;
             let msg = "Got PDU from specified server and handled as backfilled";
-            write!(self, "{msg}. Event body:\n```json\n{text}\n```")
+            write!(ctx, "{msg}. Event body:\n```json\n{text}\n```")
         }
     }
     .await
 }
 
-#[admin_command]
-pub(super) async fn get_room_state(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
-    let room_id = self.services.rooms.alias.resolve(&room).await?;
+pub(super) async fn get_room_state(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> {
+    let room_id = crate::room::alias::resolve(&room).await?;
     let room_state: Vec<Raw<AnyStateEvent>> = self
         .services
         .rooms
@@ -281,11 +274,10 @@ pub(super) async fn get_room_state(&self, room: OwnedRoomOrAliasId) -> AppResult
     })?;
 
     let out = format!("```json\n{json}\n```");
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn ping(&self, server: OwnedServerName) -> AppResult<()> {
+pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResult<()> {
     if server == config::server_name() {
         return Err(AppError::public(
             "Not allowed to send federation requests to ourselves.",
@@ -324,8 +316,7 @@ pub(super) async fn ping(&self, server: OwnedServerName) -> AppResult<()> {
     .await
 }
 
-#[admin_command]
-pub(super) async fn force_device_list_updates(&self) -> AppResult<()> {
+pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()> {
     // Force E2EE device list updates for all users
     self.services
         .users
@@ -336,8 +327,7 @@ pub(super) async fn force_device_list_updates(&self) -> AppResult<()> {
     write!(self, "Marked all devices for all users as having new keys to update").await
 }
 
-#[admin_command]
-pub(super) async fn change_log_level(&self, filter: Option<String>, reset: bool) -> AppResult<()> {
+pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, reset: bool) -> AppResult<()> {
     let handles = &["console"];
 
     if reset {
@@ -359,7 +349,7 @@ pub(super) async fn change_log_level(&self, filter: Option<String>, reset: bool)
             Ok(()) => {
                 let value = &self.services.server.config.log;
                 let out = format!("Successfully changed log level back to config value {value}");
-                return self.write_str(&out).await;
+                return ctx.write_str(&out).await;
             }
         }
     }
@@ -371,7 +361,7 @@ pub(super) async fn change_log_level(&self, filter: Option<String>, reset: bool)
         };
 
         match self.services.server.log.reload.reload(&new_filter_layer, Some(handles)) {
-            Ok(()) => return self.write_str("Successfully changed log level").await,
+            Ok(()) => return ctx.write_str("Successfully changed log level").await,
             Err(e) => {
                 return Err(AppError::public(format!(
                     "Failed to modify and reload the global tracing log level: {e}"
@@ -383,16 +373,15 @@ pub(super) async fn change_log_level(&self, filter: Option<String>, reset: bool)
     Err(AppError::public("No log level was specified."))
 }
 
-#[admin_command]
-pub(super) async fn sign_json(&self) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
+pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let string = self.body[1..self.body.len().checked_sub(1).unwrap()].join("\n");
+    let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
         Ok(mut value) => {
@@ -404,16 +393,15 @@ pub(super) async fn sign_json(&self) -> AppResult<()> {
     .await
 }
 
-#[admin_command]
-pub(super) async fn verify_json(&self) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
+pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let string = self.body[1..self.body.len().checked_sub(1).unwrap()].join("\n");
+    let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str::<CanonicalJsonObject>(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
         Ok(value) => match self.services.server_keys.verify_json(&value, None).await {
@@ -424,11 +412,10 @@ pub(super) async fn verify_json(&self) -> AppResult<()> {
     .await
 }
 
-#[admin_command]
-pub(super) async fn verify_pdu(&self, event_id: OwnedEventId) -> AppResult<()> {
+pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
     use crate::core::signatures::Verified;
 
-    let mut event = self.services.rooms.timeline.get_pdu_json(&event_id).await?;
+    let mut event = timeline::get_pdu_json(&event_id)?;
 
     event.remove("event_id");
     let msg = match self.services.server_keys.verify_event(&event, None).await {
@@ -437,17 +424,16 @@ pub(super) async fn verify_pdu(&self, event_id: OwnedEventId) -> AppResult<()> {
         Ok(Verified::All) => "signatures and hashes OK.",
     };
 
-    self.write_str(msg).await
+    ctx.write_str(msg).await
 }
 
-#[admin_command]
 #[tracing::instrument(skip(self))]
-pub(super) async fn first_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     if !self
         .services
         .rooms
         .state_cache
-        .server_in_room(&self.services.server.name, &room_id)
+        .server_in_room(config::server_name(), &room_id)
         .await
     {
         return Err(AppError::public(
@@ -464,17 +450,16 @@ pub(super) async fn first_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult<
         .map_err(|_| AppError::public("Failed to find the first PDU in database"))?;
 
     let out = format!("{first_pdu:?}");
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
 #[tracing::instrument(skip(self))]
-pub(super) async fn latest_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn latest_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     if !self
         .services
         .rooms
         .state_cache
-        .server_in_room(&self.services.server.name, &room_id)
+        .server_in_room(config::server_name(), &room_id)
         .await
     {
         return Err(AppError::public(
@@ -491,13 +476,11 @@ pub(super) async fn latest_pdu_in_room(&self, room_id: OwnedRoomId) -> AppResult
         .map_err(|_| AppError::public("Failed to find the latest PDU in database"))?;
 
     let out = format!("{latest_pdu:?}");
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-#[tracing::instrument(skip(self))]
 pub(super) async fn force_set_room_state_from_server(
-    &self,
+    ctx: &Context<'_>,
     room_id: OwnedRoomId,
     server_name: OwnedServerName,
 ) -> AppResult<()> {
@@ -505,7 +488,7 @@ pub(super) async fn force_set_room_state_from_server(
         .services
         .rooms
         .state_cache
-        .server_in_room(&self.services.server.name, &room_id)
+        .server_in_room(config::server_name(), &room_id)
         .await
     {
         return Err(AppError::public(
@@ -622,13 +605,12 @@ pub(super) async fn force_set_room_state_from_server(
     );
     self.services.rooms.state_cache.update_joined_count(&room_id).await;
 
-    self.write_str("Successfully forced the room state from the requested remote server.")
+    ctx.write_str("Successfully forced the room state from the requested remote server.")
         .await
 }
 
-#[admin_command]
 pub(super) async fn get_signing_keys(
-    &self,
+    ctx: &Context<'_>,
     server_name: Option<OwnedServerName>,
     notary: Option<OwnedServerName>,
     query: bool,
@@ -639,7 +621,7 @@ pub(super) async fn get_signing_keys(
         let signing_keys = self.services.server_keys.notary_request(&notary, &server_name).await?;
 
         let out = format!("```rs\n{signing_keys:#?}\n```");
-        return self.write_str(&out).await;
+        return ctx.write_str(&out).await;
     }
 
     let signing_keys = if query {
@@ -649,11 +631,10 @@ pub(super) async fn get_signing_keys(
     };
 
     let out = format!("```rs\n{signing_keys:#?}\n```");
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn get_verify_keys(&self, server_name: Option<OwnedServerName>) -> AppResult<()> {
+pub(super) async fn get_verify_keys(ctx: &Context<'_>, server_name: Option<OwnedServerName>) -> AppResult<()> {
     let server_name = server_name.unwrap_or_else(|| self.services.server.name.clone());
 
     let keys = self.services.server_keys.verify_keys_for(&server_name).await;
@@ -665,11 +646,10 @@ pub(super) async fn get_verify_keys(&self, server_name: Option<OwnedServerName>)
         writeln!(out, "| {key_id} | {key:?} |")?;
     }
 
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn resolve_true_destination(&self, server_name: OwnedServerName, no_cache: bool) -> AppResult<()> {
+pub(super) async fn resolve_true_destination(ctx: &Context<'_>, server_name: OwnedServerName, no_cache: bool) -> AppResult<()> {
     if !self.services.server.config.allow_federation {
         return Err(AppError::public("Federation is disabled on this homeserver."));
     }
@@ -688,22 +668,20 @@ pub(super) async fn resolve_true_destination(&self, server_name: OwnedServerName
         .await?;
 
     let msg = format!("Destination: {}\nHostname URI: {}", actual.dest, actual.host);
-    self.write_str(&msg).await
+    ctx.write_str(&msg).await
 }
 
-#[admin_command]
-pub(super) async fn time(&self) -> AppResult<()> {
+pub(super) async fn time(ctx: &Context<'_>) -> AppResult<()> {
     let now = SystemTime::now();
     let now = utils::time::format(now, "%+");
 
-    self.write_str(&now).await
+    ctx.write_str(&now).await
 }
 
-#[admin_command]
 pub(super) async fn list_dependencies(&self, names: bool) -> AppResult<()> {
     if names {
         let out = info::cargo::dependencies_names().join(" ");
-        return self.write_str(&out).await;
+        return ctx.write_str(&out).await;
     }
 
     let mut out = String::new();
@@ -722,11 +700,10 @@ pub(super) async fn list_dependencies(&self, names: bool) -> AppResult<()> {
         writeln!(out, "| {name} | {version} | {feats} |")?;
     }
 
-    self.write_str(&out).await
+    ctx.write_str(&out).await
 }
 
-#[admin_command]
-pub(super) async fn database_stats(&self, property: Option<String>, map: Option<String>) -> AppResult<()> {
+pub(super) async fn database_stats(ctx: &Context<'_>, property: Option<String>, map: Option<String>) -> AppResult<()> {
     let map_name = map.as_ref().map_or(EMPTY, String::as_str);
     let property = property.unwrap_or_else(|| "rocksdb.stats".to_owned());
     self.services
@@ -741,14 +718,13 @@ pub(super) async fn database_stats(&self, property: Option<String>, map: Option<
         .await
 }
 
-#[admin_command]
-pub(super) async fn database_files(&self, map: Option<String>, level: Option<i32>) -> AppResult<()> {
+pub(super) async fn database_files(ctx: &Context<'_>, map: Option<String>, level: Option<i32>) -> AppResult<()> {
     let mut files: Vec<_> = self.services.db.db.file_list().collect::<Result<_>>()?;
 
     files.sort_by_key(|f| f.name.clone());
 
-    writeln!(self, "| lev  | sst  | keys | dels | size | column |").await?;
-    writeln!(self, "| ---: | :--- | ---: | ---: | ---: | :---   |").await?;
+    writeln!(ctx, "| lev  | sst  | keys | dels | size | column |").await?;
+    writeln!(ctx, "| ---: | :--- | ---: | ---: | ---: | :---   |").await?;
     files
         .into_iter()
         .filter(|file| map.as_deref().is_none_or(|map| map == file.column_family_name))
@@ -764,9 +740,8 @@ pub(super) async fn database_files(&self, map: Option<String>, level: Option<i32
         .await
 }
 
-#[admin_command]
 pub(super) async fn create_jwt(
-    &self,
+    ctx: &Context<'_>,
     user: String,
     exp_from_now: Option<u64>,
     nbf_from_now: Option<u64>,
@@ -802,19 +777,15 @@ pub(super) async fn create_jwt(
     };
     let claim = Claim {
         sub: user,
-
         iss: issuer.unwrap_or_default(),
-
         aud: audience.unwrap_or_default(),
-
         exp: exp_from_now
-            .and_then(|val| now_secs().checked_add(val))
+            .and_then(|val| UnixMillis::now().as_secs().checked_add(val))
             .map(TryInto::try_into)
             .and_then(Result::ok)
             .unwrap_or(usize::MAX),
-
         nbf: nbf_from_now
-            .and_then(|val| now_secs().checked_add(val))
+            .and_then(|val| UnixMillis::now().as_secs().checked_add(val))
             .map(TryInto::try_into)
             .and_then(Result::ok)
             .unwrap_or(0),
@@ -822,6 +793,6 @@ pub(super) async fn create_jwt(
 
     encode(&header, &claim, &key)
         .map_err(|e| AppError::public(format!("Failed to encode JWT: {e}")))
-        .map(async |token| self.write_str(&token).await)?
+        .map(async |token| ctx.write_str(&token).await)?
         .await
 }

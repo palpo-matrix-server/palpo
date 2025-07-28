@@ -9,7 +9,7 @@ use crate::macros::{admin_command, admin_command_dispatch};
 
 use crate::{AppError, AppResult};
 
-use crate::admin::get_room_info;
+use crate::admin::{Context, get_room_info};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -38,20 +38,17 @@ pub(super) enum FederationCommand {
     RemoteUserInRooms { user_id: OwnedUserId },
 }
 
-#[admin_command]
-pub(super) async fn disable_room(&self, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn disable_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     self.services.rooms.metadata.disable_room(&room_id, true);
-    self.write_str("Room disabled.").await
+    ctx.write_str("Room disabled.").await
 }
 
-#[admin_command]
-pub(super) async fn enable_room(&self, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn enable_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     self.services.rooms.metadata.disable_room(&room_id, false);
-    self.write_str("Room enabled.").await
+    ctx.write_str("Room enabled.").await
 }
 
-#[admin_command]
-pub(super) async fn incoming_federation(&self) -> AppResult<()> {
+pub(super) async fn incoming_federation(ctx: &Context<'_>) -> AppResult<()> {
     let msg = {
         let map = self
             .services
@@ -77,11 +74,10 @@ pub(super) async fn incoming_federation(&self) -> AppResult<()> {
         msg
     };
 
-    self.write_str(&msg).await
+    ctx.write_str(&msg).await
 }
 
-#[admin_command]
-pub(super) async fn fetch_support_well_known(&self, server_name: OwnedServerName) -> AppResult<()> {
+pub(super) async fn fetch_support_well_known(ctx: &Context<'_>, server_name: OwnedServerName) -> AppResult<()> {
     let response = self
         .services
         .client
@@ -114,12 +110,11 @@ pub(super) async fn fetch_support_well_known(&self, server_name: OwnedServerName
         }
     };
 
-    self.write_str(&format!("Got JSON response:\n\n```json\n{pretty_json}\n```"))
+    ctx.write_str(&format!("Got JSON response:\n\n```json\n{pretty_json}\n```"))
         .await
 }
 
-#[admin_command]
-pub(super) async fn remote_user_in_rooms(&self, user_id: OwnedUserId) -> AppResult<()> {
+pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId) -> AppResult<()> {
     if user_id.server_name() == self.services.server.name {
         return Err(AppError::public(
             "User belongs to our server, please use `list-joined-rooms` user admin command \
@@ -154,6 +149,6 @@ pub(super) async fn remote_user_in_rooms(&self, user_id: OwnedUserId) -> AppResu
         .collect::<Vec<_>>()
         .join("\n");
 
-    self.write_str(&format!("Rooms {user_id} shares with us ({num}):\n```\n{body}\n```",))
+    ctx.write_str(&format!("Rooms {user_id} shares with us ({num}):\n```\n{body}\n```",))
         .await
 }

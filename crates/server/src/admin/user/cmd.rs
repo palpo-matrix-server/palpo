@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Write as _};
 
 use futures_util::{FutureExt, StreamExt};
 
-use crate::admin::{get_room_info, parse_local_user_id};
+use crate::admin::{Context, get_room_info, parse_local_user_id};
 use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId, UserId,
     events::{
@@ -14,15 +14,14 @@ use crate::core::{
         tag::{TagEvent, TagEventContent, TagInfo},
     },
 };
-use crate::membership::leave_all_rooms;
+use crate::room::timeline;
 use crate::user::full_user_deactivate;
-use crate::{AppError, AppResult, IsRemoteOrLocal, membership, PduBuilder, config, utils};
+use crate::{AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils};
 
 const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
 
-#[admin_command]
-pub(super) async fn list_users(&self) -> AppResult<()> {
+pub(super) async fn list_users(ctx: &Context<'_>) -> AppResult<()> {
     let users: Vec<_> = self
         .services
         .users
@@ -35,33 +34,30 @@ pub(super) async fn list_users(&self) -> AppResult<()> {
     plain_msg += users.join("\n").as_str();
     plain_msg += "\n```";
 
-    self.write_str(&plain_msg).await
+    ctx.write_str(&plain_msg).await
 }
 
-#[admin_command]
-pub(super) async fn create_user(&self, username: String, password: Option<String>) -> AppResult<()> {
+pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: Option<String>) -> AppResult<()> {
     // Validate user id
     let user_id = parse_local_user_id(&username)?;
+    let conf = config::get();
 
     if let Err(e) = user_id.validate_strict() {
-        if self.services.config.emergency_password.is_none() {
+        if conf.emergency_password.is_none() {
             return Err(AppError::public(format!(
                 "Username {user_id} contains disallowed characters or spaces: {e}"
             )));
         }
     }
 
-    if self.services.users.exists(&user_id).await {
+    if data::user::user_exists(&user_id)? {
         return Err(AppError::public(format!("User {user_id} already exists")));
     }
 
     let password = password.unwrap_or_else(|| utils::random_string(AUTO_GEN_PASSWORD_LENGTH));
 
     // Create user
-    self.services
-        .users
-        .create(&user_id, Some(password.as_str()), None)
-        .await?;
+    crate::user::create_user(&user_id, Some(password.as_str()))?;
 
     // Default to pretty displayname
     let mut displayname = user_id.localpart().to_owned();
@@ -97,7 +93,7 @@ pub(super) async fn create_user(&self, username: String, password: Option<String
 
     if !self.services.server.config.auto_join_rooms.is_empty() {
         for room in &self.services.server.config.auto_join_rooms {
-            let Ok(room_id) = self.services.rooms.alias.resolve(room).await else {
+            let Ok(room_id) = crate::room::alias::resolve(room).await else {
                 error!(
                     %user_id,
                     "Failed to resolve room alias to room ID when attempting to auto join {room}, skipping"
@@ -116,7 +112,7 @@ pub(super) async fn create_user(&self, username: String, password: Option<String
                 continue;
             }
 
-            if let Some(room_server_name) = room.server_name() {
+            if let Ok(room_server_name) = room.server_name() {
                 match membership::join_room(
                     &user_id,
                     &room_id,
@@ -150,7 +146,7 @@ pub(super) async fn create_user(&self, username: String, password: Option<String
 
     // if this account creation is from the CLI / --execute, invite the first user
     // to admin room
-    if let Ok(admin_room) = self.services.admin.get_admin_room().await {
+    if let Ok(admin_room) = crate::room::get_admin_room() {
         if self
             .services
             .rooms
@@ -166,14 +162,13 @@ pub(super) async fn create_user(&self, username: String, password: Option<String
         debug!("create_user admin command called without an admin room being available");
     }
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Created user with user_id: {user_id} and password: `{password}`"
     ))
     .await
 }
 
-#[admin_command]
-pub(super) async fn deactivate(&self, no_leave_rooms: bool, user_id: String) -> AppResult<()> {
+pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id: String) -> AppResult<()> {
     // Validate user id
     let user_id = parse_local_user_id(&user_id)?;
 
@@ -187,8 +182,7 @@ pub(super) async fn deactivate(&self, no_leave_rooms: bool, user_id: String) -> 
     self.services.users.deactivate_account(&user_id).await?;
 
     if !no_leave_rooms {
-        crate::admin::send_text(&format!("Making {user_id} leave all rooms after deactivation..."))
-            .await;
+        crate::admin::send_text(&format!("Making {user_id} leave all rooms after deactivation...")).await;
 
         let all_joined_rooms: Vec<OwnedRoomId> = self
             .services
@@ -199,20 +193,17 @@ pub(super) async fn deactivate(&self, no_leave_rooms: bool, user_id: String) -> 
             .collect()
             .await;
 
-        full_user_deactivate(&user_id, &all_joined_rooms)
-            .boxed()
-            .await?;
+        full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
 
-        update_displayname( &user_id, None, &all_joined_rooms).await;
-        update_avatar_url( &user_id, None, None, &all_joined_rooms).await;
-        leave_all_rooms(&user_id).await;
+        update_displayname(&user_id, None, &all_joined_rooms).await;
+        data::user::set_avatar_url(&user_id, None)?;
+        membership::leave_all_rooms(&user_id).await;
     }
 
-    self.write_str(&format!("User {user_id} has been deactivated")).await
+    ctx.write_str(&format!("User {user_id} has been deactivated")).await
 }
 
-#[admin_command]
-pub(super) async fn reset_password(&self, username: String, password: Option<String>) -> AppResult<()> {
+pub(super) async fn reset_password(ctx: &Context<'_>, username: String, password: Option<String>) -> AppResult<()> {
     let user_id = parse_local_user_id(&username)?;
 
     if user_id == config::server_user() {
@@ -242,8 +233,7 @@ pub(super) async fn reset_password(&self, username: String, password: Option<Str
     .await
 }
 
-#[admin_command]
-pub(super) async fn deactivate_all(&self, no_leave_rooms: bool, force: bool) -> AppResult<()> {
+pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, force: bool) -> AppResult<()> {
     if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
@@ -319,13 +309,11 @@ pub(super) async fn deactivate_all(&self, no_leave_rooms: bool, force: bool) -> 
                         .collect()
                         .await;
 
-                    full_user_deactivate(&user_id, &all_joined_rooms)
-                        .boxed()
-                        .await?;
+                    full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
 
                     update_displayname(&user_id, None, &all_joined_rooms).await;
-                    update_avatar_url( &user_id, None, None, &all_joined_rooms).await;
-                    leave_all_rooms( &user_id).await;
+                    data::user::set_avatar_url(&user_id, None, None, &all_joined_rooms)?;
+                    membership::leave_all_rooms(&user_id).await;
                 }
             }
         }
@@ -344,8 +332,7 @@ pub(super) async fn deactivate_all(&self, no_leave_rooms: bool, force: bool) -> 
     .await
 }
 
-#[admin_command]
-pub(super) async fn list_joined_rooms(&self, user_id: String) -> AppResult<()> {
+pub(super) async fn list_joined_rooms(ctx: &Context<'_>, user_id: String) -> AppResult<()> {
     // Validate user id
     let user_id = parse_local_user_id(&user_id)?;
 
@@ -371,18 +358,16 @@ pub(super) async fn list_joined_rooms(&self, user_id: String) -> AppResult<()> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    self.write_str(&format!("Rooms {user_id} Joined ({}):\n```\n{body}\n```", rooms.len(),))
+    ctx.write_str(&format!("Rooms {user_id} Joined ({}):\n```\n{body}\n```", rooms.len(),))
         .await
 }
 
-#[admin_command]
 pub(super) async fn force_join_list_of_local_users(
-    &self,
+    ctx: &Context<'_>,
     room_id: OwnedRoomOrAliasId,
     yes_i_want_to_do_this: bool,
 ) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
-    {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -395,13 +380,13 @@ pub(super) async fn force_join_list_of_local_users(
         ));
     }
 
-    let Ok(admin_room) = self.services.admin.get_admin_room().await else {
+    let Ok(admin_room) = crate::admin::get_admin_room() else {
         return Err(AppError::public(
             "There is not an admin room to check for server admins.",
         ));
     };
 
-    let (room_id, servers) = self.services.rooms.alias.resolve_with_servers(&room_id, None).await?;
+    let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
     if !self
         .services
@@ -433,10 +418,10 @@ pub(super) async fn force_join_list_of_local_users(
         return Err(AppError::public("There is not a single server admin in the room."));
     }
 
-    let usernames = self
+    let usernames = ctx
         .body
         .to_vec()
-        .drain(1..self.body.len().saturating_sub(1))
+        .drain(1..ctx.body.len().saturating_sub(1))
         .collect::<Vec<_>>();
 
     let mut user_ids: Vec<OwnedUserId> = Vec::with_capacity(usernames.len());
@@ -445,7 +430,7 @@ pub(super) async fn force_join_list_of_local_users(
         match parse_active_local_user_id(username).await {
             Ok(user_id) => {
                 // don't make the server service account join
-                if user_id == config::server_user(){
+                if user_id == config::server_user() {
                     self.services
                         .admin
                         .send_text(&format!("{username} is the server service account, skipping over"))
@@ -485,22 +470,21 @@ pub(super) async fn force_join_list_of_local_users(
                 successful_joins = successful_joins.saturating_add(1);
             }
             Err(e) => {
-                debug_warn!("Failed force joining {user_id} to {room_id} during bulk join: {e}");
+                warn!("Failed force joining {user_id} to {room_id} during bulk join: {e}");
                 failed_joins = failed_joins.saturating_add(1);
             }
         }
     }
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "{successful_joins} local users have been joined to {room_id}. {failed_joins} joins \
 		 failed.",
     ))
     .await
 }
 
-#[admin_command]
 pub(super) async fn force_join_all_local_users(
-    &self,
+    ctx: &Context<'_>,
     room_id: OwnedRoomOrAliasId,
     yes_i_want_to_do_this: bool,
 ) -> AppResult<()> {
@@ -511,13 +495,13 @@ pub(super) async fn force_join_all_local_users(
         ));
     }
 
-    let Ok(admin_room) = self.services.admin.get_admin_room().await else {
+    let Ok(admin_room) = crate::room::get_admin_room() else {
         return Err(AppError::public(
             "There is not an admin room to check for server admins.",
         ));
     };
 
-    let (room_id, servers) = self.services.rooms.alias.resolve_with_servers(&room_id, None).await?;
+    let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
     if !self
         .services
@@ -560,7 +544,7 @@ pub(super) async fn force_join_all_local_users(
         .collect::<Vec<_>>()
         .await
     {
-        match join_room(
+        match membership::join_room(
             user_id,
             &room_id,
             Some(String::from(BULK_JOIN_REASON)),
@@ -580,29 +564,27 @@ pub(super) async fn force_join_all_local_users(
         }
     }
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "{successful_joins} local users have been joined to {room_id}. {failed_joins} joins \
 		 failed.",
     ))
     .await
 }
 
-#[admin_command]
-pub(super) async fn force_join_room(&self, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
+pub(super) async fn force_join_room(ctx: &Context<'_>, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
     let user_id = parse_local_user_id(&user_id)?;
-    let (room_id, servers) = self.services.rooms.alias.resolve_with_servers(&room_id, None).await?;
+    let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
     membership::join_room(&user_id, &room_id, None, &servers, None, &None).await?;
 
-    self.write_str(&format!("{user_id} has been joined to {room_id}.",))
+    ctx.write_str(&format!("{user_id} has been joined to {room_id}.",))
         .await
 }
 
-#[admin_command]
-pub(super) async fn force_leave_room(&self, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
+pub(super) async fn force_leave_room(ctx: &Context<'_>, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
     let user_id = parse_local_user_id(&user_id)?;
-    let room_id = self.services.rooms.alias.resolve(&room_id).await?;
+    let room_id = crate::room::alias::resolve(&room_id).await?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
 
@@ -610,15 +592,14 @@ pub(super) async fn force_leave_room(&self, user_id: String, room_id: OwnedRoomO
         return Err(AppError::public("{user_id} is not joined in the room"));
     }
 
-    leave_room(&user_id, &room_id, None).boxed().await?;
+    membership::leave_room(&user_id, &room_id, None).await?;
 
-    self.write_str(&format!("{user_id} has left {room_id}.",)).await
+    ctx.write_str(&format!("{user_id} has left {room_id}.",)).await
 }
 
-#[admin_command]
-pub(super) async fn force_demote(&self, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
+pub(super) async fn force_demote(ctx: &Context<'_>, user_id: String, room_id: OwnedRoomOrAliasId) -> AppResult<()> {
     let user_id = parse_local_user_id(&user_id)?;
-    let room_id = self.services.rooms.alias.resolve(&room_id).await?;
+    let room_id = crate::room::alias::resolve(&room_id).await?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
 
@@ -663,26 +644,29 @@ pub(super) async fn force_demote(&self, user_id: String, room_id: OwnedRoomOrAli
         )
         .await?;
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "User {user_id} demoted themselves to the room default power level in {room_id} - \
 		 {event_id}"
     ))
     .await
 }
 
-#[admin_command]
-pub(super) async fn make_user_admin(&self, user_id: String) -> AppResult<()> {
+pub(super) async fn make_user_admin(ctx: &Context<'_>, user_id: String) -> AppResult<()> {
     let user_id = parse_local_user_id(&user_id)?;
     assert!(user_id.is_local(), "Parsed user_id must be a local user");
 
     self.services.admin.make_user_admin(&user_id).await?;
 
-    self.write_str(&format!("{user_id} has been granted admin privileges.",))
+    ctx.write_str(&format!("{user_id} has been granted admin privileges.",))
         .await
 }
 
-#[admin_command]
-pub(super) async fn put_room_tag(&self, user_id: String, room_id: OwnedRoomId, tag: String) -> AppResult<()> {
+pub(super) async fn put_room_tag(
+    ctx: &Context<'_>,
+    user_id: String,
+    room_id: OwnedRoomId,
+    tag: String,
+) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
 
     let mut tags_event = self
@@ -706,14 +690,18 @@ pub(super) async fn put_room_tag(&self, user_id: String, room_id: OwnedRoomId, t
         )
         .await?;
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Successfully updated room account data for {user_id} and room {room_id} with tag {tag}"
     ))
     .await
 }
 
-#[admin_command]
-pub(super) async fn delete_room_tag(&self, user_id: String, room_id: OwnedRoomId, tag: String) -> AppResult<()> {
+pub(super) async fn delete_room_tag(
+    ctx: &Context<'_>,
+    user_id: String,
+    room_id: OwnedRoomId,
+    tag: String,
+) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
 
     let mut tags_event = self
@@ -737,15 +725,14 @@ pub(super) async fn delete_room_tag(&self, user_id: String, room_id: OwnedRoomId
         )
         .await?;
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Successfully updated room account data for {user_id} and room {room_id}, deleting room \
 		 tag {tag}"
     ))
     .await
 }
 
-#[admin_command]
-pub(super) async fn get_room_tags(&self, user_id: String, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn get_room_tags(ctx: &Context<'_>, user_id: String, room_id: OwnedRoomId) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
 
     let tags_event = self
@@ -757,13 +744,12 @@ pub(super) async fn get_room_tags(&self, user_id: String, room_id: OwnedRoomId) 
             content: TagEventContent { tags: BTreeMap::new() },
         });
 
-    self.write_str(&format!("```\n{:#?}\n```", tags_event.content.tags))
+    ctx.write_str(&format!("```\n{:#?}\n```", tags_event.content.tags))
         .await
 }
 
-#[admin_command]
-pub(super) async fn redact_event(&self, event_id: OwnedEventId) -> AppResult<()> {
-    let Ok(event) = self.services.rooms.timeline.get_non_outlier_pdu(&event_id).await else {
+pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
+    let Ok(event) = timeline::get_non_outlier_pdu(&event_id) else {
         return Err(AppError::public("event does not exist in our database"));
     };
 
@@ -801,7 +787,7 @@ pub(super) async fn redact_event(&self, event_id: OwnedEventId) -> AppResult<()>
             .await?
     };
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Successfully redacted event. Redaction event ID: {redaction_event_id}"
     ))
     .await

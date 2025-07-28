@@ -1,13 +1,15 @@
 use std::time::Duration;
 
+use crate::admin::{Context, admin_command, utils::parse_local_user_id};
 use crate::core::{Mxc, OwnedEventId, OwnedMxcUri, OwnedServerName};
-use crate::{AppError, AppResult, config, utils::time::parse_timepoint_ago};
-use palpo_service::media::Dim;
+use crate::{AppError, AppResult, config, data, utils::time::parse_timepoint_ago};
+use crate::media::Dimension;
 
-use crate::{admin_command, utils::parse_local_user_id};
-
-#[admin_command]
-pub(super) async fn delete(&self, mxc: Option<OwnedMxcUri>, event_id: Option<OwnedEventId>) -> AppResult<()> {
+pub(super) async fn delete_media(
+    ctx: &Context<'_>,
+    mxc: Option<OwnedMxcUri>,
+    event_id: Option<OwnedEventId>,
+) -> AppResult<()> {
     if event_id.is_some() && mxc.is_some() {
         return Err(AppError::public(
             "Please specify either an MXC or an event ID, not both.",
@@ -16,7 +18,7 @@ pub(super) async fn delete(&self, mxc: Option<OwnedMxcUri>, event_id: Option<Own
 
     if let Some(mxc) = mxc {
         trace!("Got MXC URL: {mxc}");
-        self.services.media.delete(&mxc.as_str().try_into()?).await?;
+        crate::media::delete_media(&mxc).await?;
 
         return Err(AppError::public(
             "Deleted the MXC from our database and on our filesystem.",
@@ -29,7 +31,7 @@ pub(super) async fn delete(&self, mxc: Option<OwnedMxcUri>, event_id: Option<Own
         let mut mxc_urls = Vec::with_capacity(4);
 
         // parsing the PDU for any MXC URLs begins here
-        match self.services.rooms.timeline.get_pdu_json(&event_id).await {
+        match timeline::get_pdu_json(&event_id).await {
             Ok(event_json) => {
                 if let Some(content_key) = event_json.get("content") {
                     debug!("Event ID has \"content\".");
@@ -135,13 +137,13 @@ pub(super) async fn delete(&self, mxc: Option<OwnedMxcUri>, event_id: Option<Own
         let mut mxc_deletion_count: usize = 0;
 
         for mxc_url in mxc_urls {
-            match self.services.media.delete(&mxc_url.as_str().try_into()?).await {
+            match crate::media::delete_media(&mxc_url).await {
                 Ok(()) => {
                     debug_info!("Successfully deleted {mxc_url} from filesystem and database");
                     mxc_deletion_count = mxc_deletion_count.saturating_add(1);
                 }
                 Err(e) => {
-                    debug_warn!("Failed to delete {mxc_url}, ignoring error and skipping: {e}");
+                    warn!("Failed to delete {mxc_url}, ignoring error and skipping: {e}");
                     continue;
                 }
             }
@@ -161,10 +163,8 @@ pub(super) async fn delete(&self, mxc: Option<OwnedMxcUri>, event_id: Option<Own
     ))
 }
 
-#[admin_command]
-pub(super) async fn delete_list(&self) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
-    {
+pub(super) async fn delete_media_list(ctx: &Context<'_>) -> AppResult<()> {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -175,7 +175,7 @@ pub(super) async fn delete_list(&self) -> AppResult<()> {
     let mxc_list = self
         .body
         .to_vec()
-        .drain(1..self.body.len().checked_sub(1).unwrap())
+        .drain(1..ctx.body.len().checked_sub(1).unwrap())
         .filter_map(|mxc_s| {
             mxc_s
                 .try_into()
@@ -191,7 +191,7 @@ pub(super) async fn delete_list(&self) -> AppResult<()> {
 
     for mxc in &mxc_list {
         trace!(%failed_parsed_mxcs, %mxc_deletion_count, "Deleting MXC {mxc} in bulk");
-        match self.services.media.delete(mxc).await {
+        match crate::media::delete_media(mxc).await {
             Ok(()) => {
                 info!("Successfully deleted {mxc} from filesystem and database");
                 mxc_deletion_count = mxc_deletion_count.saturating_add(1);
@@ -203,16 +203,15 @@ pub(super) async fn delete_list(&self) -> AppResult<()> {
         }
     }
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Finished bulk MXC deletion, deleted {mxc_deletion_count} total MXCs from our database \
 		 and the filesystem. {failed_parsed_mxcs} MXCs failed to be parsed from the database.",
     ))
     .await
 }
 
-#[admin_command]
 pub(super) async fn delete_past_remote_media(
-    &self,
+    ctx: &Context<'_>,
     duration: String,
     before: bool,
     after: bool,
@@ -233,21 +232,19 @@ pub(super) async fn delete_past_remote_media(
         .delete_all_remote_media_at_after_time(duration, before, after, yes_i_want_to_delete_local_media)
         .await?;
 
-    self.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
 }
 
-#[admin_command]
-pub(super) async fn delete_all_from_user(&self, username: String) -> AppResult<()> {
+pub(super) async fn delete_all_media_from_user(ctx: &Context<'_>, username: String) -> AppResult<()> {
     let user_id = parse_local_user_id(&username)?;
 
-    let deleted_count = self.services.media.delete_from_user(&user_id).await?;
+    let deleted_count = crate::user::delete_all_media(&user_id).await?;
 
-    self.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
 }
 
-#[admin_command]
-pub(super) async fn delete_all_from_server(
-    &self,
+pub(super) async fn delete_all_media_from_server(
+    ctx: &Context<'_>,
     server_name: OwnedServerName,
     yes_i_want_to_delete_local_media: bool,
 ) -> AppResult<()> {
@@ -269,7 +266,7 @@ pub(super) async fn delete_all_from_server(
 
     for mxc in all_mxcs {
         let Ok(mxc_server_name) = mxc.server_name().inspect_err(|e| {
-            debug_warn!(
+            warn!(
                 "Failed to parse MXC {mxc} server name from database, ignoring error and \
 				 skipping: {e}"
             );
@@ -277,16 +274,14 @@ pub(super) async fn delete_all_from_server(
             continue;
         };
 
-        if mxc_server_name != server_name
-            || (self.services.globals.server_is_ours(mxc_server_name) && !yes_i_want_to_delete_local_media)
-        {
+        if mxc_server_name != server_name || (mxc_server_name.is_local() && !yes_i_want_to_delete_local_media) {
             trace!("skipping MXC URI {mxc}");
             continue;
         }
 
         let mxc: Mxc<'_> = mxc.as_str().try_into()?;
 
-        match self.services.media.delete(&mxc).await {
+        match crate::media::delete_media(&mxc_url).await {
             Ok(()) => {
                 deleted_count = deleted_count.saturating_add(1);
             }
@@ -297,20 +292,18 @@ pub(super) async fn delete_all_from_server(
         }
     }
 
-    self.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
 }
 
-#[admin_command]
-pub(super) async fn get_file_info(&self, mxc: OwnedMxcUri) -> AppResult<()> {
+pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppResult<()> {
     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
-    let metadata = self.services.media.get_metadata(&mxc).await;
+    let metadata = data::media::get_metadata(&mxc)?;
 
-    self.write_str(&format!("```\n{metadata:#?}\n```")).await
+    ctx.write_str(&format!("```\n{metadata:#?}\n```")).await
 }
 
-#[admin_command]
 pub(super) async fn get_remote_file(
-    &self,
+    ctx: &Context<'_>,
     mxc: OwnedMxcUri,
     server: Option<OwnedServerName>,
     timeout: u32,
@@ -327,15 +320,14 @@ pub(super) async fn get_remote_file(
     let len = result.content.as_ref().expect("content").len();
     result.content.as_mut().expect("content").clear();
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
     ))
     .await
 }
 
-#[admin_command]
 pub(super) async fn get_remote_thumbnail(
-    &self,
+    ctx: &Context<'_>,
     mxc: OwnedMxcUri,
     server: Option<OwnedServerName>,
     timeout: u32,
@@ -344,7 +336,7 @@ pub(super) async fn get_remote_thumbnail(
 ) -> AppResult<()> {
     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
     let timeout = Duration::from_millis(timeout.into());
-    let dim = Dim::new(width, height, None);
+    let dim = Dimension::new(width, height, None);
     let mut result = self
         .services
         .media
@@ -355,7 +347,7 @@ pub(super) async fn get_remote_thumbnail(
     let len = result.content.as_ref().expect("content").len();
     result.content.as_mut().expect("content").clear();
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
     ))
     .await

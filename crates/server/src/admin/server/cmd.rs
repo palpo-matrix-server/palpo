@@ -9,40 +9,36 @@ use futures_util::TryStreamExt;
 
 use crate::macros::admin_command;
 
-#[admin_command]
-pub(super) async fn uptime(&self) -> AppResult<()> {
+pub(super) async fn uptime(ctx: &Context<'_>) -> AppResult<()> {
     let elapsed = self.services.server.started.elapsed().expect("standard duration");
 
     let result = time::pretty(elapsed);
-    self.write_str(&format!("{result}.")).await
+    ctx.write_str(&format!("{result}.")).await
 }
 
-#[admin_command]
-pub(super) async fn show_config(&self) -> AppResult<()> {
-    self.write_str(&format!("{}", *self.services.server.config)).await
+pub(super) async fn show_config(ctx: &Context<'_>) -> AppResult<()> {
+    ctx.write_str(&format!("{}", *self.services.server.config)).await
 }
 
-#[admin_command]
-pub(super) async fn reload_config(&self, path: Option<PathBuf>) -> AppResult<()> {
+pub(super) async fn reload_config(ctx: &Context<'_>, path: Option<PathBuf>) -> AppResult<()> {
     let path = path.as_deref().into_iter();
     self.services.config.reload(path)?;
 
-    self.write_str("Successfully reconfigured.").await
+    ctx.write_str("Successfully reconfigured.").await
 }
 
-#[admin_command]
-pub(super) async fn list_features(&self, available: bool, enabled: bool, comma: bool) -> AppResult<()> {
+pub(super) async fn list_features(ctx: &Context<'_>, available: bool, enabled: bool, comma: bool) -> AppResult<()> {
     let delim = if comma { "," } else { " " };
     if enabled && !available {
         let features = info::rustc::features().join(delim);
         let out = format!("`\n{features}\n`");
-        return self.write_str(&out).await;
+        return ctx.write_str(&out).await;
     }
 
     if available && !enabled {
         let features = info::cargo::features().join(delim);
         let out = format!("`\n{features}\n`");
-        return self.write_str(&out).await;
+        return ctx.write_str(&out).await;
     }
 
     let mut features = String::new();
@@ -55,18 +51,16 @@ pub(super) async fn list_features(&self, available: bool, enabled: bool, comma: 
         writeln!(features, "{emoji} {feature} {remark}")?;
     }
 
-    self.write_str(&features).await
+    ctx.write_str(&features).await
 }
 
-// #[admin_command]
-// pub(super) async fn clear_caches(&self) -> AppResult<()> {
-// 	self.services.clear_cache().await;
+// pub(super) async fn clear_caches(ctx: &Context<'_>) -> AppResult<()> {
+// 	clear_cache(ctx).await;
 
-// 	self.write_str("Done.").await
+// 	ctx.write_str("Done.").await
 // }
 
-#[admin_command]
-pub(super) async fn list_backups(&self) -> AppResult<()> {
+pub(super) async fn list_backups(ctx: &Context<'_>) -> AppResult<()> {
     self.services
         .db
         .db
@@ -76,8 +70,7 @@ pub(super) async fn list_backups(&self) -> AppResult<()> {
         .await
 }
 
-#[admin_command]
-pub(super) async fn backup_database(&self) -> AppResult<()> {
+pub(super) async fn backup_database(ctx: &Context<'_>) -> AppResult<()> {
     let db = Arc::clone(&self.services.db);
     let result = self
         .services
@@ -90,28 +83,25 @@ pub(super) async fn backup_database(&self) -> AppResult<()> {
         .await?;
 
     let count = self.services.db.db.backup_count()?;
-    self.write_str(&format!("{result}. Currently have {count} backups."))
+    ctx.write_str(&format!("{result}. Currently have {count} backups."))
         .await
 }
 
-#[admin_command]
-pub(super) async fn admin_notice(&self, message: Vec<String>) -> AppResult<()> {
+pub(super) async fn admin_notice(ctx: &Context<'_>, message: Vec<String>) -> AppResult<()> {
     let message = message.join(" ");
     self.services.admin.send_text(&message).await;
 
-    self.write_str("Notice was sent to #admins").await
+    ctx.write_str("Notice was sent to #admins").await
 }
 
-#[admin_command]
-pub(super) async fn reload_mods(&self) -> AppResult<()> {
+pub(super) async fn reload_mods(ctx: &Context<'_>) -> AppResult<()> {
     self.services.server.reload()?;
 
-    self.write_str("Reloading server...").await
+    ctx.write_str("Reloading server...").await
 }
 
-#[admin_command]
 #[cfg(unix)]
-pub(super) async fn restart(&self, force: bool) -> AppResult<()> {
+pub(super) async fn restart(ctx: &Context<'_>, force: bool) -> AppResult<()> {
     use crate::utils::sys::current_exe_deleted;
 
     if !force && current_exe_deleted() {
@@ -123,13 +113,12 @@ pub(super) async fn restart(&self, force: bool) -> AppResult<()> {
 
     self.services.server.restart()?;
 
-    self.write_str("Restarting server...").await
+    ctx.write_str("Restarting server...").await
 }
 
-#[admin_command]
-pub(super) async fn shutdown(&self) -> AppResult<()> {
+pub(super) async fn shutdown(ctx: &Context<'_>) -> AppResult<()> {
     warn!("shutdown command");
     self.services.server.shutdown()?;
 
-    self.write_str("Shutting down server...").await
+    ctx.write_str("Shutting down server...").await
 }

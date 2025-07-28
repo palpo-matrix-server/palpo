@@ -117,6 +117,16 @@ pub fn server_name() -> &'static ServerName {
     get().server_name.deref()
 }
 
+static ADMIN_ALIAS: OnceLock<OwnedRoomAliasId> = OnceLock::new();
+pub fn admin_alias() -> &'static RoomAliasId {
+    ADMIN_ALIAS.get_or_init(|| {
+        let alias = format!("#admins:{}", get().server_name);
+        alias
+            .try_into()
+            .expect("admin alias should be a valid room alias")
+    })
+}
+
 pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     let server_name = if server_name == &get().server_name {
         "_"

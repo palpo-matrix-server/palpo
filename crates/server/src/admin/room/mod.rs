@@ -13,7 +13,7 @@ use self::{
 use crate::admin::{PAGE_SIZE, admin_command, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, AppResult};
+use crate::{AppError, config, AppResult};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -57,9 +57,8 @@ pub(super) enum RoomCommand {
     Exists { room_id: OwnedRoomId },
 }
 
-#[admin_command]
 pub(super) async fn list_rooms(
-    &self,
+    ctx: &Context<'_>,
     page: Option<usize>,
     exclude_disabled: bool,
     exclude_banned: bool,
@@ -107,13 +106,12 @@ pub(super) async fn list_rooms(
         .collect::<Vec<_>>()
         .join("\n");
 
-    self.write_str(&format!("Rooms ({}):\n```\n{body}\n```", rooms.len(),))
+    ctx.write_str(&format!("Rooms ({}):\n```\n{body}\n```", rooms.len(),))
         .await
 }
 
-#[admin_command]
-pub(super) async fn exists(&self, room_id: OwnedRoomId) -> AppResult<()> {
+pub(super) async fn exists(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
     let result = self.services.rooms.metadata.exists(&room_id).await;
 
-    self.write_str(&format!("{result}")).await
+    ctx.write_str(&format!("{result}")).await
 }

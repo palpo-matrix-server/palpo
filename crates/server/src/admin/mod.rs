@@ -10,22 +10,29 @@ pub(crate) mod utils;
 pub(crate) use console::Console;
 pub(crate) use utils::*;
 
-pub(crate) use crate::macros::{admin_command, admin_command_dispatch};
+use std::{fmt, time::SystemTime};
+
 use clap::Parser;
+use futures::{
+    Future, FutureExt, TryFutureExt,
+    io::{AsyncWriteExt, BufWriter},
+    lock::Mutex,
+};
 
 use self::{
     appservice::AppserviceCommand, debug::DebugCommand, federation::FederationCommand, media::MediaCommand,
     room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
-use crate::AppResult;
+use crate::{config, AppResult};
 use crate::core::identifiers::*;
+pub(crate) use crate::macros::{admin_command, admin_command_dispatch};
 
 pub(crate) const PAGE_SIZE: usize = 100;
 
 crate::macros::rustc_flags_capture! {}
 
 /// Install the admin command processor
-pub async fn init(admin_service: &palpo_service::admin::Service) {
+pub async fn init() {
     _ = admin_service
         .complete
         .write()
@@ -35,7 +42,7 @@ pub async fn init(admin_service: &palpo_service::admin::Service) {
 }
 
 /// Uninstall the admin command handler
-pub async fn fini(admin_service: &palpo_service::admin::Service) {
+pub async fn fini() {
     _ = admin_service.handle.write().await.take();
     _ = admin_service.complete.write().expect("locked for writing").take();
 }
@@ -70,6 +77,31 @@ pub(super) enum AdminCommand {
     #[command(subcommand)]
     /// - Commands for debugging things
     Debug(DebugCommand),
+}
+
+pub(crate) struct Context<'a> {
+    pub(crate) body: &'a [&'a str],
+    pub(crate) timer: SystemTime,
+    pub(crate) reply_id: Option<&'a EventId>,
+    pub(crate) output: Mutex<BufWriter<Vec<u8>>>,
+}
+
+impl Context<'_> {
+    pub(crate) fn write_fmt(
+        &self,
+        arguments: fmt::Arguments<'_>,
+    ) -> impl Future<Output = AppResult> + Send + '_ + use<'_> {
+        let buf = format!("{arguments}");
+        self.output
+            .lock()
+            .then(async move |mut output| output.write_all(buf.as_bytes()).map_err(Into::into).await)
+    }
+
+    pub(crate) fn write_str<'a>(&'a self, s: &'a str) -> impl Future<Output = AppResult> + Send + 'a {
+        self.output
+            .lock()
+            .then(async move |mut output| output.write_all(s.as_bytes()).map_err(Into::into).await)
+    }
 }
 
 pub(crate) struct RoomInfo {

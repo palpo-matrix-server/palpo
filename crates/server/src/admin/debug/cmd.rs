@@ -1,8 +1,6 @@
 mod cmd;
 
 use clap::Subcommand;
-use palpo_service::rooms::short::{ShortEventId, ShortRoomId};
-
 
 use crate::core::{OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName};
 use crate::AppResult;

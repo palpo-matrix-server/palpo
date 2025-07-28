@@ -41,13 +41,12 @@ pub(crate) enum RoomModerationCommand {
     },
 }
 
-#[admin_command]
-async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
+async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> {
     debug!("Got room alias or ID: {}", room);
 
-    let admin_room_alias = &config::admin_alias;
+    let admin_room_alias = config::admin_alias();
 
-    if let Ok(admin_room_id) = self.services.admin.get_admin_room().await {
+    if let Ok(admin_room_id) = crate::admin::get_admin_room() {
         if room.to_string().eq(&admin_room_id) || room.to_string().eq(admin_room_alias) {
             return Err(AppError::public("Not allowed to ban the admin room."));
         }
@@ -86,7 +85,7 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 			 locally, if not using get_alias_helper to fetch room ID remotely"
         );
 
-        let room_id = match self.services.rooms.alias.resolve_local_alias(room_alias).await {
+        let room_id = match crate::room::alias::resolve_local_alias(&room_alias) {
             Ok(room_id) => room_id,
             _ => {
                 debug!(
@@ -94,7 +93,7 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 					 room ID over federation"
                 );
 
-                match self.services.rooms.alias.resolve_alias(room_alias, None).await {
+                match crate::room::alias::resolve_alias(&room_alias, None).await {
                     Ok((room_id, servers)) => {
                         debug!(
                             ?room_id,
@@ -166,26 +165,25 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 
     self.services.rooms.metadata.disable_room(&room_id, true);
 
-    self.write_str("Room banned, removed all our local users, and disabled incoming federation with room.")
+    ctx.write_str("Room banned, removed all our local users, and disabled incoming federation with room.")
         .await
 }
 
-#[admin_command]
-async fn ban_list_of_rooms(&self) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
+async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let rooms_s = self
+    let rooms_s = ctx
         .body
         .to_vec()
-        .drain(1..self.body.len().saturating_sub(1))
+        .drain(1..ctx.body.len().saturating_sub(1))
         .collect::<Vec<_>>();
 
-    let admin_room_alias = &config::admin_alias;
+    let admin_room_alias = config::admin_alias();
 
     let mut room_ban_count: usize = 0;
     let mut room_ids: Vec<OwnedRoomId> = Vec::new();
@@ -193,7 +191,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
     for &room in &rooms_s {
         match <&RoomOrAliasId>::try_from(room) {
             Ok(room_alias_or_id) => {
-                if let Ok(admin_room_id) = self.services.admin.get_admin_room().await {
+                if let Ok(admin_room_id) = crate::room::get_admin_room() {
                     if room.to_owned().eq(&admin_room_id) || room.to_owned().eq(admin_room_alias) {
                         warn!("User specified admin room in bulk ban list, ignoring");
                         continue;
@@ -219,7 +217,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
                 if room_alias_or_id.is_room_alias_id() {
                     match RoomAliasId::parse(room_alias_or_id) {
                         Ok(room_alias) => {
-                            let room_id = match self.services.rooms.alias.resolve_local_alias(room_alias).await {
+                            let room_id = match crate::room::alias::resolve_local_alias(&room_alias) {
                                 Ok(room_id) => room_id,
                                 _ => {
                                     debug!(
@@ -227,7 +225,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
 										 attempting to fetch room ID over federation"
                                     );
 
-                                    match self.services.rooms.alias.resolve_alias(room_alias, None).await {
+                                    match crate::room::alias::resolve_alias(&room_alias, None).await {
                                         Ok((room_id, servers)) => {
                                             debug!(
                                                 ?room_id,
@@ -321,15 +319,14 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
         self.services.rooms.metadata.disable_room(&room_id, true);
     }
 
-    self.write_str(&format!(
+    ctx.write_str(&format!(
         "Finished bulk room ban, banned {room_ban_count} total rooms, evicted all users, and \
 		 disabled incoming federation with the room."
     ))
     .await
 }
 
-#[admin_command]
-async fn unban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
+async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> {
     let room_id = if room.is_room_id() {
         let room_id = match RoomId::parse(&room) {
             Ok(room_id) => room_id,
@@ -363,7 +360,7 @@ async fn unban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 			 locally, if not using get_alias_helper to fetch room ID remotely"
         );
 
-        let room_id = match self.services.rooms.alias.resolve_local_alias(room_alias).await {
+        let room_id = match crate::room::alias::resolve_local_alias(&room_alias) {
             Ok(room_id) => room_id,
             _ => {
                 debug!(
@@ -371,7 +368,7 @@ async fn unban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 					 room ID over federation"
                 );
 
-                match self.services.rooms.alias.resolve_alias(room_alias, None).await {
+                match crate::room::alias::resolve_alias(&room_alias, None).await {
                     Ok((room_id, servers)) => {
                         debug!(
                             ?room_id,
@@ -401,11 +398,10 @@ async fn unban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
     };
 
     self.services.rooms.metadata.disable_room(&room_id, false);
-    self.write_str("Room unbanned and federation re-enabled.").await
+    ctx.write_str("Room unbanned and federation re-enabled.").await
 }
 
-#[admin_command]
-async fn list_banned_rooms(&self, no_details: bool) -> AppResult<()> {
+async fn list_banned_rooms(ctx: &Context<'_>, no_details: bool) -> AppResult<()> {
     let room_ids: Vec<OwnedRoomId> = self
         .services
         .rooms
@@ -443,6 +439,6 @@ async fn list_banned_rooms(&self, no_details: bool) -> AppResult<()> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    self.write_str(&format!("Rooms Banned ({num}):\n```\n{body}\n```",))
+    ctx.write_str(&format!("Rooms Banned ({num}):\n```\n{body}\n```",))
         .await
 }

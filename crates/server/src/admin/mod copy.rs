@@ -803,17 +803,6 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
         .replace("[nobr]<br>", "")
 }
 
-/// Gets the room ID of the admin room
-///
-/// Errors are propagated from the database, and will have None if there is no admin room
-pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
-    let conf = crate::config::get();
-    let admin_room_alias: Box<RoomAliasId> = format!("#admins:{}", &conf.server_name)
-        .try_into()
-        .expect("#admins:server_name is a valid alias name");
-    room::resolve_local_alias(&admin_room_alias)
-}
-
 /// Create the admin room.
 ///
 /// Users in this room are considered admins by palpo, and the room can be
