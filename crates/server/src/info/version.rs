@@ -24,13 +24,12 @@ pub fn name() -> &'static str {
 #[inline]
 pub fn version() -> &'static str {
     VERSION.get_or_init(|| {
-        option_env!("PALPO_VERSION_EXTRA")
-            .map_or_else(detailed, |extra| {
-                extra
-                    .is_empty()
-                    .then(detailed)
-                    .unwrap_or_else(|| format!("{} ({extra})", detailed()))
-            })
+        option_env!("PALPO_VERSION_EXTRA").map_or_else(detailed, |extra| {
+            extra
+                .is_empty()
+                .then(detailed)
+                .unwrap_or_else(|| format!("{} ({extra})", detailed()))
+        })
     })
 }
 

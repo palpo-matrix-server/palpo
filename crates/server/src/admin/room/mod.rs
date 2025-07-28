@@ -10,10 +10,10 @@ use futures_util::StreamExt;
 use self::{
     alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand, moderation::RoomModerationCommand,
 };
-use crate::admin::{PAGE_SIZE, get_room_info};
+use crate::admin::{PAGE_SIZE, Context, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, config, AppResult};
+use crate::{AppError, AppResult, config};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -72,10 +72,10 @@ pub(super) async fn list_rooms(
         .metadata
         .iter_ids()
         .filter_map(async |room_id| {
-            (!exclude_disabled || !self.services.rooms.metadata.is_disabled(room_id).await).then_some(room_id)
+            (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false)).then_some(room_id)
         })
         .filter_map(async |room_id| {
-            (!exclude_banned || !self.services.rooms.metadata.is_banned(room_id).await).then_some(room_id)
+            (!exclude_banned || !crate::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
         })
         .then(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>()
@@ -111,7 +111,7 @@ pub(super) async fn list_rooms(
 }
 
 pub(super) async fn exists(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    let result = self.services.rooms.metadata.exists(&room_id).await;
+    let result = crate::room::room_exists(&room_id)?;
 
     ctx.write_str(&format!("{result}")).await
 }

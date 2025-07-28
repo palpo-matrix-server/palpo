@@ -48,7 +48,7 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
         ));
     }
 
-    let range = 1..checked!(body_len - 1)?;
+    let range = 1..(body_len - 1);
     let appservice_config_body = body[range].join("\n");
     let parsed_config = serde_yaml::from_str(&appservice_config_body);
     match parsed_config {
@@ -57,27 +57,18 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
                 "Could not parse appservice config as YAML: {e}"
             )));
         }
-        Ok(registration) => match self
-            .services
-            .appservice
-            .register_appservice(&registration, &appservice_config_body)
-            .await
+        Ok(registration) => match crate::appservice::register_appservice(&registration, &appservice_config_body)
             .map(|()| registration.id)
         {
             Err(e) => return Err(AppError::public(format!("Failed to register appservice: {e}"))),
-            Ok(id) => write!(self, "Appservice registered with ID: {id}"),
+            Ok(id) => write!(ctx, "Appservice registered with ID: {id}"),
         },
     }
     .await
 }
 
-pub(super) async fn unregister(ctx: &Context<'_>,  appservice_identifier: String) -> AppResult<()> {
-    match self
-        .services
-        .appservice
-        .unregister_appservice(&appservice_identifier)
-        .await
-    {
+pub(super) async fn unregister(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
+    match crate::appservice::unregister_appservice(&appservice_identifier) {
         Err(e) => return Err(AppError::public(format!("Failed to unregister appservice: {e}"))),
         Ok(()) => write!(ctx, "Appservice unregistered."),
     }
@@ -85,14 +76,11 @@ pub(super) async fn unregister(ctx: &Context<'_>,  appservice_identifier: String
 }
 
 pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
-    match self.services.appservice.get_registration(&appservice_identifier).await {
+    match crate::appservice::get_registration(&appservice_identifier) {
         None => return Err(AppError::public("Appservice does not exist.")),
         Some(config) => {
             let config_str = serde_yaml::to_string(&config)?;
-            write!(
-                ctx,
-                "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```"
-            )
+            write!(ctx, "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```")
         }
     }
     .await

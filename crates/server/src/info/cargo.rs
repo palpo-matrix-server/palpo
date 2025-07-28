@@ -42,57 +42,51 @@ static DEPENDENCIES: OnceLock<DepsSet> = OnceLock::new();
 
 #[must_use]
 pub fn dependencies_names() -> Vec<&'static str> {
-	dependencies()
-		.keys()
-		.map(String::as_str)
-		.collect()
+    dependencies().keys().map(String::as_str).collect()
 }
 
 pub fn dependencies() -> &'static DepsSet {
-	DEPENDENCIES.get_or_init(|| {
-		init_dependencies().unwrap_or_else(|e| panic!("Failed to initialize dependencies: {e}"))
-	})
+    DEPENDENCIES
+        .get_or_init(|| init_dependencies().unwrap_or_else(|e| panic!("Failed to initialize dependencies: {e}")))
 }
 
 /// List of all possible features for the project. For *enabled* features in
 /// this build see the companion function in info::rustc.
 pub fn features() -> &'static Vec<String> {
-	FEATURES.get_or_init(|| {
-		init_features().unwrap_or_else(|e| panic!("Failed initialize features: {e}"))
-	})
+    FEATURES.get_or_init(|| init_features().unwrap_or_else(|e| panic!("Failed initialize features: {e}")))
 }
 
 fn init_features() -> AppResult<Vec<String>> {
-	let mut features = Vec::new();
-	append_features(&mut features, WORKSPACE_MANIFEST)?;
-	append_features(&mut features, MACROS_MANIFEST)?;
-	append_features(&mut features, CORE_MANIFEST)?;
-	append_features(&mut features, DATABASE_MANIFEST)?;
-	append_features(&mut features, SERVICE_MANIFEST)?;
-	append_features(&mut features, ADMIN_MANIFEST)?;
-	append_features(&mut features, ROUTER_MANIFEST)?;
-	append_features(&mut features, MAIN_MANIFEST)?;
-	features.sort();
-	features.dedup();
+    let mut features = Vec::new();
+    append_features(&mut features, WORKSPACE_MANIFEST)?;
+    append_features(&mut features, MACROS_MANIFEST)?;
+    append_features(&mut features, CORE_MANIFEST)?;
+    append_features(&mut features, DATABASE_MANIFEST)?;
+    append_features(&mut features, SERVICE_MANIFEST)?;
+    append_features(&mut features, ADMIN_MANIFEST)?;
+    append_features(&mut features, ROUTER_MANIFEST)?;
+    append_features(&mut features, MAIN_MANIFEST)?;
+    features.sort();
+    features.dedup();
 
-	Ok(features)
+    Ok(features)
 }
 
 fn append_features(features: &mut Vec<String>, manifest: &str) -> AppResult<()> {
-	let manifest = Manifest::from_str(manifest)?;
-	features.extend(manifest.features.keys().cloned());
+    let manifest = Manifest::from_str(manifest)?;
+    features.extend(manifest.features.keys().cloned());
 
-	Ok(())
+    Ok(())
 }
 
 fn init_dependencies() -> AppResult<DepsSet> {
-	let manifest = Manifest::from_str(WORKSPACE_MANIFEST)?;
-	let deps_set = manifest
-		.workspace
-		.as_ref()
-		.expect("manifest has workspace section")
-		.dependencies
-		.clone();
+    let manifest = Manifest::from_str(WORKSPACE_MANIFEST)?;
+    let deps_set = manifest
+        .workspace
+        .as_ref()
+        .expect("manifest has workspace section")
+        .dependencies
+        .clone();
 
-	Ok(deps_set)
+    Ok(deps_set)
 }

@@ -1,10 +1,10 @@
 use clap::Subcommand;
 use futures_util::{FutureExt, StreamExt};
 
-use crate::admin::get_room_info;
+use crate::admin::{Context, get_room_info};
 use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};
-use crate::macros::{admin_command_dispatch, get_room_info};
-use crate::{AppError, AppResult, config};
+use crate::macros::admin_command_dispatch;
+use crate::{AppError, AppResult, config, membership};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -65,7 +65,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
         };
 
         debug!("Room specified is a room ID, banning room ID");
-        self.services.rooms.metadata.ban_room(room_id, true);
+        crate::room::ban_room(room_id, true)?;
 
         room_id.to_owned()
     } else if room.is_room_alias_id() {
@@ -111,7 +111,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
             }
         };
 
-        self.services.rooms.metadata.ban_room(&room_id, true);
+        crate::room::ban_room(&room_id, true)?;
 
         room_id
     } else {
@@ -142,7 +142,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
             warn!("Failed to leave room: {e}");
         }
 
-        self.services.rooms.state_cache.forget(&room_id, user_id);
+        crate::membership::forget_room(user_id, &room_id)?;
     }
 
     self.services
@@ -151,19 +151,16 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
         .local_aliases_for_room(&room_id)
         .map(ToOwned::to_owned)
         .for_each(async |local_alias| {
-            self.services
-                .rooms
-                .alias
-                .remove_alias(&local_alias, &config::server_user())
-                .await
-                .ok();
+            if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
+                crate::room::remove_alias(&local_alias, &server_user).await.ok();
+            }
         })
         .await;
 
     // unpublish from room directory
-    self.services.rooms.directory.set_not_public(&room_id);
+    crate::room::directory::set_public(&room_id, false)?;
 
-    self.services.rooms.metadata.disable_room(&room_id, true);
+    crate::room::disable_room(&room_id, true)?;
 
     ctx.write_str("Room banned, removed all our local users, and disabled incoming federation with room.")
         .await
@@ -268,7 +265,7 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
     }
 
     for room_id in room_ids {
-        self.services.rooms.metadata.ban_room(&room_id, true);
+        crate::room::ban_room(&room_id, true);
 
         debug!("Banned {room_id} successfully");
         room_ban_count = room_ban_count.saturating_add(1);
@@ -293,7 +290,7 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
                 warn!("Failed to leave room: {e}");
             }
 
-            self.services.rooms.state_cache.forget(&room_id, user_id);
+            membership::forget_room(user_id, &room_id)?;
         }
 
         // remove any local aliases, ignore errors
@@ -303,19 +300,15 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
             .local_aliases_for_room(&room_id)
             .map(ToOwned::to_owned)
             .for_each(async |local_alias| {
-                self.services
-                    .rooms
-                    .alias
-                    .remove_alias(&local_alias, &config::server_user())
-                    .await
-                    .ok();
+                if let Ok(server_user) = crate::data::user::get_user(config::server_user()) {
+                    crate::room::remove_alias(&local_alias, &server_user).await.ok();
+                }
             })
             .await;
 
         // unpublish from room directory, ignore errors
-        self.services.rooms.directory.set_not_public(&room_id);
-
-        self.services.rooms.metadata.disable_room(&room_id, true);
+        crate::room::directory::set_public(&room_id, false)?;
+        crate::room::disable_room(&room_id, true);
     }
 
     ctx.write_str(&format!(
@@ -339,7 +332,7 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
         };
 
         debug!("Room specified is a room ID, unbanning room ID");
-        self.services.rooms.metadata.ban_room(room_id, false);
+        crate::room::ban_room(room_id, false)?;
 
         room_id.to_owned()
     } else if room.is_room_alias_id() {
@@ -385,7 +378,7 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
             }
         };
 
-        self.services.rooms.metadata.ban_room(&room_id, false);
+        crate::room::ban_room(&room_id, false)?;
 
         room_id
     } else {
@@ -396,7 +389,7 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
         )));
     };
 
-    self.services.rooms.metadata.disable_room(&room_id, false);
+    crate::room::disable_room(&room_id, false)?;
     ctx.write_str("Room unbanned and federation re-enabled.").await
 }
 

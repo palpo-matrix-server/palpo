@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 
 use crate::core::{OwnedRoomId, OwnedServerName, OwnedUserId};
 
-use crate::macros::{admin_command_dispatch};
+use crate::macros::admin_command_dispatch;
 
 use crate::{AppError, AppResult};
 
@@ -39,12 +39,12 @@ pub(super) enum FederationCommand {
 }
 
 pub(super) async fn disable_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    self.services.rooms.metadata.disable_room(&room_id, true);
+    crate::room::disable_room(&room_id, true)?;
     ctx.write_str("Room disabled.").await
 }
 
 pub(super) async fn enable_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    self.services.rooms.metadata.disable_room(&room_id, false);
+    crate::room::disable_room(&room_id, false)?;
     ctx.write_str("Room enabled.").await
 }
 
@@ -93,7 +93,9 @@ pub(super) async fn fetch_support_well_known(ctx: &Context<'_>, server_name: Own
     }
 
     if text.len() > 1500 {
-        return Err(AppError::public("Response text/body is over 1500 characters, assuming no support well-known."));
+        return Err(AppError::public(
+            "Response text/body is over 1500 characters, assuming no support well-known.",
+        ));
     }
 
     let json: serde_json::Value = match serde_json::from_str(&text) {
@@ -115,14 +117,14 @@ pub(super) async fn fetch_support_well_known(ctx: &Context<'_>, server_name: Own
 }
 
 pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId) -> AppResult<()> {
-    if user_id.server_name() == self.services.server.name {
+    if user_id.server_name() == config::server_name() {
         return Err(AppError::public(
             "User belongs to our server, please use `list-joined-rooms` user admin command \
 			 instead.",
         ));
     }
 
-    if !self.services.users.exists(&user_id).await {
+    if !crate::data::user::user_exists(&user_id)? {
         return Err(AppError::public("Remote user does not exist in our database."));
     }
 

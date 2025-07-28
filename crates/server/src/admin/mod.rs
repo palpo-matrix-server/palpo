@@ -6,15 +6,13 @@ pub(crate) mod media;
 pub(crate) mod room;
 pub(crate) mod server;
 pub(crate) mod user;
-pub(crate) mod utils;
 pub(crate) use console::Console;
-pub(crate) use utils::*;
 
 use std::sync::OnceLock;
 use std::{
     collections::BTreeMap,
     convert::{TryFrom, TryInto},
-    sync::Arc,
+    sync::{Arc, RwLock as StdRwLock, Weak},
     time::Instant,
 };
 use std::{fmt, time::SystemTime};
@@ -47,20 +45,47 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
+pub(crate) use crate::macros::admin_command_dispatch;
 use crate::room::timeline;
-use crate::utils::{self, HtmlEscape};
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership, room};
+use crate::utils::HtmlEscape;
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership, utils};
+use palpo_core::events::room::message::Relation;
 
 use self::{
     appservice::AppserviceCommand, debug::DebugCommand, federation::FederationCommand, media::MediaCommand,
     room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
 use super::event::PduBuilder;
-pub(crate) use crate::macros::admin_command_dispatch;
 
 pub(crate) const PAGE_SIZE: usize = 100;
 
 crate::macros::rustc_flags_capture! {}
+
+/// Inputs to a command are a multi-line string and optional reply_id.
+#[derive(Clone, Debug, Default)]
+pub struct CommandInput {
+    pub command: String,
+    pub reply_id: Option<OwnedEventId>,
+}
+/// Prototype of the tab-completer. The input is buffered text when tab
+/// asserted; the output will fully replace the input buffer.
+pub type Completer = fn(&str) -> String;
+
+/// Prototype of the command processor. This is a callback supplied by the
+/// reloadable admin module.
+pub type Processor = fn(Arc<crate::Services>, CommandInput) -> ProcessorFuture;
+
+/// Return type of the processor
+pub type ProcessorFuture = Pin<Box<dyn Future<Output = ProcessorResult> + Send>>;
+
+/// Result wrapping of a command's handling. Both variants are complete message
+/// events which have digested any prior errors. The wrapping preserves whether
+/// the command failed without interpreting the text. Ok(None) outputs are
+/// dropped to produce no response.
+pub type ProcessorResult = Result<Option<CommandOutput>, CommandOutput>;
+
+/// Alias for the output structure.
+pub type CommandOutput = RoomMessageEventContent;
 
 /// Install the admin command processor
 pub async fn init() {
@@ -170,11 +195,8 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> App
     }
 }
 
-pub fn process_message(room_message: String) -> AppResult<()> {
-    sender()
-        .send(AdminRoomEvent::ProcessMessage(room_message))
-        .map_err(|e| AppError::internal(format!("failed to process message to admin room: {e}")))
-}
+/// Maximum number of commands which can be queued for dispatch.
+const COMMAND_QUEUE_LIMIT: usize = 512;
 
 /// Sends markdown notice to the admin room as the admin user.
 pub async fn send_notice(body: &str) -> AppResult<()> {
@@ -191,8 +213,8 @@ pub async fn send_text(body: &str) -> AppResult<()> {
 /// convenience).
 pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
     let user_id = &config::server_user();
-    let room_id = self.get_admin_room().await?;
-    respond_to_room(message_content, &room_id, user_id).boxed().await
+    let room_id = crate::room::get_admin_room()?;
+    respond_to_room(message_content, &room_id, user_id).await
 }
 
 /// Posts a command to the command processor queue and returns. Processing
@@ -234,9 +256,9 @@ async fn handle_signal(sig: &'static str) {
 }
 
 async fn handle_command(command: CommandInput) {
-    match self.process_command(command).await {
+    match process_command(command).await {
         Ok(None) => debug!("Command successful with no response"),
-        Ok(Some(output)) | Err(output) => self.handle_response(output).await.unwrap_or_else(default_log),
+        Ok(Some(output)) | Err(output) => handle_response(output).await.unwrap_or_else(default_log),
     }
 }
 
@@ -356,7 +378,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 .load::<OwnedRoomId>(&mut connect()?)?;
             let mut items = Vec::with_capacity(room_ids.len());
             for room_id in room_ids {
-                let members = room::joined_member_count(&room_id)?;
+                let members = crate::room::joined_member_count(&room_id)?;
                 items.push(format!("members: {} \t\tin room: {}", members, room_id));
             }
             let output = format!("Rooms:\n{}", items.join("\n"));
@@ -474,7 +496,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                 ));
             }
 
-            let new_password = utils::random_string(AUTO_GEN_PASSWORD_LENGTH);
+            let new_password = crate::utils::random_string(AUTO_GEN_PASSWORD_LENGTH);
 
             match crate::user::set_password(&user_id, &new_password) {
                 Ok(()) => RoomMessageEventContent::text_plain(format!(
@@ -541,7 +563,7 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
                         continue;
                     };
 
-                    if !room::is_server_joined(&conf.server_name, &room_id)? {
+                    if !crate::room::is_server_joined(&conf.server_name, &room_id)? {
                         warn!("skipping room {room} to automatically join as we have never joined before.");
                         continue;
                     }
@@ -584,11 +606,11 @@ async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppRes
             ))
         }
         AdminCommand::DisableRoom { room_id } => {
-            room::disable_room(&room_id, true)?;
+            crate::room::disable_room(&room_id, true)?;
             RoomMessageEventContent::text_plain("Room disabled.")
         }
         AdminCommand::EnableRoom { room_id } => {
-            room::disable_room(&room_id, false)?;
+            crate::room::disable_room(&room_id, false)?;
             RoomMessageEventContent::text_plain("Room enabled.")
         }
         AdminCommand::DeactivateUser { leave_rooms, user_id } => {
@@ -817,7 +839,7 @@ async fn handle_response(content: RoomMessageEventContent) -> AppResult<()> {
     };
 
     let response_sender = if crate::room::is_admin_room(pdu.room_id()) {
-        &self.services.globals.server_user
+        &config::server_user()
     } else {
         pdu.sender()
     };
@@ -831,7 +853,7 @@ async fn respond_to_room(content: RoomMessageEventContent, room_id: &RoomId, use
     let state_lock = crate::room::lock_state(&room_id).await;
 
     if let Err(e) = timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, &state_lock) {
-        self.handle_response_error(e, room_id, user_id, &state_lock)
+        handle_response_error(e, room_id, user_id, &state_lock)
             .await
             .unwrap_or_else(default_log);
     }

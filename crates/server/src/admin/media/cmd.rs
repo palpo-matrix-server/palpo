@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use crate::admin::{Context, utils::parse_local_user_id};
 use crate::core::{Mxc, OwnedEventId, OwnedMxcUri, OwnedServerName};
-use crate::{AppError, AppResult, config, data, utils::time::parse_timepoint_ago};
 use crate::media::Dimension;
+use crate::room::timeline;
+use crate::{AppError, AppResult, config, data, utils::time::parse_timepoint_ago};
 
 pub(super) async fn delete_media(
     ctx: &Context<'_>,
@@ -139,7 +140,7 @@ pub(super) async fn delete_media(
         for mxc_url in mxc_urls {
             match crate::media::delete_media(&mxc_url).await {
                 Ok(()) => {
-                    debug_info!("Successfully deleted {mxc_url} from filesystem and database");
+                    info!("Successfully deleted {mxc_url} from filesystem and database");
                     mxc_deletion_count = mxc_deletion_count.saturating_add(1);
                 }
                 Err(e) => {
@@ -149,7 +150,7 @@ pub(super) async fn delete_media(
             }
         }
 
-        return self
+        return ctx
             .write_str(&format!(
                 "Deleted {mxc_deletion_count} total MXCs from our database and the filesystem \
 				 from event ID {event_id}."
@@ -296,8 +297,8 @@ pub(super) async fn delete_all_media_from_server(
 }
 
 pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppResult<()> {
-    let mxc: Mxc<'_> = mxc.as_str().try_into()?;
-    let metadata = data::media::get_metadata(&mxc)?;
+    let Mxc { server_name, media_id } = mxc.as_str().try_into()?;
+    let metadata = data::media::get_metadata(server_name, media_id)?;
 
     ctx.write_str(&format!("```\n{metadata:#?}\n```")).await
 }

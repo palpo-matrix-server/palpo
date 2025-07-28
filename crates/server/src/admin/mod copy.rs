@@ -230,12 +230,6 @@ async fn handle(mut receiver: UnboundedReceiver<AdminRoomEvent>) {
     }
 }
 
-pub fn process_message(room_message: String) -> AppResult<()> {
-    sender()
-        .send(AdminRoomEvent::ProcessMessage(room_message))
-        .map_err(|e| AppError::internal(format!("failed to process message to admin room: {e}")))
-}
-
 /// Sends markdown notice to the admin room as the admin user.
 pub async fn send_notice(body: &str) -> AppResult<()> {
     send_message(RoomMessageEventContent::notice_markdown(body)).await

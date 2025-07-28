@@ -72,7 +72,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
     //     )?;
     // }
 
-    self.services.users.set_displayname(&user_id, Some(displayname));
+    crate::data::user::set_display_name(&user_id, Some(displayname));
 
     // Initial account data
     self.services
@@ -101,25 +101,22 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
                 continue;
             };
 
-            if !self
-                .services
-                .rooms
-                .state_cache
-                .server_in_room(config::server_name(), &room_id)
-                .await
-            {
+            if !crate::room::is_server_joined(config::server_name(), &room_id)? {
                 warn!("Skipping room {room} to automatically join as we have never joined before.");
                 continue;
             }
 
             if let Ok(room_server_name) = room.server_name() {
+                let user = data::user::get_user(user_id)?;
                 match membership::join_room(
-                    &user_id,
+                    &user,
+                    None,
                     &room_id,
                     Some("Automatically joining this room upon registration".to_owned()),
                     &[config::server_name().to_owned(), room_server_name.to_owned()],
                     None,
-                    &None,
+                    None,
+                    Default::default(),
                 )
                 .await
                 {
@@ -129,9 +126,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
                     Err(e) => {
                         // don't return this error so we don't fail registrations
                         error!("Failed to automatically join room {room} for user {user_id}: {e}");
-                        self.services
-                            .admin
-                            .send_text(&format!(
+                        crate::admin::send_text(&format!(
                                 "Failed to automatically join room {room} for user {user_id}: \
 								 {e}"
                             ))
@@ -234,17 +229,16 @@ pub(super) async fn reset_password(ctx: &Context<'_>, username: String, password
 }
 
 pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, force: bool) -> AppResult<()> {
-    if self.body.len() < 2 || !self.body[0].trim().starts_with("```") || self.body.last().unwrap_or(&"").trim() != "```"
-    {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
     }
 
-    let usernames = self
+    let usernames = ctx
         .body
         .to_vec()
-        .drain(1..self.body.len().saturating_sub(1))
+        .drain(1..ctx.body.len().saturating_sub(1))
         .collect::<Vec<_>>();
 
     let mut user_ids: Vec<OwnedUserId> = Vec::with_capacity(usernames.len());
@@ -253,18 +247,13 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
     for username in usernames {
         match parse_active_local_user_id(username).await {
             Err(e) => {
-                self.services
-                    .admin
-                    .send_text(&format!("{username} is not a valid username, skipping over: {e}"))
-                    .await;
+                crate::admin::send_text(&format!("{username} is not a valid username, skipping over: {e}")).await;
 
                 continue;
             }
             Ok(user_id) => {
-                if self.services.users.is_admin(&user_id).await && !force {
-                    self.services
-                        .admin
-                        .send_text(&format!("{username} is an admin and --force is not set, skipping over"))
+                if crate::data::user::is_admin(&user_id)? && !force {
+                    crate::admin::send_text(&format!("{username} is an admin and --force is not set, skipping over"))
                         .await;
 
                     admins.push(username);
@@ -272,16 +261,13 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
                 }
 
                 // don't deactivate the server service account
-                if user_id == config::server_user() {
-                    self.services
-                        .admin
-                        .send_text(&format!("{username} is the server service account, skipping over"))
-                        .await;
+                if &user_id == config::server_user() {
+                    crate::admin::send_text(&format!("{username} is the server service account, skipping over")).await;
 
                     continue;
                 }
 
-                user_ids.push(user_id);
+                user_ids.push(user_id.to_owned());
             }
         }
     }
@@ -291,9 +277,7 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
     for user_id in user_ids {
         match self.services.users.deactivate_account(&user_id).await {
             Err(e) => {
-                self.services
-                    .admin
-                    .send_text(&format!("Failed deactivating user: {e}"))
+                crate::admin::send_text(&format!("Failed deactivating user: {e}"))
                     .await;
             }
             Ok(()) => {
@@ -388,13 +372,7 @@ pub(super) async fn force_join_list_of_local_users(
 
     let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
-    if !self
-        .services
-        .rooms
-        .state_cache
-        .server_in_room(config::server_name(), &room_id)
-        .await
-    {
+    if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public("We are not joined in this room."));
     }
 
@@ -431,10 +409,7 @@ pub(super) async fn force_join_list_of_local_users(
             Ok(user_id) => {
                 // don't make the server service account join
                 if user_id == config::server_user() {
-                    self.services
-                        .admin
-                        .send_text(&format!("{username} is the server service account, skipping over"))
-                        .await;
+                    crate::admin::send_text(&format!("{username} is the server service account, skipping over")).await;
 
                     continue;
                 }
@@ -442,10 +417,7 @@ pub(super) async fn force_join_list_of_local_users(
                 user_ids.push(user_id);
             }
             Err(e) => {
-                self.services
-                    .admin
-                    .send_text(&format!("{username} is not a valid username, skipping over: {e}"))
-                    .await;
+                crate::admin::send_text(&format!("{username} is not a valid username, skipping over: {e}")).await;
 
                 continue;
             }
@@ -456,13 +428,16 @@ pub(super) async fn force_join_list_of_local_users(
     let mut successful_joins: usize = 0;
 
     for user_id in user_ids {
+        let user = data::user::get_user(&user_id)?;
         match membership::join_room(
-            &user_id,
+            &user,
+            None,
             &room_id,
             Some(String::from(BULK_JOIN_REASON)),
             &servers,
             None,
-            &None,
+            None,
+            Default::default(),
         )
         .await
         {
@@ -503,13 +478,7 @@ pub(super) async fn force_join_all_local_users(
 
     let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
-    if !self
-        .services
-        .rooms
-        .state_cache
-        .server_in_room(config::server_name(), &room_id)
-        .await
-    {
+    if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public("we are not joined in this room"));
     }
 
@@ -536,21 +505,17 @@ pub(super) async fn force_join_all_local_users(
     let mut failed_joins: usize = 0;
     let mut successful_joins: usize = 0;
 
-    for user_id in &self
-        .services
-        .users
-        .list_local_users()
-        .map(UserId::to_owned)
-        .collect::<Vec<_>>()
-        .await
-    {
+    for user_id in &data::user::list_local_users()? {
+        let user = data::user::get_user(user_id)?;
         match membership::join_room(
-            user_id,
+            &user,
+            None,
             &room_id,
             Some(String::from(BULK_JOIN_REASON)),
             &servers,
             None,
-            &None,
+            None,
+            Default::default(),
         )
         .await
         {
@@ -576,7 +541,8 @@ pub(super) async fn force_join_room(ctx: &Context<'_>, user_id: String, room_id:
     let (room_id, servers) = crate::room::alias::resolve_with_servers(&room_id, None).await?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
-    membership::join_room(&user_id, &room_id, None, &servers, None, &None).await?;
+    let user = data::user::get_user(&user_id)?;
+    membership::join_room(&user, None, &room_id, None, &servers, None, None, Default::default()).await?;
 
     ctx.write_str(&format!("{user_id} has been joined to {room_id}.",))
         .await
@@ -749,15 +715,16 @@ pub(super) async fn get_room_tags(ctx: &Context<'_>, user_id: String, room_id: O
 }
 
 pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
-    let Ok(event) = timeline::get_non_outlier_pdu(&event_id) else {
+    let Ok(Some(event)) = timeline::get_non_outlier_pdu(&event_id) else {
         return Err(AppError::public("event does not exist in our database"));
     };
 
-    if event.is_redacted() {
-        return Err(AppError::public("event is already redacted"));
-    }
+    // TODO: check if the user has permission to redact this event
+    // if event.is_redacted() {
+    //     return Err(AppError::public("event is already redacted"));
+    // }
 
-    if !event.sender().is_local() {
+    if !event.sender.is_local() {
         return Err(AppError::public("this command only works on local users"));
     }
 
@@ -767,24 +734,20 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
     );
 
     let redaction_event_id = {
-        let state_lock = crate::room::lock_state(event.room_id()).await;
+        let state_lock = crate::room::lock_state(&event.room_id).await;
 
-        self.services
-            .rooms
-            .timeline
-            .build_and_append_pdu(
-                PduBuilder {
-                    redacts: Some(event.event_id().to_owned()),
-                    ..PduBuilder::timeline(&RoomRedactionEventContent {
-                        redacts: Some(event.event_id().to_owned()),
-                        reason: Some(reason),
-                    })
-                },
-                event.sender(),
-                event.room_id(),
-                &state_lock,
-            )
-            .await?
+        timeline::build_and_append_pdu(
+            PduBuilder {
+                redacts: Some(event.event_id.clone()),
+                ..PduBuilder::timeline(&RoomRedactionEventContent {
+                    redacts: Some(event.event_id.clone()),
+                    reason: Some(reason),
+                })
+            },
+            &event.sender,
+            &event.room_id,
+            &state_lock,
+        )?
     };
 
     ctx.write_str(&format!(

@@ -10,15 +10,17 @@ use futures_util::{FutureExt, StreamExt, TryStreamExt};
 use serde::Serialize;
 use tracing_subscriber::EnvFilter;
 
+use crate::core::UnixMillis;
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, RawJsonValue};
 use crate::core::{
-    CanonicalJsonObject, CanonicalJsonValue, EventId, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName,
-    RoomId, RoomVersionId, api::federation::event::get_room_state, events::AnyStateEvent, serde::Raw,
+    EventId, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, RoomId, RoomVersionId,
+    api::federation::event::get_room_state, events::AnyStateEvent,
 };
 use crate::room::state_compressor::HashSetCompressStateEvent;
 use crate::{
     AppError, AppResult,
-    admin::{Context, info},
-    config, jwt,
+    admin::Context,
+    config, info, jwt,
     matrix::{
         Event,
         pdu::{PduEvent, PduId, RawPduId},
@@ -82,7 +84,7 @@ pub(super) async fn parse_pdu(ctx: &Context<'_>) -> AppResult<()> {
                             "EventId: {event_id:?}\nCould not parse event: {e}"
                         )));
                     }
-                    Ok(pdu) => write!(self, "EventId: {event_id:?}\n{pdu:#?}"),
+                    Ok(pdu) => write!(ctx, "EventId: {event_id:?}\n{pdu:#?}"),
                 }
             }
         },
@@ -147,13 +149,10 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
 
     for event_id in list {
         if force {
-            match self.get_remote_pdu(event_id.to_owned(), server.clone()).await {
+            match get_remote_pdu(event_id.to_owned(), server.clone()).await {
                 Err(e) => {
                     failed_count = failed_count.saturating_add(1);
-                    self.services
-                        .admin
-                        .send_text(&format!("Failed to get remote PDU, ignoring error: {e}"))
-                        .await;
+                    crate::admin::send_text(&format!("Failed to get remote PDU, ignoring error: {e}")).await;
 
                     warn!("Failed to get remote PDU, ignoring error: {e}");
                 }
@@ -162,7 +161,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
                 }
             }
         } else {
-            self.get_remote_pdu(event_id.to_owned(), server.clone()).await?;
+            get_remote_pdu(event_id.to_owned(), server.clone()).await?;
             success_count = success_count.saturating_add(1);
         }
     }
@@ -217,13 +216,7 @@ pub(super) async fn get_remote_pdu(
 
             trace!("Attempting to parse PDU: {:?}", &response.pdu);
             let _parsed_pdu = {
-                let parsed_result = self
-                    .services
-                    .rooms
-                    .event_handler
-                    .parse_incoming_pdu(&response.pdu)
-                    .boxed()
-                    .await;
+                let parsed_result = crate::parse_incoming_pdu(&response.pdu)?;
 
                 let (event_id, value, room_id) = match parsed_result {
                     Ok(t) => t,
@@ -311,7 +304,7 @@ pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResul
                 format!("Got non-JSON response which took {ping_time:?} time:\n{response:?}")
             };
 
-            write!(self, "{out}")
+            write!(ctx, "{out}")
         }
     }
     .await
@@ -319,13 +312,13 @@ pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResul
 
 pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()> {
     // Force E2EE device list updates for all users
-    self.services
-        .users
-        .stream()
-        .for_each(|user_id| self.services.users.mark_device_key_update(user_id))
-        .await;
+    for user_id in crate::data::user::all_user_ids() {
+        if let Err(e) = crate::user::mark_device_key_update(user_id).await {
+            warn!("Failed to mark device key update for user {user_id}: {e}");
+        }
+    }
 
-    write!(self, "Marked all devices for all users as having new keys to update").await
+    write!(ctx, "Marked all devices for all users as having new keys to update").await
 }
 
 pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, reset: bool) -> AppResult<()> {
@@ -385,9 +378,9 @@ pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
     match serde_json::from_str(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
         Ok(mut value) => {
-            self.services.server_keys.sign_json(&mut value)?;
+            crate::server_key::sign_json(&mut value)?;
             let json_text = serde_json::to_string_pretty(&value)?;
-            write!(self, "{json_text}")
+            write!(ctx, "{json_text}")
         }
     }
     .await
@@ -403,9 +396,9 @@ pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
     let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str::<CanonicalJsonObject>(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
-        Ok(value) => match self.services.server_keys.verify_json(&value, None).await {
+        Ok(value) => match crate::server_key::verify_json(&value, None).await {
             Err(e) => return Err(AppError::public(format!("Signature verification failed: {e}"))),
-            Ok(()) => write!(self, "Signature correct"),
+            Ok(()) => write!(ctx, "Signature correct"),
         },
     }
     .await
@@ -417,7 +410,7 @@ pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> App
     let mut event = timeline::get_pdu_json(&event_id)?;
 
     event.remove("event_id");
-    let msg = match self.services.server_keys.verify_event(&event, None).await {
+    let msg = match crate::server_key::verify_event(&event, None).await {
         Err(e) => return Err(e),
         Ok(Verified::Signatures) => "signatures OK, but content hash failed (redaction).",
         Ok(Verified::All) => "signatures and hashes OK.",
@@ -426,15 +419,9 @@ pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> App
     ctx.write_str(msg).await
 }
 
-#[tracing::instrument(skip(self))]
+#[tracing::instrument]
 pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    if !self
-        .services
-        .rooms
-        .state_cache
-        .server_in_room(config::server_name(), &room_id)
-        .await
-    {
+    if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public(
             "We are not participating in the room / we don't know about the room ID.",
         ));
@@ -452,26 +439,15 @@ pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -
     ctx.write_str(&out).await
 }
 
-#[tracing::instrument(skip(self))]
+#[tracing::instrument]
 pub(super) async fn latest_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    if !self
-        .services
-        .rooms
-        .state_cache
-        .server_in_room(config::server_name(), &room_id)
-        .await
-    {
+    if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public(
             "We are not participating in the room / we don't know about the room ID.",
         ));
     }
 
-    let latest_pdu = self
-        .services
-        .rooms
-        .timeline
-        .latest_pdu_in_room(&room_id)
-        .await
+    let latest_pdu = timeline::latest_pdu_in_room(&room_id)?
         .map_err(|_| AppError::public("Failed to find the latest PDU in database"))?;
 
     let out = format!("{latest_pdu:?}");
@@ -483,27 +459,17 @@ pub(super) async fn force_set_room_state_from_server(
     room_id: OwnedRoomId,
     server_name: OwnedServerName,
 ) -> AppResult<()> {
-    if !self
-        .services
-        .rooms
-        .state_cache
-        .server_in_room(config::server_name(), &room_id)
-        .await
-    {
+    if !crate::room::is_server_joined(config::server_name(), &room_id)? {
         return Err(AppError::public(
             "We are not participating in the room / we don't know about the room ID.",
         ));
     }
 
-    let first_pdu = self
-        .services
-        .rooms
-        .timeline
-        .latest_pdu_in_room(&room_id)
+    let first_pdu = timeline::latest_pdu_in_room(&room_id)
         .await
         .map_err(|_| AppError::public("Failed to find the latest PDU in database"))?;
 
-    let room_version = self.services.rooms.state.get_room_version(&room_id).await?;
+    let room_version = crate::room::get_version(&room_id)?;
 
     let mut state: HashMap<u64, OwnedEventId> = HashMap::new();
 
@@ -520,7 +486,7 @@ pub(super) async fn force_set_room_state_from_server(
         .await?;
 
     for pdu in remote_state_response.pdus.clone() {
-        match self.services.rooms.event_handler.parse_incoming_pdu(&pdu).await {
+        match crate::parse_incoming_pdu(&pdu) {
             Ok(t) => t,
             Err(e) => {
                 warn!("Could not parse PDU, ignoring: {e}");
@@ -533,7 +499,7 @@ pub(super) async fn force_set_room_state_from_server(
     for result in remote_state_response
         .pdus
         .iter()
-        .map(|pdu| self.services.server_keys.validate_and_add_event_id(pdu, &room_version))
+        .map(|pdu| crate::server_key::validate_and_add_event_id(pdu, &room_version))
     {
         let Ok((event_id, value)) = result.await else {
             continue;
@@ -562,7 +528,7 @@ pub(super) async fn force_set_room_state_from_server(
     for result in remote_state_response
         .auth_chain
         .iter()
-        .map(|pdu| self.services.server_keys.validate_and_add_event_id(pdu, &room_version))
+        .map(|pdu| crate::server_key::validate_and_add_event_id(pdu, &room_version))
     {
         let Ok((event_id, value)) = result.await else {
             continue;
@@ -571,32 +537,18 @@ pub(super) async fn force_set_room_state_from_server(
         self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
     }
 
-    let new_room_state = self
-        .services
-        .rooms
-        .event_handler
-        .resolve_state(&room_id, &room_version, state)
-        .await?;
+    let new_room_state = crate::event::handler::resolve_state(&room_id, &room_version, state).await?;
 
     info!("Forcing new room state");
     let HashSetCompressStateEvent {
         shortstatehash: short_state_hash,
         added,
         removed,
-    } = self
-        .services
-        .rooms
-        .state_compressor
-        .save_state(room_id.clone().as_ref(), new_room_state)
-        .await?;
+    } = crate::room::state::save_state(room_id.clone().as_ref(), new_room_state)?;
 
     let state_lock = crate::room::lock_state(&*room_id).await;
 
-    self.services
-        .rooms
-        .state
-        .force_state(room_id.clone().as_ref(), short_state_hash, added, removed, &state_lock)
-        .await?;
+    crate::room::state::force_state(room_id.clone().as_ref(), short_state_hash, added, removed, &state_lock)?;
 
     info!(
         "Updating joined counts for room just in case (e.g. we may have found a difference in \
@@ -614,19 +566,19 @@ pub(super) async fn get_signing_keys(
     notary: Option<OwnedServerName>,
     query: bool,
 ) -> AppResult<()> {
-    let server_name = server_name.unwrap_or_else(|| self.services.server.name.clone());
+    let server_name = server_name.unwrap_or_else(|| config::server_name().to_owned());
 
     if let Some(notary) = notary {
-        let signing_keys = self.services.server_keys.notary_request(&notary, &server_name).await?;
+        let signing_keys = crate::server_key::notary_request(&notary, &server_name).await?;
 
         let out = format!("```rs\n{signing_keys:#?}\n```");
         return ctx.write_str(&out).await;
     }
 
     let signing_keys = if query {
-        self.services.server_keys.server_request(&server_name).await?
+        crate::server_key::server_request(&server_name).await?
     } else {
-        self.services.server_keys.signing_keys_for(&server_name).await?
+        crate::server_key::signing_keys_for(&server_name).await?
     };
 
     let out = format!("```rs\n{signing_keys:#?}\n```");
@@ -634,9 +586,9 @@ pub(super) async fn get_signing_keys(
 }
 
 pub(super) async fn get_verify_keys(ctx: &Context<'_>, server_name: Option<OwnedServerName>) -> AppResult<()> {
-    let server_name = server_name.unwrap_or_else(|| self.services.server.name.clone());
+    let server_name = server_name.unwrap_or_else(|| config::server_name().to_owned());
 
-    let keys = self.services.server_keys.verify_keys_for(&server_name).await;
+    let keys = crate::server_key::verify_keys_for(&server_name);
 
     let mut out = String::new();
     writeln!(out, "| Key ID | Public Key |")?;
@@ -682,7 +634,7 @@ pub(super) async fn time(ctx: &Context<'_>) -> AppResult<()> {
     ctx.write_str(&now).await
 }
 
-pub(super) async fn list_dependencies(&self, names: bool) -> AppResult<()> {
+pub(super) async fn list_dependencies(ctx: &Context<'_>, names: bool) -> AppResult<()> {
     if names {
         let out = info::cargo::dependencies_names().join(" ");
         return ctx.write_str(&out).await;
@@ -707,43 +659,6 @@ pub(super) async fn list_dependencies(&self, names: bool) -> AppResult<()> {
     ctx.write_str(&out).await
 }
 
-pub(super) async fn database_stats(ctx: &Context<'_>, property: Option<String>, map: Option<String>) -> AppResult<()> {
-    let map_name = map.as_ref().map_or(EMPTY, String::as_str);
-    let property = property.unwrap_or_else(|| "rocksdb.stats".to_owned());
-    self.services
-        .db
-        .iter()
-        .filter(|&(&name, _)| map_name.is_empty() || map_name == name)
-        .try_stream()
-        .try_for_each(|(&name, map)| {
-            let res = map.property(&property).expect("invalid property");
-            writeln!(self, "##### {name}:\n```\n{}\n```", res.trim())
-        })
-        .await
-}
-
-pub(super) async fn database_files(ctx: &Context<'_>, map: Option<String>, level: Option<i32>) -> AppResult<()> {
-    let mut files: Vec<_> = self.services.db.db.file_list().collect::<Result<_>>()?;
-
-    files.sort_by_key(|f| f.name.clone());
-
-    writeln!(ctx, "| lev  | sst  | keys | dels | size | column |").await?;
-    writeln!(ctx, "| ---: | :--- | ---: | ---: | ---: | :---   |").await?;
-    files
-        .into_iter()
-        .filter(|file| map.as_deref().is_none_or(|map| map == file.column_family_name))
-        .filter(|file| level.as_ref().is_none_or(|&level| level == file.level))
-        .try_stream()
-        .try_for_each(|file| {
-            writeln!(
-                self,
-                "| {} | {:<13} | {:7}+ | {:4}- | {:9} | {} |",
-                file.level, file.name, file.num_entries, file.num_deletions, file.size, file.column_family_name,
-            )
-        })
-        .await
-}
-
 pub(super) async fn create_jwt(
     ctx: &Context<'_>,
     user: String,
@@ -763,16 +678,20 @@ pub(super) async fn create_jwt(
         nbf: usize,
     }
 
-    let config = &self.services.config.jwt;
-    if config.format.as_str() != "HMAC" {
+    let conf = config::get();
+
+    let Some(jwt_conf) = conf.enabled_jwt() else {
+        return Err(AppError::public("JWT is not enabled in the configuration"));
+    };
+    if jwt_conf.format.as_str() != "HMAC" {
         return Err(AppError::public(format!(
             "This command only supports HMAC key format, not {}.",
-            config.format
+            jwt_conf.format
         )));
     }
 
-    let key = EncodingKey::from_secret(config.key.as_ref());
-    let alg = Algorithm::from_str(config.algorithm.as_str())
+    let key = EncodingKey::from_secret(jwt_conf.key.as_ref());
+    let alg = Algorithm::from_str(jwt_conf.algorithm.as_str())
         .map_err(|e| AppError::public(format!("JWT algorithm is not recognized or configured {e}")))?;
 
     let header = Header {

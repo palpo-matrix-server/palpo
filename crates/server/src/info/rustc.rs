@@ -4,8 +4,8 @@
 //! static initialization.
 
 use std::{
-	collections::BTreeMap,
-	sync::{Mutex, OnceLock},
+    collections::BTreeMap,
+    sync::{Mutex, OnceLock},
 };
 
 use crate::utils::exchange;
@@ -23,43 +23,39 @@ pub static FLAGS: Mutex<BTreeMap<&str, &[&str]>> = Mutex::new(BTreeMap::new());
 static FEATURES: OnceLock<Vec<&'static str>> = OnceLock::new();
 
 /// List of features enabled for the project.
-pub fn features() -> &'static Vec<&'static str> { FEATURES.get_or_init(init_features) }
+pub fn features() -> &'static Vec<&'static str> {
+    FEATURES.get_or_init(init_features)
+}
 
 /// Version of the rustc compiler used during build.
 #[inline]
 #[must_use]
 pub fn version() -> Option<&'static str> {
-	RUSTC_VERSION
-		.len()
-		.gt(&0)
-		.then_some(RUSTC_VERSION)
+    RUSTC_VERSION.len().gt(&0).then_some(RUSTC_VERSION)
 }
 
 fn init_features() -> Vec<&'static str> {
-	let mut features = Vec::new();
-	FLAGS
-		.lock()
-		.expect("locked")
-		.iter()
-		.for_each(|(_, flags)| append_features(&mut features, flags));
+    let mut features = Vec::new();
+    FLAGS
+        .lock()
+        .expect("locked")
+        .iter()
+        .for_each(|(_, flags)| append_features(&mut features, flags));
 
-	features.sort_unstable();
-	features.dedup();
-	features
+    features.sort_unstable();
+    features.dedup();
+    features
 }
 
 fn append_features(features: &mut Vec<&'static str>, flags: &[&'static str]) {
-	let mut next_is_cfg = false;
-	for flag in flags {
-		let is_cfg = *flag == "--cfg";
-		let is_feature = flag.starts_with("feature=");
-		if exchange(&mut next_is_cfg, is_cfg) && is_feature {
-			if let Some(feature) = flag
-				.split_once('=')
-				.map(|(_, feature)| feature.trim_matches('"'))
-			{
-				features.push(feature);
-			}
-		}
-	}
+    let mut next_is_cfg = false;
+    for flag in flags {
+        let is_cfg = *flag == "--cfg";
+        let is_feature = flag.starts_with("feature=");
+        if exchange(&mut next_is_cfg, is_cfg) && is_feature {
+            if let Some(feature) = flag.split_once('=').map(|(_, feature)| feature.trim_matches('"')) {
+                features.push(feature);
+            }
+        }
+    }
 }

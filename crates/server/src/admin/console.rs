@@ -9,7 +9,6 @@ use termimad::MadSkin;
 use tokio::task::JoinHandle;
 
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::{Server, debug, defer, error, log, log::is_systemd_mode};
 
 pub struct Console {
     server: Arc<Server>,
@@ -87,7 +86,7 @@ impl Console {
         debug!("session starting");
 
         self.output
-            .print_inline(&format!("**palpo {}** admin console\n", crate::version()));
+            .print_inline(&format!("**palpo {}** admin console\n", crate::info::version()));
         self.output
             .print_text("\"help\" for help, ^D to exit the console, ^\\ to stop the server\n");
 

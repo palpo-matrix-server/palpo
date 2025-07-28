@@ -50,6 +50,7 @@ pub use url_preview::*;
 use crate::core::client::discovery::RoomVersionStability;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
+use crate::AppResult;
 
 pub static CONFIG: OnceLock<ServerConfig> = OnceLock::new();
 
@@ -102,12 +103,23 @@ pub fn init(config_path: impl AsRef<Path>) {
 
     CONFIG.set(conf).expect("config should be set");
 }
+pub fn reload(path: impl AsRef<Path>) -> AppResult<()> {
+    // TODO: reload config
+    Ok(())
+}
+
 pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()
 }
 
-pub fn server_user() -> OwnedUserId {
-    format!("@palpo:{}", get().server_name).try_into().expect("invalid server user ID")
+
+pub static SERVER_USER: OnceLock<OwnedUserId> = OnceLock::new();
+pub fn server_user() -> &'static UserId {
+    SERVER_USER.get_or_init(|| {
+        format!("@palpo:{}", get().server_name)
+            .try_into()
+            .expect("invalid server user ID")
+    })
 }
 
 pub fn space_path() -> &'static str {
@@ -121,9 +133,7 @@ static ADMIN_ALIAS: OnceLock<OwnedRoomAliasId> = OnceLock::new();
 pub fn admin_alias() -> &'static RoomAliasId {
     ADMIN_ALIAS.get_or_init(|| {
         let alias = format!("#admins:{}", get().server_name);
-        alias
-            .try_into()
-            .expect("admin alias should be a valid room alias")
+        alias.try_into().expect("admin alias should be a valid room alias")
     })
 }
 

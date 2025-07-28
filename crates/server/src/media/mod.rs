@@ -1,7 +1,7 @@
 mod preview;
+use std::cmp;
 use std::num::Saturating;
 use std::time::Duration;
-use std::cmp;
 
 pub use preview::*;
 use salvo::Response;
@@ -149,9 +149,4 @@ pub fn thumbnail_properties(width: u32, height: u32) -> Option<(u32, u32, bool)>
         (0..=800, 0..=600) => Some((800, 600, false)),
         _ => None,
     }
-}
-
-pub async fn delete_media(mxc: &str) -> AppResult<()> {
-    //TODO: Delete media from disk
-    Ok(())
 }

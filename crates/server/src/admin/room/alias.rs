@@ -87,7 +87,7 @@ pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) ->
                 }
                 RoomAliasCommand::Remove { .. } => match services.rooms.alias.resolve_local_alias(&room_alias).await {
                     Err(_) => Err(AppError::public("Alias isn't in use.")),
-                    Ok(id) => match services.rooms.alias.remove_alias(&room_alias, server_user).await {
+                    Ok(id) => match crate::room::remove_alias(&room_alias, server_user).await {
                         Err(err) => Err(AppError::public(format!("Failed to remove alias: {err}"))),
                         Ok(()) => context.write_str(&format!("Removed alias from {id}")).await,
                     },

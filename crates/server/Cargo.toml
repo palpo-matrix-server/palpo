@@ -115,6 +115,7 @@ palpo-server-macros = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }
+rustyline-async = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 ring = { workspace = true }
