@@ -1,5 +1,7 @@
 mod preview;
+use std::num::Saturating;
 use std::time::Duration;
+use std::cmp;
 
 pub use preview::*;
 use salvo::Response;
@@ -9,13 +11,88 @@ use crate::core::media::Method;
 use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
 
-
 /// Dimension specification for a thumbnail.
 #[derive(Debug)]
 pub struct Dimension {
-	pub width: u32,
-	pub height: u32,
-	pub method: Method,
+    pub width: u32,
+    pub height: u32,
+    pub method: Method,
+}
+
+impl Dimension {
+    /// Instantiate a Dim with optional method
+    #[inline]
+    #[must_use]
+    pub fn new(width: u32, height: u32, method: Option<Method>) -> Self {
+        Self {
+            width,
+            height,
+            method: method.unwrap_or(Method::Scale),
+        }
+    }
+
+    pub fn scaled(&self, image: &Self) -> AppResult<Self> {
+        let image_width = image.width;
+        let image_height = image.height;
+
+        let width = cmp::min(self.width, image_width);
+        let height = cmp::min(self.height, image_height);
+
+        let use_width = Saturating(width) * Saturating(image_height) < Saturating(height) * Saturating(image_width);
+
+        let x = if use_width {
+            let dividend = (Saturating(height) * Saturating(image_width)).0;
+            dividend / image_height
+        } else {
+            width
+        };
+
+        let y = if !use_width {
+            let dividend = (Saturating(width) * Saturating(image_height)).0;
+            dividend / image_width
+        } else {
+            height
+        };
+
+        Ok(Self {
+            width: x,
+            height: y,
+            method: Method::Scale,
+        })
+    }
+
+    /// Returns width, height of the thumbnail and whether it should be cropped.
+    /// Returns None when the server should send the original file.
+    /// Ignores the input Method.
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        match (self.width, self.height) {
+            (0..=32, 0..=32) => Self::new(32, 32, Some(Method::Crop)),
+            (0..=96, 0..=96) => Self::new(96, 96, Some(Method::Crop)),
+            (0..=320, 0..=240) => Self::new(320, 240, Some(Method::Scale)),
+            (0..=640, 0..=480) => Self::new(640, 480, Some(Method::Scale)),
+            (0..=800, 0..=600) => Self::new(800, 600, Some(Method::Scale)),
+            _ => Self::default(),
+        }
+    }
+
+    /// Returns true if the method is Crop.
+    #[inline]
+    #[must_use]
+    pub fn crop(&self) -> bool {
+        self.method == Method::Crop
+    }
+}
+
+impl Default for Dimension {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+            method: Method::Scale,
+        }
+    }
 }
 
 pub async fn get_remote_content(

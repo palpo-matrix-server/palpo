@@ -62,9 +62,7 @@ pub(super) async fn get_auth_chain(ctx: &Context<'_>, event_id: OwnedEventId) ->
 }
 
 pub(super) async fn parse_pdu(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2
-        || !ctx.body[0].trim().starts_with("```")
-        || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -129,9 +127,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
         ));
     }
 
-    if ctx.body.len() < 2
-        || !ctx.body[0].trim().starts_with("```")
-        || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -176,8 +172,13 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
     ctx.write_str(&out).await
 }
 
-pub(super) async fn get_remote_pdu(ctx: &Context<'_>, event_id: OwnedEventId, server: OwnedServerName) -> AppResult<()> {
-    if !self.services.server.config.allow_federation {
+pub(super) async fn get_remote_pdu(
+    ctx: &Context<'_>,
+    event_id: OwnedEventId,
+    server: OwnedServerName,
+) -> AppResult<()> {
+    let conf = config::get();
+    if conf.enabled_federation().is_none() {
         return Err(AppError::public("Federation is disabled on this homeserver."));
     }
 
@@ -329,9 +330,9 @@ pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()
 
 pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, reset: bool) -> AppResult<()> {
     let handles = &["console"];
-
+    let conf = config::get();
     if reset {
-        let old_filter_layer = match EnvFilter::try_new(&self.services.server.config.log) {
+        let old_filter_layer = match EnvFilter::try_new(&conf.logger.level) {
             Ok(s) => s,
             Err(e) => {
                 return Err(AppError::public(format!(
@@ -347,7 +348,7 @@ pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, 
                 )));
             }
             Ok(()) => {
-                let value = &self.services.server.config.log;
+                let value = &conf.logger.level;
                 let out = format!("Successfully changed log level back to config value {value}");
                 return ctx.write_str(&out).await;
             }
@@ -374,8 +375,7 @@ pub(super) async fn change_log_level(ctx: &Context<'_>, filter: Option<String>, 
 }
 
 pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
-    {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -394,8 +394,7 @@ pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
 }
 
 pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
-    {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -591,7 +590,7 @@ pub(super) async fn force_set_room_state_from_server(
         .save_state(room_id.clone().as_ref(), new_room_state)
         .await?;
 
-    let state_lock = self.services.rooms.state.mutex.lock(&*room_id).await;
+    let state_lock = crate::room::lock_state(&*room_id).await;
 
     self.services
         .rooms
@@ -604,7 +603,7 @@ pub(super) async fn force_set_room_state_from_server(
 		 the room's m.room.member state"
     );
     self.services.rooms.state_cache.update_joined_count(&room_id).await;
-
+    drop(state_lock);
     ctx.write_str("Successfully forced the room state from the requested remote server.")
         .await
 }
@@ -649,12 +648,17 @@ pub(super) async fn get_verify_keys(ctx: &Context<'_>, server_name: Option<Owned
     ctx.write_str(&out).await
 }
 
-pub(super) async fn resolve_true_destination(ctx: &Context<'_>, server_name: OwnedServerName, no_cache: bool) -> AppResult<()> {
-    if !self.services.server.config.allow_federation {
+pub(super) async fn resolve_true_destination(
+    ctx: &Context<'_>,
+    server_name: OwnedServerName,
+    no_cache: bool,
+) -> AppResult<()> {
+    let conf = config::get();
+    if conf.enabled_federation().is_none() {
         return Err(AppError::public("Federation is disabled on this homeserver."));
     }
 
-    if server_name == self.services.server.name {
+    if server_name == config::server_name() {
         return Err(AppError::public(
             "Not allowed to send federation requests to ourselves. Please use `get-pdu` for \
 			 fetching local PDUs.",

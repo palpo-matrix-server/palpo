@@ -106,8 +106,8 @@ pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()
 }
 
-pub fn server_user() -> String {
-    format!("@palpo:{}", get().server_name)
+pub fn server_user() -> OwnedUserId {
+    format!("@palpo:{}", get().server_name).try_into().expect("invalid server user ID")
 }
 
 pub fn space_path() -> &'static str {

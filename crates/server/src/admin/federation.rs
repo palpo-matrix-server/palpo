@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 
 use crate::core::{OwnedRoomId, OwnedServerName, OwnedUserId};
 
-use crate::macros::{admin_command, admin_command_dispatch};
+use crate::macros::{admin_command_dispatch};
 
 use crate::{AppError, AppResult};
 

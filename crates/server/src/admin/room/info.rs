@@ -3,7 +3,7 @@ use futures_util::StreamExt;
 use crate::core::OwnedRoomId;
 use palpo_core::{AppError, AppResult};
 
-use crate::{admin_command, admin_command_dispatch};
+use crate::{admin_command_dispatch};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]

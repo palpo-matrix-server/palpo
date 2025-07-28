@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::admin::{Context, admin_command, utils::parse_local_user_id};
+use crate::admin::{Context, utils::parse_local_user_id};
 use crate::core::{Mxc, OwnedEventId, OwnedMxcUri, OwnedServerName};
 use crate::{AppError, AppResult, config, data, utils::time::parse_timepoint_ago};
 use crate::media::Dimension;
@@ -18,7 +18,7 @@ pub(super) async fn delete_media(
 
     if let Some(mxc) = mxc {
         trace!("Got MXC URL: {mxc}");
-        crate::media::delete_media(&mxc).await?;
+        crate::media::delete_media(&mxc.as_str()).await?;
 
         return Err(AppError::public(
             "Deleted the MXC from our database and on our filesystem.",

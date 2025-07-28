@@ -3,7 +3,7 @@ use futures_util::{FutureExt, StreamExt};
 
 use crate::admin::get_room_info;
 use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};
-use crate::macros::{admin_command, admin_command_dispatch, get_room_info};
+use crate::macros::{admin_command_dispatch, get_room_info};
 use crate::{AppError, AppResult, config};
 
 #[admin_command_dispatch]
@@ -170,8 +170,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
 }
 
 async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
-    {
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));

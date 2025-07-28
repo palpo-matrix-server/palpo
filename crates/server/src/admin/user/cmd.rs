@@ -64,13 +64,13 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
 
     // If `new_user_displayname_suffix` is set, registration will push whatever
     // content is set to the user's display name with a space before it
-    if !self.services.server.config.new_user_displayname_suffix.is_empty() {
-        write!(
-            displayname,
-            " {}",
-            self.services.server.config.new_user_displayname_suffix
-        )?;
-    }
+    // if !conf.new_user_displayname_suffix.is_empty() {
+    //     write!(
+    //         displayname,
+    //         " {}",
+    //         conf.new_user_displayname_suffix
+    //     )?;
+    // }
 
     self.services.users.set_displayname(&user_id, Some(displayname));
 
@@ -91,8 +91,8 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
         )
         .await?;
 
-    if !self.services.server.config.auto_join_rooms.is_empty() {
-        for room in &self.services.server.config.auto_join_rooms {
+    if !conf.auto_join_rooms.is_empty() {
+        for room in &conf.auto_join_rooms {
             let Ok(room_id) = crate::room::alias::resolve(room).await else {
                 error!(
                     %user_id,
@@ -179,7 +179,7 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
         ));
     }
 
-    self.services.users.deactivate_account(&user_id).await?;
+    crate::user::deactivate_account(&user_id).await?;
 
     if !no_leave_rooms {
         crate::admin::send_text(&format!("Making {user_id} leave all rooms after deactivation...")).await;
@@ -195,7 +195,7 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
 
         full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
 
-        update_displayname(&user_id, None, &all_joined_rooms).await;
+        data::user::set_display_name(&user_id, None)?;
         data::user::set_avatar_url(&user_id, None)?;
         membership::leave_all_rooms(&user_id).await;
     }
@@ -311,8 +311,8 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
 
                     full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
 
-                    update_displayname(&user_id, None, &all_joined_rooms).await;
-                    data::user::set_avatar_url(&user_id, None, None, &all_joined_rooms)?;
+                    data::user::set_display_name(&user_id, None)?;
+                    data::user::set_avatar_url(&user_id, None)?;
                     membership::leave_all_rooms(&user_id).await;
                 }
             }
@@ -603,7 +603,7 @@ pub(super) async fn force_demote(ctx: &Context<'_>, user_id: String, room_id: Ow
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
 
-    let state_lock = self.services.rooms.state.mutex.lock(&room_id).await;
+    let state_lock = crate::room::lock_state(&room_id).await;
 
     let room_power_levels: Option<RoomPowerLevelsEventContent> = self
         .services
@@ -767,7 +767,7 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
     );
 
     let redaction_event_id = {
-        let state_lock = self.services.rooms.state.mutex.lock(event.room_id()).await;
+        let state_lock = crate::room::lock_state(event.room_id()).await;
 
         self.services
             .rooms

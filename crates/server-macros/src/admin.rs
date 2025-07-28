@@ -22,7 +22,7 @@ pub(super) fn command_dispatch(item: ItemEnum, _args: &[Meta]) -> Result<TokenSt
         #[allow(clippy::large_stack_frames)] //TODO: fixme
         pub(super) async fn process(
             command: #name,
-            context: &crate::Context<'_>
+            context: &crate::admin::Context<'_>
         ) -> AppResult<()> {
             use #name::*;
             #[allow(non_snake_case)]
@@ -48,7 +48,7 @@ fn dispatch_arm(v: &Variant) -> Result<TokenStream2> {
             let arg = field.clone();
             quote! {
                 #name { #( #field ),* } => {
-                    Box::pin(context.#handler(#( #arg ),*)).await
+                    Box::pin(#handler(context, #( #arg ),*)).await
                 },
             }
         }
@@ -65,7 +65,7 @@ fn dispatch_arm(v: &Variant) -> Result<TokenStream2> {
         Fields::Unit => {
             quote! {
                 #name => {
-                    Box::pin(context.#handler()).await
+                    Box::pin(#handler(context)).await
                 },
             }
         }
