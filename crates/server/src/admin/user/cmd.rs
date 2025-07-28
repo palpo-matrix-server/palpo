@@ -178,7 +178,7 @@ pub(super) async fn deactivate(&self, no_leave_rooms: bool, user_id: String) -> 
     let user_id = parse_local_user_id(&user_id)?;
 
     // don't deactivate the server service account
-    if user_id == config::server_user {
+    if user_id == config::server_user() {
         return Err(AppError::public(
             "Not allowed to deactivate the server service account.",
         ));
@@ -261,7 +261,7 @@ pub(super) async fn deactivate_all(&self, no_leave_rooms: bool, force: bool) -> 
     let mut admins = Vec::new();
 
     for username in usernames {
-        match parse_active_local_user_id(self.services, username).await {
+        match parse_active_local_user_id(username).await {
             Err(e) => {
                 self.services
                     .admin
@@ -442,7 +442,7 @@ pub(super) async fn force_join_list_of_local_users(
     let mut user_ids: Vec<OwnedUserId> = Vec::with_capacity(usernames.len());
 
     for username in usernames {
-        match parse_active_local_user_id(self.services, username).await {
+        match parse_active_local_user_id(username).await {
             Ok(user_id) => {
                 // don't make the server service account join
                 if user_id == config::server_user(){
@@ -610,7 +610,7 @@ pub(super) async fn force_leave_room(&self, user_id: String, room_id: OwnedRoomO
         return Err(AppError::public("{user_id} is not joined in the room"));
     }
 
-    leave_room(self.services, &user_id, &room_id, None).boxed().await?;
+    leave_room(&user_id, &room_id, None).boxed().await?;
 
     self.write_str(&format!("{user_id} has left {room_id}.",)).await
 }
@@ -714,7 +714,7 @@ pub(super) async fn put_room_tag(&self, user_id: String, room_id: OwnedRoomId, t
 
 #[admin_command]
 pub(super) async fn delete_room_tag(&self, user_id: String, room_id: OwnedRoomId, tag: String) -> AppResult<()> {
-    let user_id = parse_active_local_user_id(self.services, &user_id).await?;
+    let user_id = parse_active_local_user_id(&user_id).await?;
 
     let mut tags_event = self
         .services
@@ -746,7 +746,7 @@ pub(super) async fn delete_room_tag(&self, user_id: String, room_id: OwnedRoomId
 
 #[admin_command]
 pub(super) async fn get_room_tags(&self, user_id: String, room_id: OwnedRoomId) -> AppResult<()> {
-    let user_id = parse_active_local_user_id(self.services, &user_id).await?;
+    let user_id = parse_active_local_user_id(&user_id).await?;
 
     let tags_event = self
         .services

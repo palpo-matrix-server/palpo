@@ -78,7 +78,7 @@ pub(super) async fn list_rooms(
         .filter_map(async |room_id| {
             (!exclude_banned || !self.services.rooms.metadata.is_banned(room_id).await).then_some(room_id)
         })
-        .then(|room_id| get_room_info(self.services, room_id))
+        .then(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>()
         .await;
 

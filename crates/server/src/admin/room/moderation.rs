@@ -140,7 +140,7 @@ async fn ban_room(&self, room: OwnedRoomOrAliasId) -> AppResult<()> {
 			 evicting admins too)",
         );
 
-        if let Err(e) = leave_room(self.services, user_id, &room_id, None).boxed().await {
+        if let Err(e) = leave_room(user_id, &room_id, None).boxed().await {
             warn!("Failed to leave room: {e}");
         }
 
@@ -291,7 +291,7 @@ async fn ban_list_of_rooms(&self) -> AppResult<()> {
 				 evicting admins too)",
             );
 
-            if let Err(e) = leave_room(self.services, user_id, &room_id, None).boxed().await {
+            if let Err(e) = leave_room(user_id, &room_id, None).boxed().await {
                 warn!("Failed to leave room: {e}");
             }
 
@@ -419,7 +419,7 @@ async fn list_banned_rooms(&self, no_details: bool) -> AppResult<()> {
     let mut rooms = room_ids
         .iter()
         .stream()
-        .then(|room_id| get_room_info(self.services, room_id))
+        .then(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>()
         .await;
 

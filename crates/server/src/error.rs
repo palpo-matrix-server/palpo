@@ -75,6 +75,8 @@ pub enum AppError {
     Signatures(#[from] palpo_core::signatures::Error),
     #[error("FmtError: `{0}`")]
     FmtError(#[from] std::fmt::Error),
+    #[error("CargoTomlError: `{0}`")]
+    CargoTomlError(#[from] cargo_toml::Error),
 }
 
 impl AppError {

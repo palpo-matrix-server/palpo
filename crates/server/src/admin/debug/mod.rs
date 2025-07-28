@@ -6,6 +6,10 @@ use std::{
     time::{Instant, SystemTime},
 };
 
+use futures_util::{FutureExt, StreamExt, TryStreamExt};
+use serde::Serialize;
+use tracing_subscriber::EnvFilter;
+
 use crate::core::{
     CanonicalJsonObject, CanonicalJsonValue, EventId, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName,
     RoomId, RoomVersionId, api::federation::event::get_room_state, events::AnyStateEvent, serde::Raw,
@@ -14,19 +18,13 @@ use crate::room::state_compressor::HashSetCompressStateEvent;
 use crate::{
     AppError, AppResult,
     admin::info,
-    jwt,
+    config, jwt,
     matrix::{
         Event,
         pdu::{PduEvent, PduId, RawPduId},
     },
     utils,
-    utils::{
-        time::now_secs,
-    },
 };
-use futures_util::{FutureExt, StreamExt, TryStreamExt};
-use serde::Serialize;
-use tracing_subscriber::EnvFilter;
 
 use crate::admin_command;
 

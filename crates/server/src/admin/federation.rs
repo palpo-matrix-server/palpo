@@ -136,7 +136,7 @@ pub(super) async fn remote_user_in_rooms(&self, user_id: OwnedUserId) -> AppResu
         .rooms
         .state_cache
         .rooms_joined(&user_id)
-        .then(|room_id| get_room_info(self.services, room_id))
+        .then(|room_id| get_room_info(room_id))
         .collect()
         .await;
 

@@ -2,9 +2,9 @@
 mod cmd;
 
 use clap::Subcommand;
-use crate::core::{OwnedEventId, OwnedMxcUri, OwnedServerName};
-use crate::Result;
 
+use crate::core::{OwnedEventId, OwnedMxcUri, OwnedServerName};
+use crate::AppResult;
 use crate::macros::admin_command_dispatch;
 
 #[admin_command_dispatch]
