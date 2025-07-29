@@ -1,5 +1,5 @@
 use tracing::Level;
-use tracing_core::{span::Current, Event};
+use tracing_core::{Event, span::Current};
 
 use super::{Layer, layer::Value};
 

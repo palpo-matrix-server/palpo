@@ -32,7 +32,6 @@ pub(super) enum ServerCommand {
         comma: bool,
     },
 
-
     /// - Send a message to the admin room.
     AdminNotice { message: Vec<String> },
 

@@ -322,7 +322,12 @@ pub struct VersionResBody {
 impl VersionResBody {
     /// Creates a new `Response` with the given algorithm, key count, etag and
     /// version.
-    pub fn new(algorithm: RawJson<BackupAlgorithm>, count: u64, etag: String, version: String) -> Self {
+    pub fn new(
+        algorithm: RawJson<BackupAlgorithm>,
+        count: u64,
+        etag: String,
+        version: String,
+    ) -> Self {
         Self {
             algorithm,
             count,

@@ -25,7 +25,7 @@ impl Suppress {
         // 	.reload(&suppress, Some(&[handle]))
         // 	.expect("log filter reloaded");
 
-		unimplemented!()
+        unimplemented!()
         // Self { restore }
     }
 }

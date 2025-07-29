@@ -74,7 +74,11 @@ pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(
 });
 
 fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
-    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
+    let ext = path
+        .as_ref()
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
     match ext {
         "yaml" | "yml" => Figment::new().merge(Yaml::file(path)),
         "json" => Figment::new().merge(Json::file(path)),
@@ -136,7 +140,9 @@ static ADMIN_ALIAS: OnceLock<OwnedRoomAliasId> = OnceLock::new();
 pub fn admin_alias() -> &'static RoomAliasId {
     ADMIN_ALIAS.get_or_init(|| {
         let alias = format!("#admins:{}", get().server_name);
-        alias.try_into().expect("admin alias should be a valid room alias")
+        alias
+            .try_into()
+            .expect("admin alias should be a valid room alias")
     })
 }
 
@@ -171,7 +177,8 @@ pub fn keypair() -> &'static Ed25519KeyPair {
             let bytes = STANDARD
                 .decode(&keypair.document)
                 .expect("server keypair is invalid base64 string");
-            Ed25519KeyPair::from_der(&bytes, keypair.version.clone()).expect("invalid server Ed25519KeyPair")
+            Ed25519KeyPair::from_der(&bytes, keypair.version.clone())
+                .expect("invalid server Ed25519KeyPair")
         } else {
             crate::utils::generate_keypair()
         }

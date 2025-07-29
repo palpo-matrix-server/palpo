@@ -4,9 +4,14 @@ mod threepid;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::account::{DeactivateReqBody, DeactivateResBody, ThirdPartyIdRemovalStatus, WhoamiResBody};
+use crate::core::client::account::{
+    DeactivateReqBody, DeactivateResBody, ThirdPartyIdRemovalStatus, WhoamiResBody,
+};
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
-use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data, exts::*, hoops, json_ok, utils};
+use crate::{
+    AuthArgs, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data, exts::*, hoops,
+    json_ok, utils,
+};
 
 pub fn public_router() -> Router {
     Router::with_path("account")
@@ -35,8 +40,16 @@ pub fn authed_router() -> Router {
         //         .push(Router::with_path("msisdn/requestToken").post(msisdn_request_token))
         //         .push(Router::with_path("email/requestTZoken").post(email_request_token)),
         // )
-        .push(Router::with_path("whoami").hoop(hoops::limit_rate).get(whoami))
-        .push(Router::with_path("deactivate").hoop(hoops::limit_rate).post(deactivate))
+        .push(
+            Router::with_path("whoami")
+                .hoop(hoops::limit_rate)
+                .get(whoami),
+        )
+        .push(
+            Router::with_path("deactivate")
+                .hoop(hoops::limit_rate)
+                .post(deactivate),
+        )
         .push(password::authed_router())
         .push(threepid::authed_router())
 }
@@ -127,6 +140,9 @@ async fn deactivate(
 
 // msc3391
 #[handler]
-pub(super) fn delete_account_data_msc3391(_req: &mut Request, _res: &mut Response) -> JsonResult<()> {
+pub(super) fn delete_account_data_msc3391(
+    _req: &mut Request,
+    _res: &mut Response,
+) -> JsonResult<()> {
     json_ok(())
 }

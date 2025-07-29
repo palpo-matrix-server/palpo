@@ -18,7 +18,13 @@ pub(crate) fn get_simple_settings(args: &[Meta]) -> HashMap<String, String> {
             return map;
         };
 
-        let Expr::Lit(ExprLit { lit: Lit::Str(str), .. }, ..) = value else {
+        let Expr::Lit(
+            ExprLit {
+                lit: Lit::Str(str), ..
+            },
+            ..,
+        ) = value
+        else {
             return map;
         };
 
@@ -75,10 +81,9 @@ pub(crate) fn get_named_string(args: &[Meta], name: &str) -> Option<String> {
 
 #[must_use]
 pub(crate) fn camel_to_snake_string(s: &str) -> String {
-    let mut output = String::with_capacity(
-        s.chars()
-            .fold(s.len(), |a, ch| a.saturating_add(usize::from(ch.is_ascii_uppercase()))),
-    );
+    let mut output = String::with_capacity(s.chars().fold(s.len(), |a, ch| {
+        a.saturating_add(usize::from(ch.is_ascii_uppercase()))
+    }));
 
     let mut state = false;
     s.chars().for_each(|ch| {

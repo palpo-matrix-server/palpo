@@ -38,7 +38,9 @@ pub fn user_agent() -> &'static str {
     USER_AGENT.get_or_init(|| format!("{}/{}", name(), semantic()))
 }
 fn detailed() -> String {
-    let tag_dirty = semantic().rsplit_once('-').is_some_and(|(_, s)| !s.is_empty());
+    let tag_dirty = semantic()
+        .rsplit_once('-')
+        .is_some_and(|(_, s)| !s.is_empty());
 
     if !GIT_COMMIT.is_empty() && tag_dirty {
         format!("{} ({})", semantic(), GIT_COMMIT)

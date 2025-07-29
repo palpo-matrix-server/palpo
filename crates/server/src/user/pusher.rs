@@ -152,9 +152,13 @@ pub async fn send_push_notice(
     )
     .unwrap_or_default();
 
-    for action in
-        data::user::pusher::get_actions(user, &ruleset, &power_levels, &pdu.to_sync_room_event(), &pdu.room_id)?
-    {
+    for action in data::user::pusher::get_actions(
+        user,
+        &ruleset,
+        &power_levels,
+        &pdu.to_sync_room_event(),
+        &pdu.room_id,
+    )? {
         let n = match action {
             Action::Notify => true,
             Action::SetTweak(tweak) => {
@@ -180,7 +184,12 @@ pub async fn send_push_notice(
 }
 
 #[tracing::instrument(skip_all)]
-async fn send_notice(unread: u64, pusher: &Pusher, tweaks: Vec<Tweak>, event: &PduEvent) -> AppResult<()> {
+async fn send_notice(
+    unread: u64,
+    pusher: &Pusher,
+    tweaks: Vec<Tweak>,
+    event: &PduEvent,
+) -> AppResult<()> {
     // TODO: email
     match &pusher.kind {
         PusherKind::Http(http) => {
@@ -225,9 +234,11 @@ async fn send_notice(unread: u64, pusher: &Pusher, tweaks: Vec<Tweak>, event: &P
                 notification.event_type = Some(event.event_ty.clone());
                 notification.content = serde_json::value::to_raw_value(&event.content).ok();
                 if event.event_ty == TimelineEventType::RoomMember {
-                    notification.user_is_target = event.state_key.as_deref() == Some(event.sender.as_str());
+                    notification.user_is_target =
+                        event.state_key.as_deref() == Some(event.sender.as_str());
                 }
-                notification.sender_display_name = data::user::display_name(&event.sender).ok().flatten();
+                notification.sender_display_name =
+                    data::user::display_name(&event.sender).ok().flatten();
                 notification.room_name = room::get_name(&event.room_id).ok();
 
                 crate::sending::post(Url::parse(&http.url)?)

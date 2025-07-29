@@ -30,13 +30,28 @@ pub struct ThreadPushSummary {
 
 impl UserNotifySummary {
     pub fn all_notification_count(&self) -> u64 {
-        self.notification_count + self.threads.iter().map(|(_, t)| t.notification_count).sum::<u64>()
+        self.notification_count
+            + self
+                .threads
+                .iter()
+                .map(|(_, t)| t.notification_count)
+                .sum::<u64>()
     }
     pub fn all_unread_count(&self) -> u64 {
-        self.notification_count + self.threads.iter().map(|(_, t)| t.unread_count).sum::<u64>()
+        self.notification_count
+            + self
+                .threads
+                .iter()
+                .map(|(_, t)| t.unread_count)
+                .sum::<u64>()
     }
     pub fn all_highlight_count(&self) -> u64 {
-        self.highlight_count + self.threads.iter().map(|(_, t)| t.highlight_count).sum::<u64>()
+        self.highlight_count
+            + self
+                .threads
+                .iter()
+                .map(|(_, t)| t.highlight_count)
+                .sum::<u64>()
     }
 }
 
@@ -235,14 +250,21 @@ pub fn left_sn(room_id: &RoomId, user_id: &UserId) -> AppResult<Seqnum> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::user_id.eq(user_id))
-        .filter(room_users::membership.eq("leave").or(room_users::membership.eq("ban")))
+        .filter(
+            room_users::membership
+                .eq("leave")
+                .or(room_users::membership.eq("ban")),
+        )
         .select(room_users::event_sn)
         .first::<Seqnum>(&mut connect()?)
         .map_err(Into::into)
 }
 
 #[tracing::instrument(level = "trace")]
-pub fn invite_state(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
+pub fn invite_state(
+    user_id: &UserId,
+    room_id: &RoomId,
+) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
     if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -270,7 +292,11 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
     if let Some(membership) = membership {
         Ok(membership.into())
     } else {
-        Err(MatrixError::not_found(format!("User {} is not a member of room {}", user_id, room_id)).into())
+        Err(MatrixError::not_found(format!(
+            "User {} is not a member of room {}",
+            user_id, room_id
+        ))
+        .into())
     }
 }
 /// Returns an iterator over all rooms a user left.

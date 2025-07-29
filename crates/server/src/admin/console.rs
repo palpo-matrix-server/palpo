@@ -65,7 +65,11 @@ impl Console {
     pub fn interrupt(self: &Arc<Self>) {
         self.interrupt_command();
         self.interrupt_readline();
-        self.worker_join.lock().expect("locked").as_ref().map(JoinHandle::abort);
+        self.worker_join
+            .lock()
+            .expect("locked")
+            .as_ref()
+            .map(JoinHandle::abort);
     }
 
     pub fn interrupt_readline(self: &Arc<Self>) {
@@ -86,8 +90,10 @@ impl Console {
     async fn worker(self: Arc<Self>) {
         debug!("session starting");
 
-        self.output
-            .print_inline(&format!("**palpo {}** admin console\n", crate::info::version()));
+        self.output.print_inline(&format!(
+            "**palpo {}** admin console\n",
+            crate::info::version()
+        ));
         self.output
             .print_text("\"help\" for help, ^D to exit the console, ^\\ to stop the server\n");
 
@@ -179,9 +185,16 @@ impl Console {
     }
 
     fn set_history(&self, readline: &mut Readline) {
-        self.history.lock().expect("locked").iter().rev().for_each(|entry| {
-            readline.add_history_entry(entry.clone()).expect("added history entry");
-        });
+        self.history
+            .lock()
+            .expect("locked")
+            .iter()
+            .rev()
+            .for_each(|entry| {
+                readline
+                    .add_history_entry(entry.clone())
+                    .expect("added history entry");
+            });
     }
 
     fn add_history(&self, line: String) {

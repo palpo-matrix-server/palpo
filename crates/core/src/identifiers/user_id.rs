@@ -190,7 +190,11 @@ impl UserId {
     /// );
     /// ```
     pub fn matrix_uri(&self, chat: bool) -> MatrixUri {
-        MatrixUri::new(self.into(), Vec::new(), Some(UriAction::Chat).filter(|_| chat))
+        MatrixUri::new(
+            self.into(),
+            Vec::new(),
+            Some(UriAction::Chat).filter(|_| chat),
+        )
     }
 
     fn colon_idx(&self) -> usize {
@@ -218,8 +222,8 @@ mod tests {
     #[test]
     fn parse_valid_user_id() {
         let server_name = server_name!("example.com");
-        let user_id =
-            UserId::parse_with_server_name("@carl:example.com", server_name).expect("Failed to create UserId.");
+        let user_id = UserId::parse_with_server_name("@carl:example.com", server_name)
+            .expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@carl:example.com");
         assert_eq!(user_id.localpart(), "carl");
         assert_eq!(user_id.server_name(), "example.com");
@@ -229,7 +233,8 @@ mod tests {
     #[test]
     fn parse_valid_user_id_parts() {
         let server_name = server_name!("example.com");
-        let user_id = UserId::parse_with_server_name("carl", server_name).expect("Failed to create UserId.");
+        let user_id =
+            UserId::parse_with_server_name("carl", server_name).expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@carl:example.com");
         assert_eq!(user_id.localpart(), "carl");
         assert_eq!(user_id.server_name(), "example.com");
@@ -261,7 +266,8 @@ mod tests {
 
     #[test]
     fn valid_historical_user_id() {
-        let user_id = <&UserId>::try_from("@a%b[irc]:example.com").expect("Failed to create UserId.");
+        let user_id =
+            <&UserId>::try_from("@a%b[irc]:example.com").expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@a%b[irc]:example.com");
         assert_eq!(user_id.localpart(), "a%b[irc]");
         assert_eq!(user_id.server_name(), "example.com");
@@ -271,8 +277,8 @@ mod tests {
     #[test]
     fn parse_valid_historical_user_id() {
         let server_name = server_name!("example.com");
-        let user_id =
-            UserId::parse_with_server_name("@a%b[irc]:example.com", server_name).expect("Failed to create UserId.");
+        let user_id = UserId::parse_with_server_name("@a%b[irc]:example.com", server_name)
+            .expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@a%b[irc]:example.com");
         assert_eq!(user_id.localpart(), "a%b[irc]");
         assert_eq!(user_id.server_name(), "example.com");
@@ -282,7 +288,8 @@ mod tests {
     #[test]
     fn parse_valid_historical_user_id_parts() {
         let server_name = server_name!("example.com");
-        let user_id = UserId::parse_with_server_name("a%b[irc]", server_name).expect("Failed to create UserId.");
+        let user_id = UserId::parse_with_server_name("a%b[irc]", server_name)
+            .expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@a%b[irc]:example.com");
         assert_eq!(user_id.localpart(), "a%b[irc]");
         assert_eq!(user_id.server_name(), "example.com");
@@ -312,8 +319,10 @@ mod tests {
     #[test]
     fn serialize_valid_user_id() {
         assert_eq!(
-            serde_json::to_string(<&UserId>::try_from("@carl:example.com").expect("Failed to create UserId."))
-                .expect("Failed to convert UserId to JSON."),
+            serde_json::to_string(
+                <&UserId>::try_from("@carl:example.com").expect("Failed to create UserId.")
+            )
+            .expect("Failed to convert UserId to JSON."),
             r#""@carl:example.com""#
         );
     }
@@ -321,7 +330,8 @@ mod tests {
     #[test]
     fn deserialize_valid_user_id() {
         assert_eq!(
-            serde_json::from_str::<OwnedUserId>(r#""@carl:example.com""#).expect("Failed to convert JSON to UserId"),
+            serde_json::from_str::<OwnedUserId>(r#""@carl:example.com""#)
+                .expect("Failed to convert JSON to UserId"),
             <&UserId>::try_from("@carl:example.com").expect("Failed to create UserId.")
         );
     }
@@ -338,7 +348,8 @@ mod tests {
 
     #[test]
     fn valid_user_id_with_non_standard_port() {
-        let user_id = <&UserId>::try_from("@carl:example.com:5000").expect("Failed to create UserId.");
+        let user_id =
+            <&UserId>::try_from("@carl:example.com:5000").expect("Failed to create UserId.");
         assert_eq!(user_id.as_str(), "@carl:example.com:5000");
         assert!(!user_id.is_historical());
     }
@@ -362,7 +373,10 @@ mod tests {
 
     #[test]
     fn missing_user_id_delimiter() {
-        assert_eq!(<&UserId>::try_from("@carl").unwrap_err(), IdParseError::MissingColon);
+        assert_eq!(
+            <&UserId>::try_from("@carl").unwrap_err(),
+            IdParseError::MissingColon
+        );
     }
 
     #[test]

@@ -13,7 +13,9 @@ pub use verify::*;
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
-use crate::core::{OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis};
+use crate::core::{
+    OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
+};
 use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
@@ -135,7 +137,8 @@ pub fn signing_keys_for(server: &ServerName) -> AppResult<ServerSigningKeys> {
 }
 
 fn minimum_valid_ts() -> UnixMillis {
-    let timepoint = timepoint_from_now(Duration::from_secs(3600)).expect("SystemTime should not overflow");
+    let timepoint =
+        timepoint_from_now(Duration::from_secs(3600)).expect("SystemTime should not overflow");
     UnixMillis::from_system_time(timepoint).expect("UInt should not overflow")
 }
 
@@ -151,16 +154,21 @@ fn merge_old_keys(mut keys: ServerSigningKeys) -> ServerSigningKeys {
 }
 
 fn extract_key(mut keys: ServerSigningKeys, key_id: &ServerSigningKeyId) -> Option<VerifyKey> {
-    keys.verify_keys
-        .remove(key_id)
-        .or_else(|| keys.old_verify_keys.remove(key_id).map(|old| VerifyKey::new(old.key)))
+    keys.verify_keys.remove(key_id).or_else(|| {
+        keys.old_verify_keys
+            .remove(key_id)
+            .map(|old| VerifyKey::new(old.key))
+    })
 }
 
 fn key_exists(keys: &ServerSigningKeys, key_id: &ServerSigningKeyId) -> bool {
     keys.verify_keys.contains_key(key_id) || keys.old_verify_keys.contains_key(key_id)
 }
 
-pub async fn get_event_keys(object: &CanonicalJsonObject, version: &RoomVersionId) -> AppResult<PubKeyMap> {
+pub async fn get_event_keys(
+    object: &CanonicalJsonObject,
+    version: &RoomVersionId,
+) -> AppResult<PubKeyMap> {
     let required = match signatures::required_keys(object, version) {
         Ok(required) => required,
         Err(e) => {
@@ -205,7 +213,10 @@ where
     keys
 }
 
-pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+pub async fn get_verify_key(
+    origin: &ServerName,
+    key_id: &ServerSigningKeyId,
+) -> AppResult<VerifyKey> {
     let notary_first = crate::config::get().query_trusted_key_servers_first;
     let notary_only = crate::config::get().only_query_trusted_key_servers;
 
@@ -235,7 +246,10 @@ pub async fn get_verify_key(origin: &ServerName, key_id: &ServerSigningKeyId) ->
     Err(AppError::public("Failed to fetch federation signing-key"))
 }
 
-async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+async fn get_verify_key_from_notaries(
+    origin: &ServerName,
+    key_id: &ServerSigningKeyId,
+) -> AppResult<VerifyKey> {
     for notary in &crate::config::get().trusted_servers {
         if let Ok(server_keys) = notary_request(notary, origin).await {
             for server_key in server_keys.clone() {
@@ -250,10 +264,15 @@ async fn get_verify_key_from_notaries(origin: &ServerName, key_id: &ServerSignin
         }
     }
 
-    Err(AppError::public("Failed to fetch signing-key from notaries"))
+    Err(AppError::public(
+        "Failed to fetch signing-key from notaries",
+    ))
 }
 
-async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<VerifyKey> {
+async fn get_verify_key_from_origin(
+    origin: &ServerName,
+    key_id: &ServerSigningKeyId,
+) -> AppResult<VerifyKey> {
     if let Ok(server_key) = server_request(origin).await {
         add_signing_keys(server_key.clone())?;
         if let Some(result) = extract_key(server_key, key_id) {
@@ -264,7 +283,12 @@ async fn get_verify_key_from_origin(origin: &ServerName, key_id: &ServerSigningK
     Err(AppError::public("Failed to fetch signing-key from origin"))
 }
 pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
-    signatures::sign_json(config::get().server_name.as_str(), config::keypair(), object).map_err(Into::into)
+    signatures::sign_json(
+        config::get().server_name.as_str(),
+        config::keypair(),
+        object,
+    )
+    .map_err(Into::into)
 }
 
 pub fn hash_and_sign_event(

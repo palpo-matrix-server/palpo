@@ -12,7 +12,9 @@ use crate::core::appservice::Registration;
 use crate::core::appservice::event::{PushEventsReqBody, push_events_request};
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, send_message_request};
+use crate::core::federation::transaction::{
+    Edu, SendMessageReqBody, SendMessageResBody, send_message_request,
+};
 use crate::core::identifiers::*;
 pub use crate::core::sending::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
@@ -47,9 +49,11 @@ pub const EDU_LIMIT: usize = 100;
 // pub(super) type SendingItem = (Key, SendingEvent);
 // pub(super) type QueueItem = (Key, SendingEvent);
 // pub(super) type Key = Vec<u8>;
-pub static MPSC_SENDER: OnceLock<mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)>> = OnceLock::new();
-pub static MPSC_RECEIVER: OnceLock<Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, i64)>>> =
+pub static MPSC_SENDER: OnceLock<mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)>> =
     OnceLock::new();
+pub static MPSC_RECEIVER: OnceLock<
+    Mutex<mpsc::UnboundedReceiver<(OutgoingKind, SendingEventType, i64)>>,
+> = OnceLock::new();
 
 pub fn sender() -> mpsc::UnboundedSender<(OutgoingKind, SendingEventType, i64)> {
     MPSC_SENDER.get().expect("sender should set").clone()
@@ -83,7 +87,11 @@ pub enum SendingEventType {
 pub fn max_request() -> Arc<Semaphore> {
     static MAX_REQUESTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
     MAX_REQUESTS
-        .get_or_init(|| Arc::new(Semaphore::new(crate::config::get().max_concurrent_requests as usize)))
+        .get_or_init(|| {
+            Arc::new(Semaphore::new(
+                crate::config::get().max_concurrent_requests as usize,
+            ))
+        })
         .clone()
 }
 
@@ -154,14 +162,29 @@ pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
 }
 
 #[tracing::instrument(skip(servers, pdu_id), level = "debug")]
-pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, pdu_id: &EventId) -> AppResult<()> {
+pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
+    servers: S,
+    pdu_id: &EventId,
+) -> AppResult<()> {
     let requests = servers
         .into_iter()
-        .map(|server| (OutgoingKind::Normal(server), SendingEventType::Pdu(pdu_id.to_owned())))
+        .map(|server| {
+            (
+                OutgoingKind::Normal(server),
+                SendingEventType::Pdu(pdu_id.to_owned()),
+            )
+        })
         .collect::<Vec<_>>();
-    let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
+    let keys = queue_requests(
+        &requests
+            .iter()
+            .map(|(o, e)| (o, e.clone()))
+            .collect::<Vec<_>>(),
+    )?;
     for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
-        sender().send((outgoing_kind.to_owned(), event, key)).unwrap();
+        sender()
+            .send((outgoing_kind.to_owned(), event, key))
+            .unwrap();
     }
 
     Ok(())
@@ -178,7 +201,10 @@ pub fn send_edu_room(room_id: &RoomId, edu: &Edu) -> AppResult<()> {
 }
 
 #[tracing::instrument(skip(servers, edu), level = "debug")]
-pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, edu: &Edu) -> AppResult<()> {
+pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(
+    servers: S,
+    edu: &Edu,
+) -> AppResult<()> {
     let mut serialized = EduBuf::new();
     serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
 
@@ -191,7 +217,12 @@ pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(servers: S, edu: &E
             )
         })
         .collect::<Vec<_>>();
-    let keys = queue_requests(&requests.iter().map(|(o, e)| (o, e.clone())).collect::<Vec<_>>())?;
+    let keys = queue_requests(
+        &requests
+            .iter()
+            .map(|(o, e)| (o, e.clone()))
+            .collect::<Vec<_>>(),
+    )?;
     for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
         sender()
             .send((outgoing_kind.to_owned(), event, key))
@@ -272,20 +303,27 @@ async fn send_events(
                 .ok_or_else(|| {
                     (
                         kind.clone(),
-                        AppError::internal("[Appservice] Could not load registration from database"),
+                        AppError::internal(
+                            "[Appservice] Could not load registration from database",
+                        ),
                     )
                 })?;
             let req_body = PushEventsReqBody { events: pdu_jsons };
 
-            let txn_id =
-                &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
+                events.iter().filter_map(|e| match e {
                     SendingEventType::Edu(b) => Some(&**b),
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
-                })));
-            let request = push_events_request(registration.url.as_deref().unwrap_or_default(), txn_id, req_body)
-                .map_err(|e| (kind.clone(), e.into()))?
-                .into_inner();
+                }),
+            ));
+            let request = push_events_request(
+                registration.url.as_deref().unwrap_or_default(),
+                txn_id,
+                req_body,
+            )
+            .map_err(|e| (kind.clone(), e.into()))?
+            .into_inner();
             let response = crate::appservice::send_request(registration, request)
                 .await
                 .map_err(|e| (kind.clone(), e.into()))
@@ -314,12 +352,16 @@ async fn send_events(
                 if pdu.unsigned.get("redacted_because").is_some() {
                     continue;
                 }
-                let pusher = match data::user::pusher::get_pusher(user_id, pushkey)
-                    .map_err(|e| (OutgoingKind::Push(user_id.clone(), pushkey.clone()), e.into()))?
-                {
-                    Some(pusher) => pusher,
-                    None => continue,
-                };
+                let pusher =
+                    match data::user::pusher::get_pusher(user_id, pushkey).map_err(|e| {
+                        (
+                            OutgoingKind::Push(user_id.clone(), pushkey.clone()),
+                            e.into(),
+                        )
+                    })? {
+                        Some(pusher) => pusher,
+                        None => continue,
+                    };
 
                 let rules_for_user = data::user::get_global_data::<PushRulesEventContent>(
                     user_id,
@@ -329,8 +371,8 @@ async fn send_events(
                 .map(|content: PushRulesEventContent| content.global)
                 .unwrap_or_else(|| push::Ruleset::server_default(user_id));
 
-                let notify_summary =
-                    crate::room::user::notify_summary(user_id, &pdu.room_id).map_err(|e| (kind.clone(), e.into()))?;
+                let notify_summary = crate::room::user::notify_summary(user_id, &pdu.room_id)
+                    .map_err(|e| (kind.clone(), e.into()))?;
 
                 let max_request = crate::sending::max_request();
                 let permit = max_request.acquire().await;
@@ -385,12 +427,13 @@ async fn send_events(
             let max_request = crate::sending::max_request();
             let permit = max_request.acquire().await;
 
-            let txn_id =
-                &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(events.iter().filter_map(|e| match e {
+            let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
+                events.iter().filter_map(|e| match e {
                     SendingEventType::Edu(b) => Some(&**b),
                     SendingEventType::Pdu(b) => Some(b.as_bytes()),
                     SendingEventType::Flush => None,
-                })));
+                }),
+            ));
 
             let request = send_message_request(
                 &server.origin().await,
@@ -451,7 +494,10 @@ pub async fn send_federation_request(
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn send_appservice_request<T>(registration: Registration, request: reqwest::Request) -> AppResult<T>
+pub async fn send_appservice_request<T>(
+    registration: Registration,
+    request: reqwest::Request,
+) -> AppResult<T>
 where
     T: for<'de> Deserialize<'de> + Debug,
 {
@@ -477,7 +523,9 @@ fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
                     }
                 }
                 "push" => {
-                    if let (Some(user_id), Some(pushkey)) = (item.user_id.clone(), item.pushkey.clone()) {
+                    if let (Some(user_id), Some(pushkey)) =
+                        (item.user_id.clone(), item.pushkey.clone())
+                    {
                         OutgoingKind::Push(user_id, pushkey)
                     } else {
                         return None;
@@ -521,8 +569,10 @@ fn delete_all_active_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()>
 }
 
 fn delete_all_requests_for(outgoing_kind: &OutgoingKind) -> AppResult<()> {
-    diesel::delete(outgoing_requests::table.filter(outgoing_requests::kind.eq(outgoing_kind.name())))
-        .execute(&mut connect()?)?;
+    diesel::delete(
+        outgoing_requests::table.filter(outgoing_requests::kind.eq(outgoing_kind.name())),
+    )
+    .execute(&mut connect()?)?;
 
     Ok(())
 }
@@ -625,8 +675,13 @@ fn mark_as_active(events: &[(i64, SendingEventType)]) -> AppResult<()> {
 
 /// This does not return a full `Pdu` it is only to satisfy palpo's types.
 #[tracing::instrument]
-pub fn convert_to_outgoing_federation_event(mut pdu_json: CanonicalJsonObject) -> Box<RawJsonValue> {
-    if let Some(unsigned) = pdu_json.get_mut("unsigned").and_then(|val| val.as_object_mut()) {
+pub fn convert_to_outgoing_federation_event(
+    mut pdu_json: CanonicalJsonObject,
+) -> Box<RawJsonValue> {
+    if let Some(unsigned) = pdu_json
+        .get_mut("unsigned")
+        .and_then(|val| val.as_object_mut())
+    {
         unsigned.remove("transaction_id");
     }
 

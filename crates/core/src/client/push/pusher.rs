@@ -134,7 +134,10 @@ pub struct PusherPostData {
     /// created, if there are already others for other users.
     ///
     /// Defaults to `false`. See the spec for more details.
-    #[serde(skip_serializing_if = "crate::serde::is_default", default = "default_false")]
+    #[serde(
+        skip_serializing_if = "crate::serde::is_default",
+        default = "default_false"
+    )]
     pub append: bool,
 }
 

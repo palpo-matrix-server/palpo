@@ -50,7 +50,8 @@ pub struct SanitizerConfig {
     ///
     /// The content is a map of element name to a map of attribute name to a set of schemes.
     #[allow(clippy::type_complexity)]
-    allow_schemes: Option<List<HashMap<&'static str, HashMap<&'static str, HashSet<&'static str>>>>>,
+    allow_schemes:
+        Option<List<HashMap<&'static str, HashMap<&'static str, HashSet<&'static str>>>>>,
 
     /// Removed classes per element.
     ///
@@ -218,7 +219,11 @@ impl SanitizerConfig {
     /// # Parameters
     ///
     /// * `elements`: The list of element names.
-    pub fn allow_elements(mut self, elements: impl IntoIterator<Item = &'static str>, behavior: ListBehavior) -> Self {
+    pub fn allow_elements(
+        mut self,
+        elements: impl IntoIterator<Item = &'static str>,
+        behavior: ListBehavior,
+    ) -> Self {
         let content = elements.into_iter().collect();
         self.allow_elements = Some(List { content, behavior });
         self
@@ -257,7 +262,10 @@ impl SanitizerConfig {
     ///
     /// * `attrs`: The list of attributes per element. The value of `parent` is the element name,
     ///   and `properties` contains attribute names.
-    pub fn remove_attributes<'a>(mut self, attrs: impl IntoIterator<Item = PropertiesNames<'a>>) -> Self {
+    pub fn remove_attributes<'a>(
+        mut self,
+        attrs: impl IntoIterator<Item = PropertiesNames<'a>>,
+    ) -> Self {
         self.remove_attrs = Some(attrs.into_iter().map(|a| a.to_tuple()).collect());
         self
     }
@@ -295,7 +303,10 @@ impl SanitizerConfig {
     /// # Parameters
     ///
     /// * `schemes`: The list of schemes per attribute per element.
-    pub fn deny_schemes<'a>(mut self, schemes: impl IntoIterator<Item = ElementAttributesSchemes<'a>>) -> Self {
+    pub fn deny_schemes<'a>(
+        mut self,
+        schemes: impl IntoIterator<Item = ElementAttributesSchemes<'a>>,
+    ) -> Self {
         self.deny_schemes = Some(schemes.into_iter().map(|s| s.to_tuple()).collect());
         self
     }
@@ -337,7 +348,10 @@ impl SanitizerConfig {
     ///
     /// * `attrs`: The list of classes per element. The value of `parent` is the element name, and
     ///   `properties` contains classes.
-    pub fn remove_classes<'a>(mut self, classes: impl IntoIterator<Item = PropertiesNames<'a>>) -> Self {
+    pub fn remove_classes<'a>(
+        mut self,
+        classes: impl IntoIterator<Item = PropertiesNames<'a>>,
+    ) -> Self {
         self.remove_classes = Some(classes.into_iter().map(|c| c.to_tuple()).collect());
         self
     }

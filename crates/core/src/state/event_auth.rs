@@ -13,8 +13,8 @@ use crate::events::room::{
 use crate::identifiers::*;
 use crate::serde::{Base64, RawJson, RawJsonValue};
 use crate::state::power_levels::{
-    deserialize_power_levels, deserialize_power_levels_content_fields, deserialize_power_levels_content_invite,
-    deserialize_power_levels_content_redact,
+    deserialize_power_levels, deserialize_power_levels_content_fields,
+    deserialize_power_levels_content_invite, deserialize_power_levels_content_redact,
 };
 use crate::state::{Event, RoomVersion, StateEventType, TimelineEventType};
 use crate::{MatrixError, MatrixResult, ReasonBool};
@@ -66,13 +66,22 @@ pub fn auth_types_for_event(
             let content: RoomMemberContentFields = serde_json::from_str(content.get())?;
 
             if let Some(Ok(membership)) = content.membership.map(|m| m.deserialize()) {
-                if [MembershipState::Join, MembershipState::Invite, MembershipState::Knock].contains(&membership) {
+                if [
+                    MembershipState::Join,
+                    MembershipState::Invite,
+                    MembershipState::Knock,
+                ]
+                .contains(&membership)
+                {
                     let key = (StateEventType::RoomJoinRules, "".to_owned());
                     if !auth_types.contains(&key) {
                         auth_types.push(key);
                     }
 
-                    if let Some(Ok(u)) = content.join_authorised_via_users_server.map(|m| m.deserialize()) {
+                    if let Some(Ok(u)) = content
+                        .join_authorised_via_users_server
+                        .map(|m| m.deserialize())
+                    {
                         let key = (StateEventType::RoomMember, u.to_string());
                         if !auth_types.contains(&key) {
                             auth_types.push(key);
@@ -166,8 +175,13 @@ pub fn auth_check<E: Event>(
         }
 
         // If content.room_version is present and is not a recognized version, reject
-        let content: RoomCreateContentFields = serde_json::from_str(incoming_event.content().get())?;
-        if content.room_version.map(|v| v.deserialize().is_err()).unwrap_or(false) {
+        let content: RoomCreateContentFields =
+            serde_json::from_str(incoming_event.content().get())?;
+        if content
+            .room_version
+            .map(|v| v.deserialize().is_err())
+            .unwrap_or(false)
+        {
             return Err(MatrixError::forbidden(
                 "Invalid room version found in m.room.create event.",
                 None,
@@ -215,7 +229,10 @@ pub fn auth_check<E: Event>(
 
     let room_create_event = match fetch_state(&StateEventType::RoomCreate, "") {
         None => {
-            return Err(MatrixError::forbidden("No m.room.create event in auth chain.", None));
+            return Err(MatrixError::forbidden(
+                "No m.room.create event in auth chain.",
+                None,
+            ));
         }
         Some(e) => e,
     };
@@ -225,7 +242,10 @@ pub fn auth_check<E: Event>(
         .auth_events()
         .any(|id| id.borrow() == room_create_event.event_id().borrow())
     {
-        return Err(MatrixError::forbidden("No m.room.create event in auth events.", None));
+        return Err(MatrixError::forbidden(
+            "No m.room.create event in auth events.",
+            None,
+        ));
     }
 
     // If the create event content has the field m.federate set to false and the
@@ -236,7 +256,8 @@ pub fn auth_check<E: Event>(
         #[serde(rename = "m.federate", default = "crate::serde::default_true")]
         federate: bool,
     }
-    let room_create_content: RoomCreateContentFederate = serde_json::from_str(room_create_event.content().get())?;
+    let room_create_content: RoomCreateContentFederate =
+        serde_json::from_str(room_create_event.content().get())?;
     if !room_create_content.federate
         && room_create_event.sender().server_name() != incoming_event.sender().server_name()
     {
@@ -254,7 +275,10 @@ pub fn auth_check<E: Event>(
 
             // If sender's domain doesn't matches state_key, reject
             if incoming_event.state_key() != Some(sender.server_name().as_str()) {
-                return Err(MatrixError::forbidden("State_key does not match sender.", None));
+                return Err(MatrixError::forbidden(
+                    "State_key does not match sender.",
+                    None,
+                ));
             }
 
             tracing::info!("m.room.aliases event was allowed");
@@ -270,20 +294,30 @@ pub fn auth_check<E: Event>(
         tracing::info!("starting m.room.member check");
         let state_key = match incoming_event.state_key() {
             None => {
-                return Err(MatrixError::forbidden("No state key in member event.", None));
+                return Err(MatrixError::forbidden(
+                    "No state key in member event.",
+                    None,
+                ));
             }
             Some(s) => s,
         };
 
-        let content: RoomMemberContentFields = serde_json::from_str(incoming_event.content().get())?;
-        if content.membership.as_ref().and_then(|m| m.deserialize().ok()).is_none() {
+        let content: RoomMemberContentFields =
+            serde_json::from_str(incoming_event.content().get())?;
+        if content
+            .membership
+            .as_ref()
+            .and_then(|m| m.deserialize().ok())
+            .is_none()
+        {
             return Err(MatrixError::forbidden(
                 "No valid membership field found for m.room.member event content.",
                 None,
             ));
         }
 
-        let target_user = <&UserId>::try_from(state_key).map_err(|e| MatrixError::bad_state(format!("{e}")))?;
+        let target_user =
+            <&UserId>::try_from(state_key).map_err(|e| MatrixError::bad_state(format!("{e}")))?;
 
         let user_for_join_auth = content
             .join_authorised_via_users_server
@@ -372,7 +406,8 @@ pub fn auth_check<E: Event>(
     if *incoming_event.event_type() == TimelineEventType::RoomThirdPartyInvite {
         let invite_level = match &power_levels_event {
             Some(power_levels) => {
-                deserialize_power_levels_content_invite(power_levels.content().get(), room_version)?.invite
+                deserialize_power_levels_content_invite(power_levels.content().get(), room_version)?
+                    .invite
             }
             None => 0,
         };
@@ -391,7 +426,11 @@ pub fn auth_check<E: Event>(
     // If the event type's required power level is greater than the sender's power
     // level, reject If the event has a state_key that starts with an @ and does
     // not match the sender, reject.
-    if !can_send_event(&incoming_event, power_levels_event.as_ref(), sender_power_level) {
+    if !can_send_event(
+        &incoming_event,
+        power_levels_event.as_ref(),
+        sender_power_level,
+    ) {
         return Err(MatrixError::forbidden(
             "you don't have permission to post that to the room",
             None,
@@ -425,13 +464,22 @@ pub fn auth_check<E: Event>(
     // or the sender of the redaction has the appropriate permissions per the
     // power levels.
 
-    if room_version.extra_redaction_checks && *incoming_event.event_type() == TimelineEventType::RoomRedaction {
+    if room_version.extra_redaction_checks
+        && *incoming_event.event_type() == TimelineEventType::RoomRedaction
+    {
         let redact_level = match power_levels_event {
-            Some(pl) => deserialize_power_levels_content_redact(pl.content().get(), room_version)?.redact,
+            Some(pl) => {
+                deserialize_power_levels_content_redact(pl.content().get(), room_version)?.redact
+            }
             None => 50,
         };
 
-        if !check_redaction(room_version, incoming_event, sender_power_level, redact_level)? {
+        if !check_redaction(
+            room_version,
+            incoming_event,
+            sender_power_level,
+            redact_level,
+        )? {
             return Err(MatrixError::forbidden("Check redaction failed.", None));
         }
     }
@@ -473,7 +521,8 @@ fn is_membership_change_allowed(
     let content = current_event.content();
 
     let target_membership = serde_json::from_str::<GetMembership>(content.get())?.membership;
-    let third_party_invite = serde_json::from_str::<GetThirdPartyInvite>(content.get())?.third_party_invite;
+    let third_party_invite =
+        serde_json::from_str::<GetThirdPartyInvite>(content.get())?.third_party_invite;
 
     let sender_membership = match &sender_membership_event {
         Some(pdu) => serde_json::from_str::<GetMembership>(pdu.content().get())?.membership,
@@ -496,27 +545,30 @@ fn is_membership_change_allowed(
         .get(sender)
         .or_else(|| sender_is_joined.then_some(&power_levels.users_default));
 
-    let target_power = power_levels
-        .users
-        .get(target_user)
-        .or_else(|| (target_membership == MembershipState::Join).then_some(&power_levels.users_default));
+    let target_power = power_levels.users.get(target_user).or_else(|| {
+        (target_membership == MembershipState::Join).then_some(&power_levels.users_default)
+    });
 
     let mut join_rule = JoinRule::Invite;
     if let Some(jr) = &join_rule_event {
-        join_rule = serde_json::from_str::<RoomJoinRulesEventContent>(jr.content().get())?.join_rule;
+        join_rule =
+            serde_json::from_str::<RoomJoinRulesEventContent>(jr.content().get())?.join_rule;
     }
 
     let power_levels_event_id = power_levels_event.as_ref().map(|e| e.event_id());
     let sender_membership_event_id = sender_membership_event.as_ref().map(|e| e.event_id());
-    let target_user_membership_event_id = target_user_membership_event.as_ref().map(|e| e.event_id());
+    let target_user_membership_event_id =
+        target_user_membership_event.as_ref().map(|e| e.event_id());
 
     let user_for_join_auth_is_valid = if let Some(user_for_join_auth) = user_for_join_auth {
         // Is the authorised user allowed to invite users into this room
         let (auth_user_pl, invite_level) = if let Some(pl) = &power_levels_event {
             // TODO Refactor all powerlevel parsing
-            let invite = deserialize_power_levels_content_invite(pl.content().get(), room_version)?.invite;
+            let invite =
+                deserialize_power_levels_content_invite(pl.content().get(), room_version)?.invite;
 
-            let content = deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
+            let content =
+                deserialize_power_levels_content_fields(pl.content().get(), room_version)?;
             let user_pl = if let Some(level) = content.get_user_power(user_for_join_auth) {
                 level
             } else {
@@ -550,9 +602,11 @@ fn is_membership_change_allowed(
                     let creator = create_room.sender();
                     creator == sender && creator == target_user
                 } else {
-                    let creator = serde_json::from_str::<RoomCreateEventContent>(create_room.content().get())?
-                        .creator
-                        .ok_or_else(|| serde_json::Error::missing_field("creator"))?;
+                    let creator = serde_json::from_str::<RoomCreateEventContent>(
+                        create_room.content().get(),
+                    )?
+                    .creator
+                    .ok_or_else(|| serde_json::Error::missing_field("creator"))?;
                     creator == sender && creator == target_user
                 };
 
@@ -576,8 +630,10 @@ fn is_membership_change_allowed(
                         || target_user_current_membership == MembershipState::Invite)
             {
                 ReasonBool::True
-            } else if room_version.restricted_join_rule && matches!(join_rule, JoinRule::Restricted(_))
-                || room_version.knock_restricted_join_rule && matches!(join_rule, JoinRule::KnockRestricted(_))
+            } else if room_version.restricted_join_rule
+                && matches!(join_rule, JoinRule::Restricted(_))
+                || room_version.knock_restricted_join_rule
+                    && matches!(join_rule, JoinRule::KnockRestricted(_))
             {
                 // If the join_rule is restricted or knock_restricted
                 if matches!(
@@ -591,7 +647,9 @@ fn is_membership_change_allowed(
                     // sufficient permission to invite other users, reject.
                     // Otherwise, allow.
                     if !user_for_join_auth_is_valid {
-                        ReasonBool::False("Not a user with sufficient permission to invite other users.")
+                        ReasonBool::False(
+                            "Not a user with sufficient permission to invite other users.",
+                        )
                     } else {
                         ReasonBool::True
                     }
@@ -609,11 +667,18 @@ fn is_membership_change_allowed(
             // If content has third_party_invite key
             if let Some(tp_id) = third_party_invite.and_then(|i| i.deserialize().ok()) {
                 if target_user_current_membership == MembershipState::Ban {
-                    tracing::warn!(?target_user_membership_event_id, "Can't invite banned user.");
+                    tracing::warn!(
+                        ?target_user_membership_event_id,
+                        "Can't invite banned user."
+                    );
                     ReasonBool::False("Can't invite banned user.")
                 } else {
-                    let allow =
-                        verify_third_party_invite(Some(target_user), sender, &tp_id, current_third_party_invite);
+                    let allow = verify_third_party_invite(
+                        Some(target_user),
+                        sender,
+                        &tp_id,
+                        current_third_party_invite,
+                    );
                     if !allow {
                         tracing::warn!("Third party invite invalid.");
                         ReasonBool::False("Third party invite invalid.")
@@ -636,7 +701,9 @@ fn is_membership_change_allowed(
                      banned.",
                 )
             } else {
-                let allow = sender_power.filter(|&p| p >= &power_levels.invite).is_some();
+                let allow = sender_power
+                    .filter(|&p| p >= &power_levels.invite)
+                    .is_some();
                 if !allow {
                     tracing::warn!(
                         ?target_user_membership_event_id,
@@ -660,7 +727,9 @@ fn is_membership_change_allowed(
                         ?target_user_current_membership,
                         "Can't leave if sender is not already invited, knocked, or joined"
                     );
-                    ReasonBool::False("Can't leave if sender is not already invited, knocked, or joined")
+                    ReasonBool::False(
+                        "Can't leave if sender is not already invited, knocked, or joined",
+                    )
                 } else {
                     ReasonBool::True
                 }
@@ -675,7 +744,8 @@ fn is_membership_change_allowed(
                 );
                 ReasonBool::False("Can't kick if sender not joined or user is already banned")
             } else {
-                let allow = sender_power.filter(|&p| p >= &power_levels.kick).is_some() && target_power < sender_power;
+                let allow = sender_power.filter(|&p| p >= &power_levels.kick).is_some()
+                    && target_power < sender_power;
                 if !allow {
                     tracing::warn!(
                         ?target_user_membership_event_id,
@@ -690,10 +760,14 @@ fn is_membership_change_allowed(
         }
         MembershipState::Ban => {
             if !sender_is_joined {
-                tracing::warn!(?sender_membership_event_id, "Can't ban user if sender is not joined.");
+                tracing::warn!(
+                    ?sender_membership_event_id,
+                    "Can't ban user if sender is not joined."
+                );
                 ReasonBool::False("Can't ban user if sender is not joined.")
             } else {
-                let allow = sender_power.filter(|&p| p >= &power_levels.ban).is_some() && target_power < sender_power;
+                let allow = sender_power.filter(|&p| p >= &power_levels.ban).is_some()
+                    && target_power < sender_power;
                 if !allow {
                     tracing::warn!(
                         ?target_user_membership_event_id,
@@ -714,8 +788,12 @@ fn is_membership_change_allowed(
                     ?join_rule,
                     "Join rule is not set to knock or knock_restricted, knocking is not allowed."
                 );
-                ReasonBool::False("Join rule is not set to knock or knock_restricted, knocking is not allowed.")
-            } else if matches!(join_rule, JoinRule::KnockRestricted(_)) && !room_version.knock_restricted_join_rule {
+                ReasonBool::False(
+                    "Join rule is not set to knock or knock_restricted, knocking is not allowed.",
+                )
+            } else if matches!(join_rule, JoinRule::KnockRestricted(_))
+                && !room_version.knock_restricted_join_rule
+            {
                 // 2. If the `join_rule` is `knock_restricted`, but the room does not support
                 //    `knock_restricted`, reject.
                 tracing::warn!(
@@ -729,7 +807,10 @@ fn is_membership_change_allowed(
             } else if sender != target_user {
                 tracing::warn!(?sender, ?target_user, "You cannot knock for other users.");
                 ReasonBool::False("You cannot knock for other users.")
-            } else if matches!(sender_membership, MembershipState::Ban | MembershipState::Join) {
+            } else if matches!(
+                sender_membership,
+                MembershipState::Ban | MembershipState::Join
+            ) {
                 tracing::warn!(
                     ?target_user_membership_event_id,
                     "Membership state of ban or join are invalid.",
@@ -754,13 +835,18 @@ fn is_membership_change_allowed(
 fn can_send_event(event: impl Event, ple: Option<impl Event>, user_level: i64) -> bool {
     let event_type_power_level = get_send_level(event.event_type(), event.state_key(), ple);
 
-    tracing::debug!("{} ev_type {event_type_power_level} usr {user_level}", event.event_id());
+    tracing::debug!(
+        "{} ev_type {event_type_power_level} usr {user_level}",
+        event.event_id()
+    );
 
     if user_level < event_type_power_level {
         return false;
     }
 
-    if event.state_key().is_some_and(|k| k.starts_with('@')) && event.state_key() != Some(event.sender().as_str()) {
+    if event.state_key().is_some_and(|k| k.starts_with('@'))
+        && event.state_key() != Some(event.sender().as_str())
+    {
         return false; // permission required to post in this room
     }
 
@@ -781,7 +867,9 @@ fn check_power_levels(
             return None;
         }
         None => {
-            tracing::error!("check_power_levels requires an m.room.power_levels *state* event argument");
+            tracing::error!(
+                "check_power_levels requires an m.room.power_levels *state* event argument"
+            );
             return None;
         }
     }
@@ -917,7 +1005,11 @@ fn check_power_levels(
     Some(true)
 }
 
-fn get_deserialize_levels(old: &serde_json::Value, new: &serde_json::Value, name: &str) -> Option<(i64, i64)> {
+fn get_deserialize_levels(
+    old: &serde_json::Value,
+    new: &serde_json::Value,
+    name: &str,
+) -> Option<(i64, i64)> {
     Some((
         serde_json::from_value(old.get(name)?.clone()).ok()?,
         serde_json::from_value(new.get(name)?.clone()).ok()?,
@@ -954,7 +1046,11 @@ fn check_redaction(
 
 /// Helper function to fetch the power level needed to send an event of type
 /// `e_type` based on the rooms "m.room.power_level" event.
-fn get_send_level(e_type: &TimelineEventType, state_key: Option<&str>, power_lvl: Option<impl Event>) -> i64 {
+fn get_send_level(
+    e_type: &TimelineEventType,
+    state_key: Option<&str>,
+    power_lvl: Option<impl Event>,
+) -> i64 {
     power_lvl
         .and_then(|ple| {
             serde_json::from_str::<RoomPowerLevelsEventContent>(ple.content().get())
@@ -1003,7 +1099,9 @@ fn verify_third_party_invite(
 
     // If any signature in signed matches any public key in the
     // m.room.third_party_invite event, allow
-    let tpid_ev = match serde_json::from_str::<RoomThirdPartyInviteEventContent>(current_threepid.content().get()) {
+    let tpid_ev = match serde_json::from_str::<RoomThirdPartyInviteEventContent>(
+        current_threepid.content().get(),
+    ) {
         Ok(ev) => ev,
         Err(_) => return false,
     };

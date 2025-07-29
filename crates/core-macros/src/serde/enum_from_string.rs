@@ -25,9 +25,17 @@ pub fn expand_enum_from_string(input: &ItemEnum) -> syn::Result<TokenStream> {
                 ),
                 (Some(rename), Fields::Unit) => Some(rename.into_token_stream()),
                 (None, Fields::Named(FieldsNamed { named: fields, .. }))
-                | (None, Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. })) => {
+                | (
+                    None,
+                    Fields::Unnamed(FieldsUnnamed {
+                        unnamed: fields, ..
+                    }),
+                ) => {
                     if fields.len() != 1 {
-                        return Err(syn::Error::new_spanned(v, "multiple data fields are not supported"));
+                        return Err(syn::Error::new_spanned(
+                            v,
+                            "multiple data fields are not supported",
+                        ));
                     }
 
                     if fallback.is_some() {

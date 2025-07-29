@@ -4,8 +4,8 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     events::{
-        EphemeralRoomEventType, GlobalAccountDataEventType, MessageLikeEventType, RoomAccountDataEventType,
-        StateEventType, ToDeviceEventType,
+        EphemeralRoomEventType, GlobalAccountDataEventType, MessageLikeEventType,
+        RoomAccountDataEventType, StateEventType, ToDeviceEventType,
     },
     serde::{CanBeEmpty, RawJson, RawJsonValue},
 };
@@ -48,7 +48,10 @@ pub trait StaticEventContent: EventContent {
 }
 
 /// Content of a global account-data event.
-pub trait GlobalAccountDataEventContent: EventContent<EventType = GlobalAccountDataEventType> {}
+pub trait GlobalAccountDataEventContent:
+    EventContent<EventType = GlobalAccountDataEventType>
+{
+}
 
 /// Content of a room-specific account-data event.
 pub trait RoomAccountDataEventContent: EventContent<EventType = RoomAccountDataEventType> {}

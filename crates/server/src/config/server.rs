@@ -7,8 +7,9 @@ use serde::Deserialize;
 use serde::de::IgnoredAny;
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig, MediaConfig,
-    PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
+    LoggerConfig, MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
+    TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
@@ -738,7 +739,11 @@ impl ServerConfig {
 
     pub fn enabled_federation(&self) -> Option<&FederationConfig> {
         if let Some(federation) = self.federation.as_ref() {
-            if federation.enable { Some(federation) } else { None }
+            if federation.enable {
+                Some(federation)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -1001,7 +1006,10 @@ impl ServerConfig {
         for key in self.catch_others.keys().filter(
             |key| "config".to_owned().ne(key.to_owned()), /* "config" is expected */
         ) {
-            warn!("Config parameter \"{}\" is unknown to palpo, ignoring.", key);
+            warn!(
+                "Config parameter \"{}\" is unknown to palpo, ignoring.",
+                key
+            );
         }
     }
 }

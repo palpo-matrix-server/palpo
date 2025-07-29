@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     EventEncryptionAlgorithm, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, RoomVersionId,
-    events::space::child::HierarchySpaceChildEvent, room::RoomType, serde::RawJson, space::SpaceRoomJoinRule,
+    events::space::child::HierarchySpaceChildEvent, room::RoomType, serde::RawJson,
+    space::SpaceRoomJoinRule,
 };
 
 /// Endpoints for spaces.

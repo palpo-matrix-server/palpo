@@ -104,14 +104,20 @@ where
 
     // Sort the control events based on power_level/clock/event_id and
     // outgoing/incoming edges
-    let sorted_control_levels = reverse_topological_power_sort(control_events, &all_conflicted, &fetch_event)?;
+    let sorted_control_levels =
+        reverse_topological_power_sort(control_events, &all_conflicted, &fetch_event)?;
 
     debug!("sorted control events: {}", sorted_control_levels.len());
     trace!("{sorted_control_levels:?}");
 
     let room_version = RoomVersion::new(room_version)?;
     // Sequentially auth check each control event.
-    let resolved_control = iterative_auth_check(&room_version, &sorted_control_levels, clean.clone(), &fetch_event)?;
+    let resolved_control = iterative_auth_check(
+        &room_version,
+        &sorted_control_levels,
+        clean.clone(),
+        &fetch_event,
+    )?;
 
     debug!("resolved control events: {}", resolved_control.len());
     trace!("{resolved_control:?}");
@@ -179,10 +185,16 @@ where
             // First .unwrap() is okay because
             // * event_ids has the same length as state_sets
             // * we never enter the loop this code is in if state_sets is empty
-            let id = event_ids.pop().unwrap().expect("unconflicting `EventId` is not None");
+            let id = event_ids
+                .pop()
+                .unwrap()
+                .expect("unconflicting `EventId` is not None");
             unconflicted_state.insert(key.clone(), id.clone());
         } else {
-            conflicted_state.insert(key.clone(), event_ids.into_iter().filter_map(|o| o.cloned()).collect());
+            conflicted_state.insert(
+                key.clone(),
+                event_ids.into_iter().filter_map(|o| o.cloned()).collect(),
+            );
         }
     }
 
@@ -244,8 +256,8 @@ fn reverse_topological_power_sort<E: Event>(
     }
 
     lexicographical_topological_sort(&graph, |event_id| {
-        let ev =
-            fetch_event(event_id).ok_or_else(|| MatrixError::not_found(format!("event `{event_id}` is not found.")))?;
+        let ev = fetch_event(event_id)
+            .ok_or_else(|| MatrixError::not_found(format!("event `{event_id}` is not found.")))?;
         let pl = *event_to_pl
             .get(event_id)
             .ok_or_else(|| MatrixError::not_found(format!("event `{event_id}` is not found.")))?;
@@ -257,7 +269,10 @@ fn reverse_topological_power_sort<E: Event>(
 ///
 /// `key_fn` is used as to obtain the power level and age of an event for
 /// breaking ties (together with the event ID).
-pub fn lexicographical_topological_sort<Id, F>(graph: &HashMap<Id, HashSet<Id>>, key_fn: F) -> MatrixResult<Vec<Id>>
+pub fn lexicographical_topological_sort<Id, F>(
+    graph: &HashMap<Id, HashSet<Id>>,
+    key_fn: F,
+) -> MatrixResult<Vec<Id>>
 where
     F: Fn(&EventId) -> MatrixResult<(i64, UnixMillis)>,
     Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
@@ -357,7 +372,12 @@ fn get_power_level_for_sender<E: Event>(
     let event = fetch_event(event_id);
     let mut pl = None;
 
-    for aid in event.as_ref().map(|pdu| pdu.auth_events()).into_iter().flatten() {
+    for aid in event
+        .as_ref()
+        .map(|pdu| pdu.auth_events())
+        .into_iter()
+        .flatten()
+    {
         if let Some(aev) = fetch_event(aid.borrow()) {
             if is_type_and_key(&aev, &TimelineEventType::RoomPowerLevels, "") {
                 pl = Some(aev);
@@ -417,10 +437,10 @@ fn iterative_auth_check<E: Event + Clone>(
                 // TODO synapse check "rejected_reason" which is most likely
                 // related to soft-failing
                 auth_events.insert(
-                    ev.event_type().with_state_key(
-                        ev.state_key()
-                            .ok_or_else(|| MatrixError::bad_state("State event had no state key".to_owned()))?,
-                    ),
+                    ev.event_type()
+                        .with_state_key(ev.state_key().ok_or_else(|| {
+                            MatrixError::bad_state("State event had no state key".to_owned())
+                        })?),
                     ev,
                 );
             } else {
@@ -428,7 +448,12 @@ fn iterative_auth_check<E: Event + Clone>(
             }
         }
 
-        for key in auth_types_for_event(event.event_type(), event.sender(), Some(state_key), event.content())? {
+        for key in auth_types_for_event(
+            event.event_type(),
+            event.sender(),
+            Some(state_key),
+            event.content(),
+        )? {
             if let Some(ev_id) = resolved_state.get(&key) {
                 if let Some(event) = fetch_event(ev_id.borrow()) {
                     // TODO synapse checks `rejected_reason` is None here
@@ -441,9 +466,9 @@ fn iterative_auth_check<E: Event + Clone>(
 
         // The key for this is (eventType + a state_key of the signed token not sender)
         // so search for it
-        let current_third_party = auth_events
-            .iter()
-            .find_map(|(_, pdu)| (*pdu.event_type() == TimelineEventType::RoomThirdPartyInvite).then_some(pdu));
+        let current_third_party = auth_events.iter().find_map(|(_, pdu)| {
+            (*pdu.event_type() == TimelineEventType::RoomThirdPartyInvite).then_some(pdu)
+        });
 
         if auth_check(room_version, &event, current_third_party, |ty, key| {
             auth_events.get(&ty.with_state_key(key))
@@ -451,7 +476,10 @@ fn iterative_auth_check<E: Event + Clone>(
         .is_ok()
         {
             // add event to resolved state map
-            resolved_state.insert(event.event_type().with_state_key(state_key), event_id.clone());
+            resolved_state.insert(
+                event.event_type().with_state_key(state_key),
+                event_id.clone(),
+            );
         } else {
             // synapse passes here on AuthError. We do not add this event to resolved_state.
             warn!("event {event_id} failed the authentication check");
@@ -490,11 +518,12 @@ fn mainline_sort<E: Event>(
     while let Some(p) = pl {
         mainline.push(p.clone());
 
-        let event = fetch_event(p.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {p}")))?;
+        let event = fetch_event(p.borrow())
+            .ok_or_else(|| MatrixError::not_found(format!("Failed to find {p}")))?;
         pl = None;
         for aid in event.auth_events() {
-            let ev =
-                fetch_event(aid.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
+            let ev = fetch_event(aid.borrow())
+                .ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
             if is_type_and_key(&ev, &TimelineEventType::RoomPowerLevels, "") {
                 pl = Some(aid.to_owned());
                 break;
@@ -556,8 +585,8 @@ fn get_mainline_depth<E: Event>(
 
         event = None;
         for aid in sort_ev.auth_events() {
-            let aev =
-                fetch_event(aid.borrow()).ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
+            let aev = fetch_event(aid.borrow())
+                .ok_or_else(|| MatrixError::not_found(format!("Failed to find {aid}")))?;
             if is_type_and_key(&aev, &TimelineEventType::RoomPowerLevels, "") {
                 event = Some(aev);
                 break;
@@ -609,9 +638,9 @@ fn is_type_and_key(ev: impl Event, ev_type: &TimelineEventType, state_key: &str)
 
 fn is_power_event(event: impl Event) -> bool {
     match event.event_type() {
-        TimelineEventType::RoomPowerLevels | TimelineEventType::RoomJoinRules | TimelineEventType::RoomCreate => {
-            event.state_key() == Some("")
-        }
+        TimelineEventType::RoomPowerLevels
+        | TimelineEventType::RoomJoinRules
+        | TimelineEventType::RoomCreate => event.state_key() == Some(""),
         TimelineEventType::RoomMember => {
             if let Ok(content) = from_json_str::<RoomMemberEventContent>(event.content().get()) {
                 if [MembershipState::Leave, MembershipState::Ban].contains(&content.membership) {

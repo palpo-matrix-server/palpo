@@ -33,7 +33,10 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error
 where
     D: Deserializer<'de>,
 {
-    Ok(Option::<u64>::deserialize(deserializer)?.map(|millis| Duration::from_millis(millis.into())))
+    Ok(
+        Option::<u64>::deserialize(deserializer)?
+            .map(|millis| Duration::from_millis(millis.into())),
+    )
 }
 
 #[cfg(test)]
@@ -86,7 +89,10 @@ mod tests {
         let request = DurationTest {
             timeout: Some(Duration::new(2, 0)),
         };
-        assert_eq!(serde_json::to_value(request).unwrap(), json!({ "timeout": 2000 }));
+        assert_eq!(
+            serde_json::to_value(request).unwrap(),
+            json!({ "timeout": 2000 })
+        );
     }
 
     #[test]

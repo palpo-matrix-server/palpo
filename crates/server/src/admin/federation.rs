@@ -79,7 +79,10 @@ pub(super) async fn incoming_federation(ctx: &Context<'_>) -> AppResult<()> {
     // ctx.write_str(&msg).await
 }
 
-pub(super) async fn fetch_support_well_known(ctx: &Context<'_>, server_name: OwnedServerName) -> AppResult<()> {
+pub(super) async fn fetch_support_well_known(
+    ctx: &Context<'_>,
+    server_name: OwnedServerName,
+) -> AppResult<()> {
     // TODO: admin
     unimplemented!();
     // let response = self
@@ -129,7 +132,9 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
     }
 
     if !data::user::user_exists(&user_id)? {
-        return Err(AppError::public("Remote user does not exist in our database."));
+        return Err(AppError::public(
+            "Remote user does not exist in our database.",
+        ));
     }
 
     let mut rooms: Vec<RoomInfo> = data::user::joined_rooms(&user_id)?
@@ -157,6 +162,8 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
         .collect::<Vec<_>>()
         .join("\n");
 
-    ctx.write_str(&format!("Rooms {user_id} shares with us ({num}):\n```\n{body}\n```",))
-        .await
+    ctx.write_str(&format!(
+        "Rooms {user_id} shares with us ({num}):\n```\n{body}\n```",
+    ))
+    .await
 }

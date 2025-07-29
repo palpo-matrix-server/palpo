@@ -111,7 +111,10 @@ pub(super) enum UserCommand {
     },
 
     /// - Gets all the room tags for the specified user and room ID
-    GetRoomTags { user_id: String, room_id: OwnedRoomId },
+    GetRoomTags {
+        user_id: String,
+        room_id: OwnedRoomId,
+    },
 
     /// - Attempts to forcefully redact the specified event ID from the sender
     ///   user

@@ -29,7 +29,11 @@ pub struct LocationEventContent {
     pub location: LocationContent,
 
     /// The asset this message refers to.
-    #[serde(default, rename = "m.asset", skip_serializing_if = "palpo_core::serde::is_default")]
+    #[serde(
+        default,
+        rename = "m.asset",
+        skip_serializing_if = "palpo_core::serde::is_default"
+    )]
     pub asset: AssetContent,
 
     /// The timestamp this message refers to.

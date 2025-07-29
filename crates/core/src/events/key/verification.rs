@@ -136,7 +136,8 @@ mod tests {
 
     #[test]
     fn serialize_key_agreement() {
-        let serialized = serde_json::to_string(&KeyAgreementProtocol::Curve25519HkdfSha256).unwrap();
+        let serialized =
+            serde_json::to_string(&KeyAgreementProtocol::Curve25519HkdfSha256).unwrap();
         assert_eq!(serialized, "\"curve25519-hkdf-sha256\"");
 
         let deserialized: KeyAgreementProtocol = serde_json::from_str(&serialized).unwrap();
@@ -145,7 +146,8 @@ mod tests {
 
     #[test]
     fn serialize_mac_method_v2() {
-        let serialized = serde_json::to_string(&MessageAuthenticationCode::HkdfHmacSha256V2).unwrap();
+        let serialized =
+            serde_json::to_string(&MessageAuthenticationCode::HkdfHmacSha256V2).unwrap();
         let deserialized: MessageAuthenticationCode = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(serialized, "\"hkdf-hmac-sha256.v2\"");

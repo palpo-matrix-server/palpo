@@ -41,7 +41,9 @@ impl Capture {
     #[must_use]
     pub fn start(self: &Arc<Self>) -> Guard {
         self.state.add(self);
-        Guard { capture: self.clone() }
+        Guard {
+            capture: self.clone(),
+        }
     }
 
     pub fn stop(self: &Arc<Self>) {

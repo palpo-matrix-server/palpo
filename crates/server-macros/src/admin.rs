@@ -7,7 +7,11 @@ use crate::{Result, utils::camel_to_snake_string};
 
 pub(super) fn command_dispatch(item: ItemEnum, _args: &[Meta]) -> Result<TokenStream> {
     let name = &item.ident;
-    let arm: Vec<TokenStream2> = item.variants.iter().map(dispatch_arm).collect::<Result<Vec<_>>>()?;
+    let arm: Vec<TokenStream2> = item
+        .variants
+        .iter()
+        .map(dispatch_arm)
+        .collect::<Result<Vec<_>>>()?;
     let switch = quote! {
         #[allow(clippy::large_stack_frames)] //TODO: fixme
         pub(super) async fn process(
@@ -44,7 +48,10 @@ fn dispatch_arm(v: &Variant) -> Result<TokenStream2> {
         }
         Fields::Unnamed(fields) => {
             let Some(ref field) = fields.unnamed.first() else {
-                return Err(Error::new(Span::call_site().into(), "One unnamed field required"));
+                return Err(Error::new(
+                    Span::call_site().into(),
+                    "One unnamed field required",
+                ));
             };
             quote! {
                 #name ( #field ) => {

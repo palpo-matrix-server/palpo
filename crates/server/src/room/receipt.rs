@@ -4,7 +4,8 @@ use diesel::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::events::receipt::{
-    Receipt, ReceiptContent, ReceiptData, ReceiptEvent, ReceiptEventContent, ReceiptMap, ReceiptType, Receipts,
+    Receipt, ReceiptContent, ReceiptData, ReceiptEvent, ReceiptEventContent, ReceiptMap,
+    ReceiptType, Receipts,
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;

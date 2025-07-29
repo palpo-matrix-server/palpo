@@ -6,7 +6,10 @@ use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
-use crate::{OwnedDeviceId, OwnedTransactionId, PrivOwnedStr, events::GlobalAccountDataEventType, serde::StringEnum};
+use crate::{
+    OwnedDeviceId, OwnedTransactionId, PrivOwnedStr, events::GlobalAccountDataEventType,
+    serde::StringEnum,
+};
 
 /// The content of an `m.secret.request` event.
 ///
@@ -36,7 +39,11 @@ pub struct ToDeviceSecretRequestEventContent {
 impl ToDeviceSecretRequestEventContent {
     /// Creates a new `ToDeviceRequestEventContent` with the given action,
     /// requesting device ID and request ID.
-    pub fn new(action: RequestAction, requesting_device_id: OwnedDeviceId, request_id: OwnedTransactionId) -> Self {
+    pub fn new(
+        action: RequestAction,
+        requesting_device_id: OwnedDeviceId,
+        request_id: OwnedTransactionId,
+    ) -> Self {
         Self {
             action,
             requesting_device_id,

@@ -38,7 +38,12 @@ pub(super) fn version(args: TokenStream) -> TokenStream {
     let rustc_path = std::env::args().next();
     let version = rustc_path
         .and_then(|rustc_path| Command::new(rustc_path).args(["-V"]).output().ok())
-        .and_then(|output| str::from_utf8(&output.stdout).map(str::trim).map(String::from).ok())
+        .and_then(|output| {
+            str::from_utf8(&output.stdout)
+                .map(str::trim)
+                .map(String::from)
+                .ok()
+        })
         .unwrap_or_default();
 
     let ret = quote! {

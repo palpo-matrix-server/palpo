@@ -107,15 +107,21 @@ enum PushConditionSerDeHelper {
 impl From<PushConditionSerDeHelper> for PushCondition {
     fn from(value: PushConditionSerDeHelper) -> Self {
         match value {
-            PushConditionSerDeHelper::EventMatch { key, pattern } => Self::EventMatch { key, pattern },
+            PushConditionSerDeHelper::EventMatch { key, pattern } => {
+                Self::EventMatch { key, pattern }
+            }
             PushConditionSerDeHelper::ContainsDisplayName => Self::ContainsDisplayName,
             PushConditionSerDeHelper::RoomMemberCount { is } => Self::RoomMemberCount { is },
             PushConditionSerDeHelper::SenderNotificationPermission { key } => {
                 Self::SenderNotificationPermission { key }
             }
 
-            PushConditionSerDeHelper::RoomVersionSupports { feature } => Self::RoomVersionSupports { feature },
-            PushConditionSerDeHelper::EventPropertyIs { key, value } => Self::EventPropertyIs { key, value },
+            PushConditionSerDeHelper::RoomVersionSupports { feature } => {
+                Self::RoomVersionSupports { feature }
+            }
+            PushConditionSerDeHelper::EventPropertyIs { key, value } => {
+                Self::EventPropertyIs { key, value }
+            }
             PushConditionSerDeHelper::EventPropertyContains { key, value } => {
                 Self::EventPropertyContains { key, value }
             }
@@ -129,11 +135,15 @@ impl From<PushCondition> for PushConditionSerDeHelper {
             PushCondition::EventMatch { key, pattern } => Self::EventMatch { key, pattern },
             PushCondition::ContainsDisplayName => Self::ContainsDisplayName,
             PushCondition::RoomMemberCount { is } => Self::RoomMemberCount { is },
-            PushCondition::SenderNotificationPermission { key } => Self::SenderNotificationPermission { key },
+            PushCondition::SenderNotificationPermission { key } => {
+                Self::SenderNotificationPermission { key }
+            }
 
             PushCondition::RoomVersionSupports { feature } => Self::RoomVersionSupports { feature },
             PushCondition::EventPropertyIs { key, value } => Self::EventPropertyIs { key, value },
-            PushCondition::EventPropertyContains { key, value } => Self::EventPropertyContains { key, value },
+            PushCondition::EventPropertyContains { key, value } => {
+                Self::EventPropertyContains { key, value }
+            }
             PushCondition::_Custom(_) => unimplemented!(),
         }
     }

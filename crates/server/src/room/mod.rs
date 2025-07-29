@@ -12,7 +12,9 @@ use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encryption::RoomEncryptionEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::{
+    HistoryVisibility, RoomHistoryVisibilityEventContent,
+};
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
@@ -24,8 +26,8 @@ use crate::data::room::{DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::{
-    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, RoomMutexGuard, RoomMutexMap, SnPduEvent, config, data,
-    membership, room, utils,
+    APPSERVICE_IN_ROOM_CACHE, AppResult, IsRemoteOrLocal, RoomMutexGuard, RoomMutexMap, SnPduEvent,
+    config, data, membership, room, utils,
 };
 
 pub mod alias;
@@ -48,7 +50,10 @@ pub use state::get_room_frame_id as get_frame_id;
 
 pub async fn lock_state(room_id: &RoomId) -> RoomMutexGuard {
     static ROOM_STATE_MUTEX: OnceLock<RoomMutexMap> = OnceLock::new();
-    ROOM_STATE_MUTEX.get_or_init(Default::default).lock(room_id).await
+    ROOM_STATE_MUTEX
+        .get_or_init(Default::default)
+        .lock(room_id)
+        .await
 }
 
 pub fn create_room(new_room: NewDbRoom) -> AppResult<OwnedRoomId> {
@@ -97,8 +102,12 @@ pub fn get_version(room_id: &RoomId) -> AppResult<RoomVersionId> {
     {
         return Ok(RoomVersionId::try_from(&*room_version)?);
     }
-    let create_event_content =
-        get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)?;
+    let create_event_content = get_state_content::<RoomCreateEventContent>(
+        room_id,
+        &StateEventType::RoomCreate,
+        "",
+        None,
+    )?;
     Ok(create_event_content.room_version)
 }
 
@@ -226,15 +235,16 @@ pub fn appservice_in_room(room_id: &RoomId, appservice: &RegistrationInfo) -> Ap
         )
         .ok();
 
-        let in_room = bridge_user_id.map_or(false, |id| user::is_joined(&id, room_id).unwrap_or(false)) || {
-            let user_ids = room_users::table
-                .filter(room_users::room_id.eq(room_id))
-                .select(room_users::user_id)
-                .load::<String>(&mut connect()?)?;
-            user_ids
-                .iter()
-                .any(|user_id| appservice.users.is_match(user_id.as_str()))
-        };
+        let in_room =
+            bridge_user_id.map_or(false, |id| user::is_joined(&id, room_id).unwrap_or(false)) || {
+                let user_ids = room_users::table
+                    .filter(room_users::room_id.eq(room_id))
+                    .select(room_users::user_id)
+                    .load::<String>(&mut connect()?)?;
+                user_ids
+                    .iter()
+                    .any(|user_id| appservice.users.is_match(user_id.as_str()))
+            };
 
         APPSERVICE_IN_ROOM_CACHE
             .write()
@@ -271,7 +281,8 @@ pub fn should_join_on_remote_servers(
     if !join_rule.is_restricted() {
         return Ok((false, servers.to_vec()));
     }
-    let users = membership::get_users_can_issue_invite(room_id, sender_id, &join_rule.restriction_rooms())?;
+    let users =
+        membership::get_users_can_issue_invite(room_id, sender_id, &join_rule.restriction_rooms())?;
     let mut allowed_servers = crate::get_servers_from_users(&users);
     if let Ok(room_server) = room_id.server_name() {
         let room_server = room_server.to_owned();
@@ -383,10 +394,17 @@ pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
         .map_err(Into::into)
 }
 pub fn all_room_ids() -> AppResult<Vec<OwnedRoomId>> {
-    rooms::table.select(rooms::id).load(&mut connect()?).map_err(Into::into)
+    rooms::table
+        .select(rooms::id)
+        .load(&mut connect()?)
+        .map_err(Into::into)
 }
 
-pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
+pub fn filter_rooms<'a>(
+    rooms: &[&'a RoomId],
+    filter: &[RoomTypeFilter],
+    negate: bool,
+) -> Vec<&'a RoomId> {
     rooms
         .iter()
         .filter_map(|r| {
@@ -425,12 +443,18 @@ pub async fn room_available_servers(
 
     // insert our server as the very first choice if in list, else check if we can
     // prefer the room alias server first
-    match servers.iter().position(|server_name| server_name.is_local()) {
+    match servers
+        .iter()
+        .position(|server_name| server_name.is_local())
+    {
         Some(server_index) => {
             servers.swap_remove(server_index);
             servers.insert(0, config::get().server_name.to_owned());
         }
-        _ => match servers.iter().position(|server| server == room_alias.server_name()) {
+        _ => match servers
+            .iter()
+            .position(|server| server == room_alias.server_name())
+        {
             Some(alias_server_index) => {
                 servers.swap_remove(alias_server_index);
                 servers.insert(0, room_alias.server_name().into());
@@ -466,41 +490,70 @@ where
 }
 
 pub fn get_name(room_id: &RoomId) -> AppResult<String> {
-    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomName, "", None).map(|c| c.name)
+    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomName, "", None)
+        .map(|c| c.name)
 }
 
 pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
-    get_state_content::<RoomAvatarEventContent>(room_id, &StateEventType::RoomAvatar, "", None).map(|c| c.url)
+    get_state_content::<RoomAvatarEventContent>(room_id, &StateEventType::RoomAvatar, "", None)
+        .map(|c| c.url)
 }
 
 pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<RoomMemberEventContent> {
-    get_state_content::<RoomMemberEventContent>(&room_id, &StateEventType::RoomMember, user_id.as_str(), None)
+    get_state_content::<RoomMemberEventContent>(
+        &room_id,
+        &StateEventType::RoomMember,
+        user_id.as_str(),
+        None,
+    )
 }
 pub fn get_topic(room_id: &RoomId) -> AppResult<String> {
-    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomTopic, "", None).map(|c| c.name)
+    get_state_content::<RoomNameEventContent>(&room_id, &StateEventType::RoomTopic, "", None)
+        .map(|c| c.name)
 }
 pub fn get_canonical_alias(room_id: &RoomId) -> AppResult<Option<OwnedRoomAliasId>> {
-    get_state_content::<RoomCanonicalAliasEventContent>(&room_id, &StateEventType::RoomCanonicalAlias, "", None)
-        .map(|c| c.alias)
+    get_state_content::<RoomCanonicalAliasEventContent>(
+        &room_id,
+        &StateEventType::RoomCanonicalAlias,
+        "",
+        None,
+    )
+    .map(|c| c.alias)
 }
 pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
-    get_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
-        .map(|c| c.join_rule)
+    get_state_content::<RoomJoinRulesEventContent>(
+        &room_id,
+        &StateEventType::RoomJoinRules,
+        "",
+        None,
+    )
+    .map(|c| c.join_rule)
 }
 pub fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
     get_power_levels_event_content(room_id).map(|content| RoomPowerLevels::from(content))
 }
 pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
-    get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)
+    get_state_content::<RoomPowerLevelsEventContent>(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+        None,
+    )
 }
 
 pub fn get_room_type(room_id: &RoomId) -> AppResult<Option<RoomType>> {
-    get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None).map(|c| c.room_type)
+    get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
+        .map(|c| c.room_type)
 }
 
 pub fn get_history_visibility(room_id: &RoomId) -> AppResult<HistoryVisibility> {
-    get_state_content::<RoomHistoryVisibilityEventContent>(&room_id, &StateEventType::RoomHistoryVisibility, "", None)
-        .map(|c| c.history_visibility)
+    get_state_content::<RoomHistoryVisibilityEventContent>(
+        &room_id,
+        &StateEventType::RoomHistoryVisibility,
+        "",
+        None,
+    )
+    .map(|c| c.history_visibility)
 }
 
 pub fn is_world_readable(room_id: &RoomId) -> bool {
@@ -509,9 +562,14 @@ pub fn is_world_readable(room_id: &RoomId) -> bool {
         .unwrap_or(false)
 }
 pub fn guest_can_join(room_id: &RoomId) -> bool {
-    get_state_content::<RoomGuestAccessEventContent>(&room_id, &StateEventType::RoomGuestAccess, "", None)
-        .map(|c| c.guest_access == GuestAccess::CanJoin)
-        .unwrap_or(false)
+    get_state_content::<RoomGuestAccessEventContent>(
+        &room_id,
+        &StateEventType::RoomGuestAccess,
+        "",
+        None,
+    )
+    .map(|c| c.guest_access == GuestAccess::CanJoin)
+    .unwrap_or(false)
 }
 
 pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &UserId) -> bool {
@@ -528,8 +586,12 @@ pub fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &User
     if let Ok(power_levels) = get_power_levels(room_id) {
         power_levels.user_can_invite(sender_id)
     } else {
-        let create_content =
-            get_state_content::<RoomCreateEventContent>(&room_id, &StateEventType::RoomCreate, "", None);
+        let create_content = get_state_content::<RoomCreateEventContent>(
+            &room_id,
+            &StateEventType::RoomCreate,
+            "",
+            None,
+        );
         if let Ok(create_content) = create_content {
             create_content.creator.as_deref() == Some(sender_id)
         } else {
@@ -582,7 +644,11 @@ pub fn get_members<'a>(room_id: &'a RoomId) -> AppResult<Vec<OwnedUserId>> {
         .map_err(Into::into)
 }
 
-pub fn keys_changed_users(room_id: &RoomId, since_sn: i64, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
+pub fn keys_changed_users(
+    room_id: &RoomId,
+    since_sn: i64,
+    until_sn: Option<i64>,
+) -> AppResult<Vec<OwnedUserId>> {
     if let Some(until_sn) = until_sn {
         e2e_key_changes::table
             .filter(e2e_key_changes::room_id.eq(room_id))

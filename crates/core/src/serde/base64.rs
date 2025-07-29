@@ -106,7 +106,10 @@ impl<C: Base64Config> Base64<C> {
 
     /// Parse some base64-encoded data to create a `Base64` instance.
     pub fn parse(encoded: impl AsRef<[u8]>) -> Result<Self, Base64DecodeError> {
-        Self::ENGINE.decode(encoded).map(Self::new).map_err(Base64DecodeError)
+        Self::ENGINE
+            .decode(encoded)
+            .map(Self::new)
+            .map_err(Base64DecodeError)
     }
 }
 
@@ -170,6 +173,7 @@ mod tests {
         const INPUT_WITH_PADDING: &str = "im9+knCkMNQNh9o6sbdcZw==";
 
         Base64::<Standard>::parse(INPUT).unwrap();
-        Base64::<Standard>::parse(INPUT_WITH_PADDING).expect("We should be able to decode padded Base64");
+        Base64::<Standard>::parse(INPUT_WITH_PADDING)
+            .expect("We should be able to decode padded Base64");
     }
 }

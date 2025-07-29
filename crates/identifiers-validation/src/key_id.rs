@@ -3,7 +3,8 @@ use std::num::NonZeroU8;
 use crate::Error;
 
 pub fn validate(s: &str) -> Result<NonZeroU8, Error> {
-    let colon_idx = NonZeroU8::new(s.find(':').ok_or(Error::MissingColon)? as u8).ok_or(Error::MissingColon)?;
+    let colon_idx =
+        NonZeroU8::new(s.find(':').ok_or(Error::MissingColon)? as u8).ok_or(Error::MissingColon)?;
 
     #[cfg(not(feature = "compat-key-id"))]
     validate_version(&s[colon_idx.get() as usize + 1..])?;

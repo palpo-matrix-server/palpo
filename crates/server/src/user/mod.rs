@@ -78,13 +78,18 @@ pub fn clean_signatures<F: Fn(&UserId) -> bool>(
     user_id: &UserId,
     allowed_signatures: F,
 ) -> AppResult<()> {
-    if let Some(signatures) = cross_signing_key.get_mut("signatures").and_then(|v| v.as_object_mut()) {
+    if let Some(signatures) = cross_signing_key
+        .get_mut("signatures")
+        .and_then(|v| v.as_object_mut())
+    {
         // Don't allocate for the full size of the current signatures, but require
         // at most one resize if nothing is dropped
         let new_capacity = signatures.len() / 2;
-        for (user, signature) in mem::replace(signatures, serde_json::Map::with_capacity(new_capacity)) {
-            let sid =
-                <&UserId>::try_from(user.as_str()).map_err(|_| AppError::internal("Invalid user ID in database."))?;
+        for (user, signature) in
+            mem::replace(signatures, serde_json::Map::with_capacity(new_capacity))
+        {
+            let sid = <&UserId>::try_from(user.as_str())
+                .map_err(|_| AppError::internal("Invalid user ID in database."))?;
             if sender_id == Some(user_id) || sid == user_id || allowed_signatures(sid) {
                 signatures.insert(user, signature);
             }
@@ -118,7 +123,10 @@ pub fn user_is_ignored(sender_id: &UserId, recipient_id: &UserId) -> bool {
 /// - Removing avatar URL and blurhash
 /// - Removing all profile data
 /// - Leaving all rooms (and forgets all of them)
-pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoomId]) -> AppResult<()> {
+pub async fn full_user_deactivate(
+    user_id: &UserId,
+    all_joined_rooms: &[OwnedRoomId],
+) -> AppResult<()> {
     data::user::deactivate(user_id).ok();
     data::user::set_display_name(user_id, None).ok();
     data::user::set_avatar_url(user_id, None).ok();
@@ -131,14 +139,22 @@ pub async fn full_user_deactivate(user_id: &UserId, all_joined_rooms: &[OwnedRoo
     for room_id in all_joined_rooms {
         let state_lock = room::lock_state(room_id).await;
 
-        let room_power_levels =
-            room::get_state_content::<RoomPowerLevelsEventContent>(room_id, &StateEventType::RoomPowerLevels, "", None)
-                .ok();
+        let room_power_levels = room::get_state_content::<RoomPowerLevelsEventContent>(
+            room_id,
+            &StateEventType::RoomPowerLevels,
+            "",
+            None,
+        )
+        .ok();
 
-        let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
-            RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(user_id, user_id)
-        }) || room::get_state(room_id, &StateEventType::RoomCreate, "", None)
-            .is_ok_and(|event| event.sender == user_id);
+        let user_can_demote_self = room_power_levels
+            .as_ref()
+            .is_some_and(|power_levels_content| {
+                RoomPowerLevels::from(power_levels_content.clone())
+                    .user_can_change_user_power_level(user_id, user_id)
+            })
+            || room::get_state(room_id, &StateEventType::RoomCreate, "", None)
+                .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
             let mut power_levels_content = room_power_levels.unwrap_or_default();
@@ -223,11 +239,13 @@ pub fn take_login_token(token: &str) -> AppResult<OwnedUserId> {
 
     if expires_at < UnixMillis::now() {
         trace!(?user_id, ?token, "Removing expired login token");
-        diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
+        diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token)))
+            .execute(&mut connect()?)?;
         return Err(MatrixError::forbidden("Login token is expired.", None).into());
     }
 
-    diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token))).execute(&mut connect()?)?;
+    diesel::delete(user_login_tokens::table.filter(user_login_tokens::token.eq(token)))
+        .execute(&mut connect()?)?;
 
     Ok(user_id)
 }

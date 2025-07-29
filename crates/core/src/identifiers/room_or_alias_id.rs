@@ -178,7 +178,8 @@ mod tests {
     fn serialize_valid_room_id_or_alias_id_with_a_room_alias_id() {
         assert_eq!(
             serde_json::to_string(
-                <&RoomOrAliasId>::try_from("#palpo:example.com").expect("Failed to create RoomAliasId.")
+                <&RoomOrAliasId>::try_from("#palpo:example.com")
+                    .expect("Failed to create RoomAliasId.")
             )
             .expect("Failed to convert RoomAliasId to JSON."),
             r##""#palpo:example.com""##
@@ -189,7 +190,8 @@ mod tests {
     fn serialize_valid_room_id_or_alias_id_with_a_room_id() {
         assert_eq!(
             serde_json::to_string(
-                <&RoomOrAliasId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomId.")
+                <&RoomOrAliasId>::try_from("!29fhd83h92h0:example.com")
+                    .expect("Failed to create RoomId.")
             )
             .expect("Failed to convert RoomId to JSON."),
             r#""!29fhd83h92h0:example.com""#
@@ -201,7 +203,8 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<OwnedRoomOrAliasId>(r##""#palpo:example.com""##)
                 .expect("Failed to convert JSON to RoomAliasId"),
-            <&RoomOrAliasId>::try_from("#palpo:example.com").expect("Failed to create RoomAliasId.")
+            <&RoomOrAliasId>::try_from("#palpo:example.com")
+                .expect("Failed to create RoomAliasId.")
         );
     }
 
@@ -210,7 +213,8 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<OwnedRoomOrAliasId>(r#""!29fhd83h92h0:example.com""#)
                 .expect("Failed to convert JSON to RoomId"),
-            <&RoomOrAliasId>::try_from("!29fhd83h92h0:example.com").expect("Failed to create RoomAliasId.")
+            <&RoomOrAliasId>::try_from("!29fhd83h92h0:example.com")
+                .expect("Failed to create RoomAliasId.")
         );
     }
 }

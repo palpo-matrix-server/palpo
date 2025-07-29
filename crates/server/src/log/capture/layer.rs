@@ -22,7 +22,9 @@ type ScopeNames = Vec<&'static str>;
 impl Layer {
     #[inline]
     pub fn new(state: &Arc<State>) -> Self {
-        Self { state: state.clone() }
+        Self {
+            state: state.clone(),
+        }
     }
 }
 
@@ -53,7 +55,9 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     let names = ScopeNames::new();
-    let mut visitor = Visitor { values: Values::new() };
+    let mut visitor = Visitor {
+        values: Values::new(),
+    };
     event.record(&mut visitor);
 
     let mut closure = capture.closure.lock().expect("exclusive lock");

@@ -5,7 +5,8 @@
 use crate::macros::StringEnum;
 
 use super::{
-    Action, ConditionalPushRule, PatternedPushRule, PushCondition::*, RoomMemberCountIs, RuleKind, Ruleset, Tweak,
+    Action, ConditionalPushRule, PatternedPushRule, PushCondition::*, RoomMemberCountIs, RuleKind,
+    Ruleset, Tweak,
 };
 use crate::{PrivOwnedStr, UserId};
 
@@ -275,7 +276,9 @@ impl ConditionalPushRule {
                     key: r"content.m\.mentions.room".to_owned(),
                     value: true.into(),
                 },
-                SenderNotificationPermission { key: "room".to_owned() },
+                SenderNotificationPermission {
+                    key: "room".to_owned(),
+                },
             ],
         }
     }
@@ -527,7 +530,10 @@ impl ConditionalPushRule {
                     value: "org.matrix.msc3381.poll.start".into(),
                 },
             ],
-            actions: vec![Action::Notify, Action::SetTweak(Tweak::Sound("default".into()))],
+            actions: vec![
+                Action::Notify,
+                Action::SetTweak(Tweak::Sound("default".into())),
+            ],
         }
     }
 
@@ -572,7 +578,10 @@ impl ConditionalPushRule {
                     value: "org.matrix.msc3381.poll.end".into(),
                 },
             ],
-            actions: vec![Action::Notify, Action::SetTweak(Tweak::Sound("default".into()))],
+            actions: vec![
+                Action::Notify,
+                Action::SetTweak(Tweak::Sound("default".into())),
+            ],
         }
     }
 

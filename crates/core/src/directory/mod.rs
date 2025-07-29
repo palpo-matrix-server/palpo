@@ -4,7 +4,10 @@ mod filter_room_type_serde;
 mod room_network_serde;
 use salvo::prelude::*;
 
-use crate::{OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, PrivOwnedStr, UnixMillis, room::RoomType, serde::StringEnum};
+use crate::{
+    OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, PrivOwnedStr, UnixMillis, room::RoomType,
+    serde::StringEnum,
+};
 
 /// A chunk of a room list response, describing one room.
 ///

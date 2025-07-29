@@ -6,8 +6,12 @@ use std::collections::BTreeSet;
 
 use html5ever::{Attribute, QualName, namespace_url, ns, tendril::StrTendril};
 
-use crate::html::sanitizer_config::clean::{ALLOWED_SCHEMES_A_HREF_COMPAT, ALLOWED_SCHEMES_A_HREF_STRICT};
-use crate::{IdParseError, MatrixToError, MatrixToUri, MatrixUri, MatrixUriError, MxcUri, OwnedMxcUri};
+use crate::html::sanitizer_config::clean::{
+    ALLOWED_SCHEMES_A_HREF_COMPAT, ALLOWED_SCHEMES_A_HREF_STRICT,
+};
+use crate::{
+    IdParseError, MatrixToError, MatrixToUri, MatrixUri, MatrixUriError, MxcUri, OwnedMxcUri,
+};
 
 const CLASS_LANGUAGE_PREFIX: &str = "language-";
 
@@ -536,7 +540,9 @@ impl CodeData {
                     for (match_start, _) in value_str.match_indices(CLASS_LANGUAGE_PREFIX) {
                         // The class name must either be at the start of the string or preceded by a
                         // space.
-                        if match_start != 0 && !value_str.as_bytes()[match_start - 1].is_ascii_whitespace() {
+                        if match_start != 0
+                            && !value_str.as_bytes()[match_start - 1].is_ascii_whitespace()
+                        {
                             continue;
                         }
 

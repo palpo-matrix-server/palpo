@@ -70,7 +70,10 @@ impl Default for LoggerConfig {
 /// do debug logging by default for debug builds
 #[must_use]
 pub fn default_level() -> String {
-    cfg!(debug_assertions).then_some("debug").unwrap_or("info").to_owned()
+    cfg!(debug_assertions)
+        .then_some("debug")
+        .unwrap_or("info")
+        .to_owned()
 }
 
 /// do compact logging by default

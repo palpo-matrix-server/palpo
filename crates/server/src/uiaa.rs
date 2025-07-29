@@ -5,7 +5,9 @@ use diesel::prelude::*;
 
 use super::LazyRwLock;
 use crate::SESSION_ID_LENGTH;
-use crate::core::client::uiaa::{AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier};
+use crate::core::client::uiaa::{
+    AuthData, AuthError, AuthType, Password, UiaaInfo, UserIdentifier,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::serde::JsonValue;
@@ -13,8 +15,9 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::{AppResult, MatrixError, data, utils};
 
-static UIAA_REQUESTS: LazyRwLock<BTreeMap<(OwnedUserId, OwnedDeviceId, String), CanonicalJsonValue>> =
-    LazyLock::new(Default::default);
+static UIAA_REQUESTS: LazyRwLock<
+    BTreeMap<(OwnedUserId, OwnedDeviceId, String), CanonicalJsonValue>,
+> = LazyLock::new(Default::default);
 
 /// Creates a new Uiaa session. Make sure the session token is unique.
 pub fn create_session(
@@ -99,7 +102,9 @@ pub fn try_auth(
     match auth {
         // Find out what the user completed
         AuthData::Password(Password {
-            identifier, password, ..
+            identifier,
+            password,
+            ..
         }) => {
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
@@ -123,7 +128,8 @@ pub fn try_auth(
             if Some(t.token.trim()) == conf.registration_token.as_deref() {
                 uiaa_info.completed.push(AuthType::RegistrationToken);
             } else {
-                uiaa_info.auth_error = Some(AuthError::forbidden("Invalid registration token.", None));
+                uiaa_info.auth_error =
+                    Some(AuthError::forbidden("Invalid registration token.", None));
                 return Ok((false, uiaa_info));
             }
         }
@@ -165,14 +171,26 @@ pub fn try_auth(
     Ok((true, uiaa_info))
 }
 
-pub fn set_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str, request: CanonicalJsonValue) {
+pub fn set_uiaa_request(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    session: &str,
+    request: CanonicalJsonValue,
+) {
     UIAA_REQUESTS
         .write()
         .expect("write UIAA_REQUESTS failed")
-        .insert((user_id.to_owned(), device_id.to_owned(), session.to_owned()), request);
+        .insert(
+            (user_id.to_owned(), device_id.to_owned(), session.to_owned()),
+            request,
+        );
 }
 
-pub fn get_uiaa_request(user_id: &UserId, device_id: &DeviceId, session: &str) -> Option<CanonicalJsonValue> {
+pub fn get_uiaa_request(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    session: &str,
+) -> Option<CanonicalJsonValue> {
     UIAA_REQUESTS
         .read()
         .expect("read UIAA_REQUESTS failed")

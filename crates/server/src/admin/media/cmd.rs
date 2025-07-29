@@ -71,7 +71,8 @@ pub(super) async fn delete_media(
                                             "Pushing thumbnail URL {thumbnail_url} to list of \
 											 MXCs to delete"
                                         );
-                                        let final_thumbnail_url = thumbnail_url.to_string().replace('"', "");
+                                        let final_thumbnail_url =
+                                            thumbnail_url.to_string().replace('"', "");
                                         mxc_urls.push(final_thumbnail_url);
                                     } else {
                                         info!(
@@ -127,7 +128,9 @@ pub(super) async fn delete_media(
                 }
             }
             _ => {
-                return Err(AppError::public("Event ID does not exist or is not known to us."));
+                return Err(AppError::public(
+                    "Event ID does not exist or is not known to us.",
+                ));
             }
         }
 
@@ -138,7 +141,10 @@ pub(super) async fn delete_media(
         let mut mxc_deletion_count: usize = 0;
 
         for mxc_url in mxc_urls {
-            let Mxc { server_name, media_id } = mxc_url.as_str().try_into()?;
+            let Mxc {
+                server_name,
+                media_id,
+            } = mxc_url.as_str().try_into()?;
             match data::media::delete_media(server_name, media_id) {
                 Ok(()) => {
                     info!("Successfully deleted {mxc_url} from filesystem and database");
@@ -166,7 +172,10 @@ pub(super) async fn delete_media(
 }
 
 pub(super) async fn delete_media_list(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
+    if ctx.body.len() < 2
+        || !ctx.body[0].trim().starts_with("```")
+        || ctx.body.last().unwrap_or(&"").trim() != "```"
+    {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -220,7 +229,9 @@ pub(super) async fn delete_past_remote_media(
     yes_i_want_to_delete_local_media: bool,
 ) -> AppResult<()> {
     if before && after {
-        return Err(AppError::public("Please only pick one argument, --before or --after."));
+        return Err(AppError::public(
+            "Please only pick one argument, --before or --after.",
+        ));
     }
     assert!(
         !(before && after),
@@ -228,19 +239,28 @@ pub(super) async fn delete_past_remote_media(
     );
 
     let duration = parse_timepoint_ago(&duration)?;
-    let deleted_count =
-        crate::media::delete_all_remote_media_at_after_time(duration, before, after, yes_i_want_to_delete_local_media)
-            .await?;
+    let deleted_count = crate::media::delete_all_remote_media_at_after_time(
+        duration,
+        before,
+        after,
+        yes_i_want_to_delete_local_media,
+    )
+    .await?;
 
-    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",))
+        .await
 }
 
-pub(super) async fn delete_all_media_from_user(ctx: &Context<'_>, username: String) -> AppResult<()> {
+pub(super) async fn delete_all_media_from_user(
+    ctx: &Context<'_>,
+    username: String,
+) -> AppResult<()> {
     let user_id = parse_local_user_id(&username)?;
 
     let deleted_count = crate::user::delete_all_media(&user_id).await?;
 
-    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",))
+        .await
 }
 
 pub(super) async fn delete_all_media_from_server(
@@ -249,11 +269,13 @@ pub(super) async fn delete_all_media_from_server(
     yes_i_want_to_delete_local_media: bool,
 ) -> AppResult<()> {
     if server_name == config::server_name() && !yes_i_want_to_delete_local_media {
-        return Err(AppError::public("This command only works for remote media by default."));
+        return Err(AppError::public(
+            "This command only works for remote media by default.",
+        ));
     }
 
-    let Ok(all_mxcs) =
-        crate::media::get_all_mxcs().inspect_err(|e| error!("Failed to get MXC URIs from our database: {e}"))
+    let Ok(all_mxcs) = crate::media::get_all_mxcs()
+        .inspect_err(|e| error!("Failed to get MXC URIs from our database: {e}"))
     else {
         return Err(AppError::public("Failed to get MXC URIs from our database"));
     };
@@ -270,7 +292,9 @@ pub(super) async fn delete_all_media_from_server(
             continue;
         };
 
-        if mxc_server_name != server_name || (mxc_server_name.is_local() && !yes_i_want_to_delete_local_media) {
+        if mxc_server_name != server_name
+            || (mxc_server_name.is_local() && !yes_i_want_to_delete_local_media)
+        {
             trace!("skipping MXC URI {mxc}");
             continue;
         }
@@ -288,11 +312,15 @@ pub(super) async fn delete_all_media_from_server(
         }
     }
 
-    ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
+    ctx.write_str(&format!("Deleted {deleted_count} total files.",))
+        .await
 }
 
 pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppResult<()> {
-    let Mxc { server_name, media_id } = mxc.as_str().try_into()?;
+    let Mxc {
+        server_name,
+        media_id,
+    } = mxc.as_str().try_into()?;
     let metadata = data::media::get_metadata(server_name, media_id)?;
 
     ctx.write_str(&format!("```\n{metadata:#?}\n```")).await

@@ -51,7 +51,9 @@ impl TryFrom<&str> for DeviceIdOrAllDevices {
         } else if "*" == device_id_or_all_devices {
             Ok(DeviceIdOrAllDevices::AllDevices)
         } else {
-            Ok(DeviceIdOrAllDevices::DeviceId(device_id_or_all_devices.into()))
+            Ok(DeviceIdOrAllDevices::DeviceId(
+                device_id_or_all_devices.into(),
+            ))
         }
     }
 }
@@ -74,8 +76,9 @@ impl<'de> Deserialize<'de> for DeviceIdOrAllDevices {
         D: Deserializer<'de>,
     {
         let s = crate::serde::deserialize_cow_str(deserializer)?;
-        DeviceIdOrAllDevices::try_from(s.as_ref())
-            .map_err(|_| de::Error::invalid_value(Unexpected::Str(&s), &"a valid device identifier or '*'"))
+        DeviceIdOrAllDevices::try_from(s.as_ref()).map_err(|_| {
+            de::Error::invalid_value(Unexpected::Str(&s), &"a valid device identifier or '*'")
+        })
     }
 }
 /// `PUT /_matrix/client/*/sendToDevice/{eventType}/{txn_id}`
@@ -128,4 +131,5 @@ pub struct SendEventToDeviceReqBody {
 /// Messages to send in a send-to-device request.
 ///
 /// Represented as a map of `{ user-ids => { device-ids => message-content } }`.
-pub type Messages = BTreeMap<OwnedUserId, BTreeMap<DeviceIdOrAllDevices, RawJson<AnyToDeviceEventContent>>>;
+pub type Messages =
+    BTreeMap<OwnedUserId, BTreeMap<DeviceIdOrAllDevices, RawJson<AnyToDeviceEventContent>>>;

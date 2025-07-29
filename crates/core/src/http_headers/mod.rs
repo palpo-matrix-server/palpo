@@ -6,7 +6,8 @@ mod content_disposition;
 mod rfc8187;
 
 pub use self::content_disposition::{
-    ContentDisposition, ContentDispositionParseError, ContentDispositionType, TokenString, TokenStringParseError,
+    ContentDisposition, ContentDispositionParseError, ContentDispositionType, TokenString,
+    TokenStringParseError,
 };
 
 /// Whether the given byte is a [`token` char].
@@ -16,7 +17,20 @@ pub const fn is_tchar(b: u8) -> bool {
     b.is_ascii_alphanumeric()
         || matches!(
             b,
-            b'!' | b'#' | b'$' | b'%' | b'&' | b'\'' | b'*' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`' | b'|' | b'~'
+            b'!' | b'#'
+                | b'$'
+                | b'%'
+                | b'&'
+                | b'\''
+                | b'*'
+                | b'+'
+                | b'-'
+                | b'.'
+                | b'^'
+                | b'_'
+                | b'`'
+                | b'|'
+                | b'~'
         )
 }
 
@@ -62,7 +76,12 @@ pub fn sanitize_for_ascii_quoted_string(value: &str) -> Cow<'_, str> {
         return Cow::Borrowed(value);
     }
 
-    Cow::Owned(value.chars().filter(|c| is_ascii_string_quotable(*c)).collect())
+    Cow::Owned(
+        value
+            .chars()
+            .filter(|c| is_ascii_string_quotable(*c))
+            .collect(),
+    )
 }
 
 /// If the US-ASCII field value does not contain only token chars, convert it to

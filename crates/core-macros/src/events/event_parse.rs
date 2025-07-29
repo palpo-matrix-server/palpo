@@ -188,9 +188,13 @@ pub fn to_kind_variation(ident: &Ident) -> Option<(EventKind, EventKindVariation
         "EphemeralRoomEvent" => Some((EventKind::Ephemeral, EventKindVariation::None)),
         "SyncEphemeralRoomEvent" => Some((EventKind::Ephemeral, EventKindVariation::Sync)),
         "OriginalMessageLikeEvent" => Some((EventKind::MessageLike, EventKindVariation::Original)),
-        "OriginalSyncMessageLikeEvent" => Some((EventKind::MessageLike, EventKindVariation::OriginalSync)),
+        "OriginalSyncMessageLikeEvent" => {
+            Some((EventKind::MessageLike, EventKindVariation::OriginalSync))
+        }
         "RedactedMessageLikeEvent" => Some((EventKind::MessageLike, EventKindVariation::Redacted)),
-        "RedactedSyncMessageLikeEvent" => Some((EventKind::MessageLike, EventKindVariation::RedactedSync)),
+        "RedactedSyncMessageLikeEvent" => {
+            Some((EventKind::MessageLike, EventKindVariation::RedactedSync))
+        }
         "OriginalStateEvent" => Some((EventKind::State, EventKindVariation::Original)),
         "OriginalSyncStateEvent" => Some((EventKind::State, EventKindVariation::OriginalSync)),
         "StrippedStateEvent" => Some((EventKind::State, EventKindVariation::Stripped)),
@@ -199,12 +203,22 @@ pub fn to_kind_variation(ident: &Ident) -> Option<(EventKind, EventKindVariation
         "RedactedSyncStateEvent" => Some((EventKind::State, EventKindVariation::RedactedSync)),
         "ToDeviceEvent" => Some((EventKind::ToDevice, EventKindVariation::None)),
         "PresenceEvent" => Some((EventKind::Presence, EventKindVariation::None)),
-        "HierarchySpaceChildEvent" => Some((EventKind::HierarchySpaceChild, EventKindVariation::Stripped)),
+        "HierarchySpaceChildEvent" => {
+            Some((EventKind::HierarchySpaceChild, EventKindVariation::Stripped))
+        }
         "OriginalRoomRedactionEvent" => Some((EventKind::RoomRedaction, EventKindVariation::None)),
-        "OriginalSyncRoomRedactionEvent" => Some((EventKind::RoomRedaction, EventKindVariation::OriginalSync)),
-        "RedactedRoomRedactionEvent" => Some((EventKind::RoomRedaction, EventKindVariation::Redacted)),
-        "RedactedSyncRoomRedactionEvent" => Some((EventKind::RoomRedaction, EventKindVariation::RedactedSync)),
-        "DecryptedOlmV1Event" | "DecryptedMegolmV1Event" => Some((EventKind::Decrypted, EventKindVariation::None)),
+        "OriginalSyncRoomRedactionEvent" => {
+            Some((EventKind::RoomRedaction, EventKindVariation::OriginalSync))
+        }
+        "RedactedRoomRedactionEvent" => {
+            Some((EventKind::RoomRedaction, EventKindVariation::Redacted))
+        }
+        "RedactedSyncRoomRedactionEvent" => {
+            Some((EventKind::RoomRedaction, EventKindVariation::RedactedSync))
+        }
+        "DecryptedOlmV1Event" | "DecryptedMegolmV1Event" => {
+            Some((EventKind::Decrypted, EventKindVariation::None))
+        }
         _ => None,
     }
 }
@@ -232,7 +246,9 @@ impl Parse for EventEnumEntry {
         let mut ident = None;
 
         for attr_list in palpo_enum_attrs {
-            for attr in attr_list.parse_args_with(Punctuated::<EventEnumAttr, Token![,]>::parse_terminated)? {
+            for attr in attr_list
+                .parse_args_with(Punctuated::<EventEnumAttr, Token![,]>::parse_terminated)?
+            {
                 match attr {
                     EventEnumAttr::Alias(alias) => {
                         if alias.value().ends_with(".*") == has_suffix {
@@ -303,7 +319,11 @@ impl Parse for EventEnumInput {
             braced!(content in input);
             let events = content.parse_terminated(EventEnumEntry::parse, Token![,])?;
             let events = events.into_iter().collect();
-            enums.push(EventEnumDecl { attrs, kind, events });
+            enums.push(EventEnumDecl {
+                attrs,
+                kind,
+                events,
+            });
         }
         Ok(EventEnumInput { enums })
     }

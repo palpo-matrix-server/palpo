@@ -26,7 +26,9 @@ mod types {
     pub struct RegConfig;
 
     impl FromSql<TsVector, Pg> for PgTsVector {
-        fn from_sql(bytes: <Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        fn from_sql(
+            bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
+        ) -> diesel::deserialize::Result<Self> {
             let mut cursor = Cursor::new(bytes.as_bytes());
 
             // From Postgres `tsvector.c`:
@@ -274,7 +276,10 @@ mod dsl {
             Contains::new(self, other.as_expression())
         }
 
-        fn contained_by<T: AsExpression<TsQuery>>(self, other: T) -> ContainedBy<Self, T::Expression> {
+        fn contained_by<T: AsExpression<TsQuery>>(
+            self,
+            other: T,
+        ) -> ContainedBy<Self, T::Expression> {
             ContainedBy::new(self, other.as_expression())
         }
     }

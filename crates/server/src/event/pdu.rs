@@ -6,17 +6,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, value::to_raw_value};
 
 use crate::core::client::filter::RoomEventFilter;
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::{
+    HistoryVisibility, RoomHistoryVisibilityEventContent,
+};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
-    AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
-    AnySyncTimelineEvent, AnyTimelineEvent, EventContent, MessageLikeEventType, StateEvent, StateEventType,
-    TimelineEventType,
+    AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent,
+    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, EventContent, MessageLikeEventType,
+    StateEvent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
+use crate::core::serde::{
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
+};
 use crate::core::{Seqnum, UnixMillis, UserId};
 use crate::room::state;
 use crate::{AppError, AppResult, room};
@@ -41,7 +45,9 @@ impl SnPduEvent {
     }
 
     pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
-        if self.event_ty == TimelineEventType::RoomMember && self.state_key.as_deref() == Some(user_id.as_str()) {
+        if self.event_ty == TimelineEventType::RoomMember
+            && self.state_key.as_deref() == Some(user_id.as_str())
+        {
             return Ok(true);
         }
         if self.is_room_state() {
@@ -68,9 +74,10 @@ impl SnPduEvent {
             &StateEventType::RoomHistoryVisibility,
             "",
         )
-        .map_or(HistoryVisibility::Shared, |c: RoomHistoryVisibilityEventContent| {
-            c.history_visibility
-        });
+        .map_or(
+            HistoryVisibility::Shared,
+            |c: RoomHistoryVisibilityEventContent| c.history_visibility,
+        );
 
         let visibility = match history_visibility {
             HistoryVisibility::WorldReadable => true,
@@ -78,7 +85,8 @@ impl SnPduEvent {
                 let Ok(membership) = state::user_membership(frame_id, user_id) else {
                     return crate::room::user::is_joined(user_id, &self.room_id);
                 };
-                membership == MembershipState::Join || crate::room::user::is_joined(user_id, &self.room_id)?
+                membership == MembershipState::Join
+                    || crate::room::user::is_joined(user_id, &self.room_id)?
             }
             HistoryVisibility::Invited => {
                 // Allow if any member on requesting server was AT LEAST invited, else deny
@@ -86,7 +94,8 @@ impl SnPduEvent {
             }
             HistoryVisibility::Joined => {
                 // Allow if any member on requested server was joined, else deny
-                state::user_was_joined(frame_id, &user_id) || state::user_was_joined(frame_id - 1, &user_id)
+                state::user_was_joined(frame_id, &user_id)
+                    || state::user_was_joined(frame_id - 1, &user_id)
             }
             _ => {
                 error!("unknown history visibility {history_visibility}");
@@ -106,14 +115,19 @@ impl SnPduEvent {
         struct ExtractMemebership {
             membership: String,
         }
-        let membership =
-            if self.event_ty == TimelineEventType::RoomMember && self.state_key == Some(user_id.to_string()) {
-                self.get_content::<ExtractMemebership>().map(|m| m.membership).ok()
-            } else if let Ok(frame_id) = crate::event::get_frame_id(&self.room_id, self.event_sn) {
-                state::user_membership(frame_id, user_id).ok().map(|m| m.to_string())
-            } else {
-                None
-            };
+        let membership = if self.event_ty == TimelineEventType::RoomMember
+            && self.state_key == Some(user_id.to_string())
+        {
+            self.get_content::<ExtractMemebership>()
+                .map(|m| m.membership)
+                .ok()
+        } else if let Ok(frame_id) = crate::event::get_frame_id(&self.room_id, self.event_sn) {
+            state::user_membership(frame_id, user_id)
+                .ok()
+                .map(|m| m.to_string())
+        } else {
+            None
+        };
         if let Some(membership) = membership {
             self.unsigned.insert(
                 "membership".to_owned(),
@@ -137,7 +151,11 @@ impl SnPduEvent {
         Ok(Self::new(pdu, event_sn))
     }
 
-    pub fn from_json_value(event_id: &EventId, event_sn: Seqnum, json: JsonValue) -> AppResult<Self> {
+    pub fn from_json_value(
+        event_id: &EventId,
+        event_sn: Seqnum,
+        json: JsonValue,
+    ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(event_id, json)?;
         Ok(Self::new(pdu, event_sn))
     }
@@ -171,7 +189,9 @@ impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
         if let Some(sn) = event_sn {
             Ok(SnPduEvent::new(pdu, sn))
         } else {
-            Err(AppError::internal("Cannot convert PDU without event_sn to SnPduEvent."))
+            Err(AppError::internal(
+                "Cannot convert PDU without event_sn to SnPduEvent.",
+            ))
         }
     }
 }
@@ -318,8 +338,14 @@ impl PduEvent {
         }
 
         match *room_version {
-            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => self.redacts.clone().map(OwnedEventId::from),
-            _ => self.get_content::<RoomRedactionEventContent>().ok()?.redacts,
+            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => {
+                self.redacts.clone().map(OwnedEventId::from)
+            }
+            _ => {
+                self.get_content::<RoomRedactionEventContent>()
+                    .ok()?
+                    .redacts
+            }
         }
     }
 
@@ -333,7 +359,8 @@ impl PduEvent {
         let then: i128 = self.origin_server_ts.get().into();
         let age = now.saturating_sub(then);
 
-        self.unsigned.insert("age".to_owned(), to_raw_value(&age).unwrap());
+        self.unsigned
+            .insert("age".to_owned(), to_raw_value(&age).unwrap());
 
         Ok(())
     }
@@ -436,7 +463,8 @@ impl PduEvent {
 
     #[tracing::instrument]
     pub fn to_state_event(&self) -> RawJson<AnyStateEvent> {
-        serde_json::from_value(self.to_state_event_value()).expect("RawJson::from_value always works")
+        serde_json::from_value(self.to_state_event_value())
+            .expect("RawJson::from_value always works")
     }
     #[tracing::instrument]
     pub fn to_state_event_value(&self) -> JsonValue {
@@ -528,7 +556,10 @@ impl PduEvent {
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
 
-    pub fn from_canonical_object(event_id: &EventId, mut json: CanonicalJsonObject) -> Result<Self, serde_json::Error> {
+    pub fn from_canonical_object(
+        event_id: &EventId,
+        mut json: CanonicalJsonObject,
+    ) -> Result<Self, serde_json::Error> {
         json.insert(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
@@ -686,7 +717,8 @@ impl PduBuilder {
     {
         Self {
             event_type: content.event_type().into(),
-            content: to_raw_value(content).expect("Builder failed to serialize state event content to RawValue"),
+            content: to_raw_value(content)
+                .expect("Builder failed to serialize state event content to RawValue"),
             state_key: Some(state_key),
             ..Self::default()
         }
@@ -698,7 +730,8 @@ impl PduBuilder {
     {
         Self {
             event_type: content.event_type().into(),
-            content: to_raw_value(content).expect("Builder failed to serialize timeline event content to RawValue"),
+            content: to_raw_value(content)
+                .expect("Builder failed to serialize timeline event content to RawValue"),
             ..Self::default()
         }
     }

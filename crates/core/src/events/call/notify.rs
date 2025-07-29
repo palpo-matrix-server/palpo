@@ -32,7 +32,12 @@ pub struct CallNotifyEventContent {
 
 impl CallNotifyEventContent {
     /// Creates a new `CallNotifyEventContent` with the given configuration.
-    pub fn new(call_id: String, application: ApplicationType, notify_type: NotifyType, mentions: Mentions) -> Self {
+    pub fn new(
+        call_id: String,
+        application: ApplicationType,
+        notify_type: NotifyType,
+        mentions: Mentions,
+    ) -> Self {
         Self {
             call_id,
             application,

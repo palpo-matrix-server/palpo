@@ -81,10 +81,9 @@ impl ConditionalPushRule {
                 let room_supports_ext_ev = context
                     .supported_features
                     .contains(&RoomVersionFeature::ExtensibleEvents);
-                let rule_has_room_version_supports = self
-                    .conditions
-                    .iter()
-                    .any(|condition| matches!(condition, PushCondition::RoomVersionSupports { .. }));
+                let rule_has_room_version_supports = self.conditions.iter().any(|condition| {
+                    matches!(condition, PushCondition::RoomVersionSupports { .. })
+                });
 
                 if room_supports_ext_ev && !rule_has_room_version_supports {
                     return false;
@@ -101,7 +100,9 @@ impl ConditionalPushRule {
             return false;
         }
 
-        self.conditions.iter().all(|cond| cond.applies(event, context))
+        self.conditions
+            .iter()
+            .all(|cond| cond.applies(event, context))
     }
 }
 

@@ -153,7 +153,9 @@ where
     fn from(rel: message::Relation<C>) -> Self {
         match rel {
             message::Relation::Reply { in_reply_to } => Self::Reply { in_reply_to },
-            message::Relation::Replacement(re) => Self::Replacement(Replacement { event_id: re.event_id }),
+            message::Relation::Replacement(re) => Self::Replacement(Replacement {
+                event_id: re.event_id,
+            }),
             message::Relation::Thread(t) => Self::Thread(Thread {
                 event_id: t.event_id,
                 in_reply_to: t.in_reply_to,
@@ -200,7 +202,10 @@ impl OlmV1Curve25519AesSha2Content {
     /// Creates a new `OlmV1Curve25519AesSha2Content` with the given ciphertext
     /// and sender key.
     pub fn new(ciphertext: BTreeMap<String, CiphertextInfo>, sender_key: String) -> Self {
-        Self { ciphertext, sender_key }
+        Self {
+            ciphertext,
+            sender_key,
+        }
     }
 }
 
@@ -270,7 +275,10 @@ impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
             device_id: _,
             session_id,
         } = init;
-        Self { ciphertext, session_id }
+        Self {
+            ciphertext,
+            session_id,
+        }
     }
 }
 

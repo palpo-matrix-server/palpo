@@ -73,20 +73,37 @@ impl fmt::Debug for UnixMillis {
 }
 impl FromSql<sql_types::BigInt, pg::Pg> for UnixMillis {
     fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        let value = <i64 as diesel::deserialize::FromSql<diesel::sql_types::BigInt, diesel::pg::Pg>>::from_sql(bytes)?;
+        let value = <i64 as diesel::deserialize::FromSql<
+            diesel::sql_types::BigInt,
+            diesel::pg::Pg,
+        >>::from_sql(bytes)?;
         Ok(Self(value as u64))
     }
 }
 
 impl ToSql<sql_types::BigInt, pg::Pg> for UnixMillis {
-    fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<'_, '_, pg::Pg>,
+    ) -> diesel::serialize::Result {
         ToSql::<sql_types::BigInt, pg::Pg>::to_sql(&(self.0 as i64), &mut out.reborrow())
     }
 }
 
 /// A timestamp represented as the number of seconds since the unix epoch.
 #[derive(
-    ToSchema, FromSqlRow, AsExpression, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize,
+    ToSchema,
+    FromSqlRow,
+    AsExpression,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
 )]
 #[diesel(sql_type = sql_types::Bigint)]
 #[allow(clippy::exhaustive_structs)]
@@ -128,13 +145,19 @@ impl fmt::Debug for UnixSeconds {
 }
 impl FromSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
     fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        let value = <i64 as diesel::deserialize::FromSql<diesel::sql_types::BigInt, diesel::pg::Pg>>::from_sql(bytes)?;
+        let value = <i64 as diesel::deserialize::FromSql<
+            diesel::sql_types::BigInt,
+            diesel::pg::Pg,
+        >>::from_sql(bytes)?;
         Ok(Self(value as u64))
     }
 }
 
 impl ToSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
-    fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<'_, '_, pg::Pg>,
+    ) -> diesel::serialize::Result {
         ToSql::<sql_types::BigInt, pg::Pg>::to_sql(&(self.0 as i64), &mut out.reborrow())
     }
 }

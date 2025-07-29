@@ -34,14 +34,22 @@ where
         return Ok(None);
     };
 
-    let RelatesToDeHelper { in_reply_to, relation } = relates_to;
+    let RelatesToDeHelper {
+        in_reply_to,
+        relation,
+    } = relates_to;
 
     let rel = match relation {
         RelationDeHelper::Known(relation) => match relation {
-            KnownRelationDeHelper::Replacement(ReplacementJsonRepr { event_id }) => match new_content {
-                Some(new_content) => Relation::Replacement(Replacement { event_id, new_content }),
-                None => return Err(de::Error::missing_field("m.new_content")),
-            },
+            KnownRelationDeHelper::Replacement(ReplacementJsonRepr { event_id }) => {
+                match new_content {
+                    Some(new_content) => Relation::Replacement(Replacement {
+                        event_id,
+                        new_content,
+                    }),
+                    None => return Err(de::Error::missing_field("m.new_content")),
+                }
+            }
             KnownRelationDeHelper::Thread(ThreadDeHelper {
                 event_id,
                 is_falling_back,
@@ -176,11 +184,16 @@ pub(super) enum RelationSerHelper {
 impl<C> Relation<C> {
     fn into_parts(self) -> (RelationSerHelper, Option<C>) {
         match self {
-            Relation::Replacement(Replacement { event_id, new_content }) => (
+            Relation::Replacement(Replacement {
+                event_id,
+                new_content,
+            }) => (
                 RelationSerHelper::Replacement(ReplacementJsonRepr { event_id }),
                 Some(new_content),
             ),
-            Relation::Reply { in_reply_to } => (RelationSerHelper::Custom(in_reply_to.into()), None),
+            Relation::Reply { in_reply_to } => {
+                (RelationSerHelper::Custom(in_reply_to.into()), None)
+            }
             Relation::Thread(t) => (RelationSerHelper::Thread(t), None),
             Relation::_Custom(c) => (RelationSerHelper::Custom(c.into()), None),
         }
@@ -232,7 +245,9 @@ impl From<CustomRelation> for CustomSerHelper {
 impl From<&RelationWithoutReplacement> for RelationSerHelper {
     fn from(value: &RelationWithoutReplacement) -> Self {
         match value.clone() {
-            RelationWithoutReplacement::Reply { in_reply_to } => RelationSerHelper::Custom(in_reply_to.into()),
+            RelationWithoutReplacement::Reply { in_reply_to } => {
+                RelationSerHelper::Custom(in_reply_to.into())
+            }
             RelationWithoutReplacement::Thread(t) => RelationSerHelper::Thread(t),
             RelationWithoutReplacement::_Custom(c) => RelationSerHelper::Custom(c.into()),
         }

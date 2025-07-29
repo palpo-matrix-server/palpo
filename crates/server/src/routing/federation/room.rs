@@ -18,7 +18,8 @@ use crate::event::gen_event_id_canonical_json;
 use crate::event::handler;
 use crate::room::{state, timeline};
 use crate::{
-    AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data, json_ok, room, sending,
+    AuthArgs, DepotExt, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, PduEvent, data,
+    json_ok, room, sending,
 };
 
 pub fn router() -> Router {
@@ -37,7 +38,11 @@ pub fn router() -> Router {
 /// #GET /_matrix/federation/v1/state/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
-async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> JsonResult<RoomStateResBody> {
+async fn get_state(
+    _aa: AuthArgs,
+    args: RoomStateReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<RoomStateResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
@@ -45,10 +50,15 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
 
     let pdus = state::get_full_state_ids(state_hash)?
         .into_values()
-        .map(|id| sending::convert_to_outgoing_federation_event(timeline::get_pdu_json(&id).unwrap().unwrap()))
+        .map(|id| {
+            sending::convert_to_outgoing_federation_event(
+                timeline::get_pdu_json(&id).unwrap().unwrap(),
+            )
+        })
         .collect();
 
-    let auth_chain_ids = room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
+    let auth_chain_ids =
+        room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateResBody {
         auth_chain: auth_chain_ids
@@ -68,7 +78,10 @@ async fn get_state(_aa: AuthArgs, args: RoomStateReqArgs, depot: &mut Depot) -> 
 /// #GET /_matrix/federation/v1/publicRooms
 /// Lists the public rooms on this server.
 #[endpoint]
-async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult<PublicRoomsResBody> {
+async fn get_public_rooms(
+    _aa: AuthArgs,
+    args: PublicRoomsReqArgs,
+) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         None,
         args.limit,
@@ -129,7 +142,9 @@ async fn send_knock(
 
     let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
         // Event could not be converted to canonical json
-        return Err(MatrixError::invalid_param("Could not convert event to canonical json.").into());
+        return Err(
+            MatrixError::invalid_param("Could not convert event to canonical json.").into(),
+        );
     };
 
     let event_type: StateEventType = serde_json::from_value(
@@ -142,9 +157,10 @@ async fn send_knock(
     .map_err(|e| MatrixError::invalid_param(format!("Event has invalid event type: {e}")))?;
 
     if event_type != StateEventType::RoomMember {
-        return Err(
-            MatrixError::invalid_param("Not allowed to send non-membership state event to knock endpoint.").into(),
-        );
+        return Err(MatrixError::invalid_param(
+            "Not allowed to send non-membership state event to knock endpoint.",
+        )
+        .into());
     }
 
     let content: RoomMemberEventContent = serde_json::from_value(
@@ -154,12 +170,15 @@ async fn send_knock(
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::invalid_param(format!("Event has invalid membership content: {e}")))?;
+    .map_err(|e| {
+        MatrixError::invalid_param(format!("Event has invalid membership content: {e}"))
+    })?;
 
     if content.membership != MembershipState::Knock {
-        return Err(
-            MatrixError::invalid_param("Not allowed to send a non-knock membership event to knock endpoint.").into(),
-        );
+        return Err(MatrixError::invalid_param(
+            "Not allowed to send a non-knock membership event to knock endpoint.",
+        )
+        .into());
     }
 
     // ACL check sender server name
@@ -176,7 +195,10 @@ async fn send_knock(
 
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
-        return Err(MatrixError::bad_json("Not allowed to knock on behalf of another server/user.").into());
+        return Err(MatrixError::bad_json(
+            "Not allowed to knock on behalf of another server/user.",
+        )
+        .into());
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
@@ -189,7 +211,9 @@ async fn send_knock(
     .map_err(|e| MatrixError::bad_json(format!("Event does not have a valid state_key: {e}")))?;
 
     if state_key != sender {
-        return Err(MatrixError::invalid_param("state_key does not match sender user of event.").into());
+        return Err(
+            MatrixError::invalid_param("state_key does not match sender user of event.").into(),
+        );
     };
 
     let origin: OwnedServerName = serde_json::from_value(
@@ -209,9 +233,16 @@ async fn send_knock(
     let pdu: PduEvent = PduEvent::from_json_value(&event_id, event.into())
         .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
-    handler::process_incoming_pdu(&origin, &event_id, &args.room_id, &room_version_id, value.clone(), true)
-        .await
-        .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
+    handler::process_incoming_pdu(
+        &origin,
+        &event_id,
+        &args.room_id,
+        &room_version_id,
+        value.clone(),
+        true,
+    )
+    .await
+    .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
 
     data::room::add_joined_server(&args.room_id, &origin)?;
     crate::sending::send_pdu_room(&args.room_id, &event_id)?;
@@ -225,7 +256,11 @@ async fn send_knock(
 ///
 /// Creates a knock template.
 #[endpoint]
-async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) -> JsonResult<MakeKnockResBody> {
+async fn make_knock(
+    _aa: AuthArgs,
+    args: MakeKnockReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<MakeKnockResBody> {
     use crate::core::RoomVersionId::*;
 
     let origin = depot.origin()?;
@@ -234,7 +269,10 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     }
 
     if args.user_id.server_name() != origin {
-        return Err(MatrixError::bad_json("Not allowed to knock on behalf of another server/user.").into());
+        return Err(MatrixError::bad_json(
+            "Not allowed to knock on behalf of another server/user.",
+        )
+        .into());
     }
 
     // ACL check origin server
@@ -243,9 +281,11 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
     let room_version_id = crate::room::get_version(&args.room_id)?;
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(
-            MatrixError::incompatible_room_version("Room version does not support knocking.", room_version_id).into(),
-        );
+        return Err(MatrixError::incompatible_room_version(
+            "Room version does not support knocking.",
+            room_version_id,
+        )
+        .into());
     }
 
     // if !args.ver.contains(&room_version_id) {
@@ -262,7 +302,11 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
                 "Remote user {} is banned from {} but attempted to knock",
                 &args.user_id, &args.room_id
             );
-            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
+            return Err(MatrixError::forbidden(
+                "You cannot knock on a room you are banned from.",
+                None,
+            )
+            .into());
         }
     }
 
@@ -289,7 +333,10 @@ async fn make_knock(_aa: AuthArgs, args: MakeKnockReqArgs, depot: &mut Depot) ->
 /// #GET /_matrix/federation/v1/state_ids/{room_id}
 /// Retrieves the current state of the room.
 #[endpoint]
-fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonResult<RoomStateIdsResBody> {
+fn get_state_at_event(
+    depot: &mut Depot,
+    args: RoomStateAtEventReqArgs,
+) -> JsonResult<RoomStateIdsResBody> {
     let origin = depot.origin()?;
 
     crate::federation::access_check(origin, &args.room_id, Some(&args.event_id))?;
@@ -301,10 +348,14 @@ fn get_state_at_event(depot: &mut Depot, args: RoomStateAtEventReqArgs) -> JsonR
         .map(|id| (*id).to_owned())
         .collect();
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
+    let auth_chain_ids =
+        crate::room::auth_chain::get_auth_chain_ids(&args.room_id, [&*args.event_id].into_iter())?;
 
     json_ok(RoomStateIdsResBody {
-        auth_chain_ids: auth_chain_ids.into_iter().map(|id| (*id).to_owned()).collect(),
+        auth_chain_ids: auth_chain_ids
+            .into_iter()
+            .map(|id| (*id).to_owned())
+            .collect(),
         pdu_ids,
     })
 }

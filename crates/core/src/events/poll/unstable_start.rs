@@ -20,8 +20,8 @@ use super::{
 use crate::{
     OwnedEventId, UnixMillis,
     events::{
-        EventContent, EventContentFromType, MessageLikeEventContent, MessageLikeEventType, RedactContent,
-        RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
+        EventContent, EventContentFromType, MessageLikeEventContent, MessageLikeEventType,
+        RedactContent, RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
         room::message::RelationWithoutReplacement,
     },
     serde::RawJsonValue,
@@ -92,7 +92,8 @@ impl OriginalSyncUnstablePollStartEvent {
     ) -> UnstablePollEndEventContent {
         let poll_start = self.content.poll_start();
 
-        let full_results = compile_unstable_poll_results(poll_start, responses, Some(UnixMillis::now()));
+        let full_results =
+            compile_unstable_poll_results(poll_start, responses, Some(UnixMillis::now()));
         let results = full_results
             .into_iter()
             .map(|(id, users)| (id, users.len()))
@@ -181,7 +182,9 @@ pub struct NewUnstablePollStartEventContentWithoutRelation {
 
 impl From<NewUnstablePollStartEventContent> for NewUnstablePollStartEventContentWithoutRelation {
     fn from(value: NewUnstablePollStartEventContent) -> Self {
-        let NewUnstablePollStartEventContent { poll_start, text, .. } = value;
+        let NewUnstablePollStartEventContent {
+            poll_start, text, ..
+        } = value;
         Self { poll_start, text }
     }
 }

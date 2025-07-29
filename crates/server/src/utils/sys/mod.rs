@@ -38,7 +38,10 @@ pub unsafe fn current_exe() -> AppResult<PathBuf> {
     let exe = std::env::current_exe()?;
     match exe.to_str() {
         None => Ok(exe),
-        Some(str) => Ok(str.strip_suffix(" (deleted)").map(PathBuf::from).unwrap_or(exe)),
+        Some(str) => Ok(str
+            .strip_suffix(" (deleted)")
+            .map(PathBuf::from)
+            .unwrap_or(exe)),
     }
 }
 
@@ -47,5 +50,6 @@ pub unsafe fn current_exe() -> AppResult<PathBuf> {
 /// accurate on all platforms; defaults to false.
 #[must_use]
 pub fn current_exe_deleted() -> bool {
-    std::env::current_exe().is_ok_and(|exe| exe.to_str().is_some_and(|exe| exe.ends_with(" (deleted)")))
+    std::env::current_exe()
+        .is_ok_and(|exe| exe.to_str().is_some_and(|exe| exe.ends_with(" (deleted)")))
 }

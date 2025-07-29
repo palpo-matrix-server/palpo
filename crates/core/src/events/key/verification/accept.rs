@@ -9,7 +9,9 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use super::{HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString};
+use super::{
+    HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString,
+};
 use crate::{OwnedTransactionId, events::relation::Reference, serde::Base64};
 
 /// The content of a to-device `m.key.verification.accept` event.
@@ -33,7 +35,10 @@ impl ToDeviceKeyVerificationAcceptEventContent {
     /// Creates a new `ToDeviceKeyVerificationAcceptEventContent` with the given
     /// transaction ID and method-specific content.
     pub fn new(transaction_id: OwnedTransactionId, method: AcceptMethod) -> Self {
-        Self { transaction_id, method }
+        Self {
+            transaction_id,
+            method,
+        }
     }
 }
 

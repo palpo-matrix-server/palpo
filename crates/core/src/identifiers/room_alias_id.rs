@@ -47,7 +47,11 @@ impl RoomAliasId {
     ///
     /// If `join` is `true`, a click on the URI should join the room.
     pub fn matrix_uri(&self, join: bool) -> MatrixUri {
-        MatrixUri::new(self.into(), Vec::new(), Some(UriAction::Join).filter(|_| join))
+        MatrixUri::new(
+            self.into(),
+            Vec::new(),
+            Some(UriAction::Join).filter(|_| join),
+        )
     }
 
     /// Create a `matrix:` URI for an event scoped under this room alias ID.
@@ -85,7 +89,8 @@ mod tests {
     fn serialize_valid_room_alias_id() {
         assert_eq!(
             serde_json::to_string(
-                <&RoomAliasId>::try_from("#palpo:example.com").expect("Failed to create RoomAliasId.")
+                <&RoomAliasId>::try_from("#palpo:example.com")
+                    .expect("Failed to create RoomAliasId.")
             )
             .expect("Failed to convert RoomAliasId to JSON."),
             r##""#palpo:example.com""##
@@ -104,7 +109,8 @@ mod tests {
     #[test]
     fn valid_room_alias_id_with_explicit_standard_port() {
         assert_eq!(
-            <&RoomAliasId>::try_from("#palpo:example.com:443").expect("Failed to create RoomAliasId."),
+            <&RoomAliasId>::try_from("#palpo:example.com:443")
+                .expect("Failed to create RoomAliasId."),
             "#palpo:example.com:443"
         );
     }
@@ -112,7 +118,8 @@ mod tests {
     #[test]
     fn valid_room_alias_id_with_non_standard_port() {
         assert_eq!(
-            <&RoomAliasId>::try_from("#palpo:example.com:5000").expect("Failed to create RoomAliasId."),
+            <&RoomAliasId>::try_from("#palpo:example.com:5000")
+                .expect("Failed to create RoomAliasId."),
             "#palpo:example.com:5000"
         );
     }
@@ -120,7 +127,8 @@ mod tests {
     #[test]
     fn valid_room_alias_id_unicode() {
         assert_eq!(
-            <&RoomAliasId>::try_from("#老虎Â£я:example.com").expect("Failed to create RoomAliasId."),
+            <&RoomAliasId>::try_from("#老虎Â£я:example.com")
+                .expect("Failed to create RoomAliasId."),
             "#老虎Â£я:example.com"
         );
     }

@@ -4,23 +4,24 @@ pub use remote::*;
 
 use std::cmp;
 use std::num::Saturating;
-use std::time::Duration;use std::time::SystemTime;
+use std::time::Duration;
+use std::time::SystemTime;
 
 pub use preview::*;
 use salvo::Response;
 
 use crate::core::OwnedMxcUri;
 use crate::core::federation::media::ContentReqArgs;
-use crate::core::media::Method;
 use crate::core::http_headers::ContentDisposition;
+use crate::core::media::Method;
 use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
 
 #[derive(Debug)]
 pub struct FileMeta {
-	pub content: Option<Vec<u8>>,
-	pub content_type: Option<String>,
-	pub content_disposition: Option<ContentDisposition>,
+    pub content: Option<Vec<u8>>,
+    pub content_type: Option<String>,
+    pub content_disposition: Option<ContentDisposition>,
 }
 
 /// Dimension specification for a thumbnail.
@@ -50,7 +51,8 @@ impl Dimension {
         let width = cmp::min(self.width, image_width);
         let height = cmp::min(self.height, image_height);
 
-        let use_width = Saturating(width) * Saturating(image_height) < Saturating(height) * Saturating(image_width);
+        let use_width = Saturating(width) * Saturating(image_height)
+            < Saturating(height) * Saturating(image_width);
 
         let x = if use_width {
             let dividend = (Saturating(height) * Saturating(image_width)).0;
@@ -124,20 +126,21 @@ pub async fn get_remote_content(
         },
     )?
     .into_inner();
-    let content_response =
-        if let Ok(content_response) = crate::sending::send_federation_request(server_name, content_req).await {
-            content_response
-        } else {
-            let content_req = crate::core::federation::media::content_request(
-                &server_name.origin().await,
-                ContentReqArgs {
-                    media_id: media_id.to_owned(),
-                    timeout_ms: Duration::from_secs(20),
-                },
-            )?
-            .into_inner();
-            crate::sending::send_federation_request(server_name, content_req).await?
-        };
+    let content_response = if let Ok(content_response) =
+        crate::sending::send_federation_request(server_name, content_req).await
+    {
+        content_response
+    } else {
+        let content_req = crate::core::federation::media::content_request(
+            &server_name.origin().await,
+            ContentReqArgs {
+                media_id: media_id.to_owned(),
+                timeout_ms: Duration::from_secs(20),
+            },
+        )?
+        .into_inner();
+        crate::sending::send_federation_request(server_name, content_req).await?
+    };
 
     *res.headers_mut() = content_response.headers().to_owned();
     res.status_code(content_response.status());

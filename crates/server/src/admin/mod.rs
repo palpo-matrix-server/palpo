@@ -38,7 +38,9 @@ use crate::core::events::TimelineEventType;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::{
+    HistoryVisibility, RoomHistoryVisibilityEventContent,
+};
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::message::RoomMessageEventContent;
@@ -55,8 +57,8 @@ use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, dat
 use palpo_core::events::room::message::Relation;
 
 use self::{
-    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand, room::RoomCommand,
-    server::ServerCommand, user::UserCommand,
+    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
+    room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
 use super::event::PduBuilder;
 
@@ -158,12 +160,15 @@ impl Context<'_> {
         arguments: fmt::Arguments<'_>,
     ) -> impl Future<Output = AppResult<()>> + Send + '_ + use<'_> {
         let buf = format!("{arguments}");
-        self.output
-            .lock()
-            .then(async move |mut output| output.write_all(buf.as_bytes()).map_err(Into::into).await)
+        self.output.lock().then(async move |mut output| {
+            output.write_all(buf.as_bytes()).map_err(Into::into).await
+        })
     }
 
-    pub(crate) fn write_str<'a>(&'a self, s: &'a str) -> impl Future<Output = AppResult<()>> + Send + 'a {
+    pub(crate) fn write_str<'a>(
+        &'a self,
+        s: &'a str,
+    ) -> impl Future<Output = AppResult<()>> + Send + 'a {
         self.output
             .lock()
             .then(async move |mut output| output.write_all(s.as_bytes()).map_err(Into::into).await)
@@ -310,7 +315,10 @@ fn parse_admin_command(command_line: &str) -> std::result::Result<AdminCommand, 
 // Utility to turn clap's `--help` text to HTML.
 fn usage_to_html(text: &str, server_name: &ServerName) -> String {
     // Replace `@palpo:servername:-subcmdname` with `@palpo:servername: subcmdname`
-    let text = text.replace(&format!("@palpo:{server_name}:-"), &format!("@palpo:{server_name}: "));
+    let text = text.replace(
+        &format!("@palpo:{server_name}:-"),
+        &format!("@palpo:{server_name}: "),
+    );
 
     // For the palpo admin room, subcommands become main commands
     let text = text.replace("SUBCOMMAND", "COMMAND");
@@ -331,7 +339,8 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
     // And are converted to:
     // <code>-V, --version</code>: Prints version information
     // (?m) enables multi-line mode for ^ and $
-    let re = Regex::new("(?m)^    (([a-zA-Z_&;-]+(, )?)+)  +(.*)$").expect("Regex compilation should not fail");
+    let re = Regex::new("(?m)^    (([a-zA-Z_&;-]+(, )?)+)  +(.*)$")
+        .expect("Regex compilation should not fail");
     let text = re.replace_all(&text, "<code>$1</code>: $4");
 
     // Look for a `[commandbody]` tag. If it exists, use all lines below it that
@@ -362,12 +371,14 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
     // Improve the usage section
     let text = if command_body.is_empty() {
         // Wrap the usage line in code tags
-        let re = Regex::new("(?m)^USAGE:\n    (@palpo:.*)$").expect("Regex compilation should not fail");
+        let re =
+            Regex::new("(?m)^USAGE:\n    (@palpo:.*)$").expect("Regex compilation should not fail");
         re.replace_all(&text, "USAGE:\n<code>$1</code>").to_string()
     } else {
         // Wrap the usage line in a code block, and add a yaml block example
         // This makes the usage of e.g. `register-appservice` more accurate
-        let re = Regex::new("(?m)^USAGE:\n    (.*?)\n\n").expect("Regex compilation should not fail");
+        let re =
+            Regex::new("(?m)^USAGE:\n    (.*?)\n\n").expect("Regex compilation should not fail");
         re.replace_all(&text, "USAGE:\n<pre>$1[nobr]\n[commandbodyblock]</pre>")
             .replace("[commandbodyblock]", &command_body)
     };
@@ -401,12 +412,21 @@ async fn handle_response(content: RoomMessageEventContent) -> AppResult<()> {
     respond_to_room(content, &pdu.room_id, response_sender).await
 }
 
-async fn respond_to_room(content: RoomMessageEventContent, room_id: &RoomId, user_id: &UserId) -> AppResult<()> {
+async fn respond_to_room(
+    content: RoomMessageEventContent,
+    room_id: &RoomId,
+    user_id: &UserId,
+) -> AppResult<()> {
     assert!(crate::room::is_admin_room(room_id)?, "sender is not admin");
 
     let state_lock = crate::room::lock_state(&room_id).await;
 
-    if let Err(e) = timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, &state_lock) {
+    if let Err(e) = timeline::build_and_append_pdu(
+        PduBuilder::timeline(&content),
+        user_id,
+        room_id,
+        &state_lock,
+    ) {
         handle_response_error(e, room_id, user_id, &state_lock).await?;
     }
 

@@ -107,7 +107,10 @@ impl ServerResBody {
 //     }
 // };
 
-pub fn remote_server_keys_batch_request(origin: &str, body: RemoteServerKeysBatchReqBody) -> SendResult<SendRequest> {
+pub fn remote_server_keys_batch_request(
+    origin: &str,
+    body: RemoteServerKeysBatchReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/key/v2/query",))?;
     crate::sending::post(url).stuff(body)
 }
@@ -160,7 +163,10 @@ impl RemoteServerKeysBatchResBody {
 //     }
 // };
 
-pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
+pub fn remote_server_keys_request(
+    origin: &str,
+    args: RemoteServerKeysReqArgs,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/key/v2/query/{}?minimum_valid_until_ts={}",
         args.server_name, args.minimum_valid_until_ts

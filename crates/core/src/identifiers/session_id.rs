@@ -20,8 +20,12 @@ impl SessionId {
     pub const fn _priv_const_new(s: &str) -> Result<&Self, &'static str> {
         match validate_session_id(s) {
             Ok(()) => Ok(Self::from_borrowed(s)),
-            Err(IdParseError::MaximumLengthExceeded) => Err("Invalid Session ID: exceeds 255 bytes"),
-            Err(IdParseError::InvalidCharacters) => Err("Invalid Session ID: contains invalid characters"),
+            Err(IdParseError::MaximumLengthExceeded) => {
+                Err("Invalid Session ID: exceeds 255 bytes")
+            }
+            Err(IdParseError::InvalidCharacters) => {
+                Err("Invalid Session ID: contains invalid characters")
+            }
             Err(IdParseError::Empty) => Err("Invalid Session ID: empty"),
             Err(_) => unreachable!(),
         }

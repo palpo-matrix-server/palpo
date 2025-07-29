@@ -3,12 +3,16 @@ use salvo::oapi::extract::JsonBody;
 use salvo::prelude::*;
 
 use crate::core::client::push::{
-    ConditionalReqBody, PatternedReqBody, RuleActionsResBody, RuleEnabledResBody, RuleResBody, RulesResBody,
-    SetRuleActionsReqBody, SetRuleEnabledReqBody, SetRuleReqArgs, SimpleReqBody,
+    ConditionalReqBody, PatternedReqBody, RuleActionsResBody, RuleEnabledResBody, RuleResBody,
+    RulesResBody, SetRuleActionsReqBody, SetRuleEnabledReqBody, SetRuleReqArgs, SimpleReqBody,
 };
 use crate::core::events::GlobalAccountDataEventType;
-use crate::core::push::{InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs};
-use crate::core::push::{NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind};
+use crate::core::push::{
+    InsertPushRuleError, RemovePushRuleError, RuleScope, ScopeKindRuleReqArgs,
+};
+use crate::core::push::{
+    NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind,
+};
 use crate::{DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
 
 pub fn authed_router() -> Router {
@@ -19,10 +23,21 @@ pub fn authed_router() -> Router {
             Router::with_path("{scope}/{kind}/{rule_id}")
                 .get(get_rule)
                 .delete(delete_rule)
-                .push(Router::with_path("actions").get(get_actions).put(set_actions))
-                .push(Router::with_path("enabled").get(get_enabled).put(set_enabled)),
+                .push(
+                    Router::with_path("actions")
+                        .get(get_actions)
+                        .put(set_actions),
+                )
+                .push(
+                    Router::with_path("enabled")
+                        .get(get_enabled)
+                        .put(set_enabled),
+                ),
         )
-        .push(Router::with_hoop(hoops::limit_rate).push(Router::with_path("{scope}/{kind}/{rule_id}").put(set_rule)))
+        .push(
+            Router::with_hoop(hoops::limit_rate)
+                .push(Router::with_path("{scope}/{kind}/{rule_id}").put(set_rule)),
+        )
 }
 
 #[endpoint]
@@ -63,12 +78,26 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     let payload = req.payload().await?;
     let new_rule: NewPushRule = match &args.kind {
         RuleKind::Override => {
-            let ConditionalReqBody { actions, conditions } = serde_json::from_slice(payload)?;
-            NewPushRule::Override(NewConditionalPushRule::new(args.rule_id.clone(), conditions, actions))
+            let ConditionalReqBody {
+                actions,
+                conditions,
+            } = serde_json::from_slice(payload)?;
+            NewPushRule::Override(NewConditionalPushRule::new(
+                args.rule_id.clone(),
+                conditions,
+                actions,
+            ))
         }
         RuleKind::Underride => {
-            let ConditionalReqBody { actions, conditions } = serde_json::from_slice(payload)?;
-            NewPushRule::Underride(NewConditionalPushRule::new(args.rule_id.clone(), conditions, actions))
+            let ConditionalReqBody {
+                actions,
+                conditions,
+            } = serde_json::from_slice(payload)?;
+            NewPushRule::Underride(NewConditionalPushRule::new(
+                args.rule_id.clone(),
+                conditions,
+                actions,
+            ))
         }
         RuleKind::Sender => {
             let SimpleReqBody { actions } = serde_json::from_slice(payload)?;
@@ -82,7 +111,11 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
         }
         RuleKind::Content => {
             let PatternedReqBody { actions, pattern } = serde_json::from_slice(payload)?;
-            NewPushRule::Content(NewPatternedPushRule::new(args.rule_id.clone(), pattern, actions))
+            NewPushRule::Content(NewPatternedPushRule::new(
+                args.rule_id.clone(),
+                pattern,
+                actions,
+            ))
         }
         _ => {
             return Err(MatrixError::invalid_param("Invalid rule kind.").into());
@@ -90,7 +123,9 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     };
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let mut user_data_content = crate::data::user::get_data::<PushRulesEventContent>(
@@ -100,24 +135,27 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if let Err(error) = user_data_content
-        .global
-        .insert(new_rule, args.after.as_deref(), args.before.as_deref())
+    if let Err(error) =
+        user_data_content
+            .global
+            .insert(new_rule, args.after.as_deref(), args.before.as_deref())
     {
         let err = match error {
-            InsertPushRuleError::ServerDefaultRuleId => {
-                MatrixError::invalid_param("Rule IDs starting with a dot are reserved for server-default rules.")
+            InsertPushRuleError::ServerDefaultRuleId => MatrixError::invalid_param(
+                "Rule IDs starting with a dot are reserved for server-default rules.",
+            ),
+            InsertPushRuleError::InvalidRuleId => {
+                MatrixError::invalid_param("Rule ID containing invalid characters.")
             }
-            InsertPushRuleError::InvalidRuleId => MatrixError::invalid_param("Rule ID containing invalid characters."),
-            InsertPushRuleError::RelativeToServerDefaultRule => {
-                MatrixError::invalid_param("Can't place a push rule relatively to a server-default rule.")
-            }
+            InsertPushRuleError::RelativeToServerDefaultRule => MatrixError::invalid_param(
+                "Can't place a push rule relatively to a server-default rule.",
+            ),
             InsertPushRuleError::UnknownRuleId => {
                 MatrixError::not_found("The before or after rule could not be found.")
             }
-            InsertPushRuleError::BeforeHigherThanAfter => {
-                MatrixError::invalid_param("The before rule has a higher priority than the after rule.")
-            }
+            InsertPushRuleError::BeforeHigherThanAfter => MatrixError::invalid_param(
+                "The before rule has a higher priority than the after rule.",
+            ),
             _ => MatrixError::invalid_param("Invalid data."),
         };
 
@@ -141,7 +179,9 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
     let authed = depot.authed_info()?;
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let mut user_data_content = crate::data::user::get_global_data::<PushRulesEventContent>(
@@ -150,7 +190,10 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
     )?
     .ok_or(MatrixError::not_found("PushRules event not found."))?;
 
-    if let Err(error) = user_data_content.global.remove(args.kind.clone(), &args.rule_id) {
+    if let Err(error) = user_data_content
+        .global
+        .remove(args.kind.clone(), &args.rule_id)
+    {
         let err = match error {
             RemovePushRuleError::ServerDefault => {
                 MatrixError::invalid_param("Cannot delete a server-default pushrule.")
@@ -192,11 +235,16 @@ async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
 /// #GET /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
 /// Gets the actions of a single specified push rule for this user.
 #[endpoint]
-async fn get_actions(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleActionsResBody> {
+async fn get_actions(
+    args: ScopeKindRuleReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<RuleActionsResBody> {
     let authed = depot.authed_info()?;
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let user_data_content = crate::data::user::get_data::<PushRulesEventContent>(
@@ -218,11 +266,17 @@ async fn get_actions(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResul
 /// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/actions
 /// Sets the actions of a single specified push rule for this user.
 #[endpoint]
-fn set_actions(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleActionsReqBody>, depot: &mut Depot) -> EmptyResult {
+fn set_actions(
+    args: ScopeKindRuleReqArgs,
+    body: JsonBody<SetRuleActionsReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let mut user_data_content = crate::data::user::get_data::<PushRulesEventContent>(
@@ -257,7 +311,9 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
     let authed = depot.authed_info()?;
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let user_data_content = crate::data::user::get_data::<PushRulesEventContent>(
@@ -279,11 +335,17 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
 /// #PUT /_matrix/client/r0/pushrules/{scope}/{kind}/{rule_id}/enabled
 /// Sets the enabled status of a single specified push rule for this user.
 #[endpoint]
-fn set_enabled(args: ScopeKindRuleReqArgs, body: JsonBody<SetRuleEnabledReqBody>, depot: &mut Depot) -> EmptyResult {
+fn set_enabled(
+    args: ScopeKindRuleReqArgs,
+    body: JsonBody<SetRuleEnabledReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     if args.scope != RuleScope::Global {
-        return Err(MatrixError::invalid_param("Scopes other than 'global' are not supported.").into());
+        return Err(
+            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+        );
     }
 
     let mut user_data_content = crate::data::user::get_data::<PushRulesEventContent>(

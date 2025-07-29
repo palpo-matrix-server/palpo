@@ -81,7 +81,8 @@ impl ClaimKeysResBody {
 pub type OneTimeKeyClaims = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>;
 
 /// One time keys for use in pre-key messages
-pub type OneTimeKeys = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, OneTimeKey>>>;
+pub type OneTimeKeys =
+    BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, BTreeMap<OwnedDeviceKeyId, OneTimeKey>>>;
 
 /// A key and its signature
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +96,10 @@ pub struct KeyObject {
 
 impl KeyObject {
     /// Creates a new `KeyObject` with the given key and signatures.
-    pub fn new(key: Base64, signatures: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>) -> Self {
+    pub fn new(
+        key: Base64,
+        signatures: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>,
+    ) -> Self {
         Self { key, signatures }
     }
 }

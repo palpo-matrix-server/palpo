@@ -29,7 +29,12 @@ pub(super) async fn reload_config(ctx: &Context<'_>, path: Option<PathBuf>) -> A
     ctx.write_str("Successfully reconfigured.").await
 }
 
-pub(super) async fn list_features(ctx: &Context<'_>, available: bool, enabled: bool, comma: bool) -> AppResult<()> {
+pub(super) async fn list_features(
+    ctx: &Context<'_>,
+    available: bool,
+    enabled: bool,
+    comma: bool,
+) -> AppResult<()> {
     let delim = if comma { "," } else { " " };
     if enabled && !available {
         let features = info::rustc::features().join(delim);

@@ -17,7 +17,10 @@ type Bucket<'a> = BTreeSet<(Seqnum, &'a EventId)>;
 static AUTH_CHAIN_CACHE: LazyLock<Mutex<LruCache<Vec<i64>, Arc<Vec<Seqnum>>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100_000)));
 
-pub fn get_auth_chain_ids<'a, I>(room_id: &'a RoomId, starting_event_ids: I) -> AppResult<Vec<OwnedEventId>>
+pub fn get_auth_chain_ids<'a, I>(
+    room_id: &'a RoomId,
+    starting_event_ids: I,
+) -> AppResult<Vec<OwnedEventId>>
 where
     I: Iterator<Item = &'a EventId> + Clone + Debug + Send,
 {
@@ -30,7 +33,10 @@ where
         .load::<OwnedEventId>(&mut connect()?)?;
     Ok(full_auth_chain)
 }
-pub fn get_auth_chain_sns<'a, I>(room_id: &'a RoomId, starting_event_ids: I) -> AppResult<Vec<Seqnum>>
+pub fn get_auth_chain_sns<'a, I>(
+    room_id: &'a RoomId,
+    starting_event_ids: I,
+) -> AppResult<Vec<Seqnum>>
 where
     I: Iterator<Item = &'a EventId> + Clone + Debug + Send,
 {
@@ -134,7 +140,11 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
             .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
         {
             if found.insert(auth_event_sn) {
-                tracing::trace!(?auth_event_id, ?auth_event_sn, "adding auth event to processing queue");
+                tracing::trace!(
+                    ?auth_event_id,
+                    ?auth_event_sn,
+                    "adding auth event to processing queue"
+                );
 
                 todo.push_back(auth_event_id);
             }
@@ -157,7 +167,8 @@ fn get_cached_auth_chain(cache_key: &[Seqnum]) -> AppResult<Option<Arc<Vec<Seqnu
         .optional()?;
 
     if let Some(chain_sns) = chain_sns {
-        let chain_sns: Arc<Vec<Seqnum>> = Arc::new(chain_sns.into_iter().filter_map(|i| i).collect());
+        let chain_sns: Arc<Vec<Seqnum>> =
+            Arc::new(chain_sns.into_iter().filter_map(|i| i).collect());
         // Cache in RAM
         AUTH_CHAIN_CACHE
             .lock()
@@ -184,7 +195,10 @@ pub fn cache_auth_chain(cache_key: Vec<Seqnum>, chain_sns: &[Seqnum]) -> AppResu
 
     let chain_sns = chain_sns.iter().copied().collect::<Vec<Seqnum>>();
     // Cache in RAM
-    AUTH_CHAIN_CACHE.lock().unwrap().insert(cache_key, Arc::new(chain_sns));
+    AUTH_CHAIN_CACHE
+        .lock()
+        .unwrap()
+        .insert(cache_key, Arc::new(chain_sns));
 
     Ok(())
 }

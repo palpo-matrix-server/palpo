@@ -61,12 +61,10 @@ pub(super) enum MediaCommand {
     //     #[arg(long)]
     //     yes_i_want_to_delete_local_media: bool,
     // },
-
     GetFileInfo {
         /// The MXC URL to lookup info for.
         mxc: OwnedMxcUri,
     },
-
     // GetRemoteFile {
     //     /// The MXC URL to fetch
     //     mxc: OwnedMxcUri,

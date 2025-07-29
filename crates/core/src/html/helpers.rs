@@ -10,7 +10,11 @@ use crate::html::{Html, HtmlSanitizerMode, SanitizerConfig};
 ///
 /// [tags and attributes]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
 /// [rich reply]: https://spec.matrix.org/latest/client-server-api/#rich-replies
-pub fn sanitize_html(s: &str, mode: HtmlSanitizerMode, remove_reply_fallback: RemoveReplyFallback) -> String {
+pub fn sanitize_html(
+    s: &str,
+    mode: HtmlSanitizerMode,
+    remove_reply_fallback: RemoveReplyFallback,
+) -> String {
     let mut conf = match mode {
         HtmlSanitizerMode::Strict => SanitizerConfig::strict(),
         HtmlSanitizerMode::Compat => SanitizerConfig::compat(),

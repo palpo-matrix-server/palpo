@@ -85,7 +85,9 @@ impl XMatrix {
                 }
             } else if name.eq_ignore_ascii_case("destination") {
                 if destination.is_some() {
-                    return Err(XMatrixParseError::DuplicateParameter("destination".to_owned()));
+                    return Err(XMatrixParseError::DuplicateParameter(
+                        "destination".to_owned(),
+                    ));
                 } else {
                     destination = Some(OwnedServerName::try_from(value.to_unescaped())?);
                 }
@@ -107,7 +109,8 @@ impl XMatrix {
         }
 
         Ok(Self {
-            origin: origin.ok_or_else(|| XMatrixParseError::MissingParameter("origin".to_owned()))?,
+            origin: origin
+                .ok_or_else(|| XMatrixParseError::MissingParameter("origin".to_owned()))?,
             destination,
             key: key.ok_or_else(|| XMatrixParseError::MissingParameter("key".to_owned()))?,
             sig: sig.ok_or_else(|| XMatrixParseError::MissingParameter("sig".to_owned()))?,
@@ -168,7 +171,10 @@ impl TryFrom<&HeaderValue> for XMatrix {
 
 impl From<&XMatrix> for HeaderValue {
     fn from(value: &XMatrix) -> Self {
-        value.to_string().try_into().expect("header format is static")
+        value
+            .to_string()
+            .try_into()
+            .expect("header format is static")
     }
 }
 

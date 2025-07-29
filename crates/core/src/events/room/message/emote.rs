@@ -19,7 +19,10 @@ impl EmoteMessageEventContent {
     /// A convenience constructor to create a plain-text emote.
     pub fn plain(body: impl Into<String>) -> Self {
         let body = body.into();
-        Self { body, formatted: None }
+        Self {
+            body,
+            formatted: None,
+        }
     }
 
     /// A convenience constructor to create an html emote message.

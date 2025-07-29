@@ -245,7 +245,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .hoop(
             Cors::new()
                 .allow_origin(cors::Any)
-                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
                 .allow_headers(AllowHeaders::list([
                     salvo::http::header::ACCEPT,
                     salvo::http::header::CONTENT_TYPE,

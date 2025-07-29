@@ -8,7 +8,8 @@ use clap::Subcommand;
 use futures_util::StreamExt;
 
 use self::{
-    alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand, moderation::RoomModerationCommand,
+    alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand,
+    moderation::RoomModerationCommand,
 };
 use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
 use crate::core::OwnedRoomId;
@@ -69,9 +70,12 @@ pub(super) async fn list_rooms(
     let mut rooms = crate::room::all_room_ids()?
         .iter()
         .filter_map(|room_id| {
-            (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false)).then_some(room_id)
+            (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false))
+                .then_some(room_id)
         })
-        .filter_map(|room_id| (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id))
+        .filter_map(|room_id| {
+            (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
+        })
         .map(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>();
 
@@ -94,7 +98,10 @@ pub(super) async fn list_rooms(
             if no_details {
                 format!("{}", info.id)
             } else {
-                format!("{}\tMembers: {}\tName: {}", info.id, info.joined_members, info.name)
+                format!(
+                    "{}\tMembers: {}\tName: {}",
+                    info.id, info.joined_members, info.name
+                )
             }
         })
         .collect::<Vec<_>>()

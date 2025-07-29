@@ -94,7 +94,8 @@ mod tests {
                 "unread": true,
             },
         });
-        let marked_unread_account_data = from_json_value::<AnyRoomAccountDataEvent>(raw_marked_unread).unwrap();
+        let marked_unread_account_data =
+            from_json_value::<AnyRoomAccountDataEvent>(raw_marked_unread).unwrap();
         assert_matches!(
             marked_unread_account_data,
             AnyRoomAccountDataEvent::MarkedUnread(marked_unread)

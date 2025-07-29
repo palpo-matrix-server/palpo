@@ -42,7 +42,10 @@ pub(super) enum AppserviceCommand {
 pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
     let body = &ctx.body;
     let body_len = ctx.body.len();
-    if body_len < 2 || !body[0].trim().starts_with("```") || body.last().unwrap_or(&"").trim() != "```" {
+    if body_len < 2
+        || !body[0].trim().starts_with("```")
+        || body.last().unwrap_or(&"").trim() != "```"
+    {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
         ));
@@ -70,18 +73,28 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
 
 pub(super) async fn unregister(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
     match crate::appservice::unregister_appservice(&appservice_identifier) {
-        Err(e) => return Err(AppError::public(format!("Failed to unregister appservice: {e}"))),
+        Err(e) => {
+            return Err(AppError::public(format!(
+                "Failed to unregister appservice: {e}"
+            )));
+        }
         Ok(()) => write!(ctx, "Appservice unregistered."),
     }
     .await
 }
 
-pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
+pub(super) async fn show_appservice_config(
+    ctx: &Context<'_>,
+    appservice_identifier: String,
+) -> AppResult<()> {
     match crate::appservice::get_registration(&appservice_identifier)? {
         None => return Err(AppError::public("Appservice does not exist.")),
         Some(config) => {
             let config_str = serde_yaml::to_string(&config)?;
-            write!(ctx, "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```")
+            write!(
+                ctx,
+                "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```"
+            )
         }
     }
     .await

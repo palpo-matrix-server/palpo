@@ -15,8 +15,9 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
     let palpo_core = import_palpo_core();
 
     let ident = &input.ident;
-    let (kind, var) = to_kind_variation(ident)
-        .ok_or_else(|| syn::Error::new_spanned(ident, "not a valid palpo event struct identifier"))?;
+    let (kind, var) = to_kind_variation(ident).ok_or_else(|| {
+        syn::Error::new_spanned(ident, "not a valid palpo event struct identifier")
+    })?;
 
     let fields: Vec<_> = if let Data::Struct(DataStruct {
         fields: Fields::Named(FieldsNamed { named, .. }),
@@ -41,11 +42,18 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
     let mut res = TokenStream::new();
 
     res.extend(
-        expand_deserialize_event(&input, var, &fields, &palpo_core).unwrap_or_else(syn::Error::into_compile_error),
+        expand_deserialize_event(&input, var, &fields, &palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
     );
 
     if var.is_sync() {
-        res.extend(expand_sync_from_into_full(&input, kind, var, &fields, &palpo_core));
+        res.extend(expand_sync_from_into_full(
+            &input,
+            kind,
+            var,
+            &fields,
+            &palpo_core,
+        ));
     }
 
     if is_non_stripped_room_event(kind, var) {

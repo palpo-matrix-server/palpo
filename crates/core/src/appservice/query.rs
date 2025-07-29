@@ -24,8 +24,14 @@ use crate::{
 //     }
 // };
 
-pub fn query_room_alias_request(origin: &str, args: QueryRoomAliasReqArgs) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!("{origin}/_matrix/app/v1/rooms/{}", args.room_alias))?;
+pub fn query_room_alias_request(
+    origin: &str,
+    args: QueryRoomAliasReqArgs,
+) -> SendResult<SendRequest> {
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/app/v1/rooms/{}",
+        args.room_alias
+    ))?;
     Ok(crate::sending::post(url))
 }
 

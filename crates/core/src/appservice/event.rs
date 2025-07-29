@@ -35,7 +35,11 @@ use crate::{
 //     }
 // };
 
-pub fn push_events_request(origin: &str, txn_id: &str, body: PushEventsReqBody) -> SendResult<SendRequest> {
+pub fn push_events_request(
+    origin: &str,
+    txn_id: &str,
+    body: PushEventsReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/app/v1/transactions/{}", txn_id))?;
     crate::sending::post(url).stuff(body)
 }

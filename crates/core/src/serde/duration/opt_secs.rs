@@ -86,7 +86,10 @@ mod tests {
         let request = DurationTest {
             timeout: Some(Duration::new(2, 0)),
         };
-        assert_eq!(serde_json::to_value(request).unwrap(), json!({ "timeout": 2 }));
+        assert_eq!(
+            serde_json::to_value(request).unwrap(),
+            json!({ "timeout": 2 })
+        );
     }
 
     #[test]

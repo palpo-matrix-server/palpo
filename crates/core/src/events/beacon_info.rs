@@ -45,7 +45,12 @@ impl BeaconInfoEventContent {
     /// Creates a new `BeaconInfoEventContent` with the given description, live,
     /// timeout and optional ts. If ts is None, the current time will be
     /// used.
-    pub fn new(description: Option<String>, timeout: Duration, live: bool, ts: Option<UnixMillis>) -> Self {
+    pub fn new(
+        description: Option<String>,
+        timeout: Duration,
+        live: bool,
+        ts: Option<UnixMillis>,
+    ) -> Self {
         Self {
             description,
             live,

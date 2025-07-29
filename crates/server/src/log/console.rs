@@ -14,8 +14,8 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
-use crate::{config, AppResult};
 use crate::config::ServerConfig;
+use crate::{AppResult, config};
 
 static SYSTEMD_MODE: LazyLock<bool> =
     LazyLock::new(|| env::var("SYSTEMD_EXEC_PID").is_ok() && env::var("JOURNAL_STREAM").is_ok());
@@ -108,7 +108,8 @@ where
         writer: Writer<'_>,
         event: &Event<'_>,
     ) -> Result<(), std::fmt::Error> {
-        let is_debug = cfg!(debug_assertions) && event.fields().any(|field| field.name() == "_debug");
+        let is_debug =
+            cfg!(debug_assertions) && event.fields().any(|field| field.name() == "_debug");
 
         match *event.metadata().level() {
             Level::ERROR if !is_debug => self.pretty.format_event(ctx, writer, event),
@@ -153,7 +154,12 @@ fn get_journal_stream() -> (u64, u64) {
         .flatten()
         .as_deref()
         .and_then(|s| s.split_once(':'))
-        .map(|t| (str::parse(t.0).unwrap_or_default(), str::parse(t.1).unwrap_or_default()))
+        .map(|t| {
+            (
+                str::parse(t.0).unwrap_or_default(),
+                str::parse(t.1).unwrap_or_default(),
+            )
+        })
         .unwrap_or((0, 0))
 }
 

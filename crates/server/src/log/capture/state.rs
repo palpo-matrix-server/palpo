@@ -22,7 +22,10 @@ impl State {
     }
 
     pub(super) fn add(&self, capture: &Arc<Capture>) {
-        self.active.write().expect("locked for writing").push(capture.clone());
+        self.active
+            .write()
+            .expect("locked for writing")
+            .push(capture.clone());
     }
 
     pub(super) fn del(&self, capture: &Arc<Capture>) {

@@ -17,8 +17,9 @@ use crate::data::schema::*;
 use crate::data::user::{NewDbPresence, NewDbProfile};
 use crate::data::{connect, diesel_exists};
 use crate::{
-    AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError, RANDOM_USER_ID_LENGTH,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops, membership, room, utils,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, EmptyResult, JsonResult, MatrixError,
+    RANDOM_USER_ID_LENGTH, SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops,
+    membership, room, utils,
 };
 
 pub fn public_router() -> Router {
@@ -70,10 +71,13 @@ async fn register(
     let is_guest = body.kind == RegistrationKind::Guest;
     let user_id = match (&body.username, is_guest) {
         (Some(username), false) => {
-            let proposed_user_id = UserId::parse_with_server_name(username.to_lowercase(), &conf.server_name)
-                .ok()
-                .filter(|user_id| !user_id.is_historical() && user_id.server_name() == conf.server_name)
-                .ok_or(MatrixError::invalid_username("Username is invalid."))?;
+            let proposed_user_id =
+                UserId::parse_with_server_name(username.to_lowercase(), &conf.server_name)
+                    .ok()
+                    .filter(|user_id| {
+                        !user_id.is_historical() && user_id.server_name() == conf.server_name
+                    })
+                    .ok_or(MatrixError::invalid_username("Username is invalid."))?;
             if data::user::user_exists(&proposed_user_id)? {
                 return Err(MatrixError::user_in_use("Desired user ID is already taken.").into());
             }
@@ -122,7 +126,8 @@ async fn register(
     if body.login_type != Some(LoginType::Appservice) && !is_guest {
         if let Some(auth) = &body.auth {
             let (authed, uiaa) = crate::uiaa::try_auth(
-                &UserId::parse_with_server_name("", &conf.server_name).expect("we know this is valid"),
+                &UserId::parse_with_server_name("", &conf.server_name)
+                    .expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
                 &auth,
                 &uiaa_info,
@@ -133,7 +138,8 @@ async fn register(
         } else {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::update_session(
-                &UserId::parse_with_server_name("", &config::get().server_name).expect("we know this is valid"),
+                &UserId::parse_with_server_name("", &config::get().server_name)
+                    .expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
                 uiaa_info.session.as_ref().expect("session is always set"),
                 Some(&uiaa_info),
@@ -142,7 +148,11 @@ async fn register(
         }
     }
 
-    let password = if is_guest { None } else { body.password.as_deref() };
+    let password = if is_guest {
+        None
+    } else {
+        body.password.as_deref()
+    };
 
     // Create user
     let db_user = crate::user::create_user(user_id.clone(), password)?;
@@ -204,8 +214,12 @@ async fn register(
     }
 
     // Generate new device id if the user didn't specify one
-    let device_id = if is_guest { None } else { body.device_id.clone() }
-        .unwrap_or_else(|| utils::random_string(DEVICE_ID_LENGTH).into());
+    let device_id = if is_guest {
+        None
+    } else {
+        body.device_id.clone()
+    }
+    .unwrap_or_else(|| utils::random_string(DEVICE_ID_LENGTH).into());
 
     // Generate new token for the device
     let token = utils::random_string(TOKEN_LENGTH);
@@ -241,7 +255,10 @@ async fn register(
     } else {
         false
     };
-    if !from_appservice && !conf.auto_join_rooms.is_empty() && (conf.allow_guests_auto_join_rooms || !is_guest) {
+    if !from_appservice
+        && !conf.auto_join_rooms.is_empty()
+        && (conf.allow_guests_auto_join_rooms || !is_guest)
+    {
         for room in &conf.auto_join_rooms {
             let Ok(room_id) = room::alias::resolve(room).await else {
                 error!(

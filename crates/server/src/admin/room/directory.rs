@@ -56,7 +56,12 @@ pub(super) async fn process(command: RoomDirectoryCommand, context: &Context<'_>
 
             let body = rooms
                 .iter()
-                .map(|info| format!("{} | Members: {} | Name: {}", info.id, info.joined_members, info.name))
+                .map(|info| {
+                    format!(
+                        "{} | Members: {} | Name: {}",
+                        info.id, info.joined_members, info.name
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
 

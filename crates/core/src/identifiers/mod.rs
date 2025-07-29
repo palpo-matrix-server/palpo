@@ -6,20 +6,23 @@
 
 #[doc(inline)]
 pub use palpo_identifiers_validation::error::{
-    Error as IdParseError, MatrixIdError, MatrixToError, MatrixUriError, MxcUriError, VoipVersionIdError,
+    Error as IdParseError, MatrixIdError, MatrixToError, MatrixUriError, MxcUriError,
+    VoipVersionIdError,
 };
 use serde::de::{self, Deserializer, Unexpected};
 
 #[doc(inline)]
 pub use self::{
     client_secret::{ClientSecret, OwnedClientSecret},
-    crypto_algorithms::{DeviceKeyAlgorithm, EventEncryptionAlgorithm, KeyDerivationAlgorithm, SigningKeyAlgorithm},
+    crypto_algorithms::{
+        DeviceKeyAlgorithm, EventEncryptionAlgorithm, KeyDerivationAlgorithm, SigningKeyAlgorithm,
+    },
     device_id::{DeviceId, OwnedDeviceId},
     device_key_id::{DeviceKeyId, OwnedDeviceKeyId},
     event_id::{EventId, OwnedEventId},
     key_id::{
-        DeviceSigningKeyId, KeyId, OwnedDeviceSigningKeyId, OwnedKeyId, OwnedServerSigningKeyId, OwnedSigningKeyId,
-        ServerSigningKeyId, SigningKeyId,
+        DeviceSigningKeyId, KeyId, OwnedDeviceSigningKeyId, OwnedKeyId, OwnedServerSigningKeyId,
+        OwnedSigningKeyId, ServerSigningKeyId, SigningKeyId,
     },
     key_name::{KeyName, OwnedKeyName},
     matrix_uri::{MatrixToUri, MatrixUri},
@@ -81,8 +84,9 @@ where
     D: Deserializer<'de>,
     T: for<'a> TryFrom<&'a str>,
 {
-    crate::serde::deserialize_cow_str(deserializer)
-        .and_then(|v| T::try_from(&v).map_err(|_| de::Error::invalid_value(Unexpected::Str(&v), &expected_str)))
+    crate::serde::deserialize_cow_str(deserializer).and_then(|v| {
+        T::try_from(&v).map_err(|_| de::Error::invalid_value(Unexpected::Str(&v), &expected_str))
+    })
 }
 
 /// Shorthand for `<&DeviceId>::from`.
@@ -104,8 +108,8 @@ macro_rules! owned_device_id {
 #[doc(hidden)]
 pub mod __private_macros {
     pub use crate::macros::{
-        device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name, server_signing_key_id,
-        user_id,
+        device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
+        server_signing_key_id, user_id,
     };
 }
 

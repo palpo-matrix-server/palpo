@@ -65,8 +65,11 @@ pub(super) async fn sync_events_v5(
     }
 
     // Get sticky parameters from cache
-    let known_rooms =
-        crate::sync_v5::update_sync_request_with_cache(sender_id.to_owned(), authed.device_id().to_owned(), &mut body);
+    let known_rooms = crate::sync_v5::update_sync_request_with_cache(
+        sender_id.to_owned(),
+        authed.device_id().to_owned(),
+        &mut body,
+    );
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
 
@@ -129,7 +132,9 @@ pub(super) async fn sync_events_v5(
     .await?;
 
     if res_body.rooms.iter().all(|(id, r)| {
-        r.timeline.is_empty() && r.required_state.is_empty() && !res_body.extensions.receipts.rooms.contains_key(id)
+        r.timeline.is_empty()
+            && r.required_state.is_empty()
+            && !res_body.extensions.receipts.rooms.contains_key(id)
     }) && res_body
         .extensions
         .to_device
@@ -185,13 +190,16 @@ async fn process_lists<'a>(
 
             let room_ids = active_rooms[range.0..range.1].to_vec();
 
-            let new_rooms: BTreeSet<OwnedRoomId> = room_ids.clone().into_iter().map(From::from).collect();
+            let new_rooms: BTreeSet<OwnedRoomId> =
+                room_ids.clone().into_iter().map(From::from).collect();
             new_known_rooms.extend(new_rooms);
             //new_known_rooms.extend(room_ids..cloned());
             for room_id in room_ids {
-                let todo_room = todo_rooms
-                    .entry(room_id.to_owned())
-                    .or_insert((BTreeSet::new(), 0_usize, i64::MAX));
+                let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert((
+                    BTreeSet::new(),
+                    0_usize,
+                    i64::MAX,
+                ));
 
                 let limit = list.room_details.timeline_limit.min(100);
 
@@ -244,9 +252,10 @@ fn fetch_subscriptions(
         if !crate::room::room_exists(room_id)? {
             continue;
         }
-        let todo_room = todo_rooms
-            .entry(room_id.clone())
-            .or_insert((BTreeSet::new(), 0_usize, i64::MAX));
+        let todo_room =
+            todo_rooms
+                .entry(room_id.clone())
+                .or_insert((BTreeSet::new(), 0_usize, i64::MAX));
 
         let limit = room.timeline_limit;
 
@@ -316,10 +325,15 @@ async fn process_rooms(
         if body.extensions.account_data.enabled == Some(true) {
             response.extensions.account_data.rooms.insert(
                 room_id.to_owned(),
-                data::user::data_changes(Some(room_id), sender_id, *room_since_sn, Some(next_batch))?
-                    .into_iter()
-                    .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-                    .collect::<Vec<_>>(),
+                data::user::data_changes(
+                    Some(room_id),
+                    sender_id,
+                    *room_since_sn,
+                    Some(next_batch),
+                )?
+                .into_iter()
+                .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
+                .collect::<Vec<_>>(),
             );
         }
 
@@ -384,7 +398,9 @@ async fn process_rooms(
 
         for (_, pdu) in timeline_pdus {
             let ts = pdu.origin_server_ts;
-            if DEFAULT_BUMP_TYPES.binary_search(&pdu.event_ty).is_ok() && timestamp.is_none_or(|time| time <= ts) {
+            if DEFAULT_BUMP_TYPES.binary_search(&pdu.event_ty).is_ok()
+                && timestamp.is_none_or(|time| time <= ts)
+            {
                 timestamp = Some(ts);
             }
         }
@@ -403,13 +419,13 @@ async fn process_rooms(
             .into_iter()
             .filter(|member| *member != sender_id)
             .filter_map(|user_id| {
-                room::get_member(room_id, &user_id)
-                    .ok()
-                    .map(|member| sync_events::v5::SyncRoomHero {
+                room::get_member(room_id, &user_id).ok().map(|member| {
+                    sync_events::v5::SyncRoomHero {
                         user_id: user_id.into(),
                         name: member.display_name,
                         avatar: member.avatar_url,
-                    })
+                    }
+                })
             })
             .take(5)
             .collect();
@@ -422,11 +438,19 @@ async fn process_rooms(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                let last = heroes[0].name.clone().unwrap_or_else(|| heroes[0].user_id.to_string());
+                let last = heroes[0]
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| heroes[0].user_id.to_string());
 
                 Some(format!("{firsts} and {last}"))
             }
-            Ordering::Equal => Some(heroes[0].name.clone().unwrap_or_else(|| heroes[0].user_id.to_string())),
+            Ordering::Equal => Some(
+                heroes[0]
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| heroes[0].user_id.to_string()),
+            ),
             Ordering::Less => None,
         };
 
@@ -509,7 +533,12 @@ fn collect_account_data(
 }
 
 fn collect_e2ee<'a>(
-    (sender_id, sender_device, global_since_sn, body): (&UserId, &DeviceId, Seqnum, &SyncEventsReqBody),
+    (sender_id, sender_device, global_since_sn, body): (
+        &UserId,
+        &DeviceId,
+        Seqnum,
+        &SyncEventsReqBody,
+    ),
     all_joined_rooms: &'a Vec<&'a RoomId>,
 ) -> AppResult<sync_events::v5::E2ee> {
     if !body.extensions.e2ee.enabled.unwrap_or(false) {
@@ -519,7 +548,11 @@ fn collect_e2ee<'a>(
     let mut device_list_changes = HashSet::new();
     let mut device_list_left = HashSet::new();
     // Look for device list updates of this account
-    device_list_changes.extend(data::user::keys_changed_users(sender_id, global_since_sn, None)?);
+    device_list_changes.extend(data::user::keys_changed_users(
+        sender_id,
+        global_since_sn,
+        None,
+    )?);
 
     for room_id in all_joined_rooms {
         let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) else {
@@ -529,7 +562,8 @@ fn collect_e2ee<'a>(
 
         let since_frame_id = crate::event::get_frame_id(room_id, global_since_sn).ok();
 
-        let encrypted_room = state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
+        let encrypted_room =
+            state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
 
         if let Some(since_frame_id) = since_frame_id {
             // Skip if there are only timeline changes
@@ -537,7 +571,8 @@ fn collect_e2ee<'a>(
                 continue;
             }
 
-            let since_encryption = state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
+            let since_encryption =
+                state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
             let since_sender_member = state::get_state_content::<RoomMemberEventContent>(
                 since_frame_id,
@@ -573,7 +608,11 @@ fn collect_e2ee<'a>(
                                 match content.membership {
                                     MembershipState::Join => {
                                         // A new user joined an encrypted room
-                                        if !share_encrypted_room(sender_id, &user_id, Some(room_id))? {
+                                        if !share_encrypted_room(
+                                            sender_id,
+                                            &user_id,
+                                            Some(room_id),
+                                        )? {
                                             device_list_changes.insert(user_id.to_owned());
                                         }
                                     }
@@ -598,7 +637,9 @@ fn collect_e2ee<'a>(
                             // Only send keys if the sender doesn't share an encrypted room with the target
                             // already
                             .filter_map(|user_id| {
-                                if let Ok(true) = share_encrypted_room(sender_id, &user_id, Some(room_id)) {
+                                if let Ok(true) =
+                                    share_encrypted_room(sender_id, &user_id, Some(room_id))
+                                {
                                     Some(user_id.to_owned())
                                 } else {
                                     None
@@ -610,7 +651,11 @@ fn collect_e2ee<'a>(
             }
         }
         // Look for device list updates in this room
-        device_list_changes.extend(crate::room::keys_changed_users(room_id, global_since_sn, None)?);
+        device_list_changes.extend(crate::room::keys_changed_users(
+            room_id,
+            global_since_sn,
+            None,
+        )?);
     }
 
     for user_id in left_encrypted_users {
@@ -647,11 +692,19 @@ fn collect_to_device(
 
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
-        events: data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch)).ok()?,
+        events: data::user::device::get_to_device_events(
+            sender_id,
+            sender_device,
+            None,
+            Some(next_batch),
+        )
+        .ok()?,
     })
 }
 
 fn collect_receipts() -> sync_events::v5::Receipts {
-    sync_events::v5::Receipts { rooms: BTreeMap::new() }
+    sync_events::v5::Receipts {
+        rooms: BTreeMap::new(),
+    }
     // TODO: get explicitly requested read receipts
 }

@@ -104,7 +104,8 @@ impl Capabilities {
             "m.set_avatar_url" => self.set_avatar_url = from_json_value(value)?,
             "m.3pid_changes" => self.thirdparty_id_changes = from_json_value(value)?,
             _ => {
-                self.custom_capabilities.insert(capability.to_owned(), value);
+                self.custom_capabilities
+                    .insert(capability.to_owned(), value);
             }
         }
 
@@ -164,7 +165,10 @@ pub struct RoomVersionsCapability {
 impl RoomVersionsCapability {
     /// Creates a new `RoomVersionsCapability` with the given default room
     /// version ID and room version descriptions.
-    pub fn new(default: RoomVersionId, available: BTreeMap<RoomVersionId, RoomVersionStability>) -> Self {
+    pub fn new(
+        default: RoomVersionId,
+        available: BTreeMap<RoomVersionId, RoomVersionStability>,
+    ) -> Self {
         Self { default, available }
     }
 
@@ -376,11 +380,14 @@ impl<'a> Iterator for CapabilitiesIter<'a> {
                     caps: self.caps,
                 })
             }
-            _ => self.custom_caps_iterator.next().map(|(name, value)| CapabilityRef {
-                name,
-                value: Some(value),
-                caps: self.caps,
-            }),
+            _ => self
+                .custom_caps_iterator
+                .next()
+                .map(|(name, value)| CapabilityRef {
+                    name,
+                    value: Some(value),
+                    caps: self.caps,
+                }),
         }
     }
 }
@@ -403,7 +410,11 @@ pub struct ClientWellKnownResBody {
     pub homeserver: HomeServerInfo,
 
     /// Information about the identity server to connect to.
-    #[serde(default, rename = "m.identity_server", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.identity_server",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub identity_server: Option<IdentityServerInfo>,
 
     /// Information about the tile server to use to display location data.

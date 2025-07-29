@@ -32,7 +32,11 @@ pub fn router() -> Router {
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
+pub async fn get_content(
+    args: ContentReqArgs,
+    req: &mut Request,
+    res: &mut Response,
+) -> AppResult<()> {
     let server_name = &config::get().server_name;
     if let Some(metadata) = crate::data::media::get_metadata(server_name, &args.media_id)? {
         let content_type = metadata
@@ -80,8 +84,11 @@ pub async fn get_thumbnail(
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
 
-        let content_disposition =
-            make_content_disposition(Some(ContentDispositionType::Inline), Some(&content_type), None);
+        let content_disposition = make_content_disposition(
+            Some(ContentDispositionType::Inline),
+            Some(&content_type),
+            None,
+        );
         let content = Content {
             file: fs::read(&thumb_path)?,
             content_type: Some(content_type),
@@ -95,15 +102,20 @@ pub async fn get_thumbnail(
         return Ok(());
     }
 
-    let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
+    let (width, height, crop) =
+        crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    let thumb_path = config::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
+    let thumb_path =
+        config::media_path(server_name, &format!("{}.{width}x{height}", &args.media_id));
     if let Some(DbThumbnail { content_type, .. }) =
         crate::data::media::get_thumbnail(server_name, &args.media_id, width, height)?
     {
         // Using saved thumbnail
-        let content_disposition =
-            make_content_disposition(Some(ContentDispositionType::Inline), Some(&content_type), None);
+        let content_disposition = make_content_disposition(
+            Some(ContentDispositionType::Inline),
+            Some(&content_type),
+            None,
+        );
         let content = Content {
             file: fs::read(&thumb_path)?,
             content_type: Some(content_type),
@@ -127,8 +139,11 @@ pub async fn get_thumbnail(
             let original_width = image.width();
             let original_height = image.height();
             if width > original_width || height > original_height {
-                let content_disposition =
-                    make_content_disposition(Some(ContentDispositionType::Inline), content_type.as_deref(), None);
+                let content_disposition = make_content_disposition(
+                    Some(ContentDispositionType::Inline),
+                    content_type.as_deref(),
+                    None,
+                );
                 let content = Content {
                     file: fs::read(&image_path)?,
                     content_type: content_type.map(Into::into),
@@ -161,7 +176,8 @@ pub async fn get_thumbnail(
                             (width, intermediate as u32)
                         } else {
                             (
-                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate)
+                                    as u32,
                                 ::std::u32::MAX,
                             )
                         }
@@ -179,7 +195,10 @@ pub async fn get_thumbnail(
             };
 
             let mut thumbnail_bytes = Vec::new();
-            thumbnail.write_to(&mut Cursor::new(&mut thumbnail_bytes), image::ImageFormat::Png)?;
+            thumbnail.write_to(
+                &mut Cursor::new(&mut thumbnail_bytes),
+                image::ImageFormat::Png,
+            )?;
 
             // Save thumbnail in database so we don't have to generate it again next time
             diesel::insert_into(media_thumbnails::table)
@@ -197,8 +216,11 @@ pub async fn get_thumbnail(
             let mut f = File::create(&thumb_path).await?;
             f.write_all(&thumbnail_bytes).await?;
 
-            let content_disposition =
-                make_content_disposition(Some(ContentDispositionType::Inline), content_type.as_deref(), None);
+            let content_disposition = make_content_disposition(
+                Some(ContentDispositionType::Inline),
+                content_type.as_deref(),
+                None,
+            );
             let content = Content {
                 file: thumbnail_bytes,
                 content_type: content_type.map(Into::into),

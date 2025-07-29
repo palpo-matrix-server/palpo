@@ -42,7 +42,11 @@ pub struct AvatarUrlResBody {
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(default, rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 impl AvatarUrlResBody {
@@ -74,7 +78,11 @@ impl AvatarUrlResBody {
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct DisplayNameResBody {
     /// The user's display name, if set.
-    #[serde(default, rename = "displayname", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "displayname",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub display_name: Option<String>,
 }
 
@@ -115,7 +123,11 @@ pub struct SetAvatarUrlReqBody {
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
     #[cfg(feature = "unstable-msc2448")]
-    #[serde(default, rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 
@@ -140,6 +152,10 @@ pub struct SetAvatarUrlReqBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct SetDisplayNameReqBody {
     /// The new display name for the user.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "displayname")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "displayname"
+    )]
     pub display_name: Option<String>,
 }

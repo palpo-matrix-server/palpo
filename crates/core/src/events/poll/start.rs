@@ -91,7 +91,8 @@ impl OriginalSyncPollStartEvent {
         &'a self,
         responses: impl IntoIterator<Item = PollResponseData<'a>>,
     ) -> PollEndEventContent {
-        let full_results = compile_poll_results(&self.content.poll, responses, Some(UnixMillis::now()));
+        let full_results =
+            compile_poll_results(&self.content.poll, responses, Some(UnixMillis::now()));
         let results = full_results
             .into_iter()
             .map(|(id, users)| (id, users.len()))

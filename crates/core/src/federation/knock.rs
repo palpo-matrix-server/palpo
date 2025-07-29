@@ -29,7 +29,11 @@ use crate::{
 
 pub fn make_knock_request(origin: &str, args: MakeKnockReqArgs) -> SendResult<SendRequest> {
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
-    let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
+    let ver = if ver.is_empty() {
+        ""
+    } else {
+        &*format!("?{}", ver)
+    };
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_knock/{}/{}{}",
         args.room_id, args.user_id, ver
@@ -72,7 +76,10 @@ pub struct MakeKnockResBody {
 impl MakeKnockResBody {
     /// Creates a new `Response` with the given room version ID and event.
     pub fn new(room_version: RoomVersionId, event: Box<RawJsonValue>) -> Self {
-        Self { room_version, event }
+        Self {
+            room_version,
+            event,
+        }
     }
 }
 
@@ -94,7 +101,11 @@ impl MakeKnockResBody {
 // "/_matrix/federation/v1/send_knock/:room_id/:event_id",     }
 // };
 
-pub fn send_knock_request(origin: &str, args: SendKnockReqArgs, body: SendKnockReqBody) -> SendResult<SendRequest> {
+pub fn send_knock_request(
+    origin: &str,
+    args: SendKnockReqArgs,
+    body: SendKnockReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/send_knock/{}/{}",
         args.room_id, args.event_id

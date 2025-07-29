@@ -14,7 +14,11 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, json_ok};
 ///
 /// - Gets the tag event of the room account data.
 #[endpoint]
-pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut Depot) -> JsonResult<TagsResBody> {
+pub(super) async fn list_tags(
+    _aa: AuthArgs,
+    args: UserRoomReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<TagsResBody> {
     let authed = depot.authed_info()?;
 
     let user_data_content = crate::data::user::get_data::<TagEventContent>(
@@ -22,7 +26,9 @@ pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut 
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     json_ok(TagsResBody {
         tags: user_data_content.tags,
@@ -47,7 +53,9 @@ pub(super) async fn upsert_tag(
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     user_data_content
         .tags
@@ -67,7 +75,11 @@ pub(super) async fn upsert_tag(
 ///
 /// - Removes the tag from the tag event of the room account data.
 #[endpoint]
-pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn delete_tag(
+    _aa: AuthArgs,
+    args: OperateTagReqArgs,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
@@ -75,7 +87,9 @@ pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &m
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     user_data_content.tags.remove(&args.tag.clone().into());
 

@@ -15,7 +15,10 @@ use crate::{EmptyResult, JsonResult, empty_ok, json_ok};
 /// #GET /_matrix/client/r0/directory/list/room/{room_id}
 /// Gets the visibility of a given room in the room directory.
 #[endpoint]
-pub(super) async fn get_visibility(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>) -> JsonResult<VisibilityResBody> {
+pub(super) async fn get_visibility(
+    _aa: AuthArgs,
+    room_id: PathParam<OwnedRoomId>,
+) -> JsonResult<VisibilityResBody> {
     let room_id = room_id.into_inner();
     let query = rooms::table
         .filter(rooms::id.eq(&room_id))
@@ -39,7 +42,9 @@ pub(super) async fn set_visibility(
     body: JsonBody<SetRoomVisibilityReqBody>,
 ) -> EmptyResult {
     let room_id = room_id.into_inner();
-    let room = rooms::table.find(&room_id).first::<DbRoom>(&mut connect()?)?;
+    let room = rooms::table
+        .find(&room_id)
+        .first::<DbRoom>(&mut connect()?)?;
 
     diesel::update(&room)
         .set(rooms::is_public.eq(body.visibility == Visibility::Public))

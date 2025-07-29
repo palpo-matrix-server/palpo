@@ -109,7 +109,11 @@ pub struct DirectDeviceContent {
 impl DirectDeviceContent {
     /// Creates a new `DirectDeviceContent` with the given `sender, `ev_type`
     /// and `message_id`.
-    pub fn new(sender: OwnedUserId, ev_type: ToDeviceEventType, message_id: OwnedTransactionId) -> Self {
+    pub fn new(
+        sender: OwnedUserId,
+        ev_type: ToDeviceEventType,
+        message_id: OwnedTransactionId,
+    ) -> Self {
         Self {
             sender,
             ev_type,
@@ -122,4 +126,5 @@ impl DirectDeviceContent {
 /// Direct device message contents.
 ///
 /// Represented as a map of `{ user-ids => { device-ids => message-content } }`.
-pub type DirectDeviceMessages = BTreeMap<OwnedUserId, BTreeMap<DeviceIdOrAllDevices, RawJson<AnyToDeviceEventContent>>>;
+pub type DirectDeviceMessages =
+    BTreeMap<OwnedUserId, BTreeMap<DeviceIdOrAllDevices, RawJson<AnyToDeviceEventContent>>>;

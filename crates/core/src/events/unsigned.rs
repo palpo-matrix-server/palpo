@@ -107,7 +107,10 @@ impl<C: PossiblyRedactedStateEventContent> CanBeEmpty for StateUnsigned<C> {
     /// an incoming `unsigned` field was present - it could still have been
     /// present but contained none of the known fields.
     fn is_empty(&self) -> bool {
-        self.age.is_none() && self.transaction_id.is_none() && self.prev_content.is_none() && self.relations.is_empty()
+        self.age.is_none()
+            && self.transaction_id.is_none()
+            && self.prev_content.is_none()
+            && self.relations.is_empty()
     }
 }
 

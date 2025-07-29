@@ -184,9 +184,11 @@ impl TryFrom<JsonValue> for CanonicalJsonValue {
                 i64::try_from(num.as_i64().ok_or(CanonicalJsonError::IntConvert)?)
                     .map_err(|_| CanonicalJsonError::IntConvert)?,
             ),
-            JsonValue::Array(vec) => {
-                Self::Array(vec.into_iter().map(TryInto::try_into).collect::<Result<Vec<_>, _>>()?)
-            }
+            JsonValue::Array(vec) => Self::Array(
+                vec.into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
             JsonValue::String(string) => Self::String(string),
             JsonValue::Object(obj) => Self::Object(
                 obj.into_iter()
@@ -204,8 +206,12 @@ impl From<CanonicalJsonValue> for JsonValue {
             CanonicalJsonValue::Bool(b) => Self::Bool(b),
             CanonicalJsonValue::Integer(int) => Self::Number(i64::from(int).into()),
             CanonicalJsonValue::String(string) => Self::String(string),
-            CanonicalJsonValue::Array(vec) => Self::Array(vec.into_iter().map(Into::into).collect()),
-            CanonicalJsonValue::Object(obj) => Self::Object(obj.into_iter().map(|(k, v)| (k, v.into())).collect()),
+            CanonicalJsonValue::Array(vec) => {
+                Self::Array(vec.into_iter().map(Into::into).collect())
+            }
+            CanonicalJsonValue::Object(obj) => {
+                Self::Object(obj.into_iter().map(|(k, v)| (k, v.into())).collect())
+            }
             CanonicalJsonValue::Null => Self::Null,
         }
     }

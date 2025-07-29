@@ -27,7 +27,10 @@ impl<'de> Deserialize<'de> for EmptyStateKey {
         if s.is_empty() {
             Ok(EmptyStateKey)
         } else {
-            Err(de::Error::invalid_value(Unexpected::Str(&s), &"an empty string"))
+            Err(de::Error::invalid_value(
+                Unexpected::Str(&s),
+                &"an empty string",
+            ))
         }
     }
 }

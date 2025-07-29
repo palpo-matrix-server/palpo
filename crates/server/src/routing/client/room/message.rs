@@ -6,7 +6,8 @@ use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
 use crate::core::client::message::{
-    CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody, SendMessageResBody,
+    CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody,
+    SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
@@ -65,7 +66,12 @@ pub(super) async fn get_messages(
         });
     let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
-    crate::room::lazy_loading::lazy_load_confirm_delivery(authed.user_id(), authed.device_id(), &args.room_id, from)?;
+    crate::room::lazy_loading::lazy_load_confirm_delivery(
+        authed.user_id(),
+        authed.device_id(),
+        &args.room_id,
+        from,
+    )?;
 
     let limit = usize::from(args.limit).min(100);
     let next_token;
@@ -100,7 +106,10 @@ pub(super) async fn get_messages(
 
             next_token = events.last().map(|(sn, _)| sn).copied();
 
-            let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
+            let events: Vec<_> = events
+                .into_iter()
+                .map(|(_, pdu)| pdu.to_room_event())
+                .collect();
 
             resp.start = from.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
@@ -113,8 +122,14 @@ pub(super) async fn get_messages(
             } else {
                 from
             };
-            let events =
-                timeline::get_pdus_backward(authed.user_id(), &args.room_id, from, None, Some(&args.filter), limit)?;
+            let events = timeline::get_pdus_backward(
+                authed.user_id(),
+                &args.room_id,
+                from,
+                None,
+                Some(&args.filter),
+                limit,
+            )?;
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
@@ -134,7 +149,10 @@ pub(super) async fn get_messages(
 
             next_token = events.last().map(|(sn, _)| sn).copied();
 
-            let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
+            let events: Vec<_> = events
+                .into_iter()
+                .map(|(_, pdu)| pdu.to_room_event())
+                .collect();
 
             resp.start = from.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
@@ -144,7 +162,12 @@ pub(super) async fn get_messages(
 
     resp.state = Vec::new();
     for ll_id in &lazy_loaded {
-        if let Ok(member_event) = room::get_state(&args.room_id, &StateEventType::RoomMember, ll_id.as_str(), None) {
+        if let Ok(member_event) = room::get_state(
+            &args.room_id,
+            &StateEventType::RoomMember,
+            ll_id.as_str(),
+            None,
+        ) {
             resp.state.push(member_event.to_state_event());
         }
     }
@@ -182,7 +205,9 @@ pub(super) async fn send_message(
 
     let conf = config::get();
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !conf.allow_encryption {
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into()
+        && !conf.allow_encryption
+    {
         return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
@@ -211,7 +236,8 @@ pub(super) async fn send_message(
     let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
-            content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
+            content: serde_json::from_slice(payload)
+                .map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned,
             timestamp: if authed.appservice().is_some() {
                 args.timestamp
@@ -256,7 +282,9 @@ pub(super) async fn post_message(
     let conf = config::get();
     let state_lock = room::lock_state(&args.room_id).await;
     // Forbid m.room.encrypted if encryption is disabled
-    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into() && !conf.allow_encryption {
+    if TimelineEventType::RoomEncrypted == args.event_type.to_string().into()
+        && !conf.allow_encryption
+    {
         return Err(MatrixError::forbidden("Encryption has been disabled", None).into());
     }
 
@@ -271,7 +299,8 @@ pub(super) async fn post_message(
     let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
-            content: serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
+            content: serde_json::from_slice(payload)
+                .map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
             unsigned: BTreeMap::new(),
             ..Default::default()
         },

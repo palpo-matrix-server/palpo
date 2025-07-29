@@ -42,7 +42,10 @@ pub fn markdown_table_head<S>(out: &mut S) -> AppResult<()>
 where
     S: Write + ?Sized,
 {
-    write!(out, "| level | span | message |\n| ------: | :-----: | :------- |\n")?;
+    write!(
+        out,
+        "| level | span | message |\n| ------: | :-----: | :------- |\n"
+    )?;
 
     Ok(())
 }

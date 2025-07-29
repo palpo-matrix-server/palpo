@@ -33,7 +33,12 @@ pub struct NewDbAccessToken {
 }
 
 impl NewDbAccessToken {
-    pub fn new(user_id: OwnedUserId, device_id: OwnedDeviceId, token: String, refresh_token_id: Option<i64>) -> Self {
+    pub fn new(
+        user_id: OwnedUserId,
+        device_id: OwnedDeviceId,
+        token: String,
+        refresh_token_id: Option<i64>,
+    ) -> Self {
         Self {
             user_id,
             device_id,

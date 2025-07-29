@@ -25,7 +25,10 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.eq(thread_id)),
             )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .set(
+                event_push_summaries::notification_count
+                    .eq(event_push_summaries::notification_count + 1),
+            )
             .execute(&mut connect()?)?
         } else {
             diesel::update(
@@ -34,7 +37,10 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.is_null()),
             )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .set(
+                event_push_summaries::notification_count
+                    .eq(event_push_summaries::notification_count + 1),
+            )
             .execute(&mut connect()?)?
         };
         if rows == 0 {
@@ -58,7 +64,9 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.eq(thread_id)),
             )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .set(
+                event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1),
+            )
             .execute(&mut connect()?)?
         } else {
             diesel::update(
@@ -67,7 +75,9 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.is_null()),
             )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .set(
+                event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1),
+            )
             .execute(&mut connect()?)?
         };
         if rows == 0 {

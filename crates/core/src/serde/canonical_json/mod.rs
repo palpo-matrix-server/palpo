@@ -103,13 +103,19 @@ pub enum JsonType {
 }
 
 /// Fallible conversion from a `serde_json::Map` to a `CanonicalJsonObject`.
-pub fn try_from_json_map(json: serde_json::Map<String, JsonValue>) -> Result<CanonicalJsonObject, CanonicalJsonError> {
-    json.into_iter().map(|(k, v)| Ok((k, v.try_into()?))).collect()
+pub fn try_from_json_map(
+    json: serde_json::Map<String, JsonValue>,
+) -> Result<CanonicalJsonObject, CanonicalJsonError> {
+    json.into_iter()
+        .map(|(k, v)| Ok((k, v.try_into()?)))
+        .collect()
 }
 
 /// Fallible conversion from any value that impl's `Serialize` to a
 /// `CanonicalJsonValue`.
-pub fn to_canonical_value<T: Serialize>(value: T) -> Result<CanonicalJsonValue, CanonicalJsonError> {
+pub fn to_canonical_value<T: Serialize>(
+    value: T,
+) -> Result<CanonicalJsonValue, CanonicalJsonError> {
     serde_json::to_value(value)
         .map_err(CanonicalJsonError::SerDe)?
         .try_into()
@@ -193,7 +199,9 @@ pub fn redact_in_place(
     // below, because we can't teach rust that this is a disjoint borrow with
     // `get_mut("content")`.
     let allowed_content_keys = match event.get("type") {
-        Some(CanonicalJsonValue::String(event_type)) => allowed_content_keys_for(event_type, version),
+        Some(CanonicalJsonValue::String(event_type)) => {
+            allowed_content_keys_for(event_type, version)
+        }
         Some(_) => return Err(RedactionError::not_of_type("type", JsonType::String)),
         None => return Err(RedactionError::field_missing_from_object("type")),
     };
@@ -216,7 +224,10 @@ pub fn redact_in_place(
     }
 
     if let Some(redacted_because) = redacted_because {
-        let unsigned = CanonicalJsonObject::from_iter([("redacted_because".to_owned(), redacted_because.0.into())]);
+        let unsigned = CanonicalJsonObject::from_iter([(
+            "redacted_because".to_owned(),
+            redacted_because.0.into(),
+        )]);
         event.insert("unsigned".to_owned(), unsigned.into());
     }
 
@@ -232,10 +243,16 @@ pub fn redact_content_in_place(
     version: &RoomVersionId,
     event_type: impl AsRef<str>,
 ) -> Result<(), RedactionError> {
-    object_retain_keys(object, allowed_content_keys_for(event_type.as_ref(), version))
+    object_retain_keys(
+        object,
+        allowed_content_keys_for(event_type.as_ref(), version),
+    )
 }
 
-fn object_retain_keys(object: &mut CanonicalJsonObject, allowed_keys: &AllowedKeys) -> Result<(), RedactionError> {
+fn object_retain_keys(
+    object: &mut CanonicalJsonObject,
+    allowed_keys: &AllowedKeys,
+) -> Result<(), RedactionError> {
     match *allowed_keys {
         AllowedKeys::All => {}
         AllowedKeys::Some { keys, nested } => {
@@ -366,7 +383,8 @@ impl AllowedKeys {
 /// Allowed keys in `m.room.member`'s content according to room version 1.
 static ROOM_MEMBER_V1: AllowedKeys = AllowedKeys::some(&["membership"]);
 /// Allowed keys in `m.room.member`'s content according to room version 9.
-static ROOM_MEMBER_V9: AllowedKeys = AllowedKeys::some(&["membership", "join_authorised_via_users_server"]);
+static ROOM_MEMBER_V9: AllowedKeys =
+    AllowedKeys::some(&["membership", "join_authorised_via_users_server"]);
 /// Allowed keys in `m.room.member`'s content according to room version 11.
 static ROOM_MEMBER_V11: AllowedKeys = AllowedKeys::some_nested(
     &["membership", "join_authorised_via_users_server"],
@@ -413,7 +431,8 @@ static ROOM_POWER_LEVELS_V11: AllowedKeys = AllowedKeys::some(&[
 static ROOM_ALIASES_V1: AllowedKeys = AllowedKeys::some(&["aliases"]);
 
 /// Allowed keys in `m.room.server_acl`'s content according to MSC2870.
-static ROOM_SERVER_ACL_MSC2870: AllowedKeys = AllowedKeys::some(&["allow", "deny", "allow_ip_literals"]);
+static ROOM_SERVER_ACL_MSC2870: AllowedKeys =
+    AllowedKeys::some(&["allow", "deny", "allow_ip_literals"]);
 
 /// Allowed keys in `m.room.history_visibility`'s content according to room
 /// version 1.
@@ -473,9 +492,11 @@ fn allowed_content_keys_for(event_type: &str, version: &RoomVersionId) -> &'stat
             _ => &ROOM_POWER_LEVELS_V11,
         },
         "m.room.aliases" => match version {
-            RoomVersionId::V1 | RoomVersionId::V2 | RoomVersionId::V3 | RoomVersionId::V4 | RoomVersionId::V5 => {
-                &ROOM_ALIASES_V1
-            }
+            RoomVersionId::V1
+            | RoomVersionId::V2
+            | RoomVersionId::V3
+            | RoomVersionId::V4
+            | RoomVersionId::V5 => &ROOM_ALIASES_V1,
             // All other room versions, including custom ones, are treated by version 6 rules.
             // TODO: Should we return an error for unknown versions instead?
             _ => &AllowedKeys::None,

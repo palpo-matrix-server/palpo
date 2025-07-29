@@ -29,7 +29,11 @@ pub fn authed_router() -> Router {
 /// - Forgets to-device events
 /// - Triggers device list updates
 #[endpoint]
-async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, depot: &mut Depot) -> EmptyResult {
+async fn change_password(
+    _aa: AuthArgs,
+    body: JsonBody<ChangePasswordReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     let mut uiaa_info = UiaaInfo {

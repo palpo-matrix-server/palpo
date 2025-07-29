@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     OwnedRoomId,
     events::{
-        EmptyStateKey, EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
-        StaticEventContent,
+        EmptyStateKey, EventContent, EventContentFromType, PossiblyRedactedStateEventContent,
+        StateEventType, StaticEventContent,
     },
     serde::RawJsonValue,
 };
@@ -39,7 +39,10 @@ impl RoomTombstoneEventContent {
     /// Creates a new `RoomTombstoneEventContent` with the given body and
     /// replacement room ID.
     pub fn new(body: String, replacement_room: OwnedRoomId) -> Self {
-        Self { body, replacement_room }
+        Self {
+            body,
+            replacement_room,
+        }
     }
 }
 
