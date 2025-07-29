@@ -16,18 +16,7 @@ use crate::core::{
     EventId, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, RoomId, RoomVersionId,
     api::federation::event::get_room_state, events::AnyStateEvent,
 };
-use crate::room::state_compressor::HashSetCompressStateEvent;
-use crate::{
-    AppError, AppResult,
-    admin::Context,
-    config, info, jwt,
-    matrix::{
-        Event,
-        pdu::{PduEvent, PduId, RawPduId},
-    },
-    room::timeline,
-    utils,
-};
+use crate::{AppError, AppResult, admin::Context, config, info, event::PduEvent, room::timeline, utils};
 
 pub(super) async fn echo(ctx: &Context<'_>, message: Vec<String>) -> AppResult<()> {
     let message = message.join(" ");
@@ -35,7 +24,7 @@ pub(super) async fn echo(ctx: &Context<'_>, message: Vec<String>) -> AppResult<(
 }
 
 pub(super) async fn get_auth_chain(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
-    let Ok(event) = timeline::get_pdu_json(&event_id) else {
+    let Ok(Some(event)) = timeline::get_pdu_json(&event_id) else {
         return Err(AppError::public("Event not found."));
     };
 
@@ -48,14 +37,7 @@ pub(super) async fn get_auth_chain(ctx: &Context<'_>, event_id: OwnedEventId) ->
         .map_err(|_| Err(AppError::public("Invalid room id field in event in database")))?;
 
     let start = Instant::now();
-    let count = self
-        .services
-        .rooms
-        .auth_chain
-        .event_ids_iter(room_id, once(event_id.as_ref()))
-        .ready_filter_map(Result::ok)
-        .count()
-        .await;
+    let count = crate::room::auth_chain::get_auth_chain_ids(room_id, once(event_id.as_ref())).len();
 
     let elapsed = start.elapsed();
     let out = format!("Loaded auth chain with length {count} in {elapsed:?}");
@@ -64,7 +46,7 @@ pub(super) async fn get_auth_chain(ctx: &Context<'_>, event_id: OwnedEventId) ->
 }
 
 pub(super) async fn parse_pdu(ctx: &Context<'_>) -> AppResult<()> {
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -129,7 +111,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
         ));
     }
 
-    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&EMPTY).trim() != "```"
+    if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```"
     {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -149,7 +131,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
 
     for event_id in list {
         if force {
-            match get_remote_pdu(event_id.to_owned(), server.clone()).await {
+            match get_remote_pdu(ctx, event_id.to_owned(), server.clone()).await {
                 Err(e) => {
                     failed_count = failed_count.saturating_add(1);
                     crate::admin::send_text(&format!("Failed to get remote PDU, ignoring error: {e}")).await;
@@ -161,7 +143,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
                 }
             }
         } else {
-            get_remote_pdu(event_id.to_owned(), server.clone()).await?;
+            get_remote_pdu(ctx, event_id.to_owned(), server.clone()).await?;
             success_count = success_count.saturating_add(1);
         }
     }
@@ -188,87 +170,86 @@ pub(super) async fn get_remote_pdu(
         )));
     }
 
-    match self
-        .services
-        .sending
-        .send_federation_request(
-            &server,
-            crate::core::api::federation::event::get_event::v1::Request {
-                event_id: event_id.clone(),
-                include_unredacted_content: None,
-            },
-        )
-        .await
-    {
-        Err(e) => {
-            return Err(AppError::public(format!(
-                "Remote server did not have PDU or failed sending request to remote server: {e}"
-            )));
-        }
-        Ok(response) => {
-            let json: CanonicalJsonObject = serde_json::from_str(response.pdu.get()).map_err(|e| {
-                warn!(
-                    "Requested event ID {event_id} from server but failed to convert from \
-						 RawValue to CanonicalJsonObject (malformed event/response?): {e}"
-                );
-                AppError::public("Received response from server but failed to parse PDU")
-            })?;
+    unimplemented!()
+    // match self
+    //     .services
+    //     .sending
+    //     .send_federation_request(
+    //         &server,
+    //         crate::core::api::federation::event::get_event::v1::Request {
+    //             event_id: event_id.clone(),
+    //             include_unredacted_content: None,
+    //         },
+    //     )
+    //     .await
+    // {
+    //     Err(e) => {
+    //         return Err(AppError::public(format!(
+    //             "Remote server did not have PDU or failed sending request to remote server: {e}"
+    //         )));
+    //     }
+    //     Ok(response) => {
+    //         let json: CanonicalJsonObject = serde_json::from_str(response.pdu.get()).map_err(|e| {
+    //             warn!(
+    //                 "Requested event ID {event_id} from server but failed to convert from \
+	// 					 RawValue to CanonicalJsonObject (malformed event/response?): {e}"
+    //             );
+    //             AppError::public("Received response from server but failed to parse PDU")
+    //         })?;
 
-            trace!("Attempting to parse PDU: {:?}", &response.pdu);
-            let _parsed_pdu = {
-                let parsed_result = crate::parse_incoming_pdu(&response.pdu)?;
+    //         trace!("Attempting to parse PDU: {:?}", &response.pdu);
+    //         let _parsed_pdu = {
+    //             let parsed_result = crate::parse_incoming_pdu(&response.pdu)?;
 
-                let (event_id, value, room_id) = match parsed_result {
-                    Ok(t) => t,
-                    Err(e) => {
-                        warn!("Failed to parse PDU: {e}");
-                        info!("Full PDU: {:?}", &response.pdu);
-                        return Err(AppError::public(format!(
-                            "Failed to parse PDU remote server {server} sent us: {e}"
-                        )));
-                    }
-                };
+    //             let (event_id, value, room_id) = match parsed_result {
+    //                 Ok(t) => t,
+    //                 Err(e) => {
+    //                     warn!("Failed to parse PDU: {e}");
+    //                     info!("Full PDU: {:?}", &response.pdu);
+    //                     return Err(AppError::public(format!(
+    //                         "Failed to parse PDU remote server {server} sent us: {e}"
+    //                     )));
+    //                 }
+    //             };
 
-                vec![(event_id, value, room_id)]
-            };
+    //             vec![(event_id, value, room_id)]
+    //         };
 
-            info!("Attempting to handle event ID {event_id} as backfilled PDU");
-            timeline::backfill_pdu(&server, response.pdu).await?;
+    //         info!("Attempting to handle event ID {event_id} as backfilled PDU");
+    //         timeline::backfill_pdu(&server, response.pdu).await?;
 
-            let text = serde_json::to_string_pretty(&json)?;
-            let msg = "Got PDU from specified server and handled as backfilled";
-            write!(ctx, "{msg}. Event body:\n```json\n{text}\n```")
-        }
-    }
-    .await
+    //         let text = serde_json::to_string_pretty(&json)?;
+    //         let msg = "Got PDU from specified server and handled as backfilled";
+    //         write!(ctx, "{msg}. Event body:\n```json\n{text}\n```")
+    //     }
+    // }
+    // .await
 }
 
 pub(super) async fn get_room_state(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> {
-    let room_id = crate::room::alias::resolve(&room).await?;
-    let room_state: Vec<Raw<AnyStateEvent>> = self
-        .services
-        .rooms
-        .state_accessor
-        .room_state_full_pdus(&room_id)
-        .map_ok(Event::into_format)
-        .try_collect()
-        .await?;
+    // TODO: admin
+    unimplemented!();
+    // let room_id = crate::room::alias::resolve(&room).await?;
+    // let room_state: Vec<Raw<AnyStateEvent>> = crate::room::state::room_state_full_pdus(&room_id)
+    //     .map_ok(Event::into_format)
+    //     .try_collect()
+    //     .await?;
 
-    if room_state.is_empty() {
-        return Err(AppError::public(
-            "Unable to find room state in our database (vector is empty)",
-        ));
-    }
+    // if room_state.is_empty() {
+    //     return Err(AppError::public(
+    //         "Unable to find room state in our database (vector is empty)",
+    //     ));
+    // }
 
-    let json = serde_json::to_string_pretty(&room_state).map_err(|e| {
-        AppError::public(format!(
-            "Failed to convert room state events to pretty JSON, possible invalid room state \
-			 events in our database {e}",
-        ))
-    })?;
+    // let json = serde_json::to_string_pretty(&room_state).map_err(|e| {
+    //     AppError::public(format!(
+    //         "Failed to convert room state events to pretty JSON, possible invalid room state \
+    // 		 events in our database {e}",
+    //     ))
+    // })?;
 
-    let out = format!("```json\n{json}\n```");
-    ctx.write_str(&out).await
+    // let out = format!("```json\n{json}\n```");
+    // ctx.write_str(&out).await
 }
 
 pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResult<()> {
@@ -280,34 +261,35 @@ pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResul
 
     let timer = tokio::time::Instant::now();
 
-    match self
-        .services
-        .sending
-        .send_federation_request(
-            &server,
-            crate::core::api::federation::discovery::get_server_version::v1::Request {},
-        )
-        .await
-    {
-        Err(e) => {
-            return Err(AppError::public(format!(
-                "Failed sending federation request to specified server:\n\n{e}"
-            )));
-        }
-        Ok(response) => {
-            let ping_time = timer.elapsed();
-            let json_text_res = serde_json::to_string_pretty(&response.server);
+    unimplemented!()
+    // match self
+    //     .services
+    //     .sending
+    //     .send_federation_request(
+    //         &server,
+    //         crate::core::api::federation::discovery::get_server_version::v1::Request {},
+    //     )
+    //     .await
+    // {
+    //     Err(e) => {
+    //         return Err(AppError::public(format!(
+    //             "Failed sending federation request to specified server:\n\n{e}"
+    //         )));
+    //     }
+    //     Ok(response) => {
+    //         let ping_time = timer.elapsed();
+    //         let json_text_res = serde_json::to_string_pretty(&response.server);
 
-            let out = if let Ok(json) = json_text_res {
-                format!("Got response which took {ping_time:?} time:\n```json\n{json}\n```")
-            } else {
-                format!("Got non-JSON response which took {ping_time:?} time:\n{response:?}")
-            };
+    //         let out = if let Ok(json) = json_text_res {
+    //             format!("Got response which took {ping_time:?} time:\n```json\n{json}\n```")
+    //         } else {
+    //             format!("Got non-JSON response which took {ping_time:?} time:\n{response:?}")
+    //         };
 
-            write!(ctx, "{out}")
-        }
-    }
-    .await
+    //         write!(ctx, "{out}")
+    //     }
+    // }
+    // .await
 }
 
 pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()> {
@@ -431,16 +413,13 @@ pub(super) async fn first_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -
         ));
     }
 
-    let first_pdu = self
-        .services
-        .rooms
-        .timeline
-        .first_pdu_in_room(&room_id)
-        .await
-        .map_err(|_| AppError::public("Failed to find the first PDU in database"))?;
+    unimplemented!()
+    // let first_pdu = timeline::first_pdu_in_room(&room_id)
+    //     .await
+    //     .map_err(|_| AppError::public("Failed to find the first PDU in database"))?;
 
-    let out = format!("{first_pdu:?}");
-    ctx.write_str(&out).await
+    // let out = format!("{first_pdu:?}");
+    // ctx.write_str(&out).await
 }
 
 pub(super) async fn latest_pdu_in_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
@@ -516,16 +495,16 @@ pub(super) async fn force_set_room_state_from_server(
         // TODO: admin
         // self.services.rooms.outlier.add_pdu_outlier(&event_id, &value);
 
-        if let Some(state_key) = &pdu.state_key {
-            let shortstatekey = self
-                .services
-                .rooms
-                .short
-                .get_or_create_shortstatekey(&pdu.kind.to_string().into(), state_key)
-                .await;
+        // if let Some(state_key) = &pdu.state_key {
+        //     let shortstatekey = self
+        //         .services
+        //         .rooms
+        //         .short
+        //         .get_or_create_shortstatekey(&pdu.kind.to_string().into(), state_key)
+        //         .await;
 
-            state.insert(shortstatekey, pdu.event_id.clone());
-        }
+        //     state.insert(shortstatekey, pdu.event_id.clone());
+        // }
     }
 
     info!("Going through auth_chain response");
@@ -559,7 +538,7 @@ pub(super) async fn force_set_room_state_from_server(
         "Updating joined counts for room just in case (e.g. we may have found a difference in \
 		 the room's m.room.member state"
     );
-    crate::room::state::update_currents(&room_id)?;
+    crate::room::update_currents(&room_id)?;
     drop(state_lock);
     ctx.write_str("Successfully forced the room state from the requested remote server.")
         .await
@@ -695,7 +674,7 @@ pub(super) async fn create_jwt(
         )));
     }
 
-    let key = EncodingKey::from_secret(jwt_conf.key.as_ref());
+    let key = EncodingKey::from_secret(jwt_conf.secret.as_ref());
     let alg = Algorithm::from_str(jwt_conf.algorithm.as_str())
         .map_err(|e| AppError::public(format!("JWT algorithm is not recognized or configured {e}")))?;
 

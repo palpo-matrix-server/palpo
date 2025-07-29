@@ -19,7 +19,7 @@ pub(super) async fn delete_media(
 
     if let Some(mxc) = mxc {
         trace!("Got MXC URL: {mxc}");
-        crate::media::delete_media(&mxc.as_str()).await?;
+        data::media::delete_media(mxc.server_name()?, mxc.media_id()?)?;
 
         return Err(AppError::public(
             "Deleted the MXC from our database and on our filesystem.",
@@ -32,8 +32,8 @@ pub(super) async fn delete_media(
         let mut mxc_urls = Vec::with_capacity(4);
 
         // parsing the PDU for any MXC URLs begins here
-        match timeline::get_pdu_json(&event_id).await {
-            Ok(event_json) => {
+        match timeline::get_pdu_json(&event_id) {
+            Ok(Some(event_json)) => {
                 if let Some(content_key) = event_json.get("content") {
                     debug!("Event ID has \"content\".");
                     let content_obj = content_key.as_object();
@@ -138,7 +138,8 @@ pub(super) async fn delete_media(
         let mut mxc_deletion_count: usize = 0;
 
         for mxc_url in mxc_urls {
-            match crate::media::delete_media(&mxc_url).await {
+            let Mxc { server_name, media_id } = mxc_url.as_str().try_into()?;
+            match data::media::delete_media(server_name, media_id) {
                 Ok(()) => {
                     info!("Successfully deleted {mxc_url} from filesystem and database");
                     mxc_deletion_count = mxc_deletion_count.saturating_add(1);
@@ -173,7 +174,7 @@ pub(super) async fn delete_media_list(ctx: &Context<'_>) -> AppResult<()> {
 
     let mut failed_parsed_mxcs: usize = 0;
 
-    let mxc_list = self
+    let mxc_list = ctx
         .body
         .to_vec()
         .drain(1..ctx.body.len().checked_sub(1).unwrap())
@@ -192,7 +193,7 @@ pub(super) async fn delete_media_list(ctx: &Context<'_>) -> AppResult<()> {
 
     for mxc in &mxc_list {
         trace!(%failed_parsed_mxcs, %mxc_deletion_count, "Deleting MXC {mxc} in bulk");
-        match crate::media::delete_media(mxc).await {
+        match data::media::delete_media(mxc.server_name(), mxc.media_id()) {
             Ok(()) => {
                 info!("Successfully deleted {mxc} from filesystem and database");
                 mxc_deletion_count = mxc_deletion_count.saturating_add(1);
@@ -227,11 +228,9 @@ pub(super) async fn delete_past_remote_media(
     );
 
     let duration = parse_timepoint_ago(&duration)?;
-    let deleted_count = self
-        .services
-        .media
-        .delete_all_remote_media_at_after_time(duration, before, after, yes_i_want_to_delete_local_media)
-        .await?;
+    let deleted_count =
+        crate::media::delete_all_remote_media_at_after_time(duration, before, after, yes_i_want_to_delete_local_media)
+            .await?;
 
     ctx.write_str(&format!("Deleted {deleted_count} total files.",)).await
 }
@@ -253,12 +252,8 @@ pub(super) async fn delete_all_media_from_server(
         return Err(AppError::public("This command only works for remote media by default."));
     }
 
-    let Ok(all_mxcs) = self
-        .services
-        .media
-        .get_all_mxcs()
-        .await
-        .inspect_err(|e| error!("Failed to get MXC URIs from our database: {e}"))
+    let Ok(all_mxcs) =
+        crate::media::get_all_mxcs().inspect_err(|e| error!("Failed to get MXC URIs from our database: {e}"))
     else {
         return Err(AppError::public("Failed to get MXC URIs from our database"));
     };
@@ -282,7 +277,7 @@ pub(super) async fn delete_all_media_from_server(
 
         let mxc: Mxc<'_> = mxc.as_str().try_into()?;
 
-        match crate::media::delete_media(&mxc_url).await {
+        match crate::media::delete_media(mxc.server_name, mxc.media_id).await {
             Ok(()) => {
                 deleted_count = deleted_count.saturating_add(1);
             }

@@ -238,7 +238,7 @@ fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<boo
         // Server admins can remove any local alias
         || user.is_admin
         // Always allow the Palpo user to remove the alias, since there may not be an admin room
-        || config::server_user()== user.id
+        || config::server_user_id()== user.id
     {
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room

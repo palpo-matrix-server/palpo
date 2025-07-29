@@ -1,4 +1,7 @@
 mod preview;
+mod remote;
+pub use remote::*;
+
 use std::cmp;
 use std::num::Saturating;
 use std::time::Duration;
@@ -8,6 +11,7 @@ use salvo::Response;
 
 use crate::core::federation::media::ContentReqArgs;
 use crate::core::media::Method;
+use crate::core::OwnedMxcUri;
 use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
 
@@ -149,4 +153,17 @@ pub fn thumbnail_properties(width: u32, height: u32) -> Option<(u32, u32, bool)>
         (0..=800, 0..=600) => Some((800, 600, false)),
         _ => None,
     }
+}
+
+pub  fn get_all_mxcs() -> AppResult<Vec<OwnedMxcUri>> {
+    unimplemented!()
+}
+
+pub async fn delete_all_remote_media_at_after_time(
+    time: SystemTime,
+    before: bool,
+    after: bool,
+    yes_i_want_to_delete_local_media: bool,
+) -> AppResult<u64> {
+    !unimplemented!()
 }

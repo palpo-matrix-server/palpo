@@ -56,7 +56,7 @@ pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) ->
         | RoomAliasCommand::Which {
             ref room_alias_localpart,
         } => {
-            let room_alias_str = format!("#{}:{}", room_alias_localpart, services.globals.server_name());
+            let room_alias_str = format!("#{}:{}", room_alias_localpart, config::server_name());
             let room_alias = match RoomAliasId::parse(room_alias_str) {
                 Ok(alias) => alias,
                 Err(err) => {
@@ -65,8 +65,8 @@ pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) ->
             };
             match command {
                 RoomAliasCommand::Set { force, room_id, .. } => {
-                    match (force, services.rooms.alias.resolve_local_alias(&room_alias).await) {
-                        (true, Ok(id)) => match services.rooms.alias.set_alias(&room_alias, &room_id, server_user) {
+                    match (force, crate::room::resolve_local_alias(&room_alias)) {
+                        (true, Ok(id)) => match crate::room::set_alias(&room_id, &room_alias, &server_user.id) {
                             Err(err) => Err(AppError::public(format!("Failed to remove alias: {err}"))),
                             Ok(()) => {
                                 context
@@ -78,20 +78,20 @@ pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) ->
                             "Refusing to overwrite in use alias for {id}, use -f or --force to \
 							 overwrite"
                         ))),
-                        (_, Err(_)) => match services.rooms.alias.set_alias(&room_alias, &room_id, server_user) {
+                        (_, Err(_)) => match crate::room::set_alias(&room_id, &room_alias, &server_user.id) {
                             Err(err) => Err(AppError::public(format!("Failed to remove alias: {err}"))),
                             Ok(()) => context.write_str("Successfully set alias").await,
                         },
                     }
                 }
-                RoomAliasCommand::Remove { .. } => match services.rooms.alias.resolve_local_alias(&room_alias).await {
+                RoomAliasCommand::Remove { .. } => match crate::room::resolve_local_alias(&room_alias) {
                     Err(_) => Err(AppError::public("Alias isn't in use.")),
-                    Ok(id) => match crate::room::remove_alias(&room_alias, server_user).await {
-                        Err(err) => Err(AppError::public(format!("Failed to remove alias: {err}"))),
+                    Ok(id) => match crate::room::remove_alias(&room_alias, &server_user).await {
+                        Err(e) => Err(AppError::public(format!("Failed to remove alias: {e}"))),
                         Ok(()) => context.write_str(&format!("Removed alias from {id}")).await,
                     },
                 },
-                RoomAliasCommand::Which { .. } => match services.rooms.alias.resolve_local_alias(&room_alias).await {
+                RoomAliasCommand::Which { .. } => match crate::room::resolve_local_alias(&room_alias) {
                     Err(_) => Err(AppError::public("Alias isn't in use.")),
                     Ok(id) => context.write_str(&format!("Alias resolves to {id}")).await,
                 },

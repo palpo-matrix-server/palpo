@@ -1,12 +1,14 @@
 pub(crate) mod appservice;
 mod console;
-pub(crate) mod debug;
+// pub(crate) mod debug;
 pub(crate) mod federation;
 pub(crate) mod media;
 pub(crate) mod room;
 pub(crate) mod server;
 pub(crate) mod user;
 pub(crate) use console::Console;
+mod utils;
+pub(crate) use utils::*;
 
 use std::sync::OnceLock;
 use std::{
@@ -19,7 +21,7 @@ use std::{fmt, time::SystemTime};
 
 use clap::Parser;
 use diesel::prelude::*;
-use futures::{
+use futures_util::{
     Future, FutureExt, TryFutureExt,
     io::{AsyncWriteExt, BufWriter},
     lock::Mutex,
@@ -48,11 +50,11 @@ use crate::data::schema::*;
 pub(crate) use crate::macros::admin_command_dispatch;
 use crate::room::timeline;
 use crate::utils::HtmlEscape;
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership, utils};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership};
 use palpo_core::events::room::message::Relation;
 
 use self::{
-    appservice::AppserviceCommand, debug::DebugCommand, federation::FederationCommand, media::MediaCommand,
+    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
     room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
 use super::event::PduBuilder;
@@ -130,9 +132,9 @@ pub(super) enum AdminCommand {
     /// - Commands for managing media
     Media(MediaCommand),
 
-    #[command(subcommand)]
-    /// - Commands for debugging things
-    Debug(DebugCommand),
+    // #[command(subcommand)]
+    // /// - Commands for debugging things
+    // Debug(DebugCommand),
 }
 
 #[derive(Debug)]
@@ -152,14 +154,14 @@ impl Context<'_> {
     pub(crate) fn write_fmt(
         &self,
         arguments: fmt::Arguments<'_>,
-    ) -> impl Future<Output = AppResult> + Send + '_ + use<'_> {
+    ) -> impl Future<Output = AppResult<()>> + Send + '_ + use<'_> {
         let buf = format!("{arguments}");
         self.output
             .lock()
             .then(async move |mut output| output.write_all(buf.as_bytes()).map_err(Into::into).await)
     }
 
-    pub(crate) fn write_str<'a>(&'a self, s: &'a str) -> impl Future<Output = AppResult> + Send + 'a {
+    pub(crate) fn write_str<'a>(&'a self, s: &'a str) -> impl Future<Output = AppResult<()>> + Send + 'a {
         self.output
             .lock()
             .then(async move |mut output| output.write_all(s.as_bytes()).map_err(Into::into).await)
@@ -191,7 +193,7 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> App
         Rooms(command) => room::process(command, context).await,
         Federation(command) => federation::process(command, context).await,
         Server(command) => server::process(command, context).await,
-        Debug(command) => debug::process(command, context).await,
+        // Debug(command) => debug::process(command, context).await,
     }
 }
 
@@ -212,7 +214,7 @@ pub async fn send_text(body: &str) -> AppResult<()> {
 /// Sends a message to the admin room as the admin user (see send_text() for
 /// convenience).
 pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
-    let user_id = &config::server_user();
+    let user_id = &config::server_user_id();
     let room_id = crate::room::get_admin_room()?;
     respond_to_room(message_content, &room_id, user_id).await
 }
@@ -263,18 +265,19 @@ async fn handle_command(command: CommandInput) {
 }
 
 async fn process_command(command: CommandInput) -> ProcessorResult {
-    let handle = &handle_read().await.expect("Admin module is not loaded");
+    unimplemented!();
+    // let handle = &handle_read().await.expect("Admin module is not loaded");
 
-    let services = self
-        .services
-        .services
-        .read()
-        .expect("locked")
-        .as_ref()
-        .and_then(Weak::upgrade)
-        .expect("Services self-reference not initialized.");
+    // let services = self
+    //     .services
+    //     .services
+    //     .read()
+    //     .expect("locked")
+    //     .as_ref()
+    //     .and_then(Weak::upgrade)
+    //     .expect("Services self-reference not initialized.");
 
-    handle(services, command).await
+    // handle(services, command).await
 }
 
 // Parse and process a message from the admin room
@@ -332,425 +335,6 @@ fn parse_admin_command(command_line: &str) -> std::result::Result<AdminCommand, 
     }
 
     AdminCommand::try_parse_from(argv).map_err(|error| error.to_string())
-}
-
-async fn process_admin_command(command: AdminCommand, body: Vec<&str>) -> AppResult<RoomMessageEventContent> {
-    let conf = crate::config::get();
-    let reply_message_content = match command {
-        AdminCommand::RegisterAppservice => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let appservice_conf = body[1..body.len() - 1].join("\n");
-                let parsed_conf = serde_yaml::from_str::<Registration>(&appservice_conf);
-                match parsed_conf {
-                    Ok(yaml) => match crate::appservice::register_appservice(yaml) {
-                        Ok(id) => RoomMessageEventContent::text_plain(format!("Appservice registered with ID: {id}.")),
-                        Err(e) => RoomMessageEventContent::text_plain(format!("Failed to register appservice: {e}")),
-                    },
-                    Err(e) => RoomMessageEventContent::text_plain(format!("Could not parse appservice config: {e}")),
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-            }
-        }
-        AdminCommand::UnregisterAppservice { appservice_identifier } => {
-            match crate::appservice::unregister_appservice(&appservice_identifier) {
-                Ok(()) => RoomMessageEventContent::text_plain("Appservice unregistered."),
-                Err(e) => RoomMessageEventContent::text_plain(format!("Failed to unregister appservice: {e}")),
-            }
-        }
-        AdminCommand::ListAppservices => {
-            if let Ok(appservices) = crate::appservice::all() {
-                let count = appservices.len();
-                let output = format!(
-                    "Appservices ({}): {}",
-                    count,
-                    appservices.keys().map(|s| &**s).collect::<Vec<_>>().join(", ")
-                );
-                RoomMessageEventContent::text_plain(output)
-            } else {
-                RoomMessageEventContent::text_plain("Failed to get appservices.")
-            }
-        }
-        AdminCommand::ListRooms => {
-            let room_ids = rooms::table
-                .order_by(rooms::id.desc())
-                .select(rooms::id)
-                .load::<OwnedRoomId>(&mut connect()?)?;
-            let mut items = Vec::with_capacity(room_ids.len());
-            for room_id in room_ids {
-                let members = crate::room::joined_member_count(&room_id)?;
-                items.push(format!("members: {} \t\tin room: {}", members, room_id));
-            }
-            let output = format!("Rooms:\n{}", items.join("\n"));
-            RoomMessageEventContent::text_plain(output)
-        }
-        AdminCommand::ListLocalUsers => match data::user::list_local_users() {
-            Ok(users) => {
-                let mut msg: String = format!("Found {} local user account(s):\n", users.len());
-                msg += &users.into_iter().map(|u| u.to_string()).collect::<Vec<_>>().join("\n");
-                RoomMessageEventContent::text_plain(&msg)
-            }
-            Err(e) => RoomMessageEventContent::text_plain(e.to_string()),
-        },
-        AdminCommand::IncomingFederation => {
-            let map = crate::ROOM_ID_FEDERATION_HANDLE_TIME.read().unwrap();
-            let mut msg: String = format!("Handling {} incoming pdus:\n", map.len());
-
-            for (r, (e, i)) in map.iter() {
-                let elapsed = i.elapsed();
-                msg += &format!("{} {}: {}m{}s\n", r, e, elapsed.as_secs() / 60, elapsed.as_secs() % 60);
-            }
-            RoomMessageEventContent::text_plain(&msg)
-        }
-        AdminCommand::GetAuthChain { event_id } => {
-            let event_id = Arc::<EventId>::from(event_id);
-            if let Some(event) = timeline::get_pdu_json(&event_id)? {
-                let room_id_str = event
-                    .get("room_id")
-                    .and_then(|val| val.as_str())
-                    .ok_or_else(|| AppError::internal("Invalid event in database"))?;
-
-                let room_id = <&RoomId>::try_from(room_id_str)
-                    .map_err(|_| AppError::internal("Invalid room id field in event in database"))?;
-                let start = Instant::now();
-                let count = room::auth_chain::get_auth_chain_sns(room_id, [&*event_id].into_iter())?.len();
-                let elapsed = start.elapsed();
-                RoomMessageEventContent::text_plain(format!("Loaded auth chain with length {count} in {elapsed:?}"))
-            } else {
-                RoomMessageEventContent::text_plain("event not found")
-            }
-        }
-        AdminCommand::ParsePdu => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let string = body[1..body.len() - 1].join("\n");
-                match serde_json::from_str(&string) {
-                    Ok(value) => match crate::core::signatures::reference_hash(&value, &RoomVersionId::V6) {
-                        Ok(hash) => {
-                            let event_id = EventId::parse(format!("${hash}"));
-
-                            match serde_json::from_value::<PduEvent>(
-                                serde_json::to_value(value).expect("value is json"),
-                            ) {
-                                Ok(pdu) => {
-                                    RoomMessageEventContent::text_plain(format!("EventId: {event_id:?}\n{pdu:#?}"))
-                                }
-                                Err(e) => RoomMessageEventContent::text_plain(format!(
-                                    "EventId: {event_id:?}\nCould not parse event: {e}"
-                                )),
-                            }
-                        }
-                        Err(e) => RoomMessageEventContent::text_plain(format!("Could not parse PDU JSON: {e:?}")),
-                    },
-                    Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json in command body: {e}")),
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body.")
-            }
-        }
-        AdminCommand::GetPdu { event_id } => {
-            let mut outlier = false;
-            let mut pdu_json = timeline::get_pdu_json(&event_id)?;
-            if pdu_json.is_none() {
-                outlier = true;
-                pdu_json = timeline::get_pdu_json(&event_id)?;
-            }
-            match pdu_json {
-                Some(json) => {
-                    let json_text = serde_json::to_string_pretty(&json).expect("canonical json is valid json");
-                    RoomMessageEventContent::text_html(
-                        format!(
-                            "{}\n```json\n{}\n```",
-                            if outlier { "PDU is outlier" } else { "PDU was accepted" },
-                            json_text
-                        ),
-                        format!(
-                            "<p>{}</p>\n<pre><code class=\"language-json\">{}\n</code></pre>\n",
-                            if outlier { "PDU is outlier" } else { "PDU was accepted" },
-                            HtmlEscape(&json_text)
-                        ),
-                    )
-                }
-                None => RoomMessageEventContent::text_plain("PDU not found."),
-            }
-        }
-        AdminCommand::ShowConfig => {
-            // Construct and send the response
-            RoomMessageEventContent::text_plain(format!("{}", conf))
-        }
-        AdminCommand::ResetPassword { username } => {
-            let user_id = match UserId::parse_with_server_name(username.as_str().to_lowercase(), &conf.server_name) {
-                Ok(id) => id,
-                Err(e) => {
-                    return Ok(RoomMessageEventContent::text_plain(format!(
-                        "The supplied username is not a valid username: {e}"
-                    )));
-                }
-            };
-
-            // Check if the specified user is valid
-            if !data::user::user_exists(&user_id)?
-                || user_id == UserId::parse_with_server_name("palpo", &conf.server_name).expect("palpo user exists")
-            {
-                return Ok(RoomMessageEventContent::text_plain(
-                    "The specified user does not exist!",
-                ));
-            }
-
-            let new_password = crate::utils::random_string(AUTO_GEN_PASSWORD_LENGTH);
-
-            match crate::user::set_password(&user_id, &new_password) {
-                Ok(()) => RoomMessageEventContent::text_plain(format!(
-                    "Successfully reset the password for user {user_id}: {new_password}"
-                )),
-                Err(e) => {
-                    RoomMessageEventContent::text_plain(format!("Couldn't reset the password for user {user_id}: {e}"))
-                }
-            }
-        }
-        AdminCommand::CreateUser { username, password } => {
-            let password = password.unwrap_or_else(|| utils::random_string(AUTO_GEN_PASSWORD_LENGTH));
-            // Validate user id
-            let user_id = match UserId::parse_with_server_name(username.as_str().to_lowercase(), &conf.server_name) {
-                Ok(id) => id,
-                Err(e) => {
-                    return Ok(RoomMessageEventContent::text_plain(format!(
-                        "The supplied username is not a valid username: {e}"
-                    )));
-                }
-            };
-            if user_id.is_historical() {
-                return Ok(RoomMessageEventContent::text_plain(format!(
-                    "Userid {user_id} is not allowed due to historical"
-                )));
-            }
-            if data::user::user_exists(&user_id)? {
-                return Ok(RoomMessageEventContent::text_plain(format!(
-                    "Userid {user_id} already exists"
-                )));
-            }
-            // Create user
-            crate::user::create_user(&user_id, Some(password.as_str()))?;
-
-            // Default to pretty display_name
-            let display_name = user_id.localpart().to_owned();
-
-            // // If enabled append lightning bolt to display name (default false)
-            // if conf.enable_lightning_bolt {
-            //     display_name.push_str(" ⚡️");
-            // }
-
-            data::user::set_display_name(&user_id, Some(&*display_name))?;
-
-            // Initial account data
-            data::user::set_data(
-                &user_id,
-                None,
-                &crate::core::events::GlobalAccountDataEventType::PushRules.to_string(),
-                serde_json::to_value(crate::core::events::push_rules::PushRulesEventContent {
-                    global: crate::core::push::Ruleset::server_default(&user_id),
-                })
-                .expect("to json value always works"),
-            )?;
-
-            if !conf.auto_join_rooms.is_empty() {
-                let db_user = data::user::get_user(&user_id)?;
-                for room in &conf.auto_join_rooms {
-                    let Ok(room_id) = crate::room::alias::resolve(room).await else {
-                        error!(
-                            %user_id,
-                            "failed to resolve room alias to room ID when attempting to auto join {room}, skipping"
-                        );
-                        continue;
-                    };
-
-                    if !crate::room::is_server_joined(&conf.server_name, &room_id)? {
-                        warn!("skipping room {room} to automatically join as we have never joined before.");
-                        continue;
-                    }
-
-                    if let Ok(room_server_name) = room.server_name() {
-                        match membership::join_room(
-                            &db_user,
-                            None,
-                            &room_id,
-                            Some("automatically joining this room upon registration".to_owned()),
-                            &[conf.server_name.clone(), room_server_name.to_owned()],
-                            None,
-                            None,
-                            Default::default(),
-                        )
-                        .await
-                        {
-                            Ok(_response) => {
-                                info!("automatically joined room {room} for user {user_id}");
-                            }
-                            Err(e) => {
-                                // don't return this error so we don't fail registrations
-                                error!("failed to automatically join room {room} for user {user_id}: {e}");
-                                send_text(&format!(
-                                    "failed to automatically join room {room} for user {user_id}: \
-								 {e}"
-                                ))
-                                .await
-                                .ok();
-                            }
-                        }
-                    }
-                }
-            }
-            // we dont add a device since we're not the user, just the creator
-
-            // Inhibit login does not work for guests
-            RoomMessageEventContent::text_plain(format!(
-                "Created user with user_id: {user_id} and password: {password}"
-            ))
-        }
-        AdminCommand::DisableRoom { room_id } => {
-            crate::room::disable_room(&room_id, true)?;
-            RoomMessageEventContent::text_plain("Room disabled.")
-        }
-        AdminCommand::EnableRoom { room_id } => {
-            crate::room::disable_room(&room_id, false)?;
-            RoomMessageEventContent::text_plain("Room enabled.")
-        }
-        AdminCommand::DeactivateUser { leave_rooms, user_id } => {
-            let user_id = Arc::<UserId>::from(user_id);
-            if data::user::user_exists(&user_id)? {
-                RoomMessageEventContent::text_plain(format!("Making {user_id} leave all rooms before deactivation..."));
-
-                data::user::deactivate(&user_id)?;
-
-                if leave_rooms {
-                    crate::membership::leave_all_rooms(&user_id).await?;
-                }
-
-                RoomMessageEventContent::text_plain(format!("User {user_id} has been deactivated"))
-            } else {
-                RoomMessageEventContent::text_plain(format!("User {user_id} doesn't exist on this server"))
-            }
-        }
-        AdminCommand::DeactivateAll { leave_rooms, force } => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let usernames = body.clone().drain(1..body.len() - 1).collect::<Vec<_>>();
-
-                let mut user_ids: Vec<OwnedUserId> = Vec::new();
-
-                for &username in &usernames {
-                    match <&UserId>::try_from(username) {
-                        Ok(user_id) => user_ids.push(user_id.to_owned()),
-                        Err(_) => {
-                            return Ok(RoomMessageEventContent::text_plain(format!(
-                                "{username} is not a valid username"
-                            )));
-                        }
-                    }
-                }
-
-                let mut deactivation_count = 0;
-                let mut admins = Vec::new();
-
-                if !force {
-                    user_ids = users::table
-                        .filter(users::id.eq_any(user_ids))
-                        .filter(users::is_admin.eq(false))
-                        .select(users::id)
-                        .load::<OwnedUserId>(&mut connect()?)?;
-                    admins = users::table
-                        .filter(users::id.eq_any(&user_ids))
-                        .filter(users::is_admin.eq(false))
-                        .select(users::id)
-                        .load::<String>(&mut connect()?)?;
-                }
-
-                for user_id in &user_ids {
-                    if data::user::deactivate(user_id).is_ok() {
-                        deactivation_count += 1
-                    }
-                }
-
-                if leave_rooms {
-                    for user_id in &user_ids {
-                        crate::membership::leave_all_rooms(user_id).await.ok();
-                    }
-                }
-
-                if admins.is_empty() {
-                    RoomMessageEventContent::text_plain(format!("Deactivated {deactivation_count} accounts."))
-                } else {
-                    RoomMessageEventContent::text_plain(format!(
-                        "Deactivated {} accounts.\nSkipped admin accounts: {:?}. Use --force to deactivate admin accounts",
-                        deactivation_count,
-                        admins.join(", ")
-                    ))
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-            }
-        }
-        AdminCommand::SignJson => {
-            if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                let string = body[1..body.len() - 1].join("\n");
-                match serde_json::from_str(&string) {
-                    Ok(mut value) => {
-                        crate::core::signatures::sign_json(
-                            config::get().server_name.as_str(),
-                            config::keypair(),
-                            &mut value,
-                        )
-                        .expect("our request json is what palpo expects");
-                        let json_text = serde_json::to_string_pretty(&value).expect("canonical json is valid json");
-                        RoomMessageEventContent::text_plain(json_text)
-                    }
-                    Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
-                }
-            } else {
-                RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-            }
-        }
-        _ => RoomMessageEventContent::text_plain("Command not implemented."), // AdminCommand::VerifyJson => {
-                                                                              //     if body.len() > 2 && body[0].trim() == "```" && body.last().unwrap().trim() == "```" {
-                                                                              //         let string = body[1..body.len() - 1].join("\n");
-                                                                              //         match serde_json::from_str(&string) {
-                                                                              //             Ok(value) => {
-                                                                              //                 let pub_key_map = RwLock::new(BTreeMap::new());
-
-                                                                              //                 // Generally we shouldn't be checking against expired keys unless required, so in the admin
-                                                                              //                 // room it might be best to not allow expired keys
-                                                                              //                 // handler::fetch_required_signing_keys(&value, &pub_key_map).await?;
-
-                                                                              //                 let mut expired_key_map = BTreeMap::new();
-                                                                              //                 let mut valid_key_map = BTreeMap::new();
-
-                                                                              //                 for (server, keys) in pub_key_map.into_inner().into_iter() {
-                                                                              //                     if keys.valid_until_ts > UnixMillis::now() {
-                                                                              //                         valid_key_map.insert(
-                                                                              //                             server,
-                                                                              //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                                                              //                         );
-                                                                              //                     } else {
-                                                                              //                         expired_key_map.insert(
-                                                                              //                             server,
-                                                                              //                             keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect(),
-                                                                              //                         );
-                                                                              //                     }
-                                                                              //                 }
-                                                                              //                 if crate::core::signatures::verify_json(&valid_key_map, &value).is_ok() {
-                                                                              //                     RoomMessageEventContent::text_plain("Signature correct")
-                                                                              //                 } else if let Err(e) = crate::core::signatures::verify_json(&expired_key_map, &value) {
-                                                                              //                     RoomMessageEventContent::text_plain(format!("Signature verification failed: {e}"))
-                                                                              //                 } else {
-                                                                              //                     RoomMessageEventContent::text_plain("Signature correct (with expired keys)")
-                                                                              //                 }
-                                                                              //             }
-                                                                              //             Err(e) => RoomMessageEventContent::text_plain(format!("Invalid json: {e}")),
-                                                                              //         }
-                                                                              //     } else {
-                                                                              //         RoomMessageEventContent::text_plain("Expected code block in command body. Add --help for details.")
-                                                                              //     }
-                                                                              // }
-    };
-
-    Ok(reply_message_content)
 }
 
 // Utility to turn clap's `--help` text to HTML.
@@ -838,17 +422,17 @@ async fn handle_response(content: RoomMessageEventContent) -> AppResult<()> {
         return Ok(());
     };
 
-    let response_sender = if crate::room::is_admin_room(pdu.room_id()) {
-        &config::server_user()
+    let response_sender = if crate::room::is_admin_room(&pdu.room_id)? {
+        config::server_user_id()
     } else {
-        pdu.sender()
+        &pdu.sender
     };
 
-    respond_to_room(content, pdu.room_id(), response_sender).await
+    respond_to_room(content, &pdu.room_id, response_sender).await
 }
 
 async fn respond_to_room(content: RoomMessageEventContent, room_id: &RoomId, user_id: &UserId) -> AppResult<()> {
-    assert!(crate::room::is_admin_room(room_id), "sender is not admin");
+    assert!(crate::room::is_admin_room(room_id)?, "sender is not admin");
 
     let state_lock = crate::room::lock_state(&room_id).await;
 
@@ -862,7 +446,7 @@ async fn respond_to_room(content: RoomMessageEventContent, room_id: &RoomId, use
 }
 
 async fn handle_response_error(
-    e: Error,
+    e: AppError,
     room_id: &RoomId,
     user_id: &UserId,
     state_lock: &RoomMutexGuard,
@@ -873,7 +457,7 @@ async fn handle_response_error(
 			 may have finished successfully, but we could not return the output."
     ));
 
-    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock).await?;
+    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock)?;
 
     Ok(())
 }

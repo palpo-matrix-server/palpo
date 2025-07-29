@@ -2,10 +2,9 @@ use clap::Subcommand;
 use futures_util::StreamExt;
 use palpo_core::{AppError, AppResult};
 
-use crate::admin::admin_command_dispatch;
-use crate::admin::{Context, get_room_info};
+use crate::admin::{Context,admin_command_dispatch, get_room_info};
 use crate::core::OwnedRoomId;
-use crate::data;
+use crate::{data, IsRemoteOrLocal};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -31,13 +30,13 @@ async fn list_joined_members(ctx: &Context<'_>, room_id: OwnedRoomId, local_only
 
     let member_info: Vec<_> = crate::room::joined_users(&room_id, None)?
         .into_iter()
-        .filter(|user_id| user_id.is_local().unwrap_or(true))
+        .filter(|user_id| user_id.is_local())
         .filter_map(|user_id| {
             Some((
                 data::user::display_name(&user_id)
                     .ok()
                     .flatten()
-                    .unwrap_or_else(|_| user_id.to_string()),
+                    .unwrap_or_else(|| user_id.to_string()),
                 user_id,
             ))
         })

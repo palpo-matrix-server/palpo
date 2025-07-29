@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Write as _};
 
 use futures_util::{FutureExt, StreamExt};
 
-use crate::admin::{Context, get_room_info, parse_local_user_id};
+use crate::admin::{Context, get_room_info, parse_active_local_user_id, parse_local_user_id};
 use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId, UserId,
     events::{
@@ -60,7 +60,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
     crate::user::create_user(&user_id, Some(password.as_str()))?;
 
     // Default to pretty displayname
-    let mut displayname = user_id.localpart().to_owned();
+    let mut display_name = user_id.localpart().to_owned();
 
     // If `new_user_displayname_suffix` is set, registration will push whatever
     // content is set to the user's display name with a space before it
@@ -72,7 +72,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
     //     )?;
     // }
 
-    crate::data::user::set_display_name(&user_id, Some(displayname));
+    crate::data::user::set_display_name(&user_id, Some(&*display_name));
 
     // Initial account data
     crate::user::set_data(
@@ -102,7 +102,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
             }
 
             if let Ok(room_server_name) = room.server_name() {
-                let user = data::user::get_user(user_id)?;
+                let user = data::user::get_user(&user_id)?;
                 match membership::join_room(
                     &user,
                     None,
@@ -156,7 +156,7 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
     let user_id = parse_local_user_id(&user_id)?;
 
     // don't deactivate the server service account
-    if user_id == config::server_user() {
+    if user_id == config::server_user_id() {
         return Err(AppError::public(
             "Not allowed to deactivate the server service account.",
         ));
@@ -182,7 +182,7 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
 pub(super) async fn reset_password(ctx: &Context<'_>, username: String, password: Option<String>) -> AppResult<()> {
     let user_id = parse_local_user_id(&username)?;
 
-    if user_id == config::server_user() {
+    if user_id == config::server_user_id() {
         return Err(AppError::public(
             "Not allowed to set the password for the server account. Please use the emergency password config option.",
         ));
@@ -190,19 +190,14 @@ pub(super) async fn reset_password(ctx: &Context<'_>, username: String, password
 
     let new_password = password.unwrap_or_else(|| utils::random_string(AUTO_GEN_PASSWORD_LENGTH));
 
-    match self
-        .services
-        .users
-        .set_password(&user_id, Some(new_password.as_str()))
-        .await
-    {
+    match crate::user::set_password(&user_id, new_password.as_str()) {
         Err(e) => {
             return Err(AppError::public(format!(
                 "Couldn't reset the password for user {user_id}: {e}"
             )));
         }
         Ok(()) => write!(
-            self,
+            ctx,
             "Successfully reset the password for user {user_id}: `{new_password}`"
         ),
     }
@@ -242,7 +237,7 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
                 }
 
                 // don't deactivate the server service account
-                if &user_id == config::server_user() {
+                if &user_id == config::server_user_id() {
                     crate::admin::send_text(&format!("{username} is the server service account, skipping over")).await;
 
                     continue;
@@ -285,10 +280,10 @@ pub(super) async fn deactivate_all(ctx: &Context<'_>, no_leave_rooms: bool, forc
     }
 
     if admins.is_empty() {
-        write!(self, "Deactivated {deactivation_count} accounts.")
+        write!(ctx, "Deactivated {deactivation_count} accounts.")
     } else {
         write!(
-            self,
+            ctx,
             "Deactivated {deactivation_count} accounts.\nSkipped admin accounts: {}. Use \
 			 --force to deactivate admin accounts",
             admins.join(", ")
@@ -341,7 +336,7 @@ pub(super) async fn force_join_list_of_local_users(
         ));
     }
 
-    let Ok(admin_room) = crate::admin::get_admin_room() else {
+    let Ok(admin_room) = crate::room::get_admin_room() else {
         return Err(AppError::public(
             "There is not an admin room to check for server admins.",
         ));
@@ -358,7 +353,7 @@ pub(super) async fn force_join_list_of_local_users(
         .collect()
         .await;
 
-    if !crate::room::joined_users(&room_id)?
+    if !crate::room::joined_users(&room_id, None)?
         .iter()
         .any(|user_id| server_admins.contains(&user_id.to_owned()))
     {
@@ -377,7 +372,7 @@ pub(super) async fn force_join_list_of_local_users(
         match parse_active_local_user_id(username).await {
             Ok(user_id) => {
                 // don't make the server service account join
-                if user_id == config::server_user() {
+                if user_id == config::server_user_id() {
                     crate::admin::send_text(&format!("{username} is the server service account, skipping over")).await;
 
                     continue;
@@ -456,7 +451,7 @@ pub(super) async fn force_join_all_local_users(
         .collect()
         .await;
 
-    if !crate::room::joined_users(&room_id)?
+    if !crate::room::joined_users(&room_id, None)?
         .iter()
         .any(|user_id| server_admins.contains(&user_id.to_owned()))
     {
@@ -533,12 +528,12 @@ pub(super) async fn force_demote(ctx: &Context<'_>, user_id: String, room_id: Ow
     let state_lock = crate::room::lock_state(&room_id).await;
 
     let room_power_levels: Option<RoomPowerLevelsEventContent> =
-        crate::room::state::get_state_content(&room_id, &StateEventType::RoomPowerLevels, "").ok();
+        crate::room::get_state_content(&room_id, &StateEventType::RoomPowerLevels, "", None).ok();
 
     let user_can_demote_self = room_power_levels.as_ref().is_some_and(|power_levels_content| {
         RoomPowerLevels::from(power_levels_content.clone()).user_can_change_user_power_level(&user_id, &user_id)
-    }) || crate::room::state::get_state(&room_id, &StateEventType::RoomCreate, "")
-        .is_ok_and(|event| event.sender() == user_id);
+    }) || crate::room::get_state(&room_id, &StateEventType::RoomCreate, "", None)
+        .is_ok_and(|event| event.sender == user_id);
 
     if !user_can_demote_self {
         return Err(AppError::public(
@@ -549,7 +544,7 @@ pub(super) async fn force_demote(ctx: &Context<'_>, user_id: String, room_id: Ow
     let mut power_levels_content = room_power_levels.unwrap_or_default();
     power_levels_content.users.remove(&user_id);
 
-    let event_id = timeline::build_and_append_pdu(
+    let event = timeline::build_and_append_pdu(
         PduBuilder::state(String::new(), &power_levels_content),
         &user_id,
         &room_id,
@@ -558,7 +553,8 @@ pub(super) async fn force_demote(ctx: &Context<'_>, user_id: String, room_id: Ow
 
     ctx.write_str(&format!(
         "User {user_id} demoted themselves to the room default power level in {room_id} - \
-		 {event_id}"
+		 {}",
+        event.event_id
     ))
     .await
 }
@@ -673,7 +669,7 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
         config::server_name()
     );
 
-    let redaction_event_id = {
+    let redaction_event = {
         let state_lock = crate::room::lock_state(&event.room_id).await;
 
         timeline::build_and_append_pdu(
@@ -691,7 +687,8 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
     };
 
     ctx.write_str(&format!(
-        "Successfully redacted event. Redaction event ID: {redaction_event_id}"
+        "Successfully redacted event. Redaction event ID: {}",
+        redaction_event.event_id
     ))
     .await
 }

@@ -1,9 +1,9 @@
-use crate::core::OwnedRoomId;
 use clap::Subcommand;
 use futures_util::StreamExt;
-use palpo_core::{AppError, AppResult};
 
-use crate::{Context, PAGE_SIZE, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, get_room_info};
+use crate::core::OwnedRoomId;
+use crate::{AppError, AppResult};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum RoomDirectoryCommand {
@@ -24,7 +24,6 @@ pub(crate) enum RoomDirectoryCommand {
 }
 
 pub(super) async fn process(command: RoomDirectoryCommand, context: &Context<'_>) -> AppResult<()> {
-    let services = context.services;
     match command {
         RoomDirectoryCommand::Publish { room_id } => {
             services.rooms.directory.set_public(&room_id);
@@ -37,11 +36,9 @@ pub(super) async fn process(command: RoomDirectoryCommand, context: &Context<'_>
         RoomDirectoryCommand::List { page } => {
             // TODO: i know there's a way to do this with clap, but i can't seem to find it
             let page = page.unwrap_or(1);
-            let mut rooms: Vec<_> = services
-                .rooms
-                .directory
-                .public_rooms()
-                .then(|room_id| get_room_info(services, room_id))
+            let mut rooms: Vec<_> = crate::directory::get_public_rooms()
+                .await
+                .then(|room_id| get_room_info(room_id))
                 .collect()
                 .await;
 

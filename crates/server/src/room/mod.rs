@@ -536,11 +536,11 @@ pub fn is_encrypted(room_id: &RoomId) -> bool {
 /// Gets the room ID of the admin room
 ///
 /// Errors are propagated from the database, and will have None if there is no admin room
-pub(crate) fn get_admin_room() -> AppResult<OwnedRoomId> {
+pub fn get_admin_room() -> AppResult<OwnedRoomId> {
     crate::room::resolve_local_alias(config::admin_alias())
 }
 
-pub(crate) fn is_admin_room(room_id: &RoomId) -> AppResult<OwnedRoomId> {
+pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
     Ok(&get_admin_room()? == room_id)
 }
 

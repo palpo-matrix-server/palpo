@@ -9,9 +9,9 @@ use termimad::MadSkin;
 use tokio::task::JoinHandle;
 
 use crate::core::events::room::message::RoomMessageEventContent;
+use crate::log::{self, is_systemd_mode};
 
 pub struct Console {
-    server: Arc<Server>,
     worker_join: Mutex<Option<JoinHandle<()>>>,
     input_abort: Mutex<Option<AbortHandle>>,
     command_abort: Mutex<Option<AbortHandle>>,
@@ -23,9 +23,8 @@ const PROMPT: &str = "palpo> ";
 const HISTORY_LIMIT: usize = 48;
 
 impl Console {
-    pub(crate) fn new(server: Arc<Server>) -> Arc<Self> {
+    pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
-            server,
             worker_join: None.into(),
             input_abort: None.into(),
             command_abort: None.into(),
@@ -35,20 +34,22 @@ impl Console {
     }
 
     pub(crate) async fn handle_signal(self: &Arc<Self>, sig: &'static str) {
-        if !self.server.running() {
-            self.interrupt();
-        } else if sig == "SIGINT" {
-            self.interrupt_command();
-            self.start().await;
-        }
+        // TODO: admin
+        // if !self.server.running() {
+        //     self.interrupt();
+        // } else if sig == "SIGINT" {
+        //     self.interrupt_command();
+        //     self.start().await;
+        // }
     }
 
     pub async fn start(self: &Arc<Self>) {
-        let mut worker_join = self.worker_join.lock().expect("locked");
-        if worker_join.is_none() {
-            let self_ = Arc::clone(self);
-            _ = worker_join.insert(self.server.runtime().spawn(self_.worker()));
-        }
+        // TODO: admin
+        // let mut worker_join = self.worker_join.lock().expect("locked");
+        // if worker_join.is_none() {
+        //     let self_ = Arc::clone(self);
+        //     _ = worker_join.insert(self.server.runtime().spawn(self_.worker()));
+        // }
     }
 
     pub async fn close(self: &Arc<Self>) {
@@ -96,7 +97,7 @@ impl Console {
                     ReadlineEvent::Line(string) => self.clone().handle(string).await,
                     ReadlineEvent::Interrupted => continue,
                     ReadlineEvent::Eof => break,
-                    ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
+                    // ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
                 },
                 Err(error) => match error {
                     ReadlineError::Closed => break,
@@ -113,11 +114,12 @@ impl Console {
     }
 
     async fn readline(self: &Arc<Self>) -> Result<ReadlineEvent, ReadlineError> {
-        let _suppression = (!is_systemd_mode()).then(|| log::Suppress::new(&self.server));
+        let _suppression = (!is_systemd_mode()).then(|| log::Suppress::new());
 
         let (mut readline, _writer) = Readline::new(PROMPT.to_owned())?;
         let self_ = Arc::clone(self);
-        readline.set_tab_completer(move |line| self_.tab_complete(line));
+        // TODO: admin
+        // readline.set_tab_completer(move |line| self_.tab_complete(line));
         self.set_history(&mut readline);
 
         let future = readline.readline();
@@ -125,9 +127,11 @@ impl Console {
         let (abort, abort_reg) = AbortHandle::new_pair();
         let future = Abortable::new(future, abort_reg);
         _ = self.input_abort.lock().expect("locked").insert(abort);
-        defer! {{
-            _ = self.input_abort.lock().expect("locked").take();
-        }}
+
+        // TODO: admin
+        // defer! {{
+        //     _ = self.input_abort.lock().expect("locked").take();
+        // }}
 
         let Ok(result) = future.await else {
             return Ok(ReadlineEvent::Eof);
@@ -148,15 +152,16 @@ impl Console {
         let (abort, abort_reg) = AbortHandle::new_pair();
         let future = Abortable::new(future, abort_reg);
         _ = self.command_abort.lock().expect("locked").insert(abort);
-        defer! {{
-            _ = self.command_abort.lock().expect("locked").take();
-        }}
+        // TODO: admin
+        // defer! {{
+        //     _ = self.command_abort.lock().expect("locked").take();
+        // }}
 
         _ = future.await;
     }
 
     async fn process(self: Arc<Self>, line: String) {
-        match self.admin.command_in_place(line, None).await {
+        match crate::admin::command_in_place(line, None).await {
             Ok(Some(ref content)) => self.output(content),
             Err(ref content) => self.output_err(content),
             _ => unreachable!(),

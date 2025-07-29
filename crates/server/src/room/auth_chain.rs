@@ -13,13 +13,6 @@ use crate::data::schema::*;
 use crate::room::timeline;
 use crate::{AppResult, MatrixError};
 
-// #[derive(Insertable, Identifiable, AsChangeset, Queryable, Debug, Clone)]
-// #[diesel(table_name = event_auth_chains, primary_key(event_id))]
-// pub struct DbEventAuthChain {
-//     pub event_id: OwnedEventId,
-//     pub chain_sns: Vec<Seqnum>,
-// }
-
 type Bucket<'a> = BTreeSet<(Seqnum, &'a EventId)>;
 static AUTH_CHAIN_CACHE: LazyLock<Mutex<LruCache<Vec<i64>, Arc<Vec<Seqnum>>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100_000)));

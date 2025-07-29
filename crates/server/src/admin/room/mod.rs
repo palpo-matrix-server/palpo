@@ -13,7 +13,7 @@ use self::{
 use crate::admin::{Context, PAGE_SIZE, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, AppResult, config};
+use crate::{AppError, AppResult, data, config};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -75,7 +75,7 @@ pub(super) async fn list_rooms(
             (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false)).then_some(room_id)
         })
         .filter_map(async |room_id| {
-            (!exclude_banned || !crate::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
+            (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
         })
         .then(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>()

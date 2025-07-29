@@ -4,7 +4,7 @@ use futures_util::{FutureExt, StreamExt};
 use crate::admin::{Context, get_room_info};
 use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, AppResult, config, membership};
+use crate::{AppError, AppResult, IsRemoteOrLocal, config, membership};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -272,7 +272,7 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
         room_ban_count = room_ban_count.saturating_add(1);
 
         debug!("Making all users leave the room {room_id} and forgetting it");
-        let mut users = crate::room::joined_users(&room_id)?
+        let mut users = crate::room::joined_users(&room_id, None)?
             .into_iter()
             .filter(|user| user.is_local())
             .collect::<Vec<_>>();
@@ -392,14 +392,7 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
 }
 
 async fn list_banned_rooms(ctx: &Context<'_>, no_details: bool) -> AppResult<()> {
-    let room_ids: Vec<OwnedRoomId> = self
-        .services
-        .rooms
-        .metadata
-        .list_banned_rooms()
-        .map(Into::into)
-        .collect()
-        .await;
+    let room_ids: Vec<OwnedRoomId> = crate::room::list_banned_rooms()?;
 
     if room_ids.is_empty() {
         return Err(AppError::public("No rooms are banned."));

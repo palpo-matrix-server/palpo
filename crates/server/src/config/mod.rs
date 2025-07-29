@@ -112,13 +112,17 @@ pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()
 }
 
-pub static SERVER_USER: OnceLock<OwnedUserId> = OnceLock::new();
-pub fn server_user() -> &'static UserId {
-    SERVER_USER.get_or_init(|| {
+pub static SERVER_USER_ID: OnceLock<OwnedUserId> = OnceLock::new();
+pub fn server_user_id() -> &'static UserId {
+    SERVER_USER_ID.get_or_init(|| {
         format!("@palpo:{}", get().server_name)
             .try_into()
             .expect("invalid server user ID")
     })
+}
+
+pub fn server_user() -> crate::data::user::DbUser {
+    crate::data::user::get_user(server_user_id()).expect("server user should exist in the database")
 }
 
 pub fn space_path() -> &'static str {

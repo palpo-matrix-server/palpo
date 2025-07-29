@@ -7,9 +7,9 @@ use crate::core::{OwnedRoomId, OwnedServerName, OwnedUserId};
 
 use crate::macros::admin_command_dispatch;
 
-use crate::{AppError, AppResult, data};
+use crate::{AppError, AppResult, config, data};
 
-use crate::admin::{Context, get_room_info};
+use crate::admin::{Context, RoomInfo, get_room_info};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -49,71 +49,75 @@ pub(super) async fn enable_room(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppR
 }
 
 pub(super) async fn incoming_federation(ctx: &Context<'_>) -> AppResult<()> {
-    let msg = {
-        let map = self
-            .services
-            .rooms
-            .event_handler
-            .federation_handletime
-            .read()
-            .expect("locked");
+    // TODO: admin
+    unimplemented!();
+    // let msg = {
+    //     let map = self
+    //         .services
+    //         .rooms
+    //         .event_handler
+    //         .federation_handletime
+    //         .read()
+    //         .expect("locked");
 
-        let mut msg = format!("Handling {} incoming pdus:\n", map.len());
-        for (r, (e, i)) in map.iter() {
-            let elapsed = i.elapsed();
-            writeln!(
-                msg,
-                "{} {}: {}m{}s",
-                r,
-                e,
-                elapsed.as_secs() / 60,
-                elapsed.as_secs() % 60
-            )?;
-        }
+    //     let mut msg = format!("Handling {} incoming pdus:\n", map.len());
+    //     for (r, (e, i)) in map.iter() {
+    //         let elapsed = i.elapsed();
+    //         writeln!(
+    //             msg,
+    //             "{} {}: {}m{}s",
+    //             r,
+    //             e,
+    //             elapsed.as_secs() / 60,
+    //             elapsed.as_secs() % 60
+    //         )?;
+    //     }
 
-        msg
-    };
+    //     msg
+    // };
 
-    ctx.write_str(&msg).await
+    // ctx.write_str(&msg).await
 }
 
 pub(super) async fn fetch_support_well_known(ctx: &Context<'_>, server_name: OwnedServerName) -> AppResult<()> {
-    let response = self
-        .services
-        .client
-        .default
-        .get(format!("https://{server_name}/.well-known/matrix/support"))
-        .send()
-        .await?;
+    // TODO: admin
+    unimplemented!();
+    // let response = self
+    //     .services
+    //     .client
+    //     .default
+    //     .get(format!("https://{server_name}/.well-known/matrix/support"))
+    //     .send()
+    //     .await?;
 
-    let text = response.text().await?;
+    // let text = response.text().await?;
 
-    if text.is_empty() {
-        return Err(AppError::public("Response text/body is empty."));
-    }
+    // if text.is_empty() {
+    //     return Err(AppError::public("Response text/body is empty."));
+    // }
 
-    if text.len() > 1500 {
-        return Err(AppError::public(
-            "Response text/body is over 1500 characters, assuming no support well-known.",
-        ));
-    }
+    // if text.len() > 1500 {
+    //     return Err(AppError::public(
+    //         "Response text/body is over 1500 characters, assuming no support well-known.",
+    //     ));
+    // }
 
-    let json: serde_json::Value = match serde_json::from_str(&text) {
-        Ok(json) => json,
-        Err(_) => {
-            return Err(AppError::public("Response text/body is not valid JSON."));
-        }
-    };
+    // let json: serde_json::Value = match serde_json::from_str(&text) {
+    //     Ok(json) => json,
+    //     Err(_) => {
+    //         return Err(AppError::public("Response text/body is not valid JSON."));
+    //     }
+    // };
 
-    let pretty_json: String = match serde_json::to_string_pretty(&json) {
-        Ok(json) => json,
-        Err(_) => {
-            return Err(AppError::public("Response text/body is not valid JSON."));
-        }
-    };
+    // let pretty_json: String = match serde_json::to_string_pretty(&json) {
+    //     Ok(json) => json,
+    //     Err(_) => {
+    //         return Err(AppError::public("Response text/body is not valid JSON."));
+    //     }
+    // };
 
-    ctx.write_str(&format!("Got JSON response:\n\n```json\n{pretty_json}\n```"))
-        .await
+    // ctx.write_str(&format!("Got JSON response:\n\n```json\n{pretty_json}\n```"))
+    // .await
 }
 
 pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId) -> AppResult<()> {
@@ -128,10 +132,10 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
         return Err(AppError::public("Remote user does not exist in our database."));
     }
 
-    let mut rooms: Vec<(OwnedRoomId, u64, String)> = data::user::joined_rooms(&user_id)
-        .then(|room_id| get_room_info(room_id))
-        .collect()
-        .await;
+    let mut rooms: Vec<RoomInfo> = data::user::joined_rooms(&user_id)?
+        .into_iter()
+        .map(|room_id| get_room_info(&room_id))
+        .collect();
 
     if rooms.is_empty() {
         return Err(AppError::public("User is not in any rooms."));

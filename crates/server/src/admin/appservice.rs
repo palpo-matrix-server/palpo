@@ -57,7 +57,7 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
                 "Could not parse appservice config as YAML: {e}"
             )));
         }
-        Ok(registration) => match crate::appservice::register_appservice(&registration, &appservice_config_body)
+        Ok(registration) => match crate::appservice::register_appservice(registration.clone(), &appservice_config_body)
             .map(|_| registration.id)
         {
             Err(e) => return Err(AppError::public(format!("Failed to register appservice: {e}"))),
@@ -76,7 +76,7 @@ pub(super) async fn unregister(ctx: &Context<'_>, appservice_identifier: String)
 }
 
 pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {
-    match crate::appservice::get_registration(&appservice_identifier) {
+    match crate::appservice::get_registration(&appservice_identifier)? {
         None => return Err(AppError::public("Appservice does not exist.")),
         Some(config) => {
             let config_str = serde_yaml::to_string(&config)?;
@@ -87,8 +87,9 @@ pub(super) async fn show_appservice_config(ctx: &Context<'_>, appservice_identif
 }
 
 pub(super) async fn list_registered(ctx: &Context<'_>) -> AppResult<()> {
-    let appservices = crate::appservice::all()?.keys();
+    let appservices = crate::appservice::all()?;
+    let list = appservices.keys().collect::<Vec<_>>();
     let len = appservices.len();
-    let list = appservices.join(", ");
-    write!(ctx, "Appservices ({len}): {list}")
+    write!(ctx, "Appservices ({len}): {list:?}");
+    Ok(())
 }

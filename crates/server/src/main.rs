@@ -49,6 +49,7 @@ pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;
 mod info;
+pub mod log;
 
 pub mod error;
 pub use core::error::MatrixError;
@@ -65,6 +66,7 @@ use clap::{ArgAction, Parser};
 pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
 use figment::providers::Env;
+pub use jsonwebtoken as jwt;
 use salvo::catcher::Catcher;
 use salvo::compression::{Compression, CompressionLevel};
 use salvo::conn::rustls::{Keycert, RustlsConfig};
