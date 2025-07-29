@@ -9,12 +9,12 @@ use tracing_subscriber::{
     fmt,
     fmt::{
         FmtContext, FormatEvent, FormatFields, MakeWriter,
-        format::{Compact, DefaultVisitor, Format, Full, Pretty, Writer},
+        format::{Compact, DefaultVisitor, Format, Json, Pretty, Writer},
     },
     registry::LookupSpan,
 };
 
-use crate::config::ServerConfig;
+use crate::config::{LoggerConfig, ServerConfig};
 use crate::{AppResult, config};
 
 static SYSTEMD_MODE: LazyLock<bool> =
@@ -29,7 +29,7 @@ pub struct ConsoleWriter {
 
 impl ConsoleWriter {
     #[must_use]
-    pub fn new(_config: &ServerConfig) -> Self {
+    pub fn new(_conf: &LoggerConfig) -> Self {
         let journal_stream = get_journal_stream();
         Self {
             stdout: io::stdout(),
@@ -66,33 +66,49 @@ impl io::Write for &'_ ConsoleWriter {
     }
 }
 
-pub struct ConsoleFormat {
-    _compact: Format<Compact>,
-    full: Format<Full>,
-    pretty: Format<Pretty>,
+pub enum ConsoleFormat {
+    Compact(Format<Compact>),
+    Pretty(Format<Pretty>),
+    Json(Format<Json>),
 }
 
 impl ConsoleFormat {
     #[must_use]
-    pub fn new() -> Self {
-        let conf = config::get();
-        let log_conf = &conf.logger;
-        Self {
-            _compact: fmt::format().compact(),
-
-            full: Format::<Full>::default()
-                .with_thread_ids(log_conf.thread_ids)
-                .with_ansi(log_conf.ansi_colors),
-
-            pretty: fmt::format()
-                .pretty()
-                .with_ansi(log_conf.ansi_colors)
-                .with_thread_names(true)
-                .with_thread_ids(true)
-                .with_target(true)
-                .with_file(true)
-                .with_line_number(true)
-                .with_source_location(true),
+    pub fn new(conf: &LoggerConfig) -> Self {
+        match &*conf.format {
+            "json" => Self::Json(
+                fmt::format()
+                    .json()
+                    .with_ansi(conf.ansi_colors)
+                    .with_thread_names(true)
+                    .with_thread_ids(true)
+                    .with_target(true)
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_source_location(true),
+            ),
+            "compact" => Self::Compact(
+                fmt::format()
+                    .compact()
+                    .with_ansi(conf.ansi_colors)
+                    .with_thread_names(true)
+                    .with_thread_ids(true)
+                    .with_target(true)
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_source_location(true),
+            ),
+            _ => Self::Pretty(
+                fmt::format()
+                    .pretty()
+                    .with_ansi(conf.ansi_colors)
+                    .with_thread_names(true)
+                    .with_thread_ids(true)
+                    .with_target(true)
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_source_location(true),
+            ),
         }
     }
 }
@@ -108,12 +124,10 @@ where
         writer: Writer<'_>,
         event: &Event<'_>,
     ) -> Result<(), std::fmt::Error> {
-        let is_debug =
-            cfg!(debug_assertions) && event.fields().any(|field| field.name() == "_debug");
-
-        match *event.metadata().level() {
-            Level::ERROR if !is_debug => self.pretty.format_event(ctx, writer, event),
-            _ => self.full.format_event(ctx, writer, event),
+        match self {
+            ConsoleFormat::Compact(fmt) => fmt.format_event(ctx, writer, event),
+            ConsoleFormat::Pretty(fmt) => fmt.format_event(ctx, writer, event),
+            ConsoleFormat::Json(fmt) => fmt.format_event(ctx, writer, event),
         }
     }
 }

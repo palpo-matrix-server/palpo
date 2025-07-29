@@ -92,24 +92,6 @@ pub type ProcessorResult = Result<Option<CommandOutput>, CommandOutput>;
 /// Alias for the output structure.
 pub type CommandOutput = RoomMessageEventContent;
 
-/// Install the admin command processor
-pub async fn init() {
-    unimplemented!()
-    // _ = admin_service
-    //     .complete
-    //     .write()
-    //     .expect("locked for writing")
-    //     .insert(processor::complete);
-    // _ = admin_service.handle.write().await.insert(processor::dispatch);
-}
-
-/// Uninstall the admin command handler
-pub async fn fini() {
-    unimplemented!()
-    // _ = admin_service.handle.write().await.take();
-    // _ = admin_service.complete.write().expect("locked for writing").take();
-}
-
 #[derive(Debug, Parser)]
 #[command(name = "palpo", version = crate::info::version())]
 pub(super) enum AdminCommand {

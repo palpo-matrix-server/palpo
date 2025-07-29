@@ -8,5 +8,5 @@ debug.log
 /tests/results/*.log
 /tests/__**
 sytestout
-__test*
+__*
 /deploy/docker/data

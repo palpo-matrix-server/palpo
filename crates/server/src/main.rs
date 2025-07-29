@@ -49,7 +49,7 @@ pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;
 mod info;
-pub mod log;
+pub mod logging;
 
 pub mod error;
 pub use core::error::MatrixError;
@@ -147,7 +147,7 @@ pub(crate) struct Args {
     #[arg(long, num_args(0))]
     pub(crate) console: bool,
 
-    #[arg(long, num_args(0), default_value_t = true)]
+    #[arg(long, short, num_args(1), default_value_t = true)]
     pub(crate) server: bool,
 }
 
@@ -172,51 +172,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::config::init(config_path);
     let conf = crate::config::get();
     conf.check().expect("config is not valid!");
-    match &*conf.logger.format {
-        "json" => {
-            tracing_subscriber::fmt()
-                .json()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-        "compact" => {
-            tracing_subscriber::fmt()
-                .compact()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .without_time()
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-        _ => {
-            tracing_subscriber::fmt()
-                .pretty()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-    }
+
+    crate::logging::init();
 
     crate::data::init(&conf.db.clone().into_data_db_config());
 
     if args.console {
-        tracing::info!("Starting admin console...");
+        tracing::info!("starting admin console...");
         let console = Console::new();
 
         if !args.server {
             console.start().await;
-            tracing::info!("Admin console stopped");
+            tracing::info!("admin console stopped");
             return Ok(());
         } else {
             tokio::spawn(async move {
                 console.start().await;
-                tracing::info!("Admin console stopped");
+                tracing::info!("admin console stopped");
             });
         }
     }

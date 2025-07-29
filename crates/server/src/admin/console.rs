@@ -9,7 +9,7 @@ use termimad::MadSkin;
 use tokio::task::JoinHandle;
 
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::log::{self, is_systemd_mode};
+use crate::logging::{self, is_systemd_mode};
 
 pub struct Console {
     worker_join: Mutex<Option<JoinHandle<()>>>,
@@ -44,12 +44,11 @@ impl Console {
     }
 
     pub async fn start(self: &Arc<Self>) {
-        // TODO: admin
-        // let mut worker_join = self.worker_join.lock().expect("locked");
-        // if worker_join.is_none() {
-        //     let self_ = Arc::clone(self);
-        //     _ = worker_join.insert(self.server.runtime().spawn(self_.worker()));
-        // }
+        let mut worker_join = self.worker_join.lock().expect("locked");
+        if worker_join.is_none() {
+            let self_ = Arc::clone(self);
+            _ = worker_join.insert(tokio::spawn(self_.worker()));
+        }
     }
 
     pub async fn close(self: &Arc<Self>) {
@@ -97,31 +96,30 @@ impl Console {
         self.output
             .print_text("\"help\" for help, ^D to exit the console, ^\\ to stop the server\n");
 
-        //TODO: Admin
-        // while self.server.running() {
-        //     match self.readline().await {
-        //         Ok(event) => match event {
-        //             ReadlineEvent::Line(string) => self.clone().handle(string).await,
-        //             ReadlineEvent::Interrupted => continue,
-        //             ReadlineEvent::Eof => break,
-        //             // ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
-        //         },
-        //         Err(error) => match error {
-        //             ReadlineError::Closed => break,
-        //             ReadlineError::IO(error) => {
-        //                 error!("console I/O: {error:?}");
-        //                 break;
-        //             }
-        //         },
-        //     }
-        // }
+        loop {
+            match self.readline().await {
+                Ok(event) => match event {
+                    ReadlineEvent::Line(string) => self.clone().handle(string).await,
+                    ReadlineEvent::Interrupted => continue,
+                    ReadlineEvent::Eof => break,
+                    // ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
+                },
+                Err(e) => match e {
+                    ReadlineError::Closed => break,
+                    ReadlineError::IO(e) => {
+                        error!("console I/O: {e:?}");
+                        break;
+                    }
+                },
+            }
+        }
 
         debug!("session ending");
         self.worker_join.lock().expect("locked").take();
     }
 
     async fn readline(self: &Arc<Self>) -> Result<ReadlineEvent, ReadlineError> {
-        let _suppression = (!is_systemd_mode()).then(|| log::Suppress::new());
+        let _suppression = (!is_systemd_mode()).then(|| logging::Suppress::new());
 
         let (mut readline, _writer) = Readline::new(PROMPT.to_owned())?;
         let self_ = Arc::clone(self);

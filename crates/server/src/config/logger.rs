@@ -21,6 +21,7 @@ pub struct LoggerConfig {
     #[serde(default = "default_level")]
     pub level: String,
 
+    // pretty, compact, json
     #[serde(default = "default_format")]
     pub format: String,
 
@@ -79,7 +80,7 @@ pub fn default_level() -> String {
 /// do compact logging by default
 #[must_use]
 pub fn default_format() -> String {
-    "compact".to_owned()
+    "pretty".to_owned()
 }
 #[must_use]
 pub fn default_span_events() -> String {
