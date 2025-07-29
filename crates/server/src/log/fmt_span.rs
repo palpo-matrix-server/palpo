@@ -1,7 +1,5 @@
 use tracing_subscriber::fmt::format::FmtSpan;
 
-use crate::Result;
-
 #[inline]
 pub fn from_str(str: &str) -> Result<FmtSpan, FmtSpan> {
     match str.to_uppercase().as_str() {

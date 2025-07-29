@@ -32,18 +32,6 @@ pub(super) enum ServerCommand {
         comma: bool,
     },
 
-    /// - Print database memory usage statistics
-    MemoryUsage,
-
-    /// - Clears all of Tuwunel's caches
-    ClearCaches,
-
-    /// - Performs an online backup of the database (only available for RocksDB
-    ///   at the moment)
-    BackupDatabase,
-
-    /// - List database backups
-    ListBackups,
 
     /// - Send a message to the admin room.
     AdminNotice { message: Vec<String> },

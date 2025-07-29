@@ -91,23 +91,24 @@ impl Console {
         self.output
             .print_text("\"help\" for help, ^D to exit the console, ^\\ to stop the server\n");
 
-        while self.server.running() {
-            match self.readline().await {
-                Ok(event) => match event {
-                    ReadlineEvent::Line(string) => self.clone().handle(string).await,
-                    ReadlineEvent::Interrupted => continue,
-                    ReadlineEvent::Eof => break,
-                    // ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
-                },
-                Err(error) => match error {
-                    ReadlineError::Closed => break,
-                    ReadlineError::IO(error) => {
-                        error!("console I/O: {error:?}");
-                        break;
-                    }
-                },
-            }
-        }
+        //TODO: Admin
+        // while self.server.running() {
+        //     match self.readline().await {
+        //         Ok(event) => match event {
+        //             ReadlineEvent::Line(string) => self.clone().handle(string).await,
+        //             ReadlineEvent::Interrupted => continue,
+        //             ReadlineEvent::Eof => break,
+        //             // ReadlineEvent::Quit => self.server.shutdown().unwrap_or_else(error::default_log),
+        //         },
+        //         Err(error) => match error {
+        //             ReadlineError::Closed => break,
+        //             ReadlineError::IO(error) => {
+        //                 error!("console I/O: {error:?}");
+        //                 break;
+        //             }
+        //         },
+        //     }
+        // }
 
         debug!("session ending");
         self.worker_join.lock().expect("locked").take();
@@ -190,7 +191,7 @@ impl Console {
     }
 
     fn tab_complete(&self, line: &str) -> String {
-        self.admin.complete_command(line).unwrap_or_else(|| line.to_owned())
+        crate::admin::complete_command(line).unwrap_or_else(|| line.to_owned())
     }
 }
 

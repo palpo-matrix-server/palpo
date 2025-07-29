@@ -207,7 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     if args.console {
         tracing::info!("Starting admin console...");
-        let console = Console::new(conf.clone());
+        let console = Console::new();
 
         if !args.server {
             console.start().await;

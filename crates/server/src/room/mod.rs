@@ -333,10 +333,14 @@ pub fn invited_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<O
 }
 pub fn active_local_users_in_room(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
     // TODO: only active user?
-    get_state_users(room_id, &MembershipState::Join, None)
+    Ok(get_state_users(room_id, &MembershipState::Join, None)?
         .into_iter()
         .filter(|user_id| user_id.is_local())
-        .collect()
+        .collect())
+}
+
+pub fn list_banned_rooms() -> AppResult<Vec<OwnedRoomId>> {
+    unimplemented!()
 }
 
 pub fn get_state_users(

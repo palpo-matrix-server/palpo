@@ -400,23 +400,21 @@ async fn list_banned_rooms(ctx: &Context<'_>, no_details: bool) -> AppResult<()>
 
     let mut rooms = room_ids
         .iter()
-        .stream()
-        .then(|room_id| get_room_info(room_id))
-        .collect::<Vec<_>>()
-        .await;
+        .map(|room_id| get_room_info(room_id))
+        .collect::<Vec<_>>();
 
-    rooms.sort_by_key(|r| r.1);
+    rooms.sort_by_key(|r| r.joined_members);
     rooms.reverse();
 
     let num = rooms.len();
 
     let body = rooms
         .iter()
-        .map(|(id, members, name)| {
+        .map(|info| {
             if no_details {
-                format!("{id}")
+                format!("{}", info.id)
             } else {
-                format!("{id}\tMembers: {members}\tName: {name}")
+                format!("{}\tMembers: {}\tName: {}", info.id, info.joined_members, info.name)
             }
         })
         .collect::<Vec<_>>()

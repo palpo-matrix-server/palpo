@@ -1,8 +1,7 @@
 use tracing::Level;
-use tracing_core::{Event, span::Current};
+use tracing_core::{span::Current, Event};
 
 use super::{Layer, layer::Value};
-use crate::{info, utils::string::EMPTY};
 
 pub struct Data<'a> {
     pub layer: &'a Layer,
@@ -15,7 +14,7 @@ pub struct Data<'a> {
 impl Data<'_> {
     #[must_use]
     pub fn our_modules(&self) -> bool {
-        self.mod_name().starts_with(info::CRATE_PREFIX)
+        self.mod_name().starts_with("palpo")
     }
 
     #[must_use]
@@ -30,7 +29,7 @@ impl Data<'_> {
 
     #[must_use]
     pub fn span_name(&self) -> &str {
-        self.current.metadata().map_or(EMPTY, |s| s.name())
+        self.current.metadata().map_or("", |s| s.name())
     }
 
     #[must_use]
@@ -38,6 +37,6 @@ impl Data<'_> {
         self.values
             .iter()
             .find(|(k, _)| *k == "message")
-            .map_or(EMPTY, |(_, v)| v.as_str())
+            .map_or("", |(_, v)| v.as_str())
     }
 }

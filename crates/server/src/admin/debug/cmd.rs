@@ -42,29 +42,29 @@ pub(super) enum DebugCommand {
 		shorteventid: ShortEventId,
 	},
 
-	/// - Attempts to retrieve a PDU from a remote server. Inserts it into our
-	///   database/timeline if found and we do not have this PDU already
-	///   (following normal event auth rules, handles it as an incoming PDU).
-	GetRemotePdu {
-		/// An event ID (a $ followed by the base64 reference hash)
-		event_id: OwnedEventId,
+	// /// - Attempts to retrieve a PDU from a remote server. Inserts it into our
+	// ///   database/timeline if found and we do not have this PDU already
+	// ///   (following normal event auth rules, handles it as an incoming PDU).
+	// GetRemotePdu {
+	// 	/// An event ID (a $ followed by the base64 reference hash)
+	// 	event_id: OwnedEventId,
 
-		/// Argument for us to attempt to fetch the event from the
-		/// specified remote server.
-		server: OwnedServerName,
-	},
+	// 	/// Argument for us to attempt to fetch the event from the
+	// 	/// specified remote server.
+	// 	server: OwnedServerName,
+	// },
 
-	/// - Same as `get-remote-pdu` but accepts a codeblock newline delimited
-	///   list of PDUs and a single server to fetch from
-	GetRemotePduList {
-		/// Argument for us to attempt to fetch all the events from the
-		/// specified remote server.
-		server: OwnedServerName,
+	// /// - Same as `get-remote-pdu` but accepts a codeblock newline delimited
+	// ///   list of PDUs and a single server to fetch from
+	// GetRemotePduList {
+	// 	/// Argument for us to attempt to fetch all the events from the
+	// 	/// specified remote server.
+	// 	server: OwnedServerName,
 
-		/// If set, ignores errors, else stops at the first error/failure.
-		#[arg(short, long)]
-		force: bool,
-	},
+	// 	/// If set, ignores errors, else stops at the first error/failure.
+	// 	#[arg(short, long)]
+	// 	force: bool,
+	// },
 
 	/// - Gets all the room state events for the specified room.
 	///

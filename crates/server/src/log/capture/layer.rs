@@ -1,6 +1,5 @@
 use std::{fmt, sync::Arc};
 
-use arrayvec::ArrayVec;
 use tracing::field::{Field, Visit};
 use tracing_core::{Event, Subscriber};
 use tracing_subscriber::{layer::Context, registry::LookupSpan};
@@ -15,10 +14,10 @@ struct Visitor {
     values: Values,
 }
 
-type Values = ArrayVec<Value, 32>;
+type Values = Vec<Value>;
 pub type Value = (&'static str, String);
 
-type ScopeNames = ArrayVec<&'static str, 32>;
+type ScopeNames = Vec<&'static str>;
 
 impl Layer {
     #[inline]

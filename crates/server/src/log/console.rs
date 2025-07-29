@@ -14,7 +14,8 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
-use crate::{Config, Result, apply};
+use crate::{config, AppResult};
+use crate::config::ServerConfig;
 
 static SYSTEMD_MODE: LazyLock<bool> =
     LazyLock::new(|| env::var("SYSTEMD_EXEC_PID").is_ok() && env::var("JOURNAL_STREAM").is_ok());
@@ -28,7 +29,7 @@ pub struct ConsoleWriter {
 
 impl ConsoleWriter {
     #[must_use]
-    pub fn new(_config: &Config) -> Self {
+    pub fn new(_config: &ServerConfig) -> Self {
         let journal_stream = get_journal_stream();
         Self {
             stdout: io::stdout(),
@@ -73,17 +74,19 @@ pub struct ConsoleFormat {
 
 impl ConsoleFormat {
     #[must_use]
-    pub fn new(config: &Config) -> Self {
+    pub fn new() -> Self {
+        let conf = config::get();
+        let log_conf = &conf.logger;
         Self {
             _compact: fmt::format().compact(),
 
             full: Format::<Full>::default()
-                .with_thread_ids(config.log_thread_ids)
-                .with_ansi(config.log_colors),
+                .with_thread_ids(log_conf.thread_ids)
+                .with_ansi(log_conf.ansi_colors),
 
             pretty: fmt::format()
                 .pretty()
-                .with_ansi(config.log_colors)
+                .with_ansi(log_conf.ansi_colors)
                 .with_thread_names(true)
                 .with_thread_ids(true)
                 .with_target(true)
@@ -150,8 +153,7 @@ fn get_journal_stream() -> (u64, u64) {
         .flatten()
         .as_deref()
         .and_then(|s| s.split_once(':'))
-        .map(apply!(2, str::parse))
-        .map(apply!(2, Result::unwrap_or_default))
+        .map(|t| (str::parse(t.0).unwrap_or_default(), str::parse(t.1).unwrap_or_default()))
         .unwrap_or((0, 0))
 }
 

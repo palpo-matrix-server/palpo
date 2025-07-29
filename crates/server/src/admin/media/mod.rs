@@ -12,7 +12,7 @@ use crate::macros::admin_command_dispatch;
 pub(super) enum MediaCommand {
     /// - Deletes a single media file from our database and on the filesystem
     ///   via a single MXC URL or event ID (not redacted)
-    Delete {
+    DeleteMedia {
         /// The MXC URL to delete
         #[arg(long)]
         mxc: Option<OwnedMxcUri>,
@@ -25,7 +25,7 @@ pub(super) enum MediaCommand {
 
     /// - Deletes a codeblock list of MXC URLs from our database and on the
     ///   filesystem. This will always ignore errors.
-    DeleteList,
+    DeleteMediaList,
 
     /// - Deletes all remote (and optionally local) media created before or
     ///   after [duration] time using filesystem metadata first created at date,
@@ -48,50 +48,50 @@ pub(super) enum MediaCommand {
         yes_i_want_to_delete_local_media: bool,
     },
 
-    /// - Deletes all the local media from a local user on our server. This will
-    ///   always ignore errors by default.
-    DeleteAllFromUser { username: String },
+    // /// - Deletes all the local media from a local user on our server. This will
+    // ///   always ignore errors by default.
+    // DeleteAllFromUser { username: String },
 
-    /// - Deletes all remote media from the specified remote server. This will
-    ///   always ignore errors by default.
-    DeleteAllFromServer {
-        server_name: OwnedServerName,
+    // /// - Deletes all remote media from the specified remote server. This will
+    // ///   always ignore errors by default.
+    // DeleteAllFromServer {
+    //     server_name: OwnedServerName,
 
-        /// Long argument to delete local media
-        #[arg(long)]
-        yes_i_want_to_delete_local_media: bool,
-    },
+    //     /// Long argument to delete local media
+    //     #[arg(long)]
+    //     yes_i_want_to_delete_local_media: bool,
+    // },
 
     GetFileInfo {
         /// The MXC URL to lookup info for.
         mxc: OwnedMxcUri,
     },
 
-    GetRemoteFile {
-        /// The MXC URL to fetch
-        mxc: OwnedMxcUri,
+    // GetRemoteFile {
+    //     /// The MXC URL to fetch
+    //     mxc: OwnedMxcUri,
 
-        #[arg(short, long)]
-        server: Option<OwnedServerName>,
+    //     #[arg(short, long)]
+    //     server: Option<OwnedServerName>,
 
-        #[arg(short, long, default_value("10000"))]
-        timeout: u32,
-    },
+    //     #[arg(short, long, default_value("10000"))]
+    //     timeout: u32,
+    // },
 
-    GetRemoteThumbnail {
-        /// The MXC URL to fetch
-        mxc: OwnedMxcUri,
+    // GetRemoteThumbnail {
+    //     /// The MXC URL to fetch
+    //     mxc: OwnedMxcUri,
 
-        #[arg(short, long)]
-        server: Option<OwnedServerName>,
+    //     #[arg(short, long)]
+    //     server: Option<OwnedServerName>,
 
-        #[arg(short, long, default_value("10000"))]
-        timeout: u32,
+    //     #[arg(short, long, default_value("10000"))]
+    //     timeout: u32,
 
-        #[arg(short, long, default_value("800"))]
-        width: u32,
+    //     #[arg(short, long, default_value("800"))]
+    //     width: u32,
 
-        #[arg(short, long, default_value("800"))]
-        height: u32,
-    },
+    //     #[arg(short, long, default_value("800"))]
+    //     height: u32,
+    // },
 }

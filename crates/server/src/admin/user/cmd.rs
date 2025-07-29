@@ -22,16 +22,15 @@ const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
 
 pub(super) async fn list_users(ctx: &Context<'_>) -> AppResult<()> {
-    let users: Vec<_> = self
-        .services
-        .users
-        .list_local_users()
-        .map(ToString::to_string)
-        .collect()
-        .await;
+    let users: Vec<_> = crate::user::list_local_users()?;
 
     let mut plain_msg = format!("Found {} local user account(s):\n```\n", users.len());
-    plain_msg += users.join("\n").as_str();
+    plain_msg += users
+        .iter()
+        .map(|u| u.to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .as_str();
     plain_msg += "\n```";
 
     ctx.write_str(&plain_msg).await
@@ -137,7 +136,7 @@ pub(super) async fn create_user(ctx: &Context<'_>, username: String, password: O
     // if this account creation is from the CLI / --execute, invite the first user
     // to admin room
     if let Ok(admin_room) = crate::room::get_admin_room() {
-        if crate::room::room_joined_count(&admin_room).is_ok_and(|c| c == 1) {
+        if crate::room::joined_member_count(&admin_room).is_ok_and(|c| c == 1) {
             crate::user::make_user_admin(&user_id)?;
             warn!("Granting {user_id} admin privileges as the first user");
         }
@@ -162,7 +161,8 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
         ));
     }
 
-    crate::user::deactivate_account(&user_id).await?;
+    // TODO: admin
+    // crate::user::deactivate_account(&user_id).await?;
 
     if !no_leave_rooms {
         crate::admin::send_text(&format!("Making {user_id} leave all rooms after deactivation...")).await;
@@ -296,21 +296,20 @@ pub(super) async fn list_joined_rooms(ctx: &Context<'_>, user_id: String) -> App
     // Validate user id
     let user_id = parse_local_user_id(&user_id)?;
 
-    let mut rooms: Vec<(OwnedRoomId, u64, String)> = data::user::joined_rooms(&user_id)
-        .then(|room_id| get_room_info(room_id))
-        .collect()
-        .await;
+    let mut rooms: Vec<_> = data::user::joined_rooms(&user_id)?.iter()
+        .map(|room_id| get_room_info(room_id))
+        .collect();
 
     if rooms.is_empty() {
         return Err(AppError::public("User is not in any rooms."));
     }
 
-    rooms.sort_by_key(|r| r.1);
+    rooms.sort_by_key(|r| r.joined_members);
     rooms.reverse();
 
     let body = rooms
         .iter()
-        .map(|(id, members, name)| format!("{id}\tMembers: {members}\tName: {name}"))
+        .map(|info| format!("{}\tMembers: {}\tName: {}", info.id, info.joined_members, info.name))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -570,29 +569,29 @@ pub(super) async fn put_room_tag(
     tag: String,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
+    unimplemented!()
+    // let mut tags_event = self
+    //     .services
+    //     .account_data
+    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
+    //     .await
+    //     .unwrap_or(TagEvent {
+    //         content: TagEventContent { tags: BTreeMap::new() },
+    //     });
 
-    let mut tags_event = self
-        .services
-        .account_data
-        .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-        .await
-        .unwrap_or(TagEvent {
-            content: TagEventContent { tags: BTreeMap::new() },
-        });
+    // tags_event.content.tags.insert(tag.clone().into(), TagInfo::new());
 
-    tags_event.content.tags.insert(tag.clone().into(), TagInfo::new());
+    // crate::user::set_data(
+    //     &user_id,
+    //     Some(room_id.clone()),
+    //     &RoomAccountDataEventType::Tag.to_string(),
+    //     serde_json::to_value(tags_event).expect("to json value always works"),
+    // )?;
 
-    crate::user::set_data(
-        &user_id,
-        Some(room_id.clone()),
-        &RoomAccountDataEventType::Tag.to_string(),
-        serde_json::to_value(tags_event).expect("to json value always works"),
-    )?;
-
-    ctx.write_str(&format!(
-        "Successfully updated room account data for {user_id} and room {room_id} with tag {tag}"
-    ))
-    .await
+    // ctx.write_str(&format!(
+    //     "Successfully updated room account data for {user_id} and room {room_id} with tag {tag}"
+    // ))
+    // .await
 }
 
 pub(super) async fn delete_room_tag(
@@ -602,46 +601,46 @@ pub(super) async fn delete_room_tag(
     tag: String,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
+    unimplemented!()
+    // let mut tags_event = self
+    //     .services
+    //     .account_data
+    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
+    //     .await
+    //     .unwrap_or(TagEvent {
+    //         content: TagEventContent { tags: BTreeMap::new() },
+    //     });
 
-    let mut tags_event = self
-        .services
-        .account_data
-        .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-        .await
-        .unwrap_or(TagEvent {
-            content: TagEventContent { tags: BTreeMap::new() },
-        });
+    // tags_event.content.tags.remove(&tag.clone().into());
 
-    tags_event.content.tags.remove(&tag.clone().into());
+    // crate::user::set_data(
+    //     &user_id,
+    //     Some(room_id.clone()),
+    //     &RoomAccountDataEventType::Tag.to_string(),
+    //     serde_json::to_value(tags_event).expect("to json value always works"),
+    // )?;
 
-    crate::user::set_data(
-        &user_id,
-        Some(room_id.clone()),
-        &RoomAccountDataEventType::Tag.to_string(),
-        serde_json::to_value(tags_event).expect("to json value always works"),
-    )?;
-
-    ctx.write_str(&format!(
-        "Successfully updated room account data for {user_id} and room {room_id}, deleting room \
-		 tag {tag}"
-    ))
-    .await
+    // ctx.write_str(&format!(
+    //     "Successfully updated room account data for {user_id} and room {room_id}, deleting room \
+    // 	 tag {tag}"
+    // ))
+    // .await
 }
 
 pub(super) async fn get_room_tags(ctx: &Context<'_>, user_id: String, room_id: OwnedRoomId) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
+    unimplemented!()
+    // let tags_event = self
+    //     .services
+    //     .account_data
+    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
+    //     .await
+    //     .unwrap_or(TagEvent {
+    //         content: TagEventContent { tags: BTreeMap::new() },
+    //     });
 
-    let tags_event = self
-        .services
-        .account_data
-        .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-        .await
-        .unwrap_or(TagEvent {
-            content: TagEventContent { tags: BTreeMap::new() },
-        });
-
-    ctx.write_str(&format!("```\n{:#?}\n```", tags_event.content.tags))
-        .await
+    // ctx.write_str(&format!("```\n{:#?}\n```", tags_event.content.tags))
+    //     .await
 }
 
 pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {

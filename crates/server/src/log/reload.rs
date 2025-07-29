@@ -5,7 +5,7 @@ use std::{
 
 use tracing_subscriber::{EnvFilter, reload};
 
-use crate::{Result, error};
+use crate::{AppResult, AppError};
 
 /// We need to store a reload::Handle value, but can't name it's type explicitly
 /// because the S type parameter depends on the subscriber's previous layers. In
@@ -50,14 +50,15 @@ impl LogLevelReloadHandles {
         self.handles.lock().expect("locked").insert(name.into(), handle);
     }
 
-    pub fn reload(&self, new_value: &EnvFilter, names: Option<&[&str]>) -> Result {
+    pub fn reload(&self, new_value: &EnvFilter, names: Option<&[&str]>) -> AppResult<()> {
         self.handles
             .lock()
             .expect("locked")
             .iter()
             .filter(|(name, _)| names.is_some_and(|names| names.contains(&name.as_str())))
             .for_each(|(_, handle)| {
-                _ = handle.reload(new_value.clone()).or_else(error::else_log);
+                // TODO: admin
+                // _ = handle.reload(new_value.clone());
             });
 
         Ok(())

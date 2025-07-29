@@ -1,7 +1,7 @@
 use clap::Subcommand;
 use futures_util::StreamExt;
 
-use crate::admin::{Context, PAGE_SIZE, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::{AppError, AppResult};
 
@@ -38,10 +38,10 @@ pub(super) async fn process(command: RoomDirectoryCommand, context: &Context<'_>
             let page = page.unwrap_or(1);
             let mut rooms: Vec<_> = crate::room::public_room_ids()?
                 .into_iter()
-                .map(|room_id| get_room_info(room_id))
+                .map(|room_id| get_room_info(&room_id))
                 .collect();
 
-            rooms.sort_by_key(|r| r.1);
+            rooms.sort_by_key(|r| r.joined_members);
             rooms.reverse();
 
             let rooms: Vec<_> = rooms
@@ -56,7 +56,7 @@ pub(super) async fn process(command: RoomDirectoryCommand, context: &Context<'_>
 
             let body = rooms
                 .iter()
-                .map(|(id, members, name)| format!("{id} | Members: {members} | Name: {name}"))
+                .map(|info| format!("{} | Members: {} | Name: {}", info.id, info.joined_members, info.name))
                 .collect::<Vec<_>>()
                 .join("\n");
 

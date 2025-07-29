@@ -1,9 +1,9 @@
 use std::fmt::Write;
 
 use super::{Level, color};
-use crate::Result;
+use crate::AppResult;
 
-pub fn html<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> Result
+pub fn html<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> AppResult<()>
 where
     S: Write + ?Sized,
 {
@@ -18,7 +18,7 @@ where
     Ok(())
 }
 
-pub fn markdown<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> Result
+pub fn markdown<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> AppResult<()>
 where
     S: Write + ?Sized,
 {
@@ -28,7 +28,7 @@ where
     Ok(())
 }
 
-pub fn markdown_table<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> Result
+pub fn markdown_table<S>(out: &mut S, level: &Level, span: &str, msg: &str) -> AppResult<()>
 where
     S: Write + ?Sized,
 {
@@ -38,7 +38,7 @@ where
     Ok(())
 }
 
-pub fn markdown_table_head<S>(out: &mut S) -> Result
+pub fn markdown_table_head<S>(out: &mut S) -> AppResult<()>
 where
     S: Write + ?Sized,
 {

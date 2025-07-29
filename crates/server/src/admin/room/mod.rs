@@ -10,7 +10,7 @@ use futures_util::StreamExt;
 use self::{
     alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand, moderation::RoomModerationCommand,
 };
-use crate::admin::{Context, PAGE_SIZE, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
 use crate::{AppError, AppResult, config, data};
@@ -90,11 +90,11 @@ pub(super) async fn list_rooms(
 
     let body = rooms
         .iter()
-        .map(|(id, members, name)| {
+        .map(|info| {
             if no_details {
-                format!("{id}")
+                format!("{}", info.id)
             } else {
-                format!("{id}\tMembers: {members}\tName: {name}")
+                format!("{}\tMembers: {}\tName: {}", info.id, info.joined_members, info.name)
             }
         })
         .collect::<Vec<_>>()

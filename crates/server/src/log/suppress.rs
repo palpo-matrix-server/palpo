@@ -11,13 +11,13 @@ pub struct Suppress {
 impl Suppress {
     pub fn new() -> Self {
         let handle = "console";
-        let config = &server.config.log;
-        let suppress = EnvFilter::default();
-        let restore = server
-            .log
-            .reload
-            .current(handle)
-            .unwrap_or_else(|| EnvFilter::try_new(config).unwrap_or_default());
+        // let config = &server.config.log;
+        // let suppress = EnvFilter::default();
+        // let restore = server
+        //     .log
+        //     .reload
+        //     .current(handle)
+        //     .unwrap_or_else(|| EnvFilter::try_new(config).unwrap_or_default());
 
         // server
         // 	.log
@@ -25,7 +25,8 @@ impl Suppress {
         // 	.reload(&suppress, Some(&[handle]))
         // 	.expect("log filter reloaded");
 
-        Self { restore }
+		unimplemented!()
+        // Self { restore }
     }
 }
 

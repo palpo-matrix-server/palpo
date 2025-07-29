@@ -1,18 +1,21 @@
 use std::{fmt::Debug, time::Duration};
 
-use http::header::{CONTENT_DISPOSITION, CONTENT_TYPE, HeaderValue};
+use salvo::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE, HeaderValue};
 
+use crate::core::federation::media::{Content, FileOrLocation};
 use crate::core::{
-    Mxc, ServerName, UserId,
-    api::{
-        OutgoingRequest,
-        client::{
-            error::ErrorKind::{NotFound, Unrecognized},
-            media,
-        },
-        federation,
-        federation::authenticated_media::{Content, FileOrLocation},
-    },
+    Mxc,
+    ServerName,
+    UserId,
+    // api::{
+    //     OutgoingRequest,
+    //     client::{
+    //         error::ErrorKind::{NotFound, Unrecognized},
+    //         media,
+    //     },
+    //     federation,
+    //     federation::authenticated_media::{Content, FileOrLocation},
+    // },
 };
 use crate::{AppError, AppResult, utils::content_disposition::make_content_disposition};
 
@@ -182,7 +185,7 @@ async fn fetch_content_unauthenticated(
 async fn handle_thumbnail_file(
     mxc: &Mxc<'_>,
     user: Option<&UserId>,
-    dim: &Dim,
+    dim: &Dimension,
     content: Content,
 ) -> AppResult<FileMeta> {
     unimplemented!()
@@ -282,22 +285,22 @@ async fn location_request(location: &str) -> AppResult<FileMeta> {
     // 	})
 }
 
-async fn federation_request<Request>(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    server: Option<&ServerName>,
-    request: Request,
-) -> Result<Request::IncomingResponse>
-where
-    Request: OutgoingRequest + Send + Debug,
-{
-    unimplemented!()
+// async fn federation_request<Request>(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     server: Option<&ServerName>,
+//     request: Request,
+// ) -> Result<Request::IncomingResponse>
+// where
+//     Request: OutgoingRequest + Send + Debug,
+// {
+//     unimplemented!()
     // self.services
     // 	.sending
     // 	.send_federation_request(server.unwrap_or(mxc.server_name), request)
     // 	.await
     // 	.map_err(|error| handle_federation_error(mxc, user, server, error))
-}
+// }
 
 // Handles and adjusts the error for the caller to determine if they should
 // request the fallback endpoint or give up.
@@ -333,10 +336,10 @@ fn handle_federation_error(
     // error
 }
 
-pub async fn fetch_remote_thumbnail_legacy(
-    body: &media::get_content_thumbnail::v3::Request,
-) -> AppResult<media::get_content_thumbnail::v3::Response> {
-    unimplemented!()
+// pub async fn fetch_remote_thumbnail_legacy(
+//     body: &media::get_content_thumbnail::v3::Request,
+// ) -> AppResult<media::get_content_thumbnail::v3::Response> {
+//     unimplemented!()
     // let mxc = Mxc {
     // 	server_name: &body.server_name,
     // 	media_id: &body.media_id,
@@ -372,14 +375,14 @@ pub async fn fetch_remote_thumbnail_legacy(
     // .await?;
 
     // Ok(response)
-}
+// }
 
-pub async fn fetch_remote_content_legacy(
-    mxc: &Mxc<'_>,
-    allow_redirect: bool,
-    timeout_ms: Duration,
-) -> AppResult<media::get_content::v3::Response> {
-    unimplemented!()
+// pub async fn fetch_remote_content_legacy(
+//     mxc: &Mxc<'_>,
+//     allow_redirect: bool,
+//     timeout_ms: Duration,
+// ) -> AppResult<media::get_content::v3::Response> {
+//     unimplemented!()
     // self.check_legacy_freeze()?;
     // self.check_fetch_authorized(mxc)?;
     // let response = self
@@ -410,9 +413,9 @@ pub async fn fetch_remote_content_legacy(
     // .await?;
 
     // Ok(response)
-}
+// }
 
-fn check_fetch_authorized(&self, mxc: &Mxc<'_>) -> AppResult<()> {
+fn check_fetch_authorized(mxc: &Mxc<'_>) -> AppResult<()> {
     // if self
     // 	.services
     // 	.server
@@ -436,12 +439,12 @@ fn check_fetch_authorized(&self, mxc: &Mxc<'_>) -> AppResult<()> {
     Ok(())
 }
 
-fn check_legacy_freeze(&self) -> AppResult<()> {
-    unimplemented!()
+// fn check_legacy_freeze() -> AppResult<()> {
+//     unimplemented!()
     // self.services
     // 	.server
     // 	.config
     // 	.freeze_legacy_media
     // 	.then_some(())
     // 	.ok_or(err!(Request(NotFound("Remote media is frozen."))))
-}
+// }

@@ -660,7 +660,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                 .map_err(|_| AppError::internal("invalid content in pdu."))?;
 
             if content.membership == MembershipState::Leave {
-                if target == server_user {
+                if target == server_user.to_string() {
                     warn!("Palpo user cannot leave from admins room");
                     return Err(MatrixError::forbidden("Palpo user cannot leave from admins room.", None).into());
                 }
@@ -677,7 +677,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
             }
 
             if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
-                if target == server_user {
+                if target == server_user.to_string() {
                     warn!("Palpo user cannot be banned in admins room");
                     return Err(MatrixError::forbidden("Palpo user cannot be banned in admins room.", None).into());
                 }
@@ -720,7 +720,7 @@ pub fn build_and_append_pdu(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
     //         .expect("#admins:server_name is a valid room alias"),
     // )?;
-    if super::is_admin_room(room_id) {
+    if crate::room::is_admin_room(room_id)? {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 

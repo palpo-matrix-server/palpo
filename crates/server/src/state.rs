@@ -51,7 +51,7 @@ fn allowed_to_send_state_event(
         }
         // admin room is a sensitive room, it should not ever be made public
         StateEventType::RoomJoinRules => {
-            if crate::room::is_admin_room(room_id) {
+            if crate::room::is_admin_room(room_id)? {
                 if let Ok(join_rule) = serde_json::from_str::<RoomJoinRulesEventContent>(json.inner().get()) {
                     if join_rule.join_rule == JoinRule::Public {
                         return Err(MatrixError::forbidden(
@@ -68,7 +68,7 @@ fn allowed_to_send_state_event(
             if let Ok(visibility_content) =
                 serde_json::from_str::<RoomHistoryVisibilityEventContent>(json.inner().get())
             {
-                if crate::room::is_admin_room(room_id)
+                if crate::room::is_admin_room(room_id)?
                     && visibility_content.history_visibility == HistoryVisibility::WorldReadable
                 {
                     return Err(MatrixError::forbidden(

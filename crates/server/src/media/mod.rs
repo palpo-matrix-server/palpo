@@ -4,7 +4,7 @@ pub use remote::*;
 
 use std::cmp;
 use std::num::Saturating;
-use std::time::Duration;
+use std::time::Duration;use std::time::SystemTime;
 
 pub use preview::*;
 use salvo::Response;
@@ -12,8 +12,16 @@ use salvo::Response;
 use crate::core::OwnedMxcUri;
 use crate::core::federation::media::ContentReqArgs;
 use crate::core::media::Method;
+use crate::core::http_headers::ContentDisposition;
 use crate::core::{ServerName, media};
 use crate::{AppResult, exts::*, join_path};
+
+#[derive(Debug)]
+pub struct FileMeta {
+	pub content: Option<Vec<u8>>,
+	pub content_type: Option<String>,
+	pub content_disposition: Option<ContentDisposition>,
+}
 
 /// Dimension specification for a thumbnail.
 #[derive(Debug)]

@@ -63,6 +63,14 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
     Ok(user)
 }
 
+pub fn list_local_users() -> AppResult<Vec<OwnedUserId>> {
+    // TODO: admin
+    let users = users::table
+        .select(users::id)
+        .filter(users::is_guest.eq(false))
+        .load::<OwnedUserId>(&mut connect()?)?;
+    Ok(users)
+}
 /// Ensure that a user only sees signatures from themselves and the target user
 pub fn clean_signatures<F: Fn(&UserId) -> bool>(
     cross_signing_key: &mut serde_json::Value,

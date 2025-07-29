@@ -222,17 +222,18 @@ async fn register(
     // If this is the first real user, grant them admin privileges
     // Note: the server user, @palpo:servername, is generated first
     if !is_guest {
-        if let Ok(admin_room) = crate::admin::get_admin_room() {
-            if crate::room::user::join_count(&admin_room)? == 1 {
-                crate::admin::make_admin(&user_id).await?;
-                warn!("Granting {} admin privileges as the first user", user_id);
-            } else if body.login_type != Some(LoginType::Appservice) {
-                info!("New user {} registered on this server.", user_id);
-                let _ = crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
-                    "New user {user_id} registered on this server."
-                )));
-            }
-        }
+        // TODO: admin
+        // if let Ok(admin_room) = crate::admin::get_admin_room() {
+        //     if crate::room::user::join_count(&admin_room)? == 1 {
+        //         crate::admin::make_admin(&user_id).await?;
+        //         warn!("Granting {} admin privileges as the first user", user_id);
+        //     } else if body.login_type != Some(LoginType::Appservice) {
+        //         info!("New user {} registered on this server.", user_id);
+        //         let _ = crate::admin::send_message(RoomMessageEventContent::notice_plain(format!(
+        //             "New user {user_id} registered on this server."
+        //         )));
+        //     }
+        // }
     }
 
     let from_appservice = if let Ok(authed) = depot.authed_info() {

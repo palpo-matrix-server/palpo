@@ -110,10 +110,7 @@ pub(super) async fn process(command: RoomAliasCommand, context: &Context<'_>) ->
                 let plain = format!("Aliases for {room_id}:\n{plain_list}");
                 context.write_str(&plain).await
             } else {
-                let aliases = crate::room::all_local_aliases()
-                    .map(|(room_id, localpart)| (room_id.into(), localpart.into()))
-                    .collect::<Vec<(OwnedRoomId, String)>>()
-                    .await;
+                let aliases = crate::room::all_local_aliases()?;
 
                 let server_name = config::server_name();
                 let plain_list = aliases.iter().fold(String::new(), |mut output, (alias, id)| {
