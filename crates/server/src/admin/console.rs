@@ -10,6 +10,7 @@ use tokio::task::JoinHandle;
 
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::logging::{self, is_systemd_mode};
+use crate::defer;
 
 pub struct Console {
     worker_join: Mutex<Option<JoinHandle<()>>>,
@@ -133,10 +134,9 @@ impl Console {
         let future = Abortable::new(future, abort_reg);
         _ = self.input_abort.lock().expect("locked").insert(abort);
 
-        // TODO: admin
-        // defer! {{
-        //     _ = self.input_abort.lock().expect("locked").take();
-        // }}
+        defer! {{
+            _ = self.input_abort.lock().expect("locked").take();
+        }}
 
         let Ok(result) = future.await else {
             return Ok(ReadlineEvent::Eof);

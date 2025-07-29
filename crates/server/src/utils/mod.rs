@@ -21,7 +21,21 @@ mod mutex_map;
 pub use mutex_map::{MutexMap, MutexMapGuard};
 mod sequm_queue;
 pub use sequm_queue::*;
+mod defer;
 pub mod sys;
+
+#[macro_export]
+macro_rules! join_path {
+    ($($part:expr),+) => {
+        {
+            let mut p = std::path::PathBuf::new();
+            $(
+                p.push($part);
+            )*
+            path_slash::PathBufExt::to_slash_lossy(&p).to_string()
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! extract_variant {
