@@ -1,10 +1,10 @@
 use clap::Subcommand;
 use futures_util::StreamExt;
-use palpo_core::{AppError, AppResult};
 
-use crate::admin::{Context,admin_command_dispatch, get_room_info};
+use crate::admin::{Context, admin_command_dispatch, get_room_info};
 use crate::core::OwnedRoomId;
-use crate::{data, IsRemoteOrLocal};
+use crate::{AppError, AppResult};
+use crate::{IsRemoteOrLocal, data};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -54,7 +54,7 @@ async fn list_joined_members(ctx: &Context<'_>, room_id: OwnedRoomId, local_only
 }
 
 async fn view_room_topic(ctx: &Context<'_>, room_id: OwnedRoomId) -> AppResult<()> {
-    let Ok(room_topic) = crate::room::get_room_topic(&room_id) else {
+    let Ok(room_topic) = crate::room::get_topic(&room_id) else {
         return Err(AppError::public("Room does not have a room topic set."));
     };
 

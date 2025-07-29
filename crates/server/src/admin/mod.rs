@@ -10,6 +10,7 @@ pub(crate) use console::Console;
 mod utils;
 pub(crate) use utils::*;
 
+use std::pin::Pin;
 use std::sync::OnceLock;
 use std::{
     collections::BTreeMap,
@@ -54,8 +55,8 @@ use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, dat
 use palpo_core::events::room::message::Relation;
 
 use self::{
-    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
-    room::RoomCommand, server::ServerCommand, user::UserCommand,
+    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand, room::RoomCommand,
+    server::ServerCommand, user::UserCommand,
 };
 use super::event::PduBuilder;
 
@@ -75,7 +76,7 @@ pub type Completer = fn(&str) -> String;
 
 /// Prototype of the command processor. This is a callback supplied by the
 /// reloadable admin module.
-pub type Processor = fn(Arc<crate::Services>, CommandInput) -> ProcessorFuture;
+pub type Processor = fn(CommandInput) -> ProcessorFuture;
 
 /// Return type of the processor
 pub type ProcessorFuture = Pin<Box<dyn Future<Output = ProcessorResult> + Send>>;
@@ -91,18 +92,20 @@ pub type CommandOutput = RoomMessageEventContent;
 
 /// Install the admin command processor
 pub async fn init() {
-    _ = admin_service
-        .complete
-        .write()
-        .expect("locked for writing")
-        .insert(processor::complete);
-    _ = admin_service.handle.write().await.insert(processor::dispatch);
+    unimplemented!()
+    // _ = admin_service
+    //     .complete
+    //     .write()
+    //     .expect("locked for writing")
+    //     .insert(processor::complete);
+    // _ = admin_service.handle.write().await.insert(processor::dispatch);
 }
 
 /// Uninstall the admin command handler
 pub async fn fini() {
-    _ = admin_service.handle.write().await.take();
-    _ = admin_service.complete.write().expect("locked for writing").take();
+    unimplemented!()
+    // _ = admin_service.handle.write().await.take();
+    // _ = admin_service.complete.write().expect("locked for writing").take();
 }
 
 #[derive(Debug, Parser)]
@@ -131,7 +134,6 @@ pub(super) enum AdminCommand {
     #[command(subcommand)]
     /// - Commands for managing media
     Media(MediaCommand),
-
     // #[command(subcommand)]
     // /// - Commands for debugging things
     // Debug(DebugCommand),
@@ -169,14 +171,14 @@ impl Context<'_> {
 }
 
 pub(crate) struct RoomInfo {
-    pub(crate) room_id: OwnedRoomId,
+    pub(crate) id: OwnedRoomId,
     pub(crate) joined_members: u64,
     pub(crate) name: String,
 }
 
-pub(crate) async fn get_room_info(room_id: &RoomId) -> RoomInfo {
+pub(crate) fn get_room_info(room_id: &RoomId) -> RoomInfo {
     RoomInfo {
-        room_id: room_id.to_owned(),
+        id: room_id.to_owned(),
         joined_members: crate::room::joined_member_count(room_id).unwrap_or(0),
         name: crate::room::get_name(room_id).unwrap_or_else(|_| room_id.to_string()),
     }
@@ -223,49 +225,52 @@ pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult
 /// will take place on the service worker's task asynchronously. Errors if
 /// the queue is full.
 pub async fn command(command: String, reply_id: Option<OwnedEventId>) -> AppResult<()> {
-    let Some(sender) = self.channel.read().expect("locked for reading").clone() else {
-        return Err!("Admin command queue unavailable.");
-    };
+    unimplemented!()
+    // let Some(sender) = self.channel.read().expect("locked for reading").clone() else {
+    //     return Err(AppError::Public("Admin command queue unavailable."));
+    // };
 
-    sender
-        .send(CommandInput { command, reply_id })
-        .await
-        .map_err(|e| err!("Failed to enqueue admin command: {e:?}"))
+    // sender
+    //     .send(CommandInput { command, reply_id })
+    //     .await
+    //     .map_err(|e| AppError::Public(format!("Failed to enqueue admin command: {e:?}")))
 }
 
 /// Dispatches a command to the processor on the current task and waits for
 /// completion.
 pub async fn command_in_place(command: String, reply_id: Option<OwnedEventId>) -> ProcessorResult {
-    self.process_command(CommandInput { command, reply_id }).await
+    process_command(CommandInput { command, reply_id }).await
 }
 
 /// Invokes the tab-completer to complete the command. When unavailable,
 /// None is returned.
 pub fn complete_command(command: &str) -> Option<String> {
-    self.complete
-        .read()
-        .expect("locked for reading")
-        .map(|complete| complete(command))
+    unimplemented!()
+    // complete
+    //     .read()
+    //     .expect("locked for reading")
+    //     .map(|complete| complete(command))
 }
 
 async fn handle_signal(sig: &'static str) {
-    if sig == execute::SIGNAL {
-        self.signal_execute().await.ok();
-    }
+    unimplemented!()
+    // if sig == execute::SIGNAL {
+    //     signal_execute().await.ok();
+    // }
 
-    #[cfg(feature = "console")]
-    self.console.handle_signal(sig).await;
+    // #[cfg(feature = "console")]
+    // self.console.handle_signal(sig).await;
 }
 
 async fn handle_command(command: CommandInput) {
     match process_command(command).await {
         Ok(None) => debug!("Command successful with no response"),
-        Ok(Some(output)) | Err(output) => handle_response(output).await.unwrap_or_else(default_log),
+        Ok(Some(output)) | Err(output) => handle_response(output).await.unwrap(),
     }
 }
 
 async fn process_command(command: CommandInput) -> ProcessorResult {
-    unimplemented!();
+    unimplemented!()
     // let handle = &handle_read().await.expect("Admin module is not loaded");
 
     // let services = self
@@ -278,41 +283,6 @@ async fn process_command(command: CommandInput) -> ProcessorResult {
     //     .expect("Services self-reference not initialized.");
 
     // handle(services, command).await
-}
-
-// Parse and process a message from the admin room
-async fn process_admin_message(room_message: String) -> RoomMessageEventContent {
-    let mut lines = room_message.lines().filter(|l| !l.trim().is_empty());
-    let command_line = lines.next().expect("each string has at least one line");
-    let body: Vec<_> = lines.collect();
-    let conf = crate::config::get();
-
-    let admin_command = match parse_admin_command(command_line) {
-        Ok(command) => command,
-        Err(error) => {
-            let server_name = &conf.server_name;
-            let message = error.replace("server.name", server_name.as_str());
-            let html_message = usage_to_html(&message, server_name);
-
-            return RoomMessageEventContent::text_html(message, html_message);
-        }
-    };
-
-    match process_admin_command(admin_command, body).await {
-        Ok(reply_message) => reply_message,
-        Err(error) => {
-            let markdown_message = format!(
-                "Encountered an error while handling the command:\n\
-                    ```\n{error}\n```",
-            );
-            let html_message = format!(
-                "Encountered an error while handling the command:\n\
-                    <pre>\n{error}\n</pre>",
-            );
-
-            RoomMessageEventContent::text_html(markdown_message, html_message)
-        }
-    }
 }
 
 // Parse chat messages from the admin room into an AdminCommand object
@@ -437,9 +407,7 @@ async fn respond_to_room(content: RoomMessageEventContent, room_id: &RoomId, use
     let state_lock = crate::room::lock_state(&room_id).await;
 
     if let Err(e) = timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, &state_lock) {
-        handle_response_error(e, room_id, user_id, &state_lock)
-            .await
-            .unwrap_or_else(default_log);
+        handle_response_error(e, room_id, user_id, &state_lock).await?;
     }
 
     Ok(())

@@ -4,7 +4,7 @@ use crate::admin::{Context, utils::parse_local_user_id};
 use crate::core::{Mxc, OwnedEventId, OwnedMxcUri, OwnedServerName};
 use crate::media::Dimension;
 use crate::room::timeline;
-use crate::{AppError, AppResult, config, data, utils::time::parse_timepoint_ago};
+use crate::{AppError, AppResult, IsRemoteOrLocal, config, data, utils::time::parse_timepoint_ago};
 
 pub(super) async fn delete_media(
     ctx: &Context<'_>,
@@ -193,7 +193,7 @@ pub(super) async fn delete_media_list(ctx: &Context<'_>) -> AppResult<()> {
 
     for mxc in &mxc_list {
         trace!(%failed_parsed_mxcs, %mxc_deletion_count, "Deleting MXC {mxc} in bulk");
-        match data::media::delete_media(mxc.server_name(), mxc.media_id()) {
+        match data::media::delete_media(mxc.server_name, mxc.media_id) {
             Ok(()) => {
                 info!("Successfully deleted {mxc} from filesystem and database");
                 mxc_deletion_count = mxc_deletion_count.saturating_add(1);
@@ -277,7 +277,7 @@ pub(super) async fn delete_all_media_from_server(
 
         let mxc: Mxc<'_> = mxc.as_str().try_into()?;
 
-        match crate::media::delete_media(mxc.server_name, mxc.media_id).await {
+        match data::media::delete_media(mxc.server_name, mxc.media_id) {
             Ok(()) => {
                 deleted_count = deleted_count.saturating_add(1);
             }
@@ -330,18 +330,16 @@ pub(super) async fn get_remote_thumbnail(
     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
     let timeout = Duration::from_millis(timeout.into());
     let dim = Dimension::new(width, height, None);
-    let mut result = self
-        .services
-        .media
-        .fetch_remote_thumbnail(&mxc, None, server.as_deref(), timeout, &dim)
-        .await?;
+    unimplemented!()
+    // let mut result = crate::media::get_remote_thumbnail(&mxc, None, server.as_deref(), timeout, &dim)
+    //     .await?;
 
-    // Grab the length of the content before clearing it to not flood the output
-    let len = result.content.as_ref().expect("content").len();
-    result.content.as_mut().expect("content").clear();
+    // // Grab the length of the content before clearing it to not flood the output
+    // let len = result.content.as_ref().expect("content").len();
+    // result.content.as_mut().expect("content").clear();
 
-    ctx.write_str(&format!(
-        "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
-    ))
-    .await
+    // ctx.write_str(&format!(
+    //     "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
+    // ))
+    // .await
 }

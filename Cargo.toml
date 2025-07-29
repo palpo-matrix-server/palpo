@@ -26,6 +26,7 @@ palpo-identifiers-validation = { version = "0.1.0", path = "crates/identifiers-v
 palpo-server-macros = { version = "0.1.0", path = "crates/server-macros" }
 
 rust-argon2 = "3.0.0"
+ctor = "0.4.3"
 anyhow = "1.0.44"
 assert_matches2 = "0.1.0"
 async-trait = "0.1.48"

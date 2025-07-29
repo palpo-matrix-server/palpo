@@ -2,10 +2,9 @@ use std::{fmt::Write, path::PathBuf, sync::Arc};
 
 use futures_util::TryStreamExt;
 
-use crate::admin::{Context, get_room_info, info};
-use crate::macros::admin_command;
+use crate::admin::{Context, get_room_info};
 use crate::{
-    AppError, AppResult, config,
+    AppError, AppResult, config, info,
     utils::{stream::IterStream, time},
 };
 

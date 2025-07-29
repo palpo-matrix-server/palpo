@@ -1,6 +1,6 @@
 use std::{
-	collections::HashMap,
-	sync::{Arc, Mutex},
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
 use tracing_subscriber::{EnvFilter, reload};
@@ -22,62 +22,61 @@ use crate::{Result, error};
 ///
 /// [1]: <https://github.com/tokio-rs/tracing/pull/1035/commits/8a87ea52425098d3ef8f56d92358c2f6c144a28f>
 pub trait ReloadHandle<L> {
-	fn current(&self) -> Option<L>;
+    fn current(&self) -> Option<L>;
 
-	fn reload(&self, new_value: L) -> Result<(), reload::Error>;
+    fn reload(&self, new_value: L) -> Result<(), reload::Error>;
 }
 
 impl<L: Clone, S> ReloadHandle<L> for reload::Handle<L, S> {
-	fn current(&self) -> Option<L> { Self::clone_current(self) }
+    fn current(&self) -> Option<L> {
+        Self::clone_current(self)
+    }
 
-	fn reload(&self, new_value: L) -> Result<(), reload::Error> { Self::reload(self, new_value) }
+    fn reload(&self, new_value: L) -> Result<(), reload::Error> {
+        Self::reload(self, new_value)
+    }
 }
 
 #[derive(Clone)]
 pub struct LogLevelReloadHandles {
-	handles: Arc<Mutex<HandleMap>>,
+    handles: Arc<Mutex<HandleMap>>,
 }
 
 type HandleMap = HashMap<String, Handle>;
 type Handle = Box<dyn ReloadHandle<EnvFilter> + Send + Sync>;
 
 impl LogLevelReloadHandles {
-	pub fn add(&self, name: &str, handle: Handle) {
-		self.handles
-			.lock()
-			.expect("locked")
-			.insert(name.into(), handle);
-	}
+    pub fn add(&self, name: &str, handle: Handle) {
+        self.handles.lock().expect("locked").insert(name.into(), handle);
+    }
 
-	pub fn reload(&self, new_value: &EnvFilter, names: Option<&[&str]>) -> Result {
-		self.handles
-			.lock()
-			.expect("locked")
-			.iter()
-			.filter(|(name, _)| names.is_some_and(|names| names.contains(&name.as_str())))
-			.for_each(|(_, handle)| {
-				_ = handle
-					.reload(new_value.clone())
-					.or_else(error::else_log);
-			});
+    pub fn reload(&self, new_value: &EnvFilter, names: Option<&[&str]>) -> Result {
+        self.handles
+            .lock()
+            .expect("locked")
+            .iter()
+            .filter(|(name, _)| names.is_some_and(|names| names.contains(&name.as_str())))
+            .for_each(|(_, handle)| {
+                _ = handle.reload(new_value.clone()).or_else(error::else_log);
+            });
 
-		Ok(())
-	}
+        Ok(())
+    }
 
-	#[must_use]
-	pub fn current(&self, name: &str) -> Option<EnvFilter> {
-		self.handles
-			.lock()
-			.expect("locked")
-			.get(name)
-			.map(|handle| handle.current())?
-	}
+    #[must_use]
+    pub fn current(&self, name: &str) -> Option<EnvFilter> {
+        self.handles
+            .lock()
+            .expect("locked")
+            .get(name)
+            .map(|handle| handle.current())?
+    }
 }
 
 impl Default for LogLevelReloadHandles {
-	fn default() -> Self {
-		Self {
-			handles: Arc::new(HandleMap::new().into()),
-		}
-	}
+    fn default() -> Self {
+        Self {
+            handles: Arc::new(HandleMap::new().into()),
+        }
+    }
 }

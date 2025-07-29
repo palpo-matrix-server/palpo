@@ -48,23 +48,24 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
         ));
     }
 
-    let range = 1..(body_len - 1);
-    let appservice_config_body = body[range].join("\n");
-    let parsed_config = serde_yaml::from_str(&appservice_config_body);
-    match parsed_config {
-        Err(e) => {
-            return Err(AppError::public(format!(
-                "Could not parse appservice config as YAML: {e}"
-            )));
-        }
-        Ok(registration) => match crate::appservice::register_appservice(registration.clone(), &appservice_config_body)
-            .map(|_| registration.id)
-        {
-            Err(e) => return Err(AppError::public(format!("Failed to register appservice: {e}"))),
-            Ok(id) => write!(ctx, "Appservice registered with ID: {id}"),
-        },
-    }
-    .await
+    unimplemented!()
+    // let range = 1..(body_len - 1);
+    // let appservice_config_body = body[range].join("\n");
+    // let parsed_config = serde_yaml::from_str(&appservice_config_body);
+    // match parsed_config {
+    //     Err(e) => {
+    //         return Err(AppError::public(format!(
+    //             "Could not parse appservice config as YAML: {e}"
+    //         )));
+    //     }
+    //     Ok(registration) => match crate::appservice::register_appservice(registration.clone(), &appservice_config_body)
+    //         .map(|_| registration.id)
+    //     {
+    //         Err(e) => return Err(AppError::public(format!("Failed to register appservice: {e}"))),
+    //         Ok(id) => write!(ctx, "Appservice registered with ID: {id}"),
+    //     },
+    // }
+    // .await
 }
 
 pub(super) async fn unregister(ctx: &Context<'_>, appservice_identifier: String) -> AppResult<()> {

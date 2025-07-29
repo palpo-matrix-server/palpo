@@ -20,11 +20,11 @@ pub use tracing_subscriber::EnvFilter;
 /// all logging and tracing related state rather than shoving it all in
 /// super::Server directly.
 pub struct Log {
-	/// General log level reload handles.
-	pub reload: LogLevelReloadHandles,
+    /// General log level reload handles.
+    pub reload: LogLevelReloadHandles,
 
-	/// Tracing capture state for ephemeral/oneshot uses.
-	pub capture: std::sync::Arc<capture::State>,
+    /// Tracing capture state for ephemeral/oneshot uses.
+    pub capture: std::sync::Arc<capture::State>,
 }
 
 // Wraps for logging macros. Use these macros rather than extern tracing:: or

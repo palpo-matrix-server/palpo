@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::core::{OwnedRoomId, OwnedUserId, RoomId, UserId};
-use crate::{AppError, data, AppResult, IsRemoteOrLocal, config};
+use crate::{AppError, AppResult, IsRemoteOrLocal, config, data};
 
 pub(crate) fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")

@@ -331,6 +331,13 @@ pub fn joined_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<Ow
 pub fn invited_users(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<Vec<OwnedUserId>> {
     get_state_users(room_id, &MembershipState::Invite, until_sn)
 }
+pub fn active_local_users_in_room(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
+    // TODO: only active user?
+    get_state_users(room_id, &MembershipState::Join, None)
+        .into_iter()
+        .filter(|user_id| user_id.is_local())
+        .collect()
+}
 
 pub fn get_state_users(
     room_id: &RoomId,
@@ -370,6 +377,9 @@ pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
         .select(rooms::id)
         .load(&mut connect()?)
         .map_err(Into::into)
+}
+pub fn all_room_ids() -> AppResult<Vec<OwnedRoomId>> {
+    rooms::table.select(rooms::id).load(&mut connect()?).map_err(Into::into)
 }
 
 pub fn filter_rooms<'a>(rooms: &[&'a RoomId], filter: &[RoomTypeFilter], negate: bool) -> Vec<&'a RoomId> {
@@ -585,4 +595,8 @@ pub fn keys_changed_users(room_id: &RoomId, since_sn: i64, until_sn: Option<i64>
             .load::<OwnedUserId>(&mut connect()?)
             .map_err(Into::into)
     }
+}
+
+pub fn ban_room(room_id: &RoomId, banned: bool) -> AppResult<()> {
+    unimplemented!()
 }

@@ -1,4 +1,5 @@
 mod cmd;
+use cmd::*;
 
 use std::path::PathBuf;
 

@@ -46,7 +46,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
 
     let admin_room_alias = config::admin_alias();
 
-    if let Ok(admin_room_id) = crate::admin::get_admin_room() {
+    if let Ok(admin_room_id) = crate::room::get_admin_room() {
         if room.to_string().eq(&admin_room_id) || room.to_string().eq(admin_room_alias) {
             return Err(AppError::public("Not allowed to ban the admin room."));
         }
@@ -65,7 +65,7 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
         };
 
         debug!("Room specified is a room ID, banning room ID");
-        crate::room::ban_room(room_id, true)?;
+        crate::room::ban_room(&room_id, true)?;
 
         room_id.to_owned()
     } else if room.is_room_alias_id() {
@@ -330,7 +330,7 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
         };
 
         debug!("Room specified is a room ID, unbanning room ID");
-        crate::room::ban_room(room_id, false)?;
+        crate::room::ban_room(&room_id, false)?;
 
         room_id.to_owned()
     } else if room.is_room_alias_id() {

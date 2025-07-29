@@ -116,6 +116,15 @@ pub fn local_aliases_for_room(room_id: &RoomId) -> AppResult<Vec<OwnedRoomAliasI
         .load::<OwnedRoomAliasId>(&mut connect()?)
         .map_err(Into::into)
 }
+pub fn all_local_aliases() -> AppResult<Vec<(OwnedRoomId, String)>> {
+    let lists = room_aliases::table
+        .select((room_aliases::room_id, room_aliases::alias_id))
+        .load::<(OwnedRoomId, OwnedRoomAliasId)>(&mut connect()?)?
+        .into_iter()
+        .map(|(room_id, alias_id)| (room_id, alias_id.localpart().to_owned()))
+        .collect::<Vec<_>>();
+    Ok(lists)
+}
 
 pub fn is_admin_room(room_id: &RoomId) -> bool {
     admin_room_id().map_or(false, |admin_room_id| admin_room_id == room_id)

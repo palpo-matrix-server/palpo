@@ -141,13 +141,19 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
         return Err(AppError::public("User is not in any rooms."));
     }
 
-    rooms.sort_by_key(|r| r.1);
+    rooms.sort_by_key(|r| r.joined_members);
     rooms.reverse();
 
     let num = rooms.len();
     let body = rooms
         .iter()
-        .map(|(id, members, name)| format!("{id} | Members: {members} | Name: {name}"))
+        .map(
+            |&RoomInfo {
+                 ref id,
+                 ref joined_members,
+                 ref name,
+             }| format!("{id} | Members: {joined_members} | Name: {name}"),
+        )
         .collect::<Vec<_>>()
         .join("\n");
 

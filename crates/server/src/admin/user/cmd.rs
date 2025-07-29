@@ -167,7 +167,7 @@ pub(super) async fn deactivate(ctx: &Context<'_>, no_leave_rooms: bool, user_id:
     if !no_leave_rooms {
         crate::admin::send_text(&format!("Making {user_id} leave all rooms after deactivation...")).await;
 
-        let all_joined_rooms: Vec<OwnedRoomId> = crate::user::joined_rooms(&user_id)?;
+        let all_joined_rooms: Vec<OwnedRoomId> = data::user::joined_rooms(&user_id)?;
 
         full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
 
@@ -296,7 +296,7 @@ pub(super) async fn list_joined_rooms(ctx: &Context<'_>, user_id: String) -> App
     // Validate user id
     let user_id = parse_local_user_id(&user_id)?;
 
-    let mut rooms: Vec<(OwnedRoomId, u64, String)> = crate::room::rooms_joined(&user_id)
+    let mut rooms: Vec<(OwnedRoomId, u64, String)> = data::user::joined_rooms(&user_id)
         .then(|room_id| get_room_info(room_id))
         .collect()
         .await;
@@ -348,10 +348,7 @@ pub(super) async fn force_join_list_of_local_users(
         return Err(AppError::public("We are not joined in this room."));
     }
 
-    let server_admins: Vec<_> = crate::room::active_local_users_in_room(&admin_room)
-        .map(ToOwned::to_owned)
-        .collect()
-        .await;
+    let server_admins: Vec<_> = crate::room::active_local_users_in_room(&admin_room)?;
 
     if !crate::room::joined_users(&room_id, None)?
         .iter()
@@ -446,10 +443,7 @@ pub(super) async fn force_join_all_local_users(
         return Err(AppError::public("we are not joined in this room"));
     }
 
-    let server_admins: Vec<_> = crate::room::active_local_users_in_room(&admin_room)
-        .map(ToOwned::to_owned)
-        .collect()
-        .await;
+    let server_admins: Vec<_> = crate::room::active_local_users_in_room(&admin_room)?;
 
     if !crate::room::joined_users(&room_id, None)?
         .iter()

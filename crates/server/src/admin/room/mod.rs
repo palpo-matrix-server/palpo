@@ -13,7 +13,7 @@ use self::{
 use crate::admin::{Context, PAGE_SIZE, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, AppResult, data, config};
+use crate::{AppError, AppResult, config, data};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
@@ -66,22 +66,16 @@ pub(super) async fn list_rooms(
 ) -> AppResult<()> {
     // TODO: i know there's a way to do this with clap, but i can't seem to find it
     let page = page.unwrap_or(1);
-    let mut rooms = self
-        .services
-        .rooms
-        .metadata
-        .iter_ids()
-        .filter_map(async |room_id| {
+    let mut rooms = crate::room::all_room_ids()?
+        .iter()
+        .filter_map(|room_id| {
             (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false)).then_some(room_id)
         })
-        .filter_map(async |room_id| {
-            (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
-        })
-        .then(|room_id| get_room_info(room_id))
-        .collect::<Vec<_>>()
-        .await;
+        .filter_map(|room_id| (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id))
+        .map(|room_id| get_room_info(room_id))
+        .collect::<Vec<_>>();
 
-    rooms.sort_by_key(|r| r.1);
+    rooms.sort_by_key(|r| r.joined_members);
     rooms.reverse();
 
     let rooms = rooms
