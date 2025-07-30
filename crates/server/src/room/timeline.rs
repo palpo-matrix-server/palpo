@@ -428,7 +428,7 @@ where
                     let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
                     if to_palpo && !from_palpo && admin_room == pdu.room_id {
-                        let _ = crate::admin::command(body, Some(pdu.event_id.clone()));
+                        let _ = crate::admin::executor().command(body, Some(pdu.event_id.clone()));
                     }
                 }
             }

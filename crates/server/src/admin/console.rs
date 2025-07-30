@@ -9,8 +9,8 @@ use termimad::MadSkin;
 use tokio::task::JoinHandle;
 
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::logging::{self, is_systemd_mode};
 use crate::defer;
+use crate::logging::{self, is_systemd_mode};
 
 pub struct Console {
     worker_join: Mutex<Option<JoinHandle<()>>>,
@@ -165,7 +165,7 @@ impl Console {
     }
 
     async fn process(self: Arc<Self>, line: String) {
-        match crate::admin::command_in_place(line, None).await {
+        match crate::admin::executor().command_in_place(line, None).await {
             Ok(Some(ref content)) => self.output(content),
             Err(ref content) => self.output_err(content),
             _ => unreachable!(),
@@ -201,7 +201,7 @@ impl Console {
     }
 
     fn tab_complete(&self, line: &str) -> String {
-        crate::admin::complete_command(line).unwrap_or_else(|| line.to_owned())
+        crate::admin::executor().complete_command(line).unwrap_or_else(|| line.to_owned())
     }
 }
 

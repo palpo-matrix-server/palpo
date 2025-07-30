@@ -14,6 +14,7 @@ pub mod hash;
 pub use hash::*;
 pub mod time;
 pub use time::*;
+pub mod string;
 pub mod stream;
 pub use stream::*;
 pub mod content_disposition;

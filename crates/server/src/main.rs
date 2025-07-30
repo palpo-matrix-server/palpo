@@ -168,12 +168,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         tracing::info!("starting admin console...");
 
         if !args.server {
-            crate::admin::start().await.expect("admin console failed to start");
+            crate::admin::start()
+                .await
+                .expect("admin console failed to start");
             tracing::info!("admin console stopped");
             return Ok(());
         } else {
             tokio::spawn(async move {
-                crate::admin::start().await.expect("admin console failed to start");
+                crate::admin::start()
+                    .await
+                    .expect("admin console failed to start");
                 tracing::info!("admin console stopped");
             });
         }

@@ -9,7 +9,8 @@ pub(crate) mod user;
 pub(crate) use console::Console;
 mod utils;
 pub(crate) use utils::*;
-mod state;
+mod executor;
+mod processor;
 
 use std::pin::Pin;
 use std::sync::OnceLock;
@@ -44,6 +45,7 @@ use crate::core::events::room::history_visibility::{
 };
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::events::room::message::Relation;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
@@ -55,18 +57,13 @@ pub(crate) use crate::macros::admin_command_dispatch;
 use crate::room::timeline;
 use crate::utils::HtmlEscape;
 use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership};
-use palpo_core::events::room::message::Relation;
 
 use self::{
-    appservice::AppserviceCommand,
-    federation::FederationCommand,
-    media::MediaCommand,
-    room::RoomCommand,
-    server::ServerCommand,
-    state::{STATE, State},
-    user::UserCommand,
+    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
+    room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
 use super::event::PduBuilder;
+pub use executor::*;
 
 pub(crate) const PAGE_SIZE: usize = 100;
 
@@ -206,143 +203,36 @@ pub async fn start() -> AppResult<()> {
     //     })
     //     .expect("state should be set once");
 
-    let state = state::get();
-    let mut signals = state.signal.subscribe();
+    executor::init().await;
+
+    let exec = executor();
+    let mut signals = exec.signal.subscribe();
     let (sender, mut receiver) = mpsc::channel(COMMAND_QUEUE_LIMIT);
-    _ = state
+    _ = exec
         .channel
         .write()
         .expect("locked for writing")
         .insert(sender);
 
     tokio::task::yield_now().await;
-    state.console.start().await;
+    exec.console.start().await;
 
     loop {
         tokio::select! {
             command = receiver.recv() => match command {
-                Some(command) => handle_command(command).await,
+                Some(command) => exec.handle_command(command).await,
                 None => break,
             },
             sig = signals.recv() => match sig {
-                Ok(sig) => handle_signal(sig).await,
+                Ok(sig) => exec.handle_signal(sig).await,
                 Err(_) => continue,
             },
         }
     }
 
-    //TODO: not unwind safe
-    state.console.interrupt();
-    _ = state.channel.write().expect("locked for writing").take();
-    state.console.close().await;
+    exec.interrupt().await;
 
     Ok(())
-}
-
-/// Sends markdown notice to the admin room as the admin user.
-pub async fn send_notice(body: &str) -> AppResult<()> {
-    send_message(RoomMessageEventContent::notice_markdown(body)).await
-}
-
-/// Sends markdown message (not an m.notice for notification reasons) to the
-/// admin room as the admin user.
-pub async fn send_text(body: &str) -> AppResult<()> {
-    send_message(RoomMessageEventContent::text_markdown(body)).await
-}
-
-/// Sends a message to the admin room as the admin user (see send_text() for
-/// convenience).
-pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult<()> {
-    let user_id = &config::server_user_id();
-    let room_id = crate::room::get_admin_room()?;
-    respond_to_room(message_content, &room_id, user_id).await
-}
-
-/// Posts a command to the command processor queue and returns. Processing
-/// will take place on the service worker's task asynchronously. Errors if
-/// the queue is full.
-pub async fn command(command: String, reply_id: Option<OwnedEventId>) -> AppResult<()> {
-    let state = state::get();
-    let Some(sender) = state.channel.read().expect("locked for reading").clone() else {
-        return Err(AppError::public("admin command queue unavailable"));
-    };
-
-    sender
-        .send(CommandInput { command, reply_id })
-        .await
-        .map_err(|e| AppError::Public(format!("failed to enqueue admin command: {e:?}")))
-}
-
-/// Dispatches a command to the processor on the current task and waits for
-/// completion.
-pub async fn command_in_place(command: String, reply_id: Option<OwnedEventId>) -> ProcessorResult {
-    process_command(CommandInput { command, reply_id }).await
-}
-
-/// Invokes the tab-completer to complete the command. When unavailable,
-/// None is returned.
-pub fn complete_command(command: &str) -> Option<String> {
-    let state = state::get();
-    state
-        .complete
-        .read()
-        .expect("locked for reading")
-        .map(|complete| complete(command))
-}
-
-pub(super) const SIGNAL: &str = "SIGUSR2";
-
-async fn handle_signal(sig: &'static str) {
-    if sig == SIGNAL {
-        signal_execute().await.ok();
-    }
-
-    state.console.handle_signal(sig).await;
-}
-
-async fn handle_command(command: CommandInput) {
-    match process_command(command).await {
-        Ok(None) => debug!("Command successful with no response"),
-        Ok(Some(output)) | Err(output) => handle_response(output).await.unwrap(),
-    }
-}
-
-async fn process_command(command: CommandInput) -> ProcessorResult {
-    unimplemented!()
-    // let handle = &handle_read().await.expect("Admin module is not loaded");
-
-    // let services = self
-    //     .services
-    //     .services
-    //     .read()
-    //     .expect("locked")
-    //     .as_ref()
-    //     .and_then(Weak::upgrade)
-    //     .expect("Services self-reference not initialized.");
-
-    // handle(services, command).await
-}
-
-// Parse chat messages from the admin room into an AdminCommand object
-fn parse_admin_command(command_line: &str) -> std::result::Result<AdminCommand, String> {
-    // Note: argv[0] is `@palpo:servername:`, which is treated as the main command
-    let mut argv: Vec<_> = command_line.split_whitespace().collect();
-
-    // Replace `help command` with `command --help`
-    // Clap has a help subcommand, but it omits the long help description.
-    if argv.len() > 1 && argv[1] == "help" {
-        argv.remove(1);
-        argv.push("--help");
-    }
-
-    // Backwards compatibility with `register_appservice`-style commands
-    let command_with_dashes;
-    if argv.len() > 1 && argv[1].contains('_') {
-        command_with_dashes = argv[1].replace('_', "-");
-        argv[1] = &command_with_dashes;
-    }
-
-    AdminCommand::try_parse_from(argv).map_err(|error| error.to_string())
 }
 
 // Utility to turn clap's `--help` text to HTML.
@@ -421,64 +311,4 @@ fn usage_to_html(text: &str, server_name: &ServerName) -> String {
     text.replace("\n\n\n", "\n\n")
         .replace('\n', "<br>\n")
         .replace("[nobr]<br>", "")
-}
-
-async fn handle_response(content: RoomMessageEventContent) -> AppResult<()> {
-    let Some(Relation::Reply { in_reply_to }) = content.relates_to.as_ref() else {
-        return Ok(());
-    };
-
-    let Ok(pdu) = timeline::get_pdu(&in_reply_to.event_id) else {
-        error!(
-            event_id = ?in_reply_to.event_id,
-            "Missing admin command in_reply_to event"
-        );
-        return Ok(());
-    };
-
-    let response_sender = if crate::room::is_admin_room(&pdu.room_id)? {
-        config::server_user_id()
-    } else {
-        &pdu.sender
-    };
-
-    respond_to_room(content, &pdu.room_id, response_sender).await
-}
-
-async fn respond_to_room(
-    content: RoomMessageEventContent,
-    room_id: &RoomId,
-    user_id: &UserId,
-) -> AppResult<()> {
-    assert!(crate::room::is_admin_room(room_id)?, "sender is not admin");
-
-    let state_lock = crate::room::lock_state(&room_id).await;
-
-    if let Err(e) = timeline::build_and_append_pdu(
-        PduBuilder::timeline(&content),
-        user_id,
-        room_id,
-        &state_lock,
-    ) {
-        handle_response_error(e, room_id, user_id, &state_lock).await?;
-    }
-
-    Ok(())
-}
-
-async fn handle_response_error(
-    e: AppError,
-    room_id: &RoomId,
-    user_id: &UserId,
-    state_lock: &RoomMutexGuard,
-) -> AppResult<()> {
-    error!("Failed to build and append admin room response PDU: \"{e}\"");
-    let content = RoomMessageEventContent::text_plain(format!(
-        "Failed to build and append admin room PDU: \"{e}\"\n\nThe original admin command \
-			 may have finished successfully, but we could not return the output."
-    ));
-
-    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock)?;
-
-    Ok(())
 }

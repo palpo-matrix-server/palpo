@@ -79,6 +79,8 @@ pub enum AppError {
     CargoTomlError(#[from] cargo_toml::Error),
     #[error("YamlError: `{0}`")]
     YamlError(#[from] serde_yaml::Error),
+    #[error("ClapError: `{0}`")]
+    ClapError(#[from] clap::Error),
 }
 
 impl AppError {
