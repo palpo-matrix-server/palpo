@@ -326,7 +326,7 @@ pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppRes
     ctx.write_str(&format!("```\n{metadata:#?}\n```")).await
 }
 
-// pub(super) async fn get_remote_file(
+// pub(super) async fn fetch_remote_file(
 //     ctx: &Context<'_>,
 //     mxc: OwnedMxcUri,
 //     server: Option<OwnedServerName>,
@@ -334,7 +334,7 @@ pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppRes
 // ) -> AppResult<()> {
 //     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
 //     let timeout = Duration::from_millis(timeout.into());
-//     let mut result = crate::media::get_remote_content(&mxc, &mxc.server_name, &mxc.media_id)
+//     let mut result = crate::media::fetch_remote_content(&mxc, &mxc.server_name, &mxc.media_id)
 //         .await?;
 
 //     // Grab the length of the content before clearing it to not flood the output
@@ -347,7 +347,7 @@ pub(super) async fn get_file_info(ctx: &Context<'_>, mxc: OwnedMxcUri) -> AppRes
 //     .await
 // }
 
-pub(super) async fn get_remote_thumbnail(
+pub(super) async fn fetch_remote_thumbnail(
     ctx: &Context<'_>,
     mxc: OwnedMxcUri,
     server: Option<OwnedServerName>,
@@ -358,16 +358,15 @@ pub(super) async fn get_remote_thumbnail(
     let mxc: Mxc<'_> = mxc.as_str().try_into()?;
     let timeout = Duration::from_millis(timeout.into());
     let dim = Dimension::new(width, height, None);
-    unimplemented!()
-    // let mut result = crate::media::get_remote_thumbnail(&mxc, None, server.as_deref(), timeout, &dim)
-    //     .await?;
+    let mut result =
+        crate::media::fetch_remote_thumbnail(&mxc, None, server.as_deref(), timeout, &dim).await?;
 
-    // // Grab the length of the content before clearing it to not flood the output
-    // let len = result.content.as_ref().expect("content").len();
-    // result.content.as_mut().expect("content").clear();
+    // Grab the length of the content before clearing it to not flood the output
+    let len = result.content.as_ref().expect("content").len();
+    result.content.as_mut().expect("content").clear();
 
-    // ctx.write_str(&format!(
-    //     "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
-    // ))
-    // .await
+    ctx.write_str(&format!(
+        "```\n{result:#?}\nreceived {len} bytes for file content.\n```"
+    ))
+    .await
 }

@@ -60,8 +60,8 @@ impl LogLevelReloadHandles {
             .iter()
             .filter(|(name, _)| names.is_some_and(|names| names.contains(&name.as_str())))
             .for_each(|(_, handle)| {
-                // TODO: admin
-                // _ = handle.reload(new_value.clone());
+                // TODO: EnvFilter clone
+                // _ = handle.reload(new_value.to_owned());
             });
 
         Ok(())

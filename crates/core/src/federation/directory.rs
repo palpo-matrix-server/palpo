@@ -115,7 +115,7 @@ pub fn remote_server_keys_batch_request(
     crate::sending::post(url).stuff(body)
 }
 
-/// Request type for the `get_remote_server_keys_batch` endpoint.
+/// Request type for the `fetch_remote_server_keys_batch` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct RemoteServerKeysBatchReqBody {
@@ -133,7 +133,7 @@ pub struct RemoteServerKeysBatchReqBody {
 }
 crate::json_body_modifier!(RemoteServerKeysBatchReqBody);
 
-/// Response type for the `get_remote_server_keys_batch` endpoint.
+/// Response type for the `fetch_remote_server_keys_batch` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
 pub struct RemoteServerKeysBatchResBody {
@@ -174,7 +174,7 @@ pub fn remote_server_keys_request(
     Ok(crate::sending::get(url))
 }
 
-/// Request type for the `get_remote_server_keys` endpoint.
+/// Request type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RemoteServerKeysReqArgs {
     /// The server's DNS name to query
@@ -192,7 +192,7 @@ pub struct RemoteServerKeysReqArgs {
     pub minimum_valid_until_ts: UnixMillis,
 }
 
-/// Response type for the `get_remote_server_keys` endpoint.
+/// Response type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 
 pub struct RemoteServerKeysResBody {

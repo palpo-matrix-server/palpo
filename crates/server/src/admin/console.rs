@@ -35,13 +35,10 @@ impl Console {
     }
 
     pub(crate) async fn handle_signal(self: &Arc<Self>, sig: &'static str) {
-        // TODO: admin
-        // if !self.server.running() {
-        //     self.interrupt();
-        // } else if sig == "SIGINT" {
-        //     self.interrupt_command();
-        //     self.start().await;
-        // }
+        if sig == "SIGINT" {
+            self.interrupt_command();
+            self.start().await;
+        }
     }
 
     pub async fn start(self: &Arc<Self>) {
@@ -201,7 +198,9 @@ impl Console {
     }
 
     fn tab_complete(&self, line: &str) -> String {
-        crate::admin::executor().complete_command(line).unwrap_or_else(|| line.to_owned())
+        crate::admin::executor()
+            .complete_command(line)
+            .unwrap_or_else(|| line.to_owned())
     }
 }
 

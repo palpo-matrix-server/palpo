@@ -17,7 +17,7 @@ use crate::core::{
     //     federation::authenticated_media::{Content, FileOrLocation},
     // },
 };
-use crate::{AppError, AppResult, utils::content_disposition::make_content_disposition};
+use crate::{AppError, AppResult, config, utils::content_disposition::make_content_disposition};
 
 use super::{Dimension, FileMeta};
 
@@ -28,20 +28,15 @@ pub async fn fetch_remote_thumbnail(
     timeout_ms: Duration,
     dim: &Dimension,
 ) -> AppResult<FileMeta> {
-    unimplemented!()
-    // self.check_fetch_authorized(mxc)?;
+    check_fetch_authorized(mxc)?;
 
-    // let result = self
-    // 	.fetch_thumbnail_authenticated(mxc, user, server, timeout_ms, dim)
-    // 	.await;
+    let result = fetch_thumbnail_authenticated(mxc, user, server, timeout_ms, dim).await;
 
-    // if let Err(Error::Request(NotFound, ..)) = &result {
-    // 	return self
-    // 		.fetch_thumbnail_unauthenticated(mxc, user, server, timeout_ms, dim)
-    // 		.await;
-    // }
+    if result.is_err() {
+        return fetch_thumbnail_unauthenticated(mxc, user, server, timeout_ms, dim).await;
+    }
 
-    // result
+    result
 }
 
 pub async fn fetch_remote_content(
@@ -50,19 +45,15 @@ pub async fn fetch_remote_content(
     server: Option<&ServerName>,
     timeout_ms: Duration,
 ) -> AppResult<FileMeta> {
-    unimplemented!()
-    // check_fetch_authorized(mxc)?;
+    check_fetch_authorized(mxc)?;
 
-    // let result = fetch_content_authenticated(mxc, user, server, timeout_ms)
-    // 	.await;
+    let result = fetch_content_authenticated(mxc, user, server, timeout_ms).await;
 
-    // if let Err(Error::Request(NotFound, ..)) = &result {
-    // 	return self
-    // 		.fetch_content_unauthenticated(mxc, user, server, timeout_ms)
-    // 		.await;
-    // }
+    if result.is_err() {
+        return fetch_content_unauthenticated(mxc, user, server, timeout_ms).await;
+    }
 
-    // result
+    result
 }
 
 async fn fetch_thumbnail_authenticated(
@@ -243,14 +234,9 @@ async fn handle_location(
     user: Option<&UserId>,
     location: &str,
 ) -> AppResult<FileMeta> {
-    unimplemented!()
-    // location_request(location)
-    // 	.await
-    // 	.map_err(|error| {
-    // 		err!(Request(NotFound(
-    // 			debug_warn!(%mxc, ?user, ?location, ?error, "Fetching media from location failed")
-    // 		)))
-    // 	})
+    location_request(location)
+        .await
+        .map_err(|error| AppError::public("fetching media from location failed"))
 }
 
 async fn location_request(location: &str) -> AppResult<FileMeta> {
@@ -424,26 +410,21 @@ fn handle_federation_error(
 // }
 
 fn check_fetch_authorized(mxc: &Mxc<'_>) -> AppResult<()> {
-    // if self
-    // 	.services
-    // 	.server
-    // 	.config
-    // 	.prevent_media_downloads_from
-    // 	.is_match(mxc.server_name.host())
-    // 	|| self
-    // 		.services
-    // 		.server
-    // 		.config
-    // 		.forbidden_remote_server_names
-    // 		.is_match(mxc.server_name.host())
-    // {
-    // 	// we'll lie to the client and say the blocked server's media was not found and
-    // 	// log. the client has no way of telling anyways so this is a security bonus.
-    // 	debug_warn!(%mxc, "Received request for media on blocklisted server");
-    // 	return Err!(Request(NotFound("Media not found.")));
-    // }
+    let conf = config::get();
+    if conf
+        .media
+        .prevent_downloads_from
+        .is_match(mxc.server_name.host())
+        || conf
+            .forbidden_remote_server_names
+            .is_match(mxc.server_name.host())
+    {
+        // we'll lie to the client and say the blocked server's media was not found and
+        // log. the client has no way of telling anyways so this is a security bonus.
+        warn!(%mxc, "Received request for media on blocklisted server");
+        return Err(AppError::public("Media not found."));
+    }
 
-    unimplemented!();
     Ok(())
 }
 

@@ -64,10 +64,8 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
 }
 
 pub fn list_local_users() -> AppResult<Vec<OwnedUserId>> {
-    // TODO: admin
-    let users = users::table
-        .select(users::id)
-        .filter(users::is_guest.eq(false))
+    let users = user_passwords::table
+        .select(user_passwords::user_id)
         .load::<OwnedUserId>(&mut connect()?)?;
     Ok(users)
 }

@@ -686,30 +686,27 @@ pub(super) async fn delete_room_tag(
     tag: String,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
-    unimplemented!()
-    // let mut tags_event = self
-    //     .services
-    //     .account_data
-    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-    //     .await
-    //     .unwrap_or(TagEvent {
-    //         content: TagEventContent { tags: BTreeMap::new() },
-    //     });
+    let mut tags_event_content = data::user::get_data::<TagEventContent>(
+        &user_id,
+        Some(&room_id),
+        &RoomAccountDataEventType::Tag.to_string(),
+    )?
+    .unwrap_or_default();
 
-    // tags_event.content.tags.remove(&tag.clone().into());
+    tags_event_content.tags.remove(&tag.clone().into());
 
-    // crate::user::set_data(
-    //     &user_id,
-    //     Some(room_id.clone()),
-    //     &RoomAccountDataEventType::Tag.to_string(),
-    //     serde_json::to_value(tags_event).expect("to json value always works"),
-    // )?;
+    crate::user::set_data(
+        &user_id,
+        Some(room_id.clone()),
+        &RoomAccountDataEventType::Tag.to_string(),
+        serde_json::to_value(tags_event_content).expect("to json value always works"),
+    )?;
 
-    // ctx.write_str(&format!(
-    //     "Successfully updated room account data for {user_id} and room {room_id}, deleting room \
-    // 	 tag {tag}"
-    // ))
-    // .await
+    ctx.write_str(&format!(
+        "Successfully updated room account data for {user_id} and room {room_id}, deleting room \
+    	 tag {tag}"
+    ))
+    .await
 }
 
 pub(super) async fn get_room_tags(
@@ -718,18 +715,15 @@ pub(super) async fn get_room_tags(
     room_id: OwnedRoomId,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
-    unimplemented!()
-    // let tags_event = self
-    //     .services
-    //     .account_data
-    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-    //     .await
-    //     .unwrap_or(TagEvent {
-    //         content: TagEventContent { tags: BTreeMap::new() },
-    //     });
+    let tags_event_content = data::user::get_data::<TagEventContent>(
+        &user_id,
+        Some(&room_id),
+        &RoomAccountDataEventType::Tag.to_string(),
+    )?
+    .unwrap_or_default();
 
-    // ctx.write_str(&format!("```\n{:#?}\n```", tags_event.content.tags))
-    //     .await
+    ctx.write_str(&format!("```\n{:#?}\n```", tags_event_content.tags))
+        .await
 }
 
 pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {

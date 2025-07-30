@@ -98,7 +98,7 @@ pub(super) async fn get_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> AppRes
     .await
 }
 
-pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerName, force: bool) -> AppResult<()> {
+pub(super) async fn fetch_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerName, force: bool) -> AppResult<()> {
     let conf = config::get();
     if conf.enabled_federation().is_none() {
         return Err(AppError::public("federation is disabled on this homeserver."));
@@ -131,7 +131,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
 
     for event_id in list {
         if force {
-            match get_remote_pdu(ctx, event_id.to_owned(), server.clone()).await {
+            match fetch_remote_pdu(ctx, event_id.to_owned(), server.clone()).await {
                 Err(e) => {
                     failed_count = failed_count.saturating_add(1);
                     crate::admin::send_text(&format!("Failed to get remote PDU, ignoring error: {e}")).await;
@@ -143,7 +143,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
                 }
             }
         } else {
-            get_remote_pdu(ctx, event_id.to_owned(), server.clone()).await?;
+            fetch_remote_pdu(ctx, event_id.to_owned(), server.clone()).await?;
             success_count = success_count.saturating_add(1);
         }
     }
@@ -153,7 +153,7 @@ pub(super) async fn get_remote_pdu_list(ctx: &Context<'_>, server: OwnedServerNa
     ctx.write_str(&out).await
 }
 
-pub(super) async fn get_remote_pdu(
+pub(super) async fn fetch_remote_pdu(
     ctx: &Context<'_>,
     event_id: OwnedEventId,
     server: OwnedServerName,

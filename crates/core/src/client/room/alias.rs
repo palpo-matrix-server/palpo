@@ -62,7 +62,7 @@ impl AliasesResBody {
 
 // /// Request type for the `get_alias` endpoint.
 
-// pub struct Requesxt {
+// pub struct Request {
 //     /// The room alias.
 //     #[salvo(parameter(parameter_in = Path))]
 //     pub room_alias: OwnedRoomAliasId,

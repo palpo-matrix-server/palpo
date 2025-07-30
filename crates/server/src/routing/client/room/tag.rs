@@ -7,7 +7,7 @@ use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody}
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::tag::TagEventContent;
 use crate::core::user::UserRoomReqArgs;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, data, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.
@@ -21,7 +21,7 @@ pub(super) async fn list_tags(
 ) -> JsonResult<TagsResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data_content = crate::data::user::get_data::<TagEventContent>(
+    let user_data_content = data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
@@ -48,7 +48,7 @@ pub(super) async fn upsert_tag(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
+    let mut user_data_content = data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),

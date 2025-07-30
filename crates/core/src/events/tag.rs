@@ -16,7 +16,7 @@ pub type Tags = BTreeMap<TagName, TagInfo>;
 /// The content of an `m.tag` event.
 ///
 /// Informs the client of tags on a room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
+#[derive(ToSchema, Default, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.tag", kind = RoomAccountData)]
 pub struct TagEventContent {
     /// A map of tag names to tag info.

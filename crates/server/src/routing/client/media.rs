@@ -85,7 +85,7 @@ pub async fn get_content(
         }
     } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
+        fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
@@ -141,7 +141,7 @@ pub async fn get_content_with_filename(
         Ok(())
     } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
+        fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }

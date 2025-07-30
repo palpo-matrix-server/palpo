@@ -109,7 +109,7 @@ impl Default for Dimension {
     }
 }
 
-pub async fn get_remote_content(
+pub async fn fetch_remote_content(
     _mxc: &str,
     server_name: &ServerName,
     media_id: &str,
