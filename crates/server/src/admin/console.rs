@@ -95,7 +95,7 @@ impl Console {
             crate::info::version()
         ));
         self.output
-            .print_text("\"help\" for help, ^D to exit the console, ^\\ to stop the server\n");
+            .print_text("\"help\" for help, ^D to exit the console");
 
         loop {
             match self.readline().await {
@@ -157,10 +157,9 @@ impl Console {
         let (abort, abort_reg) = AbortHandle::new_pair();
         let future = Abortable::new(future, abort_reg);
         _ = self.command_abort.lock().expect("locked").insert(abort);
-        // TODO: admin
-        // defer! {{
-        //     _ = self.command_abort.lock().expect("locked").take();
-        // }}
+        defer! {{
+            _ = self.command_abort.lock().expect("locked").take();
+        }}
 
         _ = future.await;
     }

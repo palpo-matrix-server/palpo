@@ -9,6 +9,7 @@ pub(crate) mod user;
 pub(crate) use console::Console;
 mod utils;
 pub(crate) use utils::*;
+mod state;
 
 use std::pin::Pin;
 use std::sync::OnceLock;
@@ -21,7 +22,6 @@ use std::{
 use std::{fmt, time::SystemTime};
 
 use clap::Parser;
-use diesel::prelude::*;
 use futures_util::{
     Future, FutureExt, TryFutureExt,
     io::{AsyncWriteExt, BufWriter},
@@ -29,7 +29,8 @@ use futures_util::{
 };
 use regex::Regex;
 use serde_json::value::to_raw_value;
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{RwLock, broadcast, mpsc};
 
 use crate::RoomMutexGuard;
 use crate::core::ServerName;
@@ -57,8 +58,13 @@ use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, dat
 use palpo_core::events::room::message::Relation;
 
 use self::{
-    appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
-    room::RoomCommand, server::ServerCommand, user::UserCommand,
+    appservice::AppserviceCommand,
+    federation::FederationCommand,
+    media::MediaCommand,
+    room::RoomCommand,
+    server::ServerCommand,
+    state::{STATE, State},
+    user::UserCommand,
 };
 use super::event::PduBuilder;
 
@@ -189,6 +195,50 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> App
 /// Maximum number of commands which can be queued for dispatch.
 const COMMAND_QUEUE_LIMIT: usize = 512;
 
+pub async fn start() -> AppResult<()> {
+    // STATE
+    //     .set(State {
+    //         signal: broadcast::channel::<&'static str>(1).0,
+    //         channel: StdRwLock::new(None),
+    //         handle: RwLock::new(None),
+    //         complete: StdRwLock::new(None),
+    //         console: console::Console::new(),
+    //     })
+    //     .expect("state should be set once");
+
+    let state = state::get();
+    let mut signals = state.signal.subscribe();
+    let (sender, mut receiver) = mpsc::channel(COMMAND_QUEUE_LIMIT);
+    _ = state
+        .channel
+        .write()
+        .expect("locked for writing")
+        .insert(sender);
+
+    tokio::task::yield_now().await;
+    state.console.start().await;
+
+    loop {
+        tokio::select! {
+            command = receiver.recv() => match command {
+                Some(command) => handle_command(command).await,
+                None => break,
+            },
+            sig = signals.recv() => match sig {
+                Ok(sig) => handle_signal(sig).await,
+                Err(_) => continue,
+            },
+        }
+    }
+
+    //TODO: not unwind safe
+    state.console.interrupt();
+    _ = state.channel.write().expect("locked for writing").take();
+    state.console.close().await;
+
+    Ok(())
+}
+
 /// Sends markdown notice to the admin room as the admin user.
 pub async fn send_notice(body: &str) -> AppResult<()> {
     send_message(RoomMessageEventContent::notice_markdown(body)).await
@@ -212,15 +262,15 @@ pub async fn send_message(message_content: RoomMessageEventContent) -> AppResult
 /// will take place on the service worker's task asynchronously. Errors if
 /// the queue is full.
 pub async fn command(command: String, reply_id: Option<OwnedEventId>) -> AppResult<()> {
-    unimplemented!()
-    // let Some(sender) = self.channel.read().expect("locked for reading").clone() else {
-    //     return Err(AppError::Public("Admin command queue unavailable."));
-    // };
+    let state = state::get();
+    let Some(sender) = state.channel.read().expect("locked for reading").clone() else {
+        return Err(AppError::public("admin command queue unavailable"));
+    };
 
-    // sender
-    //     .send(CommandInput { command, reply_id })
-    //     .await
-    //     .map_err(|e| AppError::Public(format!("Failed to enqueue admin command: {e:?}")))
+    sender
+        .send(CommandInput { command, reply_id })
+        .await
+        .map_err(|e| AppError::Public(format!("failed to enqueue admin command: {e:?}")))
 }
 
 /// Dispatches a command to the processor on the current task and waits for
@@ -232,21 +282,22 @@ pub async fn command_in_place(command: String, reply_id: Option<OwnedEventId>) -
 /// Invokes the tab-completer to complete the command. When unavailable,
 /// None is returned.
 pub fn complete_command(command: &str) -> Option<String> {
-    unimplemented!()
-    // complete
-    //     .read()
-    //     .expect("locked for reading")
-    //     .map(|complete| complete(command))
+    let state = state::get();
+    state
+        .complete
+        .read()
+        .expect("locked for reading")
+        .map(|complete| complete(command))
 }
 
-async fn handle_signal(sig: &'static str) {
-    unimplemented!()
-    // if sig == execute::SIGNAL {
-    //     signal_execute().await.ok();
-    // }
+pub(super) const SIGNAL: &str = "SIGUSR2";
 
-    // #[cfg(feature = "console")]
-    // self.console.handle_signal(sig).await;
+async fn handle_signal(sig: &'static str) {
+    if sig == SIGNAL {
+        signal_execute().await.ok();
+    }
+
+    state.console.handle_signal(sig).await;
 }
 
 async fn handle_command(command: CommandInput) {

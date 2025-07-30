@@ -105,7 +105,7 @@ pub fn init(config_path: impl AsRef<Path>) {
         }
     };
 
-    CONFIG.set(conf).expect("config should be set");
+    CONFIG.set(conf).expect("config should be set once");
 }
 pub fn reload(path: impl AsRef<Path>) -> AppResult<()> {
     // TODO: reload config

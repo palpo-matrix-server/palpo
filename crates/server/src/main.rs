@@ -117,7 +117,6 @@ impl<T> OptionalExtension<T> for AppResult<T> {
     }
 }
 
-
 /// Commandline arguments
 #[derive(Parser, Debug)]
 #[clap(
@@ -167,15 +166,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     if args.console {
         tracing::info!("starting admin console...");
-        let console = Console::new();
 
         if !args.server {
-            console.start().await;
+            crate::admin::start().await.expect("admin console failed to start");
             tracing::info!("admin console stopped");
             return Ok(());
         } else {
             tokio::spawn(async move {
-                console.start().await;
+                crate::admin::start().await.expect("admin console failed to start");
                 tracing::info!("admin console stopped");
             });
         }
