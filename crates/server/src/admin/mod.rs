@@ -13,13 +13,6 @@ mod executor;
 mod processor;
 
 use std::pin::Pin;
-use std::sync::OnceLock;
-use std::{
-    collections::BTreeMap,
-    convert::{TryFrom, TryInto},
-    sync::{Arc, RwLock as StdRwLock, Weak},
-    time::Instant,
-};
 use std::{fmt, time::SystemTime};
 
 use clap::Parser;
@@ -29,40 +22,18 @@ use futures_util::{
     lock::Mutex,
 };
 use regex::Regex;
-use serde_json::value::to_raw_value;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::sync::{RwLock, broadcast, mpsc};
+use tokio::sync::mpsc;
 
-use crate::RoomMutexGuard;
 use crate::core::ServerName;
-use crate::core::appservice::Registration;
-use crate::core::events::TimelineEventType;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::create::RoomCreateEventContent;
-use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
-use crate::core::events::room::history_visibility::{
-    HistoryVisibility, RoomHistoryVisibilityEventContent,
-};
-use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::room::message::Relation;
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::room::name::RoomNameEventContent;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
-use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
-use crate::data::connect;
-use crate::data::schema::*;
 pub(crate) use crate::macros::admin_command_dispatch;
-use crate::room::timeline;
-use crate::utils::HtmlEscape;
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduEvent, config, data, membership};
+use crate::{AUTO_GEN_PASSWORD_LENGTH, AppResult};
 
 use self::{
     appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,
     room::RoomCommand, server::ServerCommand, user::UserCommand,
 };
-use super::event::PduBuilder;
 pub use executor::*;
 
 pub(crate) const PAGE_SIZE: usize = 100;
@@ -193,16 +164,6 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> App
 const COMMAND_QUEUE_LIMIT: usize = 512;
 
 pub async fn start() -> AppResult<()> {
-    // STATE
-    //     .set(State {
-    //         signal: broadcast::channel::<&'static str>(1).0,
-    //         channel: StdRwLock::new(None),
-    //         handle: RwLock::new(None),
-    //         complete: StdRwLock::new(None),
-    //         console: console::Console::new(),
-    //     })
-    //     .expect("state should be set once");
-
     executor::init().await;
 
     let exec = executor();

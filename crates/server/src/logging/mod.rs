@@ -6,7 +6,7 @@ pub mod fmt_span;
 mod reload;
 mod suppress;
 
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 use tracing_subscriber::{Layer, Registry, layer::SubscriberExt};
 
@@ -18,7 +18,7 @@ pub use tracing::Level;
 pub use tracing_core::{Event, Metadata};
 pub use tracing_subscriber::EnvFilter;
 
-use crate::{AppError, AppResult};
+use crate::AppResult;
 
 pub static LOGGER: OnceLock<Logger> = OnceLock::new();
 

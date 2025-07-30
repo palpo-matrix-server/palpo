@@ -1,23 +1,8 @@
-use std::{fmt::Debug, time::Duration};
+use std::time::Duration;
 
-use salvo::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE, HeaderValue};
-
-use crate::core::federation::media::{Content, FileOrLocation};
-use crate::core::{
-    Mxc,
-    ServerName,
-    UserId,
-    // api::{
-    //     OutgoingRequest,
-    //     client::{
-    //         error::ErrorKind::{NotFound, Unrecognized},
-    //         media,
-    //     },
-    //     federation,
-    //     federation::authenticated_media::{Content, FileOrLocation},
-    // },
-};
-use crate::{AppError, AppResult, config, utils::content_disposition::make_content_disposition};
+use crate::core::federation::media::Content;
+use crate::core::{Mxc, ServerName, UserId};
+use crate::{AppError, AppResult, config};
 
 use super::{Dimension, FileMeta};
 

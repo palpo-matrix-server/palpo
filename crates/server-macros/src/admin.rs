@@ -1,7 +1,7 @@
 use proc_macro::{Span, TokenStream};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{ToTokens, quote};
-use syn::{Attribute, Error, Fields, Ident, ItemEnum, ItemFn, Meta, Variant, parse_quote};
+use syn::{Error, Fields, Ident, ItemEnum, Meta, Variant};
 
 use crate::{Result, utils::camel_to_snake_string};
 

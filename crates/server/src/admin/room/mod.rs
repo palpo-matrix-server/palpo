@@ -5,16 +5,14 @@ mod moderation;
 
 use clap::Subcommand;
 
-use futures_util::StreamExt;
-
 use self::{
     alias::RoomAliasCommand, directory::RoomDirectoryCommand, info::RoomInfoCommand,
     moderation::RoomModerationCommand,
 };
-use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::macros::admin_command_dispatch;
-use crate::{AppError, AppResult, config, data};
+use crate::{AppError, AppResult, data};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]

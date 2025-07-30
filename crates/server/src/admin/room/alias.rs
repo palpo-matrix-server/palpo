@@ -1,7 +1,6 @@
 use std::fmt::Write;
 
 use clap::Subcommand;
-use futures_util::StreamExt;
 
 use crate::admin::Context;
 use crate::core::{OwnedRoomAliasId, OwnedRoomId, RoomAliasId};

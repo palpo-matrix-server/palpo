@@ -1,36 +1,17 @@
-use std::{
-    collections::BTreeMap,
-    convert::{TryFrom, TryInto},
-    sync::{Arc, RwLock as StdRwLock, Weak},
-    time::Instant,
-};
+use std::sync::{Arc, RwLock as StdRwLock};
 
 use clap::Parser;
-use futures_util::{
-    Future, FutureExt, TryFutureExt,
-    io::{AsyncWriteExt, BufWriter},
-    lock::Mutex,
-};
 use std::sync::OnceLock;
-use tokio::sync::{RwLock, mpsc};
-use tokio::{runtime, sync::broadcast};
+use tokio::sync::{RwLock, broadcast, mpsc};
 
 use crate::admin::{
     AdminCommand, CommandInput, Completer, Console, Processor, ProcessorResult, processor,
 };
-use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::message::Relation;
 use crate::core::events::room::message::RoomMessageEventContent;
-use crate::core::events::room::name::RoomNameEventContent;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
-use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
 use crate::room::timeline;
-use crate::{
-    AUTO_GEN_PASSWORD_LENGTH, AppError, AppResult, PduBuilder, PduEvent, RoomMutexGuard, config,
-    data, membership,
-};
+use crate::{AppError, AppResult, PduBuilder, RoomMutexGuard, config};
 
 pub static EXECUTOR: OnceLock<Executor> = OnceLock::new();
 pub fn executor() -> &'static Executor {
@@ -38,7 +19,7 @@ pub fn executor() -> &'static Executor {
 }
 
 pub async fn init() {
-    let mut exec = Executor {
+    let exec = Executor {
         signal: broadcast::channel::<&'static str>(1).0,
         channel: StdRwLock::new(None),
         handle: RwLock::new(None),

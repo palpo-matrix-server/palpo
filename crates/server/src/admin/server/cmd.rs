@@ -1,12 +1,7 @@
-use std::{fmt::Write, path::PathBuf, sync::Arc};
+use std::{fmt::Write, path::PathBuf};
 
-use futures_util::TryStreamExt;
-
-use crate::admin::{Context, get_room_info};
-use crate::{
-    AppError, AppResult, config, info,
-    utils::{stream::IterStream, time},
-};
+use crate::admin::Context;
+use crate::{AppError, AppResult, config, info};
 
 pub(super) async fn uptime(ctx: &Context<'_>) -> AppResult<()> {
     // TODO: admin
@@ -69,7 +64,7 @@ pub(super) async fn list_features(
 
 pub(super) async fn admin_notice(ctx: &Context<'_>, message: Vec<String>) -> AppResult<()> {
     let message = message.join(" ");
-    crate::admin::send_text(&message).await;
+    crate::admin::send_text(&message).await?;
 
     ctx.write_str("Notice was sent to #admins").await
 }

@@ -1,9 +1,6 @@
-use std::sync::Arc;
 
-use crate::config::LoggerConfig;
 
 use super::EnvFilter;
-// use crate::Server;
 
 pub struct Suppress {
     restore: EnvFilter,
