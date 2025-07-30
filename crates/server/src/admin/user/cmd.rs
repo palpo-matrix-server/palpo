@@ -654,29 +654,28 @@ pub(super) async fn put_room_tag(
     tag: String,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
-    unimplemented!()
-    // let mut tags_event = self
-    //     .services
-    //     .account_data
-    //     .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-    //     .await
-    //     .unwrap_or(TagEvent {
-    //         content: TagEventContent { tags: BTreeMap::new() },
-    //     });
+    let mut tags_event = self
+        .services
+        .account_data
+        .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
+        .await
+        .unwrap_or(TagEvent {
+            content: TagEventContent { tags: BTreeMap::new() },
+        });
 
-    // tags_event.content.tags.insert(tag.clone().into(), TagInfo::new());
+    tags_event.content.tags.insert(tag.clone().into(), TagInfo::new());
 
-    // crate::user::set_data(
-    //     &user_id,
-    //     Some(room_id.clone()),
-    //     &RoomAccountDataEventType::Tag.to_string(),
-    //     serde_json::to_value(tags_event).expect("to json value always works"),
-    // )?;
+    crate::user::set_data(
+        &user_id,
+        Some(room_id.clone()),
+        &RoomAccountDataEventType::Tag.to_string(),
+        serde_json::to_value(tags_event).expect("to json value always works"),
+    )?;
 
-    // ctx.write_str(&format!(
-    //     "Successfully updated room account data for {user_id} and room {room_id} with tag {tag}"
-    // ))
-    // .await
+    ctx.write_str(&format!(
+        "Successfully updated room account data for {user_id} and room {room_id} with tag {tag}"
+    ))
+    .await
 }
 
 pub(super) async fn delete_room_tag(
