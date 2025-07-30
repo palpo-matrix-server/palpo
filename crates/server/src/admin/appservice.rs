@@ -1,5 +1,4 @@
 use clap::Subcommand;
-use futures_util::{FutureExt, StreamExt, TryFutureExt};
 
 use crate::admin::Context;
 use crate::macros::admin_command_dispatch;
@@ -104,6 +103,6 @@ pub(super) async fn list_registered(ctx: &Context<'_>) -> AppResult<()> {
     let appservices = crate::appservice::all()?;
     let list = appservices.keys().collect::<Vec<_>>();
     let len = appservices.len();
-    write!(ctx, "Appservices ({len}): {list:?}");
+    { write!(ctx, "Appservices ({len}): {list:?}") }.await?;
     Ok(())
 }

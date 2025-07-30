@@ -7,7 +7,7 @@ mod utils;
 
 use proc_macro::TokenStream;
 use syn::{
-    Error, Item, ItemConst, ItemEnum, ItemFn, ItemStruct, Meta,
+    Error, ItemConst, ItemEnum, ItemStruct, Meta,
     parse::{Parse, Parser},
     parse_macro_input,
 };

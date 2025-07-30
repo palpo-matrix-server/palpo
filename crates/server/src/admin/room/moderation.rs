@@ -273,13 +273,13 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
     }
 
     for room_id in room_ids {
-        crate::room::ban_room(&room_id, true);
+        crate::room::ban_room(&room_id, true)?;
 
         debug!("Banned {room_id} successfully");
         room_ban_count = room_ban_count.saturating_add(1);
 
         debug!("Making all users leave the room {room_id} and forgetting it");
-        let mut users = crate::room::joined_users(&room_id, None)?
+        let users = crate::room::joined_users(&room_id, None)?
             .into_iter()
             .filter(|user| user.is_local())
             .collect::<Vec<_>>();
@@ -316,7 +316,7 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
 
         // unpublish from room directory, ignore errors
         crate::room::directory::set_public(&room_id, false)?;
-        crate::room::disable_room(&room_id, true);
+        crate::room::disable_room(&room_id, true)?;
     }
 
     ctx.write_str(&format!(

@@ -62,7 +62,7 @@ pub use palpo_server_macros as macros;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use clap::{ArgAction, Parser};
+use clap::{Parser};
 pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
 use figment::providers::Env;
@@ -75,9 +75,7 @@ use salvo::http::Method;
 use salvo::logging::Logger;
 use salvo::prelude::*;
 use tracing_futures::Instrument;
-use tracing_subscriber::fmt::format::FmtSpan;
 
-use crate::admin::Console;
 use crate::config::ServerConfig;
 
 pub type AppResult<T> = Result<T, crate::AppError>;
@@ -160,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let conf = crate::config::get();
     conf.check().expect("config is not valid!");
 
-    crate::logging::init();
+    crate::logging::init()?;
 
     crate::data::init(&conf.db.clone().into_data_db_config());
 

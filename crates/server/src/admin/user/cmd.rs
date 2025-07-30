@@ -1,17 +1,15 @@
-use std::{collections::BTreeMap, fmt::Write as _};
-
-use futures_util::{FutureExt, StreamExt};
+use futures_util::FutureExt;
 
 use crate::admin::{Context, get_room_info, parse_active_local_user_id, parse_local_user_id};
 use crate::core::{
-    OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId, UserId,
+    OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,
     events::{
         RoomAccountDataEventType, StateEventType,
         room::{
             power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent},
             redaction::RoomRedactionEventContent,
         },
-        tag::{TagEvent, TagEventContent, TagInfo},
+        tag::{TagEventContent, TagInfo},
     },
 };
 use crate::room::timeline;
@@ -131,7 +129,7 @@ pub(super) async fn create_user(
                             "Failed to automatically join room {room} for user {user_id}: \
 								 {e}"
                         ))
-                        .await;
+                        .await?;
                     }
                 }
             }
@@ -179,7 +177,7 @@ pub(super) async fn deactivate(
         crate::admin::send_text(&format!(
             "Making {user_id} leave all rooms after deactivation..."
         ))
-        .await;
+        .await?;
 
         let all_joined_rooms: Vec<OwnedRoomId> = data::user::joined_rooms(&user_id)?;
 
@@ -189,7 +187,7 @@ pub(super) async fn deactivate(
 
         data::user::set_display_name(&user_id, None)?;
         data::user::set_avatar_url(&user_id, None)?;
-        membership::leave_all_rooms(&user_id).await;
+        membership::leave_all_rooms(&user_id).await?;
     }
 
     ctx.write_str(&format!("User {user_id} has been deactivated"))
@@ -254,7 +252,7 @@ pub(super) async fn deactivate_all(
                 crate::admin::send_text(&format!(
                     "{username} is not a valid username, skipping over: {e}"
                 ))
-                .await;
+                .await?;
 
                 continue;
             }
@@ -263,7 +261,7 @@ pub(super) async fn deactivate_all(
                     crate::admin::send_text(&format!(
                         "{username} is an admin and --force is not set, skipping over"
                     ))
-                    .await;
+                    .await?;
 
                     admins.push(username);
                     continue;
@@ -274,7 +272,7 @@ pub(super) async fn deactivate_all(
                     crate::admin::send_text(&format!(
                         "{username} is the server service account, skipping over"
                     ))
-                    .await;
+                    .await?;
 
                     continue;
                 }
@@ -422,7 +420,7 @@ pub(super) async fn force_join_list_of_local_users(
                     crate::admin::send_text(&format!(
                         "{username} is the server service account, skipping over"
                     ))
-                    .await;
+                    .await?;
 
                     continue;
                 }
@@ -433,7 +431,7 @@ pub(super) async fn force_join_list_of_local_users(
                 crate::admin::send_text(&format!(
                     "{username} is not a valid username, skipping over: {e}"
                 ))
-                .await;
+                .await?;
 
                 continue;
             }
@@ -654,22 +652,22 @@ pub(super) async fn put_room_tag(
     tag: String,
 ) -> AppResult<()> {
     let user_id = parse_active_local_user_id(&user_id).await?;
-    let mut tags_event = self
-        .services
-        .account_data
-        .get_room(&room_id, &user_id, RoomAccountDataEventType::Tag)
-        .await
-        .unwrap_or(TagEvent {
-            content: TagEventContent { tags: BTreeMap::new() },
-        });
+    let mut tags_event_content = data::user::get_data::<TagEventContent>(
+        &user_id,
+        Some(&room_id),
+        &RoomAccountDataEventType::Tag.to_string(),
+    )?
+    .unwrap_or_default();
 
-    tags_event.content.tags.insert(tag.clone().into(), TagInfo::new());
+    tags_event_content
+        .tags
+        .insert(tag.clone().into(), TagInfo::new());
 
     crate::user::set_data(
         &user_id,
         Some(room_id.clone()),
         &RoomAccountDataEventType::Tag.to_string(),
-        serde_json::to_value(tags_event).expect("to json value always works"),
+        serde_json::to_value(tags_event_content).expect("to json value always works"),
     )?;
 
     ctx.write_str(&format!(

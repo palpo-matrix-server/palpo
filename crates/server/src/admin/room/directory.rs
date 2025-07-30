@@ -1,5 +1,4 @@
 use clap::Subcommand;
-use futures_util::StreamExt;
 
 use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
 use crate::core::OwnedRoomId;

@@ -1,7 +1,4 @@
-use std::fmt::Write;
-
 use clap::Subcommand;
-use futures_util::StreamExt;
 
 use crate::core::{OwnedRoomId, OwnedServerName, OwnedUserId};
 

@@ -5,7 +5,7 @@ use std::{rc::Rc, sync::Arc};
 use diesel::expression::AsExpression;
 
 use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAction};
-use palpo_identifiers_validation::{MAX_BYTES, localpart_is_backwards_compatible};
+use palpo_identifiers_validation::MAX_BYTES;
 
 /// A Matrix [user ID].
 ///

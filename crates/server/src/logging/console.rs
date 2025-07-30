@@ -1,7 +1,7 @@
 use std::{env, io, sync::LazyLock};
 
 use tracing::{
-    Event, Level, Subscriber,
+    Event, Subscriber,
     field::{Field, Visit},
 };
 use tracing_subscriber::{
@@ -14,8 +14,7 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
-use crate::config::{LoggerConfig, ServerConfig};
-use crate::{AppResult, config};
+use crate::config::LoggerConfig;
 
 static SYSTEMD_MODE: LazyLock<bool> =
     LazyLock::new(|| env::var("SYSTEMD_EXEC_PID").is_ok() && env::var("JOURNAL_STREAM").is_ok());

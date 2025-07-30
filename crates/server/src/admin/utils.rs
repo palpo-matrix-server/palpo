@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::core::{OwnedRoomId, OwnedUserId, RoomId, UserId};
+use crate::core::{OwnedUserId, UserId};
 use crate::{AppError, AppResult, IsRemoteOrLocal, config, data};
 
 pub(crate) fn escape_html(s: &str) -> String {
