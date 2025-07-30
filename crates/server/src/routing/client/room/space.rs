@@ -5,7 +5,9 @@ use salvo::prelude::*;
 
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
 use crate::core::identifiers::*;
-use crate::room::space::{PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk};
+use crate::room::space::{
+    PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk,
+};
 use crate::{AppError, AuthArgs, DepotExt, JsonResult, MatrixError, json_ok};
 
 /// `#GET /_matrix/client/v1/rooms/{room_id}/hierarchy`
@@ -21,17 +23,25 @@ pub(super) async fn get_hierarchy(
 
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let _skip = args.from.as_ref().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+    let _skip = args
+        .from
+        .as_ref()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0);
     let limit = args.limit.unwrap_or(10).min(100) as usize;
     let max_depth = args.max_depth.map_or(3, usize::from).min(10);
-    let pagination_token = args.from.as_ref().and_then(|s| PaginationToken::from_str(s).ok());
+    let pagination_token = args
+        .from
+        .as_ref()
+        .and_then(|s| PaginationToken::from_str(s).ok());
 
     // Should prevent unexpeded behaviour in (bad) clients
     if let Some(token) = &pagination_token {
         if token.suggested_only != args.suggested_only || token.max_depth != max_depth {
-            return Err(
-                MatrixError::invalid_param("suggested_only and max_depth cannot change on paginated requests").into(),
-            );
+            return Err(MatrixError::invalid_param(
+                "suggested_only and max_depth cannot change on paginated requests",
+            )
+            .into());
         }
     }
 
@@ -52,18 +62,27 @@ pub(super) async fn get_hierarchy(
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
     while let Some((current_room, via)) = queue.pop_front() {
-        let summary =
-            crate::room::space::get_summary_and_children_client(&current_room, suggested_only, sender_id, &via).await?;
+        let summary = crate::room::space::get_summary_and_children_client(
+            &current_room,
+            suggested_only,
+            sender_id,
+            &via,
+        )
+        .await?;
 
         match (summary, &current_room == room_id) {
             (None | Some(SummaryAccessibility::Inaccessible), false) => {
                 // Just ignore other unavailable rooms
             }
             (None, true) => {
-                return Err(MatrixError::forbidden("The requested room was not found.", None).into());
+                return Err(
+                    MatrixError::forbidden("The requested room was not found.", None).into(),
+                );
             }
             (Some(SummaryAccessibility::Inaccessible), true) => {
-                return Err(MatrixError::forbidden("The requested room is inaccessible.", None).into());
+                return Err(
+                    MatrixError::forbidden("The requested room is inaccessible.", None).into(),
+                );
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
                 let populate = parents.len() >= room_sns.len();
@@ -93,7 +112,9 @@ pub(super) async fn get_hierarchy(
                 if populate {
                     rooms.push(summary_to_chunk(summary.clone()));
                 } else if queue.is_empty() && children.is_empty() {
-                    return Err(MatrixError::invalid_param("Room IDs in token were not found.").into());
+                    return Err(
+                        MatrixError::invalid_param("Room IDs in token were not found.").into(),
+                    );
                 }
 
                 parents.insert(current_room.clone());

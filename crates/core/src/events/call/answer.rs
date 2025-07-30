@@ -59,7 +59,11 @@ impl CallAnswerEventContent {
 
     /// Convenience method to create a VoIP version 1 `CallAnswerEventContent`
     /// with all the required fields.
-    pub fn version_1(answer: SessionDescription, call_id: OwnedVoipId, party_id: OwnedVoipId) -> Self {
+    pub fn version_1(
+        answer: SessionDescription,
+        call_id: OwnedVoipId,
+        party_id: OwnedVoipId,
+    ) -> Self {
         Self {
             answer,
             call_id,

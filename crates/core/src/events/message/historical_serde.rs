@@ -27,15 +27,24 @@ impl From<TextContentBlock> for MessageContentBlock {
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct MessageContentBlockSerDeHelper {
     /// Plain text short form.
-    #[serde(rename = "org.matrix.msc1767.text", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.text",
+        skip_serializing_if = "Option::is_none"
+    )]
     text: Option<String>,
 
     /// HTML short form.
-    #[serde(rename = "org.matrix.msc1767.html", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.html",
+        skip_serializing_if = "Option::is_none"
+    )]
     html: Option<String>,
 
     /// Long form.
-    #[serde(rename = "org.matrix.msc1767.message", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.message",
+        skip_serializing_if = "Option::is_none"
+    )]
     message: Option<Vec<TextRepresentation>>,
 }
 
@@ -43,7 +52,11 @@ impl TryFrom<MessageContentBlockSerDeHelper> for Vec<TextRepresentation> {
     type Error = &'static str;
 
     fn try_from(value: MessageContentBlockSerDeHelper) -> Result<Self, Self::Error> {
-        let MessageContentBlockSerDeHelper { text, html, message } = value;
+        let MessageContentBlockSerDeHelper {
+            text,
+            html,
+            message,
+        } = value;
 
         if let Some(message) = message {
             Ok(message)
@@ -74,7 +87,8 @@ impl TryFrom<MessageContentBlockSerDeHelper> for MessageContentBlock {
 
 impl From<Vec<TextRepresentation>> for MessageContentBlockSerDeHelper {
     fn from(value: Vec<TextRepresentation>) -> Self {
-        let has_shortcut = |message: &TextRepresentation| matches!(&*message.mimetype, "text/plain" | "text/html");
+        let has_shortcut =
+            |message: &TextRepresentation| matches!(&*message.mimetype, "text/plain" | "text/html");
 
         if value.iter().all(has_shortcut) {
             let mut helper = Self::default();

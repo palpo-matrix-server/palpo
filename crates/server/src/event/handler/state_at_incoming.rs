@@ -24,7 +24,8 @@ pub(super) async fn state_at_incoming_degree_one(
     let prev_pdu = timeline::get_pdu(prev_event)?;
 
     if let Some(state_key) = &prev_pdu.state_key {
-        let state_key_id = state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
+        let state_key_id =
+            state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
 
         state.insert(state_key_id, prev_event.to_owned());
         // Now it's the state after the pdu
@@ -70,7 +71,8 @@ pub(super) async fn state_at_incoming_resolved(
         let mut leaf_state: HashMap<_, _> = state::get_full_state_ids(sstate_hash)?;
 
         if let Some(state_key) = &prev_event.state_key {
-            let state_key_id = state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
+            let state_key_id =
+                state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?;
             leaf_state.insert(state_key_id, prev_event.event_id.clone());
             // Now it's the state after the pdu
         }
@@ -80,7 +82,9 @@ pub(super) async fn state_at_incoming_resolved(
 
         for (k, id) in leaf_state {
             if let Ok(DbRoomStateField {
-                event_ty, state_key, ..
+                event_ty,
+                state_key,
+                ..
             }) = state::get_field(k)
             {
                 // FIXME: Undo .to_string().into() when StateMap
@@ -125,7 +129,8 @@ pub(super) async fn state_at_incoming_resolved(
             new_state
                 .into_iter()
                 .map(|((event_type, state_key), event_id)| {
-                    let state_key_id = state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                    let state_key_id =
+                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
                     Ok((state_key_id, event_id))
                 })
                 .collect::<AppResult<_>>()?,

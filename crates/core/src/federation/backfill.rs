@@ -30,7 +30,11 @@ pub fn backfill_request(origin: &str, args: BackfillReqArgs) -> SendResult<SendR
         "{origin}/_matrix/federation/v1/backfill/{}&limit={}&{}",
         &args.room_id,
         args.limit,
-        args.v.iter().map(|v| format!("v={v}")).collect::<Vec<_>>().join("&")
+        args.v
+            .iter()
+            .map(|v| format!("v={v}"))
+            .collect::<Vec<_>>()
+            .join("&")
     ))?;
     Ok(crate::sending::get(url))
 }
@@ -71,7 +75,11 @@ impl BackfillResBody {
     /// * the `server_name` of the homeserver.
     /// * the timestamp in milliseconds of when this transaction started.
     /// * the list of persistent updates to rooms.
-    pub fn new(origin: OwnedServerName, origin_server_ts: UnixMillis, pdus: Vec<Box<RawJsonValue>>) -> Self {
+    pub fn new(
+        origin: OwnedServerName,
+        origin_server_ts: UnixMillis,
+        pdus: Vec<Box<RawJsonValue>>,
+    ) -> Self {
         Self {
             origin,
             origin_server_ts,

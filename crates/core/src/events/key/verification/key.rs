@@ -28,7 +28,10 @@ impl ToDeviceKeyVerificationKeyEventContent {
     /// Creates a new `ToDeviceKeyVerificationKeyEventContent` with the given
     /// transaction ID and key.
     pub fn new(transaction_id: OwnedTransactionId, key: Base64) -> Self {
-        Self { transaction_id, key }
+        Self {
+            transaction_id,
+            key,
+        }
     }
 }
 

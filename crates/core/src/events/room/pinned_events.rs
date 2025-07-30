@@ -33,13 +33,15 @@ mod tests {
 
     #[test]
     fn serialization_deserialization() {
-        let mut content: RoomPinnedEventsEventContent = RoomPinnedEventsEventContent { pinned: Vec::new() };
+        let mut content: RoomPinnedEventsEventContent =
+            RoomPinnedEventsEventContent { pinned: Vec::new() };
 
         content.pinned.push(owned_event_id!("$a:example.com"));
         content.pinned.push(owned_event_id!("$b:example.com"));
 
         let serialized = serde_json::to_string(&content).unwrap();
-        let parsed_content: RoomPinnedEventsEventContent = serde_json::from_str(&serialized).unwrap();
+        let parsed_content: RoomPinnedEventsEventContent =
+            serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(parsed_content.pinned, content.pinned);
     }

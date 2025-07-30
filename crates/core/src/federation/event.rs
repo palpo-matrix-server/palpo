@@ -85,7 +85,10 @@ impl EventByTimestampResBody {
 // }
 
 pub fn event_request(origin: &str, args: EventReqArgs) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!("{origin}/_matrix/federation/v1/event/{}", args.event_id))?;
+    let url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/event/{}",
+        args.event_id
+    ))?;
     Ok(crate::sending::get(url))
 }
 
@@ -124,7 +127,11 @@ pub struct EventResBody {
 impl EventResBody {
     /// Creates a new `Response` with the given server name, timestamp, and
     /// event.
-    pub fn new(origin: OwnedServerName, origin_server_ts: UnixMillis, pdu: Box<RawJsonValue>) -> Self {
+    pub fn new(
+        origin: OwnedServerName,
+        origin_server_ts: UnixMillis,
+        pdu: Box<RawJsonValue>,
+    ) -> Self {
         Self {
             origin,
             origin_server_ts,
@@ -149,7 +156,11 @@ impl EventResBody {
 //     }
 // };
 
-pub fn missing_events_request(origin: &str, room_id: &RoomId, body: MissingEventsReqBody) -> SendResult<SendRequest> {
+pub fn missing_events_request(
+    origin: &str,
+    room_id: &RoomId,
+    body: MissingEventsReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/get_missing_events/{}",
         room_id
@@ -224,9 +235,16 @@ fn is_default_limit(val: &usize) -> bool {
 //         1.0 => "/_matrix/federation/v1/state_ids/:room_id",
 //     }
 // };
-pub fn room_state_ids_request(origin: &str, args: RoomStateAtEventReqArgs) -> SendResult<SendRequest> {
-    let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/state_ids/{}", args.room_id))?;
-    url.query_pairs_mut().append_pair("event_id", args.event_id.as_str());
+pub fn room_state_ids_request(
+    origin: &str,
+    args: RoomStateAtEventReqArgs,
+) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/state_ids/{}",
+        args.room_id
+    ))?;
+    url.query_pairs_mut()
+        .append_pair("event_id", args.event_id.as_str());
     Ok(crate::sending::get(url))
 }
 

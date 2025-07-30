@@ -19,13 +19,16 @@ pub(super) async fn upload(
 
     for (user_id, keys) in &body.0 {
         for (key_id, key) in keys {
-            let key = serde_json::to_value(key).map_err(|_| MatrixError::invalid_param("Invalid key JSON"))?;
+            let key = serde_json::to_value(key)
+                .map_err(|_| MatrixError::invalid_param("Invalid key JSON"))?;
 
             for signature in key
                 .get("signatures")
                 .ok_or(MatrixError::invalid_param("Missing signatures field."))?
                 .get(authed.user_id().to_string())
-                .ok_or(MatrixError::invalid_param("Invalid user in signatures field."))?
+                .ok_or(MatrixError::invalid_param(
+                    "Invalid user in signatures field.",
+                ))?
                 .as_object()
                 .ok_or(MatrixError::invalid_param("Invalid signature."))?
                 .clone()

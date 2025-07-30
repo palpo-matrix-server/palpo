@@ -20,12 +20,14 @@ use serde_json::value::to_raw_value;
 use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::{
-    AliasesResBody, CreateRoomReqBody, CreateRoomResBody, InitialSyncReqArgs, InitialSyncResBody, PaginationChunk,
-    RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
+    AliasesResBody, CreateRoomReqBody, CreateRoomResBody, InitialSyncReqArgs, InitialSyncResBody,
+    PaginationChunk, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
 };
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::fully_read::{FullyReadEvent, FullyReadEventContent};
-use crate::core::events::receipt::{Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType};
+use crate::core::events::receipt::{
+    Receipt, ReceiptEvent, ReceiptEventContent, ReceiptThread, ReceiptType,
+};
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventContent};
@@ -46,14 +48,16 @@ use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok, room,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops,
+    json_ok, room,
 };
 
 const LIMIT_MAX: usize = 100;
 
 pub fn public_router() -> Router {
-    Router::with_path("rooms")
-        .push(Router::with_path("{room_id}").push(Router::with_path("initialSync").get(initial_sync)))
+    Router::with_path("rooms").push(
+        Router::with_path("{room_id}").push(Router::with_path("initialSync").get(initial_sync)),
+    )
 }
 pub fn authed_router() -> Router {
     Router::with_path("rooms")
@@ -97,28 +101,36 @@ pub fn authed_router() -> Router {
                                 ),
                         ),
                     )
-                    .push(Router::with_path("context").push(Router::with_path("{event_id}").get(event::get_context)))
+                    .push(
+                        Router::with_path("context")
+                            .push(Router::with_path("{event_id}").get(event::get_context)),
+                    )
                     .push(
                         Router::with_path("relations").push(
-                            Router::with_path("{event_id}").get(relation::get_relation).push(
-                                Router::with_path("{rel_type}")
-                                    .get(relation::get_relation_by_rel_type)
-                                    .push(
-                                        Router::with_path("{event_type}")
-                                            .get(relation::get_relation_by_rel_type_and_event_type),
-                                    ),
-                            ),
+                            Router::with_path("{event_id}")
+                                .get(relation::get_relation)
+                                .push(
+                                    Router::with_path("{rel_type}")
+                                        .get(relation::get_relation_by_rel_type)
+                                        .push(Router::with_path("{event_type}").get(
+                                            relation::get_relation_by_rel_type_and_event_type,
+                                        )),
+                                ),
                         ),
                     )
                     .push(Router::with_path("upgrade").post(upgrade))
                     .push(Router::with_path("messages").get(message::get_messages))
                     .push(Router::with_path("send/{event_type}").post(message::post_message))
-                    .push(Router::with_path("send/{event_type}/{txn_id}").put(message::send_message))
+                    .push(
+                        Router::with_path("send/{event_type}/{txn_id}").put(message::send_message),
+                    )
                     .push(Router::with_path("redact/{event_id}/{txn_id}").put(event::send_redact))
                     .push(
-                        Router::with_path("tags")
-                            .get(tag::list_tags)
-                            .push(Router::with_path("{tag}").put(tag::upsert_tag).delete(tag::delete_tag)),
+                        Router::with_path("tags").get(tag::list_tags).push(
+                            Router::with_path("{tag}")
+                                .put(tag::upsert_tag)
+                                .delete(tag::delete_tag),
+                        ),
                     )
                     .push(
                         Router::with_path("event").push(
@@ -133,7 +145,11 @@ pub fn authed_router() -> Router {
 
 // `#GET /_matrix/client/r0/rooms/{room_id}/initialSync`
 #[endpoint]
-async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot) -> JsonResult<InitialSyncResBody> {
+async fn initial_sync(
+    _aa: AuthArgs,
+    args: InitialSyncReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<InitialSyncResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id = &args.room_id;
@@ -152,14 +168,21 @@ async fn initial_sync(_aa: AuthArgs, args: InitialSyncReqArgs, depot: &mut Depot
         .collect::<Vec<_>>();
 
     let messages = PaginationChunk {
-        start: events.last().map(|(sn, _)| sn).as_ref().map(ToString::to_string),
+        start: events
+            .last()
+            .map(|(sn, _)| sn)
+            .as_ref()
+            .map(ToString::to_string),
         end: events
             .first()
             .map(|(sn, _)| sn)
             .as_ref()
             .map(ToString::to_string)
             .unwrap_or_default(),
-        chunk: events.into_iter().map(|(_sn, event)| event.to_room_event()).collect(),
+        chunk: events
+            .into_iter()
+            .map(|(_sn, event)| event.to_room_event())
+            .collect(),
     };
 
     json_ok(InitialSyncResBody {
@@ -249,11 +272,17 @@ fn set_read_markers(
 /// - Only users joined to the room are allowed to call this
 /// TODO: Allow any user to call it if history_visibility is world readable
 #[endpoint]
-async fn get_aliases(_aa: AuthArgs, room_id: PathParam<OwnedRoomId>, depot: &mut Depot) -> JsonResult<AliasesResBody> {
+async fn get_aliases(
+    _aa: AuthArgs,
+    room_id: PathParam<OwnedRoomId>,
+    depot: &mut Depot,
+) -> JsonResult<AliasesResBody> {
     let authed = depot.authed_info()?;
 
     if !room::user::is_joined(authed.user_id(), &room_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+        return Err(
+            MatrixError::forbidden("You don't have permission to view this room.", None).into(),
+        );
     }
 
     json_ok(AliasesResBody {
@@ -281,7 +310,10 @@ async fn upgrade(
     let room_id = room_id.into_inner();
 
     if !config::supported_room_versions().contains(&body.new_version) {
-        return Err(MatrixError::unsupported_room_version("This server does not support that room version.").into());
+        return Err(MatrixError::unsupported_room_version(
+            "This server does not support that room version.",
+        )
+        .into());
     }
 
     let conf = config::get();
@@ -310,8 +342,12 @@ async fn upgrade(
     .event_id;
 
     // Get the old room creation event
-    let mut create_event_content =
-        room::get_state_content::<CanonicalJsonObject>(&room_id, &StateEventType::RoomCreate, "", None)?;
+    let mut create_event_content = room::get_state_content::<CanonicalJsonObject>(
+        &room_id,
+        &StateEventType::RoomCreate,
+        "",
+        None,
+    )?;
 
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
@@ -353,7 +389,8 @@ async fn upgrade(
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
-            content: to_raw_value(&create_event_content).expect("event is valid, we just created it"),
+            content: to_raw_value(&create_event_content)
+                .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
             ..Default::default()
         },
@@ -368,8 +405,12 @@ async fn upgrade(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::data::user::display_name(authed.user_id()).ok().flatten(),
-                avatar_url: crate::data::user::avatar_url(authed.user_id()).ok().flatten(),
+                display_name: crate::data::user::display_name(authed.user_id())
+                    .ok()
+                    .flatten(),
+                avatar_url: crate::data::user::avatar_url(authed.user_id())
+                    .ok()
+                    .flatten(),
                 is_direct: None,
                 third_party_invite: None,
                 blurhash: crate::data::user::blurhash(authed.user_id()).ok().flatten(),
@@ -425,8 +466,12 @@ async fn upgrade(
     }
 
     // Get the old room power levels
-    let mut power_levels_event_content =
-        room::get_state_content::<RoomPowerLevelsEventContent>(&room_id, &StateEventType::RoomPowerLevels, "", None)?;
+    let mut power_levels_event_content = room::get_state_content::<RoomPowerLevelsEventContent>(
+        &room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+        None,
+    )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
     let new_level = max(50, power_levels_event_content.users_default + 1);
@@ -437,7 +482,8 @@ async fn upgrade(
     let _ = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
-            content: to_raw_value(&power_levels_event_content).expect("event is valid, we just created it"),
+            content: to_raw_value(&power_levels_event_content)
+                .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
             ..Default::default()
         },
@@ -454,7 +500,10 @@ async fn upgrade(
 ///
 /// - Rooms are ordered by the number of joined members
 #[endpoint]
-pub(super) async fn get_public_rooms(_aa: AuthArgs, args: PublicRoomsReqArgs) -> JsonResult<PublicRoomsResBody> {
+pub(super) async fn get_public_rooms(
+    _aa: AuthArgs,
+    args: PublicRoomsReqArgs,
+) -> JsonResult<PublicRoomsResBody> {
     let body = crate::directory::get_public_rooms(
         args.server.as_deref(),
         args.limit,
@@ -538,9 +587,10 @@ pub(super) async fn create_room(
             if config::supported_room_versions().contains(&room_version) {
                 room_version
             } else {
-                return Err(
-                    MatrixError::unsupported_room_version("This server does not support that room version.").into(),
-                );
+                return Err(MatrixError::unsupported_room_version(
+                    "This server does not support that room version.",
+                )
+                .into());
             }
         }
         None => conf.default_room_version.clone(),
@@ -584,8 +634,11 @@ pub(super) async fn create_room(
     };
 
     // Validate creation content
-    let de_result =
-        serde_json::from_str::<CanonicalJsonObject>(to_raw_value(&content).expect("Invalid creation content").get());
+    let de_result = serde_json::from_str::<CanonicalJsonObject>(
+        to_raw_value(&content)
+            .expect("Invalid creation content")
+            .get(),
+    );
 
     if de_result.is_err() {
         return Err(MatrixError::bad_json("Invalid creation content").into());
@@ -648,8 +701,11 @@ pub(super) async fn create_room(
         }
     }
 
-    let power_levels_content =
-        default_power_levels_content(body.power_level_content_override.as_ref(), &body.visibility, users)?;
+    let power_levels_content = default_power_levels_content(
+        body.power_level_content_override.as_ref(),
+        &body.visibility,
+        users,
+    )?;
 
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -706,8 +762,10 @@ pub(super) async fn create_room(
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomHistoryVisibility,
-            content: to_raw_value(&RoomHistoryVisibilityEventContent::new(HistoryVisibility::Shared))
-                .expect("event is valid, we just created it"),
+            content: to_raw_value(&RoomHistoryVisibilityEventContent::new(
+                HistoryVisibility::Shared,
+            ))
+            .expect("event is valid, we just created it"),
             state_key: Some("".to_owned()),
             ..Default::default()
         },
@@ -799,7 +857,9 @@ pub(super) async fn create_room(
 
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
-        if let Err(e) = crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await {
+        if let Err(e) =
+            crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await
+        {
             tracing::error!("Failed to invite user {}: {:?}", user_id, e);
         }
     }
@@ -831,10 +891,14 @@ fn default_power_levels_content(
 
     // secure proper defaults of sensitive/dangerous permissions that moderators
     // (power level 50) should not have easy access to
-    power_levels_content["events"]["m.room.power_levels"] = serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.server_acl"] = serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.tombstone"] = serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.encryption"] = serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.power_levels"] =
+        serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.server_acl"] =
+        serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.tombstone"] =
+        serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.encryption"] =
+        serde_json::to_value(100).expect("100 is valid Value");
     power_levels_content["events"]["m.room.history_visibility"] =
         serde_json::to_value(100).expect("100 is valid Value");
 
@@ -842,14 +906,18 @@ fn default_power_levels_content(
     // useful in read-only announcement rooms that post a public poll.
     power_levels_content["events"]["org.matrix.msc3381.poll.response"] =
         serde_json::to_value(0).expect("0 is valid Value");
-    power_levels_content["events"]["m.poll.response"] = serde_json::to_value(0).expect("0 is valid Value");
+    power_levels_content["events"]["m.poll.response"] =
+        serde_json::to_value(0).expect("0 is valid Value");
 
     // synapse does this too. clients do not expose these permissions. it prevents
     // default users from calling public rooms, for obvious reasons.
     if *visibility == Visibility::Public {
-        power_levels_content["events"]["m.call.invite"] = serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["m.call"] = serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["m.call.member"] = serde_json::to_value(50).expect("50 is valid Value");
+        power_levels_content["events"]["m.call.invite"] =
+            serde_json::to_value(50).expect("50 is valid Value");
+        power_levels_content["events"]["m.call"] =
+            serde_json::to_value(50).expect("50 is valid Value");
+        power_levels_content["events"]["m.call.member"] =
+            serde_json::to_value(50).expect("50 is valid Value");
         power_levels_content["events"]["org.matrix.msc3401.call"] =
             serde_json::to_value(50).expect("50 is valid Value");
         power_levels_content["events"]["org.matrix.msc3401.call.member"] =
@@ -857,8 +925,9 @@ fn default_power_levels_content(
     }
 
     if let Some(power_level_content_override) = power_level_content_override {
-        let JsonValue::Object(json) = serde_json::from_str(power_level_content_override.inner().get())
-            .map_err(|_| MatrixError::bad_json("Invalid power_level_content_override."))?
+        let JsonValue::Object(json) =
+            serde_json::from_str(power_level_content_override.inner().get())
+                .map_err(|_| MatrixError::bad_json("Invalid power_level_content_override."))?
         else {
             return Err(MatrixError::bad_json("Invalid power_level_content_override.").into());
         };

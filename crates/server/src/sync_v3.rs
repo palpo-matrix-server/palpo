@@ -7,13 +7,16 @@ use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
-    Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState, KnockedRoom, LeftRoom,
-    Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs, SyncEventsResBody, Timeline, ToDevice,
+    Ephemeral, Filter, GlobalAccountData, InviteState, InvitedRoom, JoinedRoom, KnockState,
+    KnockedRoom, LeftRoom, Presence, RoomAccountData, RoomSummary, Rooms, State, SyncEventsReqArgs,
+    SyncEventsResBody, Timeline, ToDevice,
 };
 use crate::core::device::DeviceLists;
 use crate::core::events::receipt::ReceiptEvent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType};
+use crate::core::events::{
+    AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType,
+};
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
@@ -56,8 +59,8 @@ pub async fn sync_events(
             data::user::get_filter(sender_id, filter_id.parse::<i64>().unwrap_or_default())?
         }
     };
-    let _lazy_load_enabled =
-        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
+    let _lazy_load_enabled = filter.room.state.lazy_load_options.is_enabled()
+        || filter.room.timeline.lazy_load_options.is_enabled();
 
     let full_state = args.full_state;
 
@@ -140,26 +143,31 @@ pub async fn sync_events(
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
-    let invited_rooms: BTreeMap<_, _> = data::user::invited_rooms(sender_id, since_sn.unwrap_or_default())?
-        .into_iter()
-        .map(|(room_id, invite_state_events)| {
-            (
-                room_id,
-                InvitedRoom {
-                    invite_state: InviteState {
-                        events: invite_state_events,
+    let invited_rooms: BTreeMap<_, _> =
+        data::user::invited_rooms(sender_id, since_sn.unwrap_or_default())?
+            .into_iter()
+            .map(|(room_id, invite_state_events)| {
+                (
+                    room_id,
+                    InvitedRoom {
+                        invite_state: InviteState {
+                            events: invite_state_events,
+                        },
                     },
-                },
-            )
-        })
-        .collect();
+                )
+            })
+            .collect();
 
     for left_room in left_rooms.keys() {
         for user_id in room::joined_users(left_room, None)? {
-            let dont_share_encrypted_room = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
-                .into_iter()
-                .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())
-                .all(|encrypted| !encrypted);
+            let dont_share_encrypted_room =
+                room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
+                    .into_iter()
+                    .map(|other_room_id| {
+                        room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                            .is_ok()
+                    })
+                    .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need
             // to tell them.
             if dont_share_encrypted_room {
@@ -168,10 +176,14 @@ pub async fn sync_events(
         }
     }
     for user_id in left_users {
-        let dont_share_encrypted_room = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
-            .into_iter()
-            .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())
-            .all(|encrypted| !encrypted);
+        let dont_share_encrypted_room =
+            room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
+                .into_iter()
+                .map(|other_room_id| {
+                    room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None)
+                        .is_ok()
+                })
+                .all(|encrypted| !encrypted);
         // If the user doesn't share an encrypted room with the target anymore, we need to tell
         // them
         if dont_share_encrypted_room {
@@ -190,7 +202,9 @@ pub async fn sync_events(
             }
 
             let knocked_room = KnockedRoom {
-                knock_state: KnockState { events: knock_state },
+                knock_state: KnockState {
+                    events: knock_state,
+                },
             };
 
             knocked_rooms.insert(room_id, knocked_room);
@@ -200,7 +214,9 @@ pub async fn sync_events(
 
     if config::get().presence.allow_local {
         // Take presence updates from this room
-        for (user_id, presence_event) in crate::data::user::presences_since(since_sn.unwrap_or_default())? {
+        for (user_id, presence_event) in
+            crate::data::user::presences_since(since_sn.unwrap_or_default())?
+        {
             if user_id == sender_id || !state::user_can_see_user(sender_id, &user_id)? {
                 continue;
             }
@@ -216,11 +232,18 @@ pub async fn sync_events(
 
                     // Update existing presence event with more info
                     curr_content.presence = new_content.presence;
-                    curr_content.status_msg = new_content.status_msg.or(curr_content.status_msg.take());
-                    curr_content.last_active_ago = new_content.last_active_ago.or(curr_content.last_active_ago);
-                    curr_content.display_name = new_content.display_name.or(curr_content.display_name.take());
-                    curr_content.avatar_url = new_content.avatar_url.or(curr_content.avatar_url.take());
-                    curr_content.currently_active = new_content.currently_active.or(curr_content.currently_active);
+                    curr_content.status_msg =
+                        new_content.status_msg.or(curr_content.status_msg.take());
+                    curr_content.last_active_ago =
+                        new_content.last_active_ago.or(curr_content.last_active_ago);
+                    curr_content.display_name = new_content
+                        .display_name
+                        .or(curr_content.display_name.take());
+                    curr_content.avatar_url =
+                        new_content.avatar_url.or(curr_content.avatar_url.take());
+                    curr_content.currently_active = new_content
+                        .currently_active
+                        .or(curr_content.currently_active);
                 }
             }
         }
@@ -234,7 +257,11 @@ pub async fn sync_events(
     }
 
     // Remove all to-device events the device received *last time*
-    data::user::device::remove_to_device_events(sender_id, device_id, since_sn.unwrap_or_default() - 1)?;
+    data::user::device::remove_to_device_events(
+        sender_id,
+        device_id,
+        since_sn.unwrap_or_default() - 1,
+    )?;
 
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn.unwrap_or_default(), None)?
@@ -261,7 +288,12 @@ pub async fn sync_events(
     };
 
     let to_device = ToDevice {
-        events: data::user::device::get_to_device_events(sender_id, device_id, since_sn, Some(next_batch))?,
+        events: data::user::device::get_to_device_events(
+            sender_id,
+            device_id,
+            since_sn,
+            Some(next_batch),
+        )?,
     };
 
     let res_body = SyncEventsResBody {
@@ -295,8 +327,8 @@ async fn load_joined_room(
     if since_sn > Some(data::curr_sn()?) {
         return Ok(JoinedRoom::default());
     }
-    let lazy_load_enabled =
-        filter.room.state.lazy_load_options.is_enabled() || filter.room.timeline.lazy_load_options.is_enabled();
+    let lazy_load_enabled = filter.room.state.lazy_load_options.is_enabled()
+        || filter.room.timeline.lazy_load_options.is_enabled();
 
     let lazy_load_send_redundant = match filter.room.state.lazy_load_options {
         LazyLoadOptions::Enabled {
@@ -322,8 +354,8 @@ async fn load_joined_room(
         crate::room::user::join_sn(sender_id, room_id).unwrap_or_default()
     };
 
-    let send_notification_counts =
-        !timeline_pdus.is_empty() || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
+    let send_notification_counts = !timeline_pdus.is_empty()
+        || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
@@ -332,277 +364,325 @@ async fn load_joined_room(
     }
     room::lazy_loading::lazy_load_confirm_delivery(sender_id, &device_id, &room_id, since_sn)?;
 
-    let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) = if timeline_pdus
-        .is_empty()
-        && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
-    {
-        // No state changes
-        (Vec::new(), None, None, false, Vec::new())
-    } else {
-        // Calculates joined_member_count, invited_member_count and heroes
-        let calculate_counts = || {
-            let joined_member_count = room::joined_member_count(&room_id).unwrap_or(0);
-            let invited_member_count = room::invited_member_count(&room_id).unwrap_or(0);
+    let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) =
+        if timeline_pdus.is_empty()
+            && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
+        {
+            // No state changes
+            (Vec::new(), None, None, false, Vec::new())
+        } else {
+            // Calculates joined_member_count, invited_member_count and heroes
+            let calculate_counts = || {
+                let joined_member_count = room::joined_member_count(&room_id).unwrap_or(0);
+                let invited_member_count = room::invited_member_count(&room_id).unwrap_or(0);
 
-            // Recalculate heroes (first 5 members)
-            let mut heroes = Vec::new();
+                // Recalculate heroes (first 5 members)
+                let mut heroes = Vec::new();
 
-            if joined_member_count + invited_member_count <= 5 {
-                // Go through all PDUs and for each member event, check if the user is still joined or
-                // invited until we have 5 or we reach the end
-                for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
-                    .into_iter() // Ignore all broken pdus
-                    .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
-                    .map(|(_, pdu)| {
-                        let content = pdu.get_content::<RoomMemberEventContent>()?;
+                if joined_member_count + invited_member_count <= 5 {
+                    // Go through all PDUs and for each member event, check if the user is still joined or
+                    // invited until we have 5 or we reach the end
+                    for hero in timeline::all_pdus(sender_id, &room_id, until_sn)?
+                        .into_iter() // Ignore all broken pdus
+                        .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
+                        .map(|(_, pdu)| {
+                            let content = pdu.get_content::<RoomMemberEventContent>()?;
 
-                        if let Some(state_key) = &pdu.state_key {
-                            let user_id = UserId::parse(state_key.clone())
-                                .map_err(|_| AppError::public("Invalid UserId in member PDU."))?;
+                            if let Some(state_key) = &pdu.state_key {
+                                let user_id = UserId::parse(state_key.clone()).map_err(|_| {
+                                    AppError::public("Invalid UserId in member PDU.")
+                                })?;
 
-                            // The membership was and still is invite or join
-                            if matches!(content.membership, MembershipState::Join | MembershipState::Invite)
-                                && (room::user::is_joined(&user_id, &room_id)?
+                                // The membership was and still is invite or join
+                                if matches!(
+                                    content.membership,
+                                    MembershipState::Join | MembershipState::Invite
+                                ) && (room::user::is_joined(&user_id, &room_id)?
                                     || room::user::is_invited(&user_id, &room_id)?)
-                            {
-                                Ok::<_, AppError>(Some(state_key.clone()))
+                                {
+                                    Ok::<_, AppError>(Some(state_key.clone()))
+                                } else {
+                                    Ok(None)
+                                }
                             } else {
                                 Ok(None)
                             }
-                        } else {
-                            Ok(None)
+                        })
+                        // Filter out buggy users
+                        .filter_map(|u| u.ok())
+                        // Filter for possible heroes
+                        .flatten()
+                    {
+                        if heroes.contains(&hero) || hero == sender_id.as_str() {
+                            continue;
                         }
-                    })
-                    // Filter out buggy users
-                    .filter_map(|u| u.ok())
-                    // Filter for possible heroes
-                    .flatten()
-                {
-                    if heroes.contains(&hero) || hero == sender_id.as_str() {
+
+                        heroes.push(hero);
+                    }
+                }
+                Ok::<_, AppError>((
+                    Some(joined_member_count),
+                    Some(invited_member_count),
+                    heroes,
+                ))
+            };
+
+            let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
+            if since_sn == 0 || joined_since_last_sync {
+                // Probably since = 0, we will do an initial sync
+                let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
+                let current_state_ids =
+                    state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
+                let mut state_events = Vec::new();
+                let mut lazy_loaded = HashSet::new();
+
+                for (state_key_id, event_id) in current_state_ids {
+                    if timeline_pdu_ids.contains(&event_id) {
                         continue;
                     }
-
-                    heroes.push(hero);
-                }
-            }
-            Ok::<_, AppError>((Some(joined_member_count), Some(invited_member_count), heroes))
-        };
-
-        let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
-        if since_sn == 0 || joined_since_last_sync {
-            // Probably since = 0, we will do an initial sync
-            let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
-            let current_state_ids = state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
-            let mut state_events = Vec::new();
-            let mut lazy_loaded = HashSet::new();
-
-            for (state_key_id, event_id) in current_state_ids {
-                if timeline_pdu_ids.contains(&event_id) {
-                    continue;
-                }
-                if let Some(state_limit) = filter.room.state.limit {
-                    if state_events.len() >= state_limit {
-                        break;
-                    }
-                }
-                let DbRoomStateField {
-                    event_ty, state_key, ..
-                } = state::get_field(state_key_id)?;
-
-                if event_ty != StateEventType::RoomMember {
-                    let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                        error!("pdu in state not found: {}", event_id);
-                        continue;
-                    };
-                    if pdu.can_pass_filter(&filter.room.state) {
-                        state_events.push(pdu);
-                    }
-                } else if !lazy_load_enabled
-                    || full_state
-                    || timeline_users.contains(&state_key)
-                    // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
-                    || *sender_id == state_key
-                {
-                    let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                        error!("pdu in state not found: {}", event_id);
-                        continue;
-                    };
-
-                    // This check is in case a bad user ID made it into the database
-                    if let Ok(uid) = UserId::parse(&state_key) {
-                        lazy_loaded.insert(uid);
-                    }
-                    if pdu.can_pass_filter(&filter.room.state) {
-                        state_events.push(pdu);
-                    }
-                }
-            }
-
-            // Reset lazy loading because this is an initial sync
-            room::lazy_loading::lazy_load_reset(sender_id, device_id, &room_id)?;
-            // The state_events above should contain all timeline_users, let's mark them as lazy loaded.
-            room::lazy_loading::lazy_load_mark_sent(sender_id, device_id, &room_id, lazy_loaded, next_batch);
-
-            // && encrypted_room || new_encrypted_room {
-            // If the user is in a new encrypted room, give them all joined users
-            *joined_users = room::joined_users(&room_id, None)?.into_iter().collect();
-            // .into_iter()
-            // .filter(|user_id| {
-            //     // Don't send key updates from the sender to the sender
-            //     sender_id != user_id
-            // })
-            // .collect();
-            device_list_updates.extend(
-                joined_users.clone().into_iter(), // .filter(|user_id| {
-                                                  // Only send keys if the sender doesn't share an encrypted room with the target already
-                                                  // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
-                                                  // }),
-            );
-            (heroes, joined_member_count, invited_member_count, true, state_events)
-        } else if let Some(since_frame_id) = since_frame_id {
-            // Incremental /sync
-            let mut state_events = Vec::new();
-            let mut lazy_loaded = HashSet::new();
-
-            if since_frame_id != current_frame_id {
-                let current_state_ids = state::get_full_state_ids(current_frame_id)?;
-                let since_state_ids = state::get_full_state_ids(since_frame_id)?;
-
-                for (key, id) in current_state_ids {
                     if let Some(state_limit) = filter.room.state.limit {
                         if state_events.len() >= state_limit {
                             break;
                         }
                     }
-                    if full_state || since_state_ids.get(&key) != Some(&id) {
-                        let pdu = match timeline::get_pdu(&id) {
-                            Ok(pdu) => pdu,
-                            Err(_) => {
-                                error!("pdu in state not found: {}", id);
-                                continue;
-                            }
+                    let DbRoomStateField {
+                        event_ty,
+                        state_key,
+                        ..
+                    } = state::get_field(state_key_id)?;
+
+                    if event_ty != StateEventType::RoomMember {
+                        let Ok(pdu) = timeline::get_pdu(&event_id) else {
+                            error!("pdu in state not found: {}", event_id);
+                            continue;
                         };
-                        if pdu.event_ty == TimelineEventType::RoomMember {
-                            match UserId::parse(pdu.state_key.as_ref().expect("state event has state key").clone()) {
-                                Ok(state_key_user_id) => {
-                                    lazy_loaded.insert(state_key_user_id);
-                                }
-                                Err(e) => error!("invalid state key for member event: {}", e),
-                            }
+                        if pdu.can_pass_filter(&filter.room.state) {
+                            state_events.push(pdu);
+                        }
+                    } else if !lazy_load_enabled
+                    || full_state
+                    || timeline_users.contains(&state_key)
+                    // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
+                    || *sender_id == state_key
+                    {
+                        let Ok(pdu) = timeline::get_pdu(&event_id) else {
+                            error!("pdu in state not found: {}", event_id);
+                            continue;
+                        };
+
+                        // This check is in case a bad user ID made it into the database
+                        if let Ok(uid) = UserId::parse(&state_key) {
+                            lazy_loaded.insert(uid);
                         }
                         if pdu.can_pass_filter(&filter.room.state) {
                             state_events.push(pdu);
                         }
                     }
                 }
-            }
 
-            for (_, event) in &timeline_pdus {
-                if let Some(state_limit) = filter.room.state.limit {
-                    if state_events.len() >= state_limit {
-                        break;
-                    }
-                }
-                if lazy_loaded.contains(&event.sender) {
-                    continue;
-                }
-                if !room::lazy_loading::lazy_load_was_sent_before(sender_id, device_id, &room_id, &event.sender)?
-                    || lazy_load_send_redundant
-                {
-                    if let Ok(member_event) =
-                        room::get_state(&room_id, &StateEventType::RoomMember, event.sender.as_str(), None)
-                    {
-                        lazy_loaded.insert(event.sender.clone());
-                        if member_event.can_pass_filter(&filter.room.state) {
-                            state_events.push(member_event);
+                // Reset lazy loading because this is an initial sync
+                room::lazy_loading::lazy_load_reset(sender_id, device_id, &room_id)?;
+                // The state_events above should contain all timeline_users, let's mark them as lazy loaded.
+                room::lazy_loading::lazy_load_mark_sent(
+                    sender_id,
+                    device_id,
+                    &room_id,
+                    lazy_loaded,
+                    next_batch,
+                );
+
+                // && encrypted_room || new_encrypted_room {
+                // If the user is in a new encrypted room, give them all joined users
+                *joined_users = room::joined_users(&room_id, None)?.into_iter().collect();
+                // .into_iter()
+                // .filter(|user_id| {
+                //     // Don't send key updates from the sender to the sender
+                //     sender_id != user_id
+                // })
+                // .collect();
+                device_list_updates.extend(
+                    joined_users.clone().into_iter(), // .filter(|user_id| {
+                                                      // Only send keys if the sender doesn't share an encrypted room with the target already
+                                                      // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                                                      // }),
+                );
+                (
+                    heroes,
+                    joined_member_count,
+                    invited_member_count,
+                    true,
+                    state_events,
+                )
+            } else if let Some(since_frame_id) = since_frame_id {
+                // Incremental /sync
+                let mut state_events = Vec::new();
+                let mut lazy_loaded = HashSet::new();
+
+                if since_frame_id != current_frame_id {
+                    let current_state_ids = state::get_full_state_ids(current_frame_id)?;
+                    let since_state_ids = state::get_full_state_ids(since_frame_id)?;
+
+                    for (key, id) in current_state_ids {
+                        if let Some(state_limit) = filter.room.state.limit {
+                            if state_events.len() >= state_limit {
+                                break;
+                            }
+                        }
+                        if full_state || since_state_ids.get(&key) != Some(&id) {
+                            let pdu = match timeline::get_pdu(&id) {
+                                Ok(pdu) => pdu,
+                                Err(_) => {
+                                    error!("pdu in state not found: {}", id);
+                                    continue;
+                                }
+                            };
+                            if pdu.event_ty == TimelineEventType::RoomMember {
+                                match UserId::parse(
+                                    pdu.state_key
+                                        .as_ref()
+                                        .expect("state event has state key")
+                                        .clone(),
+                                ) {
+                                    Ok(state_key_user_id) => {
+                                        lazy_loaded.insert(state_key_user_id);
+                                    }
+                                    Err(e) => error!("invalid state key for member event: {}", e),
+                                }
+                            }
+                            if pdu.can_pass_filter(&filter.room.state) {
+                                state_events.push(pdu);
+                            }
                         }
                     }
                 }
-            }
-            room::lazy_loading::lazy_load_mark_sent(sender_id, device_id, &room_id, lazy_loaded, next_batch);
 
-            let encrypted_room = state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
-            let since_encryption = state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
-            // Calculations:
-            let _new_encrypted_room = encrypted_room && since_encryption.is_none();
-            let send_member_count = state_events
-                .iter()
-                .any(|event| event.event_ty == TimelineEventType::RoomMember);
-
-            // if encrypted_room {
-            for state_event in &state_events {
-                if state_event.event_ty != TimelineEventType::RoomMember {
-                    continue;
+                for (_, event) in &timeline_pdus {
+                    if let Some(state_limit) = filter.room.state.limit {
+                        if state_events.len() >= state_limit {
+                            break;
+                        }
+                    }
+                    if lazy_loaded.contains(&event.sender) {
+                        continue;
+                    }
+                    if !room::lazy_loading::lazy_load_was_sent_before(
+                        sender_id,
+                        device_id,
+                        &room_id,
+                        &event.sender,
+                    )? || lazy_load_send_redundant
+                    {
+                        if let Ok(member_event) = room::get_state(
+                            &room_id,
+                            &StateEventType::RoomMember,
+                            event.sender.as_str(),
+                            None,
+                        ) {
+                            lazy_loaded.insert(event.sender.clone());
+                            if member_event.can_pass_filter(&filter.room.state) {
+                                state_events.push(member_event);
+                            }
+                        }
+                    }
                 }
+                room::lazy_loading::lazy_load_mark_sent(
+                    sender_id,
+                    device_id,
+                    &room_id,
+                    lazy_loaded,
+                    next_batch,
+                );
 
-                if let Some(state_key) = &state_event.state_key {
-                    let user_id = UserId::parse(state_key.clone())
-                        .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
+                let encrypted_room =
+                    state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
+                let since_encryption =
+                    state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
+                // Calculations:
+                let _new_encrypted_room = encrypted_room && since_encryption.is_none();
+                let send_member_count = state_events
+                    .iter()
+                    .any(|event| event.event_ty == TimelineEventType::RoomMember);
 
-                    if user_id == sender_id {
+                // if encrypted_room {
+                for state_event in &state_events {
+                    if state_event.event_ty != TimelineEventType::RoomMember {
                         continue;
                     }
 
-                    let new_membership = state_event
-                        .get_content::<RoomMemberEventContent>()
-                        .map_err(|_| AppError::public("invalid PDU in database."))?
-                        .membership;
+                    if let Some(state_key) = &state_event.state_key {
+                        let user_id = UserId::parse(state_key.clone())
+                            .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
 
-                    match new_membership {
-                        MembershipState::Join => {
-                            // A new user joined an encrypted room
-                            // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                            if since_sn <= state_event.event_sn
-                                && !room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?.is_empty()
-                            {
-                                // if user_id.is_local() {
-                                // check for test TestDeviceListsUpdateOverFederation
-                                // device_list_updates.insert(user_id.clone());
-                                // }
-                                joined_users.insert(user_id);
+                        if user_id == sender_id {
+                            continue;
+                        }
+
+                        let new_membership = state_event
+                            .get_content::<RoomMemberEventContent>()
+                            .map_err(|_| AppError::public("invalid PDU in database."))?
+                            .membership;
+
+                        match new_membership {
+                            MembershipState::Join => {
+                                // A new user joined an encrypted room
+                                // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
+                                if since_sn <= state_event.event_sn
+                                    && !room::user::shared_rooms(vec![
+                                        sender_id.to_owned(),
+                                        user_id.to_owned(),
+                                    ])?
+                                    .is_empty()
+                                {
+                                    // if user_id.is_local() {
+                                    // check for test TestDeviceListsUpdateOverFederation
+                                    // device_list_updates.insert(user_id.clone());
+                                    // }
+                                    joined_users.insert(user_id);
+                                }
                             }
+                            MembershipState::Leave => {
+                                // Write down users that have left encrypted rooms we are in
+                                left_users.insert(user_id);
+                            }
+                            _ => {}
                         }
-                        MembershipState::Leave => {
-                            // Write down users that have left encrypted rooms we are in
-                            left_users.insert(user_id);
-                        }
-                        _ => {}
                     }
                 }
-            }
-            // }
+                // }
 
-            if joined_since_last_sync {
-                // && encrypted_room || new_encrypted_room {
-                // If the user is in a new encrypted room, give them all joined users
-                device_list_updates.extend(
-                    room::joined_users(&room_id, None)?.into_iter().filter(|user_id| {
-                        // Don't send key updates from the sender to the sender
-                        sender_id != user_id
-                    }), // .filter(|user_id| {
-                        // Only send keys if the sender doesn't share an encrypted room with the target already
-                        // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
-                        // }),
-                );
-            }
+                if joined_since_last_sync {
+                    // && encrypted_room || new_encrypted_room {
+                    // If the user is in a new encrypted room, give them all joined users
+                    device_list_updates.extend(
+                        room::joined_users(&room_id, None)?
+                            .into_iter()
+                            .filter(|user_id| {
+                                // Don't send key updates from the sender to the sender
+                                sender_id != user_id
+                            }), // .filter(|user_id| {
+                                // Only send keys if the sender doesn't share an encrypted room with the target already
+                                // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
+                                // }),
+                    );
+                }
 
-            let (joined_member_count, invited_member_count, heroes) = if send_member_count {
-                calculate_counts()?
+                let (joined_member_count, invited_member_count, heroes) = if send_member_count {
+                    calculate_counts()?
+                } else {
+                    (None, None, Vec::new())
+                };
+
+                (
+                    heroes,
+                    joined_member_count,
+                    invited_member_count,
+                    joined_since_last_sync,
+                    state_events,
+                )
             } else {
-                (None, None, Vec::new())
-            };
-
-            (
-                heroes,
-                joined_member_count,
-                invited_member_count,
-                joined_since_last_sync,
-                state_events,
-            )
-        } else {
-            (Vec::new(), None, None, false, Vec::new())
-        }
-    };
+                (Vec::new(), None, None, false, Vec::new())
+            }
+        };
 
     // Look for device list updates in this room
     device_list_updates.extend(room::keys_changed_users(room_id, since_sn, None)?);
@@ -629,8 +709,10 @@ async fn load_joined_room(
     }
     if room::typing::last_typing_update(&room_id).await? >= since_sn {
         edus.push(
-            serde_json::from_str(&serde_json::to_string(&room::typing::all_typings(&room_id).await?)?)
-                .expect("event is valid, we just created it"),
+            serde_json::from_str(&serde_json::to_string(
+                &room::typing::all_typings(&room_id).await?,
+            )?)
+            .expect("event is valid, we just created it"),
         );
     }
 
@@ -654,7 +736,9 @@ async fn load_joined_room(
     }
 
     Ok(JoinedRoom {
-        account_data: RoomAccountData { events: account_events },
+        account_data: RoomAccountData {
+            events: account_events,
+        },
         summary: RoomSummary {
             heroes,
             joined_member_count: joined_member_count.map(|n| (n as u32).into()),
@@ -667,10 +751,16 @@ async fn load_joined_room(
         timeline: Timeline {
             limited,
             prev_batch,
-            events: timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect(),
+            events: timeline_pdus
+                .iter()
+                .map(|(_, pdu)| pdu.to_sync_room_event())
+                .collect(),
         },
         state: State {
-            events: state_events.iter().map(|pdu| pdu.to_sync_state_event()).collect(),
+            events: state_events
+                .iter()
+                .map(|pdu| pdu.to_sync_state_event())
+                .collect(),
         },
         ephemeral: Ephemeral { events: edus },
         unread_thread_notifications: if filter.room.timeline.unread_thread_notifications {
@@ -725,7 +815,9 @@ async fn load_left_room(
             depth: 1,
             auth_events: vec![],
             redacts: None,
-            hashes: EventHash { sha256: String::new() },
+            hashes: EventHash {
+                sha256: String::new(),
+            },
             signatures: None,
             extra_data: Default::default(),
             rejection_reason: None,
@@ -750,14 +842,24 @@ async fn load_left_room(
     };
 
     let curr_frame_id = room::get_frame_id(room_id, None)?;
-    let left_event_id = state::get_state_event_id(curr_frame_id, &StateEventType::RoomMember, sender_id.as_str())?;
+    let left_event_id = state::get_state_event_id(
+        curr_frame_id,
+        &StateEventType::RoomMember,
+        sender_id.as_str(),
+    )?;
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    let (timeline_pdus, mut limited) = load_timeline(sender_id, room_id, since_sn, None, Some(&filter.room.timeline))?;
+    let (timeline_pdus, mut limited) = load_timeline(
+        sender_id,
+        room_id,
+        since_sn,
+        None,
+        Some(&filter.room.timeline),
+    )?;
 
     let since_sn = since_sn.unwrap_or_default();
 
-    let _send_notification_counts =
-        !timeline_pdus.is_empty() || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
+    let _send_notification_counts = !timeline_pdus.is_empty()
+        || room::user::last_read_notification(sender_id, &room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
@@ -767,7 +869,8 @@ async fn load_left_room(
 
     let mut state_events = Vec::new();
     let mut left_state_ids = state::get_full_state_ids(left_frame_id)?;
-    let leave_state_key_id = state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
+    let leave_state_key_id =
+        state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
     for (key, event_id) in left_state_ids {
@@ -813,10 +916,16 @@ async fn load_left_room(
         timeline: Timeline {
             limited,
             prev_batch,
-            events: timeline_pdus.iter().map(|(_, pdu)| pdu.to_sync_room_event()).collect(),
+            events: timeline_pdus
+                .iter()
+                .map(|(_, pdu)| pdu.to_sync_room_event())
+                .collect(),
         },
         state: State {
-            events: state_events.iter().map(|pdu| pdu.to_sync_state_event()).collect(),
+            events: state_events
+                .iter()
+                .map(|pdu| pdu.to_sync_state_event())
+                .collect(),
         },
     })
 }
@@ -839,7 +948,14 @@ pub(crate) fn load_timeline(
 
             timeline::get_pdus_backward(user_id, &room_id, max_sn, Some(min_sn), filter, limit + 1)?
         } else {
-            timeline::get_pdus_backward(user_id, &room_id, i64::MAX, Some(since_sn), filter, limit + 1)?
+            timeline::get_pdus_backward(
+                user_id,
+                &room_id,
+                i64::MAX,
+                Some(since_sn),
+                filter,
+                limit + 1,
+            )?
         }
     } else {
         timeline::get_pdus_backward(user_id, &room_id, i64::MAX, None, filter, limit + 1)?
@@ -862,7 +978,9 @@ pub(crate) fn share_encrypted_room(
     let shared_rooms = room::user::shared_rooms(vec![sender_id.to_owned(), user_id.to_owned()])?
         .into_iter()
         .filter(|room_id| Some(&**room_id) != ignore_room)
-        .map(|other_room_id| room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok())
+        .map(|other_room_id| {
+            room::get_state(&other_room_id, &StateEventType::RoomEncryption, "", None).is_ok()
+        })
         .any(|encrypted| encrypted);
 
     Ok(shared_rooms)

@@ -18,7 +18,10 @@ pub fn authed_router() -> Router {
         )
         .push(
             Router::with_path("list")
-                .push(Router::with_path("appservice/{network_id}/{room_id}").put(room::set_visibility_with_network_id))
+                .push(
+                    Router::with_path("appservice/{network_id}/{room_id}")
+                        .put(room::set_visibility_with_network_id),
+                )
                 .push(
                     Router::with_path("room/{room_id}")
                         .get(room::get_visibility)

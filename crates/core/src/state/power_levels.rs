@@ -8,7 +8,10 @@ use crate::{
     OwnedUserId, RoomVersion, UserId,
     events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent},
     power_levels::{NotificationPowerLevels, default_power_level},
-    serde::{deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values, vec_deserialize_v1_powerlevel_values},
+    serde::{
+        deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values,
+        vec_deserialize_v1_powerlevel_values,
+    },
 };
 
 #[derive(Deserialize, Default)]
@@ -114,7 +117,9 @@ pub(crate) fn deserialize_power_levels(
         match from_json_str(content) {
             Ok(content) => Some(content),
             Err(_) => {
-                error!("m.room.power_levels event is not valid with integer or string integer values");
+                error!(
+                    "m.room.power_levels event is not valid with integer or string integer values"
+                );
                 None
             }
         }
@@ -155,8 +160,14 @@ struct IntPowerLevelsContentFields {
 
 impl From<IntPowerLevelsContentFields> for PowerLevelsContentFields {
     fn from(pl: IntPowerLevelsContentFields) -> Self {
-        let IntPowerLevelsContentFields { users, users_default } = pl;
-        Self { users, users_default }
+        let IntPowerLevelsContentFields {
+            users,
+            users_default,
+        } = pl;
+        Self {
+            users,
+            users_default,
+        }
     }
 }
 
@@ -203,7 +214,10 @@ pub(crate) fn deserialize_power_levels_content_invite(
 
 #[derive(Deserialize)]
 pub(crate) struct PowerLevelsContentRedact {
-    #[serde(default = "default_power_level", deserialize_with = "deserialize_v1_powerlevel")]
+    #[serde(
+        default = "default_power_level",
+        deserialize_with = "deserialize_v1_powerlevel"
+    )]
     pub(crate) redact: i64,
 }
 

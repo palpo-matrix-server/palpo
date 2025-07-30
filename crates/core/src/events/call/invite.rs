@@ -56,7 +56,12 @@ pub struct CallInviteEventContent {
 impl CallInviteEventContent {
     /// Creates a new `CallInviteEventContent` with the given call ID, lifetime,
     /// offer and VoIP version.
-    pub fn new(call_id: OwnedVoipId, lifetime: u64, offer: SessionDescription, version: VoipVersionId) -> Self {
+    pub fn new(
+        call_id: OwnedVoipId,
+        lifetime: u64,
+        offer: SessionDescription,
+        version: VoipVersionId,
+    ) -> Self {
         Self {
             call_id,
             party_id: None,
@@ -77,7 +82,12 @@ impl CallInviteEventContent {
 
     /// Convenience method to create a version 1 `CallInviteEventContent` with
     /// all the required fields.
-    pub fn version_1(call_id: OwnedVoipId, party_id: OwnedVoipId, lifetime: u64, offer: SessionDescription) -> Self {
+    pub fn version_1(
+        call_id: OwnedVoipId,
+        party_id: OwnedVoipId,
+        lifetime: u64,
+        offer: SessionDescription,
+    ) -> Self {
         Self {
             call_id,
             party_id: Some(party_id),

@@ -13,7 +13,10 @@ impl<'de> Deserialize<'de> for Relation {
     {
         let json = Box::<RawJsonValue>::deserialize(deserializer)?;
 
-        let RelationDeHelper { in_reply_to, rel_type } = from_raw_json_value(&json)?;
+        let RelationDeHelper {
+            in_reply_to,
+            rel_type,
+        } = from_raw_json_value(&json)?;
 
         let rel = match (in_reply_to, rel_type.as_deref()) {
             (_, Some("m.thread")) => Relation::Thread(from_raw_json_value(&json)?),

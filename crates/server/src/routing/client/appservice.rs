@@ -20,11 +20,19 @@ async fn ping(
     let body = body.into_inner();
     let authed = depot.authed_info()?;
     let Some(appservice) = authed.appservice.as_ref() else {
-        return Err(MatrixError::forbidden("This endpoint can only be called by appservices.", None).into());
+        return Err(MatrixError::forbidden(
+            "This endpoint can only be called by appservices.",
+            None,
+        )
+        .into());
     };
 
     if appservice_id != appservice.registration.id {
-        return Err(MatrixError::forbidden("Appservices can only ping themselves (wrong appservice ID).", None).into());
+        return Err(MatrixError::forbidden(
+            "Appservices can only ping themselves (wrong appservice ID).",
+            None,
+        )
+        .into());
     }
 
     if appservice.registration.url.is_none()
@@ -34,7 +42,10 @@ async fn ping(
             .as_ref()
             .is_some_and(|url| url.is_empty() || url == "null")
     {
-        return Err(MatrixError::url_not_set("Appservice does not have a URL set, there is nothing to ping.").into());
+        return Err(MatrixError::url_not_set(
+            "Appservice does not have a URL set, there is nothing to ping.",
+        )
+        .into());
     }
 
     let timer = tokio::time::Instant::now();
@@ -47,7 +58,9 @@ async fn ping(
             },
         )?
         .into_inner();
-        let _response = crate::sending::send_appservice_request::<()>(appservice.registration.clone(), request).await?;
+        let _response =
+            crate::sending::send_appservice_request::<()>(appservice.registration.clone(), request)
+                .await?;
     }
 
     json_ok(SendPingResBody::new(timer.elapsed()))

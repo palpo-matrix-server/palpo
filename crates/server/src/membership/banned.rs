@@ -33,7 +33,9 @@ pub async fn banned_room_check(
             );
 
             if conf.auto_deactivate_banned_room_attempts {
-                warn!("Automatically deactivating user {user_id} due to attempted banned room join");
+                warn!(
+                    "Automatically deactivating user {user_id} due to attempted banned room join"
+                );
 
                 if conf.admin.room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
@@ -49,17 +51,24 @@ pub async fn banned_room_check(
                 crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
-            return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
+            return Err(
+                MatrixError::forbidden("This room is banned on this homeserver.", None).into(),
+            );
         }
     } else if let Some(server_name) = server_name {
-        if conf.forbidden_remote_server_names.is_match(server_name.host()) {
+        if conf
+            .forbidden_remote_server_names
+            .is_match(server_name.host())
+        {
             warn!(
                 "User {user_id} who is not an admin tried joining a room which has the server \
 				 name {server_name} that is globally forbidden. Rejecting.",
             );
 
             if conf.auto_deactivate_banned_room_attempts {
-                warn!("Automatically deactivating user {user_id} due to attempted banned room join");
+                warn!(
+                    "Automatically deactivating user {user_id} due to attempted banned room join"
+                );
                 if conf.admin.room_notices {
                     crate::admin::send_message(RoomMessageEventContent::text_plain(format!(
                         "Automatically deactivating user {user_id} due to attempted banned \
@@ -73,7 +82,11 @@ pub async fn banned_room_check(
                 crate::user::full_user_deactivate(user_id, &all_joined_rooms).await?;
             }
 
-            return Err(MatrixError::forbidden("This remote server is banned on this homeserver.", None).into());
+            return Err(MatrixError::forbidden(
+                "This remote server is banned on this homeserver.",
+                None,
+            )
+            .into());
         }
     }
     Ok(())

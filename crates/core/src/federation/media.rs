@@ -129,7 +129,9 @@ impl Scribe for ThumbnailResBody {
             }
             Err(e) => {
                 tracing::error!("Failed to serialize metadata: {}", e);
-                res.render(StatusError::internal_server_error().brief("Failed to serialize metadata"));
+                res.render(
+                    StatusError::internal_server_error().brief("Failed to serialize metadata"),
+                );
                 return;
             }
         }
@@ -145,7 +147,11 @@ impl Scribe for ThumbnailResBody {
                     .content_type
                     .as_deref()
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM.as_ref());
-                let _ = write!(body_writer, "{}: {content_type}\r\n", http::header::CONTENT_TYPE);
+                let _ = write!(
+                    body_writer,
+                    "{}: {content_type}\r\n",
+                    http::header::CONTENT_TYPE
+                );
 
                 if let Some(content_disposition) = &content.content_disposition {
                     let _ = write!(
@@ -163,7 +169,11 @@ impl Scribe for ThumbnailResBody {
             }
             FileOrLocation::Location(location) => {
                 // Only add location header and empty line separator.
-                let _ = write!(body_writer, "{}: {location}\r\n\r\n", http::header::LOCATION);
+                let _ = write!(
+                    body_writer,
+                    "{}: {location}\r\n\r\n",
+                    http::header::LOCATION
+                );
             }
         }
 

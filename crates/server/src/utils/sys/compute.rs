@@ -100,7 +100,10 @@ where
     I: Iterator<Item = Id>,
 {
     ids.inspect(|&id| {
-        debug_assert!(id < MASK_BITS, "Core ID must be < Mask::BITS at least for now");
+        debug_assert!(
+            id < MASK_BITS,
+            "Core ID must be < Mask::BITS at least for now"
+        );
     })
     .fold(Mask::default(), |mask, id| mask | (1 << id))
 }

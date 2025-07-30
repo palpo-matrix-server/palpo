@@ -16,12 +16,16 @@ pub async fn invite_user(
     is_direct: bool,
 ) -> AppResult<()> {
     if !room::user::is_joined(inviter_id, room_id)? {
-        return Err(
-            MatrixError::forbidden("You must be joined in the room you are trying to invite from.", None).into(),
-        );
+        return Err(MatrixError::forbidden(
+            "You must be joined in the room you are trying to invite from.",
+            None,
+        )
+        .into());
     }
     if !room::user_can_invite(room_id, inviter_id, invitee_id) {
-        return Err(MatrixError::forbidden("You are not allowed to invite this user.", None).into());
+        return Err(
+            MatrixError::forbidden("You are not allowed to invite this user.", None).into(),
+        );
     }
 
     if invitee_id.server_name().is_remote() {
@@ -68,17 +72,20 @@ pub async fn invite_user(
             },
         )?
         .into_inner();
-        let send_join_response = sending::send_federation_request(invitee_id.server_name(), invite_request)
-            .await?
-            .json::<InviteUserResBodyV2>()
-            .await?;
+        let send_join_response =
+            sending::send_federation_request(invitee_id.server_name(), invite_request)
+                .await?
+                .json::<InviteUserResBodyV2>()
+                .await?;
 
         // We do not add the event_id field to the pdu here because of signature and hashes checks
         let (event_id, value) =
-            gen_event_id_canonical_json(&send_join_response.event, &room_version_id).map_err(|e| {
-                tracing::error!("Could not convert event to canonical json: {e}");
-                MatrixError::invalid_param("Could not convert event to canonical json.")
-            })?;
+            gen_event_id_canonical_json(&send_join_response.event, &room_version_id).map_err(
+                |e| {
+                    tracing::error!("Could not convert event to canonical json: {e}");
+                    MatrixError::invalid_param("Could not convert event to canonical json.")
+                },
+            )?;
 
         if *pdu.event_id != *event_id {
             warn!(
@@ -102,9 +109,14 @@ pub async fn invite_user(
             )
             .expect("CanonicalJson is valid json value"),
         )
-        .map_err(|e| MatrixError::bad_json(format!("Origin field in event is not a valid server name: {e}")))?;
+        .map_err(|e| {
+            MatrixError::bad_json(format!(
+                "Origin field in event is not a valid server name: {e}"
+            ))
+        })?;
 
-        handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true).await?;
+        handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
+            .await?;
         return sending::send_pdu_room(room_id, &event_id);
     }
 

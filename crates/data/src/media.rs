@@ -44,6 +44,11 @@ pub fn get_metadata(server_name: &ServerName, media_id: &str) -> DataResult<Opti
         .map_err(Into::into)
 }
 
+pub fn delete_media(server_name: &ServerName, media_id: &str) -> DataResult<()> {
+    //TODO: Delete media from disk
+    Ok(())
+}
+
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = media_thumbnails)]
 pub struct DbThumbnail {

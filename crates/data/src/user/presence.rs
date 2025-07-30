@@ -43,7 +43,11 @@ impl DbPresence {
     /// Creates a PresenceEvent from available data.
     pub fn to_presence_event(&self, user_id: &UserId) -> DataResult<PresenceEvent> {
         let now = UnixMillis::now();
-        let state = self.state.as_deref().map(PresenceState::from).unwrap_or_default();
+        let state = self
+            .state
+            .as_deref()
+            .map(PresenceState::from)
+            .unwrap_or_default();
         let last_active_ago = if state == PresenceState::Online {
             None
         } else {
@@ -90,7 +94,8 @@ pub fn set_presence(db_presence: NewDbPresence, force: bool) -> DataResult<bool>
         .flatten();
 
     if old_state.as_ref() != db_presence.state.as_ref() || force {
-        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(sender_id))).execute(&mut connect()?)?;
+        diesel::delete(user_presences::table.filter(user_presences::user_id.eq(sender_id)))
+            .execute(&mut connect()?)?;
         diesel::insert_into(user_presences::table)
             .values(&db_presence)
             .on_conflict(user_presences::user_id)
@@ -104,7 +109,8 @@ pub fn set_presence(db_presence: NewDbPresence, force: bool) -> DataResult<bool>
 
 /// Removes the presence record for the given user from the database.
 pub fn remove_presence(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_presences::table.filter(user_presences::user_id.eq(user_id))).execute(&mut connect()?)?;
+    diesel::delete(user_presences::table.filter(user_presences::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
     Ok(())
 }
 

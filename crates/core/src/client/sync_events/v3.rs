@@ -13,8 +13,9 @@ use crate::{
     client::filter::FilterDefinition,
     device::DeviceLists,
     events::{
-        AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent, AnySyncEphemeralRoomEvent,
-        AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent, presence::PresenceEvent,
+        AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, AnyStrippedStateEvent,
+        AnySyncEphemeralRoomEvent, AnySyncStateEvent, AnySyncTimelineEvent, AnyToDeviceEvent,
+        presence::PresenceEvent,
     },
     presence::PresenceState,
     serde::RawJson,
@@ -192,7 +193,10 @@ impl Rooms {
 
     /// Returns true if there is no update in any room.
     pub fn is_empty(&self) -> bool {
-        self.leave.is_empty() && self.join.is_empty() && self.invite.is_empty() && self.knock.is_empty()
+        self.leave.is_empty()
+            && self.join.is_empty()
+            && self.invite.is_empty()
+            && self.knock.is_empty()
     }
 }
 
@@ -281,7 +285,10 @@ pub struct JoinedRoom {
     /// This uses the unstable prefix in [MSC2654].
     ///
     /// [MSC2654]: https://github.com/matrix-org/matrix-spec-proposals/pull/2654
-    #[serde(rename = "org.matrix.msc2654.unread_count", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc2654.unread_count",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub unread_count: Option<u64>,
 }
 
@@ -462,13 +469,21 @@ pub struct RoomSummary {
     /// Number of users whose membership status is `join`.
     /// Required if field has changed since last sync; otherwise, it may be
     /// omitted.
-    #[serde(default, rename = "m.joined_member_count", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.joined_member_count",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub joined_member_count: Option<u64>,
 
     /// Number of users whose membership status is `invite`.
     /// Required if field has changed since last sync; otherwise, it may be
     /// omitted.
-    #[serde(default, rename = "m.invited_member_count", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.invited_member_count",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub invited_member_count: Option<u64>,
 }
 
@@ -480,7 +495,9 @@ impl RoomSummary {
 
     /// Returns true if there are no room summary updates.
     pub fn is_empty(&self) -> bool {
-        self.heroes.is_empty() && self.joined_member_count.is_none() && self.invited_member_count.is_none()
+        self.heroes.is_empty()
+            && self.joined_member_count.is_none()
+            && self.invited_member_count.is_none()
     }
 }
 

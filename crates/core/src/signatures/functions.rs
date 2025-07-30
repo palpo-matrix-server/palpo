@@ -98,7 +98,11 @@ static REFERENCE_HASH_FIELDS_TO_REMOVE: &[&str] = &["signatures", "unsigned"];
 ///     }
 /// }
 /// ```
-pub fn sign_json<K>(entity_id: &str, keypair: &K, object: &mut CanonicalJsonObject) -> Result<(), Error>
+pub fn sign_json<K>(
+    entity_id: &str,
+    keypair: &K,
+    object: &mut CanonicalJsonObject,
+) -> Result<(), Error>
 where
     K: KeyPair,
 {
@@ -123,13 +127,24 @@ where
 
     let signature_set = match signature_set {
         CanonicalJsonValue::Object(obj) => obj,
-        _ => return Err(JsonError::not_multiples_of_type("signatures", JsonType::Object)),
+        _ => {
+            return Err(JsonError::not_multiples_of_type(
+                "signatures",
+                JsonType::Object,
+            ));
+        }
     };
 
-    signature_set.insert(signature.id(), CanonicalJsonValue::String(signature.base64()));
+    signature_set.insert(
+        signature.id(),
+        CanonicalJsonValue::String(signature.base64()),
+    );
 
     // Put `signatures` and `unsigned` back in.
-    object.insert(signatures_key.into(), CanonicalJsonValue::Object(signature_map));
+    object.insert(
+        signatures_key.into(),
+        CanonicalJsonValue::Object(signature_map),
+    );
 
     if let Some((k, v)) = maybe_unsigned_entry {
         object.insert(k, v);
@@ -212,7 +227,10 @@ pub fn canonical_json(object: &CanonicalJsonObject) -> Result<String, Error> {
 /// // Verify at least one signature for each entity in `public_key_map`.
 /// assert!(palpo_core::signatures::verify_json(&public_key_map, &object).is_ok());
 /// ```
-pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) -> Result<(), Error> {
+pub fn verify_json(
+    public_key_map: &PublicKeyMap,
+    object: &CanonicalJsonObject,
+) -> Result<(), Error> {
     let signature_map = match object.get("signatures") {
         Some(CanonicalJsonValue::Object(signatures)) => signatures.clone(),
         Some(_) => return Err(JsonError::not_of_type("signatures", JsonType::Object)),
@@ -222,12 +240,23 @@ pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) 
     for (entity_id, signature_set) in signature_map {
         let signature_set = match signature_set {
             CanonicalJsonValue::Object(set) => set,
-            _ => return Err(JsonError::not_multiples_of_type("signature sets", JsonType::Object)),
+            _ => {
+                return Err(JsonError::not_multiples_of_type(
+                    "signature sets",
+                    JsonType::Object,
+                ));
+            }
         };
 
         let public_keys = match public_key_map.get(&entity_id) {
             Some(keys) => keys,
-            None => return Err(JsonError::key_missing("public_key_map", "public_keys", &entity_id)),
+            None => {
+                return Err(JsonError::key_missing(
+                    "public_key_map",
+                    "public_keys",
+                    &entity_id,
+                ));
+            }
         };
 
         for (key_id, signature) in &signature_set {
@@ -236,14 +265,23 @@ pub fn verify_json(public_key_map: &PublicKeyMap, object: &CanonicalJsonObject) 
                 _ => return Err(JsonError::not_of_type("signature", JsonType::String)),
             };
 
-            let public_key = public_keys
-                .get(key_id)
-                .ok_or_else(|| JsonError::key_missing(format!("public_keys of {}", &entity_id), "signature", key_id))?;
+            let public_key = public_keys.get(key_id).ok_or_else(|| {
+                JsonError::key_missing(
+                    format!("public_keys of {}", &entity_id),
+                    "signature",
+                    key_id,
+                )
+            })?;
 
-            let signature =
-                Base64::<Standard>::parse(signature).map_err(|e| ParseError::base64("signature", signature, e))?;
+            let signature = Base64::<Standard>::parse(signature)
+                .map_err(|e| ParseError::base64("signature", signature, e))?;
 
-            verify_json_with(&Ed25519Verifier, public_key.as_bytes(), signature.as_bytes(), object)?;
+            verify_json_with(
+                &Ed25519Verifier,
+                public_key.as_bytes(),
+                signature.as_bytes(),
+                object,
+            )?;
         }
     }
 
@@ -315,10 +353,14 @@ pub fn content_hash(object: &CanonicalJsonObject) -> Result<Base64<Standard, [u8
 /// # Errors
 ///
 /// Returns an error if the event is too large or redaction fails.
-pub fn reference_hash(value: &CanonicalJsonObject, version: &RoomVersionId) -> Result<String, Error> {
+pub fn reference_hash(
+    value: &CanonicalJsonObject,
+    version: &RoomVersionId,
+) -> Result<String, Error> {
     let redacted_value = redact(value.clone(), version, None)?;
 
-    let json = canonical_json_with_fields_to_remove(&redacted_value, REFERENCE_HASH_FIELDS_TO_REMOVE)?;
+    let json =
+        canonical_json_with_fields_to_remove(&redacted_value, REFERENCE_HASH_FIELDS_TO_REMOVE)?;
     if json.len() > MAX_PDU_BYTES {
         return Err(Error::PduSize);
     }
@@ -330,7 +372,10 @@ pub fn reference_hash(value: &CanonicalJsonObject, version: &RoomVersionId) -> R
         // Room versions higher than version 3 are url safe base64 encoded
         _ => alphabet::URL_SAFE,
     };
-    let base64_engine = base64::engine::GeneralPurpose::new(&base64_alphabet, base64::engine::general_purpose::NO_PAD);
+    let base64_engine = base64::engine::GeneralPurpose::new(
+        &base64_alphabet,
+        base64::engine::general_purpose::NO_PAD,
+    );
 
     Ok(base64_engine.encode(hash))
 }
@@ -448,7 +493,9 @@ where
         .or_insert_with(|| CanonicalJsonValue::Object(BTreeMap::new()));
 
     match hashes_value {
-        CanonicalJsonValue::Object(hashes) => hashes.insert("sha256".into(), CanonicalJsonValue::String(hash.encode())),
+        CanonicalJsonValue::Object(hashes) => {
+            hashes.insert("sha256".into(), CanonicalJsonValue::String(hash.encode()))
+        }
         _ => return Err(JsonError::not_of_type("hashes", JsonType::Object)),
     };
 
@@ -456,7 +503,10 @@ where
 
     sign_json(entity_id, keypair, &mut redacted)?;
 
-    object.insert("signatures".into(), mem::take(redacted.get_mut("signatures").unwrap()));
+    object.insert(
+        "signatures".into(),
+        mem::take(redacted.get_mut("signatures").unwrap()),
+    );
     Ok(())
 }
 
@@ -561,11 +611,17 @@ pub fn verify_event(
     let canonical_json = from_json_str(&canonical_json(&redacted)?).map_err(JsonError::from)?;
 
     for entity_id in servers_to_check {
-        let signature_set: &BTreeMap<String, CanonicalJsonValue> = match signature_map.get(entity_id.as_str()) {
-            Some(CanonicalJsonValue::Object(set)) => set,
-            Some(_) => return Err(JsonError::not_multiples_of_type("signature sets", JsonType::Object)),
-            None => return Err(VerificationError::signature_not_found(entity_id)),
-        };
+        let signature_set: &BTreeMap<String, CanonicalJsonValue> =
+            match signature_map.get(entity_id.as_str()) {
+                Some(CanonicalJsonValue::Object(set)) => set,
+                Some(_) => {
+                    return Err(JsonError::not_multiples_of_type(
+                        "signature sets",
+                        JsonType::Object,
+                    ));
+                }
+                None => return Err(VerificationError::signature_not_found(entity_id)),
+            };
 
         let public_keys = public_key_map
             .get(entity_id.as_str())
@@ -589,8 +645,8 @@ pub fn verify_event(
                 _ => return Err(JsonError::not_of_type("signature", JsonType::String)),
             };
 
-            let signature =
-                Base64::<Standard>::parse(signature).map_err(|e| ParseError::base64("signature", signature, e))?;
+            let signature = Base64::<Standard>::parse(signature)
+                .map_err(|e| ParseError::base64("signature", signature, e))?;
 
             verify_json_with(
                 &Ed25519Verifier,
@@ -620,7 +676,10 @@ pub fn verify_event(
 /// Internal implementation detail of the canonical JSON algorithm.
 ///
 /// Allows customization of the fields that will be removed before serializing.
-fn canonical_json_with_fields_to_remove(object: &CanonicalJsonObject, fields: &[&str]) -> Result<String, Error> {
+fn canonical_json_with_fields_to_remove(
+    object: &CanonicalJsonObject,
+    fields: &[&str],
+) -> Result<String, Error> {
     let mut owned_object = object.clone();
 
     for field in fields {
@@ -674,8 +733,8 @@ fn servers_to_check_signatures(
     if !is_third_party_invite(object)? {
         match object.get("sender") {
             Some(CanonicalJsonValue::String(raw_sender)) => {
-                let user_id =
-                    <&UserId>::try_from(raw_sender.as_str()).map_err(|e| Error::from(ParseError::UserId(e)))?;
+                let user_id = <&UserId>::try_from(raw_sender.as_str())
+                    .map_err(|e| Error::from(ParseError::UserId(e)))?;
 
                 servers_to_check.insert(user_id.server_name().to_owned());
             }
@@ -686,7 +745,9 @@ fn servers_to_check_signatures(
     match version {
         RoomVersionId::V1 | RoomVersionId::V2 => match object.get("event_id") {
             Some(CanonicalJsonValue::String(raw_event_id)) => {
-                let event_id: OwnedEventId = raw_event_id.parse().map_err(|e| Error::from(ParseError::EventId(e)))?;
+                let event_id: OwnedEventId = raw_event_id
+                    .parse()
+                    .map_err(|e| Error::from(ParseError::EventId(e)))?;
 
                 let server_name = event_id
                     .server_name()
@@ -699,7 +760,11 @@ fn servers_to_check_signatures(
                 return Err(JsonError::field_missing_from_object("event_id"));
             }
         },
-        RoomVersionId::V3 | RoomVersionId::V4 | RoomVersionId::V5 | RoomVersionId::V6 | RoomVersionId::V7 => {}
+        RoomVersionId::V3
+        | RoomVersionId::V4
+        | RoomVersionId::V5
+        | RoomVersionId::V6
+        | RoomVersionId::V7 => {}
         // TODO: And for all future versions that have join_authorised_via_users_server
         RoomVersionId::V8 | RoomVersionId::V9 | RoomVersionId::V10 | RoomVersionId::V11 => {
             if let Some(authorized_user) = object
@@ -707,9 +772,9 @@ fn servers_to_check_signatures(
                 .and_then(|c| c.as_object())
                 .and_then(|c| c.get("join_authorised_via_users_server"))
             {
-                let authorized_user = authorized_user
-                    .as_str()
-                    .ok_or_else(|| JsonError::not_of_type("join_authorised_via_users_server", JsonType::String))?;
+                let authorized_user = authorized_user.as_str().ok_or_else(|| {
+                    JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
+                })?;
                 match <&UserId>::try_from(authorized_user) {
                     Ok(authorized_user) => {
                         servers_to_check.insert(authorized_user.server_name().to_owned());

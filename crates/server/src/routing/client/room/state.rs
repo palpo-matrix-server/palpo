@@ -33,7 +33,11 @@ pub(super) fn get_state(
         if let Ok(leave_sn) = room::user::leave_sn(sender_id, &room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+            return Err(MatrixError::forbidden(
+                "You don't have permission to view this room.",
+                None,
+            )
+            .into());
         }
     } else {
         None
@@ -68,7 +72,10 @@ pub fn report(
     };
 
     if let Some(true) = body.reason.clone().map(|s| s.chars().count() > 250) {
-        return Err(MatrixError::invalid_param("Reason too long, should be 250 characters or fewer").into());
+        return Err(MatrixError::invalid_param(
+            "Reason too long, should be 250 characters or fewer",
+        )
+        .into());
     };
 
     let _ = crate::admin::send_message(RoomMessageEventContent::text_html(
@@ -121,14 +128,21 @@ pub(super) fn state_for_key(
         if let Ok(leave_sn) = room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+            return Err(MatrixError::forbidden(
+                "You don't have permission to view this room.",
+                None,
+            )
+            .into());
         }
     } else {
         None
     };
 
     let event = room::get_state(&args.room_id, &args.event_type, &args.state_key, until_sn)?;
-    let event_format = args.format.as_ref().is_some_and(|f| *f == StateEventFormat::Event);
+    let event_format = args
+        .format
+        .as_ref()
+        .is_some_and(|f| *f == StateEventFormat::Event);
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
         event: if event_format {
@@ -155,14 +169,21 @@ pub(super) async fn state_for_empty_key(
         if let Ok(leave_sn) = room::user::leave_sn(sender_id, &args.room_id) {
             Some(leave_sn)
         } else {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+            return Err(MatrixError::forbidden(
+                "You don't have permission to view this room.",
+                None,
+            )
+            .into());
         }
     } else {
         None
     };
 
     let event = room::get_state(&args.room_id, &args.event_type, "", until_sn)?;
-    let event_format = args.format.as_ref().is_some_and(|f| f.to_lowercase().eq("event"));
+    let event_format = args
+        .format
+        .as_ref()
+        .is_some_and(|f| f.to_lowercase().eq("event"));
     json_ok(StateEventsForKeyResBody {
         content: Some(event.get_content()?),
         event: if event_format {

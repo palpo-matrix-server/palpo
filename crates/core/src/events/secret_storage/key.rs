@@ -189,7 +189,9 @@ impl<'de> Deserialize<'de> for SecretStorageEncryptionAlgorithm {
 
         Ok(match helper {
             SecretStorageEncryptionAlgorithmDeHelper::Known(k) => match k {
-                KnownSecretStorageEncryptionAlgorithmDeHelper::V1AesHmacSha2(p) => Self::V1AesHmacSha2(p),
+                KnownSecretStorageEncryptionAlgorithmDeHelper::V1AesHmacSha2(p) => {
+                    Self::V1AesHmacSha2(p)
+                }
             },
             SecretStorageEncryptionAlgorithmDeHelper::Unknown(c) => Self::_Custom(c),
         })
@@ -210,12 +212,16 @@ impl Serialize for SecretStorageEncryptionAlgorithm {
     {
         let algorithm = self.algorithm();
         match self {
-            Self::V1AesHmacSha2(properties) => {
-                SecretStorageEncryptionAlgorithmSerHelper { algorithm, properties }.serialize(serializer)
+            Self::V1AesHmacSha2(properties) => SecretStorageEncryptionAlgorithmSerHelper {
+                algorithm,
+                properties,
             }
-            Self::_Custom(properties) => {
-                SecretStorageEncryptionAlgorithmSerHelper { algorithm, properties }.serialize(serializer)
+            .serialize(serializer),
+            Self::_Custom(properties) => SecretStorageEncryptionAlgorithmSerHelper {
+                algorithm,
+                properties,
             }
+            .serialize(serializer),
         }
     }
 }

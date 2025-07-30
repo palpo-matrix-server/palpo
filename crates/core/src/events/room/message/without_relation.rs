@@ -2,8 +2,8 @@ use salvo::oapi::ToSchema;
 use serde::Serialize;
 
 use super::{
-    AddMentions, ForwardThread, MessageType, Relation, ReplacementMetadata, ReplyMetadata, ReplyWithinThread,
-    RoomMessageEventContent,
+    AddMentions, ForwardThread, MessageType, Relation, ReplacementMetadata, ReplyMetadata,
+    ReplyWithinThread, RoomMessageEventContent,
 };
 use crate::events::Mentions;
 use crate::events::relation::{InReplyTo, Replacement, Thread};
@@ -119,7 +119,10 @@ impl RoomMessageEventContentWithoutRelation {
             .filter(|_| forward_thread == ForwardThread::Yes)
             .map(|thread| thread.event_id.clone());
         let relates_to = if let Some(event_id) = original_thread_id {
-            Relation::Thread(Thread::plain(event_id.to_owned(), original_event_id.to_owned()))
+            Relation::Thread(Thread::plain(
+                event_id.to_owned(),
+                original_event_id.to_owned(),
+            ))
         } else {
             Relation::Reply {
                 in_reply_to: InReplyTo {
@@ -202,7 +205,10 @@ impl RoomMessageEventContentWithoutRelation {
     ///
     /// [replacement]: https://spec.matrix.org/latest/client-server-api/#event-replacements
     #[track_caller]
-    pub fn make_replacement(mut self, metadata: impl Into<ReplacementMetadata>) -> RoomMessageEventContent {
+    pub fn make_replacement(
+        mut self,
+        metadata: impl Into<ReplacementMetadata>,
+    ) -> RoomMessageEventContent {
         let metadata = metadata.into();
 
         let mentions = self.mentions.take();
@@ -255,7 +261,9 @@ impl RoomMessageEventContentWithoutRelation {
     ///
     /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
     pub fn add_mentions(mut self, mentions: Mentions) -> Self {
-        self.mentions.get_or_insert_with(Mentions::new).add(mentions);
+        self.mentions
+            .get_or_insert_with(Mentions::new)
+            .add(mentions);
         self
     }
 }
@@ -268,7 +276,9 @@ impl From<MessageType> for RoomMessageEventContentWithoutRelation {
 
 impl From<RoomMessageEventContent> for RoomMessageEventContentWithoutRelation {
     fn from(value: RoomMessageEventContent) -> Self {
-        let RoomMessageEventContent { msgtype, mentions, .. } = value;
+        let RoomMessageEventContent {
+            msgtype, mentions, ..
+        } = value;
         Self { msgtype, mentions }
     }
 }

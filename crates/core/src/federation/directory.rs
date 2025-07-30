@@ -107,12 +107,15 @@ impl ServerResBody {
 //     }
 // };
 
-pub fn remote_server_keys_batch_request(origin: &str, body: RemoteServerKeysBatchReqBody) -> SendResult<SendRequest> {
+pub fn remote_server_keys_batch_request(
+    origin: &str,
+    body: RemoteServerKeysBatchReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/key/v2/query",))?;
     crate::sending::post(url).stuff(body)
 }
 
-/// Request type for the `get_remote_server_keys_batch` endpoint.
+/// Request type for the `fetch_remote_server_keys_batch` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct RemoteServerKeysBatchReqBody {
@@ -130,7 +133,7 @@ pub struct RemoteServerKeysBatchReqBody {
 }
 crate::json_body_modifier!(RemoteServerKeysBatchReqBody);
 
-/// Response type for the `get_remote_server_keys_batch` endpoint.
+/// Response type for the `fetch_remote_server_keys_batch` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
 pub struct RemoteServerKeysBatchResBody {
@@ -160,7 +163,10 @@ impl RemoteServerKeysBatchResBody {
 //     }
 // };
 
-pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
+pub fn remote_server_keys_request(
+    origin: &str,
+    args: RemoteServerKeysReqArgs,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/key/v2/query/{}?minimum_valid_until_ts={}",
         args.server_name, args.minimum_valid_until_ts
@@ -168,7 +174,7 @@ pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -
     Ok(crate::sending::get(url))
 }
 
-/// Request type for the `get_remote_server_keys` endpoint.
+/// Request type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RemoteServerKeysReqArgs {
     /// The server's DNS name to query
@@ -186,7 +192,7 @@ pub struct RemoteServerKeysReqArgs {
     pub minimum_valid_until_ts: UnixMillis,
 }
 
-/// Response type for the `get_remote_server_keys` endpoint.
+/// Response type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 
 pub struct RemoteServerKeysResBody {

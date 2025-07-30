@@ -7,22 +7,28 @@ use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody}
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::tag::TagEventContent;
 use crate::core::user::UserRoomReqArgs;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, empty_ok, json_ok};
+use crate::{AuthArgs, DepotExt, EmptyResult, data, JsonResult, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.
 ///
 /// - Gets the tag event of the room account data.
 #[endpoint]
-pub(super) async fn list_tags(_aa: AuthArgs, args: UserRoomReqArgs, depot: &mut Depot) -> JsonResult<TagsResBody> {
+pub(super) async fn list_tags(
+    _aa: AuthArgs,
+    args: UserRoomReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<TagsResBody> {
     let authed = depot.authed_info()?;
 
-    let user_data_content = crate::data::user::get_data::<TagEventContent>(
+    let user_data_content = data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     json_ok(TagsResBody {
         tags: user_data_content.tags,
@@ -42,12 +48,14 @@ pub(super) async fn upsert_tag(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
 
-    let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
+    let mut user_data_content = data::user::get_data::<TagEventContent>(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     user_data_content
         .tags
@@ -67,7 +75,11 @@ pub(super) async fn upsert_tag(
 ///
 /// - Removes the tag from the tag event of the room account data.
 #[endpoint]
-pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &mut Depot) -> EmptyResult {
+pub(super) async fn delete_tag(
+    _aa: AuthArgs,
+    args: OperateTagReqArgs,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     let mut user_data_content = crate::data::user::get_data::<TagEventContent>(
@@ -75,7 +87,9 @@ pub(super) async fn delete_tag(_aa: AuthArgs, args: OperateTagReqArgs, depot: &m
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
     )?
-    .unwrap_or_else(|| TagEventContent { tags: BTreeMap::new() });
+    .unwrap_or_else(|| TagEventContent {
+        tags: BTreeMap::new(),
+    });
 
     user_data_content.tags.remove(&args.tag.clone().into());
 

@@ -25,7 +25,11 @@ pub struct GalleryMessageEventContent {
 
 impl GalleryMessageEventContent {
     /// Creates a new `GalleryMessageEventContent`.
-    pub fn new(body: String, formatted: Option<FormattedBody>, itemtypes: Vec<GalleryItemType>) -> Self {
+    pub fn new(
+        body: String,
+        formatted: Option<FormattedBody>,
+        itemtypes: Vec<GalleryItemType>,
+    ) -> Self {
         Self {
             body,
             formatted,
@@ -76,7 +80,10 @@ impl GalleryItemType {
     /// Returns an error if the `itemtype` is known and serialization of `data` to the corresponding
     /// `GalleryItemType` variant fails.
     pub fn new(itemtype: &str, body: String, data: JsonObject) -> serde_json::Result<Self> {
-        fn deserialize_variant<T: DeserializeOwned>(body: String, mut obj: JsonObject) -> serde_json::Result<T> {
+        fn deserialize_variant<T: DeserializeOwned>(
+            body: String,
+            mut obj: JsonObject,
+        ) -> serde_json::Result<T> {
             obj.insert("body".into(), body.into());
             serde_json::from_value(JsonValue::Object(obj))
         }

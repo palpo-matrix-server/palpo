@@ -180,7 +180,10 @@ impl NotificationCounts {
     /// Create new notification counts from the given unread and missed call
     /// counts.
     pub fn new(unread: u64, missed_calls: u64) -> Self {
-        NotificationCounts { unread, missed_calls }
+        NotificationCounts {
+            unread,
+            missed_calls,
+        }
     }
 
     fn is_default(&self) -> bool {

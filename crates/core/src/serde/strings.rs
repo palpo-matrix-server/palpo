@@ -35,7 +35,10 @@ where
 ///
 /// To be used like this:
 /// `#[serde(serialize_with = "empty_string_as_none")]`
-pub fn none_as_empty_string<T: Serialize, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn none_as_empty_string<T: Serialize, S>(
+    value: &Option<T>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -89,7 +92,9 @@ where
 struct F64OrStringWrapper(#[serde(deserialize_with = "deserialize_as_f64_or_string")] f64);
 
 /// Deserializes an `Option<f64>` as encoded as a f64 or a string.
-pub fn deserialize_as_optional_f64_or_string<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+pub fn deserialize_as_optional_f64_or_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<f64>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -172,7 +177,9 @@ where
 ///
 /// To be used like this:
 /// `#[serde(deserialize_with = "btreemap_deserialize_v1_powerlevel_values")]`
-pub fn btreemap_deserialize_v1_powerlevel_values<'de, D, T>(de: D) -> Result<BTreeMap<T, i64>, D::Error>
+pub fn btreemap_deserialize_v1_powerlevel_values<'de, D, T>(
+    de: D,
+) -> Result<BTreeMap<T, i64>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Ord,
@@ -195,7 +202,9 @@ where
 
     impl<T> IntMapVisitor<T> {
         fn new() -> Self {
-            Self { _phantom: PhantomData }
+            Self {
+                _phantom: PhantomData,
+            }
         }
     }
 
@@ -251,7 +260,9 @@ where
 
     impl<T> IntMapVisitor<T> {
         fn new() -> Self {
-            Self { _phantom: PhantomData }
+            Self {
+                _phantom: PhantomData,
+            }
         }
     }
 
@@ -301,7 +312,9 @@ where
 
     impl<T> IntMapVisitor<T> {
         fn new() -> Self {
-            Self { _phantom: PhantomData }
+            Self {
+                _phantom: PhantomData,
+            }
         }
     }
 
@@ -355,14 +368,18 @@ mod tests {
 
     #[test]
     fn weird_plus_string() {
-        let test = serde_json::from_value::<Test>(serde_json::json!({ "num": "  +0000000001000   " })).unwrap();
+        let test =
+            serde_json::from_value::<Test>(serde_json::json!({ "num": "  +0000000001000   " }))
+                .unwrap();
         assert_eq!(test.num, 1000);
     }
 
     #[test]
     fn weird_minus_string() {
-        let test =
-            serde_json::from_value::<Test>(serde_json::json!({ "num": "  \n\n-0000000000000001000   " })).unwrap();
+        let test = serde_json::from_value::<Test>(
+            serde_json::json!({ "num": "  \n\n-0000000000000001000   " }),
+        )
+        .unwrap();
         assert_eq!(test.num, -1000);
     }
 }

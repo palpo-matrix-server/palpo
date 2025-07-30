@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::events::room::member::RoomMemberEvent;
 use crate::serde::{JsonValue, RawJson, StringEnum};
 use crate::third_party::Medium;
-use crate::{OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr};
+use crate::{
+    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
+};
 
 /// A signature of an `m.third_party_invite` token to prove that this user owns
 /// a third party identity which has been invited to the room.

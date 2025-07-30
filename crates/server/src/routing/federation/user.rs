@@ -6,7 +6,9 @@ use salvo::prelude::*;
 
 use crate::AuthArgs;
 use crate::core::federation::device::{Device, DevicesResBody};
-use crate::core::federation::key::{ClaimKeysReqBody, ClaimKeysResBody, QueryKeysReqBody, QueryKeysResBody};
+use crate::core::federation::key::{
+    ClaimKeysReqBody, ClaimKeysResBody, QueryKeysReqBody, QueryKeysResBody,
+};
 use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::schema::*;
@@ -25,7 +27,10 @@ pub fn router() -> Router {
 /// #POST /_matrix/federation/v1/user/keys/claim
 /// Claims one-time keys.
 #[endpoint]
-async fn claim_keys(_aa: AuthArgs, body: JsonBody<ClaimKeysReqBody>) -> CjsonResult<ClaimKeysResBody> {
+async fn claim_keys(
+    _aa: AuthArgs,
+    body: JsonBody<ClaimKeysReqBody>,
+) -> CjsonResult<ClaimKeysResBody> {
     let result = crate::user::claim_one_time_keys(&body.one_time_keys).await?;
 
     cjson_ok(ClaimKeysResBody {
@@ -41,7 +46,13 @@ async fn query_keys(
     depot: &mut Depot,
 ) -> CjsonResult<QueryKeysResBody> {
     let origin = depot.origin()?;
-    let result = crate::user::query_keys(None, &body.device_keys, |u| u.server_name() == origin, false).await?;
+    let result = crate::user::query_keys(
+        None,
+        &body.device_keys,
+        |u| u.server_name() == origin,
+        false,
+    )
+    .await?;
 
     cjson_ok(QueryKeysResBody {
         device_keys: result.device_keys,
@@ -53,7 +64,11 @@ async fn query_keys(
 /// #GET /_matrix/federation/v1/user/devices/{user_id}
 /// Gets information on all devices of the user.
 #[endpoint]
-fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<DevicesResBody> {
+fn get_devices(
+    _aa: AuthArgs,
+    user_id: PathParam<OwnedUserId>,
+    depot: &mut Depot,
+) -> JsonResult<DevicesResBody> {
     let origin = depot.origin()?;
     let user_id = user_id.into_inner();
     let stream_id = device_streams::table
@@ -80,8 +95,12 @@ fn get_devices(_aa: AuthArgs, user_id: PathParam<OwnedUserId>, depot: &mut Depot
     json_ok(DevicesResBody {
         stream_id: stream_id as u64,
         devices,
-        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| u.server_name() == origin)?,
-        self_signing_key: crate::user::get_self_signing_key(Some(&user_id), &user_id, &|u| u.server_name() == origin)?,
+        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| {
+            u.server_name() == origin
+        })?,
+        self_signing_key: crate::user::get_self_signing_key(Some(&user_id), &user_id, &|u| {
+            u.server_name() == origin
+        })?,
         user_id: user_id.to_owned(),
     })
 }

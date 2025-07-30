@@ -3,7 +3,11 @@ use crate::core::{EventId, MatrixError, RoomId, ServerName};
 use crate::event::handler;
 use crate::room::{self, state};
 
-pub fn access_check(origin: &ServerName, room_id: &RoomId, event_id: Option<&EventId>) -> AppResult<()> {
+pub fn access_check(
+    origin: &ServerName,
+    room_id: &RoomId,
+    event_id: Option<&EventId>,
+) -> AppResult<()> {
     if !room::is_server_joined(origin, room_id)? {
         return Err(MatrixError::forbidden("Server is not in room.", None).into());
     }

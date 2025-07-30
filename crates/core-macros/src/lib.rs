@@ -7,7 +7,8 @@
 
 use identifiers::expand_id_zst;
 use palpo_identifiers_validation::{
-    device_key_id, event_id, key_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name, user_id,
+    device_key_id, event_id, key_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
+    user_id,
 };
 use proc_macro::TokenStream;
 use proc_macro2 as pm2;
@@ -80,8 +81,8 @@ pub fn event_enum(input: TokenStream) -> TokenStream {
         .map(|e| expand_event_enums(e).unwrap_or_else(syn::Error::into_compile_error))
         .collect::<pm2::TokenStream>();
 
-    let event_types =
-        expand_event_type_enum(event_enum_input, &palpo_core).unwrap_or_else(syn::Error::into_compile_error);
+    let event_types = expand_event_type_enum(event_enum_input, &palpo_core)
+        .unwrap_or_else(syn::Error::into_compile_error);
 
     let tokens = quote! {
         #enums
@@ -145,7 +146,10 @@ pub fn derive_id_zst(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn device_key_id(input: TokenStream) -> TokenStream {
     let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
-    assert!(device_key_id::validate(&id.value()).is_ok(), "Invalid device key id");
+    assert!(
+        device_key_id::validate(&id.value()).is_ok(),
+        "Invalid device key id"
+    );
 
     let output = quote! {
         <&#dollar_crate::DeviceKeyId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
@@ -171,7 +175,10 @@ pub fn event_id(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn room_alias_id(input: TokenStream) -> TokenStream {
     let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
-    assert!(room_alias_id::validate(&id.value()).is_ok(), "Invalid room_alias_id");
+    assert!(
+        room_alias_id::validate(&id.value()).is_ok(),
+        "Invalid room_alias_id"
+    );
 
     let output = quote! {
         <&#dollar_crate::RoomAliasId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
@@ -196,7 +203,10 @@ pub fn room_id(input: TokenStream) -> TokenStream {
 /// Compile-time checked `RoomVersionId` construction.
 #[proc_macro]
 pub fn room_version_id(input: TokenStream) -> TokenStream {
-    let IdentifierInput { dollar_crate: _, id } = parse_macro_input!(input as IdentifierInput);
+    let IdentifierInput {
+        dollar_crate: _,
+        id,
+    } = parse_macro_input!(input as IdentifierInput);
     assert!(
         room_version_id::validate(&id.value()).is_ok(),
         "Invalid room_version_id"
@@ -213,7 +223,10 @@ pub fn room_version_id(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn server_signing_key_id(input: TokenStream) -> TokenStream {
     let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
-    assert!(key_id::validate(&id.value()).is_ok(), "Invalid server_signing_key_id");
+    assert!(
+        key_id::validate(&id.value()).is_ok(),
+        "Invalid server_signing_key_id"
+    );
 
     let output = quote! {
         <&#dollar_crate::ServerSigningKeyId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
@@ -226,7 +239,10 @@ pub fn server_signing_key_id(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn server_name(input: TokenStream) -> TokenStream {
     let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
-    assert!(server_name::validate(&id.value()).is_ok(), "Invalid server_name");
+    assert!(
+        server_name::validate(&id.value()).is_ok(),
+        "Invalid server_name"
+    );
 
     let output = quote! {
         <&#dollar_crate::ServerName as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
@@ -379,5 +395,7 @@ pub fn derive_string_enum(input: TokenStream) -> TokenStream {
     }
 
     let input = parse_macro_input!(input as ItemEnum);
-    expand_all(input).unwrap_or_else(syn::Error::into_compile_error).into()
+    expand_all(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }

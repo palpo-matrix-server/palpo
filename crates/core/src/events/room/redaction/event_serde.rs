@@ -1,8 +1,8 @@
 use serde::{Deserialize, Deserializer, de};
 
 use super::{
-    OriginalRoomRedactionEvent, OriginalSyncRoomRedactionEvent, RoomRedactionEvent, RoomRedactionEventContent,
-    RoomRedactionUnsigned, SyncRoomRedactionEvent,
+    OriginalRoomRedactionEvent, OriginalSyncRoomRedactionEvent, RoomRedactionEvent,
+    RoomRedactionEventContent, RoomRedactionUnsigned, SyncRoomRedactionEvent,
 };
 use crate::{
     OwnedEventId, OwnedRoomId, OwnedUserId, UnixMillis,

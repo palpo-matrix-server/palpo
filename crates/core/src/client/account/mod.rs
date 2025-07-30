@@ -5,7 +5,10 @@ use salvo::prelude::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::macros::StringEnum;
-use crate::{OwnedClientSecret, OwnedDeviceId, OwnedSessionId, OwnedUserId, PrivOwnedStr, client::uiaa::AuthData};
+use crate::{
+    OwnedClientSecret, OwnedDeviceId, OwnedSessionId, OwnedUserId, PrivOwnedStr,
+    client::uiaa::AuthData,
+};
 
 /// Additional authentication information for requestToken endpoints.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]

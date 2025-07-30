@@ -175,8 +175,14 @@ pub struct FieldTypeInit {
 
 impl From<FieldTypeInit> for FieldType {
     fn from(init: FieldTypeInit) -> Self {
-        let FieldTypeInit { regexp, placeholder } = init;
-        Self { regexp, placeholder }
+        let FieldTypeInit {
+            regexp,
+            placeholder,
+        } = init;
+        Self {
+            regexp,
+            placeholder,
+        }
     }
 }
 
@@ -195,7 +201,11 @@ pub struct Location {
 
 impl Location {
     /// Creates a new `Location` with the given alias, protocol and fields.
-    pub fn new(alias: OwnedRoomAliasId, protocol: String, fields: BTreeMap<String, String>) -> Self {
+    pub fn new(
+        alias: OwnedRoomAliasId,
+        protocol: String,
+        fields: BTreeMap<String, String>,
+    ) -> Self {
         Self {
             alias,
             protocol,
@@ -541,6 +551,9 @@ mod tests {
             to_json_value(third_party_id.clone()).unwrap(),
             third_party_id_serialized
         );
-        assert_eq!(third_party_id, from_json_value(third_party_id_serialized).unwrap());
+        assert_eq!(
+            third_party_id,
+            from_json_value(third_party_id_serialized).unwrap()
+        );
     }
 }

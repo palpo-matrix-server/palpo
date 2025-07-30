@@ -12,9 +12,9 @@ pub fn router() -> Router {
                     .hoop(hoops::auth_by_access_token)
                     .push(Router::with_path("create").post(create_mxc_uri))
                     .push(
-                        Router::with_path("upload")
-                            .post(create_content)
-                            .push(Router::with_path("{server_name}/{media_id}").put(upload_content)),
+                        Router::with_path("upload").post(create_content).push(
+                            Router::with_path("{server_name}/{media_id}").put(upload_content),
+                        ),
                     )
                     .push(
                         Router::with_hoop(hoops::limit_rate)
@@ -29,10 +29,9 @@ pub fn router() -> Router {
                             .get(get_content)
                             .push(Router::with_path("{filename}").get(get_content_with_filename)),
                     )
-                    .push(
-                        Router::with_hoop(hoops::limit_rate)
-                            .push(Router::with_path("thumbnail/{server_name}/{media_id}").get(get_thumbnail)),
-                    ),
+                    .push(Router::with_hoop(hoops::limit_rate).push(
+                        Router::with_path("thumbnail/{server_name}/{media_id}").get(get_thumbnail),
+                    )),
             )
     }
     media

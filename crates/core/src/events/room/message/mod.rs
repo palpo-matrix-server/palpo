@@ -43,7 +43,8 @@ mod without_relation;
 pub use self::url_preview::{PreviewImage, PreviewImageSource, UrlPreview};
 
 pub use audio::{
-    AudioInfo, AudioMessageEventContent, UnstableAmplitude, UnstableAudioDetailsContentBlock, UnstableVoiceContentBlock,
+    AudioInfo, AudioMessageEventContent, UnstableAmplitude, UnstableAudioDetailsContentBlock,
+    UnstableVoiceContentBlock,
 };
 
 pub use self::{
@@ -276,7 +277,9 @@ impl RoomMessageEventContent {
     ///
     /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
     pub fn add_mentions(mut self, mentions: Mentions) -> Self {
-        self.mentions.get_or_insert_with(Mentions::new).add(mentions);
+        self.mentions
+            .get_or_insert_with(Mentions::new)
+            .add(mentions);
         self
     }
 
@@ -313,7 +316,11 @@ impl RoomMessageEventContent {
     /// [tags and attributes]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
     /// [rich reply fallback]: https://spec.matrix.org/latest/client-server-api/#fallbacks-for-rich-replies
     #[cfg(feature = "html")]
-    pub fn sanitize(&mut self, mode: HtmlSanitizerMode, remove_reply_fallback: RemoveReplyFallback) {
+    pub fn sanitize(
+        &mut self,
+        mode: HtmlSanitizerMode,
+        remove_reply_fallback: RemoveReplyFallback,
+    ) {
         let remove_reply_fallback = if matches!(self.relates_to, Some(Relation::Reply { .. })) {
             remove_reply_fallback
         } else {
@@ -452,7 +459,10 @@ impl MessageType {
     /// Returns an error if the `msgtype` is known and serialization of `data`
     /// to the corresponding `MessageType` variant fails.
     pub fn new(msgtype: &str, body: String, data: JsonObject) -> serde_json::Result<Self> {
-        fn deserialize_variant<T: DeserializeOwned>(body: String, mut obj: JsonObject) -> serde_json::Result<T> {
+        fn deserialize_variant<T: DeserializeOwned>(
+            body: String,
+            mut obj: JsonObject,
+        ) -> serde_json::Result<T> {
             obj.insert("body".into(), body.into());
             serde_json::from_value(JsonValue::Object(obj))
         }
@@ -467,7 +477,9 @@ impl MessageType {
             "m.server_notice" => Self::ServerNotice(deserialize_variant(body, data)?),
             "m.text" => Self::Text(deserialize_variant(body, data)?),
             "m.video" => Self::Video(deserialize_variant(body, data)?),
-            "m.key.verification.request" => Self::VerificationRequest(deserialize_variant(body, data)?),
+            "m.key.verification.request" => {
+                Self::VerificationRequest(deserialize_variant(body, data)?)
+            }
             _ => Self::_Custom(CustomEventContent {
                 msgtype: msgtype.to_owned(),
                 body,
@@ -607,10 +619,20 @@ impl MessageType {
     /// [tags and attributes]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
     /// [rich reply fallback]: https://spec.matrix.org/latest/client-server-api/#fallbacks-for-rich-replies
     #[cfg(feature = "html")]
-    pub fn sanitize(&mut self, mode: HtmlSanitizerMode, remove_reply_fallback: RemoveReplyFallback) {
-        if let MessageType::Emote(EmoteMessageEventContent { body, formatted, .. })
-        | MessageType::Notice(NoticeMessageEventContent { body, formatted, .. })
-        | MessageType::Text(TextMessageEventContent { body, formatted, .. }) = self
+    pub fn sanitize(
+        &mut self,
+        mode: HtmlSanitizerMode,
+        remove_reply_fallback: RemoveReplyFallback,
+    ) {
+        if let MessageType::Emote(EmoteMessageEventContent {
+            body, formatted, ..
+        })
+        | MessageType::Notice(NoticeMessageEventContent {
+            body, formatted, ..
+        })
+        | MessageType::Text(TextMessageEventContent {
+            body, formatted, ..
+        }) = self
         {
             if let Some(formatted) = formatted {
                 formatted.sanitize_html(mode, remove_reply_fallback);
@@ -626,9 +648,18 @@ impl MessageType {
 
         let (body, formatted) = {
             match self {
-                MessageType::Emote(m) => (&mut m.body, Some(m.formatted.get_or_insert_with(empty_formatted_body))),
-                MessageType::Notice(m) => (&mut m.body, Some(m.formatted.get_or_insert_with(empty_formatted_body))),
-                MessageType::Text(m) => (&mut m.body, Some(m.formatted.get_or_insert_with(empty_formatted_body))),
+                MessageType::Emote(m) => (
+                    &mut m.body,
+                    Some(m.formatted.get_or_insert_with(empty_formatted_body)),
+                ),
+                MessageType::Notice(m) => (
+                    &mut m.body,
+                    Some(m.formatted.get_or_insert_with(empty_formatted_body)),
+                ),
+                MessageType::Text(m) => (
+                    &mut m.body,
+                    Some(m.formatted.get_or_insert_with(empty_formatted_body)),
+                ),
                 MessageType::Audio(m) => (&mut m.body, None),
                 MessageType::File(m) => (&mut m.body, None),
                 MessageType::Image(m) => (&mut m.body, None),
@@ -790,7 +821,11 @@ impl FormattedBody {
     /// [tags and attributes]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
     /// [rich reply fallback]: https://spec.matrix.org/latest/client-server-api/#fallbacks-for-rich-replies
     #[cfg(feature = "html")]
-    pub fn sanitize_html(&mut self, mode: HtmlSanitizerMode, remove_reply_fallback: RemoveReplyFallback) {
+    pub fn sanitize_html(
+        &mut self,
+        mode: HtmlSanitizerMode,
+        remove_reply_fallback: RemoveReplyFallback,
+    ) {
         if self.format == MessageFormat::Html {
             self.body = sanitize_html(&self.body, mode, remove_reply_fallback);
         }
@@ -940,11 +975,17 @@ mod tests {
 
         // With new paragraph.
         let text = "Hello\n\nworld.";
-        assert_eq!(parse_markdown(text).as_deref(), Some("<p>Hello</p>\n<p>world.</p>\n"));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("<p>Hello</p>\n<p>world.</p>\n")
+        );
 
         // With heading and paragraph.
         let text = "## Hello\n\nworld.";
-        assert_eq!(parse_markdown(text).as_deref(), Some("<h2>Hello</h2>\n<p>world.</p>\n"));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("<h2>Hello</h2>\n<p>world.</p>\n")
+        );
 
         // With paragraph and code block.
         let text = "Hello\n\n```\nworld.\n```";
@@ -955,11 +996,17 @@ mod tests {
 
         // With tagged element.
         let text = "Hello **world**.";
-        assert_eq!(parse_markdown(text).as_deref(), Some("Hello <strong>world</strong>."));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("Hello <strong>world</strong>.")
+        );
 
         // Containing backslash escapes.
         let text = r#"Hello \<world\>."#;
-        assert_eq!(parse_markdown(text).as_deref(), Some("Hello &lt;world&gt;."));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("Hello &lt;world&gt;.")
+        );
 
         // Starting with backslash escape.
         let text = r#"\> Hello world."#;
@@ -967,7 +1014,10 @@ mod tests {
 
         // With entity reference.
         let text = r#"Hello &lt;world&gt;."#;
-        assert_eq!(parse_markdown(text).as_deref(), Some("Hello &lt;world&gt;."));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("Hello &lt;world&gt;.")
+        );
 
         // With numeric reference.
         let text = "Hello w&#8853;rld.";
@@ -991,7 +1041,10 @@ mod tests {
         assert_eq!(parse_markdown(text).as_deref(), Some("*not emphasized*"));
 
         let text = r#"\<br/> not a tag"#;
-        assert_eq!(parse_markdown(text).as_deref(), Some("&lt;br/&gt; not a tag"));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("&lt;br/&gt; not a tag")
+        );
 
         let text = r#"\[not a link](/foo)"#;
         assert_eq!(parse_markdown(text).as_deref(), Some("[not a link](/foo)"));
@@ -1021,13 +1074,19 @@ mod tests {
         );
 
         let text = r#"\\*emphasis*"#;
-        assert_eq!(parse_markdown(text).as_deref(), Some(r#"\<em>emphasis</em>"#));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some(r#"\<em>emphasis</em>"#)
+        );
 
         let text = "foo\\\nbar";
         assert_eq!(parse_markdown(text).as_deref(), Some("foo<br />\nbar"));
 
         let text = " ***\n  ***\n   ***";
-        assert_eq!(parse_markdown(text).as_deref(), Some("<hr />\n<hr />\n<hr />\n"));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("<hr />\n<hr />\n<hr />\n")
+        );
 
         let text = "Foo\n***\nbar";
         assert_eq!(
@@ -1054,7 +1113,10 @@ mod tests {
         assert_eq!(parse_markdown(text).as_deref(), Some("aaa<br />\nbbb"));
 
         let text = "aaa\n             bbb\n                                       ccc";
-        assert_eq!(parse_markdown(text).as_deref(), Some("aaa<br />\nbbb<br />\nccc"));
+        assert_eq!(
+            parse_markdown(text).as_deref(),
+            Some("aaa<br />\nbbb<br />\nccc")
+        );
 
         let text = "aaa     \nbbb     ";
         assert_eq!(parse_markdown(text).as_deref(), Some("aaa<br />\nbbb"));

@@ -31,7 +31,8 @@ use salvo::prelude::*;
 
 use crate::config;
 use crate::core::client::discovery::{
-    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability, VersionsResBody,
+    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability,
+    VersionsResBody,
 };
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::routing::prelude::*;
@@ -79,7 +80,10 @@ pub fn router() -> Router {
                     .push(push_rule::authed_router())
                     .push(presence::authed_router())
                     .push(Router::with_path("joined_rooms").get(room::membership::joined_rooms))
-                    .push(Router::with_path("join/{room_id_or_alias}").post(room::membership::join_room_by_id_or_alias))
+                    .push(
+                        Router::with_path("join/{room_id_or_alias}")
+                            .post(room::membership::join_room_by_id_or_alias),
+                    )
                     .push(Router::with_path("createRoom").post(room::create_room))
                     .push(Router::with_path("notifications").get(get_notifications))
                     .push(Router::with_path("sync").get(sync_v3::sync_events_v3))
@@ -88,7 +92,10 @@ pub fn router() -> Router {
                             .get(device::dehydrated)
                             .put(device::upsert_dehydrated)
                             .delete(device::delete_dehydrated)
-                            .push(Router::with_path("{device_id}/events").post(to_device::for_dehydrated)),
+                            .push(
+                                Router::with_path("{device_id}/events")
+                                    .post(to_device::for_dehydrated),
+                            ),
                     ),
             )
             .push(
@@ -119,8 +126,11 @@ fn search(
     let authed = depot.authed_info()?;
 
     let search_criteria = body.search_categories.room_events.as_ref().unwrap();
-    let room_events =
-        crate::event::search::search_pdus(authed.user_id(), &search_criteria, args.next_batch.as_deref())?;
+    let room_events = crate::event::search::search_pdus(
+        authed.user_id(),
+        &search_criteria,
+        args.next_batch.as_deref(),
+    )?;
     json_ok(SearchResBody::new(ResultCategories { room_events }))
 }
 

@@ -3,7 +3,8 @@
 use serde::{Deserialize, de};
 
 use super::{
-    MessageType, RoomMessageEventContent, RoomMessageEventContentWithoutRelation, relation_serde::deserialize_relation,
+    MessageType, RoomMessageEventContent, RoomMessageEventContentWithoutRelation,
+    relation_serde::deserialize_relation,
 };
 use crate::{
     events::Mentions,
@@ -112,13 +113,22 @@ pub(in super::super) mod msc3488 {
         #[serde(flatten)]
         pub message: Option<MessageContentBlock>,
 
-        #[serde(rename = "org.matrix.msc3488.location", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "org.matrix.msc3488.location",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub location: Option<LocationContent>,
 
-        #[serde(rename = "org.matrix.msc3488.asset", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "org.matrix.msc3488.asset",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub asset: Option<AssetContent>,
 
-        #[serde(rename = "org.matrix.msc3488.ts", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "org.matrix.msc3488.ts",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub ts: Option<UnixMillis>,
     }
 

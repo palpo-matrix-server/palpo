@@ -8,7 +8,9 @@ use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::events::{audio::Amplitude, file::FileContentBlock, message::TextContentBlock, room::message::Relation};
+use crate::events::{
+    audio::Amplitude, file::FileContentBlock, message::TextContentBlock, room::message::Relation,
+};
 
 /// The payload for an extensible voice message.
 ///
@@ -53,7 +55,11 @@ pub struct VoiceEventContent {
 impl VoiceEventContent {
     /// Creates a new `VoiceEventContent` with the given fallback
     /// representation, file and audio details.
-    pub fn new(text: TextContentBlock, file: FileContentBlock, audio_details: VoiceAudioDetailsContentBlock) -> Self {
+    pub fn new(
+        text: TextContentBlock,
+        file: FileContentBlock,
+        audio_details: VoiceAudioDetailsContentBlock,
+    ) -> Self {
         Self {
             text,
             file,

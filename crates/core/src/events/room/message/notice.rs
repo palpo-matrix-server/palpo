@@ -19,7 +19,10 @@ impl NoticeMessageEventContent {
     /// A convenience constructor to create a plain text notice.
     pub fn plain(body: impl Into<String>) -> Self {
         let body = body.into();
-        Self { body, formatted: None }
+        Self {
+            body,
+            formatted: None,
+        }
     }
 
     /// A convenience constructor to create an html notice.

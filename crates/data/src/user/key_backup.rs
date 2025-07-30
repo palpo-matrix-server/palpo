@@ -76,7 +76,10 @@ pub struct NewDbRoomKeysVersion {
     pub created_at: UnixMillis,
 }
 
-pub fn create_backup(user_id: &UserId, algorithm: &RawJson<BackupAlgorithm>) -> DataResult<DbRoomKeysVersion> {
+pub fn create_backup(
+    user_id: &UserId,
+    algorithm: &RawJson<BackupAlgorithm>,
+) -> DataResult<DbRoomKeysVersion> {
     let version = UnixMillis::now().get() as i64;
     let new_keys_version = NewDbRoomKeysVersion {
         user_id: user_id.to_owned(),
@@ -91,7 +94,11 @@ pub fn create_backup(user_id: &UserId, algorithm: &RawJson<BackupAlgorithm>) -> 
         .map_err(Into::into)
 }
 
-pub fn update_backup(user_id: &UserId, version: i64, algorithm: &BackupAlgorithm) -> DataResult<()> {
+pub fn update_backup(
+    user_id: &UserId,
+    version: i64,
+    algorithm: &BackupAlgorithm,
+) -> DataResult<()> {
     diesel::update(
         e2e_room_keys_versions::table
             .filter(e2e_room_keys_versions::user_id.eq(user_id))
@@ -114,7 +121,11 @@ pub fn get_latest_room_key(user_id: &UserId) -> DataResult<Option<DbRoomKey>> {
         .map_err(Into::into)
 }
 
-pub fn get_room_key(user_id: &UserId, room_id: &RoomId, version: i64) -> DataResult<Option<DbRoomKey>> {
+pub fn get_room_key(
+    user_id: &UserId,
+    room_id: &RoomId,
+    version: i64,
+) -> DataResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
         .filter(e2e_room_keys::room_id.eq(room_id))
@@ -132,7 +143,10 @@ pub fn get_latest_room_keys_version(user_id: &UserId) -> DataResult<Option<DbRoo
         .optional()
         .map_err(Into::into)
 }
-pub fn get_room_keys_version(user_id: &UserId, version: i64) -> DataResult<Option<DbRoomKeysVersion>> {
+pub fn get_room_keys_version(
+    user_id: &UserId,
+    version: i64,
+) -> DataResult<Option<DbRoomKeysVersion>> {
     e2e_room_keys_versions::table
         .filter(e2e_room_keys_versions::user_id.eq(user_id))
         .filter(e2e_room_keys_versions::version.eq(version))
@@ -258,7 +272,12 @@ pub fn delete_room_keys(user_id: &UserId, version: i64, room_id: &RoomId) -> Dat
     Ok(())
 }
 
-pub fn delete_room_key(user_id: &UserId, version: i64, room_id: &RoomId, session_id: &SessionId) -> DataResult<()> {
+pub fn delete_room_key(
+    user_id: &UserId,
+    version: i64,
+    room_id: &RoomId,
+    session_id: &SessionId,
+) -> DataResult<()> {
     diesel::delete(
         e2e_room_keys::table
             .filter(e2e_room_keys::user_id.eq(user_id))

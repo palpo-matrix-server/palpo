@@ -9,7 +9,10 @@ use serde::de::DeserializeOwned;
 use crate::AppResult;
 
 pub fn is_safe_dir_path(dir_path: &str) -> bool {
-    !dir_path.contains('.') && !dir_path.contains(':') && !dir_path.contains('\\') && !dir_path.starts_with('/')
+    !dir_path.contains('.')
+        && !dir_path.contains(':')
+        && !dir_path.contains('\\')
+        && !dir_path.starts_with('/')
 }
 pub struct TempPath(String);
 impl TempPath {
@@ -42,7 +45,8 @@ fn file_name_sanitized(file_name: &str) -> ::std::path::PathBuf {
         '/' => '\\',
         _ => '/',
     };
-    let filename = no_null_filename.replace(&opposite_separator.to_string(), &separator.to_string());
+    let filename =
+        no_null_filename.replace(&opposite_separator.to_string(), &separator.to_string());
 
     ::std::path::Path::new(&filename)
         .components()
@@ -67,7 +71,11 @@ pub fn read_json<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> AppResult<T> {
     Ok(serde_json::from_reader::<_, T>(reader)?)
 }
 
-pub fn write_json<P: AsRef<Path>, C: Serialize>(path: P, contents: C, pretty: bool) -> AppResult<()> {
+pub fn write_json<P: AsRef<Path>, C: Serialize>(
+    path: P,
+    contents: C,
+    pretty: bool,
+) -> AppResult<()> {
     std::fs::create_dir_all(get_parent_dir(path.as_ref()))?;
     if pretty {
         std::fs::write(path, serde_json::to_vec_pretty(&contents)?)?;

@@ -274,7 +274,11 @@ pub fn add_to_device_event(
     Ok(())
 }
 
-pub fn remove_to_device_events(user_id: &UserId, device_id: &DeviceId, until_sn: Seqnum) -> DataResult<()> {
+pub fn remove_to_device_events(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    until_sn: Seqnum,
+) -> DataResult<()> {
     diesel::delete(
         device_inboxes::table
             .filter(device_inboxes::user_id.eq(user_id))

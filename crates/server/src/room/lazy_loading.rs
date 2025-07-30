@@ -36,7 +36,12 @@ pub fn lazy_load_mark_sent(
     until_sn: i64,
 ) {
     LAZY_LOAD_WAITING.lock().unwrap().insert(
-        (user_id.to_owned(), device_id.to_owned(), room_id.to_owned(), until_sn),
+        (
+            user_id.to_owned(),
+            device_id.to_owned(),
+            room_id.to_owned(),
+            until_sn,
+        ),
         lazy_load,
     );
 }

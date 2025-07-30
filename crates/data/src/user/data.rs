@@ -74,7 +74,11 @@ pub fn set_data(
     };
     diesel::insert_into(user_datas::table)
         .values(&new_data)
-        .on_conflict((user_datas::user_id, user_datas::room_id, user_datas::data_type))
+        .on_conflict((
+            user_datas::user_id,
+            user_datas::room_id,
+            user_datas::data_type,
+        ))
         .do_update()
         .set(&new_data)
         .get_result::<DbUserData>(&mut connect()?)
@@ -82,10 +86,18 @@ pub fn set_data(
 }
 
 #[tracing::instrument]
-pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>, kind: &str) -> DataResult<Option<E>> {
+pub fn get_data<E: DeserializeOwned>(
+    user_id: &UserId,
+    room_id: Option<&RoomId>,
+    kind: &str,
+) -> DataResult<Option<E>> {
     let row = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
+        .filter(
+            user_datas::room_id
+                .eq(room_id)
+                .or(user_datas::room_id.is_null()),
+        )
         .filter(user_datas::data_type.eq(kind))
         .order_by(user_datas::id.desc())
         .first::<DbUserData>(&mut connect()?)
@@ -99,7 +111,11 @@ pub fn get_data<E: DeserializeOwned>(user_id: &UserId, room_id: Option<&RoomId>,
 
 /// Searches the account data for a specific kind.
 #[tracing::instrument]
-pub fn get_room_data<E: DeserializeOwned>(user_id: &UserId, room_id: &RoomId, kind: &str) -> DataResult<Option<E>> {
+pub fn get_room_data<E: DeserializeOwned>(
+    user_id: &UserId,
+    room_id: &RoomId,
+    kind: &str,
+) -> DataResult<Option<E>> {
     let row = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
         .filter(user_datas::room_id.eq(room_id))
@@ -142,7 +158,11 @@ pub fn data_changes(
 
     let query = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::room_id.eq(room_id).or(user_datas::room_id.is_null()))
+        .filter(
+            user_datas::room_id
+                .eq(room_id)
+                .or(user_datas::room_id.is_null()),
+        )
         .filter(user_datas::occur_sn.ge(since_sn))
         .into_boxed();
     let db_datas = if let Some(until_sn) = until_sn {
@@ -163,9 +183,13 @@ pub fn data_changes(
             "content": db_data.json_data
         });
         if db_data.room_id.is_none() {
-            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(&account_data)?));
+            user_datas.push(AnyRawAccountDataEvent::Global(RawJson::from_value(
+                &account_data,
+            )?));
         } else {
-            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(&account_data)?));
+            user_datas.push(AnyRawAccountDataEvent::Room(RawJson::from_value(
+                &account_data,
+            )?));
         }
     }
 

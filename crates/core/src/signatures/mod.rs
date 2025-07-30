@@ -49,8 +49,8 @@
 pub use self::{
     error::{Error, JsonError, ParseError, VerificationError},
     functions::{
-        canonical_json, content_hash, hash_and_sign_event, reference_hash, required_keys, sign_json, verify_event,
-        verify_json,
+        canonical_json, content_hash, hash_and_sign_event, reference_hash, required_keys,
+        sign_json, verify_event, verify_json,
     },
     keys::{Ed25519KeyPair, KeyPair, PublicKeyMap, PublicKeySet},
     signatures::Signature,
@@ -112,7 +112,9 @@ mod tests {
     use pkcs8::{PrivateKeyInfo, der::Decode};
     use serde_json::{from_str as from_json_str, to_string as to_json_string};
 
-    use super::{Ed25519KeyPair, canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json};
+    use super::{
+        Ed25519KeyPair, canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json,
+    };
     use crate::{
         RoomVersionId,
         serde::{Base64, base64::Standard},
@@ -168,7 +170,10 @@ mod tests {
             r#"{"a":"1","b":"2"}"#
         );
 
-        assert_eq!(&test_canonical_json(r#"{"b":"2","a":"1"}"#), r#"{"a":"1","b":"2"}"#);
+        assert_eq!(
+            &test_canonical_json(r#"{"b":"2","a":"1"}"#),
+            r#"{"a":"1","b":"2"}"#
+        );
 
         assert_eq!(
             &test_canonical_json(

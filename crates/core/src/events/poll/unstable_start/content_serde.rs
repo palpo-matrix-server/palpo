@@ -2,7 +2,8 @@ use serde::{Deserialize, Deserializer, Serialize, de, ser::SerializeStruct};
 
 use super::{
     NewUnstablePollStartEventContent, NewUnstablePollStartEventContentWithoutRelation,
-    ReplacementUnstablePollStartEventContent, UnstablePollStartContentBlock, UnstablePollStartEventContent,
+    ReplacementUnstablePollStartEventContent, UnstablePollStartContentBlock,
+    UnstablePollStartEventContent,
 };
 use crate::{
     EventId,
@@ -20,7 +21,8 @@ impl<'de> Deserialize<'de> for UnstablePollStartEventContent {
         let mut deserializer = serde_json::Deserializer::from_str(json.get());
         let relates_to: Option<Relation<NewUnstablePollStartEventContentWithoutRelation>> =
             deserialize_relation(&mut deserializer).map_err(de::Error::custom)?;
-        let UnstablePollStartEventContentDeHelper { poll_start, text } = from_raw_json_value(&json)?;
+        let UnstablePollStartEventContentDeHelper { poll_start, text } =
+            from_raw_json_value(&json)?;
 
         let c = match relates_to {
             Some(Relation::Replacement(relates_to)) => ReplacementUnstablePollStartEventContent {
@@ -30,8 +32,12 @@ impl<'de> Deserialize<'de> for UnstablePollStartEventContent {
             }
             .into(),
             rel => {
-                let poll_start = poll_start.ok_or_else(|| de::Error::missing_field("org.matrix.msc3381.poll.start"))?;
-                let relates_to = rel.map(|r| r.try_into().expect("Relation::Replacement has already been handled"));
+                let poll_start = poll_start
+                    .ok_or_else(|| de::Error::missing_field("org.matrix.msc3381.poll.start"))?;
+                let relates_to = rel.map(|r| {
+                    r.try_into()
+                        .expect("Relation::Replacement has already been handled")
+                });
                 NewUnstablePollStartEventContent {
                     poll_start,
                     text,
@@ -61,7 +67,8 @@ impl Serialize for ReplacementUnstablePollStartEventContent {
     {
         let len = 2 + self.poll_start.is_some() as usize + self.text.is_some() as usize;
 
-        let mut state = serializer.serialize_struct("ReplacementUnstablePollStartEventContent", len)?;
+        let mut state =
+            serializer.serialize_struct("ReplacementUnstablePollStartEventContent", len)?;
 
         if let Some(poll_start) = &self.poll_start {
             state.serialize_field("org.matrix.msc3381.poll.start", poll_start)?;

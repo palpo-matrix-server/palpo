@@ -14,7 +14,10 @@ use crate::{AuthArgs, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
 ///
 /// - TODO: Suggest more servers to join via
 #[endpoint]
-pub(super) async fn get_alias(_aa: AuthArgs, room_alias: PathParam<OwnedRoomAliasId>) -> JsonResult<AliasResBody> {
+pub(super) async fn get_alias(
+    _aa: AuthArgs,
+    room_alias: PathParam<OwnedRoomAliasId>,
+) -> JsonResult<AliasResBody> {
     let room_alias = room_alias.into_inner();
     let Ok((room_id, servers)) = crate::room::resolve_alias(&room_alias, None).await else {
         return Err(MatrixError::not_found("Room with alias not found.").into());

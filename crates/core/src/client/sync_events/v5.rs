@@ -162,7 +162,11 @@ pub struct SyncRoom {
     pub invite_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 
     /// Number of unread notifications.
-    #[serde(flatten, default, skip_serializing_if = "UnreadNotificationsCount::is_empty")]
+    #[serde(
+        flatten,
+        default,
+        skip_serializing_if = "UnreadNotificationsCount::is_empty"
+    )]
     pub unread_notifications: UnreadNotificationsCount,
 
     /// Message-like events and live state events.
@@ -338,7 +342,9 @@ impl<'de> Deserialize<'de> for ReceiptsRoom {
     {
         match deserialize_cow_str(deserializer)?.as_ref() {
             "*" => Ok(Self::AllSubscribed),
-            other => Ok(Self::Room(RoomId::parse(other).map_err(D::Error::custom)?.to_owned())),
+            other => Ok(Self::Room(
+                RoomId::parse(other).map_err(D::Error::custom)?.to_owned(),
+            )),
         }
     }
 }

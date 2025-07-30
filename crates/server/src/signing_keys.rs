@@ -22,8 +22,10 @@ impl SigningKeys {
         let mut keys = Self {
             verify_keys: BTreeMap::new(),
             old_verify_keys: BTreeMap::new(),
-            valid_until_ts: UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(7 * 86400))
-                .expect("Should be valid until year 500,000,000"),
+            valid_until_ts: UnixMillis::from_system_time(
+                SystemTime::now() + Duration::from_secs(7 * 86400),
+            )
+            .expect("Should be valid until year 500,000,000"),
         };
 
         keys.verify_keys.insert(
@@ -47,7 +49,10 @@ impl From<ServerSigningKeys> for SigningKeys {
         } = value;
 
         Self {
-            verify_keys: verify_keys.into_iter().map(|(id, key)| (id.to_string(), key)).collect(),
+            verify_keys: verify_keys
+                .into_iter()
+                .map(|(id, key)| (id.to_string(), key))
+                .collect(),
             old_verify_keys: old_verify_keys
                 .into_iter()
                 .map(|(id, key)| (id.to_string(), key))

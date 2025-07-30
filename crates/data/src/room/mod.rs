@@ -237,7 +237,10 @@ pub struct DbEvent {
 }
 impl DbEvent {
     pub fn get_by_id(id: &EventId) -> DataResult<Self> {
-        events::table.find(id).first(&mut connect()?).map_err(Into::into)
+        events::table
+            .find(id)
+            .first(&mut connect()?)
+            .map_err(Into::into)
     }
 }
 
@@ -267,19 +270,29 @@ pub struct NewDbEvent {
     pub rejection_reason: Option<String>,
 }
 impl NewDbEvent {
-    pub fn from_canonical_json(id: &EventId, sn: Seqnum, value: &CanonicalJsonObject) -> DataResult<Self> {
+    pub fn from_canonical_json(
+        id: &EventId,
+        sn: Seqnum,
+        value: &CanonicalJsonObject,
+    ) -> DataResult<Self> {
         Self::from_json_value(id, sn, serde_json::to_value(value)?)
     }
     pub fn from_json_value(id: &EventId, sn: Seqnum, mut value: JsonValue) -> DataResult<Self> {
         let depth = value.get("depth").cloned().unwrap_or(0.into());
-        let ty = value.get("type").cloned().unwrap_or_else(|| "m.room.message".into());
-        let obj = value.as_object_mut().ok_or(MatrixError::bad_json("Invalid event"))?;
+        let ty = value
+            .get("type")
+            .cloned()
+            .unwrap_or_else(|| "m.room.message".into());
+        let obj = value
+            .as_object_mut()
+            .ok_or(MatrixError::bad_json("Invalid event"))?;
         obj.insert("id".into(), id.as_str().into());
         obj.insert("sn".into(), sn.into());
         obj.insert("type".into(), ty);
         obj.insert("topological_ordering".into(), depth);
         obj.insert("stream_ordering".into(), 0.into());
-        Ok(serde_json::from_value(value).map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
+        Ok(serde_json::from_value(value)
+            .map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
     }
 
     pub fn save(&self) -> DataResult<()> {

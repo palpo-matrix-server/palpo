@@ -95,7 +95,8 @@ mod tests {
     #[test]
     fn valid_base64_event_id() {
         assert_eq!(
-            <&EventId>::try_from("$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk").expect("Failed to create EventId."),
+            <&EventId>::try_from("$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk")
+                .expect("Failed to create EventId."),
             "$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk"
         );
     }
@@ -103,7 +104,8 @@ mod tests {
     #[test]
     fn valid_url_safe_base64_event_id() {
         assert_eq!(
-            <&EventId>::try_from("$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg").expect("Failed to create EventId."),
+            <&EventId>::try_from("$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg")
+                .expect("Failed to create EventId."),
             "$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg"
         );
     }
@@ -123,7 +125,8 @@ mod tests {
     fn serialize_valid_original_event_id() {
         assert_eq!(
             serde_json::to_string(
-                <&EventId>::try_from("$39hvsi03hlne:example.com").expect("Failed to create EventId.")
+                <&EventId>::try_from("$39hvsi03hlne:example.com")
+                    .expect("Failed to create EventId.")
             )
             .expect("Failed to convert EventId to JSON."),
             r#""$39hvsi03hlne:example.com""#
@@ -166,25 +169,32 @@ mod tests {
     #[test]
     fn deserialize_valid_base64_event_id() {
         assert_eq!(
-            serde_json::from_str::<OwnedEventId>(r#""$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk""#)
-                .expect("Failed to convert JSON to EventId"),
-            <&EventId>::try_from("$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk").expect("Failed to create EventId.")
+            serde_json::from_str::<OwnedEventId>(
+                r#""$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk""#
+            )
+            .expect("Failed to convert JSON to EventId"),
+            <&EventId>::try_from("$acR1l0raoZnm60CBwAVgqbZqoO/mYU81xysh1u7XcJk")
+                .expect("Failed to create EventId.")
         );
     }
 
     #[test]
     fn deserialize_valid_url_safe_base64_event_id() {
         assert_eq!(
-            serde_json::from_str::<OwnedEventId>(r#""$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg""#)
-                .expect("Failed to convert JSON to EventId"),
-            <&EventId>::try_from("$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg").expect("Failed to create EventId.")
+            serde_json::from_str::<OwnedEventId>(
+                r#""$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg""#
+            )
+            .expect("Failed to convert JSON to EventId"),
+            <&EventId>::try_from("$Rqnc-F-dvnEYJTyHq_iKxU2bZ1CI92-kuZq3a5lr5Zg")
+                .expect("Failed to create EventId.")
         );
     }
 
     #[test]
     fn valid_original_event_id_with_explicit_standard_port() {
         assert_eq!(
-            <&EventId>::try_from("$39hvsi03hlne:example.com:443").expect("Failed to create EventId."),
+            <&EventId>::try_from("$39hvsi03hlne:example.com:443")
+                .expect("Failed to create EventId."),
             "$39hvsi03hlne:example.com:443"
         );
     }
@@ -192,7 +202,8 @@ mod tests {
     #[test]
     fn valid_original_event_id_with_non_standard_port() {
         assert_eq!(
-            <&EventId>::try_from("$39hvsi03hlne:example.com:5000").expect("Failed to create EventId."),
+            <&EventId>::try_from("$39hvsi03hlne:example.com:5000")
+                .expect("Failed to create EventId."),
             "$39hvsi03hlne:example.com:5000"
         );
     }

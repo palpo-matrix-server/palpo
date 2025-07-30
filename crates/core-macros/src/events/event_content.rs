@@ -104,7 +104,10 @@ impl ContentMeta {
             event_type: either_spanned(self.event_type, other.event_type)?,
             event_kind: either_named("event_kind", self.event_kind, other.event_kind)?,
             custom_redacted: either_spanned(self.custom_redacted, other.custom_redacted)?,
-            custom_possibly_redacted: either_spanned(self.custom_possibly_redacted, other.custom_possibly_redacted)?,
+            custom_possibly_redacted: either_spanned(
+                self.custom_possibly_redacted,
+                other.custom_possibly_redacted,
+            )?,
             state_key_type: either_spanned(self.state_key_type, other.state_key_type)?,
             unsigned_type: either_spanned(self.unsigned_type, other.unsigned_type)?,
             aliases: [self.aliases, other.aliases].concat(),
@@ -287,13 +290,17 @@ impl TryFrom<ContentMeta> for ContentAttrs {
 }
 
 /// Create an `EventContent` implementation for a struct.
-pub fn expand_event_content(input: &DeriveInput, palpo_core: &TokenStream) -> syn::Result<TokenStream> {
+pub fn expand_event_content(
+    input: &DeriveInput,
+    palpo_core: &TokenStream,
+) -> syn::Result<TokenStream> {
     let content_meta = input
         .attrs
         .iter()
         .filter(|attr| attr.path().is_ident("palpo_event"))
         .try_fold(ContentMeta::default(), |meta, attr| {
-            let list: Punctuated<ContentMeta, Token![,]> = attr.parse_args_with(Punctuated::parse_terminated)?;
+            let list: Punctuated<ContentMeta, Token![,]> =
+                attr.parse_args_with(Punctuated::parse_terminated)?;
 
             list.into_iter().try_fold(meta, ContentMeta::merge)
         })?;
@@ -374,8 +381,13 @@ pub fn expand_event_content(input: &DeriveInput, palpo_core: &TokenStream) -> sy
         });
 
     let event_content_without_relation = has_without_relation.then(|| {
-        generate_event_content_without_relation(ident, &input.vis, fields.clone().unwrap(), palpo_core)
-            .unwrap_or_else(syn::Error::into_compile_error)
+        generate_event_content_without_relation(
+            ident,
+            &input.vis,
+            fields.clone().unwrap(),
+            palpo_core,
+        )
+        .unwrap_or_else(syn::Error::into_compile_error)
     });
 
     let event_content_impl = generate_event_content_impl(
@@ -391,7 +403,8 @@ pub fn expand_event_content(input: &DeriveInput, palpo_core: &TokenStream) -> sy
         palpo_core,
     )
     .unwrap_or_else(syn::Error::into_compile_error);
-    let static_event_content_impl = generate_static_event_content_impl(ident, &event_type, palpo_core);
+    let static_event_content_impl =
+        generate_static_event_content_impl(ident, &event_type, palpo_core);
     let type_aliases = event_kind.map(|k| {
         generate_event_type_aliases(k, ident, &input.vis, &event_type.value(), palpo_core)
             .unwrap_or_else(syn::Error::into_compile_error)
@@ -487,7 +500,8 @@ fn generate_redacted_event_content<'a>(
     )
     .unwrap_or_else(syn::Error::into_compile_error);
 
-    let static_event_content_impl = generate_static_event_content_impl(&redacted_ident, event_type, palpo_core);
+    let static_event_content_impl =
+        generate_static_event_content_impl(&redacted_ident, event_type, palpo_core);
 
     Ok(quote! {
         // this is the non redacted event content's impl
@@ -585,14 +599,15 @@ fn generate_possibly_redacted_event_content<'a>(
                                     {
                                         // Error if the field is not kept and uses an unsupported
                                         // serde attribute.
-                                        unsupported_serde_attribute = Some(syn::Error::new_spanned(
-                                            meta,
-                                            "Can't generate PossiblyRedacted struct with \
+                                        unsupported_serde_attribute =
+                                            Some(syn::Error::new_spanned(
+                                                meta,
+                                                "Can't generate PossiblyRedacted struct with \
                                                  unsupported serde attribute\n\
                                                  Expected one of `default`, `rename` or `alias`\n\
                                                  Use the `custom_possibly_redacted` attribute \
                                                  and create the struct manually",
-                                        ));
+                                            ));
                                     }
                                 }
                             }
@@ -624,7 +639,11 @@ fn generate_possibly_redacted_event_content<'a>(
                 let ty = parse_quote! { Option<#old_type> };
                 attrs.push(parse_quote! { #[serde(skip_serializing_if = "Option::is_none")] });
 
-                Ok(Field { attrs, ty, ..f.clone() })
+                Ok(Field {
+                    attrs,
+                    ty,
+                    ..f.clone()
+                })
             }
         })
         .collect::<syn::Result<_>>()?;
@@ -686,19 +705,31 @@ fn generate_event_content_without_relation<'a>(
     );
     let without_relation_ident = format_ident!("{ident}WithoutRelation");
 
-    let with_relation_fn_doc = format!("Transform `self` into a [`{ident}`] with the given relation.");
+    let with_relation_fn_doc =
+        format!("Transform `self` into a [`{ident}`] with the given relation.");
 
-    let (relates_to, other_fields) =
-        fields.partition::<Vec<_>, _>(|f| f.ident.as_ref().filter(|ident| *ident == "relates_to").is_some());
+    let (relates_to, other_fields) = fields.partition::<Vec<_>, _>(|f| {
+        f.ident
+            .as_ref()
+            .filter(|ident| *ident == "relates_to")
+            .is_some()
+    });
 
-    let relates_to_type = relates_to.into_iter().next().map(|f| &f.ty).ok_or_else(|| {
-        syn::Error::new(
-            Span::call_site(),
-            "`without_relation` can only be used on events with a `relates_to` field",
-        )
-    })?;
+    let relates_to_type = relates_to
+        .into_iter()
+        .next()
+        .map(|f| &f.ty)
+        .ok_or_else(|| {
+            syn::Error::new(
+                Span::call_site(),
+                "`without_relation` can only be used on events with a `relates_to` field",
+            )
+        })?;
 
-    let without_relation_fields = other_fields.iter().flat_map(|f| &f.ident).collect::<Vec<_>>();
+    let without_relation_fields = other_fields
+        .iter()
+        .flat_map(|f| &f.ident)
+        .collect::<Vec<_>>();
     let without_relation_struct = if other_fields.is_empty() {
         quote! { ; }
     } else {
@@ -747,9 +778,9 @@ fn generate_event_type_aliases(
     }
 
     let ident_s = ident.to_string();
-    let ev_type_s = ident_s
-        .strip_suffix("Content")
-        .ok_or_else(|| syn::Error::new_spanned(ident, "Expected content struct name ending in `Content`"))?;
+    let ev_type_s = ident_s.strip_suffix("Content").ok_or_else(|| {
+        syn::Error::new_spanned(ident, "Expected content struct name ending in `Content`")
+    })?;
 
     let type_aliases = [
         EventKindVariation::None,
@@ -768,10 +799,14 @@ fn generate_event_type_aliases(
 
         let doc_text = match var {
             EventKindVariation::None | EventKindVariation::Original => "",
-            EventKindVariation::Sync | EventKindVariation::OriginalSync => " from a `sync_events` response",
+            EventKindVariation::Sync | EventKindVariation::OriginalSync => {
+                " from a `sync_events` response"
+            }
             EventKindVariation::Stripped => " from an invited room preview",
             EventKindVariation::Redacted => " that has been redacted",
-            EventKindVariation::RedactedSync => " from a `sync_events` response that has been redacted",
+            EventKindVariation::RedactedSync => {
+                " from a `sync_events` response that has been redacted"
+            }
             EventKindVariation::Initial => " for creating a room",
         };
         let ev_type_doc = format!("An `{event_type}` event{doc_text}.");
@@ -927,12 +962,14 @@ fn generate_event_content_impl<'a>(
         }
     });
 
-    let static_state_event_content_impl =
-        (event_kind == Some(EventKind::State) && variation == EventKindContentVariation::Original).then(|| {
+    let static_state_event_content_impl = (event_kind == Some(EventKind::State)
+        && variation == EventKindContentVariation::Original)
+        .then(|| {
             let possibly_redacted_ident = format_ident!("PossiblyRedacted{ident}");
 
-            let unsigned_type =
-                unsigned_type.unwrap_or_else(|| quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> });
+            let unsigned_type = unsigned_type.unwrap_or_else(
+                || quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> },
+            );
 
             quote! {
                 #[automatically_derived]
@@ -960,12 +997,15 @@ fn generate_event_content_impl<'a>(
             .unwrap()
             .filter(|f| {
                 !f.attrs.iter().any(|a| {
-                    a.path().is_ident("palpo_event") && matches!(a.parse_args(), Ok(EventFieldMeta::TypeFragment))
+                    a.path().is_ident("palpo_event")
+                        && matches!(a.parse_args(), Ok(EventFieldMeta::TypeFragment))
                 })
             })
             .map(PrivateField)
             .collect::<Vec<_>>();
-        let fields_ident_without_type_fragment = fields_without_type_fragment.iter().filter_map(|f| f.0.ident.as_ref());
+        let fields_ident_without_type_fragment = fields_without_type_fragment
+            .iter()
+            .filter_map(|f| f.0.ident.as_ref());
 
         quote! {
             impl #palpo_core::events::EventContentFromType for #ident {
@@ -1032,7 +1072,11 @@ fn generate_event_content_impl<'a>(
     })
 }
 
-fn generate_static_event_content_impl(ident: &Ident, event_type: &LitStr, palpo_core: &TokenStream) -> TokenStream {
+fn generate_static_event_content_impl(
+    ident: &Ident,
+    event_type: &LitStr,
+    palpo_core: &TokenStream,
+) -> TokenStream {
     quote! {
         impl #palpo_core::events::StaticEventContent for #ident {
             const TYPE: &'static ::std::primitive::str = #event_type;

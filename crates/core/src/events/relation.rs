@@ -73,7 +73,10 @@ where
 {
     /// Creates a new `Replacement` with the given event ID and new content.
     pub fn new(event_id: OwnedEventId, new_content: C) -> Self {
-        Self { event_id, new_content }
+        Self {
+            event_id,
+            new_content,
+        }
     }
 }
 
@@ -153,7 +156,11 @@ pub struct BundledThread {
 impl BundledThread {
     /// Creates a new `BundledThread` with the given event, count and user
     /// participated flag.
-    pub fn new(latest_event: RawJson<AnyMessageLikeEvent>, count: u64, current_user_participated: bool) -> Self {
+    pub fn new(
+        latest_event: RawJson<AnyMessageLikeEvent>,
+        count: u64,
+        current_user_participated: bool,
+    ) -> Self {
         Self {
             latest_event,
             count,
@@ -373,10 +380,11 @@ where
             reference,
         } = BundledMessageLikeRelationsJsonRepr::deserialize(deserializer)?;
 
-        let (replace, has_invalid_replacement) = match replace.as_ref().map(RawJson::deserialize).transpose() {
-            Ok(replace) => (replace, false),
-            Err(_) => (None, true),
-        };
+        let (replace, has_invalid_replacement) =
+            match replace.as_ref().map(RawJson::deserialize).transpose() {
+                Ok(replace) => (replace, false),
+                Err(_) => (None, true),
+            };
 
         Ok(BundledMessageLikeRelations {
             replace,

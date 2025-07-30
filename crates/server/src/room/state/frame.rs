@@ -47,7 +47,10 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
             appended,
             disposed: Arc::new(disposed),
         });
-        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, info.clone());
+        STATE_INFO_CACHE
+            .lock()
+            .unwrap()
+            .insert(frame_id, info.clone());
 
         Ok(info)
     } else {
@@ -57,7 +60,10 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
             appended,
             disposed,
         }];
-        STATE_INFO_CACHE.lock().unwrap().insert(frame_id, info.clone());
+        STATE_INFO_CACHE
+            .lock()
+            .unwrap()
+            .insert(frame_id, info.clone());
         Ok(info)
     }
 }

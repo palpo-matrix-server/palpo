@@ -153,7 +153,11 @@ impl MediaPreviewResBody {
     }
 }
 
-pub fn thumbnail_request(origin: &str, server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+pub fn thumbnail_request(
+    origin: &str,
+    server: &ServerName,
+    args: ThumbnailReqArgs,
+) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!(
         "{origin}/_matrix/media/v3/thumbnail/{server}/{}",
         args.media_id

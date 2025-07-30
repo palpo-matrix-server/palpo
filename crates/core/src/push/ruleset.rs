@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use super::{
-    Action, AnyPushRuleRef, ConditionalPushRule, FlattenedJson, InsertPushRuleError, NewPushRule, PatternedPushRule,
-    PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter, SimplePushRule, insert_and_move_rule,
+    Action, AnyPushRuleRef, ConditionalPushRule, FlattenedJson, InsertPushRuleError, NewPushRule,
+    PatternedPushRule, PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter,
+    SimplePushRule, insert_and_move_rule,
 };
 use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, push::RemovePushRuleError, serde::RawJson};
 
@@ -31,7 +32,11 @@ pub struct Ruleset {
     ///
     /// This field is named `override_` instead of `override` because the latter
     /// is a reserved keyword in Rust.
-    #[serde(rename = "override", default, skip_serializing_if = "IndexSet::is_empty")]
+    #[serde(
+        rename = "override",
+        default,
+        skip_serializing_if = "IndexSet::is_empty"
+    )]
     #[salvo(schema(value_type = HashSet<ConditionalPushRule>))]
     pub override_: IndexSet<ConditionalPushRule>,
 
@@ -181,12 +186,20 @@ impl Ruleset {
 
         match kind {
             RuleKind::Override => {
-                let mut rule = self.override_.get(rule_id).ok_or(RuleNotFoundError)?.clone();
+                let mut rule = self
+                    .override_
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
                 rule.enabled = enabled;
                 self.override_.replace(rule);
             }
             RuleKind::Underride => {
-                let mut rule = self.underride.get(rule_id).ok_or(RuleNotFoundError)?.clone();
+                let mut rule = self
+                    .underride
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
                 rule.enabled = enabled;
                 self.underride.replace(rule);
             }
@@ -225,12 +238,20 @@ impl Ruleset {
 
         match kind {
             RuleKind::Override => {
-                let mut rule = self.override_.get(rule_id).ok_or(RuleNotFoundError)?.clone();
+                let mut rule = self
+                    .override_
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
                 rule.actions = actions;
                 self.override_.replace(rule);
             }
             RuleKind::Underride => {
-                let mut rule = self.underride.get(rule_id).ok_or(RuleNotFoundError)?.clone();
+                let mut rule = self
+                    .underride
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
                 rule.actions = actions;
                 self.underride.replace(rule);
             }
@@ -263,10 +284,17 @@ impl Ruleset {
     /// * `context` - The context of the message and room at the time of the
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
-    pub fn get_match<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> Option<AnyPushRuleRef<'_>> {
+    pub fn get_match<T>(
+        &self,
+        event: &RawJson<T>,
+        context: &PushConditionRoomCtx,
+    ) -> Option<AnyPushRuleRef<'_>> {
         let event = FlattenedJson::from_raw(event);
 
-        if event.get_str("sender").is_some_and(|sender| sender == context.user_id) {
+        if event
+            .get_str("sender")
+            .is_some_and(|sender| sender == context.user_id)
+        {
             // no need to look at the rules if the event was by the user themselves
             None
         } else {
@@ -285,13 +313,19 @@ impl Ruleset {
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
     pub fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
-        self.get_match(event, context).map(|rule| rule.actions()).unwrap_or(&[])
+        self.get_match(event, context)
+            .map(|rule| rule.actions())
+            .unwrap_or(&[])
     }
 
     /// Removes a user-defined rule in the rule set.
     ///
     /// Returns an error if the parameters are invalid.
-    pub fn remove(&mut self, kind: RuleKind, rule_id: impl AsRef<str>) -> Result<(), RemovePushRuleError> {
+    pub fn remove(
+        &mut self,
+        kind: RuleKind,
+        rule_id: impl AsRef<str>,
+    ) -> Result<(), RemovePushRuleError> {
         let rule_id = rule_id.as_ref();
 
         if let Some(rule) = self.get(kind.clone(), rule_id) {

@@ -18,7 +18,9 @@ pub struct FlattenedJson {
 impl FlattenedJson {
     /// Create a `FlattenedJson` from `Raw`.
     pub fn from_raw<T>(raw: &RawJson<T>) -> Self {
-        let mut s = Self { map: BTreeMap::new() };
+        let mut s = Self {
+            map: BTreeMap::new(),
+        };
         s.flatten_value(to_json_value(raw).unwrap(), "".into());
         s
     }
@@ -29,13 +31,21 @@ impl FlattenedJson {
         match value {
             JsonValue::Object(fields) => {
                 if fields.is_empty() {
-                    if self.map.insert(path.clone(), FlattenedJsonValue::EmptyObject).is_some() {
+                    if self
+                        .map
+                        .insert(path.clone(), FlattenedJsonValue::EmptyObject)
+                        .is_some()
+                    {
                         warn!("Duplicate path in flattened JSON: {path}");
                     }
                 } else {
                     for (key, value) in fields {
                         let key = escape_key(&key);
-                        let path = if path.is_empty() { key } else { format!("{path}.{key}") };
+                        let path = if path.is_empty() {
+                            key
+                        } else {
+                            format!("{path}.{key}")
+                        };
                         self.flatten_value(value, path);
                     }
                 }

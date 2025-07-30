@@ -23,7 +23,8 @@ use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail}
 use crate::data::schema::*;
 use crate::media::*;
 use crate::{
-    AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, config, empty_ok, exts::*, hoops, json_ok, utils,
+    AppResult, AuthArgs, EmptyResult, JsonResult, MatrixError, config, empty_ok, exts::*, hoops,
+    json_ok, utils,
 };
 
 pub fn self_auth_router() -> Router {
@@ -49,7 +50,11 @@ pub fn self_auth_router() -> Router {
 ///
 /// - Only allows federation if `allow_remote` is true
 #[endpoint]
-pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Response) -> AppResult<()> {
+pub async fn get_content(
+    args: ContentReqArgs,
+    req: &mut Request,
+    res: &mut Response,
+) -> AppResult<()> {
     if let Some(metadata) = crate::data::media::get_metadata(&args.server_name, &args.media_id)? {
         let content_type = metadata
             .content_type
@@ -80,7 +85,7 @@ pub async fn get_content(args: ContentReqArgs, req: &mut Request, res: &mut Resp
         }
     } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
+        fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
@@ -96,7 +101,8 @@ pub async fn get_content_with_filename(
     req: &mut Request,
     res: &mut Response,
 ) -> AppResult<()> {
-    let Some(metadata) = crate::data::media::get_metadata(&args.server_name, &args.media_id)? else {
+    let Some(metadata) = crate::data::media::get_metadata(&args.server_name, &args.media_id)?
+    else {
         return Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into());
     };
     let content_type = if let Some(content_type) = metadata.content_type.as_deref() {
@@ -135,7 +141,7 @@ pub async fn get_content_with_filename(
         Ok(())
     } else if &*args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
-        get_remote_content(&mxc, &args.server_name, &args.media_id, res).await
+        fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
         Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
     }
@@ -237,7 +243,10 @@ pub async fn upload_content(
     let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let conf = crate::config::get();
-    let payload = req.payload_with_max_size(conf.max_request_size as usize).await.unwrap();
+    let payload = req
+        .payload_with_max_size(conf.max_request_size as usize)
+        .await
+        .unwrap();
 
     // let mxc = format!("mxc://{}/{}", crate::config::get().server_name, args.media_id);
 
@@ -305,8 +314,8 @@ pub async fn preview_url(
 ) -> JsonResult<MediaPreviewResBody> {
     let _sender_id = depot.authed_info()?.user_id();
 
-    let url =
-        Url::parse(&args.url).map_err(|e| MatrixError::invalid_param(format!("Requested URL is not valid: {e}")))?;
+    let url = Url::parse(&args.url)
+        .map_err(|e| MatrixError::invalid_param(format!("Requested URL is not valid: {e}")))?;
 
     if !crate::media::url_preview_allowed(&url) {
         return Err(MatrixError::forbidden("URL is not allowed to be previewed", None).into());
@@ -372,7 +381,12 @@ pub async fn get_thumbnail(
         return Ok(());
     }
 
-    match crate::data::media::get_thumbnail(&args.server_name, &args.media_id, args.width, args.height) {
+    match crate::data::media::get_thumbnail(
+        &args.server_name,
+        &args.media_id,
+        args.width,
+        args.height,
+    ) {
         Ok(Some(DbThumbnail {
             // content_disposition,
             content_type,
@@ -405,9 +419,13 @@ pub async fn get_thumbnail(
         _ => {}
     }
 
-    let (width, height, crop) = crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
+    let (width, height, crop) =
+        crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    let thumb_path = config::media_path(&args.server_name, &format!("{}.{width}x{height}", &args.media_id));
+    let thumb_path = config::media_path(
+        &args.server_name,
+        &format!("{}.{width}x{height}", &args.media_id),
+    );
     if let Some(DbThumbnail { content_type, .. }) =
         crate::data::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
     {
@@ -474,7 +492,8 @@ pub async fn get_thumbnail(
                             (width, intermediate as u32)
                         } else {
                             (
-                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate)
+                                    as u32,
                                 ::std::u32::MAX,
                             )
                         }
@@ -492,7 +511,10 @@ pub async fn get_thumbnail(
             };
 
             let mut thumbnail_bytes = Vec::new();
-            thumbnail.write_to(&mut Cursor::new(&mut thumbnail_bytes), image::ImageFormat::Png)?;
+            thumbnail.write_to(
+                &mut Cursor::new(&mut thumbnail_bytes),
+                image::ImageFormat::Png,
+            )?;
 
             // Save thumbnail in database so we don't have to generate it again next time
             diesel::insert_into(media_thumbnails::table)

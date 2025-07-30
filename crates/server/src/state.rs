@@ -1,5 +1,7 @@
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::history_visibility::{HistoryVisibility, RoomHistoryVisibilityEventContent};
+use crate::core::events::room::history_visibility::{
+    HistoryVisibility, RoomHistoryVisibilityEventContent,
+};
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyStateEventContent, StateEventType};
@@ -41,18 +43,27 @@ fn allowed_to_send_state_event(
     let conf = config::get();
     match event_type {
         StateEventType::RoomCreate => {
-            return Err(MatrixError::bad_json("You cannot update m.room.create after a room has been created.").into());
+            return Err(MatrixError::bad_json(
+                "You cannot update m.room.create after a room has been created.",
+            )
+            .into());
         }
         // Forbid m.room.encryption if encryption is disabled
         StateEventType::RoomEncryption => {
             if !conf.allow_encryption {
-                return Err(MatrixError::forbidden("Encryption is disabled on this homeserver.", None).into());
+                return Err(MatrixError::forbidden(
+                    "Encryption is disabled on this homeserver.",
+                    None,
+                )
+                .into());
             }
         }
         // admin room is a sensitive room, it should not ever be made public
         StateEventType::RoomJoinRules => {
-            if crate::room::is_admin_room(room_id) {
-                if let Ok(join_rule) = serde_json::from_str::<RoomJoinRulesEventContent>(json.inner().get()) {
+            if crate::room::is_admin_room(room_id)? {
+                if let Ok(join_rule) =
+                    serde_json::from_str::<RoomJoinRulesEventContent>(json.inner().get())
+                {
                     if join_rule.join_rule == JoinRule::Public {
                         return Err(MatrixError::forbidden(
                             "Admin room is a sensitive room, it cannot be made public",
@@ -68,7 +79,7 @@ fn allowed_to_send_state_event(
             if let Ok(visibility_content) =
                 serde_json::from_str::<RoomHistoryVisibilityEventContent>(json.inner().get())
             {
-                if crate::room::is_admin_room(room_id)
+                if crate::room::is_admin_room(room_id)?
                     && visibility_content.history_visibility == HistoryVisibility::WorldReadable
                 {
                     return Err(MatrixError::forbidden(
@@ -81,7 +92,9 @@ fn allowed_to_send_state_event(
             }
         }
         StateEventType::RoomCanonicalAlias => {
-            if let Ok(canonical_alias) = serde_json::from_str::<RoomCanonicalAliasEventContent>(json.inner().get()) {
+            if let Ok(canonical_alias) =
+                serde_json::from_str::<RoomCanonicalAliasEventContent>(json.inner().get())
+            {
                 let mut aliases = canonical_alias.alt_aliases.clone();
 
                 if let Some(alias) = canonical_alias.alias {
@@ -90,7 +103,11 @@ fn allowed_to_send_state_event(
 
                 for alias in aliases {
                     if !alias.server_name().is_local() {
-                        return Err(MatrixError::forbidden("Canonical_alias must be for this server.", None).into());
+                        return Err(MatrixError::forbidden(
+                            "Canonical_alias must be for this server.",
+                            None,
+                        )
+                        .into());
                     }
 
                     if !crate::room::resolve_local_alias(&alias).is_ok_and(|room| room == room_id)
@@ -108,7 +125,9 @@ fn allowed_to_send_state_event(
             }
         }
         StateEventType::RoomMember => {
-            let Ok(membership_content) = serde_json::from_str::<RoomMemberEventContent>(json.inner().get()) else {
+            let Ok(membership_content) =
+                serde_json::from_str::<RoomMemberEventContent>(json.inner().get())
+            else {
                 return Err(MatrixError::bad_json(
                     "Membership content must have a valid JSON body with at least a valid \
 					 membership state.",
@@ -117,14 +136,18 @@ fn allowed_to_send_state_event(
             };
 
             let Ok(state_key) = UserId::parse(state_key) else {
-                return Err(MatrixError::bad_json("Membership event has invalid or non-existent state key").into());
+                return Err(MatrixError::bad_json(
+                    "Membership event has invalid or non-existent state key",
+                )
+                .into());
             };
 
             if let Some(authorising_user) = membership_content.join_authorized_via_users_server {
                 if membership_content.membership != MembershipState::Join {
-                    return Err(
-                        MatrixError::bad_json("join_authorised_via_users_server is only for member joins").into(),
-                    );
+                    return Err(MatrixError::bad_json(
+                        "join_authorised_via_users_server is only for member joins",
+                    )
+                    .into());
                 }
 
                 if crate::room::user::is_joined(&state_key, room_id)? {

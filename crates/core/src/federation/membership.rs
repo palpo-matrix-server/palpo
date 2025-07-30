@@ -61,7 +61,10 @@ pub struct InviteUserReqBodyV2 {
     /// join or leave via, according to [MSC4125](https://github.com/matrix-org/matrix-spec-proposals/pull/4125).
     ///
     /// If present, it must not be empty.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "org.matrix.msc4125.via")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "org.matrix.msc4125.via"
+    )]
     pub via: Option<Vec<OwnedServerName>>,
 }
 crate::json_body_modifier!(InviteUserReqBodyV2);
@@ -260,7 +263,11 @@ impl UnsignedEventContentV1 {
 //     }
 // };
 
-pub fn make_leave_request(origin: &str, room_id: &RoomId, user_id: &UserId) -> SendResult<SendRequest> {
+pub fn make_leave_request(
+    origin: &str,
+    room_id: &RoomId,
+    user_id: &UserId,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_leave/{room_id}/{user_id}"
     ))?;
@@ -298,7 +305,10 @@ impl MakeLeaveResBody {
     /// * the version of the room where the server is trying to leave.
     /// * an unsigned template event.
     pub fn new(room_version: Option<RoomVersionId>, event: Box<RawJsonValue>) -> Self {
-        Self { room_version, event }
+        Self {
+            room_version,
+            event,
+        }
     }
 }
 
@@ -356,7 +366,11 @@ crate::json_body_modifier!(SendLeaveReqBody);
 //     }
 // };
 
-pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBody) -> SendResult<SendRequest> {
+pub fn send_join_request(
+    origin: &str,
+    args: SendJoinArgs,
+    body: SendJoinReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v2/send_join/{}/{}?omit_members={}",
         &args.room_id, &args.event_id, args.omit_members
@@ -407,7 +421,11 @@ pub struct SendJoinArgs {
 
 pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
-    let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
+    let ver = if ver.is_empty() {
+        ""
+    } else {
+        &*format!("?{}", ver)
+    };
 
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_join/{}/{}{}",

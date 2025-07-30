@@ -66,7 +66,11 @@ pub struct KeyVerificationReadyEventContent {
 impl KeyVerificationReadyEventContent {
     /// Creates a new `KeyVerificationReadyEventContent` with the given device
     /// ID, methods and reference.
-    pub fn new(from_device: OwnedDeviceId, methods: Vec<VerificationMethod>, relates_to: Reference) -> Self {
+    pub fn new(
+        from_device: OwnedDeviceId,
+        methods: Vec<VerificationMethod>,
+        relates_to: Reference,
+    ) -> Self {
         Self {
             from_device,
             methods,

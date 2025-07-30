@@ -1,5 +1,7 @@
 use crate::core::ServerName;
-use crate::core::directory::{PublicRoomFilter, PublicRoomJoinRule, PublicRoomsChunk, PublicRoomsResBody, RoomNetwork};
+use crate::core::directory::{
+    PublicRoomFilter, PublicRoomJoinRule, PublicRoomsChunk, PublicRoomsResBody, RoomNetwork,
+};
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
@@ -13,7 +15,9 @@ pub async fn get_public_rooms(
     filter: &PublicRoomFilter,
     network: &RoomNetwork,
 ) -> AppResult<PublicRoomsResBody> {
-    if let Some(other_server) = server.filter(|server| *server != config::get().server_name.as_str()) {
+    if let Some(other_server) =
+        server.filter(|server| *server != config::get().server_name.as_str())
+    {
         let body = public_rooms_request(
             &other_server.origin().await,
             PublicRoomsReqBody {
@@ -99,7 +103,11 @@ fn get_local_public_rooms(
         })
         .filter_map(|r: AppResult<_>| r.ok()) // Filter out buggy rooms
         .filter(|chunk| {
-            if let Some(query) = filter.generic_search_term.as_ref().map(|q| q.to_lowercase()) {
+            if let Some(query) = filter
+                .generic_search_term
+                .as_ref()
+                .map(|q| q.to_lowercase())
+            {
                 if let Some(name) = &chunk.name {
                     if name.as_str().to_lowercase().contains(&query) {
                         return true;

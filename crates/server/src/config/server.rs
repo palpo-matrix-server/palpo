@@ -7,8 +7,9 @@ use serde::Deserialize;
 use serde::de::IgnoredAny;
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig, MediaConfig,
-    PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
+    LoggerConfig, MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
+    TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
@@ -115,7 +116,7 @@ pub struct ServerConfig {
     ///
     /// If you are running palpo in a container environment, this config
     /// option may need to be enabled. For more details, see:
-    /// https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
+    /// https://palpo.im/troubleshooting.html#potential-dns-issues-when-using-docker
     #[serde(default)]
     pub query_over_tcp_only: bool,
 
@@ -439,12 +440,12 @@ pub struct ServerConfig {
     /// purposes such as recovering/recreating your admin room, or inviting
     /// yourself back.
     ///
-    /// See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
+    /// See https://palpo.im/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
     ///
     /// Once this password is unset, all sessions will be logged out for
     /// security purposes.
     ///
-    /// example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
+    /// example: "x7k9m2p5#n8w1%q4r6"
     ///
     /// display: sensitive
     pub emergency_password: Option<String>,
@@ -738,7 +739,11 @@ impl ServerConfig {
 
     pub fn enabled_federation(&self) -> Option<&FederationConfig> {
         if let Some(federation) = self.federation.as_ref() {
-            if federation.enable { Some(federation) } else { None }
+            if federation.enable {
+                Some(federation)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -784,7 +789,7 @@ impl ServerConfig {
         self.warn_unknown_key();
 
         // if self.sentry && self.sentry_endpoint.is_none() {
-        //     return Err!(AppError::internal(
+        //     return Err(AppError::internal(
         //         "sentry_endpoint",
         //         "Sentry cannot be enabled without an endpoint set"
         //     ));
@@ -1001,7 +1006,10 @@ impl ServerConfig {
         for key in self.catch_others.keys().filter(
             |key| "config".to_owned().ne(key.to_owned()), /* "config" is expected */
         ) {
-            warn!("Config parameter \"{}\" is unknown to palpo, ignoring.", key);
+            warn!(
+                "Config parameter \"{}\" is unknown to palpo, ignoring.",
+                key
+            );
         }
     }
 }

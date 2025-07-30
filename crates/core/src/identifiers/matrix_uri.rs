@@ -10,8 +10,8 @@ use percent_encoding::{percent_decode_str, percent_encode};
 use url::Url;
 
 use super::{
-    EventId, OwnedEventId, OwnedRoomAliasId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,
-    RoomAliasId, RoomId, RoomOrAliasId, UserId,
+    EventId, OwnedEventId, OwnedRoomAliasId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName,
+    OwnedUserId, RoomAliasId, RoomId, RoomOrAliasId, UserId,
 };
 use crate::{PrivOwnedStr, ServerName, percent_encode::PATH_PERCENT_ENCODE_SET};
 
@@ -143,9 +143,15 @@ impl MatrixId {
     /// a slash.
     pub(crate) fn to_string_with_sigil(&self) -> String {
         match self {
-            Self::Room(room_id) => percent_encode(room_id.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string(),
-            Self::RoomAlias(room_alias) => percent_encode(room_alias.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string(),
-            Self::User(user_id) => percent_encode(user_id.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string(),
+            Self::Room(room_id) => {
+                percent_encode(room_id.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string()
+            }
+            Self::RoomAlias(room_alias) => {
+                percent_encode(room_alias.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string()
+            }
+            Self::User(user_id) => {
+                percent_encode(user_id.as_bytes(), PATH_PERCENT_ENCODE_SET).to_string()
+            }
             Self::Event(room_id, event_id) => format!(
                 "{}/{}",
                 percent_encode(room_id.as_bytes(), PATH_PERCENT_ENCODE_SET),
@@ -306,13 +312,17 @@ impl MatrixToUri {
         // where the MatrixId should be percent-encoded, but might not, and the query
         // should also be percent-encoded.
 
-        let s = s.strip_prefix(MATRIX_TO_BASE_URL).ok_or(MatrixToError::WrongBaseUrl)?;
+        let s = s
+            .strip_prefix(MATRIX_TO_BASE_URL)
+            .ok_or(MatrixToError::WrongBaseUrl)?;
         let s = s.strip_suffix('/').unwrap_or(s);
 
         // Separate the identifiers and the query.
         let mut parts = s.split('?');
 
-        let ids_part = parts.next().expect("a split iterator yields at least one value");
+        let ids_part = parts
+            .next()
+            .expect("a split iterator yields at least one value");
         let id = MatrixId::parse_with_sigil(ids_part)?;
 
         // Parse the query for routing arguments.

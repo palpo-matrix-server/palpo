@@ -49,7 +49,8 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
         .first::<i64>(&mut connect()?)
         .unwrap_or_default();
 
-    let mut futures: FuturesUnordered<Pin<Box<dyn Future<Output = AppResult<()>> + Send>>> = FuturesUnordered::new();
+    let mut futures: FuturesUnordered<Pin<Box<dyn Future<Output = AppResult<()>> + Send>>> =
+        FuturesUnordered::new();
 
     for room_id in room_ids.clone() {
         futures.push(Box::into_pin(Box::new(async move {

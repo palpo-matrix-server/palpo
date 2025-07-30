@@ -88,19 +88,23 @@ impl<'de> Deserialize<'de> for UserIdentifier {
         let id_type = serde_json::from_str::<ExtractType>(json.get()).map_err(de::Error::custom)?;
 
         match id_type {
-            ExtractType::User => {
-                from_raw_json_value(&json).map(|user_id: UserIdOrLocalpart| Self::UserIdOrLocalpart(user_id.user))
+            ExtractType::User => from_raw_json_value(&json)
+                .map(|user_id: UserIdOrLocalpart| Self::UserIdOrLocalpart(user_id.user)),
+            ExtractType::Phone => {
+                from_raw_json_value(&json).map(|nb: PhoneNumber| Self::PhoneNumber {
+                    country: nb.country,
+                    phone: nb.phone,
+                })
             }
-            ExtractType::Phone => from_raw_json_value(&json).map(|nb: PhoneNumber| Self::PhoneNumber {
-                country: nb.country,
-                phone: nb.phone,
-            }),
             ExtractType::ThirdParty => {
                 let ThirdPartyId { medium, address } = from_raw_json_value(&json)?;
                 match medium {
                     Medium::Email => Ok(Self::Email { address }),
                     Medium::Msisdn => Ok(Self::Msisdn { number: address }),
-                    _ => Ok(Self::_CustomThirdParty(CustomThirdPartyId { medium, address })),
+                    _ => Ok(Self::_CustomThirdParty(CustomThirdPartyId {
+                        medium,
+                        address,
+                    })),
                 }
             }
         }

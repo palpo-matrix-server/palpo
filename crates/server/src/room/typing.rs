@@ -12,8 +12,10 @@ use crate::{AppResult, IsRemoteOrLocal, data, sending};
 
 pub static TYPING: LazyLock<RwLock<BTreeMap<OwnedRoomId, BTreeMap<OwnedUserId, u64>>>> =
     LazyLock::new(Default::default); // u64 is unix timestamp of timeout
-pub static LAST_TYPING_UPDATE: LazyLock<RwLock<BTreeMap<OwnedRoomId, i64>>> = LazyLock::new(Default::default); // timestamp of the last change to typing users
-pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> = LazyLock::new(|| broadcast::channel(100).0);
+pub static LAST_TYPING_UPDATE: LazyLock<RwLock<BTreeMap<OwnedRoomId, i64>>> =
+    LazyLock::new(Default::default); // timestamp of the last change to typing users
+pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> =
+    LazyLock::new(|| broadcast::channel(100).0);
 
 /// Sets a user as typing until the timeout timestamp is reached or roomremove_typing is
 /// called.
@@ -25,7 +27,10 @@ pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> App
         .or_default()
         .insert(user_id.to_owned(), timeout);
     let event_sn = data::next_sn()?;
-    LAST_TYPING_UPDATE.write().await.insert(room_id.to_owned(), event_sn);
+    LAST_TYPING_UPDATE
+        .write()
+        .await
+        .insert(room_id.to_owned(), event_sn);
 
     // let current_frame_id = if let Some(s) = crate::room::get_frame_id(room_id, None)? {
     //     s
@@ -125,7 +130,9 @@ pub async fn last_typing_update(room_id: &RoomId) -> AppResult<i64> {
 }
 
 /// Returns a new typing EDU.
-pub async fn all_typings(room_id: &RoomId) -> AppResult<SyncEphemeralRoomEvent<TypingEventContent>> {
+pub async fn all_typings(
+    room_id: &RoomId,
+) -> AppResult<SyncEphemeralRoomEvent<TypingEventContent>> {
     Ok(SyncEphemeralRoomEvent {
         content: TypingEventContent {
             user_ids: TYPING
@@ -139,7 +146,10 @@ pub async fn all_typings(room_id: &RoomId) -> AppResult<SyncEphemeralRoomEvent<T
 }
 
 async fn federation_send(room_id: &RoomId, user_id: &UserId, typing: bool) -> AppResult<()> {
-    debug_assert!(user_id.is_local(), "tried to broadcast typing status of remote user",);
+    debug_assert!(
+        user_id.is_local(),
+        "tried to broadcast typing status of remote user",
+    );
 
     if !crate::config::get().typing.allow_outgoing {
         return Ok(());

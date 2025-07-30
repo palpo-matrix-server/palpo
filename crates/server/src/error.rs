@@ -73,6 +73,14 @@ pub enum AppError {
     ImageError(#[from] image::ImageError),
     #[error("Signatures: `{0}`")]
     Signatures(#[from] palpo_core::signatures::Error),
+    #[error("FmtError: `{0}`")]
+    FmtError(#[from] std::fmt::Error),
+    #[error("CargoTomlError: `{0}`")]
+    CargoTomlError(#[from] cargo_toml::Error),
+    #[error("YamlError: `{0}`")]
+    YamlError(#[from] serde_yaml::Error),
+    #[error("ClapError: `{0}`")]
+    ClapError(#[from] clap::Error),
 }
 
 impl AppError {
@@ -103,10 +111,16 @@ impl Writer for AppError {
                 if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
                     let code = if let Some(error) = &uiaa.auth_error {
                         match &error.kind {
-                            ErrorKind::Forbidden { .. } | ErrorKind::UserDeactivated => StatusCode::FORBIDDEN,
+                            ErrorKind::Forbidden { .. } | ErrorKind::UserDeactivated => {
+                                StatusCode::FORBIDDEN
+                            }
                             ErrorKind::NotFound => StatusCode::NOT_FOUND,
-                            ErrorKind::BadStatus { status, .. } => status.unwrap_or(StatusCode::BAD_REQUEST),
-                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadAlias => StatusCode::BAD_REQUEST,
+                            ErrorKind::BadStatus { status, .. } => {
+                                status.unwrap_or(StatusCode::BAD_REQUEST)
+                            }
+                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadAlias => {
+                                StatusCode::BAD_REQUEST
+                            }
                             ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
                             ErrorKind::CannotOverwriteMedia => StatusCode::CONFLICT,
                             ErrorKind::NotYetUploaded => StatusCode::GATEWAY_TIMEOUT,
@@ -154,11 +168,13 @@ impl EndpointOutRegister for AppError {
         );
         operation.responses.insert(
             StatusCode::NOT_FOUND.as_str(),
-            oapi::Response::new("Not found").add_content("application/json", StatusError::to_schema(components)),
+            oapi::Response::new("Not found")
+                .add_content("application/json", StatusError::to_schema(components)),
         );
         operation.responses.insert(
             StatusCode::BAD_REQUEST.as_str(),
-            oapi::Response::new("Bad request").add_content("application/json", StatusError::to_schema(components)),
+            oapi::Response::new("Bad request")
+                .add_content("application/json", StatusError::to_schema(components)),
         );
     }
 }

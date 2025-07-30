@@ -9,12 +9,15 @@ pub use summary::*;
 pub use thread::*;
 
 use crate::{
-    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
-    RoomVersionId, UnixMillis,
+    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,
+    PrivOwnedStr, RoomVersionId, UnixMillis,
     client::{filter::RoomEventFilter, membership::InviteThreepid},
     events::{
         AnyInitialStateEvent, AnyRoomAccountDataEvent, AnyStateEvent, AnyTimelineEvent,
-        room::{create::PreviousRoom, member::MembershipState, power_levels::RoomPowerLevelsEventContent},
+        room::{
+            create::PreviousRoom, member::MembershipState,
+            power_levels::RoomPowerLevelsEventContent,
+        },
     },
     room::{RoomType, Visibility},
     serde::{RawJson, StringEnum},
@@ -372,7 +375,11 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::FullyRead`]: crate::receipt::create_receipt::v3::ReceiptType::FullyRead
-    #[serde(default, rename = "m.fully_read", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.fully_read",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub fully_read: Option<OwnedEventId>,
 
     /// The event ID to set the public read receipt location at.
@@ -392,7 +399,11 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::ReadPrivate`]: crate::receipt::create_receipt::v3::ReceiptType::ReadPrivate
-    #[serde(default, rename = "m.read.private", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.read.private",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub private_read_receipt: Option<OwnedEventId>,
 }
 

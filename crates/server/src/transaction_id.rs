@@ -28,7 +28,11 @@ pub fn add_txn_id(
     Ok(())
 }
 
-pub fn txn_id_exists(txn_id: &TransactionId, user_id: &UserId, device_id: Option<&DeviceId>) -> AppResult<bool> {
+pub fn txn_id_exists(
+    txn_id: &TransactionId,
+    user_id: &UserId,
+    device_id: Option<&DeviceId>,
+) -> AppResult<bool> {
     if let Some(device_id) = device_id {
         let query = event_idempotents::table
             .filter(event_idempotents::user_id.eq(user_id))

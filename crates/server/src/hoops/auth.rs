@@ -15,7 +15,11 @@ use crate::server_key::{PubKeyMap, PubKeys};
 use crate::{AppResult, AuthArgs, AuthedInfo, MatrixError, config};
 
 #[handler]
-pub async fn auth_by_access_token_or_signatures(aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+pub async fn auth_by_access_token_or_signatures(
+    aa: AuthArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+) -> AppResult<()> {
     if let Some(authorization) = &aa.authorization {
         if authorization.starts_with("Bearer ") {
             auth_by_access_token_inner(aa, depot).await
@@ -32,7 +36,11 @@ pub async fn auth_by_access_token(aa: AuthArgs, depot: &mut Depot) -> AppResult<
     auth_by_access_token_inner(aa, depot).await
 }
 #[handler]
-pub async fn auth_by_signatures(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> AppResult<()> {
+pub async fn auth_by_signatures(
+    _aa: AuthArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+) -> AppResult<()> {
     auth_by_signatures_inner(req, depot).await
 }
 
@@ -119,11 +127,17 @@ async fn auth_by_signatures_inner(req: &mut Request, depot: &mut Depot) -> AppRe
             format!(
                 "{}{}",
                 req.uri().path(),
-                req.uri().query().map(|q| format!("?{q}")).unwrap_or_default()
+                req.uri()
+                    .query()
+                    .map(|q| format!("?{q}"))
+                    .unwrap_or_default()
             )
             .into(),
         ),
-        ("signatures".to_owned(), CanonicalJsonValue::Object(signatures)),
+        (
+            "signatures".to_owned(),
+            CanonicalJsonValue::Object(signatures),
+        ),
     ]);
 
     let json_body = req

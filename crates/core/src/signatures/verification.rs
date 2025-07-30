@@ -19,7 +19,8 @@ pub(crate) trait Verifier {
     /// # Errors
     ///
     /// Returns an error if verification fails.
-    fn verify_json(&self, public_key: &[u8], signature: &[u8], message: &[u8]) -> Result<(), Error>;
+    fn verify_json(&self, public_key: &[u8], signature: &[u8], message: &[u8])
+    -> Result<(), Error>;
 }
 
 /// A verifier for Ed25519 digital signatures.
@@ -27,14 +28,22 @@ pub(crate) trait Verifier {
 pub(crate) struct Ed25519Verifier;
 
 impl Verifier for Ed25519Verifier {
-    fn verify_json(&self, public_key: &[u8], signature: &[u8], message: &[u8]) -> Result<(), Error> {
+    fn verify_json(
+        &self,
+        public_key: &[u8],
+        signature: &[u8],
+        message: &[u8],
+    ) -> Result<(), Error> {
         VerifyingKey::from_bytes(
             public_key
                 .try_into()
                 .map_err(|_| ParseError::PublicKey(ed25519_dalek::SignatureError::new()))?,
         )
         .map_err(ParseError::PublicKey)?
-        .verify(message, &signature.try_into().map_err(ParseError::Signature)?)
+        .verify(
+            message,
+            &signature.try_into().map_err(ParseError::Signature)?,
+        )
         .map_err(VerificationError::Signature)
         .map_err(Error::from)
     }

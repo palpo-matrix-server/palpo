@@ -15,7 +15,7 @@ rust-version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-
+ctor = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
@@ -23,15 +23,27 @@ bcrypt = { workspace = true }
 blurhash = { workspace = true }
 byteorder = { workspace = true }
 bytes = { workspace = true }
+cargo_toml = { workspace = true }
 chksum = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
-clap = { workspace = true, features = ["std", "derive", "help", "usage", "error-context"] }
+clap = { workspace = true, features = [
+    "std",
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+] }
 config = { workspace = true }
 core_affinity = { workspace = true }
 cookie = { workspace = true }
 cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
-diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
+diesel = { workspace = true, features = [
+    "postgres",
+    "r2d2",
+    "chrono",
+    "serde_json",
+] }
 diesel_migrations = { workspace = true }
 dotenvy = { workspace = true }
 either = { workspace = true, features = ["serde"] }
@@ -114,11 +126,22 @@ palpo-server-macros = { workspace = true }
 path-slash = { workspace = true }
 # pkcs8 = { workspace = true }
 rand = { workspace = true }
+rustyline-async = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 ring = { workspace = true }
 rust-argon2 = { workspace = true }
-salvo = { workspace = true, features = ["compression", "cors", "jwt-auth", "logging", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
+salvo = { workspace = true, features = [
+    "compression",
+    "cors",
+    "jwt-auth",
+    "logging",
+    "oapi",
+    "proxy",
+    "serve-static",
+    "sse",
+    "size-limiter",
+] }
 sanitize-filename = { workspace = true }
 scheduled-thread-pool = { workspace = true }
 secrecy = { workspace = true }
@@ -131,6 +154,7 @@ smallvec = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tempfile = { workspace = true }
+termimad = { workspace = true }
 textnonce = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "parking_lot", "process"] }
@@ -138,9 +162,21 @@ tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util = { workspace = true, features = ["io"] }
 toml = { workspace = true, features = ["serde"] }
 tower-service = { workspace = true }
-tracing = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
+tracing = { workspace = true, features = [
+    "release_max_level_debug",
+    "max_level_debug",
+] }
+tracing-core = { workspace = true }
 tracing-futures = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+tracing-subscriber = { workspace = true, features = [
+    "ansi",
+    "env-filter",
+    "fmt",
+    "std",
+    "json",
+    "tracing",
+    "tracing-log",
+] }
 ulid = { workspace = true }
 url = { workspace = true }
 uuid = { version = "1.1.2", features = ["v4"] }

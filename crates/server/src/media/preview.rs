@@ -14,7 +14,8 @@ use crate::core::{MatrixError, UnixMillis};
 use crate::data::media::{DbUrlPreview, NewDbMetadata, NewDbUrlPreview};
 use crate::{AppResult, config, data, utils};
 
-static URL_PREVIEW_MUTEX: LazyLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = LazyLock::new(Default::default);
+static URL_PREVIEW_MUTEX: LazyLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> =
+    LazyLock::new(Default::default);
 async fn get_url_preview_mutex(url: &str) -> Arc<Mutex<()>> {
     let mut locks = URL_PREVIEW_MUTEX.lock().await;
     locks
@@ -38,19 +39,37 @@ fn client() -> &'static reqwest::Client {
 pub struct UrlPreviewData {
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:url"))]
     pub og_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:title"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "og:title")
+    )]
     pub og_title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:type"))]
     pub og_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:description"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "og:description")
+    )]
     pub og_description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "og:image")
+    )]
     pub og_image: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "matrix:image:size"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "matrix:image:size")
+    )]
     pub image_size: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image:width"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "og:image:width")
+    )]
     pub og_image_width: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename(serialize = "og:image:height"))]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "og:image:height")
+    )]
     pub og_image_height: Option<u32>,
 }
 impl UrlPreviewData {
@@ -117,7 +136,10 @@ pub fn url_preview_allowed(url: &Url) -> bool {
 
     let host = match url.host_str() {
         None => {
-            debug!("Ignoring URL preview for a URL that does not have a host (?): {}", url);
+            debug!(
+                "Ignoring URL preview for a URL that does not have a host (?): {}",
+                url
+            );
             return false;
         }
         Some(h) => h.to_owned(),
@@ -241,18 +263,31 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
     let client = client();
     if let Ok(ip) = IPAddress::parse(url.host_str().expect("URL previously validated")) {
         if !config::valid_cidr_range(&ip) {
-            return Err(MatrixError::forbidden("Requesting from this address is forbidden.", None).into());
+            return Err(
+                MatrixError::forbidden("Requesting from this address is forbidden.", None).into(),
+            );
         }
     }
 
     let response = client.get(url.clone()).send().await?;
-    debug!(?url, "URL preview response headers: {:?}", response.headers());
+    debug!(
+        ?url,
+        "URL preview response headers: {:?}",
+        response.headers()
+    );
 
     if let Some(remote_addr) = response.remote_addr() {
-        debug!(?url, "URL preview response remote address: {:?}", remote_addr);
+        debug!(
+            ?url,
+            "URL preview response remote address: {:?}", remote_addr
+        );
         if let Ok(ip) = IPAddress::parse(remote_addr.ip().to_string()) {
             if !config::valid_cidr_range(&ip) {
-                return Err(MatrixError::forbidden("Requesting from this address is forbidden.", None).into());
+                return Err(MatrixError::forbidden(
+                    "Requesting from this address is forbidden.",
+                    None,
+                )
+                .into());
             }
         }
     }
@@ -261,9 +296,9 @@ async fn request_url_preview(url: &Url) -> AppResult<UrlPreviewData> {
         return Err(MatrixError::unknown("Unknown or invalid Content-Type header").into());
     };
 
-    let content_type = content_type
-        .to_str()
-        .map_err(|e| MatrixError::unknown(format!("Unknown or invalid Content-Type header: {e}")))?;
+    let content_type = content_type.to_str().map_err(|e| {
+        MatrixError::unknown(format!("Unknown or invalid Content-Type header: {e}"))
+    })?;
 
     let data = match content_type {
         html if html.starts_with("text/html") => download_html(url).await?,
@@ -280,7 +315,9 @@ async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
     let conf = crate::config::get();
     let image = client().get(url.to_owned()).send().await?;
     let content_type = image.headers().get(reqwest::header::CONTENT_TYPE);
-    let content_type = content_type.and_then(|ct| ct.to_str().ok()).map(|c| c.to_owned());
+    let content_type = content_type
+        .and_then(|ct| ct.to_str().ok())
+        .map(|c| c.to_owned());
     let image = image.bytes().await?;
     let mxc = Mxc {
         server_name: &conf.server_name,

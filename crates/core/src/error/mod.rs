@@ -35,12 +35,18 @@ pub struct ErrorBody(JsonMap<String, JsonValue>);
 
 impl From<String> for ErrorBody {
     fn from(message: String) -> Self {
-        Self(JsonMap::from_iter(vec![("error".to_owned(), json!(message))]))
+        Self(JsonMap::from_iter(vec![(
+            "error".to_owned(),
+            json!(message),
+        )]))
     }
 }
 impl From<&str> for ErrorBody {
     fn from(message: &str) -> Self {
-        Self(JsonMap::from_iter(vec![("error".to_owned(), json!(message))]))
+        Self(JsonMap::from_iter(vec![(
+            "error".to_owned(),
+            json!(message),
+        )]))
     }
 }
 impl From<JsonMap<String, JsonValue>> for ErrorBody {
@@ -135,13 +141,19 @@ impl MatrixError {
     pub fn limit_exceeded(body: impl Into<ErrorBody>, retry_after: Option<RetryAfter>) -> Self {
         Self::new(ErrorKind::LimitExceeded { retry_after }, body)
     }
-    pub fn incompatible_room_version(body: impl Into<ErrorBody>, room_version: RoomVersionId) -> Self {
+    pub fn incompatible_room_version(
+        body: impl Into<ErrorBody>,
+        room_version: RoomVersionId,
+    ) -> Self {
         Self::new(ErrorKind::IncompatibleRoomVersion { room_version }, body)
     }
     pub fn resource_limit_exceeded(body: impl Into<ErrorBody>, admin_contact: String) -> Self {
         Self::new(ErrorKind::ResourceLimitExceeded { admin_contact }, body)
     }
-    pub fn wrong_room_keys_version(body: impl Into<ErrorBody>, current_version: Option<String>) -> Self {
+    pub fn wrong_room_keys_version(
+        body: impl Into<ErrorBody>,
+        current_version: Option<String>,
+    ) -> Self {
         Self::new(ErrorKind::WrongRoomKeysVersion { current_version }, body)
     }
     pub fn is_not_found(&self) -> bool {
@@ -175,15 +187,17 @@ impl From<serde_json::error::Error> for MatrixError {
 impl Scribe for MatrixError {
     fn render(self, res: &mut Response) {
         println!("MatrixError {}  {:?}", self.to_string(), self.body);
-        res.add_header(header::CONTENT_TYPE, "application/json", true).ok();
+        res.add_header(header::CONTENT_TYPE, "application/json", true)
+            .ok();
 
         if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
             let code = self.status_code.unwrap_or_else(|| {
                 use ErrorKind::*;
                 match self.kind.clone() {
-                    Forbidden { .. } | GuestAccessForbidden | ThreepidAuthFailed | ThreepidDenied => {
-                        StatusCode::FORBIDDEN
-                    }
+                    Forbidden { .. }
+                    | GuestAccessForbidden
+                    | ThreepidAuthFailed
+                    | ThreepidDenied => StatusCode::FORBIDDEN,
                     Unauthorized | UnknownToken { .. } | MissingToken => StatusCode::UNAUTHORIZED,
                     NotFound | Unrecognized => StatusCode::NOT_FOUND,
                     LimitExceeded { .. } => StatusCode::TOO_MANY_REQUESTS,
@@ -198,11 +212,13 @@ impl Scribe for MatrixError {
         }
 
         if let Some(auth_error) = &self.authenticate {
-            res.add_header(header::WWW_AUTHENTICATE, auth_error, true).ok();
+            res.add_header(header::WWW_AUTHENTICATE, auth_error, true)
+                .ok();
         };
 
         let Self { kind, mut body, .. } = self;
-        body.0.insert("errcode".to_owned(), kind.code().to_string().into());
+        body.0
+            .insert("errcode".to_owned(), kind.code().to_string().into());
 
         let bytes: Vec<u8> = crate::serde::json_to_buf(&body.0).unwrap();
         res.write_body(bytes).ok();
@@ -277,7 +293,9 @@ pub enum HeaderDeserializationError {
 
     /// The `Content-Type` header for a `multipart/mixed` response is missing
     /// the `boundary` attribute.
-    #[error("The `Content-Type` header for a `multipart/mixed` response is missing the `boundary` attribute")]
+    #[error(
+        "The `Content-Type` header for a `multipart/mixed` response is missing the `boundary` attribute"
+    )]
     MissingMultipartBoundary,
 }
 

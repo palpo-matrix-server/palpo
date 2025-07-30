@@ -37,7 +37,10 @@ pub struct ImageEventContent {
     pub file: FileContentBlock,
 
     /// The image details of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.image_details", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.image_details",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub image_details: Option<ImageDetailsContentBlock>,
 
     /// The thumbnails of the message, if any.
@@ -51,12 +54,18 @@ pub struct ImageEventContent {
     pub thumbnail: ThumbnailContentBlock,
 
     /// The caption of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.caption", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.caption",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub caption: Option<CaptionContentBlock>,
 
     /// The alternative text of the image, for accessibility considerations, if
     /// any.
-    #[serde(rename = "org.matrix.msc1767.alt_text", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.alt_text",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub alt_text: Option<AltTextContentBlock>,
 
     /// Whether this message is automated.
@@ -192,8 +201,14 @@ pub struct Thumbnail {
 
 impl Thumbnail {
     /// Creates a `Thumbnail` with the given file and image details.
-    pub fn new(file: ThumbnailFileContentBlock, image_details: ThumbnailImageDetailsContentBlock) -> Self {
-        Self { file, image_details }
+    pub fn new(
+        file: ThumbnailFileContentBlock,
+        image_details: ThumbnailImageDetailsContentBlock,
+    ) -> Self {
+        Self {
+            file,
+            image_details,
+        }
     }
 }
 
@@ -236,7 +251,11 @@ impl ThumbnailFileContentBlock {
 
     /// Creates a new encrypted `ThumbnailFileContentBlock` with the given url,
     /// mimetype and encryption info.
-    pub fn encrypted(url: OwnedMxcUri, mimetype: String, encryption_info: EncryptedContent) -> Self {
+    pub fn encrypted(
+        url: OwnedMxcUri,
+        mimetype: String,
+        encryption_info: EncryptedContent,
+    ) -> Self {
         Self {
             url,
             mimetype,

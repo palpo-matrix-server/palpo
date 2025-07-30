@@ -14,7 +14,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, events::StateEventType, third_party::Medium,
+    OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, events::StateEventType,
+    third_party::Medium,
 };
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -136,7 +137,12 @@ pub struct ExchangeInviteReqBody {
 }
 impl ExchangeInviteReqBody {
     /// Creates a new `Request` for a third party invite exchange
-    pub fn new(room_id: OwnedRoomId, sender: OwnedUserId, state_key: OwnedUserId, content: ThirdPartyInvite) -> Self {
+    pub fn new(
+        room_id: OwnedRoomId,
+        sender: OwnedUserId,
+        state_key: OwnedUserId,
+        content: ThirdPartyInvite,
+    ) -> Self {
         Self {
             room_id,
             kind: StateEventType::RoomMember,

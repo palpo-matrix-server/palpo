@@ -34,7 +34,8 @@ pub fn expand_id_zst(input: ItemStruct) -> syn::Result<TokenStream> {
         .iter()
         .filter(|attr| attr.path().is_ident("palpo_id"))
         .try_fold(IdZstMeta::default(), |meta, attr| {
-            let list: Punctuated<IdZstMeta, Token![,]> = attr.parse_args_with(Punctuated::parse_terminated)?;
+            let list: Punctuated<IdZstMeta, Token![,]> =
+                attr.parse_args_with(Punctuated::parse_terminated)?;
 
             list.into_iter().try_fold(meta, IdZstMeta::merge)
         })?;
@@ -60,9 +61,11 @@ pub fn expand_id_zst(input: ItemStruct) -> syn::Result<TokenStream> {
     let as_bytes_docs = format!("Creates a byte slice from this `{id}`.");
 
     let as_str_impl = match &input.fields {
-        Fields::Named(_) | Fields::Unit => {
-            syn::Error::new(Span::call_site(), "Only tuple structs are supported currently.").into_compile_error()
-        }
+        Fields::Named(_) | Fields::Unit => syn::Error::new(
+            Span::call_site(),
+            "Only tuple structs are supported currently.",
+        )
+        .into_compile_error(),
         Fields::Unnamed(u) => {
             let last_idx = Index::from(u.unnamed.len() - 1);
             quote! { &self.#last_idx }

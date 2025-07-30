@@ -52,7 +52,8 @@ impl Resolve for Resolver {
                     TowerService::<HyperName>::call(
                         this,
                         // Beautiful hack, please remove this in the future.
-                        HyperName::from_str(name.as_str()).expect("reqwest Name is just wrapper for hyper-util Name"),
+                        HyperName::from_str(name.as_str())
+                            .expect("reqwest Name is just wrapper for hyper-util Name"),
                     )
                     .map(|result| {
                         result

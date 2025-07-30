@@ -62,7 +62,11 @@ impl AuthData {
     ///
     /// Returns an error if the `auth_type` is known and serialization of `data`
     /// to the corresponding `AuthData` variant fails.
-    pub fn new(auth_type: &str, session: Option<String>, data: JsonObject) -> serde_json::Result<Self> {
+    pub fn new(
+        auth_type: &str,
+        session: Option<String>,
+        data: JsonObject,
+    ) -> serde_json::Result<Self> {
         fn deserialize_variant<T: DeserializeOwned>(
             session: Option<String>,
             mut obj: JsonObject,
@@ -206,7 +210,9 @@ impl<'de> Deserialize<'de> for AuthData {
             Some("m.login.email.identity") => from_raw_json_value(&json).map(Self::EmailIdentity),
             Some("m.login.msisdn") => from_raw_json_value(&json).map(Self::Msisdn),
             Some("m.login.dummy") => from_raw_json_value(&json).map(Self::Dummy),
-            Some("m.login.registration_token") => from_raw_json_value(&json).map(Self::RegistrationToken),
+            Some("m.login.registration_token") => {
+                from_raw_json_value(&json).map(Self::RegistrationToken)
+            }
             None => from_raw_json_value(&json).map(Self::FallbackAcknowledgement),
             Some(_) => from_raw_json_value(&json).map(Self::_Custom),
         }
@@ -319,7 +325,10 @@ impl ReCaptcha {
 
 impl fmt::Debug for ReCaptcha {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { response: _, session } = self;
+        let Self {
+            response: _,
+            session,
+        } = self;
         f.debug_struct("ReCaptcha")
             .field("session", session)
             .finish_non_exhaustive()
@@ -395,7 +404,10 @@ pub struct RegistrationToken {
 impl RegistrationToken {
     /// Creates a new `RegistrationToken` with the given token.
     pub fn new(token: String) -> Self {
-        Self { token, session: None }
+        Self {
+            token,
+            session: None,
+        }
     }
 }
 
@@ -509,7 +521,9 @@ impl UserIdentifier {
         match self {
             Self::Email { address } => Some((&Medium::Email, address)),
             Self::Msisdn { number } => Some((&Medium::Msisdn, number)),
-            Self::_CustomThirdParty(CustomThirdPartyId { medium, address }) => Some((medium, address)),
+            Self::_CustomThirdParty(CustomThirdPartyId { medium, address }) => {
+                Some((medium, address))
+            }
             _ => None,
         }
     }

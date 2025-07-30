@@ -178,7 +178,10 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
                             .map_err(de::Error::custom)
                     })
                     .transpose()?,
-                body: body.map(from_json_value).transpose().map_err(de::Error::custom)?,
+                body: body
+                    .map(from_json_value)
+                    .transpose()
+                    .map_err(de::Error::custom)?,
             },
             ErrorCode::CannotLeaveServerNoticeRoom => ErrorKind::CannotLeaveServerNoticeRoom,
             ErrorCode::CannotOverwriteMedia => ErrorKind::CannotOverwriteMedia,
@@ -191,8 +194,10 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::Forbidden => ErrorKind::forbidden(),
             ErrorCode::GuestAccessForbidden => ErrorKind::GuestAccessForbidden,
             ErrorCode::IncompatibleRoomVersion => ErrorKind::IncompatibleRoomVersion {
-                room_version: from_json_value(room_version.ok_or_else(|| de::Error::missing_field("room_version"))?)
-                    .map_err(de::Error::custom)?,
+                room_version: from_json_value(
+                    room_version.ok_or_else(|| de::Error::missing_field("room_version"))?,
+                )
+                .map_err(de::Error::custom)?,
             },
             ErrorCode::InvalidParam => ErrorKind::InvalidParam,
             ErrorCode::InvalidRoomState => ErrorKind::InvalidRoomState,
@@ -212,8 +217,10 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::NotJson => ErrorKind::NotJson,
             ErrorCode::NotYetUploaded => ErrorKind::NotYetUploaded,
             ErrorCode::ResourceLimitExceeded => ErrorKind::ResourceLimitExceeded {
-                admin_contact: from_json_value(admin_contact.ok_or_else(|| de::Error::missing_field("admin_contact"))?)
-                    .map_err(de::Error::custom)?,
+                admin_contact: from_json_value(
+                    admin_contact.ok_or_else(|| de::Error::missing_field("admin_contact"))?,
+                )
+                .map_err(de::Error::custom)?,
             },
             ErrorCode::RoomInUse => ErrorKind::RoomInUse,
             ErrorCode::ServerNotTrusted => ErrorKind::ServerNotTrusted,
@@ -661,7 +668,9 @@ impl TryFrom<&http::HeaderValue> for RetryAfter {
     fn try_from(value: &http::HeaderValue) -> Result<Self, Self::Error> {
         if value.as_bytes().iter().all(|b| b.is_ascii_digit()) {
             // It should be a duration.
-            Ok(Self::Delay(Duration::from_secs(u64::from_str(value.to_str()?)?)))
+            Ok(Self::Delay(Duration::from_secs(u64::from_str(
+                value.to_str()?,
+            )?)))
         } else {
             // It should be a date.
             Ok(Self::DateTime(http_date_to_system_time(value)?))

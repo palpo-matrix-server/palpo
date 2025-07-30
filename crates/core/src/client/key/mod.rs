@@ -137,7 +137,9 @@ pub struct UploadKeysResBody {
 impl UploadKeysResBody {
     /// Creates a new `Response` with the given one time key counts.
     pub fn new(one_time_key_counts: BTreeMap<DeviceKeyAlgorithm, u64>) -> Self {
-        Self { one_time_key_counts }
+        Self {
+            one_time_key_counts,
+        }
     }
 }
 
@@ -296,7 +298,8 @@ impl SignedKeys {
 
     /// Add the given device keys.
     pub fn add_device_keys(&mut self, device_id: OwnedDeviceId, device_keys: RawJson<DeviceKeys>) {
-        self.0.insert(device_id.as_str().into(), device_keys.into_inner());
+        self.0
+            .insert(device_id.as_str().into(), device_keys.into_inner());
     }
 
     /// Add the given cross signing keys.
@@ -305,7 +308,8 @@ impl SignedKeys {
         cross_signing_key_id: Box<str>,
         cross_signing_keys: RawJson<CrossSigningKey>,
     ) {
-        self.0.insert(cross_signing_key_id, cross_signing_keys.into_inner());
+        self.0
+            .insert(cross_signing_key_id, cross_signing_keys.into_inner());
     }
 
     /// Returns an iterator over the keys.

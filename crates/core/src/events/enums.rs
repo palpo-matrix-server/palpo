@@ -330,7 +330,9 @@ impl<'de> Deserialize<'de> for AnySyncTimelineEvent {
         if state_key.is_some() {
             Ok(AnySyncTimelineEvent::State(from_raw_json_value(&json)?))
         } else {
-            Ok(AnySyncTimelineEvent::MessageLike(from_raw_json_value(&json)?))
+            Ok(AnySyncTimelineEvent::MessageLike(from_raw_json_value(
+                &json,
+            )?))
         }
     }
 }
@@ -352,7 +354,8 @@ impl AnyMessageLikeEventContent {
         };
         #[cfg(feature = "unstable-msc3381")]
         use super::poll::{
-            end::PollEndEventContent, response::PollResponseEventContent, unstable_end::UnstablePollEndEventContent,
+            end::PollEndEventContent, response::PollResponseEventContent,
+            unstable_end::UnstablePollEndEventContent,
             unstable_response::UnstablePollResponseEventContent,
         };
 

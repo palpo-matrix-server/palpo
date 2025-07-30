@@ -83,7 +83,11 @@ pub struct RoomEventFilter {
     /// * `None`: No filtering
     /// * `Some(EventsWithUrl)`: Only events with a URL
     /// * `Some(EventsWithoutUrl)`: Only events without a URL
-    #[serde(default, rename = "contains_url", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "contains_url",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub url_filter: Option<UrlFilter>,
 
     /// Options to control lazy-loading of membership events.

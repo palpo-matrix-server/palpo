@@ -1,8 +1,8 @@
 use salvo::prelude::*;
 
 use crate::core::client::relation::{
-    RelatingEventsReqArgs, RelatingEventsWithRelTypeAndEventTypeReqArgs, RelatingEventsWithRelTypeReqArgs,
-    RelationEventsResBody,
+    RelatingEventsReqArgs, RelatingEventsWithRelTypeAndEventTypeReqArgs,
+    RelatingEventsWithRelTypeReqArgs, RelationEventsResBody,
 };
 use crate::{AuthArgs, DepotExt, JsonResult, json_ok};
 

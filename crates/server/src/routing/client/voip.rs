@@ -37,15 +37,18 @@ async fn turn_server(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<TurnServerR
     let turn_secret = turn_conf.secret.clone();
 
     let (username, password) = if !turn_secret.is_empty() {
-        let expiry = UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(turn_conf.ttl))
-            .expect("time is valid");
+        let expiry =
+            UnixSeconds::from_system_time(SystemTime::now() + Duration::from_secs(turn_conf.ttl))
+                .expect("time is valid");
 
         let username = format!("{}:{}", expiry.get(), authed.user_id());
 
-        let mut mac = HmacSha1::new_from_slice(turn_secret.as_bytes()).expect("HMAC can take key of any size");
+        let mut mac = HmacSha1::new_from_slice(turn_secret.as_bytes())
+            .expect("HMAC can take key of any size");
         mac.update(username.as_bytes());
 
-        let password: String = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
+        let password: String =
+            base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
 
         (username, password)
     } else {

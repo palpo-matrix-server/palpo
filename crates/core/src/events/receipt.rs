@@ -15,7 +15,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
-    EventId, IdParseError, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, UnixMillis, UserId,
+    EventId, IdParseError, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, UnixMillis,
+    UserId,
     serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum},
 };
 
@@ -32,7 +33,11 @@ pub struct ReceiptEventContent(pub BTreeMap<OwnedEventId, Receipts>);
 impl ReceiptEventContent {
     /// Get the receipt for the given user ID with the given receipt type, if it
     /// exists.
-    pub fn user_receipt(&self, user_id: &UserId, receipt_type: ReceiptType) -> Option<(&EventId, &Receipt)> {
+    pub fn user_receipt(
+        &self,
+        user_id: &UserId,
+        receipt_type: ReceiptType,
+    ) -> Option<(&EventId, &Receipt)> {
         self.iter().find_map(|(event_id, receipts)| {
             let receipt = receipts.get(&receipt_type)?.get(user_id)?;
             Some((event_id.as_ref(), receipt))
@@ -89,7 +94,11 @@ pub struct Receipt {
     pub ts: Option<UnixMillis>,
 
     /// The thread this receipt applies to.
-    #[serde(rename = "thread_id", default, skip_serializing_if = "crate::serde::is_default")]
+    #[serde(
+        rename = "thread_id",
+        default,
+        skip_serializing_if = "crate::serde::is_default"
+    )]
     pub thread: ReceiptThread,
 }
 
@@ -375,7 +384,11 @@ pub struct CreateReceiptReqBody {
     /// [`ReceiptType::FullyRead`].
     ///
     /// Defaults to [`ReceiptThread::Unthreaded`].
-    #[serde(rename = "thread_id", default, skip_serializing_if = "crate::serde::is_default")]
+    #[serde(
+        rename = "thread_id",
+        default,
+        skip_serializing_if = "crate::serde::is_default"
+    )]
     pub thread: ReceiptThread,
 }
 

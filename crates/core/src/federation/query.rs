@@ -29,7 +29,8 @@ use crate::{
 
 pub fn directory_request(origin: &str, room_alias: &RoomAliasId) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/query/directory"))?;
-    url.query_pairs_mut().append_pair("room_alias", room_alias.as_str());
+    url.query_pairs_mut()
+        .append_pair("room_alias", room_alias.as_str());
     Ok(crate::sending::get(url))
 }
 
@@ -77,9 +78,11 @@ impl RoomInfoResBody {
 
 pub fn profile_request(origin: &str, args: ProfileReqArgs) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!("{origin}/_matrix/federation/v1/query/profile"))?;
-    url.query_pairs_mut().append_pair("user_id", args.user_id.as_str());
+    url.query_pairs_mut()
+        .append_pair("user_id", args.user_id.as_str());
     if let Some(field) = &args.field {
-        url.query_pairs_mut().append_pair("field", &field.to_string());
+        url.query_pairs_mut()
+            .append_pair("field", &field.to_string());
     }
     Ok(crate::sending::get(url))
 }

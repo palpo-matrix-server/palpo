@@ -1,11 +1,13 @@
-#![allow(clippy::disallowed_macros)]
-
+mod admin;
+mod cargo;
 mod config;
+mod git;
+mod rustc;
 mod utils;
 
 use proc_macro::TokenStream;
 use syn::{
-    Error, ItemStruct, Meta,
+    Error, Item, ItemConst, ItemEnum, ItemFn, ItemStruct, Meta,
     parse::{Parse, Parser},
     parse_macro_input,
 };
@@ -13,8 +15,43 @@ use syn::{
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 #[proc_macro_attribute]
+pub fn admin_command_dispatch(args: TokenStream, input: TokenStream) -> TokenStream {
+    attribute_macro::<ItemEnum, _>(args, input, admin::command_dispatch)
+}
+
+#[proc_macro_attribute]
 pub fn config_example(args: TokenStream, input: TokenStream) -> TokenStream {
     attribute_macro::<ItemStruct, _>(args, input, config::generate_example)
+}
+
+#[proc_macro_attribute]
+pub fn cargo_manifest(args: TokenStream, input: TokenStream) -> TokenStream {
+    attribute_macro::<ItemConst, _>(args, input, cargo::manifest)
+}
+
+#[proc_macro]
+pub fn rustc_flags_capture(args: TokenStream) -> TokenStream {
+    rustc::flags_capture(args)
+}
+
+#[proc_macro]
+pub fn rustc_version(args: TokenStream) -> TokenStream {
+    rustc::version(args)
+}
+
+#[proc_macro]
+pub fn git_semantic(args: TokenStream) -> TokenStream {
+    git::semantic(args)
+}
+
+#[proc_macro]
+pub fn git_commit(args: TokenStream) -> TokenStream {
+    git::commit(args)
+}
+
+#[proc_macro]
+pub fn git_describe(args: TokenStream) -> TokenStream {
+    git::describe(args)
 }
 
 fn attribute_macro<I, F>(args: TokenStream, input: TokenStream, func: F) -> TokenStream

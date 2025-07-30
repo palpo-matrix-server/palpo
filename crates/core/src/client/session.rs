@@ -233,7 +233,9 @@ impl LoginInfo {
         Ok(match login_type {
             "m.login.password" => Self::Password(serde_json::from_value(JsonValue::Object(data))?),
             "m.login.token" => Self::Token(serde_json::from_value(JsonValue::Object(data))?),
-            "m.login.application_service" => Self::Appservice(serde_json::from_value(JsonValue::Object(data))?),
+            "m.login.application_service" => {
+                Self::Appservice(serde_json::from_value(JsonValue::Object(data))?)
+            }
             _ => Self::_Custom(CustomLoginInfo {
                 login_type: login_type.into(),
                 extra: data,
@@ -269,7 +271,9 @@ impl<'de> Deserialize<'de> for LoginInfo {
         // `#[serde(flatten)]` breaks things.
         let json = JsonValue::deserialize(deserializer)?;
 
-        let login_type = json["type"].as_str().ok_or_else(|| de::Error::missing_field("type"))?;
+        let login_type = json["type"]
+            .as_str()
+            .ok_or_else(|| de::Error::missing_field("type"))?;
         match login_type {
             "m.login.password" => from_json_value(json).map(Self::Password),
             "m.login.token" => from_json_value(json).map(Self::Token),
@@ -294,7 +298,10 @@ pub struct Password {
 impl Password {
     /// Creates a new `Password` with the given identifier and password.
     pub fn new(identifier: UserIdentifier, password: String) -> Self {
-        Self { identifier, password }
+        Self {
+            identifier,
+            password,
+        }
     }
 }
 
@@ -360,7 +367,10 @@ pub struct CustomLoginInfo {
 
 impl fmt::Debug for CustomLoginInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { login_type, extra: _ } = self;
+        let Self {
+            login_type,
+            extra: _,
+        } = self;
         f.debug_struct("CustomLoginInfo")
             .field("login_type", login_type)
             .finish_non_exhaustive()
@@ -565,7 +575,9 @@ pub struct TokenLoginType {
 impl TokenLoginType {
     /// Creates a new `TokenLoginType`.
     pub fn new() -> Self {
-        Self { get_login_token: false }
+        Self {
+            get_login_token: false,
+        }
     }
 }
 

@@ -61,8 +61,8 @@ mod test {
             "sender": "@user:example.org"
         });
 
-        let event =
-            from_json_value::<AnyStateEvent>(data).expect("We should be able to deserialize the member hints event");
+        let event = from_json_value::<AnyStateEvent>(data)
+            .expect("We should be able to deserialize the member hints event");
 
         assert_matches!(event, AnyStateEvent::MemberHints(event));
         assert_matches!(event, crate::events::StateEvent::Original(event));
@@ -83,8 +83,8 @@ mod test {
             "sender": "@user:example.org"
         });
 
-        let event =
-            from_json_value::<AnyStateEvent>(data).expect("We should be able to deserialize the member hints event");
+        let event = from_json_value::<AnyStateEvent>(data)
+            .expect("We should be able to deserialize the member hints event");
 
         assert_matches!(event, AnyStateEvent::MemberHints(event));
         assert_matches!(event, crate::events::StateEvent::Original(event));
@@ -97,8 +97,8 @@ mod test {
         let user_id = user_id!("@slackbot:matrix.org");
         let content = MemberHintsEventContent::new(BTreeSet::from([user_id.to_owned()]));
 
-        let serialized =
-            serde_json::to_value(content).expect("We should be able to serialize the member hints content");
+        let serialized = serde_json::to_value(content)
+            .expect("We should be able to serialize the member hints content");
 
         let expected = json!({
             "service_members": [

@@ -62,6 +62,9 @@ mod tests {
         let test = DurationTest {
             timeout: Duration::from_millis(7000),
         };
-        assert_eq!(serde_json::to_value(test).unwrap(), json!({ "timeout": 7000 }));
+        assert_eq!(
+            serde_json::to_value(test).unwrap(),
+            json!({ "timeout": 7000 })
+        );
     }
 }

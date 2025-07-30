@@ -8,7 +8,9 @@ pub trait IterStream<I: IntoIterator + Send> {
     fn stream(self) -> impl Stream<Item = <I as IntoIterator>::Item> + Send;
 
     /// Convert an Iterator into a TryStream
-    fn try_stream(self) -> impl TryStream<Ok = <I as IntoIterator>::Item, Error = crate::AppError> + Send;
+    fn try_stream(
+        self,
+    ) -> impl TryStream<Ok = <I as IntoIterator>::Item, Error = crate::AppError> + Send;
 }
 
 impl<I> IterStream<I> for I
@@ -22,7 +24,9 @@ where
     }
 
     #[inline]
-    fn try_stream(self) -> impl TryStream<Ok = <I as IntoIterator>::Item, Error = crate::AppError> + Send {
+    fn try_stream(
+        self,
+    ) -> impl TryStream<Ok = <I as IntoIterator>::Item, Error = crate::AppError> + Send {
         self.stream().map(Ok)
     }
 }

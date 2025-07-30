@@ -72,7 +72,10 @@ impl<'de> Visitor<'de> for CowStrVisitor {
     {
         match String::from_utf8(v) {
             Ok(s) => Ok(Cow::Owned(s)),
-            Err(e) => Err(de::Error::invalid_value(Unexpected::Bytes(&e.into_bytes()), &self)),
+            Err(e) => Err(de::Error::invalid_value(
+                Unexpected::Bytes(&e.into_bytes()),
+                &self,
+            )),
         }
     }
 }

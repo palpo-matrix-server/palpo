@@ -7,7 +7,9 @@ use crate::core::UnixMillis;
 use crate::core::events::AnySyncTimelineEvent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::identifiers::*;
-use crate::core::push::{Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset};
+use crate::core::push::{
+    Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset,
+};
 use crate::core::serde::{JsonValue, RawJson};
 use crate::schema::*;
 use crate::{DataError, DataResult, connect};
@@ -134,7 +136,8 @@ pub fn get_push_keys(user_id: &UserId) -> DataResult<Vec<String>> {
 }
 
 pub fn delete_user_pushers(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_pushers::table.filter(user_pushers::user_id.eq(user_id))).execute(&mut connect()?)?;
+    diesel::delete(user_pushers::table.filter(user_pushers::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
     Ok(())
 }
 

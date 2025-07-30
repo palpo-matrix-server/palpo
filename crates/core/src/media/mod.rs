@@ -15,7 +15,7 @@ use crate::{
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, StringEnum, Clone)]
+#[derive(ToSchema, StringEnum, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Method {
@@ -168,7 +168,11 @@ impl ConfigResBody {
 //         })
 //     }
 // }
-pub fn thumbnail_request(origin: &str, server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+pub fn thumbnail_request(
+    origin: &str,
+    server: &ServerName,
+    args: ThumbnailReqArgs,
+) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!(
         "{origin}/_matrix/media/v3/thumbnail/{server}/{}",
         args.media_id

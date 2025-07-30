@@ -52,7 +52,9 @@ pub struct ClaimKeysReqBody {
 impl ClaimKeysReqBody {
     /// Creates a new `Request` with the given key claims and the recommended 10
     /// second timeout.
-    pub fn new(one_time_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>) -> Self {
+    pub fn new(
+        one_time_keys: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceId, DeviceKeyAlgorithm>>,
+    ) -> Self {
         Self {
             timeout: Some(Duration::from_secs(10)),
             one_time_keys,

@@ -2,7 +2,8 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::GlobalAccountDataEventType, serde::StringEnum,
+    OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::GlobalAccountDataEventType,
+    serde::StringEnum,
 };
 
 /// Profile fields to specify in query.
@@ -120,7 +121,10 @@ pub struct ProfileResBody {
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 impl ProfileResBody {

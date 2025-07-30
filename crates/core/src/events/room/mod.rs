@@ -63,9 +63,14 @@ impl<'de> Deserialize<'de> for MediaSource {
         }
 
         match MediaSourceJsonRepr::deserialize(deserializer)? {
-            MediaSourceJsonRepr { url: None, file: None } => Err(de::Error::missing_field("url")),
+            MediaSourceJsonRepr {
+                url: None,
+                file: None,
+            } => Err(de::Error::missing_field("url")),
             // Prefer file if it is set
-            MediaSourceJsonRepr { file: Some(file), .. } => Ok(MediaSource::Encrypted(file)),
+            MediaSourceJsonRepr {
+                file: Some(file), ..
+            } => Ok(MediaSource::Encrypted(file)),
             MediaSourceJsonRepr { url: Some(url), .. } => Ok(MediaSource::Plain(url)),
         }
     }
@@ -95,7 +100,11 @@ pub struct ImageInfo {
     pub thumbnail_info: Option<Box<ThumbnailInfo>>,
 
     /// The source of the thumbnail of the image.
-    #[serde(flatten, with = "thumbnail_source_serde", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        flatten,
+        with = "thumbnail_source_serde",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub thumbnail_source: Option<MediaSource>,
 
     /// The [BlurHash](https://blurha.sh) for this image.
@@ -103,7 +112,10 @@ pub struct ImageInfo {
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
     #[cfg(feature = "unstable-msc2448")]
-    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 

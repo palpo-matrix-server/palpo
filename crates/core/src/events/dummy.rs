@@ -54,7 +54,10 @@ impl<'de> Deserialize<'de> for ToDeviceDummyEventContent {
             where
                 A: de::MapAccess<'de>,
             {
-                while map.next_entry::<de::IgnoredAny, de::IgnoredAny>()?.is_some() {}
+                while map
+                    .next_entry::<de::IgnoredAny, de::IgnoredAny>()?
+                    .is_some()
+                {}
                 Ok(ToDeviceDummyEventContent)
             }
         }
@@ -68,6 +71,8 @@ impl Serialize for ToDeviceDummyEventContent {
     where
         S: Serializer,
     {
-        serializer.serialize_struct("ToDeviceDummyEventContent", 0)?.end()
+        serializer
+            .serialize_struct("ToDeviceDummyEventContent", 0)?
+            .end()
     }
 }

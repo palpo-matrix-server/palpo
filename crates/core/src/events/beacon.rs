@@ -33,7 +33,11 @@ impl BeaconEventContent {
     /// Creates a new `BeaconEventContent` with the given beacon_info event id,
     /// geo uri and optional ts. If ts is None, the current time will be
     /// used.
-    pub fn new(beacon_info_event_id: OwnedEventId, geo_uri: String, ts: Option<UnixMillis>) -> Self {
+    pub fn new(
+        beacon_info_event_id: OwnedEventId,
+        geo_uri: String,
+        ts: Option<UnixMillis>,
+    ) -> Self {
         Self {
             relates_to: Reference::new(beacon_info_event_id),
             location: LocationContent::new(geo_uri),
