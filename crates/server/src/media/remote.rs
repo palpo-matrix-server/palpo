@@ -259,18 +259,17 @@ async fn fetch_thumbnail_unauthenticated(
 // })
 // }
 
-async fn handle_location(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    location: &str,
-) -> AppResult<FileMeta> {
-    location_request(location)
-        .await
-        .map_err(|error| AppError::public("fetching media from location failed"))
-}
+// async fn handle_location(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     location: &str,
+// ) -> AppResult<FileMeta> {
+//     location_request(location)
+//         .await
+//         .map_err(|error| AppError::public("fetching media from location failed"))
+// }
 
-async fn location_request(location: &str) -> AppResult<FileMeta> {
-    unimplemented!()
+// async fn location_request(location: &str) -> AppResult<FileMeta> {
     // let response = self
     // 	.services
     // 	.client
@@ -307,7 +306,7 @@ async fn location_request(location: &str) -> AppResult<FileMeta> {
     // 			None,
     // 		)),
     // 	})
-}
+// }
 
 // async fn federation_request<Request>(
 //     mxc: &Mxc<'_>,
