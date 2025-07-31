@@ -1,5 +1,5 @@
 /// Endpoints for exchanging transaction messages between homeservers.
-
+///
 /// `PUT /_matrix/federation/*/send/{txn_id}`
 ///
 /// Send live activity messages to another server.

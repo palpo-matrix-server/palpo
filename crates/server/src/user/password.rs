@@ -21,7 +21,7 @@ pub fn vertify_password(user: &DbUser, password: &str) -> AppResult<()> {
     let hash_matches = argon2::verify_encoded(&hash, password.as_bytes()).unwrap_or(false);
 
     if !hash_matches {
-        return Err(MatrixError::unauthorized("Wrong username or password.").into());
+         Err(MatrixError::unauthorized("Wrong username or password.").into())
     } else {
         Ok(())
     }

@@ -210,7 +210,7 @@ pub fn appservices() -> &'static Vec<Registration> {
                 diesel::insert_into(user_devices::table)
                     .values(NewDbUserDevice {
                         user_id,
-                        device_id: OwnedDeviceId::try_from("_").expect("must be valid"),
+                        device_id: OwnedDeviceId::from("_"),
                         display_name: Some("[Default]".to_string()),
                         user_agent: None,
                         is_hidden: true,
@@ -237,7 +237,7 @@ pub fn add_signing_key_from_trusted_server(
         .optional()?;
 
     let prev_keys: Option<ServerSigningKeys> = key_data
-        .map(|key_data| serde_json::from_value(key_data))
+        .map(serde_json::from_value)
         .transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
@@ -295,7 +295,7 @@ pub fn add_signing_key_from_origin(
         .optional()?;
 
     let prev_keys: Option<ServerSigningKeys> = key_data
-        .map(|key_data| serde_json::from_value(key_data))
+        .map(serde_json::from_value)
         .transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {

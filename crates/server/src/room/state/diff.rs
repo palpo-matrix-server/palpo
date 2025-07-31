@@ -172,7 +172,7 @@ pub fn calc_and_save_state_delta(
         for item in disposed.iter() {
             if !parent_appended.remove(item) {
                 // It was not added in the parent and we removed it
-                parent_disposed.insert(item.clone());
+                parent_disposed.insert(*item);
             }
             // Else it was added in the parent and we removed it again. We can forget this change
         }
@@ -180,7 +180,7 @@ pub fn calc_and_save_state_delta(
         for item in appended.iter() {
             if !parent_disposed.remove(item) {
                 // It was not touched in the parent and we added it
-                parent_appended.insert(item.clone());
+                parent_appended.insert(*item);
             }
             // Else it was removed in the parent and we added it again. We can forget this change
         }
@@ -222,7 +222,7 @@ pub fn calc_and_save_state_delta(
         for item in disposed.iter() {
             if !parent_appended.remove(item) {
                 // It was not added in the parent and we removed it
-                parent_disposed.insert(item.clone());
+                parent_disposed.insert(*item);
             }
             // Else it was added in the parent and we removed it again. We can forget this change
         }
@@ -230,7 +230,7 @@ pub fn calc_and_save_state_delta(
         for item in appended.iter() {
             if !parent_disposed.remove(item) {
                 // It was not touched in the parent and we added it
-                parent_appended.insert(item.clone());
+                parent_appended.insert(*item);
             }
             // Else it was removed in the parent and we added it again. We can forget this change
         }

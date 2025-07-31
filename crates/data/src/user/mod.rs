@@ -125,14 +125,9 @@ pub fn invited_rooms(
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
-            if let Some(state_data) = state_data
+            state_data
                 .map(|state_data| serde_json::from_value(state_data).ok())
-                .flatten()
-            {
-                Some((room_id, state_data))
-            } else {
-                None
-            }
+                .flatten().map(|state_data| (room_id, state_data))
         })
         .collect();
     Ok(list)
@@ -150,14 +145,10 @@ pub fn knocked_rooms(
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
-            if let Some(state_data) = state_data
+            state_data
                 .map(|state_data| serde_json::from_value(state_data).ok())
                 .flatten()
-            {
-                Some((room_id, state_data))
-            } else {
-                None
-            }
+                .map(|state_data| (room_id, state_data))
         })
         .collect();
     Ok(list)

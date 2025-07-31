@@ -50,7 +50,7 @@ pub fn init(config: &DbConfig) {
         .thread_pool(Arc::new(ScheduledThreadPool::new(config.helper_threads)));
 
     let pool =
-        DieselPool::new(&config.url, &config, builder).expect("diesel pool should be created");
+        DieselPool::new(&config.url, config, builder).expect("diesel pool should be created");
     DIESEL_POOL.set(pool).expect("diesel pool should be set");
     migrate();
 }

@@ -14,7 +14,6 @@ use crate::{OwnedMxcUri, OwnedServerName};
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaid
-
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -294,7 +293,6 @@ pub struct UploadContentReqArgs {
 /// `/v3/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaidfilename
-
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

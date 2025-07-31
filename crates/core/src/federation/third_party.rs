@@ -91,18 +91,17 @@ impl ThirdPartyInvite {
     }
 }
 
-/// `PUT /_matrix/federation/*/exchange_third_party_invite/{room_id}`
-///
-/// The receiving server will verify the partial `m.room.member` event given in
-/// the request body. If valid, the receiving server will issue an invite as per
-/// the [Inviting to a room] section before returning a response to this
-/// request.
-///
-/// [Inviting to a room]: https://spec.matrix.org/latest/server-server-api/#inviting-to-a-room
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1exchange_third_party_inviteroomid
-
+// /// `PUT /_matrix/federation/*/exchange_third_party_invite/{room_id}`
+// ///
+// /// The receiving server will verify the partial `m.room.member` event given in
+// /// the request body. If valid, the receiving server will issue an invite as per
+// /// the [Inviting to a room] section before returning a response to this
+// /// request.
+// ///
+// /// [Inviting to a room]: https://spec.matrix.org/latest/server-server-api/#inviting-to-a-room
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1exchange_third_party_inviteroomid
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,
@@ -113,7 +112,6 @@ impl ThirdPartyInvite {
 // };
 
 /// Request type for the `exchange_invite` endpoint.
-
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct ExchangeInviteReqBody {
     /// The room ID to exchange a third party invite in.

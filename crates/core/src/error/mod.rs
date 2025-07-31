@@ -186,7 +186,7 @@ impl From<serde_json::error::Error> for MatrixError {
 
 impl Scribe for MatrixError {
     fn render(self, res: &mut Response) {
-        println!("MatrixError {}  {:?}", self.to_string(), self.body);
+        println!("MatrixError {self}  {:?}", self.body);
         res.add_header(header::CONTENT_TYPE, "application/json", true)
             .ok();
 

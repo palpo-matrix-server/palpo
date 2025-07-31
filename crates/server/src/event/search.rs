@@ -181,15 +181,15 @@ pub fn save_pdu(pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<(
         TimelineEventType::RoomName => content
             .get("name")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.name", v))),
+            .map(|v| ("content.name", v)),
         TimelineEventType::RoomTopic => content
             .get("topic")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.topic", v))),
+            .map(|v| ("content.topic", v)),
         TimelineEventType::RoomMessage => content
             .get("body")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.message", v))),
+            .map(|v| ("content.message", v)),
         TimelineEventType::RoomRedaction => {
             // TODO: Redaction
             return Ok(());

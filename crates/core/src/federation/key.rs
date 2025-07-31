@@ -1,5 +1,5 @@
 /// Endpoints for handling keys for end-to-end encryption
-
+///
 /// `POST /_matrix/federation/*/user/keys/claim`
 ///
 /// Claim one-time keys for use in pre-key messages.

@@ -363,8 +363,7 @@ impl ProtocolsResBody {
 //         1.1 => "/_matrix/client/v3/thirdparty/protocol/:protocol",
 //     }
 // };
-
-/// Request type for the `get_protocol` endpoint.
+// Request type for the `get_protocol` endpoint.
 // pub struct ProtocolReqBody {
 //     /// The name of the protocol.
 //     #[salvo(parameter(parameter_in = Path))]
@@ -443,7 +442,6 @@ impl LocationsResBody {
 // };
 
 /// Request type for the `get_location_for_room_alias` endpoint.
-
 // pub struct LocationReqBody {
 //     /// The Matrix room alias to look up.
 //     #[salvo(parameter(parameter_in = Query))]

@@ -332,9 +332,6 @@ pub async fn preview_url(
 /// Load media thumbnail from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true
-///
-///
-
 /// Downloads a file's thumbnail.
 ///
 /// Here's an example on how it works:

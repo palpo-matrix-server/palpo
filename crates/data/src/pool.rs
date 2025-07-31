@@ -17,7 +17,7 @@ pub struct DieselPool {
 
 impl DieselPool {
     pub(crate) fn new(
-        url: &String,
+        url: &str,
         config: &DbConfig,
         r2d2_config: r2d2::Builder<ConnectionManager<PgConnection>>,
     ) -> Result<DieselPool, PoolError> {

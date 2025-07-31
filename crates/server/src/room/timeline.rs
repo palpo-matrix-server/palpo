@@ -277,7 +277,7 @@ where
                 relates_added = true;
                 println!("Adding to thread: {:?}", thread.event_id);
                 // thread_id = Some(thread.event_id.clone());
-                super::thread::add_to_thread(&thread.event_id, &pdu)?;
+                super::thread::add_to_thread(&thread.event_id, pdu)?;
             }
             _ => {} // TODO: Aggregate other types
         }
@@ -351,7 +351,7 @@ where
     match pdu.event_ty {
         TimelineEventType::RoomRedaction => {
             if let Some(redact_id) = &pdu.redacts {
-                redact_pdu(redact_id, &pdu)?;
+                redact_pdu(redact_id, pdu)?;
             }
         }
         TimelineEventType::SpaceChild => {
@@ -379,14 +379,14 @@ where
 
                 let stripped_state = match content.membership {
                     MembershipState::Invite | MembershipState::Knock => {
-                        let state = state::summary_stripped(&pdu)?;
+                        let state = state::summary_stripped(pdu)?;
                         Some(state)
                     }
                     _ => None,
                 };
 
                 if content.membership == MembershipState::Join {
-                    let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online)?;
+                    let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online);
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
@@ -456,7 +456,7 @@ where
         relates_to: Relation,
     }
 
-    crate::event::search::save_pdu(&pdu, &pdu_json)?;
+    crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     if let Err(e) = push_action::increment_notification_counts(&pdu.event_id, notifies, highlights)
     {
@@ -464,7 +464,7 @@ where
     }
 
     for appservice in crate::appservice::all()?.values() {
-        if super::appservice_in_room(&pdu.room_id, &appservice)? {
+        if super::appservice_in_room(&pdu.room_id, appservice)? {
             crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
             continue;
         }
@@ -477,12 +477,10 @@ where
                 .as_ref()
                 .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
             {
-                if let Some(appservice_uid) = UserId::parse_with_server_name(
+                if let Ok(appservice_uid) = UserId::parse_with_server_name(
                     &*appservice.registration.sender_localpart,
                     &conf.server_name,
-                )
-                .ok()
-                {
+                ) {
                     if state_key_uid == &appservice_uid {
                         crate::sending::send_pdu_appservice(
                             appservice.registration.id.clone(),
@@ -497,8 +495,8 @@ where
             config::get().server_name == pdu.sender.server_name()
                 && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
-                    && pdu.state_key.as_ref().map_or(false, |state_key| {
-                        UserId::parse(state_key).map_or(false, |user_id| {
+                    && pdu.state_key.as_ref().is_ok_and(|state_key| {
+                        UserId::parse(state_key).is_ok_and(|user_id| {
                             config::get().server_name == user_id.server_name()
                                 && appservice.is_user_match(&user_id)
                         })
@@ -513,10 +511,10 @@ where
                     super::get_state(&pdu.room_id, &StateEventType::RoomCanonicalAlias, "", None)
                 {
                     pdu.get_content::<RoomCanonicalAliasEventContent>()
-                        .map_or(false, |content| {
+                        .is_ok_and(|content| {
                             content
                                 .alias
-                                .map_or(false, |alias| appservice.aliases.is_match(alias.as_str()))
+                                .is_some_and(|alias| appservice.aliases.is_match(alias.as_str()))
                                 || content
                                     .alt_aliases
                                     .iter()
@@ -561,16 +559,13 @@ pub fn create_hash_and_sign_event(
     // version right now
     let room_version_id = if let Ok(room_version_id) = super::get_version(room_id) {
         room_version_id
+    } else if event_type == TimelineEventType::RoomCreate {
+        let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
+        content.room_version
     } else {
-        if event_type == TimelineEventType::RoomCreate {
-            let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
-            content.room_version
-        } else {
-            return Err(AppError::public(format!(
-                "non-create event for room `{}` of unknown version",
-                room_id
-            )));
-        }
+        return Err(AppError::public(format!(
+            "non-create event for room `{room_id}` of unknown version"
+        )));
     };
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
 
@@ -587,7 +582,7 @@ pub fn create_hash_and_sign_event(
         .iter()
         .filter_map(|event_id| Some(timeline::get_pdu(event_id).ok()?.depth))
         .max()
-        .unwrap_or_else(|| 0)
+        .unwrap_or(0)
         + 1;
 
     if let Some(state_key) = &state_key {
@@ -608,7 +603,7 @@ pub fn create_hash_and_sign_event(
 
     let temp_event_id =
         OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
-    let content_value: JsonValue = serde_json::from_str(&content.get())?;
+    let content_value: JsonValue = serde_json::from_str(content.get())?;
 
     let mut pdu = PduEvent {
         event_id: temp_event_id.clone(),
@@ -736,7 +731,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
                 .map_err(|_| AppError::internal("invalid content in pdu."))?;
 
             if content.membership == MembershipState::Leave {
-                if target == server_user.to_string() {
+                if target == *server_user {
                     warn!("Palpo user cannot leave from admins room");
                     return Err(MatrixError::forbidden(
                         "Palpo user cannot leave from admins room.",
@@ -761,7 +756,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
             }
 
             if content.membership == MembershipState::Ban && pdu.state_key().is_some() {
-                if target == server_user.to_string() {
+                if target == *server_user {
                     warn!("Palpo user cannot be banned in admins room");
                     return Err(MatrixError::forbidden(
                         "Palpo user cannot be banned in admins room.",
@@ -915,7 +910,7 @@ pub fn get_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
-    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.max(10).min(100));
+    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.clamp(10, 100));
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
@@ -936,12 +931,10 @@ pub fn get_pdus(
                     .filter(events::sn.le(since_sn))
                     .filter(events::sn.ge(until_sn));
             }
+        } else if dir == Direction::Forward {
+            query = query.filter(events::sn.ge(since_sn));
         } else {
-            if dir == Direction::Forward {
-                query = query.filter(events::sn.ge(since_sn));
-            } else {
-                query = query.filter(events::sn.le(since_sn));
-            }
+            query = query.filter(events::sn.le(since_sn));
         }
 
         if let Some(filter) = filter {
@@ -1009,12 +1002,10 @@ pub fn get_pdus(
             } else {
                 break;
             }
+        } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
+            *sn
         } else {
-            if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
-                *sn
-            } else {
-                break;
-            }
+            break;
         };
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
@@ -1057,7 +1048,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(&user_id!("@doesntmatter:palpo.im"), &room_id, None)?;
+    let pdus = all_pdus(user_id!("@doesntmatter:palpo.im"), room_id, None)?;
     let first_pdu = pdus.first();
 
     let Some(first_pdu) = first_pdu else {
@@ -1070,7 +1061,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
 
     let conf = config::get();
     let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
-        &room_id,
+        room_id,
         &StateEventType::RoomPowerLevels,
         "",
         None,
@@ -1090,7 +1081,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
-                v: vec![(&*first_pdu.1.event_id).to_owned()],
+                v: vec![(*first_pdu.1.event_id).to_owned()],
                 limit: 100,
             },
         )?

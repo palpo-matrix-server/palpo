@@ -326,7 +326,7 @@ async fn send_events(
             .into_inner();
             let response = crate::appservice::send_request(registration, request)
                 .await
-                .map_err(|e| (kind.clone(), e.into()))
+                .map_err(|e| (kind.clone(), e))
                 .map(|_response| kind.clone());
 
             drop(permit);
@@ -349,7 +349,7 @@ async fn send_events(
 
             for pdu in pdus {
                 // Redacted events are not notification targets (we don't send push for them)
-                if pdu.unsigned.get("redacted_because").is_some() {
+                if pdu.unsigned.contains_key("redacted_because") {
                     continue;
                 }
                 let pusher =
@@ -372,7 +372,7 @@ async fn send_events(
                 .unwrap_or_else(|| push::Ruleset::server_default(user_id));
 
                 let notify_summary = crate::room::user::notify_summary(user_id, &pdu.room_id)
-                    .map_err(|e| (kind.clone(), e.into()))?;
+                    .map_err(|e| (kind.clone(), e))?;
 
                 let max_request = crate::sending::max_request();
                 let permit = max_request.acquire().await;
@@ -402,7 +402,7 @@ async fn send_events(
                         // TODO: check room version and remove event_id if needed
                         let raw = crate::sending::convert_to_outgoing_federation_event(
                             timeline::get_pdu_json(pdu_id)
-                                .map_err(|e| (OutgoingKind::Normal(server.clone()), e.into()))?
+                                .map_err(|e| (OutgoingKind::Normal(server.clone()), e))?
                                 .ok_or_else(|| {
                                     error!("event not found: {server} {pdu_id:?}");
                                     (
@@ -449,7 +449,7 @@ async fn send_events(
             .into_inner();
             let response = crate::sending::send_federation_request(server, request)
                 .await
-                .map_err(|e| (kind.clone(), e.into()))?
+                .map_err(|e| (kind.clone(), e))?
                 .json::<SendMessageResBody>()
                 .await
                 .map(|response| {
@@ -490,7 +490,7 @@ pub async fn send_federation_request(
     })?;
     drop(permit);
 
-    response.map_err(Into::into)
+    response
 }
 
 #[tracing::instrument(skip_all)]

@@ -247,9 +247,7 @@ async fn get_room_summary(
         allowed_room_ids,
         join_rule,
         room_id: room_id.to_owned(),
-        num_joined_members: num_joined_members
-            .try_into()
-            .expect("user count should not be that big"),
+        num_joined_members,
         room_version,
         encryption,
     })

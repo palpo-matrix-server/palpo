@@ -35,7 +35,7 @@ where
 {
     Ok(
         Option::<u64>::deserialize(deserializer)?
-            .map(|millis| Duration::from_millis(millis.into())),
+            .map(|millis| Duration::from_millis(millis)),
     )
 }
 

@@ -103,7 +103,7 @@ pub async fn join_room(
             },
             sender_id,
             room_id,
-            &room::lock_state(&room_id).await,
+            &room::lock_state(room_id).await,
         ) {
             Ok(_) => {
                 if let Some(device_id) = device_id {
@@ -296,7 +296,7 @@ pub async fn join_room(
         if let Err(e) = process_incoming_pdu(
             &remote_server,
             &event_id,
-            &room_id,
+            room_id,
             &room_version_id,
             event_value,
             true,
@@ -333,7 +333,7 @@ pub async fn join_room(
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
-            let (event_sn, event_guard) = ensure_event_sn(&room_id, &event_id)?;
+            let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
             let pdu = SnPduEvent::from_canonical_object(&event_id, event_sn, value.clone())
                 .map_err(|e| {
                     warn!("Invalid PDU in send_join response: {} {:?}", e, value);
@@ -342,7 +342,7 @@ pub async fn join_room(
 
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
-                event_id: pdu.event_id.to_owned().into(),
+                event_id: pdu.event_id.to_owned(),
                 event_sn,
                 room_id: pdu.room_id.clone(),
                 internal_metadata: None,
@@ -374,7 +374,7 @@ pub async fn join_room(
         };
 
         if !timeline::has_pdu(&event_id) {
-            let (event_sn, _event_guard) = ensure_event_sn(&room_id, &event_id)?;
+            let (event_sn, _event_guard) = ensure_event_sn(room_id, &event_id)?;
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
                 event_id: event_id.to_owned(),

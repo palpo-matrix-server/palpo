@@ -32,11 +32,11 @@ pub fn make_knock_request(origin: &str, args: MakeKnockReqArgs) -> SendResult<Se
     let ver = if ver.is_empty() {
         ""
     } else {
-        &*format!("?{}", ver)
+        &*format!("?{ver}")
     };
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/make_knock/{}/{}{}",
-        args.room_id, args.user_id, ver
+        "{origin}/_matrix/federation/v1/make_knock/{}/{}{ver}",
+        args.room_id, args.user_id
     ))?;
     Ok(crate::sending::get(url))
 }
@@ -83,12 +83,12 @@ impl MakeKnockResBody {
     }
 }
 
-/// `PUT /_matrix/federation/*/send_knock/{room_id}/{event_id}`
-///
-/// Submits a signed knock event to the resident homeserver for it to accept
-/// into the room's graph. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1send_knockroomideventid
+// /// `PUT /_matrix/federation/*/send_knock/{room_id}/{event_id}`
+// ///
+// /// Submits a signed knock event to the resident homeserver for it to accept
+// /// into the room's graph. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1send_knockroomideventid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -110,7 +110,7 @@ pub fn send_knock_request(
         "{origin}/_matrix/federation/v1/send_knock/{}/{}",
         args.room_id, args.event_id
     ))?;
-    Ok(crate::sending::put(url).stuff(body)?)
+    crate::sending::put(url).stuff(body)
 }
 
 #[derive(ToParameters, Deserialize, Debug)]

@@ -15,7 +15,7 @@ pub struct SlidingSyncCache {
 
 pub static CONNECTIONS: LazyLock<
     Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>,
-> = LazyLock::new(|| Default::default());
+> = LazyLock::new(Default::default);
 
 pub fn forget_sync_request_connection(
     user_id: OwnedUserId,

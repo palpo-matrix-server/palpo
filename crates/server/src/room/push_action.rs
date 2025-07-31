@@ -178,7 +178,7 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
         .distinct()
         .load::<Option<OwnedEventId>>(&mut connect()?)?
         .into_iter()
-        .filter_map(|x| x)
+        .flatten()
         .collect::<Vec<_>>();
     diesel::delete(
         event_push_actions::table
@@ -202,17 +202,14 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
             .filter(event_push_actions::room_id.eq(room_id))
             .filter(event_push_actions::thread_id.eq(thread_id));
         let notification_count = query
-            .clone()
             .filter(event_push_actions::notify.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
         let highlight_count = query
-            .clone()
             .filter(event_push_actions::highlight.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
         let unread_count = query
-            .clone()
             .filter(event_push_actions::unread.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
@@ -249,17 +246,14 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
         .filter(event_push_actions::room_id.eq(room_id))
         .filter(event_push_actions::thread_id.is_null());
     let notification_count = query
-        .clone()
         .filter(event_push_actions::notify.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;
     let highlight_count = query
-        .clone()
         .filter(event_push_actions::highlight.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;
     let unread_count = query
-        .clone()
         .filter(event_push_actions::unread.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;

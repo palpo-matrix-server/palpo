@@ -207,7 +207,6 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
                     .map(from_json_value::<u64>)
                     .transpose()
                     .map_err(de::Error::custom)?
-                    .map(Into::into)
                     .map(Duration::from_millis)
                     .map(RetryAfter::Delay),
             },

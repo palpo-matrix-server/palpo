@@ -184,7 +184,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
             for appservice in crate::appservice::all()?.values() {
                 let url = appservice
                     .registration
-                    .build_url(&format!("app/v1/rooms/{}", room_alias))?;
+                    .build_url(&format!("app/v1/rooms/{room_alias}"))?;
                 if appservice.aliases.is_match(room_alias.as_str())
                     && matches!(
                         crate::sending::post(url).send::<Option<()>>().await,

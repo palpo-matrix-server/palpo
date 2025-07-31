@@ -77,8 +77,6 @@ pub fn paginate_relations_with_filter(
     // Spec (v1.10) recommends depth of at least 3
     let depth: u8 = if recurse { 3 } else { 1 };
 
-    let next_token;
-
     let events: Vec<_> = crate::room::pdu_metadata::get_relations(
         user_id,
         room_id,
@@ -91,7 +89,7 @@ pub fn paginate_relations_with_filter(
         limit,
     )?;
 
-    next_token = match dir {
+    let next_token = match dir {
         Direction::Forward => events.last().map(|(count, _)| *count + 1),
         Direction::Backward => events.last().map(|(count, _)| *count - 1),
     };

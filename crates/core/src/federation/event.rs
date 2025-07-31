@@ -140,12 +140,12 @@ impl EventResBody {
     }
 }
 
-/// `POST /_matrix/federation/*/get_missing_events/{room_id}`
-///
-/// Retrieves previous events that the sender is missing.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
+// /// `POST /_matrix/federation/*/get_missing_events/{room_id}`
+// ///
+// /// Retrieves previous events that the sender is missing.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -282,12 +282,12 @@ impl RoomStateIdsResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/state/{room_id}`
-///
-/// Retrieves a snapshot of a room's state at a given event.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1stateroomid
+// /// `GET /_matrix/federation/*/state/{room_id}`
+// ///
+// /// Retrieves a snapshot of a room's state at a given event.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1stateroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

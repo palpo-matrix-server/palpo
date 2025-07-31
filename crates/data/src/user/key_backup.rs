@@ -176,9 +176,9 @@ pub fn add_key(
 
     let exist_key = get_key_for_session(user_id, version, room_id, session_id)?;
     let replace = if let Some(exist_key) = exist_key {
-        if new_key.is_verified && !exist_key.is_verified {
-            true
-        } else if new_key.first_message_index < exist_key.first_message_index {
+        if (new_key.is_verified && !exist_key.is_verified)
+            || new_key.first_message_index < exist_key.first_message_index
+        {
             true
         } else if new_key.first_message_index == exist_key.first_message_index {
             new_key.forwarded_count < exist_key.forwarded_count

@@ -31,10 +31,10 @@ pub fn read_receipts(
 
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
     for mut receipt in receipts {
-        if receipt.thread_id.is_some() {
-            if unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone())) {
-                receipt.thread_id = None;
-            }
+        if receipt.thread_id.is_some()
+            && unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone()))
+        {
+            receipt.thread_id = None;
         }
         grouped
             .entry(receipt.user_id.clone())

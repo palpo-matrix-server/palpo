@@ -204,7 +204,7 @@ impl From<CanonicalJsonValue> for JsonValue {
     fn from(val: CanonicalJsonValue) -> Self {
         match val {
             CanonicalJsonValue::Bool(b) => Self::Bool(b),
-            CanonicalJsonValue::Integer(int) => Self::Number(i64::from(int).into()),
+            CanonicalJsonValue::Integer(int) => Self::Number(int.into()),
             CanonicalJsonValue::String(string) => Self::String(string),
             CanonicalJsonValue::Array(vec) => {
                 Self::Array(vec.into_iter().map(Into::into).collect())

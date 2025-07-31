@@ -56,7 +56,7 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
         .write(true)
         .create(section.is_none())
         .truncate(section.is_none())
-        .append(!section.is_none())
+        .append(section.is_some())
         .clone();
 
     let mut file = write

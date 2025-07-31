@@ -22,7 +22,6 @@ pub use self::{
 };
 
 /// Features supported by room versions.
-
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 pub enum RoomVersionFeature {
@@ -373,7 +372,7 @@ impl StrExt for str {
             return false;
         }
 
-        let has_wildcards = pattern.contains(|c| matches!(c, '?' | '*'));
+        let has_wildcards = pattern.contains(|c| ['?', '*']);
 
         if has_wildcards {
             let mut chunks: Vec<String> = vec![];

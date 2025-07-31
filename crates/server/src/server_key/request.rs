@@ -43,7 +43,7 @@ where
         .keys()
         .rev()
         .take(crate::config::get().trusted_server_batch_size)
-        .last()
+        .next_back()
         .cloned()
     {
         let origin = batch.origin().await;

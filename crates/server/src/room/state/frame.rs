@@ -55,7 +55,7 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
         Ok(info)
     } else {
         let info = vec![FrameInfo {
-            frame_id: frame_id,
+            frame_id,
             full_state: appended.clone(),
             appended,
             disposed,

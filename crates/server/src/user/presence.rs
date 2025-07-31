@@ -24,7 +24,7 @@ pub fn ping_presence(user_id: &UserId, new_state: &PresenceState) -> AppResult<(
 
     let last_last_active_ago = match last_presence {
         Err(_) => 0_u64,
-        Ok(ref presence) => presence.content.last_active_ago.unwrap_or_default().into(),
+        Ok(ref presence) => presence.content.last_active_ago.unwrap_or_default(),
     };
 
     if !state_changed && last_last_active_ago < REFRESH_TIMEOUT {

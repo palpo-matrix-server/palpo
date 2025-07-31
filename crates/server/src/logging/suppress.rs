@@ -4,8 +4,8 @@ pub struct Suppress {
     restore: EnvFilter,
 }
 
-impl Suppress {
-    pub fn new() -> Self {
+impl Default for Suppress {
+    fn default() -> Self {
         let handle = "console";
         let suppress = EnvFilter::default();
         let conf = &crate::config::get().logger;
@@ -20,6 +20,12 @@ impl Suppress {
             .expect("log filter reloaded");
 
         Self { restore }
+    }
+}
+
+impl Suppress {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

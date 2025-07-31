@@ -21,7 +21,7 @@ pub struct SendRequest {
 #[macro_export]
 macro_rules! json_body_modifier {
     ($name:ident) => {
-        impl crate::sending::SendModifier for $name {
+        impl $crate::sending::SendModifier for $name {
             fn modify(
                 self,
                 request: &mut crate::sending::SendRequest,

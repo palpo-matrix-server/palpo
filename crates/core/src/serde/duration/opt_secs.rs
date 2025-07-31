@@ -33,7 +33,7 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error
 where
     D: Deserializer<'de>,
 {
-    Ok(Option::<u64>::deserialize(deserializer)?.map(|secs| Duration::from_secs(secs.into())))
+    Ok(Option::<u64>::deserialize(deserializer)?.map(|secs| Duration::from_secs(secs)))
 }
 
 #[cfg(test)]

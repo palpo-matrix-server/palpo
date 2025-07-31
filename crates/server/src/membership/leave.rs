@@ -90,7 +90,7 @@ pub async fn leave_room(
                     &event_id,
                     event_sn,
                     room_id,
-                    &user_id,
+                    user_id,
                     MembershipState::Leave,
                     user_id,
                     None,
@@ -116,7 +116,7 @@ pub async fn leave_room(
             },
             user_id,
             room_id,
-            &room::lock_state(&room_id).await,
+            &room::lock_state(room_id).await,
         )?;
     }
 
@@ -154,7 +154,7 @@ async fn leave_room_remote(
         )?
         .into_inner();
         let make_leave_response = crate::sending::send_federation_request(
-            &room_id.server_name().map_err(AppError::internal)?,
+            room_id.server_name().map_err(AppError::internal)?,
             request,
         )
         .await?
@@ -201,7 +201,7 @@ async fn leave_room_remote(
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
     // TODO: event_sn??, outlier but has sn??
-    let (event_sn, event_guard) = ensure_event_sn(&room_id, &event_id)?;
+    let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,

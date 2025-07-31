@@ -290,7 +290,7 @@ pub struct EmailPusherData;
 impl EmailPusherData {
     /// Creates a new empty `EmailPusherData`.
     pub fn new() -> Self {
-        Self::default()
+        Default::default()
     }
 }
 
