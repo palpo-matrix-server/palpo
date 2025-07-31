@@ -39,14 +39,14 @@ byteorder = "1.5.0"
 cargo_toml = "0.22.3"
 chksum = "0.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
-clap = { version = "4.5.41", default-features = false }
+clap = { version = "4.5.42", default-features = false }
 config = "0.15.13"
 cookie = "0.18.0"
 core_affinity = "0.8.3"
 cyborgtime = "2.1.1"
 data-encoding = "2.5.0"
 date_header = "1.0.5"
-diesel = { version = "2.2", features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
+diesel = { version = "2.2"}
 diesel-async ={ version = "0.6.1"}
 # diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2"

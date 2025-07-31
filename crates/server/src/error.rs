@@ -68,19 +68,21 @@ pub enum AppError {
     #[error("CanonicalJson error: `{0}`")]
     CanonicalJson(#[from] palpo_core::serde::CanonicalJsonError),
     #[error("MxcUriError: `{0}`")]
-    MxcUriError(#[from] palpo_core::identifiers::MxcUriError),
+    MxcUri(#[from] palpo_core::identifiers::MxcUriError),
     #[error("ImageError: `{0}`")]
-    ImageError(#[from] image::ImageError),
+    Image(#[from] image::ImageError),
     #[error("Signatures: `{0}`")]
     Signatures(#[from] palpo_core::signatures::Error),
     #[error("FmtError: `{0}`")]
-    FmtError(#[from] std::fmt::Error),
+    Fmt(#[from] std::fmt::Error),
     #[error("CargoTomlError: `{0}`")]
-    CargoTomlError(#[from] cargo_toml::Error),
+    CargoToml(#[from] cargo_toml::Error),
     #[error("YamlError: `{0}`")]
-    YamlError(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml::Error),
     #[error("ClapError: `{0}`")]
-    ClapError(#[from] clap::Error),
+    Clap(#[from] clap::Error),
+    #[error("SystemTimeError: `{0}`")]
+    SystemTime(#[from] std::time::SystemTimeError),
 }
 
 impl AppError {

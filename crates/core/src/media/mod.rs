@@ -15,13 +15,14 @@ use crate::{
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, StringEnum, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(ToSchema, Default, StringEnum, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum Method {
+pub enum ResizeMethod {
     /// Crop the original to produce the requested image dimensions.
     Crop,
 
+    #[default]
     /// Maintain the original aspect ratio of the source image.
     Scale,
 
@@ -202,7 +203,7 @@ pub struct ThumbnailReqArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

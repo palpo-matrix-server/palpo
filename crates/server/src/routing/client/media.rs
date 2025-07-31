@@ -6,6 +6,7 @@ use std::str::FromStr;
 use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
+use palpo_core::client::media;
 use reqwest::Url;
 use salvo::fs::NamedFile;
 use salvo::http::header::CONTENT_TYPE;
@@ -18,6 +19,7 @@ use uuid::Uuid;
 use crate::core::UnixMillis;
 use crate::core::client::media::*;
 use crate::core::identifiers::*;
+use crate::core::media::ResizeMethod;
 use crate::data::connect;
 use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail};
 use crate::data::schema::*;
@@ -69,7 +71,7 @@ pub async fn get_content(
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM)
             });
 
-        let path = config::media_path(&args.server_name, &args.media_id);
+        let path = get_media_path(&args.server_name, &args.media_id);
         if Path::new(&path).exists() {
             if let Some(file_name) = &metadata.file_name {
                 NamedFile::builder(path).attached_name(file_name)
@@ -119,7 +121,7 @@ pub async fn get_content_with_filename(
         res.headers_mut().insert(CONTENT_TYPE, content_type);
     }
 
-    let path = config::media_path(&args.server_name, &args.media_id);
+    let path = get_media_path(&args.server_name, &args.media_id);
     if Path::new(&path).exists() {
         let file = NamedFile::builder(path)
             .content_type(
@@ -186,7 +188,7 @@ pub async fn create_content(
     };
 
     let conf = crate::config::get();
-    let dest_path = config::media_path(&conf.server_name, &media_id);
+    let dest_path = get_media_path(&conf.server_name, &media_id);
 
     // let dest_path = Path::new(&dest_path);
     // if dest_path.exists() {
@@ -252,7 +254,7 @@ pub async fn upload_content(
 
     let conf = crate::config::get();
 
-    let dest_path = config::media_path(&conf.server_name, &args.media_id);
+    let dest_path = get_media_path(&conf.server_name, &args.media_id);
     let dest_path = Path::new(&dest_path);
     // if dest_path.exists() {
     //     let metadata = fs::metadata(dest_path)?;
@@ -369,7 +371,7 @@ pub async fn get_thumbnail(
         *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 
-        let thumb_path = config::media_path(
+        let thumb_path = get_media_path(
             &args.server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
         );
@@ -381,29 +383,29 @@ pub async fn get_thumbnail(
         return Ok(());
     }
 
-    match crate::data::media::get_thumbnail(
+    match crate::data::media::get_thumbnail_by_dimension(
         &args.server_name,
         &args.media_id,
         args.width,
         args.height,
     ) {
         Ok(Some(DbThumbnail {
+            id,
             // content_disposition,
             content_type,
             ..
         })) => {
-            let thumb_path = config::media_path(
-                &args.server_name,
-                &format!("{}.{}x{}", args.media_id, args.width, args.height),
-            );
+            let thumbnail_path = get_thumbnail_path(&args.server_name, &args.media_id, id);
 
             res.add_header("Cross-Origin-Resource-Policy", "cross-origin", true)?;
-            let _file = NamedFile::builder(&thumb_path)
-                .content_type(
-                    Mime::from_str(&content_type)
+            let _file = NamedFile::builder(&thumbnail_path)
+                .content_type(if let Some(content_type) = &content_type {
+                    Mime::from_str(content_type)
                         .ok()
-                        .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-                )
+                        .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+                } else {
+                    mime::APPLICATION_OCTET_STREAM
+                })
                 .build()
                 .await?;
             // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
@@ -422,20 +424,24 @@ pub async fn get_thumbnail(
     let (width, height, crop) =
         crate::media::thumbnail_properties(args.width, args.height).unwrap_or((0, 0, false)); // 0, 0 because that's the original file
 
-    let thumb_path = config::media_path(
+    if let Some(DbThumbnail {
+        id, content_type, ..
+    }) = crate::data::media::get_thumbnail_by_dimension(
         &args.server_name,
-        &format!("{}.{width}x{height}", &args.media_id),
-    );
-    if let Some(DbThumbnail { content_type, .. }) =
-        crate::data::media::get_thumbnail(&args.server_name, &args.media_id, width, height)?
-    {
+        &args.media_id,
+        width,
+        height,
+    )? {
+        let thumbnail_path = get_thumbnail_path(&args.server_name, &args.media_id, id);
         // Using saved thumbnail
-        let file = NamedFile::builder(&thumb_path)
-            .content_type(
-                Mime::from_str(&content_type)
+        let file = NamedFile::builder(&thumbnail_path)
+            .content_type(if let Some(content_type) = &content_type {
+                Mime::from_str(content_type)
                     .ok()
-                    .unwrap_or(mime::APPLICATION_OCTET_STREAM),
-            )
+                    .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+            } else {
+                mime::APPLICATION_OCTET_STREAM
+            })
             .build()
             .await?;
         // if let Some(Ok(content_disposition)) = content_disposition.as_deref().map(HeaderValue::from_str) {
@@ -451,12 +457,12 @@ pub async fn get_thumbnail(
     })) = crate::data::media::get_metadata(&args.server_name, &args.media_id)
     {
         // Generate a thumbnail
-        let image_path = config::media_path(&args.server_name, &args.media_id);
+        let image_path = get_media_path(&args.server_name, &args.media_id);
         if let Ok(image) = image::open(&image_path) {
             let original_width = image.width();
             let original_height = image.height();
             if width > original_width || height > original_height {
-                let file = NamedFile::builder(&thumb_path)
+                let file = NamedFile::builder(&image_path)
                     .content_type(
                         content_type
                             .as_deref()
@@ -517,22 +523,44 @@ pub async fn get_thumbnail(
             )?;
 
             // Save thumbnail in database so we don't have to generate it again next time
-            diesel::insert_into(media_thumbnails::table)
+            let thumbnail_id = diesel::insert_into(media_thumbnails::table)
                 .values(&NewDbThumbnail {
                     media_id: args.media_id.clone(),
                     origin_server: args.server_name.clone(),
-                    content_type: "image/png".into(),
+                    content_type: Some("image/png".to_owned()),
+                    disposition_type: None,
                     file_size: thumbnail_bytes.len() as i64,
                     width: width as i32,
                     height: height as i32,
-                    resize_method: "_".into(),
+                    resize_method: args.method.clone().unwrap_or_default().to_string(),
                     created_at: UnixMillis::now(),
                 })
-                .execute(&mut connect()?)?;
-            let mut f = File::create(&thumb_path).await?;
-            f.write_all(&thumbnail_bytes).await?;
+                .on_conflict_do_nothing()
+                .returning(media_thumbnails::id)
+                .get_result::<i64>(&mut connect()?)
+                .optional()?;
+            let thumbnail_id = if let Some(thumbnail_id) = thumbnail_id {
+                crate::media::save_thumbnail_file(
+                    &args.server_name,
+                    &args.media_id,
+                    thumbnail_id,
+                    &thumbnail_bytes,
+                )
+                .await?;
+                thumbnail_id
+            } else {
+                media_thumbnails::table
+                    .filter(media_thumbnails::media_id.eq(&args.media_id))
+                    .filter(media_thumbnails::width.eq(args.width as i32))
+                    .filter(media_thumbnails::height.eq(args.height as i32))
+                    .filter(media_thumbnails::resize_method.eq(&args.method.clone().unwrap_or_default().to_string()))
+                    .select(media_thumbnails::id)
+                    .first::<i64>(&mut connect()?)?
+            };
 
-            let file = NamedFile::builder(&thumb_path)
+            let thumbnail_path =
+                get_thumbnail_path(&args.server_name, &args.media_id, thumbnail_id);
+            let file = NamedFile::builder(&thumbnail_path)
                 .content_type(
                     content_type
                         .as_deref()

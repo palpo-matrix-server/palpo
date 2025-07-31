@@ -1,10 +1,59 @@
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::core::federation::media::Content;
+use diesel::prelude::*;
+use salvo::Response;
+
+use crate::core::federation::media::{Content, ContentReqArgs, content_request};
+use crate::core::http_headers::ContentDisposition;
+use crate::core::identifiers::*;
 use crate::core::{Mxc, ServerName, UserId};
-use crate::{AppError, AppResult, config};
+use crate::data::connect;
+use crate::data::media::NewDbThumbnail;
+use crate::data::schema::*;
+use crate::utils::content_disposition::make_content_disposition;
+use crate::{AppError, AppResult, config, exts::*};
 
 use super::{Dimension, FileMeta};
+
+pub async fn fetch_remote_content(
+    _mxc: &str,
+    server_name: &ServerName,
+    media_id: &str,
+    res: &mut Response,
+) -> AppResult<()> {
+    let content_req = crate::core::media::content_request(
+        &server_name.origin().await,
+        crate::core::media::ContentReqArgs {
+            server_name: server_name.to_owned(),
+            media_id: media_id.to_owned(),
+            timeout_ms: Duration::from_secs(20),
+            allow_remote: true,
+            allow_redirect: true,
+        },
+    )?
+    .into_inner();
+    let content_response = if let Ok(content_response) =
+        crate::sending::send_federation_request(server_name, content_req).await
+    {
+        content_response
+    } else {
+        let content_req = crate::core::federation::media::content_request(
+            &server_name.origin().await,
+            ContentReqArgs {
+                media_id: media_id.to_owned(),
+                timeout_ms: Duration::from_secs(20),
+            },
+        )?
+        .into_inner();
+        crate::sending::send_federation_request(server_name, content_req).await?
+    };
+
+    *res.headers_mut() = content_response.headers().to_owned();
+    res.status_code(content_response.status());
+    res.stream(content_response.bytes_stream());
+
+    Ok(())
+}
 
 pub async fn fetch_remote_thumbnail(
     mxc: &Mxc<'_>,
@@ -24,22 +73,22 @@ pub async fn fetch_remote_thumbnail(
     result
 }
 
-pub async fn fetch_remote_content(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    server: Option<&ServerName>,
-    timeout_ms: Duration,
-) -> AppResult<FileMeta> {
-    check_fetch_authorized(mxc)?;
+// pub async fn fetch_remote_content(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     server: Option<&ServerName>,
+//     timeout_ms: Duration,
+// ) -> AppResult<FileMeta> {
+//     check_fetch_authorized(mxc)?;
 
-    let result = fetch_content_authenticated(mxc, user, server, timeout_ms).await;
+//     let result = fetch_content_authenticated(mxc, user, server, timeout_ms).await;
 
-    if result.is_err() {
-        return fetch_content_unauthenticated(mxc, user, server, timeout_ms).await;
-    }
+//     if result.is_err() {
+//         return fetch_content_unauthenticated(mxc, user, server, timeout_ms).await;
+//     }
 
-    result
-}
+//     result
+// }
 
 async fn fetch_thumbnail_authenticated(
     mxc: &Mxc<'_>,
@@ -72,29 +121,28 @@ async fn fetch_thumbnail_authenticated(
     // }
 }
 
-async fn fetch_content_authenticated(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    server: Option<&ServerName>,
-    timeout_ms: Duration,
-) -> AppResult<FileMeta> {
-    unimplemented!()
-    // use federation::authenticated_media::get_content::v1::{Request, Response};
+// async fn fetch_content_authenticated(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     server: Option<&ServerName>,
+//     timeout_ms: Duration,
+// ) -> AppResult<FileMeta> {
+// use federation::authenticated_media::get_content::v1::{Request, Response};
 
-    // let request = Request {
-    // 	media_id: mxc.media_id.into(),
-    // 	timeout_ms,
-    // };
+// let request = Request {
+// 	media_id: mxc.media_id.into(),
+// 	timeout_ms,
+// };
 
-    // let Response { content, .. } = self
-    // 	.federation_request(mxc, user, server, request)
-    // 	.await?;
+// let Response { content, .. } = self
+// 	.federation_request(mxc, user, server, request)
+// 	.await?;
 
-    // match content {
-    // 	| FileOrLocation::File(content) => self.handle_content_file(mxc, user, content).await,
-    // 	| FileOrLocation::Location(location) => self.handle_location(mxc, user, &location).await,
-    // }
-}
+// match content {
+// 	| FileOrLocation::File(content) => self.handle_content_file(mxc, user, content).await,
+// 	| FileOrLocation::Location(location) => self.handle_location(mxc, user, &location).await,
+// }
+// }
 
 async fn fetch_thumbnail_unauthenticated(
     mxc: &Mxc<'_>,
@@ -130,89 +178,86 @@ async fn fetch_thumbnail_unauthenticated(
     // 	.await
 }
 
-async fn fetch_content_unauthenticated(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    server: Option<&ServerName>,
-    timeout_ms: Duration,
-) -> AppResult<FileMeta> {
-    unimplemented!()
-    // use media::get_content::v3::{Request, Response};
+// async fn fetch_content_unauthenticated(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     server: Option<&ServerName>,
+//     timeout_ms: Duration,
+// ) -> AppResult<FileMeta> {
+// use media::get_content::v3::{Request, Response};
 
-    // let request = Request {
-    // 	allow_remote: true,
-    // 	allow_redirect: true,
-    // 	server_name: mxc.server_name.into(),
-    // 	media_id: mxc.media_id.into(),
-    // 	timeout_ms,
-    // };
+// let request = Request {
+// 	allow_remote: true,
+// 	allow_redirect: true,
+// 	server_name: mxc.server_name.into(),
+// 	media_id: mxc.media_id.into(),
+// 	timeout_ms,
+// };
 
-    // let Response {
-    // 	file, content_type, content_disposition, ..
-    // } = self
-    // 	.federation_request(mxc, user, server, request)
-    // 	.await?;
+// let Response {
+// 	file, content_type, content_disposition, ..
+// } = self
+// 	.federation_request(mxc, user, server, request)
+// 	.await?;
 
-    // let content = Content { file, content_type, content_disposition };
+// let content = Content { file, content_type, content_disposition };
 
-    // handle_content_file(mxc, user, content).await
-}
+// handle_content_file(mxc, user, content).await
+// }
 
-async fn handle_thumbnail_file(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    dim: &Dimension,
-    content: Content,
-) -> AppResult<FileMeta> {
-    unimplemented!()
-    // let content_disposition = make_content_disposition(
-    // 	content.content_disposition.as_ref(),
-    // 	content.content_type.as_deref(),
-    // 	None,
-    // );
+// async fn handle_thumbnail_file(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     dim: &Dimension,
+//     content: Content,
+// ) -> AppResult<FileMeta> {
+//     let content_disposition = make_content_disposition(
+//         content.content_disposition,
+//         content.content_type.as_deref(),
+//         None,
+//     );
 
-    // upload_thumbnail(
-    // 	mxc,
-    // 	user,
-    // 	Some(&content_disposition),
-    // 	content.content_type.as_deref(),
-    // 	dim,
-    // 	&content.file,
-    // )
-    // .await
-    // .map(|()| FileMeta {
-    // 	content: Some(content.file),
-    // 	content_type: content.content_type.map(Into::into),
-    // 	content_disposition: Some(content_disposition),
-    // })
-}
+//     crate::media::save_thumbnail(
+//         mxc,
+//         user,
+//         content.content_type.as_deref(),
+//         Some(&content_disposition),
+//         dim,
+//         &content.file,
+//     )
+//     .await
+//     .map(|()| FileMeta {
+//         content: Some(content.file),
+//         content_type: content.content_type.map(Into::into),
+//         content_disposition: Some(content_disposition),
+//     })
+// }
 
-async fn handle_content_file(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    content: Content,
-) -> AppResult<FileMeta> {
-    unimplemented!()
-    // let content_disposition = make_content_disposition(
-    // 	content.content_disposition.as_ref(),
-    // 	content.content_type.as_deref(),
-    // 	None,
-    // );
+// async fn handle_content_file(
+//     mxc: &Mxc<'_>,
+//     user: Option<&UserId>,
+//     content: Content,
+// ) -> AppResult<FileMeta> {
+// let content_disposition = make_content_disposition(
+// 	content.content_disposition.as_ref(),
+// 	content.content_type.as_deref(),
+// 	None,
+// );
 
-    // create(
-    // 	mxc,
-    // 	user,
-    // 	Some(&content_disposition),
-    // 	content.content_type.as_deref(),
-    // 	&content.file,
-    // )
-    // .await
-    // .map(|()| FileMeta {
-    // 	content: Some(content.file),
-    // 	content_type: content.content_type.map(Into::into),
-    // 	content_disposition: Some(content_disposition),
-    // })
-}
+// create(
+// 	mxc,
+// 	user,
+// 	Some(&content_disposition),
+// 	content.content_type.as_deref(),
+// 	&content.file,
+// )
+// .await
+// .map(|()| FileMeta {
+// 	content: Some(content.file),
+// 	content_type: content.content_type.map(Into::into),
+// 	content_disposition: Some(content_disposition),
+// })
+// }
 
 async fn handle_location(
     mxc: &Mxc<'_>,
@@ -278,42 +323,7 @@ async fn location_request(location: &str) -> AppResult<FileMeta> {
 // 	.sending
 // 	.send_federation_request(server.unwrap_or(mxc.server_name), request)
 // 	.await
-// 	.map_err(|error| handle_federation_error(mxc, user, server, error))
 // }
-
-// Handles and adjusts the error for the caller to determine if they should
-// request the fallback endpoint or give up.
-fn handle_federation_error(
-    mxc: &Mxc<'_>,
-    user: Option<&UserId>,
-    server: Option<&ServerName>,
-    error: AppError,
-) -> AppError {
-    unimplemented!()
-    // let fallback = || {
-    // 	err!(Request(NotFound(
-    // 		debug_error!(%mxc, ?user, ?server, ?error, "Remote media not found")
-    // 	)))
-    // };
-
-    // // Matrix server responses for fallback always taken.
-    // if error.kind() == NotFound || error.kind() == Unrecognized {
-    // 	return fallback();
-    // }
-
-    // // If we get these from any middleware we'll try the other endpoint rather than
-    // // giving up too early.
-    // if error.status_code().is_redirection()
-    // 	|| error.status_code().is_client_error()
-    // 	|| error.status_code().is_server_error()
-    // {
-    // 	return fallback();
-    // }
-
-    // // Reached for 5xx errors. This is where we don't fallback given the likelihood
-    // // the other endpoint will also be a 5xx and we're wasting time.
-    // error
-}
 
 // pub async fn fetch_remote_thumbnail_legacy(
 //     body: &media::get_content_thumbnail::v3::Request,
@@ -422,3 +432,68 @@ fn check_fetch_authorized(mxc: &Mxc<'_>) -> AppResult<()> {
 // 	.then_some(())
 // 	.ok_or(err!(Request(NotFound("Remote media is frozen."))))
 // }
+
+pub async fn delete_past_remote_media(
+    time: SystemTime,
+    before: bool,
+    after: bool,
+    yes_i_want_to_delete_local_media: bool,
+) -> AppResult<u64> {
+    if before && after {
+        return Err(AppError::public(
+            "Please only pick one argument, --before or --after.",
+        ));
+    }
+    if !(before || after) {
+        return Err(AppError::public(
+            "Please pick one argument, --before or --after.",
+        ));
+    }
+
+    let time = time.duration_since(UNIX_EPOCH)?.as_millis();
+
+    let mxcs = if after {
+        media_metadatas::table
+            .filter(media_metadatas::origin_server.ne(config::server_name()))
+            .filter(media_metadatas::created_at.lt(time as i64))
+            .select((media_metadatas::origin_server, media_metadatas::media_id))
+            .load::<(OwnedServerName, String)>(&mut connect()?)?
+    } else {
+        media_metadatas::table
+            .filter(media_metadatas::origin_server.eq(config::server_name()))
+            .filter(media_metadatas::created_at.gt(time as i64))
+            .select((media_metadatas::origin_server, media_metadatas::media_id))
+            .load::<(OwnedServerName, String)>(&mut connect()?)?
+    };
+    let mut count = 0;
+    for (origin_server, media_id) in &mxcs {
+        let mxc = OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id));
+        if let Err(e) =
+            delete_remote_media(origin_server, media_id, yes_i_want_to_delete_local_media).await
+        {
+            warn!("failed to delete remote media {mxc}: {e}");
+        } else {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+pub async fn delete_remote_media(
+    server_name: &ServerName,
+    media_id: &str,
+    yes_i_want_to_delete_local_media: bool,
+) -> AppResult<()> {
+    crate::data::media::delete_media(server_name, media_id)?;
+
+    if !yes_i_want_to_delete_local_media {
+        return Ok(());
+    }
+
+    let path = crate::media::get_media_path(server_name, media_id);
+    if let Err(e) = std::fs::remove_file(&path) {
+        warn!("failed to delete local media file {path:?}: {e}");
+    }
+
+    Ok(())
+}

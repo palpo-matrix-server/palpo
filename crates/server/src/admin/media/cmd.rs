@@ -239,7 +239,7 @@ pub(super) async fn delete_past_remote_media(
     );
 
     let duration = parse_timepoint_ago(&duration)?;
-    let deleted_count = crate::media::delete_all_remote_media_at_after_time(
+    let deleted_count = crate::media::delete_past_remote_media(
         duration,
         before,
         after,
