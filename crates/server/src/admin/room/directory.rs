@@ -1,6 +1,6 @@
 use clap::Subcommand;
 
-use crate::admin::{Context, PAGE_SIZE, RoomInfo, get_room_info};
+use crate::admin::{Context, PAGE_SIZE, get_room_info};
 use crate::core::OwnedRoomId;
 use crate::{AppError, AppResult};
 

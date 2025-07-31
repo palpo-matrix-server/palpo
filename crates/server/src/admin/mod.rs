@@ -24,11 +24,11 @@ use futures_util::{
 use regex::Regex;
 use tokio::sync::mpsc;
 
+use crate::AppResult;
 use crate::core::ServerName;
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 pub(crate) use crate::macros::admin_command_dispatch;
-use crate::{AUTO_GEN_PASSWORD_LENGTH, AppResult};
 
 use self::{
     appservice::AppserviceCommand, federation::FederationCommand, media::MediaCommand,

@@ -4,7 +4,7 @@ use cmd::*;
 use clap::Subcommand;
 
 use crate::AppResult;
-use crate::core::{OwnedEventId, OwnedMxcUri, OwnedServerName};
+use crate::core::{OwnedEventId, OwnedMxcUri};
 use crate::macros::admin_command_dispatch;
 
 #[admin_command_dispatch]

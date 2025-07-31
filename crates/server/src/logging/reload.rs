@@ -5,7 +5,7 @@ use std::{
 
 use tracing_subscriber::{EnvFilter, reload};
 
-use crate::{AppError, AppResult};
+use crate::AppResult;
 
 /// We need to store a reload::Handle value, but can't name it's type explicitly
 /// because the S type parameter depends on the subscriber's previous layers. In

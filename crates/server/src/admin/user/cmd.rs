@@ -61,7 +61,7 @@ pub(super) async fn create_user(
     crate::user::create_user(&user_id, Some(password.as_str()))?;
 
     // Default to pretty displayname
-    let mut display_name = user_id.localpart().to_owned();
+    let display_name = user_id.localpart().to_owned();
 
     // If `new_user_displayname_suffix` is set, registration will push whatever
     // content is set to the user's display name with a space before it

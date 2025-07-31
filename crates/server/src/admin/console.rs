@@ -120,7 +120,7 @@ impl Console {
         let _suppression = (!is_systemd_mode()).then(|| logging::Suppress::new());
 
         let (mut readline, _writer) = Readline::new(PROMPT.to_owned())?;
-        let self_ = Arc::clone(self);
+        // let self_ = Arc::clone(self);
         // TODO: admin
         // readline.set_tab_completer(move |line| self_.tab_complete(line));
         self.set_history(&mut readline);

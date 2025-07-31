@@ -1,6 +1,6 @@
 use std::iter::once;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{LazyLock, OnceLock};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -145,7 +145,6 @@ pub fn admin_alias() -> &'static RoomAliasId {
             .expect("admin alias should be a valid room alias")
     })
 }
-
 
 pub fn appservice_registration_dir() -> Option<&'static str> {
     get().appservice_registration_dir.as_deref()

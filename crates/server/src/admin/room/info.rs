@@ -1,7 +1,6 @@
 use clap::Subcommand;
-use futures_util::StreamExt;
 
-use crate::admin::{Context, admin_command_dispatch, get_room_info};
+use crate::admin::{Context, admin_command_dispatch};
 use crate::core::OwnedRoomId;
 use crate::{AppError, AppResult};
 use crate::{IsRemoteOrLocal, data};
