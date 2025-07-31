@@ -94,6 +94,14 @@ impl AppError {
     // pub fn local_unable_process<S: Into<String>>(msg: S) -> Self {
     //     Self::LocalUnableProcess(msg.into())
     // }
+
+    pub fn is_not_found(&self) -> bool {
+        match self {
+            Self::Diesel(diesel::result::Error::NotFound) => true,
+            Self::Matrix(e) => e.is_not_found(),
+            _ => false,
+        }
+    }
 }
 
 #[async_trait]

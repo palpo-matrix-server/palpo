@@ -60,11 +60,11 @@ pub(crate) fn is_cargo_test() -> bool {
     std::env::args().any(|flag| flag == "--test")
 }
 
-pub(crate) fn get_named_generics(args: &[Meta], name: &str) -> Result<Generics> {
-    const DEFAULT: &str = "<>";
+// pub(crate) fn get_named_generics(args: &[Meta], name: &str) -> Result<Generics> {
+//     const DEFAULT: &str = "<>";
 
-    parse_str::<Generics>(&get_named_string(args, name).unwrap_or_else(|| DEFAULT.to_owned()))
-}
+//     parse_str::<Generics>(&get_named_string(args, name).unwrap_or_else(|| DEFAULT.to_owned()))
+// }
 
 pub(crate) fn get_named_string(args: &[Meta], name: &str) -> Option<String> {
     args.iter().find_map(|arg| {

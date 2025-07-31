@@ -62,7 +62,7 @@ pub use palpo_server_macros as macros;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use clap::{Parser};
+use clap::Parser;
 pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
 use figment::providers::Env;

@@ -617,7 +617,17 @@ pub fn get_admin_room() -> AppResult<OwnedRoomId> {
 }
 
 pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
-    Ok(&get_admin_room()? == room_id)
+    let result = get_admin_room();
+    match result {
+        Ok(admin_room_id) => Ok(admin_room_id == room_id),
+        Err(e) => {
+            if e.is_not_found() {
+                Ok(false)
+            } else {
+                Err(e)
+            }
+        }
+    }
 }
 
 /// Returns an iterator of all our local users in the room, even if they're
