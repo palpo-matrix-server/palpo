@@ -1,21 +1,29 @@
 mod preview;
 mod remote;
+pub use preview::*;
 pub use remote::*;
 
 use std::cmp;
 use std::num::Saturating;
-use std::time::Duration;
-use std::time::SystemTime;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub use preview::*;
+use chrono::{DateTime, TimeZone, Utc};
+use diesel::prelude::*;
 use salvo::Response;
+use tokio::io::AsyncWriteExt;
 
-use crate::core::OwnedMxcUri;
 use crate::core::federation::media::ContentReqArgs;
 use crate::core::http_headers::ContentDisposition;
-use crate::core::media::Method;
-use crate::core::{ServerName, media};
-use crate::{AppResult, exts::*, join_path};
+use crate::core::media::ResizeMethod;
+use crate::core::{
+    Mxc, MxcUri, OwnedMxcUri, OwnedServerName, ServerName, UnixMillis, UserId, media,
+};
+use crate::data::connect;
+use crate::data::media::NewDbThumbnail;
+use crate::data::schema::*;
+use crate::data::schema::*;
+use crate::{AppError, AppResult, config, data, exts::*, join_path};
 
 #[derive(Debug)]
 pub struct FileMeta {
@@ -29,18 +37,18 @@ pub struct FileMeta {
 pub struct Dimension {
     pub width: u32,
     pub height: u32,
-    pub method: Method,
+    pub method: ResizeMethod,
 }
 
 impl Dimension {
     /// Instantiate a Dim with optional method
     #[inline]
     #[must_use]
-    pub fn new(width: u32, height: u32, method: Option<Method>) -> Self {
+    pub fn new(width: u32, height: u32, method: Option<ResizeMethod>) -> Self {
         Self {
             width,
             height,
-            method: method.unwrap_or(Method::Scale),
+            method: method.unwrap_or(ResizeMethod::Scale),
         }
     }
 
@@ -71,7 +79,7 @@ impl Dimension {
         Ok(Self {
             width: x,
             height: y,
-            method: Method::Scale,
+            method: ResizeMethod::Scale,
         })
     }
 
@@ -81,11 +89,11 @@ impl Dimension {
     #[must_use]
     pub fn normalized(&self) -> Self {
         match (self.width, self.height) {
-            (0..=32, 0..=32) => Self::new(32, 32, Some(Method::Crop)),
-            (0..=96, 0..=96) => Self::new(96, 96, Some(Method::Crop)),
-            (0..=320, 0..=240) => Self::new(320, 240, Some(Method::Scale)),
-            (0..=640, 0..=480) => Self::new(640, 480, Some(Method::Scale)),
-            (0..=800, 0..=600) => Self::new(800, 600, Some(Method::Scale)),
+            (0..=32, 0..=32) => Self::new(32, 32, Some(ResizeMethod::Crop)),
+            (0..=96, 0..=96) => Self::new(96, 96, Some(ResizeMethod::Crop)),
+            (0..=320, 0..=240) => Self::new(320, 240, Some(ResizeMethod::Scale)),
+            (0..=640, 0..=480) => Self::new(640, 480, Some(ResizeMethod::Scale)),
+            (0..=800, 0..=600) => Self::new(800, 600, Some(ResizeMethod::Scale)),
             _ => Self::default(),
         }
     }
@@ -94,7 +102,7 @@ impl Dimension {
     #[inline]
     #[must_use]
     pub fn crop(&self) -> bool {
-        self.method == Method::Crop
+        self.method == ResizeMethod::Crop
     }
 }
 
@@ -104,53 +112,28 @@ impl Default for Dimension {
         Self {
             width: 0,
             height: 0,
-            method: Method::Scale,
+            method: ResizeMethod::Scale,
         }
     }
 }
 
-pub async fn fetch_remote_content(
-    _mxc: &str,
-    server_name: &ServerName,
-    media_id: &str,
-    res: &mut Response,
-) -> AppResult<()> {
-    let content_req = crate::core::media::content_request(
-        &server_name.origin().await,
-        media::ContentReqArgs {
-            server_name: server_name.to_owned(),
-            media_id: media_id.to_owned(),
-            timeout_ms: Duration::from_secs(20),
-            allow_remote: true,
-            allow_redirect: true,
-        },
-    )?
-    .into_inner();
-    let content_response = if let Ok(content_response) =
-        crate::sending::send_federation_request(server_name, content_req).await
-    {
-        content_response
+pub fn get_media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
+    let server_name = if server_name == config::server_name() {
+        "_"
     } else {
-        let content_req = crate::core::federation::media::content_request(
-            &server_name.origin().await,
-            ContentReqArgs {
-                media_id: media_id.to_owned(),
-                timeout_ms: Duration::from_secs(20),
-            },
-        )?
-        .into_inner();
-        crate::sending::send_federation_request(server_name, content_req).await?
+        server_name.as_str()
     };
-
-    *res.headers_mut() = content_response.headers().to_owned();
-    res.status_code(content_response.status());
-    res.stream(content_response.bytes_stream());
-
-    Ok(())
-}
-
-fn get_media_path(key: &str) -> String {
-    join_path!(&crate::config::get().space_path, "media", key)
+    let mut r = PathBuf::new();
+    r.push(config::space_path());
+    r.push("media");
+    r.push(server_name);
+    // let extension = extension.unwrap_or_default();
+    // if !extension.is_empty() {
+    //     r.push(format!("{media_id}.{extension}"));
+    // } else {
+    r.push(media_id);
+    // }
+    r
 }
 
 /// Returns width, height of the thumbnail and whether it should be cropped. Returns None when
@@ -167,14 +150,67 @@ pub fn thumbnail_properties(width: u32, height: u32) -> Option<(u32, u32, bool)>
 }
 
 pub fn get_all_mxcs() -> AppResult<Vec<OwnedMxcUri>> {
-    unimplemented!()
+    let mxcs = media_metadatas::table
+        .select((media_metadatas::origin_server, media_metadatas::media_id))
+        .load::<(String, String)>(&mut connect()?)?
+        .into_iter()
+        .map(|(origin_server, media_id)| {
+            OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id))
+        })
+        .collect();
+    Ok(mxcs)
 }
 
-pub async fn delete_all_remote_media_at_after_time(
-    time: SystemTime,
-    before: bool,
-    after: bool,
-    yes_i_want_to_delete_local_media: bool,
-) -> AppResult<u64> {
-    unimplemented!()
+/// Save or replaces a file thumbnail.
+#[allow(clippy::too_many_arguments)]
+pub async fn save_thumbnail(
+    mxc: &Mxc<'_>,
+    user: Option<&UserId>,
+    content_type: Option<&str>,
+    content_disposition: Option<&ContentDisposition>,
+    dim: &Dimension,
+    file: &[u8],
+) -> AppResult<()> {
+    let db_thumbnail = NewDbThumbnail {
+        media_id: mxc.media_id.to_owned(),
+        origin_server: mxc.server_name.to_owned(),
+        content_type: content_type.map(|c| c.to_owned()),
+        disposition_type: content_disposition.map(|d|d.to_string()),
+        file_size: file.len() as i64,
+        width: dim.width as i32,
+        height: dim.height as i32,
+        resize_method: dim.method.to_string(),
+        created_at: UnixMillis::now(),
+    };
+    let id = diesel::insert_into(media_thumbnails::table)
+        .values(&db_thumbnail)
+        .on_conflict_do_nothing()
+        .returning(media_thumbnails::id)
+        .get_result::<i64>(&mut connect()?)
+        .optional()?;
+
+    if let Some(id) = id {
+        save_thumbnail_file(mxc.server_name, mxc.media_id, id, file).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn save_thumbnail_file(
+    server_name: &ServerName,
+    media_id: &str,
+    thumbnail_id: i64,
+    file: &[u8],
+) -> AppResult<PathBuf> {
+    let thumb_path = get_thumbnail_path(server_name, media_id, thumbnail_id);
+    let mut f = tokio::fs::File::create(&thumb_path).await?;
+    f.write_all(file).await?;
+    Ok(thumb_path)
+}
+
+pub fn get_thumbnail_path(server_name: &ServerName, media_id: &str, thumbnail_id: i64) -> PathBuf {
+    get_media_path(
+        server_name,
+        &format!("{media_id}.thumbnails/{thumbnail_id}"),
+    )
 }

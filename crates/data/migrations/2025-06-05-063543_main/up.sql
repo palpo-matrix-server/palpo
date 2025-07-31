@@ -28,6 +28,7 @@ CREATE TABLE media_thumbnails (
     media_id text NOT NULL,
     origin_server text NOT NULL,
     content_type text NOT NULL,
+    disposition_type text,
     file_size bigint NOT NULL,
     width integer NOT NULL,
     height integer NOT NULL,

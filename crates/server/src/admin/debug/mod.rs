@@ -293,13 +293,12 @@ pub(super) async fn ping(ctx: &Context<'_>, server: OwnedServerName) -> AppResul
 }
 
 pub(super) async fn force_device_list_updates(ctx: &Context<'_>) -> AppResult<()> {
-    // TODO: admin
     // Force E2EE device list updates for all users
-    // for user_id in crate::data::user::all_user_ids() {
-    //     if let Err(e) = crate::user::mark_device_key_update(user_id) {
-    //         warn!("Failed to mark device key update for user {user_id}: {e}");
-    //     }
-    // }
+    for user_id in crate::data::user::all_user_ids() {
+        if let Err(e) = crate::user::mark_device_key_update(user_id) {
+            warn!("Failed to mark device key update for user {user_id}: {e}");
+        }
+    }
 
     write!(ctx, "Marked all devices for all users as having new keys to update").await
 }

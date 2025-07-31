@@ -146,24 +146,6 @@ pub fn admin_alias() -> &'static RoomAliasId {
     })
 }
 
-pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
-    let server_name = if server_name == &get().server_name {
-        "_"
-    } else {
-        server_name.as_str()
-    };
-    let mut r = PathBuf::new();
-    r.push(space_path());
-    r.push("media");
-    r.push(server_name);
-    // let extension = extension.unwrap_or_default();
-    // if !extension.is_empty() {
-    //     r.push(format!("{media_id}.{extension}"));
-    // } else {
-    r.push(media_id);
-    // }
-    r
-}
 
 pub fn appservice_registration_dir() -> Option<&'static str> {
     get().appservice_registration_dir.as_deref()

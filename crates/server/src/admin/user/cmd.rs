@@ -73,7 +73,7 @@ pub(super) async fn create_user(
     //     )?;
     // }
 
-    crate::data::user::set_display_name(&user_id, Some(&*display_name));
+    crate::data::user::set_display_name(&user_id, Some(&*display_name))?;
 
     // Initial account data
     crate::user::set_data(

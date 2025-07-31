@@ -1,5 +1,3 @@
-
-
 use super::EnvFilter;
 
 pub struct Suppress {

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     http_headers::ContentDisposition,
-    media::Method,
+    media::ResizeMethod,
     sending::{SendRequest, SendResult},
 };
 
@@ -50,7 +50,7 @@ pub struct ThumbnailReqArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

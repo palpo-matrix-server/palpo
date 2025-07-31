@@ -324,7 +324,7 @@ async fn download_image(url: &Url) -> AppResult<UrlPreviewData> {
         media_id: &utils::random_string(crate::MXC_LENGTH),
     };
 
-    let dest_path = config::media_path(&conf.server_name, &mxc.media_id);
+    let dest_path = crate::media::get_media_path(&conf.server_name, &mxc.media_id);
     let dest_path = Path::new(&dest_path);
     if !dest_path.exists() {
         let parent_dir = utils::fs::get_parent_dir(&dest_path);

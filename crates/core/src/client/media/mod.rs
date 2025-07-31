@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedMxcUri, OwnedServerName, ServerName, UnixMillis,
-    media::Method,
+    media::ResizeMethod,
     sending::{SendRequest, SendResult},
     serde::{RawJsonValue, to_raw_json_value},
 };
@@ -187,7 +187,7 @@ pub struct ThumbnailReqArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

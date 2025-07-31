@@ -351,7 +351,10 @@ pub fn active_local_users_in_room(room_id: &RoomId) -> AppResult<Vec<OwnedUserId
 }
 
 pub fn list_banned_rooms() -> AppResult<Vec<OwnedRoomId>> {
-    unimplemented!()
+    let room_ids = banned_rooms::table
+        .select(banned_rooms::room_id)
+        .load(&mut connect()?)?;
+    Ok(room_ids)
 }
 
 pub fn get_state_users(
@@ -617,7 +620,17 @@ pub fn get_admin_room() -> AppResult<OwnedRoomId> {
 }
 
 pub fn is_admin_room(room_id: &RoomId) -> AppResult<bool> {
-    Ok(&get_admin_room()? == room_id)
+    let result = get_admin_room();
+    match result {
+        Ok(admin_room_id) => Ok(admin_room_id == room_id),
+        Err(e) => {
+            if e.is_not_found() {
+                Ok(false)
+            } else {
+                Err(e)
+            }
+        }
+    }
 }
 
 /// Returns an iterator of all our local users in the room, even if they're
@@ -668,5 +681,20 @@ pub fn keys_changed_users(
 }
 
 pub fn ban_room(room_id: &RoomId, banned: bool) -> AppResult<()> {
-    unimplemented!()
+    if banned {
+        diesel::insert_into(banned_rooms::table)
+            .values((
+                banned_rooms::room_id.eq(room_id),
+                banned_rooms::created_at.eq(UnixMillis::now()),
+            ))
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)
+            .map(|_| ())
+            .map_err(Into::into)
+    } else {
+        diesel::delete(banned_rooms::table.filter(banned_rooms::room_id.eq(room_id)))
+            .execute(&mut connect()?)
+            .map(|_| ())
+            .map_err(Into::into)
+    }
 }
