@@ -194,6 +194,5 @@ pub fn get_uiaa_request(
     UIAA_REQUESTS
         .read()
         .expect("read UIAA_REQUESTS failed")
-        .get(&(user_id.to_owned(), device_id.to_owned(), session.to_owned()))
-        .map(|j| j.clone())
+        .get(&(user_id.to_owned(), device_id.to_owned(), session.to_owned())).cloned()
 }

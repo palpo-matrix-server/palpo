@@ -17,10 +17,7 @@ where
     S: Serializer,
 {
     match opt_duration {
-        Some(duration) => match u64::try_from(duration.as_secs()) {
-            Ok(uint) => uint.serialize(serializer),
-            Err(err) => Err(S::Error::custom(err)),
-        },
+        Some(duration) => duration.as_secs().serialize(serializer),
         None => serializer.serialize_none(),
     }
 }

@@ -93,12 +93,12 @@ impl DisplayNameResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/profile/{user_id}/avatar_url`
-///
-/// Set the avatar URL of the user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_idavatar_url
+// /// `PUT /_matrix/client/*/profile/{user_id}/avatar_url`
+// ///
+// /// Set the avatar URL of the user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_idavatar_url
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: true,
@@ -131,13 +131,13 @@ pub struct SetAvatarUrlReqBody {
     pub blurhash: Option<String>,
 }
 
-/// `PUT /_matrix/client/*/profile/{user_id}/display_name`
-///
-/// Set the display name of the user.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_iddisplay_name
+// /// `PUT /_matrix/client/*/profile/{user_id}/display_name`
+// ///
+// /// Set the display name of the user.
+// 
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_iddisplay_name
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: true,

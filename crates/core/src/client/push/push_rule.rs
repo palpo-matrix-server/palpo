@@ -33,12 +33,12 @@ impl RuleResBody {
     }
 }
 
-/// `GET /_matrix/client/*/pushrules/`
-///
-/// Retrieve all push rulesets for this user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrules
+// /// `GET /_matrix/client/*/pushrules/`
+// ///
+// /// Retrieve all push rulesets for this user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrules
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -164,12 +164,12 @@ pub struct ConditionalReqBody {
 //     }
 // }
 
-/// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/enabled`
-///
-/// This endpoint allows clients to enable or disable the specified push rule.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleidenabled
+// /// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/enabled`
+// ///
+// /// This endpoint allows clients to enable or disable the specified push rule.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleidenabled
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,
@@ -199,12 +199,12 @@ pub struct SetRuleEnabledReqBody {
     pub enabled: bool,
 }
 
-/// `GET /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/enabled`
-///
-/// This endpoint gets whether the specified push rule is enabled.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleidenabled
+// /// `GET /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/enabled`
+// ///
+// /// This endpoint gets whether the specified push rule is enabled.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleidenabled
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -246,12 +246,12 @@ impl RuleEnabledResBody {
     }
 }
 
-/// `DELETE /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}`
-///
-/// This endpoint removes the push rule defined in the path.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3pushrulesscopekindruleid
+// /// `DELETE /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}`
+// ///
+// /// This endpoint removes the push rule defined in the path.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3pushrulesscopekindruleid
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
 //     rate_limited: false,
@@ -309,12 +309,12 @@ impl DeleteRuleResBody {
     }
 }
 
-/// `GET /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/actions`
-///
-/// This endpoint get the actions for the specified push rule.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleidactions
+// /// `GET /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/actions`
+// ///
+// /// This endpoint get the actions for the specified push rule.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrulesscopekindruleidactions
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -354,13 +354,13 @@ impl RuleActionsResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/actions`
-///
-/// This endpoint allows clients to change the actions of a push rule. This can
-/// be used to change the actions of builtin rules.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleidactions
+// /// `PUT /_matrix/client/*/pushrules/{scope}/{kind}/{rule_id}/actions`
+// ///
+// /// This endpoint allows clients to change the actions of a push rule. This can
+// /// be used to change the actions of builtin rules.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3pushrulesscopekindruleidactions
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,

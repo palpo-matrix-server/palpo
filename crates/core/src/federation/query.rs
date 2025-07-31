@@ -133,7 +133,6 @@ pub struct CustomReqBody {
 /// Response type for the `get_custom_information` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 #[salvo(schema(value_type = Object))]
-
 pub struct CustomResBody(
     /// The body of the response.
     pub JsonValue,

@@ -124,7 +124,7 @@ pub struct MediaPreviewReqArgs {
 }
 
 /// Response type for the `get_media_preview` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Default, Debug)]
 #[salvo(schema(value_type = Object))]
 pub struct MediaPreviewResBody(
     /// OpenGraph-like data for the URL.
@@ -137,7 +137,7 @@ pub struct MediaPreviewResBody(
 impl MediaPreviewResBody {
     /// Creates an empty `Response`.
     pub fn new() -> Self {
-        Self(None)
+        Default::default()
     }
 
     /// Creates a new `Response` with the given OpenGraph data (in a

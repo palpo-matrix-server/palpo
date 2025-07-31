@@ -43,12 +43,12 @@ pub(crate) fn is_default_download_timeout(timeout: &Duration) -> bool {
     timeout.as_secs() == 20
 }
 
-/// `POST /_matrix/media/*/create`
-///
-/// Create an MXC URI without content.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixmediav1create
+// /// `POST /_matrix/media/*/create`
+// ///
+// /// Create an MXC URI without content.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixmediav1create
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -80,12 +80,12 @@ pub struct CreateMxcUriResBody {
 //     }
 // }
 
-/// `GET /_matrix/media/*/config`
-///
-/// Gets the config for the media repository.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3config
+// /// `GET /_matrix/media/*/config`
+// ///
+// /// Gets the config for the media repository.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3config
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -111,12 +111,12 @@ impl ConfigResBody {
         Self { upload_size }
     }
 }
-/// `GET /_matrix/media/*/preview_url`
-///
-/// Get a preview for a URL.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3preview_url
+// /// `GET /_matrix/media/*/preview_url`
+// ///
+// /// Get a preview for a URL.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3preview_url
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: true,

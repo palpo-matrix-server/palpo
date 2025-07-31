@@ -6,13 +6,13 @@ use crate::sending::{SendRequest, SendResult};
 use crate::{Direction, serde::RawJsonValue};
 use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
 
-/// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
-///
-/// Get the ID of the event closest to the given timestamp.
-
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1timestamp_to_eventroomid
+// /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
+// ///
+// /// Get the ID of the event closest to the given timestamp.
+// 
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1timestamp_to_eventroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -60,12 +60,12 @@ impl EventByTimestampResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/event/{event_id}`
-///
-/// Retrieves a single event.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1eventeventid
+// /// `GET /_matrix/federation/*/event/{event_id}`
+// ///
+// /// Retrieves a single event.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1eventeventid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -220,12 +220,12 @@ fn is_default_limit(val: &usize) -> bool {
     *val == default_limit()
 }
 
-/// `GET /_matrix/federation/*/state_ids/{room_id}`
-///
-/// Retrieves a snapshot of a room's state at a given event, in the form of
-/// event IDs. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1state_idsroomid
+// /// `GET /_matrix/federation/*/state_ids/{room_id}`
+// ///
+// /// Retrieves a snapshot of a room's state at a given event, in the form of
+// /// event IDs. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1state_idsroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -323,12 +323,12 @@ pub struct RoomStateResBody {
     pub pdus: Vec<Box<RawJsonValue>>,
 }
 
-/// `PUT /_matrix/app/*/ping`
-///
-/// Endpoint to ping the application service.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/application-service-api/#post_matrixappv1ping
+// /// `PUT /_matrix/app/*/ping`
+// ///
+// /// Endpoint to ping the application service.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/application-service-api/#post_matrixappv1ping
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

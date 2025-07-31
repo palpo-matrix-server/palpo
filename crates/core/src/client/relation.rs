@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 /// using the given `rel_type` and having the given `event_type`.
 use crate::events::{AnyMessageLikeEvent, TimelineEventType, relation::RelationType};
 use crate::{Direction, OwnedEventId, OwnedRoomId, serde::RawJson};
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventidreltypeeventtype
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventidreltypeeventtype
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -105,14 +105,14 @@ pub struct RelatingEventsWithRelTypeAndEventTypeReqArgs {
     pub recurse: bool,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/relations/{event_id}/{relType}`
-///
-/// Get the child events for a given parent event which relate to the parent
-/// using the given `rel_type`.
-
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventidreltype
+// /// `GET /_matrix/client/*/rooms/{room_id}/relations/{event_id}/{relType}`
+// ///
+// /// Get the child events for a given parent event which relate to the parent
+// /// using the given `rel_type`.
+//
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventidreltype
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -197,12 +197,12 @@ pub struct RelatingEventsWithRelTypeReqArgs {
     pub recurse: bool,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/relations/{event_id}`
-///
-/// Get the child events for a given parent event.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventid
+// /// `GET /_matrix/client/*/rooms/{room_id}/relations/{event_id}`
+// ///
+// /// Get the child events for a given parent event.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidrelationseventid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

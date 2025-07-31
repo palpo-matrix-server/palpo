@@ -91,13 +91,13 @@ impl ServerResBody {
     }
 }
 
-/// `POST /_matrix/key/*/query`
-///
-/// Query for keys from multiple servers in a batch format. The receiving
-/// (notary) server must sign the keys returned by the queried servers.
-/// `/v2/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixkeyv2query
+// /// `POST /_matrix/key/*/query`
+// ///
+// /// Query for keys from multiple servers in a batch format. The receiving
+// /// (notary) server must sign the keys returned by the queried servers.
+// /// `/v2/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixkeyv2query
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

@@ -204,12 +204,12 @@ impl From<SpaceHierarchyParentSummary> for SpaceHierarchyChildSummary {
     }
 }
 
-/// `GET /_matrix/federation/*/hierarchy/{room_id}`
-///
-/// Get the space tree in a depth-first manner to locate child rooms of a given
-/// space. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1hierarchyroomid
+// /// `GET /_matrix/federation/*/hierarchy/{room_id}`
+// ///
+// /// Get the space tree in a depth-first manner to locate child rooms of a given
+// /// space. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1hierarchyroomid
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

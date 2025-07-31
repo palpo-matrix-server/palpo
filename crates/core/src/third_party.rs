@@ -399,7 +399,7 @@ impl ProtocolResBody {
 //     }
 // };
 
-/// Request type for the `get_location_for_protocol` endpoint.
+// /// Request type for the `get_location_for_protocol` endpoint.
 // pub struct LocationForProtocolReqBody {
 //     /// The protocol used to communicate to the third party network.
 //     #[salvo(parameter(parameter_in = Path))]
@@ -441,14 +441,14 @@ impl LocationsResBody {
 //     }
 // };
 
-/// Request type for the `get_location_for_room_alias` endpoint.
+// /// Request type for the `get_location_for_room_alias` endpoint.
 // pub struct LocationReqBody {
 //     /// The Matrix room alias to look up.
 //     #[salvo(parameter(parameter_in = Query))]
 //     pub alias: OwnedRoomAliasId,
 // }
 
-/// Response type for the `get_location_for_room_alias` endpoint.
+// /// Response type for the `get_location_for_room_alias` endpoint.
 // #[derive(ToSchema, Serialize, Debug)]
 //
 // pub struct LocationResBody {

@@ -13,30 +13,30 @@ use crate::{
     serde::{JsonObject, StringEnum},
 };
 
-/// `POST /_matrix/client/*/refresh`
-///
-/// Refresh an access token.
-///
-/// Clients should use the returned access token when making subsequent API
-/// calls, and store the returned refresh token (if given) in order to refresh
-/// the new access token when necessary.
-///
-/// After an access token has been refreshed, a server can choose to invalidate
-/// the old access token immediately, or can choose not to, for example if the
-/// access token would expire soon anyways. Clients should not make any
-/// assumptions about the old access token still being valid, and should use the
-/// newly provided access token instead.
-///
-/// The old refresh token remains valid until the new access token or refresh
-/// token is used, at which point the old refresh token is revoked.
-///
-/// Note that this endpoint does not require authentication via an access token.
-/// Authentication is provided via the refresh token.
-///
-/// Application Service identity assertion is disabled for this endpoint.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3refresh
+// /// `POST /_matrix/client/*/refresh`
+// ///
+// /// Refresh an access token.
+// ///
+// /// Clients should use the returned access token when making subsequent API
+// /// calls, and store the returned refresh token (if given) in order to refresh
+// /// the new access token when necessary.
+// ///
+// /// After an access token has been refreshed, a server can choose to invalidate
+// /// the old access token immediately, or can choose not to, for example if the
+// /// access token would expire soon anyways. Clients should not make any
+// /// assumptions about the old access token still being valid, and should use the
+// /// newly provided access token instead.
+// ///
+// /// The old refresh token remains valid until the new access token or refresh
+// /// token is used, at which point the old refresh token is revoked.
+// ///
+// /// Note that this endpoint does not require authentication via an access token.
+// /// Authentication is provided via the refresh token.
+// ///
+// /// Application Service identity assertion is disabled for this endpoint.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3refresh
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -91,12 +91,12 @@ impl RefreshTokenResBody {
     }
 }
 
-/// `POST /_matrix/client/*/login`
-///
-/// Login to the homeserver.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3login
+// /// `POST /_matrix/client/*/login`
+// ///
+// /// Login to the homeserver.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3login
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -427,13 +427,13 @@ impl IdentityServerInfo {
     }
 }
 
-/// `GET /_matrix/client/*/login`
-///
-/// Gets the homeserver's supported login types to authenticate users. Clients
-/// should pick one of these and supply it as the type when logging in.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3login
+// /// `GET /_matrix/client/*/login`
+// ///
+// /// Gets the homeserver's supported login types to authenticate users. Clients
+// /// should pick one of these and supply it as the type when logging in.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3login
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -710,12 +710,12 @@ pub struct CustomLoginType {
     pub data: JsonObject,
 }
 
-/// `GET /_matrix/client/*/login/get_token`
-///
-/// Generate a single-use, time-limited, `m.login.token` token.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv1loginget_token
+// /// `GET /_matrix/client/*/login/get_token`
+// ///
+// /// Generate a single-use, time-limited, `m.login.token` token.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv1loginget_token
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,

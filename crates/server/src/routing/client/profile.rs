@@ -112,7 +112,7 @@ async fn get_avatar_url(
 
     json_ok(AvatarUrlResBody {
         avatar_url,
-        blurhash: blurhash,
+        blurhash,
     })
 }
 

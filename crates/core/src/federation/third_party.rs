@@ -1,5 +1,5 @@
 /// Module for dealing with third party identifiers
-
+///
 /// `PUT /_matrix/federation/*/3pid/onbind`
 ///
 /// Used by identity servers to notify the homeserver that one of its users has

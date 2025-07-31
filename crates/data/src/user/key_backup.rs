@@ -41,14 +41,13 @@ pub struct NewDbRoomKey {
     pub session_data: JsonValue,
     pub created_at: UnixMillis,
 }
-
-impl Into<KeyBackupData> for DbRoomKey {
-    fn into(self) -> KeyBackupData {
+impl From<DbRoomKey> for KeyBackupData {
+    fn from(val: DbRoomKey) -> Self {
         KeyBackupData {
-            first_message_index: self.first_message_index.unwrap_or(0) as u64,
-            forwarded_count: self.forwarded_count.unwrap_or(0) as u64,
-            is_verified: self.is_verified,
-            session_data: serde_json::from_value(self.session_data).unwrap(),
+            first_message_index: val.first_message_index.unwrap_or(0) as u64,
+            forwarded_count: val.forwarded_count.unwrap_or(0) as u64,
+            is_verified: val.is_verified,
+            session_data: serde_json::from_value(val.session_data).unwrap(),
         }
     }
 }

@@ -16,7 +16,7 @@ use crate::core::{Mxc, OwnedMxcUri, ServerName, UnixMillis, UserId};
 use crate::data::connect;
 use crate::data::media::NewDbThumbnail;
 use crate::data::schema::*;
-use crate::{AppResult, config};
+use crate::{AppResult, config, data};
 
 #[derive(Debug)]
 pub struct FileMeta {
@@ -127,6 +127,17 @@ pub fn get_media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     r.push(media_id);
     // }
     r
+}
+
+pub async fn delete_media(server_name: &ServerName, media_id: &str) -> AppResult<()> {
+    data::media::delete_media(server_name, media_id)?;
+    let path = get_media_path(server_name, media_id);
+    if path.exists() {
+        if let Err(e) = tokio::fs::remove_file(path).await {
+            tracing::error!("failed to delete media file: {e}");
+        }
+    }
+    Ok(())
 }
 
 /// Returns width, height of the thumbnail and whether it should be cropped. Returns None when

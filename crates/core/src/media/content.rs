@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use crate::sending::{SendRequest, SendResult};
 use crate::{OwnedMxcUri, OwnedServerName};
 
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaid
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaid
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -245,12 +245,12 @@ impl CreateContentResBody {
         }
     }
 }
-/// `PUT /_matrix/media/*/upload/{serverName}/{mediaId}`
-///
-/// Upload media to an MXC URI that was created with create_mxc_uri.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixmediav3uploadservernamemediaid
+// /// `PUT /_matrix/media/*/upload/{serverName}/{mediaId}`
+// ///
+// /// Upload media to an MXC URI that was created with create_mxc_uri.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixmediav3uploadservernamemediaid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -287,12 +287,12 @@ pub struct UploadContentReqArgs {
     pub filename: Option<String>,
     // TODO: How does this and msc2448 (blurhash) interact?
 }
-/// `GET /_matrix/media/*/download/{serverName}/{mediaId}/{fileName}`
-///
-/// Retrieve content from the media store, specifying a filename to return.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaidfilename
+// /// `GET /_matrix/media/*/download/{serverName}/{mediaId}/{fileName}`
+// ///
+// /// Retrieve content from the media store, specifying a filename to return.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaidfilename
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

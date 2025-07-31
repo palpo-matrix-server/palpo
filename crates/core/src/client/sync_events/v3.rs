@@ -385,7 +385,6 @@ impl State {
     pub fn with_events(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
         Self {
             events,
-            ..Default::default()
         }
     }
 }
@@ -525,7 +524,6 @@ impl From<InviteState> for InvitedRoom {
     fn from(invite_state: InviteState) -> Self {
         InvitedRoom {
             invite_state,
-            ..Default::default()
         }
     }
 }

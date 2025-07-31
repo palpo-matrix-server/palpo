@@ -126,8 +126,8 @@ pub fn invited_rooms(
         .into_iter()
         .filter_map(|(room_id, state_data)| {
             state_data
-                .map(|state_data| serde_json::from_value(state_data).ok())
-                .flatten().map(|state_data| (room_id, state_data))
+                .and_then(|state_data| serde_json::from_value(state_data).ok())
+                .map(|state_data| (room_id, state_data))
         })
         .collect();
     Ok(list)
@@ -146,8 +146,7 @@ pub fn knocked_rooms(
         .into_iter()
         .filter_map(|(room_id, state_data)| {
             state_data
-                .map(|state_data| serde_json::from_value(state_data).ok())
-                .flatten()
+                .and_then(|state_data| serde_json::from_value(state_data).ok())
                 .map(|state_data| (room_id, state_data))
         })
         .collect();

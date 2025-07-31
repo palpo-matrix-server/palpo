@@ -495,7 +495,7 @@ where
             config::get().server_name == pdu.sender.server_name()
                 && appservice.is_user_match(&pdu.sender)
                 || pdu.event_ty == TimelineEventType::RoomMember
-                    && pdu.state_key.as_ref().is_ok_and(|state_key| {
+                    && pdu.state_key.as_ref().is_some_and(|state_key| {
                         UserId::parse(state_key).is_ok_and(|user_id| {
                             config::get().server_name == user_id.server_name()
                                 && appservice.is_user_match(&user_id)

@@ -453,16 +453,15 @@ pub async fn room_available_servers(
             servers.swap_remove(server_index);
             servers.insert(0, config::get().server_name.to_owned());
         }
-        _ => match servers
-            .iter()
-            .position(|server| server == room_alias.server_name())
-        {
-            Some(alias_server_index) => {
+        _ => {
+            if let Some(alias_server_index) = servers
+                .iter()
+                .position(|server| server == room_alias.server_name())
+            {
                 servers.swap_remove(alias_server_index);
                 servers.insert(0, room_alias.server_name().into());
             }
-            _ => {}
-        },
+        }
     }
 
     Ok(servers)
@@ -536,7 +535,7 @@ pub fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
 }
 pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
     get_state_content::<RoomPowerLevelsEventContent>(
-        &room_id,
+        room_id,
         &StateEventType::RoomPowerLevels,
         "",
         None,
@@ -565,7 +564,7 @@ pub fn is_world_readable(room_id: &RoomId) -> bool {
 }
 pub fn guest_can_join(room_id: &RoomId) -> bool {
     get_state_content::<RoomGuestAccessEventContent>(
-        &room_id,
+        room_id,
         &StateEventType::RoomGuestAccess,
         "",
         None,

@@ -14,7 +14,9 @@ use crate::core::{
 };
 use crate::room::timeline;
 use crate::user::full_user_deactivate;
-use crate::{AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils};
+use crate::{
+    AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils,
+};
 
 const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
@@ -285,32 +287,26 @@ pub(super) async fn deactivate_all(
     let mut deactivation_count: usize = 0;
 
     for user_id in user_ids {
-        // TODO: admin
-        // match self.services.users.deactivate_account(&user_id).await {
-        //     Err(e) => {
-        //         crate::admin::send_text(&format!("Failed deactivating user: {e}")).await;
-        //     }
-        //     Ok(()) => {
-        //         deactivation_count = deactivation_count.saturating_add(1);
-        //         if !no_leave_rooms {
-        //             info!("Forcing user {user_id} to leave all rooms apart of deactivate-all");
-        //             let all_joined_rooms: Vec<OwnedRoomId> = self
-        //                 .services
-        //                 .rooms
-        //                 .state_cache
-        //                 .rooms_joined(&user_id)
-        //                 .map(Into::into)
-        //                 .collect()
-        //                 .await;
+        match crate::user::deactivate_account(&user_id).await {
+            Err(e) => {
+                crate::admin::send_text(&format!("failed deactivating user: {e}")).await;
+            }
+            Ok(()) => {
+                deactivation_count = deactivation_count.saturating_add(1);
+                if !no_leave_rooms {
+                    info!("Forcing user {user_id} to leave all rooms apart of deactivate-all");
+                    let all_joined_rooms = data::user::joined_rooms(&user_id)?;
 
-        //             full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
+                    full_user_deactivate(&user_id, &all_joined_rooms)
+                        .boxed()
+                        .await?;
 
-        //             data::user::set_display_name(&user_id, None)?;
-        //             data::user::set_avatar_url(&user_id, None)?;
-        //             membership::leave_all_rooms(&user_id).await;
-        //         }
-        //     }
-        // }
+                    data::user::set_display_name(&user_id, None)?;
+                    data::user::set_avatar_url(&user_id, None)?;
+                    membership::leave_all_rooms(&user_id).await?;
+                }
+            }
+        }
     }
 
     if admins.is_empty() {

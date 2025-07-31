@@ -97,12 +97,12 @@ pub struct SpaceHierarchyRoomsChunk {
     pub allowed_room_ids: Vec<OwnedRoomId>,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/hierarchy`
-///
-/// Paginates over the space tree in a depth-first manner to locate child rooms
-/// of a given space. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidhierarchy
+// /// `GET /_matrix/client/*/rooms/{room_id}/hierarchy`
+// ///
+// /// Paginates over the space tree in a depth-first manner to locate child rooms
+// /// of a given space. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidhierarchy
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: true,
