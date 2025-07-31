@@ -372,7 +372,7 @@ impl StrExt for str {
             return false;
         }
 
-        let has_wildcards = pattern.contains(|c| ['?', '*']);
+        let has_wildcards = pattern.contains(['?', '*']);
 
         if has_wildcards {
             let mut chunks: Vec<String> = vec![];
