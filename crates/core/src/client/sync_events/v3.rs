@@ -383,9 +383,7 @@ impl State {
 
     /// Creates a `State` with events
     pub fn with_events(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
-        Self {
-            events,
-        }
+        Self { events }
     }
 }
 
@@ -522,9 +520,7 @@ impl InvitedRoom {
 
 impl From<InviteState> for InvitedRoom {
     fn from(invite_state: InviteState) -> Self {
-        InvitedRoom {
-            invite_state,
-        }
+        InvitedRoom { invite_state }
     }
 }
 
@@ -550,10 +546,7 @@ impl InviteState {
 
 impl From<Vec<RawJson<AnyStrippedStateEvent>>> for InviteState {
     fn from(events: Vec<RawJson<AnyStrippedStateEvent>>) -> Self {
-        Self {
-            events,
-            ..Default::default()
-        }
+        Self { events }
     }
 }
 

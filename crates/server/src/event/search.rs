@@ -31,7 +31,7 @@ pub fn search_pdus(
         .unwrap_or_else(|| data::user::joined_rooms(user_id).unwrap_or_default());
 
     // Use limit or else 10, with maximum 100
-    let limit = filter.limit.unwrap_or(10).min(100) as usize;
+    let limit = filter.limit.unwrap_or(10).min(100);
 
     for room_id in &room_ids {
         if !crate::room::user::is_joined(user_id, room_id)? {

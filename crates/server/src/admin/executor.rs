@@ -232,14 +232,16 @@ async fn respond_to_room(
 ) -> AppResult<()> {
     assert!(crate::room::is_admin_room(room_id)?, "sender is not admin");
 
-    let state_lock = crate::room::lock_state(&room_id).await;
+    let state_lock = crate::room::lock_state(room_id).await;
 
     if let Err(e) = timeline::build_and_append_pdu(
         PduBuilder::timeline(&content),
         user_id,
         room_id,
         &state_lock,
-    ) {
+    )
+    .await
+    {
         handle_response_error(e, room_id, user_id, &state_lock).await?;
     }
 
@@ -258,7 +260,8 @@ async fn handle_response_error(
 			 may have finished successfully, but we could not return the output."
     ));
 
-    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock)?;
+    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock)
+        .await?;
 
     Ok(())
 }

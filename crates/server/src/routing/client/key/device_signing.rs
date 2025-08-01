@@ -24,9 +24,9 @@ pub(super) async fn upload(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) 
         session: None,
         auth_error: None,
     };
-    let body = serde_json::from_slice::<UploadSigningKeysReqBody>(&payload);
+    let body = serde_json::from_slice::<UploadSigningKeysReqBody>(payload);
     if body.is_err() || body.as_ref().map(|b| b.auth.is_none()).unwrap_or(true) {
-        if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(&payload) {
+        if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(payload) {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::create_session(authed.user_id(), authed.device_id(), &uiaa_info, json)?;
             return Err(uiaa_info.into());

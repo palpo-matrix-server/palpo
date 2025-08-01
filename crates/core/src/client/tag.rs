@@ -81,12 +81,12 @@ impl TagsResBody {
 //     pub tag: String,
 // }
 
-/// `PUT /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
-///
-/// Add a new tag to a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
+// /// `PUT /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
+// ///
+// /// Add a new tag to a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

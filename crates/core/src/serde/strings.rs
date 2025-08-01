@@ -132,7 +132,7 @@ where
         }
 
         fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-            v.try_into().map_err(E::custom)
+            Ok(v)
         }
 
         fn visit_i128<E: de::Error>(self, v: i128) -> Result<Self::Value, E> {

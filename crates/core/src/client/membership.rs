@@ -127,12 +127,12 @@ pub struct BanUserReqBody {
     pub reason: Option<String>,
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/unban`
-///
-/// Unban a user from a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidunban
+// /// `POST /_matrix/client/*/rooms/{room_id}/unban`
+// ///
+// /// Unban a user from a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidunban
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -236,12 +236,12 @@ pub struct InviteUserReqBody {
     pub reason: Option<String>,
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/leave`
-///
-/// Leave a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidleave
+// /// `POST /_matrix/client/*/rooms/{room_id}/leave`
+// ///
+// /// Leave a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidleave
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,
@@ -320,12 +320,12 @@ impl MutualRoomsResBody {
         }
     }
 }
-/// `GET /_matrix/client/*/joined_rooms`
-///
-/// Get a list of the user's current rooms.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3joined_rooms
+// /// `GET /_matrix/client/*/joined_rooms`
+// ///
+// /// Get a list of the user's current rooms.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3joined_rooms
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -368,7 +368,7 @@ impl JoinedRoomsResBody {
 //     }
 // };
 
-/// Request type for the `forget_room` endpoint.
+// /// Request type for the `forget_room` endpoint.
 
 // pub struct ForgetReqBody {
 //     /// The room to forget.
@@ -376,12 +376,12 @@ impl JoinedRoomsResBody {
 //     pub room_id: OwnedRoomId,
 // }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/join`
-///
-/// Join a room using its ID.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidjoin
+// /// `POST /_matrix/client/*/rooms/{room_id}/join`
+// ///
+// /// Join a room using its ID.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidjoin
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,
@@ -551,7 +551,7 @@ pub enum MembershipEventFilter {
 //     }
 // };
 
-/// Request type for the `joined_members` endpoint.
+// /// Request type for the `joined_members` endpoint.
 
 // pub struct JoinedMembersReqBody {
 //     /// The room to get the members of.

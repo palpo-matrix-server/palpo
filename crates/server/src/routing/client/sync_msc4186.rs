@@ -315,7 +315,7 @@ async fn process_rooms(
         } else {
             crate::sync_v3::load_timeline(
                 sender_id,
-                &room_id,
+                room_id,
                 Some(*room_since_sn),
                 Some(Seqnum::MAX),
                 Some(&RoomEventFilter::with_limit(*timeline_limit)),
@@ -387,8 +387,7 @@ async fn process_rooms(
 
         let prev_batch = timeline_pdus
             .first()
-            .map(|(sn, _)| if *sn == 0 { None } else { Some(sn.to_string()) })
-            .flatten();
+            .and_then(|(sn, _)| if *sn == 0 { None } else { Some(sn.to_string()) });
 
         let room_events: Vec<_> = timeline_pdus
             .iter()
@@ -421,7 +420,7 @@ async fn process_rooms(
             .filter_map(|user_id| {
                 room::get_member(room_id, &user_id).ok().map(|member| {
                     sync_events::v5::SyncRoomHero {
-                        user_id: user_id.into(),
+                        user_id,
                         name: member.display_name,
                         avatar: member.avatar_url,
                     }
@@ -460,7 +459,7 @@ async fn process_rooms(
             None
         };
 
-        let notify_summary = room::user::notify_summary(sender_id, &room_id)?;
+        let notify_summary = room::user::notify_summary(sender_id, room_id)?;
         rooms.insert(
             room_id.clone(),
             SyncRoom {
@@ -484,13 +483,13 @@ async fn process_rooms(
                     crate::room::joined_member_count(room_id)
                         .unwrap_or(0)
                         .try_into()
-                        .unwrap_or_else(|_| 0),
+                        .unwrap_or(0),
                 ),
                 invited_count: Some(
                     crate::room::invited_member_count(room_id)
                         .unwrap_or(0)
                         .try_into()
-                        .unwrap_or_else(|_| 0),
+                        .unwrap_or(0),
                 ),
                 num_live: None, // Count events in timeline greater than global sync counter
                 bump_stamp: timestamp.map(|t| t.get() as i64),
@@ -600,7 +599,7 @@ fn collect_e2ee<'a>(
                         };
                         if pdu.event_ty == TimelineEventType::RoomMember {
                             if let Some(Ok(user_id)) = pdu.state_key.as_deref().map(UserId::parse) {
-                                if &user_id == sender_id {
+                                if user_id == sender_id {
                                     continue;
                                 }
 

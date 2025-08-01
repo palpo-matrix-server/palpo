@@ -28,7 +28,7 @@ pub(super) async fn get_hierarchy(
         .as_ref()
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0);
-    let limit = args.limit.unwrap_or(10).min(100) as usize;
+    let limit = args.limit.unwrap_or(10).min(100);
     let max_depth = args.max_depth.map_or(3, usize::from).min(10);
     let pagination_token = args
         .from

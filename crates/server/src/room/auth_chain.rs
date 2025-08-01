@@ -167,8 +167,7 @@ fn get_cached_auth_chain(cache_key: &[Seqnum]) -> AppResult<Option<Arc<Vec<Seqnu
         .optional()?;
 
     if let Some(chain_sns) = chain_sns {
-        let chain_sns: Arc<Vec<Seqnum>> =
-            Arc::new(chain_sns.into_iter().flatten().collect());
+        let chain_sns: Arc<Vec<Seqnum>> = Arc::new(chain_sns.into_iter().flatten().collect());
         // Cache in RAM
         AUTH_CHAIN_CACHE
             .lock()

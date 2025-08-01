@@ -9,7 +9,7 @@ use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, Room
 // /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 // ///
 // /// Get the ID of the event closest to the given timestamp.
-// 
+//
 // /// `/v1/` ([spec])
 // ///
 // /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1timestamp_to_eventroomid
@@ -76,7 +76,7 @@ impl EventByTimestampResBody {
 //     }
 // };
 
-/// Request type for the `get_event` endpoint.
+// /// Request type for the `get_event` endpoint.
 
 // pub struct Request {
 //     /// The event ID to get.
@@ -162,8 +162,7 @@ pub fn missing_events_request(
     body: MissingEventsReqBody,
 ) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/get_missing_events/{}",
-        room_id
+        "{origin}/_matrix/federation/v1/get_missing_events/{room_id}"
     ))?;
     crate::sending::post(url).stuff(body)
 }

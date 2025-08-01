@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{
     de::{Deserialize, Deserializer},
-    ser::{Error, Serialize, Serializer},
+    ser::{Serialize, Serializer},
 };
 
 /// Serializes a Duration to an integer representing seconds.
@@ -16,10 +16,7 @@ pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Erro
 where
     S: Serializer,
 {
-    match u64::try_from(duration.as_secs()) {
-        Ok(uint) => uint.serialize(serializer),
-        Err(err) => Err(S::Error::custom(err)),
-    }
+    duration.as_secs().serialize(serializer)
 }
 
 /// Deserializes an integer representing seconds into a Duration.
@@ -30,7 +27,7 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: Deserializer<'de>,
 {
-    u64::deserialize(deserializer).map(|secs| Duration::from_secs(secs))
+    u64::deserialize(deserializer).map(Duration::from_secs)
 }
 
 #[cfg(test)]

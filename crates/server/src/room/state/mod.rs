@@ -198,8 +198,7 @@ pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None).ok();
 
     if let Some(state_key) = &new_pdu.state_key {
-        let states_parents =
-            prev_frame_id.map_or_else(|| Ok(Vec::new()), load_frame_info)?;
+        let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), load_frame_info)?;
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 

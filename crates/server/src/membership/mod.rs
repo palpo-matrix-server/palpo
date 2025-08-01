@@ -118,7 +118,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config::get();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !crate::data::user::user_exists(user_id)? {
+    if user_id.server_name() != conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }

@@ -236,9 +236,7 @@ pub fn add_signing_key_from_trusted_server(
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
 
-    let prev_keys: Option<ServerSigningKeys> = key_data
-        .map(serde_json::from_value)
-        .transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(serde_json::from_value).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {
@@ -294,9 +292,7 @@ pub fn add_signing_key_from_origin(
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
 
-    let prev_keys: Option<ServerSigningKeys> = key_data
-        .map(serde_json::from_value)
-        .transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(serde_json::from_value).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {

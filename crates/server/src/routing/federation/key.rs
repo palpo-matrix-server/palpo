@@ -67,7 +67,7 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
     let mut server_keys: CanonicalJsonObject = serde_json::from_slice(&buf)?;
 
     crate::core::signatures::sign_json(
-        &conf.server_name.as_str(),
+        conf.server_name.as_str(),
         config::keypair(),
         &mut server_keys,
     )?;

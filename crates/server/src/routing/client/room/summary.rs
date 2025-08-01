@@ -90,12 +90,10 @@ async fn local_room_summary(
     let room_version = room::get_version(room_id).ok();
     let encryption = room::get_encryption(room_id).ok();
     let num_joined_members = room::joined_member_count(room_id).unwrap_or(0);
-    let membership = sender_id
-        .map(|sender_id| {
-            room::get_member(room_id, sender_id)
-                .map_or(MembershipState::Leave, |content| content.membership)
-        })
-        .into();
+    let membership = sender_id.map(|sender_id| {
+        room::get_member(room_id, sender_id)
+            .map_or(MembershipState::Leave, |content| content.membership)
+    });
 
     Ok(SummaryMsc3266ResBody {
         room_id: room_id.to_owned(),
@@ -103,7 +101,7 @@ async fn local_room_summary(
         avatar_url,
         guest_can_join,
         name,
-        num_joined_members: num_joined_members.try_into().unwrap_or_default(),
+        num_joined_members,
         topic,
         world_readable,
         room_type,

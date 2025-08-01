@@ -1,5 +1,5 @@
 /// Endpoints for querying user IDs and room aliases
-
+///
 /// `GET /_matrix/app/*/rooms/{roomAlias}`
 ///
 /// Endpoint to query the existence of a given room alias.

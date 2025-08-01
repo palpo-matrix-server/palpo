@@ -1,5 +1,5 @@
 /// Endpoints to retrieve information from a homeserver about a resource.
-/// 
+///
 /// `GET /_matrix/federation/*/query/directory`
 ///
 /// Get mapped room ID and resident homeservers for a given room alias.
@@ -81,8 +81,7 @@ pub fn profile_request(origin: &str, args: ProfileReqArgs) -> SendResult<SendReq
     url.query_pairs_mut()
         .append_pair("user_id", args.user_id.as_str());
     if let Some(field) = &args.field {
-        url.query_pairs_mut()
-            .append_pair("field", field.as_ref());
+        url.query_pairs_mut().append_pair("field", field.as_ref());
     }
     Ok(crate::sending::get(url))
 }

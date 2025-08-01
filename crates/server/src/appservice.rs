@@ -310,7 +310,7 @@ pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
         .load::<DbRegistration>(&mut connect()?)?
         .into_iter()
         .filter_map(|db_registration| {
-            println!("db_registration: {:?}", db_registration);
+            println!("db_registration: {db_registration:?}");
             let info: RegistrationInfo = match db_registration.try_into() {
                 Ok(registration) => registration,
                 Err(e) => {

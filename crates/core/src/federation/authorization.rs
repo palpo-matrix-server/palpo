@@ -29,8 +29,7 @@ pub fn event_authorization_request(
     event_id: &EventId,
 ) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/event_auth/{}/{}",
-        room_id, event_id
+        "{origin}/_matrix/federation/v1/event_auth/{room_id}/{event_id}"
     ))?;
     Ok(crate::sending::get(url))
 }

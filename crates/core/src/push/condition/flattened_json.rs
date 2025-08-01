@@ -122,10 +122,9 @@ impl ScalarJsonValue {
     fn try_from_json_value(val: JsonValue) -> Result<Self, IntoJsonSubsetError> {
         Ok(match val {
             JsonValue::Bool(b) => Self::Bool(b),
-            JsonValue::Number(num) => Self::Integer(
-                i64::try_from(num.as_i64().ok_or(IntoJsonSubsetError::IntConvert)?)
-                    .map_err(|_| IntoJsonSubsetError::IntConvert)?,
-            ),
+            JsonValue::Number(num) => {
+                Self::Integer(num.as_i64().ok_or(IntoJsonSubsetError::IntConvert)?)
+            }
             JsonValue::String(string) => Self::String(string),
             JsonValue::Null => Self::Null,
             _ => Err(IntoJsonSubsetError::NotInSubset)?,

@@ -101,7 +101,9 @@ pub async fn knock_room(
             sender_id,
             room_id,
             &room::lock_state(room_id).await,
-        ) {
+        )
+        .await
+        {
             Ok(_) => {
                 return Ok(());
             }
@@ -287,7 +289,8 @@ pub async fn knock_room(
         knock_event,
         once(event_id.borrow()),
         &room::lock_state(room_id).await,
-    )?;
+    )
+    .await?;
 
     info!("Compressing state from send_knock");
     let compressed = state_map

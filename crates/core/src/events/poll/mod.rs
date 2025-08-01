@@ -103,12 +103,7 @@ fn validate_selections<'a>(
     // than that in memory.
     let max_selections: usize = max_selections.try_into().unwrap_or(usize::MAX);
 
-    Some(
-        selections
-            .into_iter()
-            .take(max_selections)
-            .map(Deref::deref),
-    )
+    Some(selections.iter().take(max_selections).map(Deref::deref))
 }
 
 fn filter_selections<'a>(
@@ -120,7 +115,7 @@ fn filter_selections<'a>(
     let mut filtered_map = BTreeMap::new();
     for item in responses.into_iter().filter(|ev| {
         // Filter out responses after the end_timestamp.
-        end_timestamp.map_or(true, |end_ts| ev.origin_server_ts <= end_ts)
+        end_timestamp.is_none_or(|end_ts| ev.origin_server_ts <= end_ts)
     }) {
         let response = filtered_map
             .entry(item.sender)

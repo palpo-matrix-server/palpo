@@ -139,7 +139,7 @@ async fn delete_device(
     res: &mut Response,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let auth = body.into_inner().map(|body| body.auth).flatten();
+    let auth = body.into_inner().and_then(|body| body.auth);
     let device_id = device_id.into_inner();
 
     // UIAA

@@ -163,8 +163,8 @@ async fn initial_sync(
 
     let frame_id = room::get_frame_id(room_id, None)?;
     let state: Vec<_> = room::state::get_full_state(frame_id)?
-        .into_iter()
-        .map(|(_, event)| event.to_state_event())
+        .into_values()
+        .map(|event| event.to_state_event())
         .collect::<Vec<_>>();
 
     let messages = PaginationChunk {
@@ -229,7 +229,7 @@ fn set_read_markers(
     }
 
     if let Some(event_id) = &body.private_read_receipt {
-        let (event_sn, _event_guard) = crate::event::ensure_event_sn(&room_id, &event_id)?;
+        let (event_sn, _event_guard) = crate::event::ensure_event_sn(&room_id, event_id)?;
         data::room::receipt::set_private_read(&room_id, sender_id, event_id, event_sn)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
         push_action::refresh_notify_summary(sender_id, &room_id)?;
@@ -337,7 +337,8 @@ async fn upgrade(
         authed.user_id(),
         &room_id,
         &state_lock,
-    )?
+    )
+    .await?
     .pdu
     .event_id;
 
@@ -397,7 +398,8 @@ async fn upgrade(
         authed.user_id(),
         &replacement_room,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // Join the new room
     timeline::build_and_append_pdu(
@@ -425,7 +427,8 @@ async fn upgrade(
         authed.user_id(),
         &replacement_room,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // Recommended transferable state events list from the specs
     let transferable_state_events = vec![
@@ -457,7 +460,8 @@ async fn upgrade(
             authed.user_id(),
             &replacement_room,
             &state_lock,
-        )?;
+        )
+        .await?;
     }
 
     // Moves any local aliases to the new room
@@ -490,7 +494,8 @@ async fn upgrade(
         authed.user_id(),
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
     // Return the replacement room id
     json_ok(UpgradeRoomResBody { replacement_room })
 }
@@ -655,7 +660,8 @@ pub(super) async fn create_room(
         sender_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -679,7 +685,8 @@ pub(super) async fn create_room(
         sender_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // 3. Power levels
     // Figure out preset. We need it for preset specific events
@@ -717,7 +724,8 @@ pub(super) async fn create_room(
         sender_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
@@ -736,6 +744,7 @@ pub(super) async fn create_room(
             &room_id,
             &state_lock,
         )
+        .await
         .unwrap();
     }
 
@@ -756,7 +765,8 @@ pub(super) async fn create_room(
         sender_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // 5.2 History Visibility
     timeline::build_and_append_pdu(
@@ -772,7 +782,8 @@ pub(super) async fn create_room(
         sender_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     // 5.3 Guest Access
     // timeline::build_and_append_pdu(
@@ -802,7 +813,8 @@ pub(super) async fn create_room(
             sender_id,
             &room_id,
             &state_lock,
-        )?;
+        )
+        .await?;
     }
 
     // 6. Events listed in initial_state
@@ -820,7 +832,7 @@ pub(super) async fn create_room(
             continue;
         }
 
-        timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock)?;
+        timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock).await?;
     }
 
     // 7. Events implied by name and topic
@@ -836,7 +848,8 @@ pub(super) async fn create_room(
             sender_id,
             &room_id,
             &state_lock,
-        )?;
+        )
+        .await?;
     }
 
     if let Some(topic) = &body.topic {
@@ -851,7 +864,8 @@ pub(super) async fn create_room(
             sender_id,
             &room_id,
             &state_lock,
-        )?;
+        )
+        .await?;
     }
     drop(state_lock);
 

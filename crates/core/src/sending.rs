@@ -24,8 +24,8 @@ macro_rules! json_body_modifier {
         impl $crate::sending::SendModifier for $name {
             fn modify(
                 self,
-                request: &mut crate::sending::SendRequest,
-            ) -> Result<(), crate::sending::SendError> {
+                request: &mut $crate::sending::SendRequest,
+            ) -> Result<(), $crate::sending::SendError> {
                 let bytes = serde_json::to_vec(&self)?;
                 *request.body_mut() = Some(bytes.into());
                 Ok(())

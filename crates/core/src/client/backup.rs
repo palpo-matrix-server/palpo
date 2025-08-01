@@ -80,13 +80,13 @@ pub struct EncryptedSessionData {
     pub mac: Base64,
 }
 
-/// `PUT /_matrix/client/*/room_keys/keys/{room_id}`
-///
-/// Store keys in the backup for a room.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeysroomid
+// /// `PUT /_matrix/client/*/room_keys/keys/{room_id}`
+// ///
+// /// Store keys in the backup for a room.
+//
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeysroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -119,12 +119,12 @@ impl ModifyKeysResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
-///
-/// Store keys in the backup for a session.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeysroomidsessionid
+// /// `PUT /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
+// ///
+// /// Store keys in the backup for a session.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeysroomidsessionid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -145,12 +145,12 @@ pub struct AddKeysForSessionReqBody(
     pub KeyBackupData,
 );
 
-/// `POST /_matrix/client/*/room_keys/version`
-///
-/// Create a new backup version.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3room_keysversion
+// /// `POST /_matrix/client/*/room_keys/version`
+// ///
+// /// Create a new backup version.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3room_keysversion
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -183,12 +183,12 @@ impl CreateVersionResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/room_keys/keys`
-///
-/// Store keys in the backup.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeys
+// /// `PUT /_matrix/client/*/room_keys/keys`
+// ///
+// /// Store keys in the backup.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keyskeys
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: true,
@@ -206,12 +206,12 @@ pub struct AddKeysReqBody {
     pub rooms: BTreeMap<OwnedRoomId, RoomKeyBackup>,
 }
 
-/// `DELETE /_matrix/client/*/room_keys/keys/{room_id}`
-///
-/// Delete keys from a backup for a given room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeysroomid
+// /// `DELETE /_matrix/client/*/room_keys/keys/{room_id}`
+// ///
+// /// Delete keys from a backup for a given room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeysroomid
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
 //     rate_limited: true,
@@ -235,12 +235,12 @@ pub struct KeysForRoomReqArgs {
     pub room_id: OwnedRoomId,
 }
 
-/// `DELETE /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
-///
-/// Delete keys from a backup for a given session.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeysroomidsessionid
+// /// `DELETE /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
+// ///
+// /// Delete keys from a backup for a given session.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeysroomidsessionid
 
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
@@ -253,14 +253,14 @@ pub struct KeysForRoomReqArgs {
 //     }
 // };
 
-/// `DELETE /_matrix/client/*/room_keys/keys`
-///
-/// Delete all keys from a backup.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeys
-///
-/// This deletes keys from a backup version, but not the version itself.
+// /// `DELETE /_matrix/client/*/room_keys/keys`
+// ///
+// /// Delete all keys from a backup.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3room_keyskeys
+// ///
+// /// This deletes keys from a backup version, but not the version itself.
 
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
@@ -281,12 +281,12 @@ pub struct KeysForRoomReqArgs {
 //     pub version: String,
 // }
 
-/// `GET /_matrix/client/*/room_keys/version/{version}`
-///
-/// Get information about a specific backup.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keysversionversion
+// /// `GET /_matrix/client/*/room_keys/version/{version}`
+// ///
+// /// Get information about a specific backup.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keysversionversion
 
 // https://github.com/rust-lang/rust/issues/112615
 
@@ -413,12 +413,12 @@ pub(crate) struct AlgorithmWithData {
 //     }
 // }
 
-/// `GET /_matrix/client/*/room_keys/keys/{room_id}`
-///
-/// Retrieve sessions from the backup for a given room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeysroomid
+// /// `GET /_matrix/client/*/room_keys/keys/{room_id}`
+// ///
+// /// Retrieve sessions from the backup for a given room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeysroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -446,12 +446,12 @@ impl AddKeysForRoomReqBody {
     }
 }
 
-/// `GET /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
-///
-/// Retrieve a key from the backup for a given session.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeysroomidsessionid
+// /// `GET /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
+// ///
+// /// Retrieve a key from the backup for a given session.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeysroomidsessionid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -494,12 +494,12 @@ pub struct KeysForSessionReqArgs {
 //     }
 // }
 
-/// `GET /_matrix/client/*/room_keys/keys`
-///
-/// Retrieve all keys from a backup version.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeys
+// /// `GET /_matrix/client/*/room_keys/keys`
+// ///
+// /// Retrieve all keys from a backup version.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3room_keyskeys
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -512,7 +512,7 @@ pub struct KeysForSessionReqArgs {
 //     }
 // };
 
-/// Request type for the `get_backup_keys` endpoint.
+// /// Request type for the `get_backup_keys` endpoint.
 
 // pub struct Requxest {
 //     /// The backup version to retrieve keys from.
@@ -546,12 +546,12 @@ impl KeysForRoomResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/room_keys/version/{version}`
-///
-/// Update information about an existing backup.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keysversionversion
+// /// `PUT /_matrix/client/*/room_keys/version/{version}`
+// ///
+// /// Update information about an existing backup.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3room_keysversionversion
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

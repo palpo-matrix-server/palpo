@@ -26,11 +26,11 @@ use crate::{
 // /// `POST /_matrix/client/*/createRoom`
 // ///
 // /// Create a new room.
-// 
+//
 // /// `/v3/` ([spec])
 // ///
 // /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3createroom
-// 
+//
 // /// Whether or not a newly created room will be listed in the room directory.
 
 // const METADATA: Metadata = metadata! {

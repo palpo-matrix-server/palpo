@@ -29,7 +29,7 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: Deserializer<'de>,
 {
-    u64::deserialize(deserializer).map(|ms| Duration::from_millis(ms))
+    u64::deserialize(deserializer).map(Duration::from_millis)
 }
 
 #[cfg(test)]

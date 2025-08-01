@@ -99,8 +99,7 @@ impl<'de> Deserialize<'de> for VoipVersionId {
             where
                 E: de::Error,
             {
-                let uint = u64::try_from(value).map_err(de::Error::custom)?;
-                Self::Value::try_from(uint).map_err(de::Error::custom)
+                Self::Value::try_from(value).map_err(de::Error::custom)
             }
         }
 

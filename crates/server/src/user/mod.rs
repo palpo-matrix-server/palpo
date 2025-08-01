@@ -164,7 +164,9 @@ pub async fn full_user_deactivate(
                 user_id,
                 room_id,
                 &state_lock,
-            ) {
+            )
+            .await
+            {
                 Err(e) => {
                     warn!(%room_id, %user_id, "Failed to demote user's own power level: {e}");
                 }

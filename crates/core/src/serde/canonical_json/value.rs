@@ -180,10 +180,9 @@ impl TryFrom<JsonValue> for CanonicalJsonValue {
     fn try_from(val: JsonValue) -> Result<Self, Self::Error> {
         Ok(match val {
             JsonValue::Bool(b) => Self::Bool(b),
-            JsonValue::Number(num) => Self::Integer(
-                i64::try_from(num.as_i64().ok_or(CanonicalJsonError::IntConvert)?)
-                    .map_err(|_| CanonicalJsonError::IntConvert)?,
-            ),
+            JsonValue::Number(num) => {
+                Self::Integer(num.as_i64().ok_or(CanonicalJsonError::IntConvert)?)
+            }
             JsonValue::Array(vec) => Self::Array(
                 vec.into_iter()
                     .map(TryInto::try_into)

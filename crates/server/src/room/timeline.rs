@@ -186,7 +186,7 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 ///
 /// Returns pdu id
 #[tracing::instrument(skip_all)]
-pub fn append_pdu<'a, L>(
+pub async fn append_pdu<'a, L>(
     pdu: &'a SnPduEvent,
     mut pdu_json: CanonicalJsonObject,
     leaves: L,
@@ -428,7 +428,9 @@ where
                     let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
                     if to_palpo && !from_palpo && admin_room == pdu.room_id {
-                        let _ = crate::admin::executor().command(body, Some(pdu.event_id.clone()));
+                        let _ = crate::admin::executor()
+                            .command(body, Some(pdu.event_id.clone()))
+                            .await;
                     }
                 }
             }
@@ -786,7 +788,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
 }
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument(skip_all)]
-pub fn build_and_append_pdu(
+pub async fn build_and_append_pdu(
     pdu_builder: PduBuilder,
     sender: &UserId,
     room_id: &RoomId,
@@ -824,7 +826,8 @@ pub fn build_and_append_pdu(
         // Since this PDU references all pdu_leaves we can update the leaves of the room
         once(event_id.borrow()),
         state_lock,
-    )?;
+    )
+    .await?;
     let frame_id = state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time

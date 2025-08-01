@@ -463,23 +463,23 @@ impl LocationsResBody {
 //     }
 // }
 
-/// `GET /_matrix/client/*/thirdparty/user/{protocol}`
-///
-/// Fetches third party users for a protocol.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3thirdpartyuserprotocol
-/// const METADATA: Metadata = metadata! {
-///     method: GET,
-///     rate_limited: false,
-///     authentication: AccessToken,
-///     history: {
-///         1.0 => "/_matrix/client/r0/thirdparty/user/:protocol",
-///         1.1 => "/_matrix/client/v3/thirdparty/user/:protocol",
-///     }
-/// };
-
-/// Request type for the `get_user_for_protocol` endpoint.
+// /// `GET /_matrix/client/*/thirdparty/user/{protocol}`
+// ///
+// /// Fetches third party users for a protocol.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3thirdpartyuserprotocol
+// /// const METADATA: Metadata = metadata! {
+// ///     method: GET,
+// ///     rate_limited: false,
+// ///     authentication: AccessToken,
+// ///     history: {
+// ///         1.0 => "/_matrix/client/r0/thirdparty/user/:protocol",
+// ///         1.1 => "/_matrix/client/v3/thirdparty/user/:protocol",
+// ///     }
+// /// };
+//
+// /// Request type for the `get_user_for_protocol` endpoint.
 
 // pub struct UserForProtocolReqBody {
 //     /// The protocol used to communicate to the third party network.

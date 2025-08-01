@@ -8,7 +8,7 @@ use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, Use
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 
-pub const LAZY_LOAD_WAITING: LazyLock<
+pub static LAZY_LOAD_WAITING: LazyLock<
     Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,
 > = LazyLock::new(Default::default);
 

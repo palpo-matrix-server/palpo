@@ -60,7 +60,7 @@ pub(super) async fn get_messages(
         .as_ref()
         .map(|from| from.parse())
         .transpose()?
-        .unwrap_or_else(|| match args.dir {
+        .unwrap_or(match args.dir {
             crate::core::Direction::Forward => 0,
             crate::core::Direction::Backward => i64::MAX,
         });
@@ -73,7 +73,7 @@ pub(super) async fn get_messages(
         from,
     )?;
 
-    let limit = usize::from(args.limit).min(100);
+    let limit = args.limit.min(100);
     let next_token;
     let mut resp = MessagesResBody::default();
     let mut lazy_loaded = HashSet::new();
@@ -249,7 +249,8 @@ pub(super) async fn send_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )
+    .await?
     .pdu
     .event_id;
 
@@ -307,7 +308,8 @@ pub(super) async fn post_message(
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )
+    .await?
     .pdu
     .event_id;
 

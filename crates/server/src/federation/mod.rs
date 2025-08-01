@@ -89,7 +89,7 @@ pub(crate) async fn send_request(
         for s in signature_server {
             request.headers_mut().insert(
                 AUTHORIZATION,
-                XMatrix::parse(&format!(
+                XMatrix::parse(format!(
                     "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
                     config::get().server_name,
                     destination,

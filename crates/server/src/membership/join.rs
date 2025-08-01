@@ -104,11 +104,13 @@ pub async fn join_room(
             sender_id,
             room_id,
             &room::lock_state(room_id).await,
-        ) {
+        )
+        .await
+        {
             Ok(_) => {
                 if let Some(device_id) = device_id {
                     crate::user::mark_device_key_update_with_joined_rooms(
-                        &sender_id,
+                        sender_id,
                         device_id,
                         &[room_id.to_owned()],
                     )?;
@@ -449,6 +451,7 @@ pub async fn join_room(
         once(join_event_id.borrow()),
         &state_lock,
     )
+    .await
     .unwrap();
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);

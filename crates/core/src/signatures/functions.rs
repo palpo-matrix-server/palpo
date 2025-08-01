@@ -708,7 +708,7 @@ pub fn required_keys(
 
         let entry = map.entry(server.clone()).or_default();
         set.keys()
-            .map(|k| k.clone())
+            .cloned()
             .map(TryInto::try_into)
             .filter_map(Result::ok)
             .for_each(|key_id| entry.push(key_id));

@@ -400,7 +400,7 @@ async fn query_srv_record(hostname: &'_ str) -> Option<(FedDest, Instant)> {
 
 async fn request_well_known(destination: &str) -> Option<(String, Instant)> {
     let response = sending::default_client()
-        .get(&format!("https://{destination}/.well-known/matrix/server"))
+        .get(format!("https://{destination}/.well-known/matrix/server"))
         .send()
         .await;
     debug!("Got well known response");

@@ -117,7 +117,8 @@ pub async fn leave_room(
             user_id,
             room_id,
             &room::lock_state(room_id).await,
-        )?;
+        )
+        .await?;
     }
 
     Ok(())

@@ -463,7 +463,7 @@ pub async fn delete_past_remote_media(
     };
     let mut count = 0;
     for (origin_server, media_id) in &mxcs {
-        let mxc = OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id));
+        let mxc = OwnedMxcUri::from(format!("mxc://{origin_server}/{media_id}"));
         if let Err(e) =
             delete_remote_media(origin_server, media_id, yes_i_want_to_delete_local_media).await
         {

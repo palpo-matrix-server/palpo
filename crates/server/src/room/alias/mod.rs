@@ -132,7 +132,7 @@ pub fn all_local_aliases() -> AppResult<Vec<(OwnedRoomId, String)>> {
 }
 
 pub fn is_admin_room(room_id: &RoomId) -> bool {
-    admin_room_id().map_or(false, |admin_room_id| admin_room_id == room_id)
+    admin_room_id().is_ok_and(|admin_room_id| admin_room_id == room_id)
 }
 
 pub fn admin_room_id() -> AppResult<OwnedRoomId> {
@@ -233,6 +233,7 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
                 &room_id,
                 &super::lock_state(&room_id).await,
             )
+            .await
             .ok();
         }
         diesel::delete(room_aliases::table.filter(room_aliases::alias_id.eq(alias_id)))

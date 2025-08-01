@@ -286,7 +286,7 @@ impl Default for ThirdPartyIdChangesCapability {
         Self { enabled: true }
     }
 }
-/// Iterator implementation for `Capabilities`
+// /// Iterator implementation for `Capabilities`
 
 /// Reference to a capability.
 #[derive(Debug)]
@@ -582,9 +582,9 @@ impl VersionsResBody {
             .into_values()
     }
 }
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: true,

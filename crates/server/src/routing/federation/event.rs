@@ -135,7 +135,7 @@ fn missing_events(
     let mut events = Vec::new();
 
     let mut i = 0;
-    while i < queued_events.len() && events.len() < usize::from(body.limit) as usize {
+    while i < queued_events.len() && events.len() < body.limit {
         let event_id = queued_events[i].clone();
         if let Some(pdu) = timeline::get_pdu_json(&event_id)? {
             let room_id_str = pdu
@@ -146,7 +146,7 @@ fn missing_events(
             let event_room_id = <&RoomId>::try_from(room_id_str)
                 .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
-            if event_room_id != &room_id {
+            if event_room_id != room_id {
                 warn!(
                     "evil event detected: Event {} found while searching in room {}",
                     event_id, &room_id

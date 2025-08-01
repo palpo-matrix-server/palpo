@@ -62,7 +62,7 @@ pub fn paginate_relations_with_filter(
     let from = from
         .map(|from| from.parse())
         .transpose()?
-        .unwrap_or_else(|| match dir {
+        .unwrap_or(match dir {
             Direction::Forward => i64::MIN,
             Direction::Backward => i64::MAX,
         });

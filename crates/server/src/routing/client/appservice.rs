@@ -58,9 +58,9 @@ async fn ping(
             },
         )?
         .into_inner();
-        let _response =
-            crate::sending::send_appservice_request::<()>(appservice.registration.clone(), request)
-                .await?;
+
+        crate::sending::send_appservice_request::<()>(appservice.registration.clone(), request)
+            .await?;
     }
 
     json_ok(SendPingResBody::new(timer.elapsed()))

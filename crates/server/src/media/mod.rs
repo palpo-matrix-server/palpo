@@ -159,7 +159,7 @@ pub fn get_all_mxcs() -> AppResult<Vec<OwnedMxcUri>> {
         .load::<(String, String)>(&mut connect()?)?
         .into_iter()
         .map(|(origin_server, media_id)| {
-            OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id))
+            OwnedMxcUri::from(format!("mxc://{origin_server}/{media_id}"))
         })
         .collect();
     Ok(mxcs)

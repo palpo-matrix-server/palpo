@@ -115,11 +115,11 @@ async fn ban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()> 
 
         room_id
     } else {
-        return Err(AppError::public(format!(
+        return Err(AppError::public(
             "Room specified is not a room ID or room alias. Please note that this requires a \
 			 full room ID (`!awIh6gGInaS5wLQJwa:example.com`) or a room alias \
 			 (`#roomalias:example.com`)",
-        )));
+        ));
     };
 
     // TODO: this should be done
@@ -390,11 +390,11 @@ async fn unban_room(ctx: &Context<'_>, room: OwnedRoomOrAliasId) -> AppResult<()
 
         room_id
     } else {
-        return Err(AppError::public(format!(
+        return Err(AppError::public(
             "Room specified is not a room ID or room alias. Please note that this requires a \
 			 full room ID (`!awIh6gGInaS5wLQJwa:example.com`) or a room alias \
 			 (`#roomalias:example.com`)",
-        )));
+        ));
     };
 
     crate::room::disable_room(&room_id, false)?;

@@ -19,12 +19,12 @@ use crate::{
     serde::{JsonValue, RawJson, RawJsonValue, from_raw_json_value},
 };
 
-/// `PUT /_matrix/app/*/transactions/{txn_id}`
-///
-/// Endpoint to push an event (or batch of events) to the application service.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixappv1transactionstxnid
+// /// `PUT /_matrix/app/*/transactions/{txn_id}`
+// ///
+// /// Endpoint to push an event (or batch of events) to the application service.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixappv1transactionstxnid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

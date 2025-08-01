@@ -278,12 +278,12 @@ impl RuleEnabledResBody {
 //     pub rule_id: String,
 // }
 
-/// `GET /_matrix/client/*/pushrules/global/`
-///
-/// Retrieve all push rulesets in the global scope for this user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrules
+// /// `GET /_matrix/client/*/pushrules/global/`
+// ///
+// /// Retrieve all push rulesets in the global scope for this user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3pushrules
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

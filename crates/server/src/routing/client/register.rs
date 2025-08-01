@@ -128,7 +128,7 @@ async fn register(
                 &UserId::parse_with_server_name("", &conf.server_name)
                     .expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
-                &auth,
+                auth,
                 &uiaa_info,
             )?;
             if !authed {

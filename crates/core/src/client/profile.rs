@@ -134,7 +134,7 @@ pub struct SetAvatarUrlReqBody {
 // /// `PUT /_matrix/client/*/profile/{user_id}/display_name`
 // ///
 // /// Set the display name of the user.
-// 
+//
 // /// `/v3/` ([spec])
 // ///
 // /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_iddisplay_name

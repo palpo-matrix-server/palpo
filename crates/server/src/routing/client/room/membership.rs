@@ -277,11 +277,10 @@ pub(super) async fn join_room_by_id(
         &authed.user,
         Some(authed.device_id()),
         &room_id,
-        body.as_ref().map(|body| body.reason.clone()).flatten(),
+        body.as_ref().and_then(|body| body.reason.clone()),
         &servers,
         body.as_ref()
-            .map(|body| body.third_party_signed.as_ref())
-            .flatten(),
+            .and_then(|body| body.third_party_signed.as_ref()),
         authed.appservice.as_ref(),
         body.as_ref()
             .map(|body| body.extra_data.clone())
@@ -545,7 +544,8 @@ pub(super) async fn ban_user(
         authed.user_id(),
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     empty_ok()
 }
@@ -590,7 +590,8 @@ pub(super) async fn unban_user(
         authed.user_id(),
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     empty_ok()
 }
@@ -645,7 +646,8 @@ pub(super) async fn kick_user(
         authed.user_id(),
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     empty_ok()
 }

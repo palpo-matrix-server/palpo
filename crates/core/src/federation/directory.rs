@@ -1,5 +1,5 @@
 /// Room directory endpoints.
-/// 
+///
 /// `GET /_matrix/federation/*/publicRooms`
 ///
 /// Get all the public rooms for the homeserver.

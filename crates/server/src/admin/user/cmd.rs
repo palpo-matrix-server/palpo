@@ -14,9 +14,7 @@ use crate::core::{
 };
 use crate::room::timeline;
 use crate::user::full_user_deactivate;
-use crate::{
-    AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils,
-};
+use crate::{AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils};
 
 const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
@@ -270,7 +268,7 @@ pub(super) async fn deactivate_all(
                 }
 
                 // don't deactivate the server service account
-                if &user_id == config::server_user_id() {
+                if user_id == config::server_user_id() {
                     crate::admin::send_text(&format!(
                         "{username} is the server service account, skipping over"
                     ))
@@ -289,7 +287,7 @@ pub(super) async fn deactivate_all(
     for user_id in user_ids {
         match crate::user::deactivate_account(&user_id).await {
             Err(e) => {
-                crate::admin::send_text(&format!("failed deactivating user: {e}")).await;
+                let _ = crate::admin::send_text(&format!("failed deactivating user: {e}")).await;
             }
             Ok(()) => {
                 deactivation_count = deactivation_count.saturating_add(1);
@@ -621,7 +619,8 @@ pub(super) async fn force_demote(
         &user_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     ctx.write_str(&format!(
         "User {user_id} demoted themselves to the room default power level in {room_id} - \
@@ -752,7 +751,8 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
             &event.sender,
             &event.room_id,
             &state_lock,
-        )?
+        )
+        .await?
     };
 
     ctx.write_str(&format!(
