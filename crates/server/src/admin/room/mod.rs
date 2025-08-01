@@ -16,7 +16,7 @@ use crate::{AppError, AppResult, data};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
-pub(super) enum RoomCommand {
+pub(crate) enum RoomCommand {
     /// - List all rooms the server knows about
     #[clap(alias = "list")]
     ListRooms {
@@ -67,13 +67,8 @@ pub(super) async fn list_rooms(
     let page = page.unwrap_or(1);
     let mut rooms = crate::room::all_room_ids()?
         .iter()
-        .filter_map(|room_id| {
-            (!exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false))
-                .then_some(room_id)
-        })
-        .filter_map(|room_id| {
-            (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)).then_some(room_id)
-        })
+        .filter(|room_id| !exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false))
+        .filter(|room_id| (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)))
         .map(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>();
 

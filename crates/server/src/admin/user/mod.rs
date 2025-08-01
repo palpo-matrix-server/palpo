@@ -9,7 +9,7 @@ use crate::macros::admin_command_dispatch;
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
-pub(super) enum UserCommand {
+pub(crate) enum UserCommand {
     /// - Create a new user
     #[clap(alias = "create")]
     CreateUser {

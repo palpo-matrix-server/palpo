@@ -33,7 +33,7 @@ async fn list_joined_members(
 
     let member_info: Vec<_> = crate::room::joined_users(&room_id, None)?
         .into_iter()
-        .filter(|user_id| user_id.is_local())
+        .filter(|user_id| if local_only { user_id.is_local() } else { true })
         .map(|user_id| {
             (
                 data::user::display_name(&user_id)
