@@ -118,7 +118,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config::get();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !crate::data::user::user_exists(user_id)? {
+    if user_id.server_name() != conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
@@ -230,7 +230,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -272,7 +272,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -310,7 +310,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),

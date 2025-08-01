@@ -72,13 +72,10 @@ fn get_local_public_rooms(
             let chunk = PublicRoomsChunk {
                 canonical_alias: room::get_canonical_alias(&room_id).ok().flatten(),
                 name: room::get_name(&room_id).ok(),
-                num_joined_members: room::joined_member_count(&room_id)
-                    .unwrap_or_else(|_| {
-                        warn!("Room {} has no member count", room_id);
-                        0
-                    })
-                    .try_into()
-                    .expect("user count should not be that big"),
+                num_joined_members: room::joined_member_count(&room_id).unwrap_or_else(|_| {
+                    warn!("Room {} has no member count", room_id);
+                    0
+                }),
                 topic: room::get_topic(&room_id).ok(),
                 world_readable: room::is_world_readable(&room_id),
                 guest_can_join: room::guest_can_join(&room_id),
@@ -142,7 +139,7 @@ fn get_local_public_rooms(
     let chunk: Vec<_> = all_rooms
         .into_iter()
         .skip(num_since as usize)
-        .take(limit as usize)
+        .take(limit)
         .collect();
 
     let prev_batch = if num_since == 0 {
@@ -151,7 +148,7 @@ fn get_local_public_rooms(
         Some(format!("p{num_since}"))
     };
 
-    let next_batch = if chunk.len() < limit as usize {
+    let next_batch = if chunk.len() < limit {
         None
     } else {
         Some(format!("n{}", num_since + limit as u64))

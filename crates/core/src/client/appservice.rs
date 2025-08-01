@@ -55,14 +55,14 @@ impl PingResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/directory/list/appservice/{networkId}/{room_id}`
-///
-/// Updates the visibility of a given room on the application service's room
-/// directory.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixclientv3directorylistappservicenetworkidroomid
+// /// `PUT /_matrix/client/*/directory/list/appservice/{networkId}/{room_id}`
+// ///
+// /// Updates the visibility of a given room on the application service's room
+// /// directory.
+//
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixclientv3directorylistappservicenetworkidroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

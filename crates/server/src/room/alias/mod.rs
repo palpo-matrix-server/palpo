@@ -132,7 +132,7 @@ pub fn all_local_aliases() -> AppResult<Vec<(OwnedRoomId, String)>> {
 }
 
 pub fn is_admin_room(room_id: &RoomId) -> bool {
-    admin_room_id().map_or(false, |admin_room_id| admin_room_id == room_id)
+    admin_room_id().is_ok_and(|admin_room_id| admin_room_id == room_id)
 }
 
 pub fn admin_room_id() -> AppResult<OwnedRoomId> {
@@ -184,7 +184,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
             for appservice in crate::appservice::all()?.values() {
                 let url = appservice
                     .registration
-                    .build_url(&format!("app/v1/rooms/{}", room_alias))?;
+                    .build_url(&format!("app/v1/rooms/{room_alias}"))?;
                 if appservice.aliases.is_match(room_alias.as_str())
                     && matches!(
                         crate::sending::post(url).send::<Option<()>>().await,
@@ -233,6 +233,7 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
                 &room_id,
                 &super::lock_state(&room_id).await,
             )
+            .await
             .ok();
         }
         diesel::delete(room_aliases::table.filter(room_aliases::alias_id.eq(alias_id)))

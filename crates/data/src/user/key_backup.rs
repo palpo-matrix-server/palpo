@@ -41,14 +41,13 @@ pub struct NewDbRoomKey {
     pub session_data: JsonValue,
     pub created_at: UnixMillis,
 }
-
-impl Into<KeyBackupData> for DbRoomKey {
-    fn into(self) -> KeyBackupData {
+impl From<DbRoomKey> for KeyBackupData {
+    fn from(val: DbRoomKey) -> Self {
         KeyBackupData {
-            first_message_index: self.first_message_index.unwrap_or(0) as u64,
-            forwarded_count: self.forwarded_count.unwrap_or(0) as u64,
-            is_verified: self.is_verified,
-            session_data: serde_json::from_value(self.session_data).unwrap(),
+            first_message_index: val.first_message_index.unwrap_or(0) as u64,
+            forwarded_count: val.forwarded_count.unwrap_or(0) as u64,
+            is_verified: val.is_verified,
+            session_data: serde_json::from_value(val.session_data).unwrap(),
         }
     }
 }
@@ -176,9 +175,9 @@ pub fn add_key(
 
     let exist_key = get_key_for_session(user_id, version, room_id, session_id)?;
     let replace = if let Some(exist_key) = exist_key {
-        if new_key.is_verified && !exist_key.is_verified {
-            true
-        } else if new_key.first_message_index < exist_key.first_message_index {
+        if (new_key.is_verified && !exist_key.is_verified)
+            || new_key.first_message_index < exist_key.first_message_index
+        {
             true
         } else if new_key.first_message_index == exist_key.first_message_index {
             new_key.forwarded_count < exist_key.forwarded_count

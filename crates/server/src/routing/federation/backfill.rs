@@ -31,7 +31,7 @@ async fn history(
     let limit = args.limit.min(100);
 
     let all_events = timeline::get_pdus_backward(
-        &user_id!("@doesntmatter:palpo.im"),
+        user_id!("@doesntmatter:palpo.im"),
         &args.room_id,
         until,
         None,

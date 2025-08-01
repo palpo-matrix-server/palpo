@@ -90,12 +90,12 @@ impl SnPduEvent {
             }
             HistoryVisibility::Invited => {
                 // Allow if any member on requesting server was AT LEAST invited, else deny
-                state::user_was_invited(frame_id, &user_id)
+                state::user_was_invited(frame_id, user_id)
             }
             HistoryVisibility::Joined => {
                 // Allow if any member on requested server was joined, else deny
-                state::user_was_joined(frame_id, &user_id)
-                    || state::user_was_joined(frame_id - 1, &user_id)
+                state::user_was_joined(frame_id, user_id)
+                    || state::user_was_joined(frame_id - 1, user_id)
             }
             _ => {
                 error!("unknown history visibility {history_visibility}");
@@ -338,9 +338,7 @@ impl PduEvent {
         }
 
         match *room_version {
-            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => {
-                self.redacts.clone().map(OwnedEventId::from)
-            }
+            V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 | V10 => self.redacts.clone(),
             _ => {
                 self.get_content::<RoomRedactionEventContent>()
                     .ok()?

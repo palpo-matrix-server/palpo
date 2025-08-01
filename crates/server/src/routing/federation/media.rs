@@ -43,8 +43,7 @@ pub async fn get_content(
         let content_type = metadata
             .content_type
             .as_deref()
-            .map(|c| Mime::from_str(c).ok())
-            .flatten()
+            .and_then(|c| Mime::from_str(c).ok())
             .unwrap_or_else(|| {
                 metadata
                     .file_name
@@ -77,9 +76,12 @@ pub async fn get_thumbnail(
     res: &mut Response,
 ) -> AppResult<()> {
     let server_name = &config::get().server_name;
-    if let Some(DbThumbnail { content_type, .. }) =
-        crate::data::media::get_thumbnail_by_dimension(server_name, &args.media_id, args.width, args.height)?
-    {
+    if let Some(DbThumbnail { content_type, .. }) = crate::data::media::get_thumbnail_by_dimension(
+        server_name,
+        &args.media_id,
+        args.width,
+        args.height,
+    )? {
         let thumb_path = get_media_path(
             server_name,
             &format!("{}.{}x{}", args.media_id, args.width, args.height),
@@ -146,7 +148,7 @@ pub async fn get_thumbnail(
                 );
                 let content = Content {
                     file: fs::read(&image_path)?,
-                    content_type: content_type.map(Into::into),
+                    content_type,
                     content_disposition: Some(content_disposition),
                 };
 
@@ -172,21 +174,20 @@ pub async fn get_thumbnail(
                         u64::from(original_width) * u64::from(height) / u64::from(original_height)
                     };
                     if use_width {
-                        if intermediate <= u64::from(::std::u32::MAX) {
+                        if intermediate <= u64::from(u32::MAX) {
                             (width, intermediate as u32)
                         } else {
                             (
-                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate)
-                                    as u32,
-                                ::std::u32::MAX,
+                                (u64::from(width) * u64::from(u32::MAX) / intermediate) as u32,
+                                u32::MAX,
                             )
                         }
-                    } else if intermediate <= u64::from(::std::u32::MAX) {
+                    } else if intermediate <= u64::from(u32::MAX) {
                         (intermediate as u32, height)
                     } else {
                         (
-                            ::std::u32::MAX,
-                            (u64::from(height) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                            u32::MAX,
+                            (u64::from(height) * u64::from(u32::MAX) / intermediate) as u32,
                         )
                     }
                 };
@@ -224,7 +225,7 @@ pub async fn get_thumbnail(
             );
             let content = Content {
                 file: thumbnail_bytes,
-                content_type: content_type.map(Into::into),
+                content_type,
                 content_disposition: Some(content_disposition),
             };
 
@@ -237,7 +238,7 @@ pub async fn get_thumbnail(
             let content_disposition = make_content_disposition(None, content_type.as_deref(), None);
             let content = Content {
                 file: fs::read(&image_path)?,
-                content_type: content_type.map(Into::into),
+                content_type,
                 content_disposition: Some(content_disposition),
             };
 

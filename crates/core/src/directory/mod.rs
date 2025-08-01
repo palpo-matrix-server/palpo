@@ -283,7 +283,7 @@ impl Server {
     }
 }
 
-/// Request type for the `get_public_rooms` endpoint.
+// /// Request type for the `get_public_rooms` endpoint.
 
 /// Response type for the `get_public_rooms` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Default, Debug)]

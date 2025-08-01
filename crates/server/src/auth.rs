@@ -51,15 +51,15 @@ pub struct AuthArgs {
 impl AuthArgs {
     pub fn require_access_token(&self) -> Result<&str, MatrixError> {
         if let Some(bearer) = &self.authorization {
-            if bearer.starts_with("Bearer ") {
-                Ok(&bearer["Bearer ".len()..])
+            if let Some(token) = bearer.strip_prefix("Bearer ") {
+                Ok(token)
             } else {
-                Err(MatrixError::missing_token("Invalid Bearer token.").into())
+                Err(MatrixError::missing_token("Invalid Bearer token."))
             }
         } else if let Some(access_token) = self.access_token.as_deref() {
             Ok(access_token)
         } else {
-            Err(MatrixError::missing_token("Token not found.").into())
+            Err(MatrixError::missing_token("Token not found."))
         }
     }
 }

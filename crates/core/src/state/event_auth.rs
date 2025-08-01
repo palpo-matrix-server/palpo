@@ -358,7 +358,7 @@ pub fn auth_check<E: Event>(
         Some(mem) => mem,
         None => {
             return Err(MatrixError::forbidden(
-                format!("Sender `{}`, not found in room.", sender),
+                format!("sender `{sender}`, not found in room"),
                 None,
             ));
         }
@@ -373,10 +373,7 @@ pub fn auth_check<E: Event>(
 
     if !matches!(membership_state, MembershipState::Join) {
         return Err(MatrixError::forbidden(
-            format!(
-                "Sender's membership is not join, current state is `{}`.",
-                membership_state
-            ),
+            format!("sender's membership is not join, current state is `{membership_state}`"),
             None,
         ));
     }

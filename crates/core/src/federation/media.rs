@@ -190,9 +190,9 @@ impl Scribe for ThumbnailResBody {
     }
 }
 
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1mediadownloadmediaid
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1mediadownloadmediaid
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

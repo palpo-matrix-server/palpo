@@ -6,7 +6,6 @@ use std::str::FromStr;
 use diesel::prelude::*;
 use image::imageops::FilterType;
 use mime::Mime;
-use palpo_core::client::media;
 use reqwest::Url;
 use salvo::fs::NamedFile;
 use salvo::http::header::CONTENT_TYPE;
@@ -19,7 +18,6 @@ use uuid::Uuid;
 use crate::core::UnixMillis;
 use crate::core::client::media::*;
 use crate::core::identifiers::*;
-use crate::core::media::ResizeMethod;
 use crate::data::connect;
 use crate::data::media::{DbMetadata, DbThumbnail, NewDbMetadata, NewDbThumbnail};
 use crate::data::schema::*;
@@ -61,8 +59,7 @@ pub async fn get_content(
         let content_type = metadata
             .content_type
             .as_deref()
-            .map(|c| Mime::from_str(c).ok())
-            .flatten()
+            .and_then(|c| Mime::from_str(c).ok())
             .unwrap_or_else(|| {
                 metadata
                     .file_name
@@ -85,7 +82,7 @@ pub async fn get_content(
         } else {
             Err(MatrixError::not_yet_uploaded("Media has not been uploaded yet").into())
         }
-    } else if &*args.server_name != config::get().server_name && args.allow_remote {
+    } else if *args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
@@ -128,8 +125,7 @@ pub async fn get_content_with_filename(
                 metadata
                     .content_type
                     .as_deref()
-                    .map(|c| Mime::from_str(c).ok())
-                    .flatten()
+                    .and_then(|c| Mime::from_str(c).ok())
                     .unwrap_or(mime::APPLICATION_OCTET_STREAM),
             )
             .attached_name(args.filename)
@@ -141,7 +137,7 @@ pub async fn get_content_with_filename(
         file.send(req.headers(), res).await;
 
         Ok(())
-    } else if &*args.server_name != config::get().server_name && args.allow_remote {
+    } else if *args.server_name != config::get().server_name && args.allow_remote {
         let mxc = format!("mxc://{}/{}", args.server_name, args.media_id);
         fetch_remote_content(&mxc, &args.server_name, &args.media_id, res).await
     } else {
@@ -204,7 +200,7 @@ pub async fn create_content(
         fs::create_dir_all(&parent_dir)?;
 
         let mut file = File::create(dest_path).await?;
-        file.write_all(&payload).await?;
+        file.write_all(payload).await?;
 
         let metadata = NewDbMetadata {
             media_id: media_id.clone(),
@@ -265,11 +261,11 @@ pub async fn upload_content(
     //     }
     // }
     if !dest_path.exists() {
-        let parent_dir = utils::fs::get_parent_dir(&dest_path);
+        let parent_dir = utils::fs::get_parent_dir(dest_path);
         fs::create_dir_all(&parent_dir)?;
 
         let mut file = File::create(dest_path).await?;
-        file.write_all(&payload).await?;
+        file.write_all(payload).await?;
 
         let metadata = NewDbMetadata {
             media_id: args.media_id.clone(),
@@ -334,9 +330,6 @@ pub async fn preview_url(
 /// Load media thumbnail from our server or over federation.
 ///
 /// - Only allows federation if `allow_remote` is true
-///
-///
-
 /// Downloads a file's thumbnail.
 ///
 /// Here's an example on how it works:
@@ -466,8 +459,7 @@ pub async fn get_thumbnail(
                     .content_type(
                         content_type
                             .as_deref()
-                            .map(|c| Mime::from_str(c).ok())
-                            .flatten()
+                            .and_then(|c| Mime::from_str(c).ok())
                             .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                     )
                     .build()
@@ -494,21 +486,20 @@ pub async fn get_thumbnail(
                         u64::from(original_width) * u64::from(height) / u64::from(original_height)
                     };
                     if use_width {
-                        if intermediate <= u64::from(::std::u32::MAX) {
+                        if intermediate <= u64::from(u32::MAX) {
                             (width, intermediate as u32)
                         } else {
                             (
-                                (u64::from(width) * u64::from(::std::u32::MAX) / intermediate)
-                                    as u32,
-                                ::std::u32::MAX,
+                                (u64::from(width) * u64::from(u32::MAX) / intermediate) as u32,
+                                u32::MAX,
                             )
                         }
-                    } else if intermediate <= u64::from(::std::u32::MAX) {
+                    } else if intermediate <= u64::from(u32::MAX) {
                         (intermediate as u32, height)
                     } else {
                         (
-                            ::std::u32::MAX,
-                            (u64::from(height) * u64::from(::std::u32::MAX) / intermediate) as u32,
+                            u32::MAX,
+                            (u64::from(height) * u64::from(u32::MAX) / intermediate) as u32,
                         )
                     }
                 };
@@ -553,7 +544,13 @@ pub async fn get_thumbnail(
                     .filter(media_thumbnails::media_id.eq(&args.media_id))
                     .filter(media_thumbnails::width.eq(args.width as i32))
                     .filter(media_thumbnails::height.eq(args.height as i32))
-                    .filter(media_thumbnails::resize_method.eq(&args.method.clone().unwrap_or_default().to_string()))
+                    .filter(
+                        media_thumbnails::resize_method.eq(&args
+                            .method
+                            .clone()
+                            .unwrap_or_default()
+                            .to_string()),
+                    )
                     .select(media_thumbnails::id)
                     .first::<i64>(&mut connect()?)?
             };
@@ -564,8 +561,7 @@ pub async fn get_thumbnail(
                 .content_type(
                     content_type
                         .as_deref()
-                        .map(|c| Mime::from_str(c).ok())
-                        .flatten()
+                        .and_then(|c| Mime::from_str(c).ok())
                         .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                 )
                 .build()
@@ -581,8 +577,7 @@ pub async fn get_thumbnail(
                 .content_type(
                     content_type
                         .as_deref()
-                        .map(|c| Mime::from_str(c).ok())
-                        .flatten()
+                        .and_then(|c| Mime::from_str(c).ok())
                         .unwrap_or(mime::APPLICATION_OCTET_STREAM),
                 )
                 .build()

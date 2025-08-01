@@ -138,11 +138,9 @@ pub async fn catch_status_error(
             matrix.write(req, depot, res).await;
             ctrl.skip_rest();
         }
-    } else {
-        if res.status_code == Some(StatusCode::METHOD_NOT_ALLOWED) {
-            let matrix = MatrixError::unrecognized("method not allowed");
-            matrix.write(req, depot, res).await;
-            ctrl.skip_rest();
-        }
+    } else if res.status_code == Some(StatusCode::METHOD_NOT_ALLOWED) {
+        let matrix = MatrixError::unrecognized("method not allowed");
+        matrix.write(req, depot, res).await;
+        ctrl.skip_rest();
     }
 }

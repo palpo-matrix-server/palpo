@@ -76,7 +76,7 @@ pub fn force_state(
         .filter_map(|new| new.split().ok().map(|(_, id)| id))
         .collect::<Vec<_>>();
     for event_id in &event_ids {
-        let pdu = match timeline::get_pdu(&event_id) {
+        let pdu = match timeline::get_pdu(event_id) {
             Ok(pdu) => pdu,
             _ => continue,
         };
@@ -198,8 +198,7 @@ pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None).ok();
 
     if let Some(state_key) = &new_pdu.state_key {
-        let states_parents =
-            prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
+        let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), load_frame_info)?;
 
         let field_id = ensure_field(&new_pdu.event_ty.to_string().into(), state_key)?.id;
 
@@ -602,11 +601,11 @@ pub fn user_can_see_event(
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, room_id))]
 pub fn user_can_see_events(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
-    if super::user::is_joined(&user_id, &room_id)? {
+    if super::user::is_joined(user_id, room_id)? {
         return Ok(true);
     }
 
-    let history_visibility = super::get_history_visibility(&room_id)?;
+    let history_visibility = super::get_history_visibility(room_id)?;
     match history_visibility {
         HistoryVisibility::Invited => super::user::is_invited(user_id, room_id),
         HistoryVisibility::WorldReadable => Ok(true),
@@ -641,7 +640,7 @@ pub fn save_state(
         update_frame_id_by_sn(new_compressed_event.event_sn(), new_frame_id)?;
     }
 
-    let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), |p| load_frame_info(p))?;
+    let states_parents = prev_frame_id.map_or_else(|| Ok(Vec::new()), load_frame_info)?;
 
     let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
         let appended: CompressedState = new_compressed_events

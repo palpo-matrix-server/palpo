@@ -42,13 +42,13 @@ impl AliasesResBody {
     }
 }
 
-/// Endpoints for room aliases.
-/// `GET /_matrix/client/*/directory/room/{roomAlias}`
-///
-/// Resolve a room alias to a room ID.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3directoryroomroomalias
+// /// Endpoints for room aliases.
+// /// `GET /_matrix/client/*/directory/room/{roomAlias}`
+// ///
+// /// Resolve a room alias to a room ID.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3directoryroomroomalias
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -85,12 +85,12 @@ impl AliasResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/directory/room/{roomAlias}`
-///
-/// Add an alias to a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3directoryroomroomalias
+// /// `PUT /_matrix/client/*/directory/room/{roomAlias}`
+// ///
+// /// Add an alias to a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3directoryroomroomalias
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,

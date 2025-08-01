@@ -53,15 +53,13 @@ pub use self::{
         sign_json, verify_event, verify_json,
     },
     keys::{Ed25519KeyPair, KeyPair, PublicKeyMap, PublicKeySet},
-    signatures::Signature,
     verification::Verified,
 };
-use crate::serde::{AsRefStr, DisplayAsRefStr};
+use crate::serde::{AsRefStr, Base64, base64::Standard, DisplayAsRefStr};
 
 mod error;
 mod functions;
 mod keys;
-mod signatures;
 mod verification;
 
 /// The algorithm used for signing data.
@@ -105,6 +103,90 @@ fn split_id(id: &str) -> Result<(Algorithm, String), Error> {
     Ok((algorithm, signature_id[1].to_owned()))
 }
 
+/// A digital signature.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Signature {
+    /// The cryptographic algorithm that generated this signature.
+    pub(crate) algorithm: Algorithm,
+
+    /// The signature data.
+    pub(crate) signature: Vec<u8>,
+
+    /// The "version" of the key identifier for the public key used to generate
+    /// this signature.
+    pub(crate) version: String,
+}
+
+impl Signature {
+    /// Creates a signature from raw bytes.
+    ///
+    /// While a signature can be created directly using struct literal syntax,
+    /// this constructor can be used to automatically determine the
+    /// algorithm and version from a key identifier in the form *algorithm:
+    /// version*, e.g. "ed25519:1".
+    ///
+    /// This constructor will ensure that the version does not contain
+    /// characters that violate the guidelines in the specification. Because
+    /// it may be necessary to represent signatures with versions that don't
+    /// adhere to these guidelines, it's possible to simply use the struct
+    /// literal syntax to construct a `Signature` with an arbitrary key.
+    ///
+    /// # Parameters
+    ///
+    /// * id: A key identifier, e.g. "ed25519:1".
+    /// * bytes: The digital signature, as a series of bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// * The key ID specifies an unknown algorithm.
+    /// * The key ID is malformed.
+    /// * The key ID contains a version with invalid characters.
+    pub fn new(id: &str, bytes: &[u8]) -> Result<Self, Error> {
+        let (algorithm, version) = split_id(id)?;
+
+        Ok(Self {
+            algorithm,
+            signature: bytes.to_vec(),
+            version,
+        })
+    }
+
+    /// The algorithm used to generate the signature.
+    pub fn algorithm(&self) -> &Algorithm {
+        &self.algorithm
+    }
+
+    /// The raw bytes of the signature.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.signature.as_slice()
+    }
+
+    /// A base64 encoding of the signature.
+    ///
+    /// Uses the standard character set with no padding.
+    pub fn base64(&self) -> String {
+        Base64::<Standard, _>::new(self.signature.as_slice()).encode()
+    }
+
+    /// The key identifier, a string containing the signature algorithm and the
+    /// key "version" separated by a colon, e.g. "ed25519:1".
+    pub fn id(&self) -> String {
+        format!("{}:{}", self.algorithm, self.version)
+    }
+
+    /// The "version" of the key used for this signature.
+    ///
+    /// Versions are used as an identifier to distinguish signatures generated
+    /// from different keys but using the same algorithm on the same
+    /// homeserver.
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -112,13 +194,33 @@ mod tests {
     use pkcs8::{PrivateKeyInfo, der::Decode};
     use serde_json::{from_str as from_json_str, to_string as to_json_string};
 
-    use super::{
+    use super::{Signature,
         Ed25519KeyPair, canonical_json, hash_and_sign_event, sign_json, verify_event, verify_json,
     };
     use crate::{
         RoomVersionId,
         serde::{Base64, base64::Standard},
     };
+
+    #[test]
+    fn valid_key_id() {
+        Signature::new("ed25519:abcdef", &[]).unwrap();
+    }
+
+    #[test]
+    fn invalid_valid_key_id_length() {
+        Signature::new("ed25519:abcdef:123456", &[]).unwrap_err();
+    }
+
+    #[test]
+    fn invalid_key_id_version() {
+        Signature::new("ed25519:abc!def", &[]).unwrap_err();
+    }
+
+    #[test]
+    fn invalid_key_id_algorithm() {
+        Signature::new("foobar:abcdef", &[]).unwrap_err();
+    }
 
     fn pkcs8() -> Vec<u8> {
         const ENCODED: &str = "\

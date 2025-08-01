@@ -112,7 +112,7 @@ async fn get_avatar_url(
 
     json_ok(AvatarUrlResBody {
         avatar_url,
-        blurhash: blurhash,
+        blurhash,
     })
 }
 
@@ -129,7 +129,7 @@ async fn set_avatar_url(
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
-    if authed.user_id() != &user_id {
+    if authed.user_id() != user_id {
         return Err(MatrixError::forbidden("forbidden", None).into());
     }
 
@@ -206,7 +206,8 @@ async fn set_avatar_url(
             &user_id,
             &room_id,
             &room::lock_state(&room_id).await,
-        )?;
+        )
+        .await?;
     }
 
     empty_ok()
@@ -257,7 +258,7 @@ async fn set_display_name(
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
-    if authed.user_id() != &user_id {
+    if authed.user_id() != user_id {
         return Err(MatrixError::forbidden("forbidden", None).into());
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
@@ -296,7 +297,8 @@ async fn set_display_name(
             &user_id,
             &room_id,
             &room::lock_state(&room_id).await,
-        )?;
+        )
+        .await?;
 
         // Presence update
         crate::data::user::set_presence(

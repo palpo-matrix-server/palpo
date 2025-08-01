@@ -115,14 +115,14 @@ pub fn try_auth(
 
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
-            if user_id != &auth_user_id {
+            if user_id != auth_user_id {
                 return Err(MatrixError::forbidden("User ID does not match.", None).into());
             }
 
             let Ok(user) = data::user::get_user(&auth_user_id) else {
                 return Err(MatrixError::unauthorized("User not found.").into());
             };
-            crate::user::vertify_password(&user, &password)?;
+            crate::user::vertify_password(&user, password)?;
         }
         AuthData::RegistrationToken(t) => {
             if Some(t.token.trim()) == conf.registration_token.as_deref() {
@@ -195,5 +195,5 @@ pub fn get_uiaa_request(
         .read()
         .expect("read UIAA_REQUESTS failed")
         .get(&(user_id.to_owned(), device_id.to_owned(), session.to_owned()))
-        .map(|j| j.clone())
+        .cloned()
 }

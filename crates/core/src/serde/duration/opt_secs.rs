@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{
     de::{Deserialize, Deserializer},
-    ser::{Error, Serialize, Serializer},
+    ser::{Serialize, Serializer},
 };
 
 /// Serialize an `Option<Duration>`.
@@ -17,10 +17,7 @@ where
     S: Serializer,
 {
     match opt_duration {
-        Some(duration) => match u64::try_from(duration.as_secs()) {
-            Ok(uint) => uint.serialize(serializer),
-            Err(err) => Err(S::Error::custom(err)),
-        },
+        Some(duration) => duration.as_secs().serialize(serializer),
         None => serializer.serialize_none(),
     }
 }
@@ -33,7 +30,7 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error
 where
     D: Deserializer<'de>,
 {
-    Ok(Option::<u64>::deserialize(deserializer)?.map(|secs| Duration::from_secs(secs.into())))
+    Ok(Option::<u64>::deserialize(deserializer)?.map(Duration::from_secs))
 }
 
 #[cfg(test)]

@@ -139,7 +139,7 @@ impl SendJoinResBodyV1 {
 }
 
 /// Full state of the room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct RoomStateV2 {
     /// Whether `m.room.member` events have been omitted from `state`.
     ///
@@ -187,18 +187,12 @@ impl RoomStateV2 {
     /// With the `unstable-unspecified` feature, this method doesn't take any
     /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
-        Self {
-            auth_chain: Vec::new(),
-            state: Vec::new(),
-            event: None,
-            members_omitted: false,
-            servers_in_room: None,
-        }
+        Default::default()
     }
 }
 
 /// Full state of the room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct RoomStateV1 {
     /// The full set of authorization events that make up the state of the room,
     /// and their authorization events, recursively.
@@ -223,11 +217,7 @@ impl RoomStateV1 {
     /// With the `unstable-unspecified` feature, this method doesn't take any
     /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
-        Self {
-            auth_chain: Vec::new(),
-            state: Vec::new(),
-            event: None,
-        }
+        Default::default()
     }
 }
 
@@ -353,9 +343,9 @@ pub struct SendLeaveReqBody(
 );
 crate::json_body_modifier!(SendLeaveReqBody);
 
-/// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
-///
-/// Send a join event to a resident server.
+// /// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
+// ///
+// /// Send a join event to a resident server.
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -424,7 +414,7 @@ pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<Send
     let ver = if ver.is_empty() {
         ""
     } else {
-        &*format!("?{}", ver)
+        &*format!("?{ver}")
     };
 
     let url = Url::parse(&format!(

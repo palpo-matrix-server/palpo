@@ -1,7 +1,6 @@
 use clap::Subcommand;
-use futures_util::StreamExt;
 
-use crate::admin::{Context, admin_command_dispatch, get_room_info};
+use crate::admin::{Context, admin_command_dispatch};
 use crate::core::OwnedRoomId;
 use crate::{AppError, AppResult};
 use crate::{IsRemoteOrLocal, data};
@@ -35,14 +34,14 @@ async fn list_joined_members(
     let member_info: Vec<_> = crate::room::joined_users(&room_id, None)?
         .into_iter()
         .filter(|user_id| user_id.is_local())
-        .filter_map(|user_id| {
-            Some((
+        .map(|user_id| {
+            (
                 data::user::display_name(&user_id)
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| user_id.to_string()),
                 user_id,
-            ))
+            )
         })
         .collect();
 

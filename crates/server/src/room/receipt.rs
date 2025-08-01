@@ -25,7 +25,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     crate::core::events::receipt::ReceiptThread::Thread(id) => Some(id.clone()),
                     _ => None,
                 };
-                let receipt_at = receipt.ts.unwrap_or_else(|| UnixMillis::now());
+                let receipt_at = receipt.ts.unwrap_or_else(UnixMillis::now);
                 let receipt = NewDbReceipt {
                     ty: receipt_ty.to_string(),
                     room_id: room_id.to_owned(),

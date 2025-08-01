@@ -1,7 +1,7 @@
 use clap::Subcommand;
 
 use crate::admin::Context;
-use crate::core::appservice::{Namespace, Registration};
+use crate::core::appservice::Registration;
 use crate::macros::admin_command_dispatch;
 use crate::{AppError, AppResult};
 

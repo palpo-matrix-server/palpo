@@ -15,7 +15,7 @@ pub struct SlidingSyncCache {
 
 pub static CONNECTIONS: LazyLock<
     Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>,
-> = LazyLock::new(|| Default::default());
+> = LazyLock::new(Default::default);
 
 pub fn forget_sync_request_connection(
     user_id: OwnedUserId,
@@ -89,10 +89,10 @@ pub fn update_sync_request_with_cache(
 
     cached
         .subscriptions
-        .extend(req_body.room_subscriptions.clone().into_iter());
+        .extend(req_body.room_subscriptions.clone());
     req_body
         .room_subscriptions
-        .extend(cached.subscriptions.clone().into_iter());
+        .extend(cached.subscriptions.clone());
 
     req_body.extensions.e2ee.enabled = req_body
         .extensions

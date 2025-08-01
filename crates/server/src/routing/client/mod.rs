@@ -128,7 +128,7 @@ fn search(
     let search_criteria = body.search_categories.room_events.as_ref().unwrap();
     let room_events = crate::event::search::search_pdus(
         authed.user_id(),
-        &search_criteria,
+        search_criteria,
         args.next_batch.as_deref(),
     )?;
     json_ok(SearchResBody::new(ResultCategories { room_events }))

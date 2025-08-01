@@ -58,7 +58,7 @@ pub(super) fn get_room_event(
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
-pub(super) fn report(
+pub(super) async fn report(
     _aa: AuthArgs,
     args: RoomEventReqArgs,
     body: JsonBody<ReportContentReqBody>,
@@ -67,13 +67,13 @@ pub(super) fn report(
     let authed = depot.authed_info()?;
     let pdu = timeline::get_pdu(&args.event_id)?;
 
-    if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
-        return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
+    if let Some(true) = body.score.map(|s| !(-100..=0).contains(&s)) {
+        return Err(MatrixError::invalid_param("invalid score, must be within 0 to -100").into());
     };
 
     if let Some(true) = body.reason.clone().map(|s| s.chars().count() > 250) {
         return Err(MatrixError::invalid_param(
-            "Reason too long, should be 250 characters or fewer",
+            "reason too long, should be 250 characters or fewer",
         )
         .into());
     };
@@ -107,7 +107,7 @@ pub(super) fn report(
             body.score,
             HtmlEscape(body.reason.as_deref().unwrap_or(""))
         ),
-    ));
+    )).await;
     empty_ok()
 }
 
@@ -155,7 +155,7 @@ pub(super) fn get_context(
     }
 
     // Use limit with maximum 100
-    let limit = usize::from(args.limit).min(100);
+    let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
     let events_before =
         timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
@@ -279,13 +279,14 @@ pub(super) async fn send_redact(
                 reason: body.reason.clone(),
             })
             .expect("event is valid, we just created it"),
-            redacts: Some(args.event_id.into()),
+            redacts: Some(args.event_id),
             ..Default::default()
         },
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )
+    .await?
     .pdu
     .event_id;
 

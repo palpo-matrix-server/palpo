@@ -93,7 +93,7 @@ pub(crate) async fn process_incoming_pdu(
     }
 
     // 1.3.1 Check room ACL on origin field/server
-    handler::acl_check(origin, &room_id)?;
+    handler::acl_check(origin, room_id)?;
 
     // 1.3.2 Check room ACL on sender's server name
     let sender: OwnedUserId = serde_json::from_value(
@@ -163,7 +163,7 @@ pub(crate) async fn process_pulled_pdu(
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
     // 1.3.1 Check room ACL on origin field/server
-    handler::acl_check(origin, &room_id)?;
+    handler::acl_check(origin, room_id)?;
 
     // 1.3.2 Check room ACL on sender's server name
     let sender: OwnedUserId = serde_json::from_value(
@@ -364,8 +364,7 @@ fn process_to_outlier_pdu<'a>(
                 .collect::<Vec<_>>();
             if !rejected_auth_events.is_empty() {
                 Some(format!(
-                    "event's auth events rejected: {:?}",
-                    rejected_auth_events
+                    "event's auth events rejected: {rejected_auth_events:?}"
                 ))
             } else {
                 None
@@ -448,7 +447,7 @@ pub async fn process_to_timeline_pdu(
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
-    let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
+    let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
@@ -461,7 +460,7 @@ pub async fn process_to_timeline_pdu(
     };
 
     let state_at_incoming_event = match state_at_incoming_event {
-        None => fetch_state(origin, room_id, &room_version_id, &incoming_pdu.event_id)
+        None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
             .await?
             .unwrap_or_default(),
         Some(state) => state,
@@ -498,7 +497,7 @@ pub async fn process_to_timeline_pdu(
 
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
-    let soft_fail = match incoming_pdu.redacts_id(&room_version_id) {
+    let soft_fail = match incoming_pdu.redacts_id(room_version_id) {
         None => false,
         Some(redact_id) => {
             !state::user_can_redact(
@@ -512,7 +511,7 @@ pub async fn process_to_timeline_pdu(
     };
 
     // 13. Use state resolution to find new room state
-    let state_lock = crate::room::lock_state(&room_id).await;
+    let state_lock = crate::room::lock_state(room_id).await;
 
     // We start looking at current room state now, so lets lock the room
     // Now we calculate the set of extremities this room has after the incoming event has been
@@ -591,7 +590,7 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     } else {
         debug!("Appended incoming pdu");
-        timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock)?;
+        timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
         state::set_event_state(
             &incoming_pdu.event_id,
             incoming_pdu.event_sn,
@@ -761,7 +760,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
 
-            match crate::sending::send_federation_request(&origin, request)
+            match crate::sending::send_federation_request(origin, request)
                 .await?
                 .json::<EventResBody>()
                 .await
@@ -909,7 +908,7 @@ pub async fn fetch_and_process_missing_prev_events(
         .into_inner();
 
         known_events.insert(event_id.clone());
-        let res_body = crate::sending::send_federation_request(&origin, request)
+        let res_body = crate::sending::send_federation_request(origin, request)
             .await?
             .json::<MissingEventsResBody>()
             .await?;
@@ -981,8 +980,8 @@ pub async fn fetch_and_process_missing_prev_events(
                 process_pulled_pdu(
                     origin,
                     &event_id,
-                    &room_id,
-                    &room_version_id,
+                    room_id,
+                    room_version_id,
                     event_val.clone(),
                     known_events,
                 )
@@ -1003,7 +1002,7 @@ pub async fn fetch_and_process_auth_chain(
 ) -> AppResult<()> {
     let request =
         event_authorization_request(&origin.origin().await, room_id, event_id)?.into_inner();
-    let res_body = crate::sending::send_federation_request(&origin, request)
+    let res_body = crate::sending::send_federation_request(origin, request)
         .await?
         .json::<EventAuthorizationResBody>()
         .await?;

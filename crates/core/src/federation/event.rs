@@ -6,13 +6,13 @@ use crate::sending::{SendRequest, SendResult};
 use crate::{Direction, serde::RawJsonValue};
 use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
 
-/// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
-///
-/// Get the ID of the event closest to the given timestamp.
-
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1timestamp_to_eventroomid
+// /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
+// ///
+// /// Get the ID of the event closest to the given timestamp.
+//
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1timestamp_to_eventroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -60,12 +60,12 @@ impl EventByTimestampResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/event/{event_id}`
-///
-/// Retrieves a single event.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1eventeventid
+// /// `GET /_matrix/federation/*/event/{event_id}`
+// ///
+// /// Retrieves a single event.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1eventeventid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -76,7 +76,7 @@ impl EventByTimestampResBody {
 //     }
 // };
 
-/// Request type for the `get_event` endpoint.
+// /// Request type for the `get_event` endpoint.
 
 // pub struct Request {
 //     /// The event ID to get.
@@ -140,12 +140,12 @@ impl EventResBody {
     }
 }
 
-/// `POST /_matrix/federation/*/get_missing_events/{room_id}`
-///
-/// Retrieves previous events that the sender is missing.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
+// /// `POST /_matrix/federation/*/get_missing_events/{room_id}`
+// ///
+// /// Retrieves previous events that the sender is missing.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -162,8 +162,7 @@ pub fn missing_events_request(
     body: MissingEventsReqBody,
 ) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/get_missing_events/{}",
-        room_id
+        "{origin}/_matrix/federation/v1/get_missing_events/{room_id}"
     ))?;
     crate::sending::post(url).stuff(body)
 }
@@ -220,12 +219,12 @@ fn is_default_limit(val: &usize) -> bool {
     *val == default_limit()
 }
 
-/// `GET /_matrix/federation/*/state_ids/{room_id}`
-///
-/// Retrieves a snapshot of a room's state at a given event, in the form of
-/// event IDs. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1state_idsroomid
+// /// `GET /_matrix/federation/*/state_ids/{room_id}`
+// ///
+// /// Retrieves a snapshot of a room's state at a given event, in the form of
+// /// event IDs. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1state_idsroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -282,12 +281,12 @@ impl RoomStateIdsResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/state/{room_id}`
-///
-/// Retrieves a snapshot of a room's state at a given event.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1stateroomid
+// /// `GET /_matrix/federation/*/state/{room_id}`
+// ///
+// /// Retrieves a snapshot of a room's state at a given event.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1stateroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -323,12 +322,12 @@ pub struct RoomStateResBody {
     pub pdus: Vec<Box<RawJsonValue>>,
 }
 
-/// `PUT /_matrix/app/*/ping`
-///
-/// Endpoint to ping the application service.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/application-service-api/#post_matrixappv1ping
+// /// `PUT /_matrix/app/*/ping`
+// ///
+// /// Endpoint to ping the application service.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/application-service-api/#post_matrixappv1ping
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

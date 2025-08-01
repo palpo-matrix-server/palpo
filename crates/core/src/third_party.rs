@@ -363,8 +363,7 @@ impl ProtocolsResBody {
 //         1.1 => "/_matrix/client/v3/thirdparty/protocol/:protocol",
 //     }
 // };
-
-/// Request type for the `get_protocol` endpoint.
+// Request type for the `get_protocol` endpoint.
 // pub struct ProtocolReqBody {
 //     /// The name of the protocol.
 //     #[salvo(parameter(parameter_in = Path))]
@@ -400,7 +399,7 @@ impl ProtocolResBody {
 //     }
 // };
 
-/// Request type for the `get_location_for_protocol` endpoint.
+// /// Request type for the `get_location_for_protocol` endpoint.
 // pub struct LocationForProtocolReqBody {
 //     /// The protocol used to communicate to the third party network.
 //     #[salvo(parameter(parameter_in = Path))]
@@ -442,15 +441,14 @@ impl LocationsResBody {
 //     }
 // };
 
-/// Request type for the `get_location_for_room_alias` endpoint.
-
+// /// Request type for the `get_location_for_room_alias` endpoint.
 // pub struct LocationReqBody {
 //     /// The Matrix room alias to look up.
 //     #[salvo(parameter(parameter_in = Query))]
 //     pub alias: OwnedRoomAliasId,
 // }
 
-/// Response type for the `get_location_for_room_alias` endpoint.
+// /// Response type for the `get_location_for_room_alias` endpoint.
 // #[derive(ToSchema, Serialize, Debug)]
 //
 // pub struct LocationResBody {
@@ -465,23 +463,23 @@ impl LocationsResBody {
 //     }
 // }
 
-/// `GET /_matrix/client/*/thirdparty/user/{protocol}`
-///
-/// Fetches third party users for a protocol.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3thirdpartyuserprotocol
-/// const METADATA: Metadata = metadata! {
-///     method: GET,
-///     rate_limited: false,
-///     authentication: AccessToken,
-///     history: {
-///         1.0 => "/_matrix/client/r0/thirdparty/user/:protocol",
-///         1.1 => "/_matrix/client/v3/thirdparty/user/:protocol",
-///     }
-/// };
-
-/// Request type for the `get_user_for_protocol` endpoint.
+// /// `GET /_matrix/client/*/thirdparty/user/{protocol}`
+// ///
+// /// Fetches third party users for a protocol.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3thirdpartyuserprotocol
+// /// const METADATA: Metadata = metadata! {
+// ///     method: GET,
+// ///     rate_limited: false,
+// ///     authentication: AccessToken,
+// ///     history: {
+// ///         1.0 => "/_matrix/client/r0/thirdparty/user/:protocol",
+// ///         1.1 => "/_matrix/client/v3/thirdparty/user/:protocol",
+// ///     }
+// /// };
+//
+// /// Request type for the `get_user_for_protocol` endpoint.
 
 // pub struct UserForProtocolReqBody {
 //     /// The protocol used to communicate to the third party network.

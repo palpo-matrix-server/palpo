@@ -43,7 +43,7 @@ async fn process() -> AppResult<()> {
     for (id, outgoing_kind, event) in super::active_requests()? {
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
-            .or_insert_with(Vec::new);
+            .or_default();
 
         if entry.len() > 30 {
             warn!(

@@ -380,12 +380,12 @@ impl FilterDefinition {
             && self.room.is_empty()
     }
 }
-/// `POST /_matrix/client/*/user/{user_id}/filter`
-///
-/// Create a new filter for event retrieval.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3useruser_idfilter
+// /// `POST /_matrix/client/*/user/{user_id}/filter`
+// ///
+// /// Create a new filter for event retrieval.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3useruser_idfilter
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -422,12 +422,12 @@ impl CreateFilterResBody {
     }
 }
 
-/// `GET /_matrix/client/*/user/{user_id}/filter/{filter_id}`
-///
-/// Retrieve a previously created filter.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idfilterfilterid
+// /// `GET /_matrix/client/*/user/{user_id}/filter/{filter_id}`
+// ///
+// /// Retrieve a previously created filter.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idfilterfilterid
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

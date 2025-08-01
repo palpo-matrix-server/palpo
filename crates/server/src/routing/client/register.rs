@@ -9,7 +9,6 @@ use crate::core::client::register::*;
 use crate::core::client::uiaa::{AuthFlow, AuthType, UiaaInfo};
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::core::push::Ruleset;
 use crate::core::serde::JsonValue;
@@ -129,7 +128,7 @@ async fn register(
                 &UserId::parse_with_server_name("", &conf.server_name)
                     .expect("we know this is valid"),
                 &body.device_id.clone().unwrap_or_else(|| "".into()),
-                &auth,
+                auth,
                 &uiaa_info,
             )?;
             if !authed {
@@ -237,7 +236,7 @@ async fn register(
     // Note: the server user, @palpo:servername, is generated first
     if !is_guest {
         // TODO: admin
-        // if let Ok(admin_room) = crate::admin::get_admin_room() {
+        // if let Ok(admin_room) = crate::room::get_admin_room() {
         //     if crate::room::user::join_count(&admin_room)? == 1 {
         //         crate::admin::make_admin(&user_id).await?;
         //         warn!("Granting {} admin privileges as the first user", user_id);

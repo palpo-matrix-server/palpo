@@ -16,7 +16,7 @@ impl Checksum {
     pub fn to_hex_uppercase(&self) -> String {
         let mut result = String::with_capacity(self.0.len() * 2);
         for b in &self.0 {
-            write!(result, "{:02X}", b).unwrap();
+            write!(result, "{b:02X}").unwrap();
         }
         result
     }
@@ -38,7 +38,7 @@ pub fn hash_data_sha2_256(data: &[u8]) -> Result<Checksum, std::io::Error> {
 pub fn hash_string(bytes: &[u8]) -> String {
     let mut result = String::with_capacity(bytes.len() * 2);
     for b in bytes {
-        write!(result, "{:02X}", b).unwrap();
+        write!(result, "{b:02X}").unwrap();
     }
     result
 }

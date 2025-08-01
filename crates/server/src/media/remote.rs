@@ -3,14 +3,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use diesel::prelude::*;
 use salvo::Response;
 
-use crate::core::federation::media::{Content, ContentReqArgs, content_request};
-use crate::core::http_headers::ContentDisposition;
+use crate::core::federation::media::ContentReqArgs;
 use crate::core::identifiers::*;
 use crate::core::{Mxc, ServerName, UserId};
 use crate::data::connect;
-use crate::data::media::NewDbThumbnail;
 use crate::data::schema::*;
-use crate::utils::content_disposition::make_content_disposition;
 use crate::{AppError, AppResult, config, exts::*};
 
 use super::{Dimension, FileMeta};
@@ -270,42 +267,42 @@ async fn fetch_thumbnail_unauthenticated(
 // }
 
 // async fn location_request(location: &str) -> AppResult<FileMeta> {
-    // let response = self
-    // 	.services
-    // 	.client
-    // 	.extern_media
-    // 	.get(location)
-    // 	.send()
-    // 	.await?;
+// let response = self
+// 	.services
+// 	.client
+// 	.extern_media
+// 	.get(location)
+// 	.send()
+// 	.await?;
 
-    // let content_type = response
-    // 	.headers()
-    // 	.get(CONTENT_TYPE)
-    // 	.map(HeaderValue::to_str)
-    // 	.and_then(Result::ok)
-    // 	.map(str::to_owned);
+// let content_type = response
+// 	.headers()
+// 	.get(CONTENT_TYPE)
+// 	.map(HeaderValue::to_str)
+// 	.and_then(Result::ok)
+// 	.map(str::to_owned);
 
-    // let content_disposition = response
-    // 	.headers()
-    // 	.get(CONTENT_DISPOSITION)
-    // 	.map(HeaderValue::as_bytes)
-    // 	.map(TryFrom::try_from)
-    // 	.and_then(Result::ok);
+// let content_disposition = response
+// 	.headers()
+// 	.get(CONTENT_DISPOSITION)
+// 	.map(HeaderValue::as_bytes)
+// 	.map(TryFrom::try_from)
+// 	.and_then(Result::ok);
 
-    // response
-    // 	.bytes()
-    // 	.await
-    // 	.map(Vec::from)
-    // 	.map_err(Into::into)
-    // 	.map(|content| FileMeta {
-    // 		content: Some(content),
-    // 		content_type: content_type.clone(),
-    // 		content_disposition: Some(make_content_disposition(
-    // 			content_disposition.as_ref(),
-    // 			content_type.as_deref(),
-    // 			None,
-    // 		)),
-    // 	})
+// response
+// 	.bytes()
+// 	.await
+// 	.map(Vec::from)
+// 	.map_err(Into::into)
+// 	.map(|content| FileMeta {
+// 		content: Some(content),
+// 		content_type: content_type.clone(),
+// 		content_disposition: Some(make_content_disposition(
+// 			content_disposition.as_ref(),
+// 			content_type.as_deref(),
+// 			None,
+// 		)),
+// 	})
 // }
 
 // async fn federation_request<Request>(
@@ -466,7 +463,7 @@ pub async fn delete_past_remote_media(
     };
     let mut count = 0;
     for (origin_server, media_id) in &mxcs {
-        let mxc = OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id));
+        let mxc = OwnedMxcUri::from(format!("mxc://{origin_server}/{media_id}"));
         if let Err(e) =
             delete_remote_media(origin_server, media_id, yes_i_want_to_delete_local_media).await
         {

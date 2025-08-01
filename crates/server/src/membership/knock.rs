@@ -100,8 +100,10 @@ pub async fn knock_room(
             PduBuilder::state(sender_id.to_string(), &content),
             sender_id,
             room_id,
-            &room::lock_state(&room_id).await,
-        ) {
+            &room::lock_state(room_id).await,
+        )
+        .await
+        {
             Ok(_) => {
                 return Ok(());
             }
@@ -243,7 +245,7 @@ pub async fn knock_room(
             let _ = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
-                &room_id,
+                room_id,
                 &room_version_id,
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
@@ -286,8 +288,9 @@ pub async fn knock_room(
         &knock_pdu,
         knock_event,
         once(event_id.borrow()),
-        &room::lock_state(&room_id).await,
-    )?;
+        &room::lock_state(room_id).await,
+    )
+    .await?;
 
     info!("Compressing state from send_knock");
     let compressed = state_map

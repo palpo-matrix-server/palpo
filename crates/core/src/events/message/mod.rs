@@ -44,7 +44,7 @@
 //!
 //! - [MSC3245]: Voice Messages.
 //! - [MSC3246]: Audio Waveform.
-//! - [MSC3381]: Polls.
+//! - [MSC3381][]: Polls.
 //!
 //! # How to use them in Matrix
 //!

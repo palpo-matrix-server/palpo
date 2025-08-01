@@ -1,5 +1,5 @@
 /// Endpoints for handling keys for end-to-end encryption
-
+///
 /// `POST /_matrix/federation/*/user/keys/claim`
 ///
 /// Claim one-time keys for use in pre-key messages.
@@ -104,12 +104,12 @@ impl KeyObject {
     }
 }
 
-/// `POST /_matrix/federation/*/user/keys/query`
-///
-/// Get the current devices and identity keys for the given users.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1userkeysquery
+// /// `POST /_matrix/federation/*/user/keys/query`
+// ///
+// /// Get the current devices and identity keys for the given users.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1userkeysquery
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,

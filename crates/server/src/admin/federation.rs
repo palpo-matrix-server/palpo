@@ -110,10 +110,10 @@ pub(super) async fn remote_user_in_rooms(ctx: &Context<'_>, user_id: OwnedUserId
     let body = rooms
         .iter()
         .map(
-            |&RoomInfo {
-                 ref id,
-                 ref joined_members,
-                 ref name,
+            |RoomInfo {
+                id,
+                joined_members,
+                name,
              }| format!("{id} | Members: {joined_members} | Name: {name}"),
         )
         .collect::<Vec<_>>()

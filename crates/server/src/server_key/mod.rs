@@ -111,7 +111,7 @@ pub fn verify_key_exists(server: &ServerName, key_id: &ServerSigningKeyId) -> Ap
 pub fn verify_keys_for(server: &ServerName) -> VerifyKeys {
     let mut keys = signing_keys_for(server)
         .map(|keys| merge_old_keys(keys).verify_keys)
-        .unwrap_or(BTreeMap::new());
+        .unwrap_or_default();
 
     if !server.is_remote() {
         let keypair = config::keypair();
@@ -122,7 +122,7 @@ pub fn verify_keys_for(server: &ServerName) -> VerifyKeys {
         let id = format!("ed25519:{}", keypair.version());
         let verify_keys: VerifyKeys = [(id.try_into().expect("should work"), verify_key)].into();
 
-        keys.extend(verify_keys.clone().into_iter());
+        keys.extend(verify_keys);
     }
 
     keys

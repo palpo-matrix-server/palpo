@@ -61,7 +61,7 @@ pub(super) async fn create_user(
     crate::user::create_user(&user_id, Some(password.as_str()))?;
 
     // Default to pretty displayname
-    let mut display_name = user_id.localpart().to_owned();
+    let display_name = user_id.localpart().to_owned();
 
     // If `new_user_displayname_suffix` is set, registration will push whatever
     // content is set to the user's display name with a space before it
@@ -268,7 +268,7 @@ pub(super) async fn deactivate_all(
                 }
 
                 // don't deactivate the server service account
-                if &user_id == config::server_user_id() {
+                if user_id == config::server_user_id() {
                     crate::admin::send_text(&format!(
                         "{username} is the server service account, skipping over"
                     ))
@@ -285,32 +285,26 @@ pub(super) async fn deactivate_all(
     let mut deactivation_count: usize = 0;
 
     for user_id in user_ids {
-        // TODO: admin
-        // match self.services.users.deactivate_account(&user_id).await {
-        //     Err(e) => {
-        //         crate::admin::send_text(&format!("Failed deactivating user: {e}")).await;
-        //     }
-        //     Ok(()) => {
-        //         deactivation_count = deactivation_count.saturating_add(1);
-        //         if !no_leave_rooms {
-        //             info!("Forcing user {user_id} to leave all rooms apart of deactivate-all");
-        //             let all_joined_rooms: Vec<OwnedRoomId> = self
-        //                 .services
-        //                 .rooms
-        //                 .state_cache
-        //                 .rooms_joined(&user_id)
-        //                 .map(Into::into)
-        //                 .collect()
-        //                 .await;
+        match crate::user::deactivate_account(&user_id).await {
+            Err(e) => {
+                let _ = crate::admin::send_text(&format!("failed deactivating user: {e}")).await;
+            }
+            Ok(()) => {
+                deactivation_count = deactivation_count.saturating_add(1);
+                if !no_leave_rooms {
+                    info!("Forcing user {user_id} to leave all rooms apart of deactivate-all");
+                    let all_joined_rooms = data::user::joined_rooms(&user_id)?;
 
-        //             full_user_deactivate(&user_id, &all_joined_rooms).boxed().await?;
+                    full_user_deactivate(&user_id, &all_joined_rooms)
+                        .boxed()
+                        .await?;
 
-        //             data::user::set_display_name(&user_id, None)?;
-        //             data::user::set_avatar_url(&user_id, None)?;
-        //             membership::leave_all_rooms(&user_id).await;
-        //         }
-        //     }
-        // }
+                    data::user::set_display_name(&user_id, None)?;
+                    data::user::set_avatar_url(&user_id, None)?;
+                    membership::leave_all_rooms(&user_id).await?;
+                }
+            }
+        }
     }
 
     if admins.is_empty() {
@@ -625,7 +619,8 @@ pub(super) async fn force_demote(
         &user_id,
         &room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
 
     ctx.write_str(&format!(
         "User {user_id} demoted themselves to the room default power level in {room_id} - \
@@ -756,7 +751,8 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
             &event.sender,
             &event.room_id,
             &state_lock,
-        )?
+        )
+        .await?
     };
 
     ctx.write_str(&format!(

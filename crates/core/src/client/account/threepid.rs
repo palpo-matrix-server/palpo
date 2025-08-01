@@ -105,12 +105,12 @@ pub struct DeleteThreepidResBody {
     pub id_server_unbind_result: ThirdPartyIdRemovalStatus,
 }
 
-/// `POST /_matrix/client/*/account/3pid/email/requestToken`
-///
-/// Request a 3PID management token with a 3rd party email.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3account3pidemailrequesttoken
+// /// `POST /_matrix/client/*/account/3pid/email/requestToken`
+// ///
+// /// Request a 3PID management token with a 3rd party email.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3account3pidemailrequesttoken
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -157,12 +157,12 @@ pub struct TokenViaEmailResBody {
     pub submit_url: Option<String>,
 }
 
-/// `POST /_matrix/client/*/account/3pid/msisdn/requestToken`
-///
-/// Request a 3PID management token with a phone number.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3account3pidmsisdnrequesttoken
+// /// `POST /_matrix/client/*/account/3pid/msisdn/requestToken`
+// ///
+// /// Request a 3PID management token with a phone number.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3account3pidmsisdnrequesttoken
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

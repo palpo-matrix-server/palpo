@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use syn::{Expr, ExprLit, Generics, Lit, Meta, MetaNameValue, parse_str};
-
-use crate::Result;
+use syn::{Expr, ExprLit, Lit, Meta, MetaNameValue};
 
 pub(crate) fn get_crate_name() -> Option<String> {
     let cargo_crate_name = std::env::var("CARGO_CRATE_NAME");

@@ -62,7 +62,7 @@ pub async fn invite_user(
             &invitee_id.server_name().origin().await,
             InviteUserReqArgs {
                 room_id: room_id.to_owned(),
-                event_id: (&*pdu.event_id).to_owned(),
+                event_id: (*pdu.event_id).to_owned(),
             },
             InviteUserReqBodyV2 {
                 room_version: room_version_id.clone(),
@@ -140,8 +140,9 @@ pub async fn invite_user(
         },
         inviter_id,
         room_id,
-        &room::lock_state(&room_id).await,
-    )?;
+        &room::lock_state(room_id).await,
+    )
+    .await?;
 
     Ok(())
 }

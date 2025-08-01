@@ -28,7 +28,7 @@ async fn get_hierarchy(
 
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
-    let ref identifier = Identifier::ServerName(origin);
+    let identifier = &Identifier::ServerName(origin);
     match crate::room::space::get_summary_and_children_local(room_id, identifier).await? {
         None => Err(MatrixError::not_found("The requested room was not found").into()),
 

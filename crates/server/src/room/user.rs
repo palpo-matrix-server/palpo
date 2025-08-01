@@ -33,24 +33,19 @@ impl UserNotifySummary {
         self.notification_count
             + self
                 .threads
-                .iter()
-                .map(|(_, t)| t.notification_count)
+                .values()
+                .map(|t| t.notification_count)
                 .sum::<u64>()
     }
     pub fn all_unread_count(&self) -> u64 {
-        self.notification_count
-            + self
-                .threads
-                .iter()
-                .map(|(_, t)| t.unread_count)
-                .sum::<u64>()
+        self.notification_count + self.threads.values().map(|t| t.unread_count).sum::<u64>()
     }
     pub fn all_highlight_count(&self) -> u64 {
         self.highlight_count
             + self
                 .threads
-                .iter()
-                .map(|(_, t)| t.highlight_count)
+                .values()
+                .map(|t| t.highlight_count)
                 .sum::<u64>()
     }
 }
@@ -224,7 +219,7 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
 }
 
 #[tracing::instrument]
-pub fn is_knocked<'a>(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
+pub fn is_knocked(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
@@ -292,11 +287,10 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
     if let Some(membership) = membership {
         Ok(membership.into())
     } else {
-        Err(MatrixError::not_found(format!(
-            "User {} is not a member of room {}",
-            user_id, room_id
-        ))
-        .into())
+        Err(
+            MatrixError::not_found(format!("User {user_id} is not a member of room {room_id}"))
+                .into(),
+        )
     }
 }
 /// Returns an iterator over all rooms a user left.

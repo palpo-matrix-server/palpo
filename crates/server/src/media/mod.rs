@@ -5,25 +5,18 @@ pub use remote::*;
 
 use std::cmp;
 use std::num::Saturating;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
-use chrono::{DateTime, TimeZone, Utc};
 use diesel::prelude::*;
-use salvo::Response;
 use tokio::io::AsyncWriteExt;
 
-use crate::core::federation::media::ContentReqArgs;
 use crate::core::http_headers::ContentDisposition;
 use crate::core::media::ResizeMethod;
-use crate::core::{
-    Mxc, MxcUri, OwnedMxcUri, OwnedServerName, ServerName, UnixMillis, UserId, media,
-};
+use crate::core::{Mxc, OwnedMxcUri, ServerName, UnixMillis, UserId};
 use crate::data::connect;
 use crate::data::media::NewDbThumbnail;
 use crate::data::schema::*;
-use crate::data::schema::*;
-use crate::{AppError, AppResult, config, data, exts::*, join_path};
+use crate::{AppResult, config, data};
 
 #[derive(Debug)]
 pub struct FileMeta {
@@ -136,6 +129,17 @@ pub fn get_media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
     r
 }
 
+pub async fn delete_media(server_name: &ServerName, media_id: &str) -> AppResult<()> {
+    data::media::delete_media(server_name, media_id)?;
+    let path = get_media_path(server_name, media_id);
+    if path.exists() {
+        if let Err(e) = tokio::fs::remove_file(path).await {
+            tracing::error!("failed to delete media file: {e}");
+        }
+    }
+    Ok(())
+}
+
 /// Returns width, height of the thumbnail and whether it should be cropped. Returns None when
 /// the server should send the original file.
 pub fn thumbnail_properties(width: u32, height: u32) -> Option<(u32, u32, bool)> {
@@ -155,7 +159,7 @@ pub fn get_all_mxcs() -> AppResult<Vec<OwnedMxcUri>> {
         .load::<(String, String)>(&mut connect()?)?
         .into_iter()
         .map(|(origin_server, media_id)| {
-            OwnedMxcUri::from(format!("mxc://{}/{}", origin_server, media_id))
+            OwnedMxcUri::from(format!("mxc://{origin_server}/{media_id}"))
         })
         .collect();
     Ok(mxcs)
@@ -175,7 +179,7 @@ pub async fn save_thumbnail(
         media_id: mxc.media_id.to_owned(),
         origin_server: mxc.server_name.to_owned(),
         content_type: content_type.map(|c| c.to_owned()),
-        disposition_type: content_disposition.map(|d|d.to_string()),
+        disposition_type: content_disposition.map(|d| d.to_string()),
         file_size: file.len() as i64,
         width: dim.width as i32,
         height: dim.height as i32,

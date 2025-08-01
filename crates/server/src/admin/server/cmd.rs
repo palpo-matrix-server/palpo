@@ -18,7 +18,7 @@ pub(super) async fn show_config(ctx: &Context<'_>) -> AppResult<()> {
 
 pub(super) async fn reload_config(ctx: &Context<'_>, path: Option<PathBuf>) -> AppResult<()> {
     // TODO: admin
-    // let path = path.as_deref().into_iter();
+    // let path = path.as_deref();
     // config::reload(path)?;
 
     ctx.write_str("Successfully reconfigured.").await

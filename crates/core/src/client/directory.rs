@@ -47,13 +47,13 @@ pub struct PublicRoomsFilteredReqBody {
     pub room_network: RoomNetwork,
 }
 
-/// `GET /_matrix/client/*/publicRooms`
-///
-/// Get the list of rooms in this homeserver's public directory.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3publicrooms
+// /// `GET /_matrix/client/*/publicRooms`
+// ///
+// /// Get the list of rooms in this homeserver's public directory.
+//
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3publicrooms
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -86,12 +86,12 @@ pub struct PublicRoomsReqArgs {
     pub server: Option<OwnedServerName>,
 }
 
-/// `GET /_matrix/client/*/directory/list/room/{room_id}`
-///
-/// Get the visibility of a public room on a directory.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3directorylistroomroomid
+// /// `GET /_matrix/client/*/directory/list/room/{room_id}`
+// ///
+// /// Get the visibility of a public room on a directory.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3directorylistroomroomid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -103,7 +103,7 @@ pub struct PublicRoomsReqArgs {
 //     }
 // };
 
-/// Request type for the `get_room_visibility` endpoint.
+// /// Request type for the `get_room_visibility` endpoint.
 
 // pub struct Requestx {
 //     /// The ID of the room of which to request the visibility.
@@ -125,12 +125,12 @@ impl VisibilityResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/directory/list/room/{room_id}`
-///
-/// Set the visibility of a public room on a directory.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3directorylistroomroomid
+// /// `PUT /_matrix/client/*/directory/list/room/{room_id}`
+// ///
+// /// Set the visibility of a public room on a directory.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3directorylistroomroomid
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,

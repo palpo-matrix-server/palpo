@@ -175,9 +175,7 @@ fn capture_create(context: &Context<'_>) -> (Arc<Capture>, Arc<Mutex<String>>) {
 
 /// Parse chat messages from the admin room into an AdminCommand object
 #[allow(clippy::result_large_err)]
-fn parse<'a>(
-    input: &'a CommandInput,
-) -> Result<(AdminCommand, Vec<String>, Vec<&'a str>), CommandOutput> {
+fn parse(input: &CommandInput) -> Result<(AdminCommand, Vec<String>, Vec<&str>), CommandOutput> {
     let lines = input.command.lines().filter(|line| !line.trim().is_empty());
     let command_line = lines.clone().next().expect("command missing first line");
     let body = lines.skip(1).collect();

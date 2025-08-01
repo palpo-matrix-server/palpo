@@ -102,7 +102,7 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
     diesel::insert_into(threads::table)
         .values(DbThread {
             event_id: root_pdu.event_id.clone(),
-            event_sn: root_pdu.event_sn.clone(),
+            event_sn: root_pdu.event_sn,
             room_id: root_pdu.room_id.clone(),
             last_id: pdu.event_id.clone(),
             last_sn: pdu.event_sn,

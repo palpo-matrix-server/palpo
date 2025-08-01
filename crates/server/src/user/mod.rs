@@ -164,7 +164,9 @@ pub async fn full_user_deactivate(
                 user_id,
                 room_id,
                 &state_lock,
-            ) {
+            )
+            .await
+            {
                 Err(e) => {
                     warn!(%room_id, %user_id, "Failed to demote user's own power level: {e}");
                 }
@@ -285,6 +287,22 @@ pub fn set_data(
 }
 
 pub async fn delete_all_media(user_id: &UserId) -> AppResult<i64> {
-    // TODO: Delete all media from disk
+    let medias = media_metadatas::table
+        .filter(media_metadatas::created_by.eq(user_id))
+        .select((media_metadatas::origin_server, media_metadatas::media_id))
+        .load::<(OwnedServerName, String)>(&mut connect()?)?;
+
+    for (origin_server, media_id) in &medias {
+        if let Err(e) = crate::media::delete_media(origin_server, media_id).await {
+            tracing::error!("failed to delete media file: {e}");
+        }
+    }
     Ok(0)
+}
+
+pub async fn deactivate_account(user_id: &UserId) -> AppResult<()> {
+    diesel::update(users::table.find(user_id))
+        .set(users::deactivated_at.eq(UnixMillis::now()))
+        .execute(&mut connect()?)?;
+    Ok(())
 }

@@ -125,3 +125,10 @@ ulid = "1.1.0"
 web-time = "1.1.0"
 webpage = { version = "2.0.1", default-features = false }
 wildmatch = "2.1.0"
+
+
+[workspace.lints.clippy]
+result_large_err = "allow"
+type_complexity = "allow"
+too_many_arguments = "allow"
+large_enum_variant = "allow"

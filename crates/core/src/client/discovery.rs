@@ -286,7 +286,7 @@ impl Default for ThirdPartyIdChangesCapability {
         Self { enabled: true }
     }
 }
-/// Iterator implementation for `Capabilities`
+// /// Iterator implementation for `Capabilities`
 
 /// Reference to a capability.
 #[derive(Debug)]
@@ -568,7 +568,7 @@ impl VersionsResBody {
     /// [`.find()`][Iterator::find]
     /// or [`.rfind()`][DoubleEndedIterator::rfind] to look for a minimum or
     /// maximum version to use given some constraint.
-    pub fn known_versions(&self) -> impl Iterator<Item = MatrixVersion> + DoubleEndedIterator {
+    pub fn known_versions(&self) -> impl DoubleEndedIterator<Item = MatrixVersion> {
         self.versions
             .iter()
             // Parse, discard unknown versions
@@ -582,9 +582,9 @@ impl VersionsResBody {
             .into_values()
     }
 }
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: true,

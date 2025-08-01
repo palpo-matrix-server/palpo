@@ -6,12 +6,12 @@ use crate::{
     events::tag::{TagInfo, Tags},
 };
 
-/// `GET /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags`
-///
-/// Get the tags associated with a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idroomsroomidtags
+// /// `GET /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags`
+// ///
+// /// Get the tags associated with a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idroomsroomidtags
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -48,12 +48,12 @@ impl TagsResBody {
     }
 }
 
-/// `DELETE /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
-///
-/// Remove a tag from a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
+// /// `DELETE /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
+// ///
+// /// Remove a tag from a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
 
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
@@ -65,7 +65,7 @@ impl TagsResBody {
 //     }
 // };
 
-/// Request type for the `delete_tag` endpoint.
+// /// Request type for the `delete_tag` endpoint.
 
 // pub struct DeleteTagReqBody {
 //     /// The user whose tag will be deleted.
@@ -81,12 +81,12 @@ impl TagsResBody {
 //     pub tag: String,
 // }
 
-/// `PUT /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
-///
-/// Add a new tag to a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
+// /// `PUT /_matrix/client/*/user/{user_id}/rooms/{room_id}/tags/{tag}`
+// ///
+// /// Add a new tag to a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3useruser_idroomsroomidtagstag
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

@@ -54,7 +54,7 @@ pub(super) fn get_state(
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
-pub fn report(
+pub async fn report(
     _aa: AuthArgs,
     args: RoomEventReqArgs,
     body: JsonBody<ReportContentReqBody>,
@@ -67,7 +67,7 @@ pub fn report(
         _ => return Err(MatrixError::invalid_param("Invalid Event ID").into()),
     };
 
-    if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
+    if let Some(true) = body.score.map(|s| !(-100..=0).contains(&s)) {
         return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
     };
 
@@ -107,7 +107,7 @@ pub fn report(
             body.score,
             HtmlEscape(body.reason.as_deref().unwrap_or(""))
         ),
-    ));
+    )).await;
     empty_ok()
 }
 

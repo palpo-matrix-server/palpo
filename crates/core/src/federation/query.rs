@@ -1,5 +1,5 @@
 /// Endpoints to retrieve information from a homeserver about a resource.
-
+///
 /// `GET /_matrix/federation/*/query/directory`
 ///
 /// Get mapped room ID and resident homeservers for a given room alias.
@@ -15,9 +15,9 @@ use crate::{
     sending::{SendRequest, SendResult},
     user::ProfileField,
 };
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1querydirectory
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1querydirectory
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -34,7 +34,7 @@ pub fn directory_request(origin: &str, room_alias: &RoomAliasId) -> SendResult<S
     Ok(crate::sending::get(url))
 }
 
-/// Request type for the `get_room_information` endpoint.
+// /// Request type for the `get_room_information` endpoint.
 
 // #[derive(ToSchema, Deserialize, Debug)]
 // pub struct RoomInfoReqArgs {
@@ -60,12 +60,12 @@ impl RoomInfoResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/query/profile`
-///
-/// Get profile information, such as a display name or avatar, for a given user.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1queryprofile
+// /// `GET /_matrix/federation/*/query/profile`
+// ///
+// /// Get profile information, such as a display name or avatar, for a given user.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1queryprofile
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -81,8 +81,7 @@ pub fn profile_request(origin: &str, args: ProfileReqArgs) -> SendResult<SendReq
     url.query_pairs_mut()
         .append_pair("user_id", args.user_id.as_str());
     if let Some(field) = &args.field {
-        url.query_pairs_mut()
-            .append_pair("field", &field.to_string());
+        url.query_pairs_mut().append_pair("field", field.as_ref());
     }
     Ok(crate::sending::get(url))
 }
@@ -101,13 +100,13 @@ pub struct ProfileReqArgs {
     pub field: Option<ProfileField>,
 }
 
-/// `GET /_matrix/federation/*/query/{queryType}`
-///
-/// Performs a single query request on the receiving homeserver. The query
-/// arguments are dependent on which type of query is being made.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1queryquerytype
+// /// `GET /_matrix/federation/*/query/{queryType}`
+// ///
+// /// Performs a single query request on the receiving homeserver. The query
+// /// arguments are dependent on which type of query is being made.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1queryquerytype
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -133,7 +132,6 @@ pub struct CustomReqBody {
 /// Response type for the `get_custom_information` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
 #[salvo(schema(value_type = Object))]
-
 pub struct CustomResBody(
     /// The body of the response.
     pub JsonValue,

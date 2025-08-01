@@ -31,7 +31,7 @@ pub fn search_pdus(
         .unwrap_or_else(|| data::user::joined_rooms(user_id).unwrap_or_default());
 
     // Use limit or else 10, with maximum 100
-    let limit = filter.limit.unwrap_or(10).min(100) as usize;
+    let limit = filter.limit.unwrap_or(10).min(100);
 
     for room_id in &room_ids {
         if !crate::room::user::is_joined(user_id, room_id)? {
@@ -181,15 +181,15 @@ pub fn save_pdu(pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<(
         TimelineEventType::RoomName => content
             .get("name")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.name", v))),
+            .map(|v| ("content.name", v)),
         TimelineEventType::RoomTopic => content
             .get("topic")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.topic", v))),
+            .map(|v| ("content.topic", v)),
         TimelineEventType::RoomMessage => content
             .get("body")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.message", v))),
+            .map(|v| ("content.message", v)),
         TimelineEventType::RoomRedaction => {
             // TODO: Redaction
             return Ok(());

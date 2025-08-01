@@ -83,13 +83,13 @@ pub struct UserFilterReqArgs {
     pub filter_id: String,
 }
 
-///  GET /_matrix/federation/v1/query/profile
-/// `GET /_matrix/client/*/profile/{user_id}`
-///
-/// Get all profile information of an user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuser_id
+// ///  GET /_matrix/federation/v1/query/profile
+// /// `GET /_matrix/client/*/profile/{user_id}`
+// ///
+// /// Get all profile information of an user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuser_id
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

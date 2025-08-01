@@ -112,7 +112,7 @@ impl Ruleset {
         // server-default push rules come after.
         if let Some(master_rule) = new_server_default
             .override_
-            .take(PredefinedOverrideRuleId::Master.as_str())
+            .shift_take(PredefinedOverrideRuleId::Master.as_str())
         {
             let (pos, _) = self.override_.insert_full(master_rule);
             self.override_.move_index(pos, 0);

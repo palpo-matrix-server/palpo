@@ -301,7 +301,7 @@ pub(super) async fn delete_all_media_from_server(
 
         let mxc: Mxc<'_> = mxc.as_str().try_into()?;
 
-        match data::media::delete_media(mxc.server_name, mxc.media_id) {
+        match crate::media::delete_media(mxc.server_name, mxc.media_id).await {
             Ok(()) => {
                 deleted_count = deleted_count.saturating_add(1);
             }
