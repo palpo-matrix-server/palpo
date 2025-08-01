@@ -68,7 +68,7 @@ pub type CommandOutput = RoomMessageEventContent;
 
 #[derive(Debug, Parser)]
 #[command(name = "palpo", version = crate::info::version())]
-pub(super) enum AdminCommand {
+pub(crate) enum AdminCommand {
     #[command(subcommand)]
     /// - Commands for managing appservices
     Appservices(AppserviceCommand),

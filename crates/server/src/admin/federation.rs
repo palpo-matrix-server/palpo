@@ -7,7 +7,7 @@ use crate::{AppError, AppResult, config, data, sending};
 
 #[admin_command_dispatch]
 #[derive(Debug, Subcommand)]
-pub(super) enum FederationCommand {
+pub(crate) enum FederationCommand {
     /// - Disables incoming federation handling for a room.
     DisableRoom { room_id: OwnedRoomId },
 
