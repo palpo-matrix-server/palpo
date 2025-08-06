@@ -148,8 +148,8 @@ pub struct ServerConfig {
     /// Max request size for file uploads in bytes. Defaults to 20MB.
     ///
     /// default: 20971520
-    #[serde(default = "default_max_request_size")]
-    pub max_request_size: u32,
+    #[serde(default = "default_max_upload_size")]
+    pub max_upload_size: u32,
 
     /// default: 192
     #[serde(default = "default_max_fetch_prev_events")]
@@ -905,10 +905,8 @@ impl ServerConfig {
         //     ));
         // }
 
-        if self.max_request_size < 10_000_000 {
-            return Err(AppError::internal(
-                "max request size is less than 10MB. Please increase it as this is too low for operable federation",
-            ));
+        if self.max_upload_size < 10_000_000 {
+            tracing::warn!("max request size is less than 100MB. Please increase it as this is too low for operable federation");
         }
 
         // check if user specified valid IP CIDR ranges on startup
@@ -1111,8 +1109,8 @@ fn default_request_timeout() -> u64 {
     35_000
 }
 
-fn default_max_request_size() -> u32 {
-    20 * 1024 * 1024 // Default to 20 MB
+fn default_max_upload_size() -> u32 {
+    100 * 1024 * 1024 // Default to 20 MB
 }
 
 fn default_max_concurrent_requests() -> u16 {

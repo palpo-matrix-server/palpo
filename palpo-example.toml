@@ -88,7 +88,7 @@
 
 # Max request size for file uploads in bytes. Defaults to 20MB.
 #
-# max_request_size = 20971520
+# max_upload_size = 20971520
 
 # This item is undocumented. Please contribute documentation for it.
 #

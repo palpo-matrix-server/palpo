@@ -171,7 +171,7 @@ pub async fn create_content(
     let file_extension = file_name.as_deref().map(utils::fs::get_file_ext);
 
     let payload = req
-        .payload_with_max_size(config::get().max_request_size as usize)
+        .payload_with_max_size(config::get().max_upload_size as usize)
         .await
         .unwrap();
     // let checksum = utils::hash::hash_data_sha2_256(payload)?;
@@ -242,7 +242,7 @@ pub async fn upload_content(
 
     let conf = crate::config::get();
     let payload = req
-        .payload_with_max_size(conf.max_request_size as usize)
+        .payload_with_max_size(conf.max_upload_size as usize)
         .await
         .unwrap();
 
@@ -297,7 +297,7 @@ pub async fn upload_content(
 #[endpoint]
 pub async fn get_config(_aa: AuthArgs) -> JsonResult<ConfigResBody> {
     json_ok(ConfigResBody {
-        upload_size: config::get().max_request_size.into(),
+        upload_size: config::get().max_upload_size.into(),
     })
 }
 
