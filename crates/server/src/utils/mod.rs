@@ -48,6 +48,22 @@ macro_rules! extract_variant {
     };
 }
 
+pub fn select_config_path() -> &'static str {
+    if cfg!(windows) {
+        "palpo.toml"
+    } else {
+        const CANDIDATE_PATHS: [&str; 3] = [
+            "palpo.toml",
+            "/etc/palpo/palpo.toml",
+            "/var/palpo/palpo.toml",
+        ];
+        CANDIDATE_PATHS
+            .into_iter()
+            .find(|path| std::fs::exists(path).unwrap_or(false))
+            .unwrap_or("palpo.toml")
+    }
+}
+
 pub fn shuffle<T>(vec: &mut [T]) {
     let mut rng = rand::rng();
     vec.shuffle(&mut rng);

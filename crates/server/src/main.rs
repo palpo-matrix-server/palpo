@@ -151,7 +151,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config_path = if let Some(config) = &args.config {
         config
     } else {
-        &PathBuf::from(Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into()))
+        &PathBuf::from(
+            Env::var("PALPO_CONFIG").unwrap_or_else(|| utils::select_config_path().into()),
+        )
     };
 
     crate::config::init(config_path);
