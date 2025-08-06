@@ -189,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     crate::sending::guard::start();
 
-    let router = routing::router();
+    let router = routing::root();
     // let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
     // let router = router
     //     .unshift(doc.into_router("/api-doc/openapi.json"))

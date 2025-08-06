@@ -68,7 +68,7 @@ pub(super) async fn list_rooms(
     let mut rooms = crate::room::all_room_ids()?
         .iter()
         .filter(|room_id| !exclude_disabled || !crate::room::is_disabled(room_id).unwrap_or(false))
-        .filter(|room_id| (!exclude_banned || !data::room::is_banned(room_id).unwrap_or(true)))
+        .filter(|room_id| !exclude_banned || !data::room::is_banned(room_id).unwrap_or(true))
         .map(|room_id| get_room_info(room_id))
         .collect::<Vec<_>>();
 

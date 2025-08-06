@@ -23,10 +23,11 @@ pub mod prelude {
     };
 }
 
-pub fn router() -> Router {
+pub fn root() -> Router {
     Router::new()
         .hoop(hoops::ensure_accept)
         .hoop(hoops::limit_size)
+        .get(index)
         .push(
             Router::with_path("_matrix")
                 .push(client::router())
@@ -44,6 +45,12 @@ pub fn router() -> Router {
         )
         .push(Router::with_path("{*path}").get(StaticDir::new("./static")))
 }
+
+#[handler]
+fn index() -> &'static str {
+    "Palpo Worked"
+}
+
 fn get_origin_host(req: &mut Request) -> Option<String> {
     let origin = req
         .headers()
