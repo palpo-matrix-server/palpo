@@ -48,7 +48,7 @@ pub fn root() -> Router {
 
 #[handler]
 fn index() -> &'static str {
-    "Palpo Worked"
+    "Hello Palpo"
 }
 
 fn get_origin_host(req: &mut Request) -> Option<String> {

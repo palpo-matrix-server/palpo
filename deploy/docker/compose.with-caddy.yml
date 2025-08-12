@@ -1,0 +1,59 @@
+services:
+  caddy:
+    # 此 compose 文件使用 caddy-docker-proxy 作为 palpo 的反向代理！
+    # 更多信息，请访问 https://github.com/lucaslorentz/caddy-docker-proxy
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy
+    networks:
+      - caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/data
+    restart: unless-stopped
+    labels:
+      caddy: example.com
+      caddy.0_respond: /.well-known/matrix/server {"m.server":"matrix.example.com:443"}
+      caddy.1_respond: /.well-known/matrix/client {"m.server":{"base_url":"https://matrix.example.com"},"m.homeserver":{"base_url":"https://matrix.example.com"},"org.matrix.msc3575.proxy":{"url":"https://matrix.example.com"}}
+
+  postgres:
+    hostname: postgres
+    image: postgres:17
+    restart: always
+    volumes:
+      - ./data/pgsql:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: palpo
+      POSTGRES_DATABASE: palpo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U palpo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - caddy
+
+  palpo:
+    image: ghcr.io/palpo-im/palpo:latest
+    restart: unless-stopped
+    volumes:
+      - db:/var/lib/palpo
+      #- ./palpo.toml:/etc/palpo.toml
+    environment:
+      PALPO_CONFIG: '/var/palpo/palpo.toml'
+    networks:
+      - caddy
+    labels:
+      caddy: matrix.example.com
+      caddy.reverse_proxy: "{{upstreams 6167}}"
+
+volumes:
+  db:
+
+networks:
+  caddy:
+    external: true

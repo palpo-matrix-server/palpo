@@ -1,0 +1,21 @@
+# palpo - Traefik 反向代理之后
+
+services:
+  palpo:
+    image: ghcr.io/palpo-im/palpo:latest
+    restart: unless-stopped
+    networks:
+      - traefik
+    environment:
+      PALPO_CONFIG: '/var/palpo/palpo.toml'
+    volumes:
+      - $PWD/palpo.toml:/var/palpo/palpo.toml
+      - $PWD/data/media:/var/palpo/media
+volumes:
+  db:
+
+networks:
+  # 这是 Traefik 监听的网络，如果您的网络有不同的名称，
+  # 不要忘记在此处和 compose.override.yml 中更改它
+  traefik:
+    external: true

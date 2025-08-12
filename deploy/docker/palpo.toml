@@ -30,8 +30,6 @@ max_upload_size = 20_000_000 # in bytes
 # Enables registration. If set to false, no users can register on this server.
 allow_registration = true
 
-allow_check_for_updates = true
-
 # Servers listed here will be used to gather public keys of other servers.
 # Generally, copying this exactly should be enough. (Currently, Palpo doesn't
 # support batched key requests, so this list should only contain Synapse
