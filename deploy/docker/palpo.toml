@@ -18,11 +18,6 @@
 # The server_name is the pretty name of this server. It is used as a suffix for user
 # and room ids. Examples: matrix.org, palpo.im
 server_name = "matrix.palpo.im"
-listen_addr = "0.0.0.0:8008"
-
-# The local address that the server listens on.
-#listen_addr = "127.0.0.1:8008"
-#server_name= "127.0.0.1"
 
 # Max size for uploads
 max_upload_size = 20_000_000 # in bytes
@@ -42,6 +37,10 @@ trusted_servers = ["matrix.org"]
 
 # max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
 # log = "warn,state=warn,rocket=off,_=off,sled=off"
+
+[[listeners]]
+# The local address that the server listens on.
+address = "0.0.0.0:8008"
 
 [presence]
 allow_local = true

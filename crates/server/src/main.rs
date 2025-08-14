@@ -70,6 +70,7 @@ pub use jsonwebtoken as jwt;
 use salvo::catcher::Catcher;
 use salvo::compression::{Compression, CompressionLevel};
 use salvo::conn::rustls::{Keycert, RustlsConfig};
+use salvo::conn::tcp::DynTcpAcceptors;
 use salvo::cors::{self, AllowHeaders, Cors};
 use salvo::http::Method;
 use salvo::logging::Logger;
@@ -243,26 +244,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
     let conf = crate::config::get();
-    println!("Listening on {}", conf.listen_addr);
-    if let Some(tls_conf) = conf.enabled_tls() {
-        let acceptor = TcpListener::new(&conf.listen_addr)
-            .rustls(RustlsConfig::new(
-                Keycert::new()
-                    .cert_from_path(&tls_conf.cert)?
-                    .key_from_path(&tls_conf.key)?,
-            ))
-            .bind()
-            .await;
-        Server::new(acceptor)
-            .serve(service)
-            .instrument(tracing::info_span!("server.serve"))
-            .await
-    } else {
-        let acceptor = TcpListener::new(&conf.listen_addr).bind().await;
-        Server::new(acceptor)
-            .serve(service)
-            .instrument(tracing::info_span!("server.serve"))
-            .await
-    };
+    let mut acceptors = vec![];
+    for listener_conf in &conf.listeners {
+        if let Some(tls_conf) = listener_conf.enabled_tls() {
+            tracing::info!("Listening on: {} with TLS", listener_conf.address);
+            let acceptor = TcpListener::new(&listener_conf.address)
+                .rustls(RustlsConfig::new(
+                    Keycert::new()
+                        .cert_from_path(&tls_conf.cert)?
+                        .key_from_path(&tls_conf.key)?,
+                ))
+                .bind()
+                .await
+                .into_boxed();
+            acceptors.push(acceptor);
+        } else {
+            tracing::info!("Listening on: {}", listener_conf.address);
+            let acceptor = TcpListener::new(&listener_conf.address).bind().await.into_boxed();
+            acceptors.push(acceptor);
+        }
+    }
+
+    Server::new(DynTcpAcceptors::new(acceptors))
+        .serve(service)
+        .instrument(tracing::info_span!("server.serve"))
+        .await;
     Ok(())
 }

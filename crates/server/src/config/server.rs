@@ -31,6 +31,35 @@ pub struct KeypairConfig {
     pub version: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct ListenerConfig {
+    /// The default address (IPv4 or IPv6) and port palpo will listen on.
+    #[serde(default = "default_listen_address")]
+    pub address: String,
+    #[serde(default)]
+    pub x_forwarded: bool,
+    // external structure; separate section
+    pub tls: Option<TlsConfig>,
+}
+impl Default for ListenerConfig {
+    fn default() -> Self {
+        Self {
+            address: default_listen_address(),
+            x_forwarded: false,
+            tls: None,
+        }
+    }
+}
+impl ListenerConfig {
+    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
+        if let Some(tls) = self.tls.as_ref() {
+            if tls.enable { Some(tls) } else { None }
+        } else {
+            None
+        }
+    }
+}
+
 #[config_example(
     filename = "palpo-example.toml",
     undocumented = "# This item is undocumented. Please contribute documentation for it.",
@@ -57,9 +86,8 @@ pub struct KeypairConfig {
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-    /// The default address (IPv4 or IPv6) and port palpo will listen on.
-    #[serde(default = "default_listen_addr")]
-    pub listen_addr: String,
+    #[serde(default = "default_listener")]
+    pub listeners: Vec<ListenerConfig>,
 
     /// The server_name is the pretty name of this server. It is used as a
     /// suffix for user and room IDs/aliases.
@@ -613,8 +641,6 @@ pub struct ServerConfig {
     pub logger: LoggerConfig,
 
     // external structure; separate section
-    pub tls: Option<TlsConfig>,
-    // external structure; separate section
     pub jwt: Option<JwtConfig>,
 
     // external structure; separate section
@@ -716,14 +742,6 @@ impl ServerConfig {
     pub fn enabled_jwt(&self) -> Option<&JwtConfig> {
         if let Some(jwt) = self.jwt.as_ref() {
             if jwt.enable { Some(jwt) } else { None }
-        } else {
-            None
-        }
-    }
-
-    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
-        if let Some(tls) = self.tls.as_ref() {
-            if tls.enable { Some(tls) } else { None }
         } else {
             None
         }
@@ -906,7 +924,9 @@ impl ServerConfig {
         // }
 
         if self.max_upload_size < 10_000_000 {
-            tracing::warn!("max request size is less than 100MB. Please increase it as this is too low for operable federation");
+            tracing::warn!(
+                "max request size is less than 100MB. Please increase it as this is too low for operable federation"
+            );
         }
 
         // check if user specified valid IP CIDR ranges on startup
@@ -1051,8 +1071,11 @@ pub struct TlsConfig {
     pub dual_protocol: bool,
 }
 
-fn default_listen_addr() -> String {
-    "127.0.0.1:8008".into()
+fn default_listener() -> Vec<ListenerConfig> {
+    vec![Default::default()]
+}
+fn default_listen_address() -> String {
+    "0.0.0.0:8008".into()
 }
 fn default_server_name() -> OwnedServerName {
     OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
