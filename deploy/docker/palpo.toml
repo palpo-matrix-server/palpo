@@ -19,10 +19,6 @@
 # and room ids. Examples: matrix.org, palpo.im
 server_name = "matrix.palpo.im"
 
-# The local address that the server listens on.
-#listen_addr = "127.0.0.1:8008"
-#server_name= "127.0.0.1"
-
 # Max size for uploads
 max_upload_size = 20_000_000 # in bytes
 
@@ -43,6 +39,7 @@ trusted_servers = ["matrix.org"]
 # log = "warn,state=warn,rocket=off,_=off,sled=off"
 
 [[listeners]]
+# The local address that the server listens on.
 address = "0.0.0.0:8008"
 
 [presence]

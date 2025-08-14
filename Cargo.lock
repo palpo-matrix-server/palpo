@@ -4377,6 +4377,7 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 [[package]]
 name = "salvo"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "salvo-compression",
  "salvo-cors",
@@ -4391,6 +4392,7 @@ dependencies = [
 [[package]]
 name = "salvo-compression"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "brotli",
  "bytes",
@@ -4407,6 +4409,7 @@ dependencies = [
 [[package]]
 name = "salvo-cors"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "bytes",
  "salvo_core",
@@ -4416,6 +4419,7 @@ dependencies = [
 [[package]]
 name = "salvo-jwt-auth"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4434,6 +4438,7 @@ dependencies = [
 [[package]]
 name = "salvo-oapi"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4467,6 +4472,7 @@ dependencies = [
 [[package]]
 name = "salvo-oapi-macros"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -4480,6 +4486,7 @@ dependencies = [
 [[package]]
 name = "salvo-proxy"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "fastrand",
  "futures-util",
@@ -4496,6 +4503,7 @@ dependencies = [
 [[package]]
 name = "salvo-serde-util"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4505,6 +4513,7 @@ dependencies = [
 [[package]]
 name = "salvo-serve-static"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "hex",
  "mime",
@@ -4523,6 +4532,7 @@ dependencies = [
 [[package]]
 name = "salvo_core"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4566,6 +4576,7 @@ dependencies = [
 [[package]]
 name = "salvo_extra"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "base64 0.22.1",
  "etag",
@@ -4586,6 +4597,7 @@ dependencies = [
 [[package]]
 name = "salvo_macros"
 version = "0.82.0"
+source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
