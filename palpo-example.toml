@@ -15,9 +15,9 @@
 ### For more information, see:
 ### https://palpo.im/guide/configuration.html
 
-# The default address (IPv4 or IPv6) and port palpo will listen on.
+# This item is undocumented. Please contribute documentation for it.
 #
-# listen_addr =
+# listeners =
 
 # The server_name is the pretty name of this server. It is used as a
 # suffix for user and room IDs/aliases.

@@ -1,5 +1,3 @@
-# palpo - Traefik 反向代理之后
-
 services:
   palpo:
     image: ghcr.io/palpo-im/palpo:latest
