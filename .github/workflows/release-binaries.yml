@@ -33,13 +33,13 @@ jobs:
     if: github.repository_owner == 'palpo-im'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: taiki-e/create-gh-release-action@v1.3.0
         with:
           # changelog: "CHANGELOG.md"
           title: "$version"
           branch: main
-          draft: false
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -49,8 +49,18 @@ jobs:
     needs: create-release
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - target: aarch64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-musl
+          - target: aarch64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-gnu
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: universal-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     timeout-minutes: 60
     permissions:
       contents: write
@@ -84,7 +94,7 @@ jobs:
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: palpo
-          include: palpo-example.toml
-          tar: all
+          include: palpo-example.toml,LICENSE,README.md
+          tar: unix
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
