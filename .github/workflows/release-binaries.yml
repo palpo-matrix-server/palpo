@@ -50,21 +50,21 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # include:
-        #   - target: x86_64-unknown-linux-gnu
-        #     os: ubuntu-22.04
-        #   - target: x86_64-unknown-linux-musl
-        #   - target: x86_64-pc-windows-msvc
-        #     os: windows-2022
-        #   - target: universal-apple-darwin
-        #     os: macos-13
-    # runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Install PostgreSQL development libraries
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+      - name: Install PostgreSQL development libraries (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install postgresql
+      - name: Install PostgreSQL development libraries (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install postgresql --no-progress
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: palpo
@@ -72,23 +72,3 @@ jobs:
           tar: all
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
-    # steps:
-    #   - uses: taiki-e/checkout-action@v1
-    #   - uses: taiki-e/github-actions/install-rust@stable
-    #   - uses: taiki-e/setup-cross-toolchain-action@v1
-    #     with:
-    #       target: ${{ matrix.target }}
-    #   - run: printf '%s\n' "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >>"${GITHUB_ENV}"
-    #     if: contains(matrix.target, '-windows-msvc')
-    #   - run: printf '%s\n' "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static -C link-self-contained=yes" >>"${GITHUB_ENV}"
-    #     if: contains(matrix.target, '-linux-musl')
-    #   - run: printf 'MACOSX_DEPLOYMENT_TARGET=11.0\n' >>"${GITHUB_ENV}"
-    #     if: matrix.target == 'aarch64-apple-darwin' || matrix.target == 'universal-apple-darwin'
-    #   - uses: taiki-e/upload-rust-binary-action@v1
-    #     with:
-    #       bin: palpo
-    #       include: palpo-example.toml
-    #       target: ${{ matrix.target }}
-    #       tar: all
-    #       zip: windows
-    #       token: ${{ secrets.GITHUB_TOKEN }}
