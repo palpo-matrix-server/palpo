@@ -39,7 +39,6 @@ pub(crate) enum ServerCommand {
     #[clap(alias = "reload")]
     ReloadMods,
 
-    #[cfg(unix)]
     /// - Restart the server
     Restart {
         #[arg(short, long)]
