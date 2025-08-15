@@ -69,12 +69,12 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $pgRoot = "C:/Program Files/PostgreSQL/15"
+          $pgRoot = "C:/Program Files/PostgreSQL/16"
           if (!(Test-Path $pgRoot)) {
-            $pgRoot = "C:/Program Files/PostgreSQL/16"
+            $pgRoot = "C:/Program Files/PostgreSQL/17"
           }
           if (!(Test-Path $pgRoot)) {
-            Write-Error "PostgreSQL not found in C:/Program Files/PostgreSQL/15 or 16. Please check installation."
+            Write-Error "PostgreSQL not found in C:/Program Files/PostgreSQL/16 or 17. Please check installation."
             exit 1
           }
           echo "PGROOT=$pgRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
