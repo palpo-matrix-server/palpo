@@ -90,7 +90,7 @@ rustyline-async = { version = "0.4.7" }
 regex = "1.6.0"
 reqwest = { version = "0.12.22", features = ["json"] }
 ring = "0.17.14"
-salvo = { version = "0.82.0", git = "https://gitee.com/salvo-rs/salvo.git", branch = "boxed"}
+salvo = { version = "0.82.0" }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.10.3"
