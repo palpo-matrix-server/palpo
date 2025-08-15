@@ -6,7 +6,7 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-    branches: [main, next]
+    # branches: [main, next]
   merge_group:
   workflow_dispatch:
 
@@ -17,124 +17,78 @@ concurrency:
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: bash
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   CARGO_TERM_COLOR: always
 
+#  https://github.com/taiki-e/cargo-hack/blob/main/.github/workflows/release.yml
 jobs:
-  tag_name:
+  create-release:
+    name: Create GitHub release
+    # only publish from the origin repository
+    if: github.repository_owner == 'palpo-im'
     runs-on: ubuntu-latest
-    outputs:
-      tag_name: ${{ steps.tag.outputs.tag }}
     steps:
-      - id: vars
-        shell: bash
-        run: echo "sha_short=${GITHUB_SHA::7}" | tee -a $GITHUB_OUTPUT
+      - uses: actions/checkout@v2
+      - uses: taiki-e/create-gh-release-action@v1.3.0
+        with:
+          # changelog: "CHANGELOG.md"
+          title: "$version"
+          branch: main
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - if: github.event_name == 'workflow_dispatch'
-        run: echo "TAG_NAME=manual-${GITHUB_SHA::7}" | tee -a $GITHUB_ENV
-
-      - if: github.event_name == 'schedule' || github.event_name == 'pull_request'
-        run: echo 'TAG_NAME=nightly-${{ steps.vars.outputs.sha_short }}' | tee -a $GITHUB_ENV
-
-      - if: github.event_name == 'push'
-        run: |
-          TAG_NAME=${{ github.ref }}
-          echo "TAG_NAME=${TAG_NAME#refs/tags/}" | tee -a $GITHUB_ENV
-
-      - id: tag
-        run: echo "tag=$TAG_NAME" | tee -a $GITHUB_OUTPUT
-
-  linux:
-    needs: tag_name
+  upload-binaries:
+    name: "Upload release binaries"
+    if: github.repository_owner == 'palpo-im'
+    needs: create-release
     strategy:
       matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-
-          # - target: x86_64-unknown-linux-musl
-          #   os: ubuntu-latest
-
-          # - target: aarch64-unknown-linux-musl
-          #   os: ubuntu-latest
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # include:
+        #   - target: x86_64-unknown-linux-gnu
+        #     os: ubuntu-22.04
+        #   - target: x86_64-unknown-linux-musl
+        #   - target: x86_64-pc-windows-msvc
+        #     os: windows-2022
+        #   - target: universal-apple-darwin
+        #     os: macos-13
+    # runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     runs-on: ${{ matrix.os }}
-    env:
-      RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      # - name: Build deb packages
-      #   run: |
-      #     docker buildx create --driver=docker-container --use
-      #     docker buildx bake --pull ubuntu-focal-binary
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y --no-install-recommends libclang-dev libpq-dev cmake postgresql postgresql-contrib
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build and publish
-        uses: taiki-e/upload-rust-binary-action@v1
+      - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: palpo
-          target: ${{ matrix.target }}
+          include: palpo-example.toml
+          tar: all
+          zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
-
-  # macos:
-  #   runs-on: macos-latest
-  #   needs: tag_name
-  #   env:
-  #     RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
-
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@master
-  #       with:
-  #         toolchain: ${{ matrix.version }}
-  #         components: rustfmt, clippy
-
-  #     - name: Build
-  #       run: cargo build --profile release
-
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: palpo-macos
-  #         path: |
-  #           ./target/release/macos/palpo
-  #         retention-days: 3
-
-  # windows:
-  #   runs-on: windows-latest
-  #   needs: tag_name
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       version:
-  #         - stable
-  #       target:
-  #         - x86_64-pc-windows-msvc
-  #   env:
-  #     RELEASE_TAG_NAME: ${{ needs.tag_name.outputs.tag_name }}
-
-  #   defaults:
-  #     run:
-  #       shell: bash
-
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@master
-  #       with:
-  #         toolchain: ${{ matrix.version }}
-  #         components: rustfmt, clippy
-
-  #     - name: Build
-  #       run: cargo build --profile release
-
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: palpo-windows
-  #         path: |
-  #           ./palpo.exe
-  #         retention-days: 1
+    # steps:
+    #   - uses: taiki-e/checkout-action@v1
+    #   - uses: taiki-e/github-actions/install-rust@stable
+    #   - uses: taiki-e/setup-cross-toolchain-action@v1
+    #     with:
+    #       target: ${{ matrix.target }}
+    #   - run: printf '%s\n' "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >>"${GITHUB_ENV}"
+    #     if: contains(matrix.target, '-windows-msvc')
+    #   - run: printf '%s\n' "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static -C link-self-contained=yes" >>"${GITHUB_ENV}"
+    #     if: contains(matrix.target, '-linux-musl')
+    #   - run: printf 'MACOSX_DEPLOYMENT_TARGET=11.0\n' >>"${GITHUB_ENV}"
+    #     if: matrix.target == 'aarch64-apple-darwin' || matrix.target == 'universal-apple-darwin'
+    #   - uses: taiki-e/upload-rust-binary-action@v1
+    #     with:
+    #       bin: palpo
+    #       include: palpo-example.toml
+    #       target: ${{ matrix.target }}
+    #       tar: all
+    #       zip: windows
+    #       token: ${{ secrets.GITHUB_TOKEN }}
