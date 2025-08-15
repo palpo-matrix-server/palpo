@@ -3117,7 +3117,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "palpo"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3199,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "as_variant",
  "assert_matches2",
@@ -3265,7 +3265,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-core-macros"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "palpo-identifiers-validation",
  "proc-macro-crate",
@@ -3278,7 +3278,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-data"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3346,14 +3346,14 @@ dependencies = [
 
 [[package]]
 name = "palpo-identifiers-validation"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "thiserror 2.0.14",
 ]
 
 [[package]]
 name = "palpo-server-macros"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "palpo-identifiers-validation",
  "proc-macro-crate",
@@ -4388,7 +4388,7 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 [[package]]
 name = "salvo"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "salvo-compression",
  "salvo-cors",
@@ -4403,7 +4403,7 @@ dependencies = [
 [[package]]
 name = "salvo-compression"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "brotli",
  "bytes",
@@ -4420,7 +4420,7 @@ dependencies = [
 [[package]]
 name = "salvo-cors"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "bytes",
  "salvo_core",
@@ -4430,7 +4430,7 @@ dependencies = [
 [[package]]
 name = "salvo-jwt-auth"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4449,7 +4449,7 @@ dependencies = [
 [[package]]
 name = "salvo-oapi"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4483,7 +4483,7 @@ dependencies = [
 [[package]]
 name = "salvo-oapi-macros"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -4497,7 +4497,7 @@ dependencies = [
 [[package]]
 name = "salvo-proxy"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "fastrand",
  "futures-util",
@@ -4514,7 +4514,7 @@ dependencies = [
 [[package]]
 name = "salvo-serde-util"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4524,7 +4524,7 @@ dependencies = [
 [[package]]
 name = "salvo-serve-static"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "hex",
  "mime",
@@ -4543,7 +4543,7 @@ dependencies = [
 [[package]]
 name = "salvo_core"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4587,7 +4587,7 @@ dependencies = [
 [[package]]
 name = "salvo_extra"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "base64 0.22.1",
  "etag",
@@ -4608,7 +4608,7 @@ dependencies = [
 [[package]]
 name = "salvo_macros"
 version = "0.82.0"
-source = "git+https://github.com/salvo-rs/salvo.git?branch=boxed#cf9e3c66631ab4a9ea08103c96b4d1d77db27099"
+source = "git+https://gitee.com/salvo-rs/salvo.git?branch=boxed#430d6e919f0605414d88dc6dc844cde49fc2a952"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",

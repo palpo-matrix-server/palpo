@@ -72,10 +72,9 @@ pub(super) async fn admin_notice(ctx: &Context<'_>, message: Vec<String>) -> App
 pub(super) async fn reload_mods(ctx: &Context<'_>) -> AppResult<()> {
     // TODO: reload mods
 
-    ctx.write_str("Reloading server...").await
+    ctx.write_str("(TODO) Reloading server...").await
 }
 
-#[cfg(unix)]
 pub(super) async fn restart(ctx: &Context<'_>, force: bool) -> AppResult<()> {
     use crate::utils::sys::current_exe_deleted;
 
@@ -88,12 +87,12 @@ pub(super) async fn restart(ctx: &Context<'_>, force: bool) -> AppResult<()> {
 
     // TODO: restart server
 
-    ctx.write_str("Restarting server...").await
+    ctx.write_str("(TODO) Restarting server...").await
 }
 
 pub(super) async fn shutdown(ctx: &Context<'_>) -> AppResult<()> {
     warn!("shutdown command");
     // TODO: shutdown server
 
-    ctx.write_str("Shutting down server...").await
+    ctx.write_str("(TODO) Shutting down server...").await
 }
