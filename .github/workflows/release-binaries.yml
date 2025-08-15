@@ -39,7 +39,7 @@ jobs:
           # changelog: "CHANGELOG.md"
           title: "$version"
           branch: main
-          draft: true
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -61,7 +61,7 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
     runs-on: ${{ matrix.os || 'ubuntu-latest' }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
     steps:
