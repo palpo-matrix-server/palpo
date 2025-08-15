@@ -6,7 +6,7 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-    # branches: [main, next]
+    branches: [main, next]
   merge_group:
   workflow_dispatch:
 
@@ -34,8 +34,8 @@ jobs:
       - if: github.event_name == 'workflow_dispatch'
         run: echo "TAG_NAME=manual-${GITHUB_SHA::7}" | tee -a $GITHUB_ENV
 
-      # - if: github.event_name == 'schedule' || github.event_name == 'pull_request'
-      #   run: echo 'TAG_NAME=nightly-${{ steps.vars.outputs.sha_short }}' | tee -a $GITHUB_ENV
+      - if: github.event_name == 'schedule' || github.event_name == 'pull_request'
+        run: echo 'TAG_NAME=nightly-${{ steps.vars.outputs.sha_short }}' | tee -a $GITHUB_ENV
 
       - if: github.event_name == 'push'
         run: |
