@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install PostgreSQL development libraries
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y openssl libpq-dev
+        run: sudo apt-get update && sudo apt-get install -y openssl libssl-dev libpq-dev
       - name: Install PostgreSQL development libraries (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install postgresql
