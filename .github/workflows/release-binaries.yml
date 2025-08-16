@@ -95,6 +95,7 @@ jobs:
         with:
           bin: palpo
           include: palpo-example.toml,LICENSE,README.md
+          target: ${{ matrix.target }}
           tar: unix
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
