@@ -39,7 +39,7 @@ jobs:
           # changelog: "CHANGELOG.md"
           title: "$version"
           branch: main
-          draft: false
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
