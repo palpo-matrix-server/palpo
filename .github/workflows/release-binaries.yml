@@ -70,6 +70,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/github-actions/install-rust@stable
+      - uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
       - name: Install PostgreSQL development libraries
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y openssl libssl-dev libpq-dev
