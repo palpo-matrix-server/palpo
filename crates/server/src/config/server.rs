@@ -8,7 +8,7 @@ use serde::de::IgnoredAny;
 
 use super::{
     AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
-    LoggerConfig, MediaConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
+    LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
     TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
@@ -721,6 +721,10 @@ pub struct ServerConfig {
     #[serde(default)]
     pub sender_workers: usize,
 
+    // external structure; separate section
+    #[serde(default)]
+    pub oidc: OidcConfig,
+
     // // external structure; separate section
     // #[serde(default)]
     // pub appservice: BTreeMap<String, AppService>,
@@ -742,6 +746,14 @@ impl ServerConfig {
     pub fn enabled_jwt(&self) -> Option<&JwtConfig> {
         if let Some(jwt) = self.jwt.as_ref() {
             if jwt.enable { Some(jwt) } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn enabled_oidc(&self) -> Option<&OidcConfig> {
+        if self.oidc.enable {
+            Some(&self.oidc)
         } else {
             None
         }

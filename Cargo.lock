@@ -3178,6 +3178,7 @@ dependencies = [
  "serde_regex",
  "serde_yaml",
  "sha1",
+ "sha2",
  "smallvec",
  "strum",
  "strum_macros",

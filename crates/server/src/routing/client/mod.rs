@@ -21,6 +21,7 @@ mod unstable;
 mod user;
 mod user_directory;
 mod voip;
+mod oidc;
 
 pub(crate) mod media;
 
@@ -109,6 +110,13 @@ pub fn router() -> Router {
     }
     client
         .push(Router::with_path("versions").get(supported_versions))
+        .push(
+            Router::with_path("oidc")
+                .push(Router::with_path("status").get(oidc::oidc_status))
+                .push(Router::with_path("auth").get(oidc::oidc_auth))
+                .push(Router::with_path("callback").get(oidc::oidc_callback))
+                .push(Router::with_path("login").post(oidc::oidc_login))
+        )
         .push(unstable::router())
 }
 
@@ -137,7 +145,7 @@ fn search(
 /// #GET /_matrix/client/r0/capabilities
 /// Get information on the supported feature set and other relevent capabilities of this server.
 #[endpoint]
-async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
+fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
     let mut available = BTreeMap::new();
     let conf = crate::config::get();
     for room_version in &*config::UNSTABLE_ROOM_VERSIONS {
@@ -167,7 +175,7 @@ async fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
 /// Note: Unstable features are used while developing new features. Clients should avoid using
 /// unstable features in their stable releases
 #[endpoint]
-async fn supported_versions() -> JsonResult<VersionsResBody> {
+fn supported_versions() -> JsonResult<VersionsResBody> {
     json_ok(VersionsResBody {
         versions: vec![
             "r0.5.0".to_owned(),
@@ -192,7 +200,7 @@ async fn supported_versions() -> JsonResult<VersionsResBody> {
 }
 
 #[endpoint]
-async fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
+fn get_notifications(_aa: AuthArgs, depot: &mut Depot) -> EmptyResult {
     // TODO: get_notifications
     let _authed = depot.authed_info()?;
     empty_ok()

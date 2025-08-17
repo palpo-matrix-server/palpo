@@ -531,6 +531,10 @@
 #
 # sender_workers = 0
 
+# This item is undocumented. Please contribute documentation for it.
+#
+# oidc = false
+
 # [tls]
 
 # This item is undocumented. Please contribute documentation for it.
@@ -1158,3 +1162,82 @@
 # subdomains under a root domain.
 #
 # check_root_domain = false
+
+# [oidc]
+
+# Enable OIDC authentication
+# 
+# When enabled, users can authenticate using external OIDC providers
+# like Google, GitHub, etc. instead of Matrix passwords.
+#
+# enable = false
+
+# OIDC provider configuration
+# 
+# Configure one or more OIDC providers for authentication.
+# Each provider must have a unique name as the key.
+# 
+# example:
+# [oidc.providers.google]
+# issuer = "https://accounts.google.com"
+# client_id = "your-client-id.apps.googleusercontent.com"
+# client_secret = "your-client-secret"
+# redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
+#
+# providers = {}
+
+# Default provider to use when multiple providers are configured
+# 
+# This provider will be used for the main login flow.
+# If not specified, the first provider in alphabetical order is used.
+# 
+# example: "google"
+#
+# default_provider = None
+
+# Allow automatic user registration from OIDC
+# 
+# When enabled, new users will be automatically created when they
+# authenticate with OIDC for the first time. When disabled, only
+# existing users can authenticate via OIDC.
+#
+# allow_registration = true
+
+# User ID mapping strategy
+# 
+# Controls how Matrix user IDs are generated from OIDC user information:
+# - "email" - Use the email address localpart
+# - "sub" - Use the OIDC subject identifier
+# - "preferred_username" - Use the preferred_username claim
+#
+# user_mapping = "email"
+
+# User ID prefix for OIDC users
+# 
+# All OIDC-created users will have this prefix added to their localpart
+# to distinguish them from regular Matrix users.
+# 
+# example: "oidc_" (results in @oidc_john:example.com)
+#
+# user_prefix = ""
+
+# Require email verification
+# 
+# When enabled, only users with verified email addresses can authenticate.
+# The email_verified claim from the OIDC provider is checked.
+#
+# require_email_verified = true
+
+# Session timeout in seconds
+# 
+# How long OIDC authentication state is kept in memory.
+# After this time, users need to restart the authentication flow.
+#
+# session_timeout = 600 (10 minutes)
+
+# Enable PKCE (Proof Key for Code Exchange)
+# 
+# Enables PKCE for additional security in the OAuth flow.
+# Recommended for all deployments, especially mobile/SPA clients.
+#
+# enable_pkce = true

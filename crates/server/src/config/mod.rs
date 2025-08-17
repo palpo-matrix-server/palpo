@@ -46,6 +46,8 @@ mod typing;
 pub use typing::*;
 mod url_preview;
 pub use url_preview::*;
+mod oidc;
+pub use oidc::*;
 
 use crate::AppResult;
 use crate::core::client::discovery::RoomVersionStability;
