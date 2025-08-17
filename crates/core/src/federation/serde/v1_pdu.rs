@@ -31,7 +31,9 @@ where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
 {
-    deserializer.deserialize_seq(PduVisitor { phantom: PhantomData })
+    deserializer.deserialize_seq(PduVisitor {
+        phantom: PhantomData,
+    })
 }
 
 struct PduVisitor<T> {

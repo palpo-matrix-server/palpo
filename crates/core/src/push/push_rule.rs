@@ -20,7 +20,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedRoomId, OwnedUserId, PrivOwnedStr,
-    push::{Action, NewConditionalPushRule, NewPatternedPushRule, NewSimplePushRule, PushCondition},
+    push::{
+        Action, NewConditionalPushRule, NewPatternedPushRule, NewSimplePushRule, PushCondition,
+    },
     serde::StringEnum,
 };
 

@@ -35,12 +35,12 @@ pub struct SetPresenceReqBody {
     pub status_msg: Option<String>,
 }
 
-/// `GET /_matrix/client/*/presence/{user_id}/status`
-///
-/// Get presence status for this user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3presenceuser_idstatus
+// /// `GET /_matrix/client/*/presence/{user_id}/status`
+// ///
+// /// Get presence status for this user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3presenceuser_idstatus
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

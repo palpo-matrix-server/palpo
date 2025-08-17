@@ -26,7 +26,8 @@ pub async fn get_summary_msc_3266(
     let authed = depot.authed_info().ok();
     let sender_id = authed.map(|a| a.user_id());
 
-    let (room_id, servers) = room::alias::resolve_with_servers(&args.room_id_or_alias, Some(args.via.clone())).await?;
+    let (room_id, servers) =
+        room::alias::resolve_with_servers(&args.room_id_or_alias, Some(args.via.clone())).await?;
 
     if data::room::is_disabled(&room_id)? {
         return Err(MatrixError::forbidden("This room is banned on this homeserver.", None).into());
@@ -57,8 +58,14 @@ pub async fn get_summary_msc_3266(
     }
 }
 
-async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> AppResult<SummaryMsc3266ResBody> {
-    trace!(?sender_id, "Sending local room summary response for {room_id:?}");
+async fn local_room_summary(
+    room_id: &RoomId,
+    sender_id: Option<&UserId>,
+) -> AppResult<SummaryMsc3266ResBody> {
+    trace!(
+        ?sender_id,
+        "Sending local room summary response for {room_id:?}"
+    );
     let join_rule = room::get_join_rule(room_id)?;
     let world_readable = room::is_world_readable(room_id);
     let guest_can_join = room::guest_can_join(room_id);
@@ -83,11 +90,10 @@ async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> App
     let room_version = room::get_version(room_id).ok();
     let encryption = room::get_encryption(room_id).ok();
     let num_joined_members = room::joined_member_count(room_id).unwrap_or(0);
-    let membership = sender_id
-        .map(|sender_id| {
-            room::get_member(room_id, sender_id).map_or(MembershipState::Leave, |content| content.membership)
-        })
-        .into();
+    let membership = sender_id.map(|sender_id| {
+        room::get_member(room_id, sender_id)
+            .map_or(MembershipState::Leave, |content| content.membership)
+    });
 
     Ok(SummaryMsc3266ResBody {
         room_id: room_id.to_owned(),
@@ -95,7 +101,7 @@ async fn local_room_summary(room_id: &RoomId, sender_id: Option<&UserId>) -> App
         avatar_url,
         guest_can_join,
         name,
-        num_joined_members: num_joined_members.try_into().unwrap_or_default(),
+        num_joined_members,
         topic,
         world_readable,
         room_type,
@@ -142,7 +148,10 @@ async fn remote_room_summary_hierarchy(
         ) else {
             continue;
         };
-        requests.push(sending::send_federation_request(server, request.into_inner()));
+        requests.push(sending::send_federation_request(
+            server,
+            request.into_inner(),
+        ));
     }
 
     while let Some(Ok(response)) = requests.next().await {
@@ -197,10 +206,13 @@ where
         Some(sender_id) => {
             let user_can_see_events = state::user_can_see_events(sender_id, room_id)?;
             let is_guest = data::user::is_deactivated(sender_id).unwrap_or(false);
-            let user_in_allowed_restricted_room =
-                allowed_room_ids.any(|room| room::user::is_joined(sender_id, room).unwrap_or(false));
+            let user_in_allowed_restricted_room = allowed_room_ids
+                .any(|room| room::user::is_joined(sender_id, room).unwrap_or(false));
 
-            if user_can_see_events || (is_guest && guest_can_join) || is_public_room || user_in_allowed_restricted_room
+            if user_can_see_events
+                || (is_guest && guest_can_join)
+                || is_public_room
+                || user_in_allowed_restricted_room
             {
                 return Ok(());
             }

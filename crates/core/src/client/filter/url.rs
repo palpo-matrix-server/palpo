@@ -60,12 +60,18 @@ mod tests {
     #[test]
     fn deserialize_filter_events_with_url() {
         let json = json!(true);
-        assert_eq!(from_json_value::<UrlFilter>(json).unwrap(), UrlFilter::EventsWithUrl);
+        assert_eq!(
+            from_json_value::<UrlFilter>(json).unwrap(),
+            UrlFilter::EventsWithUrl
+        );
     }
 
     #[test]
     fn deserialize_filter_events_without_url() {
         let json = json!(false);
-        assert_eq!(from_json_value::<UrlFilter>(json).unwrap(), UrlFilter::EventsWithoutUrl);
+        assert_eq!(
+            from_json_value::<UrlFilter>(json).unwrap(),
+            UrlFilter::EventsWithoutUrl
+        );
     }
 }

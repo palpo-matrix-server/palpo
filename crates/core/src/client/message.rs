@@ -8,12 +8,12 @@ use crate::{
     serde::RawJson,
 };
 
-/// `GET /_matrix/client/*/rooms/{room_id}/messages`
-///
-/// Get message events for a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
+// /// `GET /_matrix/client/*/rooms/{room_id}/messages`
+// ///
+// /// Get message events for a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -105,12 +105,12 @@ fn is_default_limit(val: &usize) -> bool {
     *val == default_limit()
 }
 
-/// `PUT /_matrix/client/*/rooms/{room_id}/send/{eventType}/{txn_id}`
-///
-/// Send a message event to a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3roomsroomidsendeventtypetxnid
+// /// `PUT /_matrix/client/*/rooms/{room_id}/send/{eventType}/{txn_id}`
+// ///
+// /// Send a message event to a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3roomsroomidsendeventtypetxnid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

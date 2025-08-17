@@ -2,7 +2,7 @@
 
 use http::HeaderMap;
 use palpo_client_api::discovery::discover_homeserver;
-crateapi::{MatrixVersion, OutgoingRequest as _, SendAccessToken};
+use crate::api::{MatrixVersion, OutgoingRequest as _, SendAccessToken};
 
 #[test]
 fn get_request_headers() {

@@ -1,0 +1,24 @@
+# palpo - Traefik 反向代理标签
+
+services:
+  palpo:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"  # 将此更改为您的 Traefik docker 代理网络的名称
+
+      - "traefik.http.routers.to-palpo.rule=Host(`<SUBDOMAIN>.<DOMAIN>`)"  # 更改为 palpo 托管的地址
+      - "traefik.http.routers.to-palpo.tls=true"
+      - "traefik.http.routers.to-palpo.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.to-palpo.middlewares=cors-headers@docker"
+      - "traefik.http.services.to_palpo.loadbalancer.server.port=6167"
+
+      - "traefik.http.middlewares.cors-headers.headers.accessControlAllowOriginList=*"
+      - "traefik.http.middlewares.cors-headers.headers.accessControlAllowHeaders=Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      - "traefik.http.middlewares.cors-headers.headers.accessControlAllowMethods=GET, POST, PUT, DELETE, OPTIONS"
+
+      # 如果您想在 <DOMAIN> 上拥有您的帐户，但将 palpo 托管在子域上，
+      # 您可以只让它处理该域上的 well known 文件
+      #- "traefik.http.routers.to-matrix-wellknown.rule=Host(`<DOMAIN>`) && PathPrefix(`/.well-known/matrix`)"
+      #- "traefik.http.routers.to-matrix-wellknown.tls=true"
+      #- "traefik.http.routers.to-matrix-wellknown.tls.certresolver=letsencrypt"
+      #- "traefik.http.routers.to-matrix-wellknown.middlewares=cors-headers@docker"

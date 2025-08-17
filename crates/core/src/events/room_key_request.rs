@@ -7,7 +7,8 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId, PrivOwnedStr, serde::StringEnum,
+    EventEncryptionAlgorithm, OwnedDeviceId, OwnedRoomId, OwnedTransactionId, PrivOwnedStr,
+    serde::StringEnum,
 };
 
 /// The content of an `m.room_key_request` event.
@@ -85,7 +86,11 @@ pub struct RequestedKeyInfo {
 impl RequestedKeyInfo {
     /// Creates a new `RequestedKeyInfo` with the given algorithm, room ID,
     /// sender key and session ID.
-    pub fn new(algorithm: EventEncryptionAlgorithm, room_id: OwnedRoomId, session_id: String) -> Self {
+    pub fn new(
+        algorithm: EventEncryptionAlgorithm,
+        room_id: OwnedRoomId,
+        session_id: String,
+    ) -> Self {
         Self {
             algorithm,
             room_id,

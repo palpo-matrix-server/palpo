@@ -151,7 +151,10 @@ impl JoinRule {
             .into_iter()
             .flat_map(|rules| rules.allow.iter())
             .filter_map(|rule| {
-                if let AllowRule::RoomMembership(RoomMembership { room_id: membership }) = rule {
+                if let AllowRule::RoomMembership(RoomMembership {
+                    room_id: membership,
+                }) = rule
+                {
                     Some(membership.borrow())
                 } else {
                     None

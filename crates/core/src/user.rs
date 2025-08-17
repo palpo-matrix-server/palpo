@@ -2,7 +2,8 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::GlobalAccountDataEventType, serde::StringEnum,
+    OwnedMxcUri, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::GlobalAccountDataEventType,
+    serde::StringEnum,
 };
 
 /// Profile fields to specify in query.
@@ -82,13 +83,13 @@ pub struct UserFilterReqArgs {
     pub filter_id: String,
 }
 
-///  GET /_matrix/federation/v1/query/profile
-/// `GET /_matrix/client/*/profile/{user_id}`
-///
-/// Get all profile information of an user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuser_id
+// ///  GET /_matrix/federation/v1/query/profile
+// /// `GET /_matrix/client/*/profile/{user_id}`
+// ///
+// /// Get all profile information of an user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuser_id
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -120,7 +121,10 @@ pub struct ProfileResBody {
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 impl ProfileResBody {

@@ -111,7 +111,11 @@ where
         Some(s) => s
             .split(',')
             .map(str::trim)
-            .map(|s| f(s).with_context(|| format!("Failed to parse value \"{s}\" of {key} environment variable")))
+            .map(|s| {
+                f(s).with_context(|| {
+                    format!("Failed to parse value \"{s}\" of {key} environment variable")
+                })
+            })
             .collect::<Result<_, _>>()?,
     };
 

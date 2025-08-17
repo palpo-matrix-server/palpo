@@ -77,7 +77,6 @@ impl ToSchema for PrivOwnedStr {
 /// the various [Matrix API specifications][apis].
 ///
 /// [apis]: https://spec.matrix.org/latest/#matrix-apis
-
 /// An enum to control whether an access token should be added to outgoing
 /// requests
 #[derive(Clone, Copy, Debug)]

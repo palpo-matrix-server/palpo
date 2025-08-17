@@ -35,7 +35,10 @@ pub struct VideoEventContent {
     pub file: FileContentBlock,
 
     /// The video details of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.video_details", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.video_details",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub video_details: Option<VideoDetailsContentBlock>,
 
     /// The thumbnails of the message, if any.
@@ -49,7 +52,10 @@ pub struct VideoEventContent {
     pub thumbnail: ThumbnailContentBlock,
 
     /// The caption of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.caption", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.caption",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub caption: Option<CaptionContentBlock>,
 
     /// Whether this message is automated.

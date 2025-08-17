@@ -61,7 +61,10 @@ pub struct InviteUserReqBodyV2 {
     /// join or leave via, according to [MSC4125](https://github.com/matrix-org/matrix-spec-proposals/pull/4125).
     ///
     /// If present, it must not be empty.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "org.matrix.msc4125.via")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "org.matrix.msc4125.via"
+    )]
     pub via: Option<Vec<OwnedServerName>>,
 }
 crate::json_body_modifier!(InviteUserReqBodyV2);
@@ -136,7 +139,7 @@ impl SendJoinResBodyV1 {
 }
 
 /// Full state of the room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct RoomStateV2 {
     /// Whether `m.room.member` events have been omitted from `state`.
     ///
@@ -184,18 +187,12 @@ impl RoomStateV2 {
     /// With the `unstable-unspecified` feature, this method doesn't take any
     /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
-        Self {
-            auth_chain: Vec::new(),
-            state: Vec::new(),
-            event: None,
-            members_omitted: false,
-            servers_in_room: None,
-        }
+        Default::default()
     }
 }
 
 /// Full state of the room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, Default, Clone, Debug)]
 pub struct RoomStateV1 {
     /// The full set of authorization events that make up the state of the room,
     /// and their authorization events, recursively.
@@ -220,11 +217,7 @@ impl RoomStateV1 {
     /// With the `unstable-unspecified` feature, this method doesn't take any
     /// parameters. See [matrix-spec#374](https://github.com/matrix-org/matrix-spec/issues/374).
     pub fn new() -> Self {
-        Self {
-            auth_chain: Vec::new(),
-            state: Vec::new(),
-            event: None,
-        }
+        Default::default()
     }
 }
 
@@ -260,7 +253,11 @@ impl UnsignedEventContentV1 {
 //     }
 // };
 
-pub fn make_leave_request(origin: &str, room_id: &RoomId, user_id: &UserId) -> SendResult<SendRequest> {
+pub fn make_leave_request(
+    origin: &str,
+    room_id: &RoomId,
+    user_id: &UserId,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_leave/{room_id}/{user_id}"
     ))?;
@@ -298,7 +295,10 @@ impl MakeLeaveResBody {
     /// * the version of the room where the server is trying to leave.
     /// * an unsigned template event.
     pub fn new(room_version: Option<RoomVersionId>, event: Box<RawJsonValue>) -> Self {
-        Self { room_version, event }
+        Self {
+            room_version,
+            event,
+        }
     }
 }
 
@@ -343,9 +343,9 @@ pub struct SendLeaveReqBody(
 );
 crate::json_body_modifier!(SendLeaveReqBody);
 
-/// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
-///
-/// Send a join event to a resident server.
+// /// `PUT /_matrix/federation/*/send_join/{room_id}/{event_id}`
+// ///
+// /// Send a join event to a resident server.
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -356,7 +356,11 @@ crate::json_body_modifier!(SendLeaveReqBody);
 //     }
 // };
 
-pub fn send_join_request(origin: &str, args: SendJoinArgs, body: SendJoinReqBody) -> SendResult<SendRequest> {
+pub fn send_join_request(
+    origin: &str,
+    args: SendJoinArgs,
+    body: SendJoinReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v2/send_join/{}/{}?omit_members={}",
         &args.room_id, &args.event_id, args.omit_members
@@ -407,7 +411,11 @@ pub struct SendJoinArgs {
 
 pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
-    let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
+    let ver = if ver.is_empty() {
+        ""
+    } else {
+        &*format!("?{ver}")
+    };
 
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_join/{}/{}{}",

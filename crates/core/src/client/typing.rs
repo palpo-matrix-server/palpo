@@ -20,7 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error};
 //     }
 // };
 
-/// Request type for the `create_typing_event` endpoint.
+// /// Request type for the `create_typing_event` endpoint.
 // #[derive(ToParameters, Deserialize, Debug)]
 // pub struct CreateTypingEventReqArgs {
 //     /// The room in which the user is typing.

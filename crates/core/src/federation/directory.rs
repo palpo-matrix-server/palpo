@@ -1,5 +1,5 @@
 /// Room directory endpoints.
-
+///
 /// `GET /_matrix/federation/*/publicRooms`
 ///
 /// Get all the public rooms for the homeserver.
@@ -16,12 +16,12 @@ use crate::{
     sending::{SendRequest, SendResult},
 };
 
-/// `POST /_matrix/federation/*/publicRooms`
-///
-/// Get a homeserver's public rooms with an optional filter.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1publicrooms
+// /// `POST /_matrix/federation/*/publicRooms`
+// ///
+// /// Get a homeserver's public rooms with an optional filter.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1publicrooms
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -58,11 +58,12 @@ pub struct PublicRoomsReqBody {
     pub room_network: RoomNetwork,
 }
 crate::json_body_modifier!(PublicRoomsReqBody);
-/// `GET /.well-known/matrix/server` ([spec])
-///
-/// Get discovery information about the domain.
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#getwell-knownmatrixserver
+
+// /// `GET /.well-known/matrix/server` ([spec])
+// ///
+// /// Get discovery information about the domain.
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#getwell-knownmatrixserver
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -90,13 +91,13 @@ impl ServerResBody {
     }
 }
 
-/// `POST /_matrix/key/*/query`
-///
-/// Query for keys from multiple servers in a batch format. The receiving
-/// (notary) server must sign the keys returned by the queried servers.
-/// `/v2/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixkeyv2query
+// /// `POST /_matrix/key/*/query`
+// ///
+// /// Query for keys from multiple servers in a batch format. The receiving
+// /// (notary) server must sign the keys returned by the queried servers.
+// /// `/v2/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixkeyv2query
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -107,12 +108,15 @@ impl ServerResBody {
 //     }
 // };
 
-pub fn remote_server_keys_batch_request(origin: &str, body: RemoteServerKeysBatchReqBody) -> SendResult<SendRequest> {
+pub fn remote_server_keys_batch_request(
+    origin: &str,
+    body: RemoteServerKeysBatchReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!("{origin}/_matrix/key/v2/query",))?;
     crate::sending::post(url).stuff(body)
 }
 
-/// Request type for the `get_remote_server_keys_batch` endpoint.
+/// Request type for the `fetch_remote_server_keys_batch` endpoint.
 
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 pub struct RemoteServerKeysBatchReqBody {
@@ -130,7 +134,7 @@ pub struct RemoteServerKeysBatchReqBody {
 }
 crate::json_body_modifier!(RemoteServerKeysBatchReqBody);
 
-/// Response type for the `get_remote_server_keys_batch` endpoint.
+/// Response type for the `fetch_remote_server_keys_batch` endpoint.
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 
 pub struct RemoteServerKeysBatchResBody {
@@ -143,13 +147,13 @@ impl RemoteServerKeysBatchResBody {
         Self { server_keys }
     }
 }
-/// `GET /_matrix/key/*/query/{serverName}`
-///
-/// Query for another server's keys. The receiving (notary) server must sign the
-/// keys returned by the queried server.
-/// `/v2/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixkeyv2queryservername
+// /// `GET /_matrix/key/*/query/{serverName}`
+// ///
+// /// Query for another server's keys. The receiving (notary) server must sign the
+// /// keys returned by the queried server.
+// /// `/v2/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixkeyv2queryservername
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -160,7 +164,10 @@ impl RemoteServerKeysBatchResBody {
 //     }
 // };
 
-pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -> SendResult<SendRequest> {
+pub fn remote_server_keys_request(
+    origin: &str,
+    args: RemoteServerKeysReqArgs,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/key/v2/query/{}?minimum_valid_until_ts={}",
         args.server_name, args.minimum_valid_until_ts
@@ -168,7 +175,7 @@ pub fn remote_server_keys_request(origin: &str, args: RemoteServerKeysReqArgs) -
     Ok(crate::sending::get(url))
 }
 
-/// Request type for the `get_remote_server_keys` endpoint.
+/// Request type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RemoteServerKeysReqArgs {
     /// The server's DNS name to query
@@ -186,7 +193,7 @@ pub struct RemoteServerKeysReqArgs {
     pub minimum_valid_until_ts: UnixMillis,
 }
 
-/// Response type for the `get_remote_server_keys` endpoint.
+/// Response type for the `fetch_remote_server_keys` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 
 pub struct RemoteServerKeysResBody {
@@ -200,12 +207,12 @@ impl RemoteServerKeysResBody {
     }
 }
 
-/// `GET /_matrix/federation/*/version`
-///
-/// Get the implementation name and version of this homeserver.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1version
+// /// `GET /_matrix/federation/*/version`
+// ///
+// /// Get the implementation name and version of this homeserver.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixfederationv1version
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -232,10 +239,10 @@ impl ServerVersionResBody {
     }
 }
 
-/// Endpoint to receive metadata about implemented matrix versions.
-///
-/// Get the supported matrix versions of this homeserver
-/// [GET /_matrix/federation/versions](https://github.com/matrix-org/matrix-spec-proposals/pull/3723)
+// /// Endpoint to receive metadata about implemented matrix versions.
+// ///
+// /// Get the supported matrix versions of this homeserver
+// /// [GET /_matrix/federation/versions](https://github.com/matrix-org/matrix-spec-proposals/pull/3723)
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -260,12 +267,12 @@ impl ServerVersionsResBody {
     }
 }
 
-/// `GET /_matrix/key/*/server`
-///
-/// Get the homeserver's published signing keys.
-/// `/v2/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixkeyv2server
+// /// `GET /_matrix/key/*/server`
+// ///
+// /// Get the homeserver's published signing keys.
+// /// `/v2/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#get_matrixkeyv2server
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

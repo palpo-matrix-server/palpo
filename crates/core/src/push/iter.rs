@@ -1,8 +1,8 @@
 use indexmap::set::{IntoIter as IndexSetIntoIter, Iter as IndexSetIter};
 
 use super::{
-    Action, ConditionalPushRule, FlattenedJson, PatternedPushRule, PushConditionRoomCtx, PushRule, Ruleset,
-    SimplePushRule, condition,
+    Action, ConditionalPushRule, FlattenedJson, PatternedPushRule, PushConditionRoomCtx, PushRule,
+    Ruleset, SimplePushRule, condition,
 };
 use crate::{OwnedRoomId, OwnedUserId};
 
@@ -243,7 +243,10 @@ impl<'a> AnyPushRuleRef<'a> {
     /// * `event` - The flattened JSON representation of a room message event.
     /// * `context` - The context of the room at the time of the event.
     pub fn applies(self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
-        if event.get_str("sender").is_some_and(|sender| sender == context.user_id) {
+        if event
+            .get_str("sender")
+            .is_some_and(|sender| sender == context.user_id)
+        {
             return false;
         }
 
@@ -252,10 +255,17 @@ impl<'a> AnyPushRuleRef<'a> {
             Self::Underride(rule) => rule.applies(event, context),
             Self::Content(rule) => rule.applies_to("content.body", event, context),
             Self::Room(rule) => {
-                rule.enabled && condition::check_event_match(event, "room_id", rule.rule_id.as_ref(), context)
+                rule.enabled
+                    && condition::check_event_match(
+                        event,
+                        "room_id",
+                        rule.rule_id.as_ref(),
+                        context,
+                    )
             }
             Self::Sender(rule) => {
-                rule.enabled && condition::check_event_match(event, "sender", rule.rule_id.as_ref(), context)
+                rule.enabled
+                    && condition::check_event_match(event, "sender", rule.rule_id.as_ref(), context)
             }
         }
     }

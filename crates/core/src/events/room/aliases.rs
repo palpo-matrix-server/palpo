@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedRoomAliasId, OwnedServerName, RoomVersionId,
-    events::{EventContent, EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType},
+    events::{
+        EventContent, EventContentFromType, RedactContent, RedactedStateEventContent,
+        StateEventType,
+    },
     serde::RawJsonValue,
 };
 
@@ -34,9 +37,11 @@ impl RedactContent for RoomAliasesEventContent {
         // We compare the long way to avoid pre version 6 behavior if/when
         // a new room version is introduced.
         let aliases = match version {
-            RoomVersionId::V1 | RoomVersionId::V2 | RoomVersionId::V3 | RoomVersionId::V4 | RoomVersionId::V5 => {
-                Some(self.aliases)
-            }
+            RoomVersionId::V1
+            | RoomVersionId::V2
+            | RoomVersionId::V3
+            | RoomVersionId::V4
+            | RoomVersionId::V5 => Some(self.aliases),
             _ => None,
         };
 
@@ -60,7 +65,9 @@ impl RedactedRoomAliasesEventContent {
     ///
     /// This is only valid for room version 5 and below.
     pub fn new_v1(aliases: Vec<OwnedRoomAliasId>) -> Self {
-        Self { aliases: Some(aliases) }
+        Self {
+            aliases: Some(aliases),
+        }
     }
 
     /// Create a `RedactedAliasesEventContent` with the given aliases.

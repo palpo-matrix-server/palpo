@@ -51,7 +51,11 @@ impl CallSelectAnswerEventContent {
 
     /// Convenience method to create a version 1 `CallSelectAnswerEventContent`
     /// with all the required fields.
-    pub fn version_1(call_id: OwnedVoipId, party_id: OwnedVoipId, selected_party_id: OwnedVoipId) -> Self {
+    pub fn version_1(
+        call_id: OwnedVoipId,
+        party_id: OwnedVoipId,
+        selected_party_id: OwnedVoipId,
+    ) -> Self {
         Self::new(call_id, party_id, selected_party_id, VoipVersionId::V1)
     }
 }

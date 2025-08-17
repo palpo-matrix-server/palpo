@@ -2,7 +2,9 @@
 
 use diesel::expression::AsExpression;
 
-use super::{MatrixToUri, MatrixUri, OwnedEventId, OwnedServerName, ServerName, matrix_uri::UriAction};
+use super::{
+    MatrixToUri, MatrixUri, OwnedEventId, OwnedServerName, ServerName, matrix_uri::UriAction,
+};
 use crate::RoomOrAliasId;
 use crate::macros::IdZst;
 

@@ -53,9 +53,13 @@ impl From<RedactionError> for Error {
     fn from(err: RedactionError) -> Self {
         match err {
             RedactionError::NotOfType {
-                field: target, of_type, ..
+                field: target,
+                of_type,
+                ..
             } => JsonError::NotOfType { target, of_type }.into(),
-            RedactionError::JsonFieldMissingFromObject(field) => JsonError::JsonFieldMissingFromObject(field).into(),
+            RedactionError::JsonFieldMissingFromObject(field) => {
+                JsonError::JsonFieldMissingFromObject(field).into()
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -244,11 +248,17 @@ pub enum ParseError {
 }
 
 impl ParseError {
-    pub(crate) fn from_event_id_by_room_version(event_id: &EventId, room_version: &RoomVersionId) -> Error {
+    pub(crate) fn from_event_id_by_room_version(
+        event_id: &EventId,
+        room_version: &RoomVersionId,
+    ) -> Error {
         Self::ServerNameFromEventIdByRoomVersion(event_id.to_owned(), room_version.clone()).into()
     }
 
-    pub(crate) fn derived_vs_parsed_mismatch<P: Into<Vec<u8>>, D: Into<Vec<u8>>>(parsed: P, derived: D) -> Error {
+    pub(crate) fn derived_vs_parsed_mismatch<P: Into<Vec<u8>>, D: Into<Vec<u8>>>(
+        parsed: P,
+        derived: D,
+    ) -> Error {
         Self::DerivedPublicKeyDoesNotMatchParsedKey {
             parsed_key: parsed.into(),
             derived_key: derived.into(),

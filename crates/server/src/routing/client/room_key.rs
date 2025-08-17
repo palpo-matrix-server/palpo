@@ -48,7 +48,11 @@ pub fn authed_router() -> Router {
 /// #GET /_matrix/client/r0/room_keys/keys
 /// Retrieves all keys from the backup.
 #[endpoint]
-async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot) -> JsonResult<KeysResBody> {
+async fn get_keys(
+    _aa: AuthArgs,
+    version: QueryParam<i64, true>,
+    depot: &mut Depot,
+) -> JsonResult<KeysResBody> {
     let authed = depot.authed_info()?;
     let version = version.into_inner();
     let rooms = e2e_room_keys::table
@@ -58,9 +62,14 @@ async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Dep
         .into_iter()
         .map(|rk| {
             let DbRoomKey {
-                room_id, session_data, ..
+                room_id,
+                session_data,
+                ..
             } = rk;
-            (room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())
+            (
+                room_id,
+                RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap(),
+            )
         })
         .collect();
     json_ok(KeysResBody { rooms })
@@ -69,20 +78,35 @@ async fn get_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Dep
 /// #GET /_matrix/client/r0/room_keys/keys/{room_id}
 /// Retrieves all keys from the backup for a given room.
 #[endpoint]
-fn get_keys_for_room(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) -> JsonResult<KeysForRoomResBody> {
+fn get_keys_for_room(
+    _aa: AuthArgs,
+    args: KeysForRoomReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<KeysForRoomResBody> {
     let authed = depot.authed_info()?;
     let DbRoomKey {
-        room_id, session_data, ..
-    } = key_backup::get_room_key(authed.user_id(), &args.room_id, args.version)?
-        .ok_or(MatrixError::not_found("Backup key not found for this user's room."))?;
+        room_id,
+        session_data,
+        ..
+    } = key_backup::get_room_key(authed.user_id(), &args.room_id, args.version)?.ok_or(
+        MatrixError::not_found("Backup key not found for this user's room."),
+    )?;
     json_ok(KeysForRoomResBody::new(BTreeMap::from_iter(
-        [(room_id, RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap())].into_iter(),
+        [(
+            room_id,
+            RawJson::<RoomKeyBackup>::from_value(&session_data).unwrap(),
+        )]
+        .into_iter(),
     )))
 }
 /// #GET /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
 /// Retrieves a key from the backup.
 #[endpoint]
-async fn get_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mut Depot) -> JsonResult<KeyBackupData> {
+async fn get_session_keys(
+    _aa: AuthArgs,
+    args: KeysForSessionReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<KeyBackupData> {
     let authed = depot.authed_info()?;
     let key_backup_data = e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(authed.user_id()))
@@ -92,7 +116,9 @@ async fn get_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mu
         // .select(e2e_room_keys::session_data)
         .first::<DbRoomKey>(&mut connect()?)
         .optional()?
-        .ok_or(MatrixError::not_found("Backup key not found for this user's session."))?
+        .ok_or(MatrixError::not_found(
+            "Backup key not found for this user's session.",
+        ))?
         .into();
 
     json_ok(key_backup_data)
@@ -160,7 +186,13 @@ fn add_keys_for_room(
     }
 
     for (session_id, key_data) in &body.sessions {
-        key_backup::add_key(authed.user_id(), args.version, &args.room_id, session_id, key_data)?
+        key_backup::add_key(
+            authed.user_id(),
+            args.version,
+            &args.room_id,
+            session_id,
+            key_data,
+        )?
     }
 
     json_ok(ModifyKeysResBody {
@@ -193,7 +225,13 @@ fn add_keys_for_session(
         .into());
     }
 
-    key_backup::add_key(authed.user_id(), args.version, &args.room_id, &args.session_id, &body.0)?;
+    key_backup::add_key(
+        authed.user_id(),
+        args.version,
+        &args.room_id,
+        &args.session_id,
+        &body.0,
+    )?;
 
     // json_ok(ModifyKeysResBody {
     //     count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),
@@ -205,7 +243,11 @@ fn add_keys_for_session(
 /// #GET /_matrix/client/r0/room_keys/version/{version}
 /// Get information about an existing backup.
 #[endpoint]
-fn get_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> JsonResult<VersionResBody> {
+fn get_version(
+    _aa: AuthArgs,
+    version: PathParam<i64>,
+    depot: &mut Depot,
+) -> JsonResult<VersionResBody> {
     let authed = depot.authed_info()?;
     let version = version.into_inner();
     let algorithm = key_backup::get_room_keys_version(authed.user_id(), version)?
@@ -240,7 +282,11 @@ fn create_version(
 /// #PUT /_matrix/client/r0/room_keys/version/{version}
 /// Update information about an existing backup. Only `auth_data` can be modified.
 #[endpoint]
-fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &mut Depot) -> EmptyResult {
+fn update_version(
+    _aa: AuthArgs,
+    body: JsonBody<CreateVersionReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
     let algorithm = body.into_inner().0;
     key_backup::create_backup(authed.user_id(), &algorithm)?;
@@ -254,7 +300,9 @@ fn update_version(_aa: AuthArgs, body: JsonBody<CreateVersionReqBody>, depot: &m
 fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody> {
     let authed = depot.authed_info()?;
 
-    let DbRoomKeysVersion { version, algorithm, .. } = key_backup::get_latest_room_keys_version(authed.user_id())?
+    let DbRoomKeysVersion {
+        version, algorithm, ..
+    } = key_backup::get_latest_room_keys_version(authed.user_id())?
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
 
     json_ok(VersionResBody {
@@ -281,7 +329,11 @@ fn delete_version(_aa: AuthArgs, version: PathParam<i64>, depot: &mut Depot) -> 
 /// #DELETE /_matrix/client/r0/room_keys/keys
 /// Delete the keys from the backup.
 #[endpoint]
-fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
+fn delete_keys(
+    _aa: AuthArgs,
+    version: QueryParam<i64, true>,
+    depot: &mut Depot,
+) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
     let version = version.into_inner();
     key_backup::delete_all_keys(authed.user_id(), version)?;
@@ -294,7 +346,11 @@ fn delete_keys(_aa: AuthArgs, version: QueryParam<i64, true>, depot: &mut Depot)
 /// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}
 /// Delete the keys from the backup for a given room.
 #[endpoint]
-fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
+fn delete_room_keys(
+    _aa: AuthArgs,
+    args: KeysForRoomReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
 
     key_backup::delete_room_keys(authed.user_id(), args.version, &args.room_id)?;
@@ -307,10 +363,19 @@ fn delete_room_keys(_aa: AuthArgs, args: KeysForRoomReqArgs, depot: &mut Depot) 
 /// #DELETE /_matrix/client/r0/room_keys/keys/{room_id}/{session_id}
 /// Delete a key from the backup.
 #[endpoint]
-fn delete_session_keys(_aa: AuthArgs, args: KeysForSessionReqArgs, depot: &mut Depot) -> JsonResult<ModifyKeysResBody> {
+fn delete_session_keys(
+    _aa: AuthArgs,
+    args: KeysForSessionReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<ModifyKeysResBody> {
     let authed = depot.authed_info()?;
 
-    key_backup::delete_room_key(authed.user_id(), args.version, &args.room_id, &args.session_id)?;
+    key_backup::delete_room_key(
+        authed.user_id(),
+        args.version,
+        &args.room_id,
+        &args.session_id,
+    )?;
 
     json_ok(ModifyKeysResBody {
         count: (key_backup::count_keys(authed.user_id(), args.version)? as u32).into(),

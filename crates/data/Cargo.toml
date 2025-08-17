@@ -30,7 +30,7 @@ config = { workspace = true }
 cookie = { workspace = true }
 cyborgtime = { workspace = true }
 data-encoding = { workspace = true }
-diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json"] }
+diesel = { workspace = true, features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"] }
 diesel_migrations = { workspace = true }
 dotenvy = { workspace = true }
 fast32 = { workspace = true }
@@ -78,3 +78,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 ulid = { workspace = true }
 url = { workspace = true }
 uuid = { version = "1.1.2", features = ["v4"] }
+
+[lints]
+workspace = true

@@ -95,7 +95,10 @@ impl Default for AdminConfig {
 }
 
 fn default_log_capture() -> String {
-    cfg!(debug_assertions).then_some("debug").unwrap_or("info").to_owned()
+    cfg!(debug_assertions)
+        .then_some("debug")
+        .unwrap_or("info")
+        .to_owned()
 }
 fn default_room_tag() -> String {
     "m.server_notice".to_owned()

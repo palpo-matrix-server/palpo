@@ -14,8 +14,8 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbUserDevice;
 use crate::{
-    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH, data,
-    empty_ok, json_ok, utils,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError,
+    SESSION_ID_LENGTH, data, empty_ok, json_ok, utils,
 };
 
 pub fn authed_router() -> Router {
@@ -61,7 +61,10 @@ async fn list_devices(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<DevicesRes
         .filter(user_devices::user_id.eq(authed.user_id()))
         .load::<DbUserDevice>(&mut connect()?)?;
     json_ok(DevicesResBody {
-        devices: devices.into_iter().map(DbUserDevice::into_matrix_device).collect(),
+        devices: devices
+            .into_iter()
+            .map(DbUserDevice::into_matrix_device)
+            .collect(),
     })
 }
 
@@ -136,7 +139,7 @@ async fn delete_device(
     res: &mut Response,
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
-    let auth = body.into_inner().map(|body| body.auth).flatten();
+    let auth = body.into_inner().and_then(|body| body.auth);
     let device_id = device_id.into_inner();
 
     // UIAA
@@ -151,7 +154,10 @@ async fn delete_device(
     };
     let Some(auth) = auth else {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::Unauthorized, "Missing authentication data"));
+        uiaa_info.auth_error = Some(AuthError::new(
+            ErrorKind::Unauthorized,
+            "Missing authentication data",
+        ));
         return Err(uiaa_info.into());
     };
 
@@ -162,7 +168,10 @@ async fn delete_device(
             }
         }
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
-        uiaa_info.auth_error = Some(AuthError::new(ErrorKind::forbidden(), "Invalid authentication data"));
+        uiaa_info.auth_error = Some(AuthError::new(
+            ErrorKind::forbidden(),
+            "Invalid authentication data",
+        ));
         res.status_code(StatusCode::UNAUTHORIZED); // TestDeviceManagement asks http code 401
         return Err(uiaa_info.into());
     }
@@ -181,7 +190,11 @@ async fn delete_device(
 /// - Forgets to-device events
 /// - Triggers device list updates
 #[endpoint]
-async fn delete_devices(_aa: AuthArgs, body: JsonBody<DeleteDevicesReqBody>, depot: &mut Depot) -> EmptyResult {
+async fn delete_devices(
+    _aa: AuthArgs,
+    body: JsonBody<DeleteDevicesReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
     let DeleteDevicesReqBody { devices, auth } = body.into_inner();
 

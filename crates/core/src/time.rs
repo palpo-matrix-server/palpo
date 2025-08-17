@@ -49,7 +49,7 @@ impl UnixMillis {
 
     /// Creates a new `SystemTime` from `self`, if it can be represented.
     pub fn to_system_time(self) -> Option<SystemTime> {
-        UNIX_EPOCH.checked_add(Duration::from_millis(self.0.into()))
+        UNIX_EPOCH.checked_add(Duration::from_millis(self.0))
     }
 
     /// Get the time since the unix epoch in milliseconds.
@@ -73,20 +73,37 @@ impl fmt::Debug for UnixMillis {
 }
 impl FromSql<sql_types::BigInt, pg::Pg> for UnixMillis {
     fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        let value = <i64 as diesel::deserialize::FromSql<diesel::sql_types::BigInt, diesel::pg::Pg>>::from_sql(bytes)?;
+        let value = <i64 as diesel::deserialize::FromSql<
+            diesel::sql_types::BigInt,
+            diesel::pg::Pg,
+        >>::from_sql(bytes)?;
         Ok(Self(value as u64))
     }
 }
 
 impl ToSql<sql_types::BigInt, pg::Pg> for UnixMillis {
-    fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<'_, '_, pg::Pg>,
+    ) -> diesel::serialize::Result {
         ToSql::<sql_types::BigInt, pg::Pg>::to_sql(&(self.0 as i64), &mut out.reborrow())
     }
 }
 
 /// A timestamp represented as the number of seconds since the unix epoch.
 #[derive(
-    ToSchema, FromSqlRow, AsExpression, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize,
+    ToSchema,
+    FromSqlRow,
+    AsExpression,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
 )]
 #[diesel(sql_type = sql_types::Bigint)]
 #[allow(clippy::exhaustive_structs)]
@@ -98,18 +115,17 @@ impl UnixSeconds {
     /// before the unix epoch, or too large to be represented.
     pub fn from_system_time(time: SystemTime) -> Option<Self> {
         let duration = time.duration_since(UNIX_EPOCH).ok()?;
-        let millis = duration.as_secs().try_into().ok()?;
-        Some(Self(millis))
+        Some(Self(duration.as_secs()))
     }
 
     /// The current system-time as seconds since the unix epoch.
     pub fn now() -> Self {
-        return Self::from_system_time(SystemTime::now()).expect("date out of range");
+        Self::from_system_time(SystemTime::now()).expect("date out of range")
     }
 
     /// Creates a new `SystemTime` from `self`, if it can be represented.
     pub fn to_system_time(self) -> Option<SystemTime> {
-        UNIX_EPOCH.checked_add(Duration::from_secs(self.0.into()))
+        UNIX_EPOCH.checked_add(Duration::from_secs(self.0))
     }
 
     /// Get time since the unix epoch in seconds.
@@ -128,13 +144,19 @@ impl fmt::Debug for UnixSeconds {
 }
 impl FromSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
     fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        let value = <i64 as diesel::deserialize::FromSql<diesel::sql_types::BigInt, diesel::pg::Pg>>::from_sql(bytes)?;
+        let value = <i64 as diesel::deserialize::FromSql<
+            diesel::sql_types::BigInt,
+            diesel::pg::Pg,
+        >>::from_sql(bytes)?;
         Ok(Self(value as u64))
     }
 }
 
 impl ToSql<sql_types::BigInt, pg::Pg> for UnixSeconds {
-    fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<'_, '_, pg::Pg>,
+    ) -> diesel::serialize::Result {
         ToSql::<sql_types::BigInt, pg::Pg>::to_sql(&(self.0 as i64), &mut out.reborrow())
     }
 }

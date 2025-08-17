@@ -8,14 +8,18 @@ use serde_json::json;
 use crate::core::client::key::ClaimKeysResBody;
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
-use crate::core::federation::key::{QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request};
+use crate::core::federation::key::{
+    QueryKeysReqBody, QueryKeysResBody, claim_keys_request, query_keys_request,
+};
 use crate::core::federation::transaction::{Edu, SigningKeyUpdateContent};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::core::{DeviceKeyAlgorithm, UnixMillis, client, federation};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::user::{DbOneTimeKey, NewDbCrossSignature, NewDbCrossSigningKey, NewDbKeyChange, NewDbOneTimeKey};
+use crate::data::user::{
+    DbOneTimeKey, NewDbCrossSignature, NewDbCrossSigningKey, NewDbKeyChange, NewDbOneTimeKey,
+};
 use crate::exts::*;
 use crate::user::clean_signatures;
 use crate::{AppError, AppResult, BAD_QUERY_RATE_LIMITER, MatrixError, config, data, sending};
@@ -63,10 +67,14 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
             }
         }
 
-        if let Some(master_key) = crate::user::get_master_key(sender_id, user_id, &allowed_signatures)? {
+        if let Some(master_key) =
+            crate::user::get_master_key(sender_id, user_id, &allowed_signatures)?
+        {
             master_keys.insert(user_id.to_owned(), master_key);
         }
-        if let Some(self_signing_key) = crate::user::get_self_signing_key(sender_id, user_id, &allowed_signatures)? {
+        if let Some(self_signing_key) =
+            crate::user::get_self_signing_key(sender_id, user_id, &allowed_signatures)?
+        {
             self_signing_keys.insert(user_id.to_owned(), self_signing_key);
         }
         if Some(&**user_id) == sender_id {
@@ -114,12 +122,14 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         match response {
             Ok(response) => {
                 for (user_id, mut master_key) in response.master_keys {
-                    if let Some(our_master_key) = crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
+                    if let Some(our_master_key) =
+                        crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
                     {
                         master_key.signatures.extend(our_master_key.signatures);
                     }
                     let json = serde_json::to_value(master_key).expect("to_value always works");
-                    let raw = serde_json::from_value(json).expect("RawJson::from_value always works");
+                    let raw =
+                        serde_json::from_value(json).expect("RawJson::from_value always works");
                     crate::user::add_cross_signing_keys(
                         &user_id, &raw, &None, &None,
                         false, // Dont notify. A notification would trigger another key request resulting in an endless loop
@@ -162,7 +172,9 @@ pub async fn claim_one_time_keys(
         }
         let mut container = BTreeMap::new();
         for (device_id, key_algorithm) in map {
-            if let Some(one_time_keys) = crate::user::claim_one_time_key(user_id, device_id, key_algorithm)? {
+            if let Some(one_time_keys) =
+                crate::user::claim_one_time_key(user_id, device_id, key_algorithm)?
+            {
                 let mut c = BTreeMap::new();
                 c.insert(one_time_keys.0, one_time_keys.1);
                 container.insert(device_id.clone(), c);
@@ -189,7 +201,12 @@ pub async fn claim_one_time_keys(
             },
         )?
         .into_inner();
-        futures.push(async move { (server, crate::sending::send_federation_request(server, request).await) });
+        futures.push(async move {
+            (
+                server,
+                crate::sending::send_federation_request(server, request).await,
+            )
+        });
     }
     while let Some((server, response)) = futures.next().await {
         match response {
@@ -301,17 +318,27 @@ pub fn claim_one_time_key(
         .first::<DbOneTimeKey>(&mut connect()?)
         .optional()?;
     if let Some(DbOneTimeKey {
-        id, key_id, key_data, ..
+        id,
+        key_id,
+        key_data,
+        ..
     }) = one_time_key
     {
         diesel::delete(e2e_one_time_keys::table.find(id)).execute(&mut connect()?)?;
-        Ok(Some((key_id, serde_json::from_value::<OneTimeKey>(key_data)?)))
+        Ok(Some((
+            key_id,
+            serde_json::from_value::<OneTimeKey>(key_data)?,
+        )))
     } else {
         Ok(None)
     }
 }
 
-pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> AppResult<()> {
+pub fn add_device_keys(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    device_keys: &DeviceKeys,
+) -> AppResult<()> {
     data::user::add_device_keys(user_id, device_id, device_keys)?;
     mark_device_key_update(user_id, device_id)?;
     send_device_key_update(user_id, device_id)?;
@@ -338,12 +365,18 @@ pub fn add_cross_signing_keys(
     if let Some(self_signing_key) = self_signing_key {
         let mut self_signing_key_ids = self_signing_key.keys.values();
 
-        let _self_signing_key_id = self_signing_key_ids
-            .next()
-            .ok_or(MatrixError::invalid_param("Self signing key contained no key."))?;
+        let _self_signing_key_id =
+            self_signing_key_ids
+                .next()
+                .ok_or(MatrixError::invalid_param(
+                    "Self signing key contained no key.",
+                ))?;
 
         if self_signing_key_ids.next().is_some() {
-            return Err(MatrixError::invalid_param("Self signing key contained more than one key.").into());
+            return Err(MatrixError::invalid_param(
+                "Self signing key contained more than one key.",
+            )
+            .into());
         }
 
         diesel::insert_into(e2e_cross_signing_keys::table)
@@ -359,12 +392,18 @@ pub fn add_cross_signing_keys(
     if let Some(user_signing_key) = user_signing_key {
         let mut user_signing_key_ids = user_signing_key.keys.values();
 
-        let _user_signing_key_id = user_signing_key_ids
-            .next()
-            .ok_or(MatrixError::invalid_param("User signing key contained no key."))?;
+        let _user_signing_key_id =
+            user_signing_key_ids
+                .next()
+                .ok_or(MatrixError::invalid_param(
+                    "User signing key contained no key.",
+                ))?;
 
         if user_signing_key_ids.next().is_some() {
-            return Err(MatrixError::invalid_param("User signing key contained more than one key.").into());
+            return Err(MatrixError::invalid_param(
+                "User signing key contained more than one key.",
+            )
+            .into());
         }
 
         diesel::insert_into(e2e_cross_signing_keys::table)
@@ -572,7 +611,11 @@ fn send_device_key_update_with_joined_rooms(
         .distinct()
         .load::<OwnedServerName>(&mut connect()?)?;
 
-    let content = DeviceListUpdateContent::new(user_id.to_owned(), device_id.to_owned(), data::next_sn()? as u64);
+    let content = DeviceListUpdateContent::new(
+        user_id.to_owned(),
+        device_id.to_owned(),
+        data::next_sn()? as u64,
+    );
     let edu = Edu::DeviceListUpdate(content);
 
     sending::send_edu_servers(remote_servers.into_iter(), &edu)

@@ -119,7 +119,10 @@ impl UrlPreview {
     /// Whether this preview contains an actual preview or the users homeserver
     /// should be asked for preview data instead.
     pub fn contains_preview(&self) -> bool {
-        self.url.is_some() || self.title.is_some() || self.description.is_some() || self.image.is_some()
+        self.url.is_some()
+            || self.title.is_some()
+            || self.description.is_some()
+            || self.image.is_some()
     }
 }
 

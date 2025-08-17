@@ -29,10 +29,14 @@ use crate::{
 
 pub fn make_knock_request(origin: &str, args: MakeKnockReqArgs) -> SendResult<SendRequest> {
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
-    let ver = if ver.is_empty() { "" } else { &*format!("?{}", ver) };
+    let ver = if ver.is_empty() {
+        ""
+    } else {
+        &*format!("?{ver}")
+    };
     let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/make_knock/{}/{}{}",
-        args.room_id, args.user_id, ver
+        "{origin}/_matrix/federation/v1/make_knock/{}/{}{ver}",
+        args.room_id, args.user_id
     ))?;
     Ok(crate::sending::get(url))
 }
@@ -72,16 +76,19 @@ pub struct MakeKnockResBody {
 impl MakeKnockResBody {
     /// Creates a new `Response` with the given room version ID and event.
     pub fn new(room_version: RoomVersionId, event: Box<RawJsonValue>) -> Self {
-        Self { room_version, event }
+        Self {
+            room_version,
+            event,
+        }
     }
 }
 
-/// `PUT /_matrix/federation/*/send_knock/{room_id}/{event_id}`
-///
-/// Submits a signed knock event to the resident homeserver for it to accept
-/// into the room's graph. `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1send_knockroomideventid
+// /// `PUT /_matrix/federation/*/send_knock/{room_id}/{event_id}`
+// ///
+// /// Submits a signed knock event to the resident homeserver for it to accept
+// /// into the room's graph. `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/server-server-api/#put_matrixfederationv1send_knockroomideventid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
@@ -94,12 +101,16 @@ impl MakeKnockResBody {
 // "/_matrix/federation/v1/send_knock/:room_id/:event_id",     }
 // };
 
-pub fn send_knock_request(origin: &str, args: SendKnockReqArgs, body: SendKnockReqBody) -> SendResult<SendRequest> {
+pub fn send_knock_request(
+    origin: &str,
+    args: SendKnockReqArgs,
+    body: SendKnockReqBody,
+) -> SendResult<SendRequest> {
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/send_knock/{}/{}",
         args.room_id, args.event_id
     ))?;
-    Ok(crate::sending::put(url).stuff(body)?)
+    crate::sending::put(url).stuff(body)
 }
 
 #[derive(ToParameters, Deserialize, Debug)]

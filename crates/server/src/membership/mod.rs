@@ -11,7 +11,9 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue};
+use crate::core::serde::{
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
+};
 use crate::core::{UnixMillis, federation};
 use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
@@ -42,7 +44,8 @@ async fn validate_and_add_event_id(
     })?;
     let event_id = EventId::parse(format!(
         "${}",
-        crate::core::signatures::reference_hash(&value, room_version).expect("palpo can calculate reference hashes")
+        crate::core::signatures::reference_hash(&value, room_version)
+            .expect("palpo can calculate reference hashes")
     ))
     .expect("palpo's reference hash~es are valid event ids");
 
@@ -115,7 +118,7 @@ pub fn update_membership(
 ) -> AppResult<()> {
     let conf = crate::config::get();
     // Keep track what remote users exist by adding them as "deactivated" users
-    if user_id.server_name() != &conf.server_name && !crate::data::user::user_exists(user_id)? {
+    if user_id.server_name() != conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
@@ -129,11 +132,16 @@ pub fn update_membership(
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
-            if !(room::user::is_joined(user_id, room_id)? || room::user::is_left(user_id, room_id)?) {
+            if !(room::user::is_joined(user_id, room_id)? || room::user::is_left(user_id, room_id)?)
+            {
                 // Check if the room has a predecessor
-                if let Ok(Some(predecessor)) =
-                    room::get_state_content::<RoomCreateEventContent>(room_id, &StateEventType::RoomCreate, "", None)
-                        .map(|c| c.predecessor)
+                if let Ok(Some(predecessor)) = room::get_state_content::<RoomCreateEventContent>(
+                    room_id,
+                    &StateEventType::RoomCreate,
+                    "",
+                    None,
+                )
+                .map(|c| c.predecessor)
                 {
                     // Copy user settings from predecessor to the current room:
                     // - Push rules
@@ -176,11 +184,13 @@ pub fn update_membership(
                     };
 
                     // Copy direct chat flag
-                    if let Some(mut direct_event_content) = crate::data::user::get_data::<DirectEventContent>(
-                        user_id,
-                        None,
-                        &GlobalAccountDataEventType::Direct.to_string(),
-                    )? {
+                    if let Some(mut direct_event_content) =
+                        crate::data::user::get_data::<DirectEventContent>(
+                            user_id,
+                            None,
+                            &GlobalAccountDataEventType::Direct.to_string(),
+                        )?
+                    {
                         let mut room_ids_updated = false;
 
                         for room_ids in direct_event_content.0.values_mut() {
@@ -220,7 +230,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -262,7 +272,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
@@ -300,7 +310,7 @@ pub fn update_membership(
                         room_id: room_id.to_owned(),
                         room_server_id: room_id
                             .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {}", s)))?
+                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
                             .to_owned(),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),

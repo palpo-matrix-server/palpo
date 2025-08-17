@@ -153,14 +153,14 @@ pub struct RegisterResBody {
     pub expires_in: Option<Duration>,
 }
 
-/// `GET /_matrix/client/*/register/available`
-///        1.0 => "/_matrix/client/r0/register/available",
-///        1.1 => "/_matrix/client/v3/register/available",
-///
-/// Checks to see if a username is available, and valid, for the server.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3registeravailable
+// /// `GET /_matrix/client/*/register/available`
+// ///        1.0 => "/_matrix/client/r0/register/available",
+// ///        1.1 => "/_matrix/client/v3/register/available",
+// ///
+// /// Checks to see if a username is available, and valid, for the server.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3registeravailable
 
 /// Response type for the `get_username_availability` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
@@ -176,12 +176,12 @@ impl AvailableResBody {
     }
 }
 
-/// `GET /_matrix/client/*/register/m.login.registration_token/validity`
-///
-/// Checks to see if the given registration token is valid.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1registermloginregistration_tokenvalidity
+// /// `GET /_matrix/client/*/register/m.login.registration_token/validity`
+// ///
+// /// Checks to see if the given registration token is valid.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1registermloginregistration_tokenvalidity
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -210,11 +210,11 @@ pub struct ValidateTokenResBody {
 }
 
 // `POST /_matrix/client/*/register/email/requestToken`
-/// Request a registration token with a 3rd party email.
-///
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3registeremailrequesttoken
+// /// Request a registration token with a 3rd party email.
+// ///
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3registeremailrequesttoken
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -262,12 +262,12 @@ pub struct TokenVisEmailResBody {
     pub submit_url: Option<String>,
 }
 
-/// `POST /_matrix/client/*/register/msisdn/requestToken`
-///
-/// Request a registration token with a phone number.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3registermsisdnrequesttoken
+// /// `POST /_matrix/client/*/register/msisdn/requestToken`
+// ///
+// /// Request a registration token with a phone number.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3registermsisdnrequesttoken
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,

@@ -15,7 +15,11 @@ pub fn router() -> Router {
 /// Gets the space tree in a depth-first manner to locate child rooms of a given
 /// space.
 #[endpoint]
-async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot) -> JsonResult<HierarchyResBody> {
+async fn get_hierarchy(
+    _aa: AuthArgs,
+    args: HierarchyReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<HierarchyResBody> {
     if !crate::room::room_exists(&args.room_id)? {
         return Err(MatrixError::not_found("Room does not exist.").into());
     }
@@ -24,7 +28,7 @@ async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot)
 
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
-    let ref identifier = Identifier::ServerName(origin);
+    let identifier = &Identifier::ServerName(origin);
     match crate::room::space::get_summary_and_children_local(room_id, identifier).await? {
         None => Err(MatrixError::not_found("The requested room was not found").into()),
 
@@ -42,7 +46,9 @@ async fn get_hierarchy(_aa: AuthArgs, args: HierarchyReqArgs, depot: &mut Depot)
                     {
                         None => None,
                         Some(SummaryAccessibility::Inaccessible) => Some((None, Some(child))),
-                        Some(SummaryAccessibility::Accessible(summary)) => Some((Some(summary), None)),
+                        Some(SummaryAccessibility::Accessible(summary)) => {
+                            Some((Some(summary), None))
+                        }
                     }
                 })
                 .unzip()

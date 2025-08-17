@@ -25,7 +25,8 @@ pub mod single_element_seq;
 mod strings;
 pub mod test;
 pub use canonical_json::{
-    CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, from_canonical_value, to_canonical_value,
+    CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, from_canonical_value,
+    to_canonical_value,
 };
 
 pub use self::{
@@ -35,8 +36,9 @@ pub use self::{
     cow::deserialize_cow_str,
     raw_json::RawJson,
     strings::{
-        btreemap_deserialize_v1_powerlevel_values, deserialize_as_f64_or_string, deserialize_as_optional_f64_or_string,
-        deserialize_v1_powerlevel, empty_string_as_none, none_as_empty_string, vec_deserialize_int_powerlevel_values,
+        btreemap_deserialize_v1_powerlevel_values, deserialize_as_f64_or_string,
+        deserialize_as_optional_f64_or_string, deserialize_v1_powerlevel, empty_string_as_none,
+        none_as_empty_string, vec_deserialize_int_powerlevel_values,
         vec_deserialize_v1_powerlevel_values,
     },
 };
@@ -113,6 +115,6 @@ where
 }
 
 pub use crate::macros::{
-    AsRefStr, DebugAsRefStr, DeserializeFromCowStr, DisplayAsRefStr, FromString, OrdAsRefStr, PartialEqAsRefStr,
-    PartialOrdAsRefStr, SerializeAsRefStr, StringEnum,
+    AsRefStr, DebugAsRefStr, DeserializeFromCowStr, DisplayAsRefStr, FromString, OrdAsRefStr,
+    PartialEqAsRefStr, PartialOrdAsRefStr, SerializeAsRefStr, StringEnum,
 };

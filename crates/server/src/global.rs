@@ -40,15 +40,17 @@ pub type RoomMutexGuard = MutexMapGuard<OwnedRoomId, ()>;
 
 pub type LazyRwLock<T> = LazyLock<RwLock<T>>;
 pub static TLS_NAME_OVERRIDE: LazyRwLock<TlsNameMap> = LazyLock::new(Default::default);
-pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> = LazyLock::new(Default::default);
+pub static BAD_EVENT_RATE_LIMITER: LazyRwLock<HashMap<OwnedEventId, RateLimitState>> =
+    LazyLock::new(Default::default);
 pub static BAD_SIGNATURE_RATE_LIMITER: LazyRwLock<HashMap<Vec<String>, RateLimitState>> =
     LazyLock::new(Default::default);
 pub static BAD_QUERY_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, RateLimitState>> =
     LazyLock::new(Default::default);
 pub static SERVER_NAME_RATE_LIMITER: LazyRwLock<HashMap<OwnedServerName, Arc<Semaphore>>> =
     LazyLock::new(Default::default);
-pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<HashMap<OwnedRoomId, (OwnedEventId, Instant)>> =
-    LazyLock::new(Default::default);
+pub static ROOM_ID_FEDERATION_HANDLE_TIME: LazyRwLock<
+    HashMap<OwnedRoomId, (OwnedEventId, Instant)>,
+> = LazyLock::new(Default::default);
 pub static APPSERVICE_IN_ROOM_CACHE: LazyRwLock<HashMap<OwnedRoomId, HashMap<String, bool>>> =
     LazyRwLock::new(Default::default);
 pub static ROTATE: LazyLock<RotationHandler> = LazyLock::new(Default::default);
@@ -99,7 +101,11 @@ pub fn seqnum_reach(sn: Seqnum) -> SeqnumQueueFuture {
 pub fn dns_resolver() -> &'static HickoryResolver<TokioConnectionProvider> {
     static DNS_RESOLVER: OnceLock<HickoryResolver<TokioConnectionProvider>> = OnceLock::new();
     DNS_RESOLVER.get_or_init(|| {
-        HickoryResolver::builder_with_config(ResolverConfig::default(), TokioConnectionProvider::default()).build()
+        HickoryResolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default(),
+        )
+        .build()
     })
 }
 
@@ -134,7 +140,10 @@ pub fn appservices() -> &'static Vec<Registration> {
                 continue;
             };
             let registration = match ext.to_str() {
-                Some("yaml") | Some("yml") => match Figment::new().merge(Yaml::file(&path)).extract::<Registration>() {
+                Some("yaml") | Some("yml") => match Figment::new()
+                    .merge(Yaml::file(&path))
+                    .extract::<Registration>()
+                {
                     Ok(registration) => registration,
                     Err(e) => {
                         tracing::error!(
@@ -144,7 +153,10 @@ pub fn appservices() -> &'static Vec<Registration> {
                         continue;
                     }
                 },
-                Some("toml") => match Figment::new().merge(Toml::file(&path)).extract::<Registration>() {
+                Some("toml") => match Figment::new()
+                    .merge(Toml::file(&path))
+                    .extract::<Registration>()
+                {
                     Ok(registration) => registration,
                     Err(e) => {
                         tracing::error!(
@@ -173,7 +185,9 @@ pub fn appservices() -> &'static Vec<Registration> {
             ))
             .unwrap();
             let mut conn = connect().expect("db connect failed");
-            if !diesel_exists!(users::table.filter(users::id.eq(&user_id)), &mut conn).expect("db query failed") {
+            if !diesel_exists!(users::table.filter(users::id.eq(&user_id)), &mut conn)
+                .expect("db query failed")
+            {
                 diesel::insert_into(users::table)
                     .values(NewDbUser {
                         id: user_id.to_owned(),
@@ -196,7 +210,7 @@ pub fn appservices() -> &'static Vec<Registration> {
                 diesel::insert_into(user_devices::table)
                     .values(NewDbUserDevice {
                         user_id,
-                        device_id: OwnedDeviceId::try_from("_").expect("must be valid"),
+                        device_id: OwnedDeviceId::from("_"),
                         display_name: Some("[Default]".to_string()),
                         user_agent: None,
                         is_hidden: true,
@@ -222,7 +236,7 @@ pub fn add_signing_key_from_trusted_server(
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
 
-    let prev_keys: Option<ServerSigningKeys> = key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(serde_json::from_value).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {
@@ -268,14 +282,17 @@ pub fn add_signing_key_from_trusted_server(
         Ok(new_keys.into())
     }
 }
-pub fn add_signing_key_from_origin(origin: &ServerName, new_keys: ServerSigningKeys) -> AppResult<SigningKeys> {
+pub fn add_signing_key_from_origin(
+    origin: &ServerName,
+    new_keys: ServerSigningKeys,
+) -> AppResult<SigningKeys> {
     let key_data = server_signing_keys::table
         .filter(server_signing_keys::server_id.eq(origin))
         .select(server_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
 
-    let prev_keys: Option<ServerSigningKeys> = key_data.map(|key_data| serde_json::from_value(key_data)).transpose()?;
+    let prev_keys: Option<ServerSigningKeys> = key_data.map(serde_json::from_value).transpose()?;
 
     if let Some(mut prev_keys) = prev_keys {
         let ServerSigningKeys {
@@ -376,7 +393,11 @@ pub fn filter_keys_single_server(
     {
         // Given that either the room version allows stale keys, or the valid_until_ts is
         // in the future, all verify_keys are valid
-        let mut map: BTreeMap<_, _> = keys.verify_keys.into_iter().map(|(id, key)| (id, key.key)).collect();
+        let mut map: BTreeMap<_, _> = keys
+            .verify_keys
+            .into_iter()
+            .map(|(id, key)| (id, key.key))
+            .collect();
 
         map.extend(keys.old_verify_keys.into_iter().filter_map(|(id, key)| {
             // Even on old room versions, we don't allow old keys if they are expired
@@ -402,7 +423,12 @@ pub fn shutdown() {
 
 pub fn parse_incoming_pdu(
     raw_value: &RawJsonValue,
-) -> AppResult<(OwnedEventId, CanonicalJsonObject, OwnedRoomId, RoomVersionId)> {
+) -> AppResult<(
+    OwnedEventId,
+    CanonicalJsonObject,
+    OwnedRoomId,
+    RoomVersionId,
+)> {
     let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
         warn!("Error parsing incoming event {:?}: {:?}", raw_value, e);
         MatrixError::bad_json("Invalid PDU in server response")
@@ -419,7 +445,9 @@ pub fn parse_incoming_pdu(
         Ok(t) => t,
         Err(_) => {
             // Event could not be converted to canonical json
-            return Err(MatrixError::invalid_param("could not convert event to canonical json").into());
+            return Err(
+                MatrixError::invalid_param("could not convert event to canonical json").into(),
+            );
         }
     };
     Ok((event_id, value, room_id, room_version_id))

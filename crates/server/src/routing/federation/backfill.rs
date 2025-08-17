@@ -13,7 +13,11 @@ pub fn router() -> Router {
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]
-async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> JsonResult<BackfillResBody> {
+async fn history(
+    _aa: AuthArgs,
+    args: BackfillReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<BackfillResBody> {
     let origin = depot.origin()?;
     debug!("Got backfill request from: {}", origin);
 
@@ -27,7 +31,7 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     let limit = args.limit.min(100);
 
     let all_events = timeline::get_pdus_backward(
-        &user_id!("@doesntmatter:palpo.im"),
+        user_id!("@doesntmatter:palpo.im"),
         &args.room_id,
         until,
         None,
@@ -39,7 +43,9 @@ async fn history(_aa: AuthArgs, args: BackfillReqArgs, depot: &mut Depot) -> Jso
     for (_, pdu) in all_events {
         if state::server_can_see_event(origin, &args.room_id, &pdu.event_id)? {
             if let Some(pdu_json) = timeline::get_pdu_json(&pdu.event_id)? {
-                events.push(crate::sending::convert_to_outgoing_federation_event(pdu_json));
+                events.push(crate::sending::convert_to_outgoing_federation_event(
+                    pdu_json,
+                ));
             }
         }
     }

@@ -71,8 +71,14 @@ mod tests {
 
     #[test]
     fn parse_device_key_algorithm() {
-        assert_eq!(DeviceKeyAlgorithm::from("ed25519"), DeviceKeyAlgorithm::Ed25519);
-        assert_eq!(DeviceKeyAlgorithm::from("curve25519"), DeviceKeyAlgorithm::Curve25519);
+        assert_eq!(
+            DeviceKeyAlgorithm::from("ed25519"),
+            DeviceKeyAlgorithm::Ed25519
+        );
+        assert_eq!(
+            DeviceKeyAlgorithm::from("curve25519"),
+            DeviceKeyAlgorithm::Curve25519
+        );
         assert_eq!(
             DeviceKeyAlgorithm::from("signed_curve25519"),
             DeviceKeyAlgorithm::SignedCurve25519
@@ -81,7 +87,10 @@ mod tests {
 
     #[test]
     fn parse_signing_key_algorithm() {
-        assert_eq!(SigningKeyAlgorithm::from("ed25519"), SigningKeyAlgorithm::Ed25519);
+        assert_eq!(
+            SigningKeyAlgorithm::from("ed25519"),
+            SigningKeyAlgorithm::Ed25519
+        );
     }
 
     #[test]
@@ -91,12 +100,18 @@ mod tests {
         use super::EventEncryptionAlgorithm;
         use crate::serde::test::serde_json_eq;
 
-        serde_json_eq(EventEncryptionAlgorithm::MegolmV1AesSha2, json!("m.megolm.v1.aes-sha2"));
+        serde_json_eq(
+            EventEncryptionAlgorithm::MegolmV1AesSha2,
+            json!("m.megolm.v1.aes-sha2"),
+        );
         serde_json_eq(
             EventEncryptionAlgorithm::OlmV1Curve25519AesSha2,
             json!("m.olm.v1.curve25519-aes-sha2"),
         );
-        serde_json_eq(EventEncryptionAlgorithm::from("io.palpo.test"), json!("io.palpo.test"));
+        serde_json_eq(
+            EventEncryptionAlgorithm::from("io.palpo.test"),
+            json!("io.palpo.test"),
+        );
     }
 
     #[test]

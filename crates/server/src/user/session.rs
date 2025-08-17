@@ -31,9 +31,8 @@ fn init_jwt_verifier(config: &JwtConfig) -> AppResult<DecodingKey> {
         "HMACB64" => DecodingKey::from_base64_secret(secret.as_str())
             .map_err(|_e| AppError::public("jwt secret is not valid base64"))?,
 
-        "ECDSA" => {
-            DecodingKey::from_ec_pem(secret.as_bytes()).map_err(|_e| AppError::public("jwt key is not valid PEM"))?
-        }
+        "ECDSA" => DecodingKey::from_ec_pem(secret.as_bytes())
+            .map_err(|_e| AppError::public("jwt key is not valid PEM"))?,
 
         _ => return Err(AppError::public("jwt secret format is not supported")),
     })
@@ -41,8 +40,8 @@ fn init_jwt_verifier(config: &JwtConfig) -> AppResult<DecodingKey> {
 
 fn init_jwt_validator(config: &JwtConfig) -> AppResult<Validation> {
     let alg = config.algorithm.as_str();
-    let alg =
-        Algorithm::from_str(alg).map_err(|_e| AppError::public("jwt algorithm is not recognized or configured"))?;
+    let alg = Algorithm::from_str(alg)
+        .map_err(|_e| AppError::public("jwt algorithm is not recognized or configured"))?;
 
     let mut validator = Validation::new(alg);
     let mut required_spec_claims: Vec<_> = ["sub"].into();

@@ -25,7 +25,9 @@ pub(crate) async fn send_request(
     }
 
     if destination == config::get().server_name {
-        return Err(AppError::public("Won't send federation request to ourselves"));
+        return Err(AppError::public(
+            "Won't send federation request to ourselves",
+        ));
     }
 
     debug!("Preparing to send request to {destination}");
@@ -45,17 +47,29 @@ pub(crate) async fn send_request(
         format!(
             "{}{}",
             request.url().path(),
-            request.url().query().map(|q| format!("?{q}")).unwrap_or_default()
+            request
+                .url()
+                .query()
+                .map(|q| format!("?{q}"))
+                .unwrap_or_default()
         )
         .into(),
     );
-    request_map.insert("origin".to_owned(), config::get().server_name.as_str().into());
+    request_map.insert(
+        "origin".to_owned(),
+        config::get().server_name.as_str().into(),
+    );
     request_map.insert("destination".to_owned(), destination.as_str().into());
 
-    let mut request_json = serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
+    let mut request_json =
+        serde_json::from_value(request_map.into()).expect("valid JSON is valid BTreeMap");
 
-    signatures::sign_json(config::get().server_name.as_str(), config::keypair(), &mut request_json)
-        .expect("our request json is what palpo expects");
+    signatures::sign_json(
+        config::get().server_name.as_str(),
+        config::keypair(),
+        &mut request_json,
+    )
+    .expect("our request json is what palpo expects");
 
     let request_json: serde_json::Map<String, serde_json::Value> =
         serde_json::from_slice(&serde_json::to_vec(&request_json).unwrap()).unwrap();
@@ -64,13 +78,18 @@ pub(crate) async fn send_request(
         .as_object()
         .unwrap()
         .values()
-        .map(|v| v.as_object().unwrap().iter().map(|(k, v)| (k, v.as_str().unwrap())));
+        .map(|v| {
+            v.as_object()
+                .unwrap()
+                .iter()
+                .map(|(k, v)| (k, v.as_str().unwrap()))
+        });
 
     for signature_server in signatures {
         for s in signature_server {
             request.headers_mut().insert(
                 AUTHORIZATION,
-                XMatrix::parse(&format!(
+                XMatrix::parse(format!(
                     "X-Matrix origin=\"{}\",destination=\"{}\",key=\"{}\",sig=\"{}\"",
                     config::get().server_name,
                     destination,
@@ -94,7 +113,8 @@ pub(crate) async fn send_request(
             if status == 200 {
                 Ok(response)
             } else {
-                let authenticate = if let Some(header) = response.headers().get("WWW-Authenticate") {
+                let authenticate = if let Some(header) = response.headers().get("WWW-Authenticate")
+                {
                     if let Ok(header) = header.to_str() {
                         AuthenticateError::from_str(header)
                     } else {
@@ -105,7 +125,8 @@ pub(crate) async fn send_request(
                 };
                 let body = response.text().await.unwrap_or_default();
                 warn!("Answer from {destination}({url}) {status}: {body}");
-                let mut extra = serde_json::from_str::<serde_json::Map<String, JsonValue>>(&body).unwrap_or_default();
+                let mut extra = serde_json::from_str::<serde_json::Map<String, JsonValue>>(&body)
+                    .unwrap_or_default();
                 let msg = extra
                     .remove("error")
                     .map(|v| v.as_str().unwrap_or_default().to_owned())
@@ -113,14 +134,18 @@ pub(crate) async fn send_request(
                 Err(MatrixError {
                     status_code: Some(status),
                     authenticate,
-                    kind: serde_json::from_value(JsonValue::Object(extra)).unwrap_or(ErrorKind::Unknown),
+                    kind: serde_json::from_value(JsonValue::Object(extra))
+                        .unwrap_or(ErrorKind::Unknown),
                     body: msg.into(),
                 }
                 .into())
             }
         }
         Err(e) => {
-            warn!("Could not send request to {} at {}: {}", destination, url, e);
+            warn!(
+                "Could not send request to {} at {}: {}",
+                destination, url, e
+            );
             Err(e.into())
         }
     }
@@ -185,11 +210,17 @@ pub(crate) async fn user_can_perform_restricted_join(
     {
         Ok(true)
     } else {
-        Err(MatrixError::unable_to_authorize_join("Joining user is not known to be in any required room.").into())
+        Err(MatrixError::unable_to_authorize_join(
+            "Joining user is not known to be in any required room.",
+        )
+        .into())
     }
 }
 
-pub(crate) fn maybe_strip_event_id(pdu_json: &mut CanonicalJsonObject, room_version_id: &RoomVersionId) -> bool {
+pub(crate) fn maybe_strip_event_id(
+    pdu_json: &mut CanonicalJsonObject,
+    room_version_id: &RoomVersionId,
+) -> bool {
     match room_version_id {
         RoomVersionId::V1 | RoomVersionId::V2 => false,
         _ => {

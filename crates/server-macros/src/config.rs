@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{ToTokens, quote};
 use syn::{
-    Error, Expr, ExprLit, Field, Fields, FieldsNamed, ItemStruct, Lit, Meta, MetaList, MetaNameValue, Type, TypePath,
-    parse::Parser, punctuated::Punctuated, spanned::Spanned,
+    Error, Expr, ExprLit, Field, Fields, FieldsNamed, ItemStruct, Lit, Meta, MetaList,
+    MetaNameValue, Type, TypePath, parse::Parser, punctuated::Punctuated, spanned::Spanned,
 };
 
 use crate::{
@@ -35,19 +35,28 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
 
     let section = settings.get("section");
 
-    let filename = settings
-        .get("filename")
-        .ok_or_else(|| Error::new(args[0].span(), "missing required 'filename' attribute argument"))?;
+    let filename = settings.get("filename").ok_or_else(|| {
+        Error::new(
+            args[0].span(),
+            "missing required 'filename' attribute argument",
+        )
+    })?;
 
-    let undocumented = settings.get("undocumented").map_or(UNDOCUMENTED, String::as_str);
+    let undocumented = settings
+        .get("undocumented")
+        .map_or(UNDOCUMENTED, String::as_str);
 
-    let ignore: HashSet<&str> = settings.get("ignore").map_or("", String::as_str).split(' ').collect();
+    let ignore: HashSet<&str> = settings
+        .get("ignore")
+        .map_or("", String::as_str)
+        .split(' ')
+        .collect();
 
     let fopts = OpenOptions::new()
         .write(true)
         .create(section.is_none())
         .truncate(section.is_none())
-        .append(!section.is_none())
+        .append(section.is_some())
         .clone();
 
     let mut file = write
@@ -61,7 +70,8 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
 
     if let Some(file) = file.as_mut() {
         if let Some(header) = settings.get("header") {
-            file.write_all(header.as_bytes()).expect("written to config file");
+            file.write_all(header.as_bytes())
+                .expect("written to config file");
         }
 
         if let Some(section) = section {
@@ -107,7 +117,8 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
             };
 
             if let Some(file) = file.as_mut() {
-                file.write_fmt(format_args!("\n{doc}")).expect("written to config file");
+                file.write_fmt(format_args!("\n{doc}"))
+                    .expect("written to config file");
 
                 file.write_fmt(format_args!("# {ident} ={default}\n"))
                     .expect("written to config file");
@@ -139,7 +150,8 @@ fn generate_example_inner(input: &ItemStruct, args: &[Meta], write: bool) -> Res
 
     if let Some(file) = file.as_mut() {
         if let Some(footer) = settings.get("footer") {
-            file.write_all(footer.as_bytes()).expect("written to config file");
+            file.write_all(footer.as_bytes())
+                .expect("written to config file");
         }
     }
 
@@ -164,7 +176,12 @@ fn get_default(field: &Field) -> Option<String> {
             continue;
         };
 
-        if path.segments.iter().next().is_none_or(|s| s.ident != "serde") {
+        if path
+            .segments
+            .iter()
+            .next()
+            .is_none_or(|s| s.ident != "serde")
+        {
             continue;
         }
 
@@ -180,7 +197,10 @@ fn get_default(field: &Field) -> Option<String> {
 
         match arg {
             Meta::NameValue(MetaNameValue {
-                value: Expr::Lit(ExprLit { lit: Lit::Str(str), .. }),
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(str), ..
+                    }),
                 ..
             }) => {
                 match str.value().as_str() {
@@ -203,9 +223,9 @@ fn get_doc_comment(field: &Field) -> Option<String> {
     let out = comment
         .lines()
         .filter(|line| {
-            !HIDDEN
-                .iter()
-                .any(|key| line.trim().starts_with(key) && line.trim().chars().nth(key.len()) == Some(':'))
+            !HIDDEN.iter().any(|key| {
+                line.trim().starts_with(key) && line.trim().chars().nth(key.len()) == Some(':')
+            })
         })
         .fold(String::new(), |full, line| full + "#" + line + "\n");
 
@@ -261,5 +281,8 @@ fn get_type_name(field: &Field) -> Option<String> {
         return None;
     };
 
-    path.segments.iter().next().map(|segment| segment.ident.to_string())
+    path.segments
+        .iter()
+        .next()
+        .map(|segment| segment.ident.to_string())
 }

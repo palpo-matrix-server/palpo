@@ -4,7 +4,10 @@ use syn::{Ident, LitStr, parse_quote};
 
 use super::event_parse::{EventEnumEntry, EventEnumInput, EventKind};
 
-pub fn expand_event_type_enum(input: EventEnumInput, palpo_core: &TokenStream) -> syn::Result<TokenStream> {
+pub fn expand_event_type_enum(
+    input: EventEnumInput,
+    palpo_core: &TokenStream,
+) -> syn::Result<TokenStream> {
     let mut timeline: Vec<&Vec<EventEnumEntry>> = vec![];
     let mut state: Vec<&Vec<EventEnumEntry>> = vec![];
     let mut message: Vec<&Vec<EventEnumEntry>> = vec![];
@@ -26,7 +29,10 @@ pub fn expand_event_type_enum(input: EventEnumInput, palpo_core: &TokenStream) -
                 timeline.push(&event.events);
             }
             EventKind::ToDevice => to_device.push(&event.events),
-            EventKind::RoomRedaction | EventKind::Presence | EventKind::Decrypted | EventKind::HierarchySpaceChild => {}
+            EventKind::RoomRedaction
+            | EventKind::Presence
+            | EventKind::Decrypted
+            | EventKind::HierarchySpaceChild => {}
         }
     }
     let presence = vec![EventEnumEntry {
@@ -42,14 +48,20 @@ pub fn expand_event_type_enum(input: EventEnumInput, palpo_core: &TokenStream) -
     let mut res = TokenStream::new();
 
     res.extend(
-        generate_enum("TimelineEventType", &timeline, palpo_core).unwrap_or_else(syn::Error::into_compile_error),
-    );
-    res.extend(generate_enum("StateEventType", &state, palpo_core).unwrap_or_else(syn::Error::into_compile_error));
-    res.extend(
-        generate_enum("MessageLikeEventType", &message, palpo_core).unwrap_or_else(syn::Error::into_compile_error),
+        generate_enum("TimelineEventType", &timeline, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
     );
     res.extend(
-        generate_enum("EphemeralRoomEventType", &ephemeral, palpo_core).unwrap_or_else(syn::Error::into_compile_error),
+        generate_enum("StateEventType", &state, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
+    );
+    res.extend(
+        generate_enum("MessageLikeEventType", &message, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
+    );
+    res.extend(
+        generate_enum("EphemeralRoomEventType", &ephemeral, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
     );
     res.extend(
         generate_enum("RoomAccountDataEventType", &room_account, palpo_core)
@@ -60,15 +72,23 @@ pub fn expand_event_type_enum(input: EventEnumInput, palpo_core: &TokenStream) -
             .unwrap_or_else(syn::Error::into_compile_error),
     );
     res.extend(
-        generate_enum("ToDeviceEventType", &to_device, palpo_core).unwrap_or_else(syn::Error::into_compile_error),
+        generate_enum("ToDeviceEventType", &to_device, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error),
     );
 
     Ok(res)
 }
 
-fn generate_enum(ident: &str, input: &[&Vec<EventEnumEntry>], palpo_core: &TokenStream) -> syn::Result<TokenStream> {
+fn generate_enum(
+    ident: &str,
+    input: &[&Vec<EventEnumEntry>],
+    palpo_core: &TokenStream,
+) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
-    let enum_doc = format!("The type of `{}` this is.", ident.strip_suffix("Type").unwrap());
+    let enum_doc = format!(
+        "The type of `{}` this is.",
+        ident.strip_suffix("Type").unwrap()
+    );
 
     let ident = Ident::new(ident, Span::call_site());
 
@@ -90,7 +110,9 @@ fn generate_enum(ident: &str, input: &[&Vec<EventEnumEntry>], palpo_core: &Token
         .iter()
         .map(|e| {
             let start = e.to_variant()?.decl();
-            let data = e.has_type_fragment().then(|| quote! { (::std::string::String) });
+            let data = e
+                .has_type_fragment()
+                .then(|| quote! { (::std::string::String) });
 
             Ok(quote! {
                 #start #data

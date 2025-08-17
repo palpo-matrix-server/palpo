@@ -1,5 +1,6 @@
+use std::iter::once;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{LazyLock, OnceLock};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -48,6 +49,8 @@ pub use url_preview::*;
 mod oidc;
 pub use oidc::*;
 
+use crate::AppResult;
+use crate::core::client::discovery::RoomVersionStability;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
 
@@ -73,7 +76,11 @@ pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(
 });
 
 fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
-    let ext = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or_default();
+    let ext = path
+        .as_ref()
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
     match ext {
         "yaml" | "yml" => Figment::new().merge(Yaml::file(path)),
         "json" => Figment::new().merge(Json::file(path)),
@@ -82,10 +89,8 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
     }
 }
 
-pub fn init() {
-    let config_file = Env::var("PALPO_CONFIG").unwrap_or("palpo.toml".into());
-
-    let config_path = PathBuf::from(config_file);
+pub fn init(config_path: impl AsRef<Path>) {
+    let config_path = config_path.as_ref();
     if !config_path.exists() {
         panic!(
             "Config file not found: `{}`, new default file will be created",
@@ -102,37 +107,45 @@ pub fn init() {
         }
     };
 
-    CONFIG.set(conf).expect("config should be set");
+    CONFIG.set(conf).expect("config should be set once");
 }
+pub fn reload(path: impl AsRef<Path>) -> AppResult<()> {
+    // TODO: reload config
+    Ok(())
+}
+
 pub fn get() -> &'static ServerConfig {
     CONFIG.get().unwrap()
 }
 
-pub fn server_user() -> String {
-    format!("@palpo:{}", get().server_name)
+pub static SERVER_USER_ID: OnceLock<OwnedUserId> = OnceLock::new();
+pub fn server_user_id() -> &'static UserId {
+    SERVER_USER_ID.get_or_init(|| {
+        format!("@palpo:{}", get().server_name)
+            .try_into()
+            .expect("invalid server user ID")
+    })
+}
+
+pub fn server_user() -> crate::data::user::DbUser {
+    crate::data::user::get_user(server_user_id()).expect("server user should exist in the database")
 }
 
 pub fn space_path() -> &'static str {
     get().space_path.deref()
 }
+pub fn server_name() -> &'static ServerName {
+    get().server_name.deref()
+}
 
-pub fn media_path(server_name: &ServerName, media_id: &str) -> PathBuf {
-    let server_name = if server_name == &get().server_name {
-        "_"
-    } else {
-        server_name.as_str()
-    };
-    let mut r = PathBuf::new();
-    r.push(space_path());
-    r.push("media");
-    r.push(server_name);
-    // let extension = extension.unwrap_or_default();
-    // if !extension.is_empty() {
-    //     r.push(format!("{media_id}.{extension}"));
-    // } else {
-    r.push(media_id);
-    // }
-    r
+static ADMIN_ALIAS: OnceLock<OwnedRoomAliasId> = OnceLock::new();
+pub fn admin_alias() -> &'static RoomAliasId {
+    ADMIN_ALIAS.get_or_init(|| {
+        let alias = format!("#admins:{}", get().server_name);
+        alias
+            .try_into()
+            .expect("admin alias should be a valid room alias")
+    })
 }
 
 pub fn appservice_registration_dir() -> Option<&'static str> {
@@ -147,7 +160,8 @@ pub fn keypair() -> &'static Ed25519KeyPair {
             let bytes = STANDARD
                 .decode(&keypair.document)
                 .expect("server keypair is invalid base64 string");
-            Ed25519KeyPair::from_der(&bytes, keypair.version.clone()).expect("invalid server Ed25519KeyPair")
+            Ed25519KeyPair::from_der(&bytes, keypair.version.clone())
+                .expect("invalid server Ed25519KeyPair")
         } else {
             crate::utils::generate_keypair()
         }
@@ -167,7 +181,7 @@ pub fn cidr_range_denylist() -> &'static [IPAddress] {
             .map(IPAddress::parse)
             .inspect(|cidr| trace!("Denied CIDR range: {cidr:?}"))
             .collect::<Result<_, String>>()
-            .expect("Invalid CIDR range in config")
+            .expect("invalid CIDR range in config")
     })
 }
 
@@ -194,4 +208,23 @@ pub fn supported_room_versions() -> Vec<RoomVersionId> {
 
 pub fn supports_room_version(room_version: &RoomVersionId) -> bool {
     supported_room_versions().contains(room_version)
+}
+
+pub type RoomVersion = (RoomVersionId, RoomVersionStability);
+pub fn available_room_versions() -> impl Iterator<Item = RoomVersion> {
+    let unstable_room_versions = UNSTABLE_ROOM_VERSIONS
+        .iter()
+        .cloned()
+        .zip(once(RoomVersionStability::Unstable).cycle());
+
+    STABLE_ROOM_VERSIONS
+        .iter()
+        .cloned()
+        .zip(once(RoomVersionStability::Stable).cycle())
+        .chain(unstable_room_versions)
+}
+
+#[inline]
+fn supported_stability(stability: &RoomVersionStability) -> bool {
+    get().allow_unstable_room_versions || *stability == RoomVersionStability::Stable
 }

@@ -49,7 +49,8 @@ mod tests {
     #[test]
     fn convert_device_key_id() {
         assert_eq!(
-            <&DeviceKeyId>::try_from("ed25519:JLAFKJWSCS").expect("Failed to create device key ID."),
+            <&DeviceKeyId>::try_from("ed25519:JLAFKJWSCS")
+                .expect("Failed to create device key ID."),
             "ed25519:JLAFKJWSCS"
         );
     }
@@ -64,7 +65,8 @@ mod tests {
 
     #[test]
     fn deserialize_device_key_id() {
-        let deserialized: OwnedDeviceKeyId = serde_json::from_value(serde_json::json!("ed25519:JLAFKJWSCS")).unwrap();
+        let deserialized: OwnedDeviceKeyId =
+            serde_json::from_value(serde_json::json!("ed25519:JLAFKJWSCS")).unwrap();
 
         let expected = <&DeviceKeyId>::try_from("ed25519:JLAFKJWSCS").unwrap();
         assert_eq!(deserialized, expected);

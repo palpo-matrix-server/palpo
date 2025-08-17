@@ -7,7 +7,10 @@ use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
 use crate::macros::StringEnum;
-use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId, power_levels::NotificationPowerLevels};
+use crate::{
+    OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId,
+    power_levels::NotificationPowerLevels,
+};
 
 mod flattened_json;
 mod push_condition_serde;
@@ -19,7 +22,6 @@ pub use self::{
 };
 
 /// Features supported by room versions.
-
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
 pub enum RoomVersionFeature {
@@ -157,7 +159,10 @@ impl PushCondition {
     ///   power levels context is missing from it, conditions that depend on it
     ///   will never apply.
     pub fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
-        if event.get_str("sender").is_some_and(|sender| sender == context.user_id) {
+        if event
+            .get_str("sender")
+            .is_some_and(|sender| sender == context.user_id)
+        {
             return false;
         }
 
@@ -185,7 +190,10 @@ impl PushCondition {
                     None => return false,
                 };
 
-                let sender_level = power_levels.users.get(sender_id).unwrap_or(&power_levels.users_default);
+                let sender_level = power_levels
+                    .users
+                    .get(sender_id)
+                    .unwrap_or(&power_levels.users_default);
 
                 match power_levels.notifications.get(key) {
                     Some(l) => sender_level >= l,
@@ -329,7 +337,8 @@ impl StrExt for str {
     fn char_at(&self, index: usize) -> char {
         let end = index + self.char_len(index);
         let char_str = &self[index..end];
-        char::from_str(char_str).unwrap_or_else(|_| panic!("Could not convert str '{char_str}' to char"))
+        char::from_str(char_str)
+            .unwrap_or_else(|_| panic!("Could not convert str '{char_str}' to char"))
     }
 
     fn find_prev_char(&self, index: usize) -> Option<char> {
@@ -363,7 +372,7 @@ impl StrExt for str {
             return false;
         }
 
-        let has_wildcards = pattern.contains(|c| matches!(c, '?' | '*'));
+        let has_wildcards = pattern.contains(['?', '*']);
 
         if has_wildcards {
             let mut chunks: Vec<String> = vec![];

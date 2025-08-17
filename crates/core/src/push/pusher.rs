@@ -75,7 +75,7 @@ pub enum PusherKind {
 }
 impl PusherKind {
     pub fn try_new(kind: &str, data: JsonValue) -> Result<Self, serde_json::Error> {
-        match kind.as_ref() {
+        match kind {
             "http" => from_json_value(data).map(Self::Http),
             "email" => Ok(Self::Email(EmailPusherData)),
             _ => from_json_value(data).map(Self::_Custom),
@@ -290,7 +290,7 @@ pub struct EmailPusherData;
 impl EmailPusherData {
     /// Creates a new empty `EmailPusherData`.
     pub fn new() -> Self {
-        Self::default()
+        Default::default()
     }
 }
 

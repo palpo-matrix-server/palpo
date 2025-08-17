@@ -68,11 +68,21 @@ pub enum AppError {
     #[error("CanonicalJson error: `{0}`")]
     CanonicalJson(#[from] palpo_core::serde::CanonicalJsonError),
     #[error("MxcUriError: `{0}`")]
-    MxcUriError(#[from] palpo_core::identifiers::MxcUriError),
+    MxcUri(#[from] palpo_core::identifiers::MxcUriError),
     #[error("ImageError: `{0}`")]
-    ImageError(#[from] image::ImageError),
+    Image(#[from] image::ImageError),
     #[error("Signatures: `{0}`")]
     Signatures(#[from] palpo_core::signatures::Error),
+    #[error("FmtError: `{0}`")]
+    Fmt(#[from] std::fmt::Error),
+    #[error("CargoTomlError: `{0}`")]
+    CargoToml(#[from] cargo_toml::Error),
+    #[error("YamlError: `{0}`")]
+    Yaml(#[from] serde_yaml::Error),
+    #[error("ClapError: `{0}`")]
+    Clap(#[from] clap::Error),
+    #[error("SystemTimeError: `{0}`")]
+    SystemTime(#[from] std::time::SystemTimeError),
 }
 
 impl AppError {
@@ -86,6 +96,14 @@ impl AppError {
     // pub fn local_unable_process<S: Into<String>>(msg: S) -> Self {
     //     Self::LocalUnableProcess(msg.into())
     // }
+
+    pub fn is_not_found(&self) -> bool {
+        match self {
+            Self::Diesel(diesel::result::Error::NotFound) => true,
+            Self::Matrix(e) => e.is_not_found(),
+            _ => false,
+        }
+    }
 }
 
 #[async_trait]
@@ -103,10 +121,16 @@ impl Writer for AppError {
                 if res.status_code.map(|c| c.is_success()).unwrap_or(true) {
                     let code = if let Some(error) = &uiaa.auth_error {
                         match &error.kind {
-                            ErrorKind::Forbidden { .. } | ErrorKind::UserDeactivated => StatusCode::FORBIDDEN,
+                            ErrorKind::Forbidden { .. } | ErrorKind::UserDeactivated => {
+                                StatusCode::FORBIDDEN
+                            }
                             ErrorKind::NotFound => StatusCode::NOT_FOUND,
-                            ErrorKind::BadStatus { status, .. } => status.unwrap_or(StatusCode::BAD_REQUEST),
-                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadAlias => StatusCode::BAD_REQUEST,
+                            ErrorKind::BadStatus { status, .. } => {
+                                status.unwrap_or(StatusCode::BAD_REQUEST)
+                            }
+                            ErrorKind::BadState | ErrorKind::BadJson | ErrorKind::BadAlias => {
+                                StatusCode::BAD_REQUEST
+                            }
                             ErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
                             ErrorKind::CannotOverwriteMedia => StatusCode::CONFLICT,
                             ErrorKind::NotYetUploaded => StatusCode::GATEWAY_TIMEOUT,
@@ -154,11 +178,13 @@ impl EndpointOutRegister for AppError {
         );
         operation.responses.insert(
             StatusCode::NOT_FOUND.as_str(),
-            oapi::Response::new("Not found").add_content("application/json", StatusError::to_schema(components)),
+            oapi::Response::new("Not found")
+                .add_content("application/json", StatusError::to_schema(components)),
         );
         operation.responses.insert(
             StatusCode::BAD_REQUEST.as_str(),
-            oapi::Response::new("Bad request").add_content("application/json", StatusError::to_schema(components)),
+            oapi::Response::new("Bad request")
+                .add_content("application/json", StatusError::to_schema(components)),
         );
     }
 }

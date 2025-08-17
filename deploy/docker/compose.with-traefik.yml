@@ -1,0 +1,96 @@
+# palpo - Traefik 反向代理之后
+
+services:
+  palpo:
+    ### 如果您已经使用 'docker build' 构建了 palpo 镜像，或者想使用 Docker Hub 镜像，
+    ### 那么您就可以开始了。
+    image: ghcr.io/palpo-im/palpo:latest
+    restart: unless-stopped
+    volumes:
+      - db:/var/lib/palpo
+      #- ./palpo.toml:/etc/palpo.toml
+    networks:
+      - proxy
+    environment:
+      PALPO_CONFIG: '/var/palpo/palpo.toml'
+
+  traefik:
+    image: "traefik:latest"
+    container_name: "traefik"
+    restart: "unless-stopped"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:z"
+      - "acme:/etc/traefik/acme"
+      #- "./traefik_config:/etc/traefik:z"
+    labels:
+      - "traefik.enable=true"
+
+      # 中间件重定向
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      # 全局重定向到 https
+      - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.redirs.entrypoints=web"
+      - "traefik.http.routers.redirs.middlewares=redirect-to-https"
+
+    configs:
+      - source: dynamic.yml
+        target: /etc/traefik/dynamic.yml
+
+    environment:
+      TRAEFIK_LOG_LEVEL: DEBUG
+      TRAEFIK_ENTRYPOINTS_WEB: true
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":80"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: websecure
+
+      TRAEFIK_ENTRYPOINTS_WEBSECURE: true
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: ":443"
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER: letsencrypt
+      #TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_MIDDLEWARES: secureHeaders@file # 如果要启用 STS
+
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT: true
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: # 设置您希望接收证书过期电子邮件的邮箱
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_KEYTYPE: EC384
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE: true
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT: web
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE: "/etc/traefik/acme/acme.json"
+
+      TRAEFIK_PROVIDERS_DOCKER: true
+      TRAEFIK_PROVIDERS_DOCKER_ENDPOINT: "unix:///var/run/docker.sock"
+      TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT: false
+
+      TRAEFIK_PROVIDERS_FILE: true
+      TRAEFIK_PROVIDERS_FILE_FILENAME: "/etc/traefik/dynamic.yml"
+
+configs:
+  dynamic.yml:
+    content: |
+      # 可选设置 STS 标头，如 https://hstspreload.org
+      # http:
+      #   middlewares:
+      #     secureHeaders:
+      #       headers:
+      #         forceSTSHeader: true
+      #         stsIncludeSubdomains: true
+      #         stsPreload: true
+      #         stsSeconds: 31536000
+      tls:
+        options:
+          default:
+            cipherSuites:
+              - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+              - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+              - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+              - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+              - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+              - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+            minVersion: VersionTLS12
+
+volumes:
+    db:
+    acme:
+
+networks:
+    proxy:

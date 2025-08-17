@@ -16,7 +16,8 @@ use crate::data::{connect, diesel_exists};
 use crate::exts::*;
 use crate::room::timeline;
 use crate::{
-    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops, json_ok, room,
+    AppError, AuthArgs, EmptyResult, JsonResult, MatrixError, PduBuilder, data, empty_ok, hoops,
+    json_ok, room,
 };
 
 pub fn public_router() -> Router {
@@ -41,8 +42,14 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         let server_name = user_id.server_name().to_owned();
-        let request =
-            profile_request(&server_name.origin().await, ProfileReqArgs { user_id, field: None })?.into_inner();
+        let request = profile_request(
+            &server_name.origin().await,
+            ProfileReqArgs {
+                user_id,
+                field: None,
+            },
+        )?
+        .into_inner();
 
         let profile = crate::sending::send_federation_request(&server_name, request)
             .await?
@@ -72,7 +79,10 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
 ///
 /// - If user is on another server: Fetches avatar_url and blurhash over federation
 #[endpoint]
-async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<AvatarUrlResBody> {
+async fn get_avatar_url(
+    _aa: AuthArgs,
+    user_id: PathParam<OwnedUserId>,
+) -> JsonResult<AvatarUrlResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         let server_name = user_id.server_name().to_owned();
@@ -93,14 +103,16 @@ async fn get_avatar_url(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonR
     }
 
     let DbProfile {
-        avatar_url, blurhash, ..
+        avatar_url,
+        blurhash,
+        ..
     } = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
         .first::<DbProfile>(&mut connect()?)?;
 
     json_ok(AvatarUrlResBody {
         avatar_url,
-        blurhash: blurhash,
+        blurhash,
     })
 }
 
@@ -117,11 +129,14 @@ async fn set_avatar_url(
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
-    if authed.user_id() != &user_id {
+    if authed.user_id() != user_id {
         return Err(MatrixError::forbidden("forbidden", None).into());
     }
 
-    let SetAvatarUrlReqBody { avatar_url, blurhash } = body.into_inner();
+    let SetAvatarUrlReqBody {
+        avatar_url,
+        blurhash,
+    } = body.into_inner();
 
     let query = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
@@ -137,7 +152,9 @@ async fn set_avatar_url(
             avatar_url: avatar_url.clone(),
             blurhash,
         };
-        diesel::update(query).set(updata_params).execute(&mut connect()?)?;
+        diesel::update(query)
+            .set(updata_params)
+            .execute(&mut connect()?)?;
     } else {
         return Err(StatusError::not_found().brief("Profile not found.").into());
     }
@@ -184,7 +201,13 @@ async fn set_avatar_url(
         true,
     )?;
     for (pdu_builder, room_id) in all_joined_rooms {
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &room::lock_state(&room_id).await)?;
+        let _ = timeline::build_and_append_pdu(
+            pdu_builder,
+            &user_id,
+            &room_id,
+            &room::lock_state(&room_id).await,
+        )
+        .await?;
     }
 
     empty_ok()
@@ -195,7 +218,10 @@ async fn set_avatar_url(
 ///
 /// - If user is on another server: Fetches display_name over federation
 #[endpoint]
-async fn get_display_name(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<DisplayNameResBody> {
+async fn get_display_name(
+    _aa: AuthArgs,
+    user_id: PathParam<OwnedUserId>,
+) -> JsonResult<DisplayNameResBody> {
     let user_id = user_id.into_inner();
     if user_id.is_remote() {
         let server_name = user_id.server_name().to_owned();
@@ -232,7 +258,7 @@ async fn set_display_name(
 ) -> EmptyResult {
     let user_id = user_id.into_inner();
     let authed = depot.authed_info()?;
-    if authed.user_id() != &user_id {
+    if authed.user_id() != user_id {
         return Err(MatrixError::forbidden("forbidden", None).into());
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
@@ -266,7 +292,13 @@ async fn set_display_name(
         .collect();
 
     for (pdu_builder, room_id) in all_joined_rooms {
-        let _ = timeline::build_and_append_pdu(pdu_builder, &user_id, &room_id, &room::lock_state(&room_id).await)?;
+        let _ = timeline::build_and_append_pdu(
+            pdu_builder,
+            &user_id,
+            &room_id,
+            &room::lock_state(&room_id).await,
+        )
+        .await?;
 
         // Presence update
         crate::data::user::set_presence(

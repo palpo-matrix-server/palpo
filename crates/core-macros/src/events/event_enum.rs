@@ -29,13 +29,17 @@ type EventKindFn = fn(EventKind, EventEnumVariation) -> bool;
 const EVENT_FIELDS: &[(&str, EventKindFn)] = &[
     ("origin_server_ts", is_non_stripped_room_event),
     ("room_id", |kind, var| {
-        matches!(kind, EventKind::MessageLike | EventKind::State | EventKind::Ephemeral)
-            && matches!(var, EventEnumVariation::None)
+        matches!(
+            kind,
+            EventKind::MessageLike | EventKind::State | EventKind::Ephemeral
+        ) && matches!(var, EventEnumVariation::None)
     }),
     ("event_id", is_non_stripped_room_event),
     ("sender", |kind, var| {
-        matches!(kind, EventKind::MessageLike | EventKind::State | EventKind::ToDevice)
-            && var != EventEnumVariation::Initial
+        matches!(
+            kind,
+            EventKind::MessageLike | EventKind::State | EventKind::ToDevice
+        ) && var != EventEnumVariation::Initial
     }),
 ];
 
@@ -64,7 +68,9 @@ pub fn expand_event_enums(input: &EventEnumDecl) -> syn::Result<TokenStream> {
     let docs = &docs;
     let variants = &variants;
 
-    res.extend(expand_content_enum(kind, events, docs, attrs, variants, palpo_core));
+    res.extend(expand_content_enum(
+        kind, events, docs, attrs, variants, palpo_core,
+    ));
     res.extend(
         expand_event_enum(kind, V::None, events, docs, attrs, variants, palpo_core)
             .unwrap_or_else(syn::Error::into_compile_error),
@@ -75,9 +81,13 @@ pub fn expand_event_enums(input: &EventEnumDecl) -> syn::Result<TokenStream> {
             expand_event_enum(kind, V::Sync, events, docs, attrs, variants, palpo_core)
                 .unwrap_or_else(syn::Error::into_compile_error),
         );
-        res.extend(expand_from_full_event(kind, V::None, variants).unwrap_or_else(syn::Error::into_compile_error));
         res.extend(
-            expand_into_full_event(kind, V::Sync, variants, palpo_core).unwrap_or_else(syn::Error::into_compile_error),
+            expand_from_full_event(kind, V::None, variants)
+                .unwrap_or_else(syn::Error::into_compile_error),
+        );
+        res.extend(
+            expand_into_full_event(kind, V::Sync, variants, palpo_core)
+                .unwrap_or_else(syn::Error::into_compile_error),
         );
     }
 
@@ -118,12 +128,16 @@ fn expand_event_enum(
     let ident = kind.to_event_enum_ident(var.into())?;
 
     let variant_decls = variants.iter().map(|v| v.decl());
-    let event_ty: Vec<_> = events.iter().map(|event| event.to_event_path(kind, var)).collect();
+    let event_ty: Vec<_> = events
+        .iter()
+        .map(|event| event.to_event_path(kind, var))
+        .collect();
 
     let custom_content_ty = format_ident!("Custom{}Content", kind);
 
     let deserialize_impl = expand_deserialize_impl(kind, var, events, palpo_core)?;
-    let field_accessor_impl = expand_accessor_methods(kind, var, variants, &event_struct, palpo_core)?;
+    let field_accessor_impl =
+        expand_accessor_methods(kind, var, variants, &event_struct, palpo_core)?;
     let from_impl = expand_from_impl(&ident, &event_ty, variants);
 
     Ok(quote! {
@@ -223,7 +237,11 @@ fn expand_deserialize_impl(
     })
 }
 
-fn expand_from_impl(ty: &Ident, event_ty: &[TokenStream], variants: &[EventEnumVariant]) -> TokenStream {
+fn expand_from_impl(
+    ty: &Ident,
+    event_ty: &[TokenStream],
+    variants: &[EventEnumVariant],
+) -> TokenStream {
     let from_impls = event_ty.iter().zip(variants).map(|(event_ty, variant)| {
         let ident = &variant.ident;
         let attrs = &variant.attrs;
@@ -340,7 +358,8 @@ fn expand_content_enum(
 
     let from_impl = expand_from_impl(&ident, &content, variants);
 
-    let serialize_custom_event_error_path = quote! { #palpo_core::events::serialize_custom_event_error }.to_string();
+    let serialize_custom_event_error_path =
+        quote! { #palpo_core::events::serialize_custom_event_error }.to_string();
     // Generate an `EventContentFromType` implementation.
     let event_type_match_arms: TokenStream = events
         .iter()
@@ -503,9 +522,13 @@ fn expand_accessor_methods(
 ) -> syn::Result<TokenStream> {
     let ident = kind.to_event_enum_ident(var.into())?;
     let event_type_enum = format_ident!("{}Type", kind);
-    let self_variants: Vec<_> = variants.iter().map(|v| v.match_arm(quote! { Self })).collect();
+    let self_variants: Vec<_> = variants
+        .iter()
+        .map(|v| v.match_arm(quote! { Self }))
+        .collect();
 
-    let maybe_redacted = kind.is_timeline() && matches!(var, EventEnumVariation::None | EventEnumVariation::Sync);
+    let maybe_redacted =
+        kind.is_timeline() && matches!(var, EventEnumVariation::None | EventEnumVariation::Sync);
 
     let event_type_match_arms = if maybe_redacted {
         quote! {
@@ -565,7 +588,10 @@ fn expand_accessor_methods(
 
         if kind == EventKind::State {
             let full_content_enum = kind.to_full_content_enum();
-            let full_content_variants: Vec<_> = variants.iter().map(|v| v.ctor(&full_content_enum)).collect();
+            let full_content_variants: Vec<_> = variants
+                .iter()
+                .map(|v| v.ctor(&full_content_enum))
+                .collect();
 
             accessors = quote! {
                 #accessors
@@ -867,7 +893,10 @@ impl EventEnumEntry {
         };
 
         if self.ev_type != *main_name {
-            let unstable_name = format!("This variant uses the unstable type `{}`.", self.ev_type.value());
+            let unstable_name = format!(
+                "This variant uses the unstable type `{}`.",
+                self.ev_type.value()
+            );
 
             doc.extend(quote! {
                 #[doc = ""]

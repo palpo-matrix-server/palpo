@@ -111,7 +111,10 @@ impl LocationMessageEventContent {
     /// Get the asset type of this `LocationMessageEventContent`.
     #[cfg(feature = "unstable-msc3488")]
     pub fn asset_type(&self) -> AssetType {
-        self.asset.as_ref().map(|a| a.type_.clone()).unwrap_or_default()
+        self.asset
+            .as_ref()
+            .map(|a| a.type_.clone())
+            .unwrap_or_default()
     }
 }
 

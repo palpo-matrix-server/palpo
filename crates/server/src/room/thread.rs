@@ -47,8 +47,8 @@ pub fn get_threads(
 pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
     let root_pdu = timeline::get_pdu(thread_id)?;
 
-    let mut root_pdu_json =
-        timeline::get_pdu_json(thread_id)?.ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
+    let mut root_pdu_json = timeline::get_pdu_json(thread_id)?
+        .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
 
     if let CanonicalJsonValue::Object(unsigned) = root_pdu_json
         .entry("unsigned".to_owned())
@@ -58,7 +58,9 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
             .get("m.relations")
             .and_then(|r| r.as_object())
             .and_then(|r| r.get("m.thread"))
-            .and_then(|relations| serde_json::from_value::<BundledThread>(relations.clone().into()).ok())
+            .and_then(|relations| {
+                serde_json::from_value::<BundledThread>(relations.clone().into()).ok()
+            })
         {
             // Thread already existed
             relations.count += 1;
@@ -68,7 +70,9 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
 
             unsigned.insert(
                 "m.relations".to_owned(),
-                json!({ "m.thread": content }).try_into().expect("thread is valid json"),
+                json!({ "m.thread": content })
+                    .try_into()
+                    .expect("thread is valid json"),
             );
         } else {
             // New thread
@@ -82,7 +86,9 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
 
             unsigned.insert(
                 "m.relations".to_owned(),
-                json!({ "m.thread": content }).try_into().expect("thread is valid json"),
+                json!({ "m.thread": content })
+                    .try_into()
+                    .expect("thread is valid json"),
             );
         }
 
@@ -96,14 +102,17 @@ pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
     diesel::insert_into(threads::table)
         .values(DbThread {
             event_id: root_pdu.event_id.clone(),
-            event_sn: root_pdu.event_sn.clone(),
+            event_sn: root_pdu.event_sn,
             room_id: root_pdu.room_id.clone(),
             last_id: pdu.event_id.clone(),
             last_sn: pdu.event_sn,
         })
         .on_conflict(threads::event_id)
         .do_update()
-        .set((threads::last_id.eq(&pdu.event_id), threads::last_sn.eq(pdu.event_sn)))
+        .set((
+            threads::last_id.eq(&pdu.event_id),
+            threads::last_sn.eq(pdu.event_sn),
+        ))
         .execute(&mut connect()?)?;
     Ok(())
 }

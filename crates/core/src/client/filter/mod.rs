@@ -83,7 +83,11 @@ pub struct RoomEventFilter {
     /// * `None`: No filtering
     /// * `Some(EventsWithUrl)`: Only events with a URL
     /// * `Some(EventsWithoutUrl)`: Only events without a URL
-    #[serde(default, rename = "contains_url", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "contains_url",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub url_filter: Option<UrlFilter>,
 
     /// Options to control lazy-loading of membership events.
@@ -376,12 +380,12 @@ impl FilterDefinition {
             && self.room.is_empty()
     }
 }
-/// `POST /_matrix/client/*/user/{user_id}/filter`
-///
-/// Create a new filter for event retrieval.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3useruser_idfilter
+// /// `POST /_matrix/client/*/user/{user_id}/filter`
+// ///
+// /// Create a new filter for event retrieval.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3useruser_idfilter
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -418,12 +422,12 @@ impl CreateFilterResBody {
     }
 }
 
-/// `GET /_matrix/client/*/user/{user_id}/filter/{filter_id}`
-///
-/// Retrieve a previously created filter.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idfilterfilterid
+// /// `GET /_matrix/client/*/user/{user_id}/filter/{filter_id}`
+// ///
+// /// Retrieve a previously created filter.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3useruser_idfilterfilterid
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,

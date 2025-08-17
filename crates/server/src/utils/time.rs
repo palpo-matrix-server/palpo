@@ -6,7 +6,10 @@ use crate::{AppError, AppResult};
 #[must_use]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 pub fn now_millis() -> u64 {
-    UNIX_EPOCH.elapsed().expect("positive duration after epoch").as_millis() as u64
+    UNIX_EPOCH
+        .elapsed()
+        .expect("positive duration after epoch")
+        .as_millis() as u64
 }
 
 #[inline]
@@ -30,8 +33,11 @@ pub fn timepoint_from_now(duration: Duration) -> AppResult<SystemTime> {
 
 #[inline]
 pub fn parse_duration(duration: &str) -> AppResult<Duration> {
-    cyborgtime::parse_duration(duration)
-        .map_err(|e| AppError::public(format!("'{duration:?}' is not a valid duration string: {e:?}")))
+    cyborgtime::parse_duration(duration).map_err(|e| {
+        AppError::public(format!(
+            "'{duration:?}' is not a valid duration string: {e:?}"
+        ))
+    })
 }
 
 #[must_use]
@@ -52,7 +58,11 @@ pub fn format(ts: SystemTime, str: &str) -> String {
 }
 
 #[must_use]
-#[allow(clippy::as_conversions, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 pub fn pretty(d: Duration) -> String {
     use Unit::*;
 

@@ -109,9 +109,12 @@ impl CustomizeConnection<PgConnection, r2d2::Error> for ConnectionConfig {
     fn on_acquire(&self, conn: &mut PgConnection) -> Result<(), r2d2::Error> {
         use diesel::sql_query;
 
-        sql_query(format!("SET statement_timeout = {}", self.statement_timeout))
-            .execute(conn)
-            .map_err(r2d2::Error::QueryError)?;
+        sql_query(format!(
+            "SET statement_timeout = {}",
+            self.statement_timeout
+        ))
+        .execute(conn)
+        .map_err(r2d2::Error::QueryError)?;
         // if self.read_only {
         //     sql_query("SET default_transaction_read_only = 't'")
         //         .execute(conn)

@@ -13,8 +13,8 @@ use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
 use crate::{
-    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError, SESSION_ID_LENGTH,
-    TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, user, utils,
+    AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, user, utils,
 };
 
 pub fn public_router() -> Router {
@@ -65,11 +65,18 @@ async fn login_types(_aa: AuthArgs) -> JsonResult<LoginTypesResBody> {
 /// Note: You can use [`GET /_matrix/client/r0/login`](fn.get_supported_versions_route.html) to see
 /// supported login types.
 #[endpoint]
-async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Response) -> JsonResult<LoginResBody> {
+async fn login(
+    body: JsonBody<LoginReqBody>,
+    req: &mut Request,
+    res: &mut Response,
+) -> JsonResult<LoginResBody> {
     // Validate login method
     // TODO: Other login methods
     let user_id = match &body.login_info {
-        LoginInfo::Password(Password { identifier, password }) => {
+        LoginInfo::Password(Password {
+            identifier,
+            password,
+        }) => {
             let username = if let UserIdentifier::UserIdOrLocalpart(user_id) = identifier {
                 user_id.to_lowercase()
             } else {
@@ -143,7 +150,7 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             let Ok(user) = data::user::get_user(&user_id) else {
                 return Err(MatrixError::forbidden("User not found.", None).into());
             };
-            if let Err(_e) = user::vertify_password(&user, &password) {
+            if let Err(_e) = user::vertify_password(&user, password) {
                 res.status_code(StatusCode::FORBIDDEN); //for complement testing: TestLogin/parallel/POST_/login_wrong_password_is_rejected
                 return Err(MatrixError::forbidden("Wrong username or password.", None).into());
             }
@@ -165,12 +172,18 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
 
             let claim = user::session::validate_jwt_token(jwt_conf, &info.token)?;
             let local = claim.sub.to_lowercase();
-            let user_id = UserId::parse_with_server_name(local, &conf.server_name)
-                .map_err(|e| MatrixError::invalid_username(format!("JWT subject is not a valid user MXID: {e}")))?;
+            let user_id =
+                UserId::parse_with_server_name(local, &conf.server_name).map_err(|e| {
+                    MatrixError::invalid_username(format!(
+                        "JWT subject is not a valid user MXID: {e}"
+                    ))
+                })?;
 
             if !data::user::user_exists(&user_id)? {
                 if !jwt_conf.register_user {
-                    return Err(MatrixError::not_found("user is not registered on this server.").into());
+                    return Err(
+                        MatrixError::not_found("user is not registered on this server.").into(),
+                    );
                 }
 
                 let new_user = NewDbUser {
@@ -196,9 +209,8 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
             } else {
                 return Err(MatrixError::forbidden("Bad login type.", None).into());
             };
-            let user_id = UserId::parse_with_server_name(username, &config::get().server_name)
-                .map_err(|_| MatrixError::invalid_username("Username is invalid."))?;
-            user_id
+            UserId::parse_with_server_name(username, &config::get().server_name)
+                .map_err(|_| MatrixError::invalid_username("Username is invalid."))?
         }
         _ => {
             warn!("Unsupported or unknown login type: {:?}", &body.login_info);
@@ -218,7 +230,8 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
     let (refresh_token, refresh_token_id) = if body.refresh_token {
         let refresh_token = utils::random_string(TOKEN_LENGTH);
         let expires_at = UnixMillis::now().get() + crate::config::get().refresh_token_ttl;
-        let ultimate_session_expires_at = UnixMillis::now().get() + crate::config::get().session_ttl;
+        let ultimate_session_expires_at =
+            UnixMillis::now().get() + crate::config::get().session_ttl;
         let refresh_token_id = data::user::device::set_refresh_token(
             &user_id,
             &device_id,
@@ -233,7 +246,12 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
 
     // Determine if device_id was provided and exists in the db for this user
     if data::user::device::is_device_exists(&user_id, &device_id)? {
-        data::user::device::set_access_token(&user_id, &device_id, &access_token, refresh_token_id)?;
+        data::user::device::set_access_token(
+            &user_id,
+            &device_id,
+            &access_token,
+            refresh_token_id,
+        )?;
     } else {
         data::user::device::create_device(
             &user_id,
@@ -263,14 +281,20 @@ async fn login(body: JsonBody<LoginReqBody>, req: &mut Request, res: &mut Respon
 ///
 /// <https://spec.matrix.org/v1.13/client-server-api/#post_matrixclientv1loginget_token>
 #[endpoint]
-async fn get_access_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -> JsonResult<TokenResBody> {
+async fn get_access_token(
+    _aa: AuthArgs,
+    req: &mut Request,
+    depot: &mut Depot,
+) -> JsonResult<TokenResBody> {
     let conf = crate::config::get();
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let device_id = authed.device_id();
 
     if !conf.login_via_existing_session {
-        return Err(MatrixError::forbidden("Login via an existing session is not enabled", None).into());
+        return Err(
+            MatrixError::forbidden("Login via an existing session is not enabled", None).into(),
+        );
     }
 
     // This route SHOULD have UIA
@@ -286,14 +310,14 @@ async fn get_access_token(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) -
     };
 
     let payload = req.payload().await?;
-    let body = serde_json::from_slice::<TokenReqBody>(&payload);
+    let body = serde_json::from_slice::<TokenReqBody>(payload);
     if let Ok(Some(auth)) = body.as_ref().map(|b| &b.auth) {
         let (worked, uiaa_info) = crate::uiaa::try_auth(sender_id, device_id, auth, &uiaa_info)?;
 
         if !worked {
             return Err(AppError::Uiaa(uiaa_info));
         }
-    } else if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(&payload) {
+    } else if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(payload) {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         let _ = crate::uiaa::create_session(sender_id, device_id, &uiaa_info, json);
         return Err(AppError::Uiaa(uiaa_info));
@@ -370,8 +394,13 @@ async fn refresh_access_token(
         expires_at,
         ultimate_session_expires_at,
     )?;
-    if data::user::device::is_device_exists(&user_id, &device_id)? {
-        data::user::device::set_access_token(&user_id, &device_id, &access_token, Some(refresh_token_id))?;
+    if data::user::device::is_device_exists(user_id, device_id)? {
+        data::user::device::set_access_token(
+            user_id,
+            device_id,
+            &access_token,
+            Some(refresh_token_id),
+        )?;
     } else {
         return Err(MatrixError::not_found("Device not found.").into());
     }

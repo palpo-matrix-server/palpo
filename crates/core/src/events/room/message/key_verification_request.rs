@@ -42,7 +42,12 @@ pub struct KeyVerificationRequestEventContent {
 impl KeyVerificationRequestEventContent {
     /// Creates a new `KeyVerificationRequestEventContent` with the given body,
     /// method, device and user ID.
-    pub fn new(body: String, methods: Vec<VerificationMethod>, from_device: OwnedDeviceId, to: OwnedUserId) -> Self {
+    pub fn new(
+        body: String,
+        methods: Vec<VerificationMethod>,
+        from_device: OwnedDeviceId,
+        to: OwnedUserId,
+    ) -> Self {
         Self {
             body,
             formatted: None,

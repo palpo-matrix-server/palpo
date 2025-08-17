@@ -33,10 +33,15 @@ pub(super) async fn remote_resolve(
 
     resolved_room_id
         .map(|room_id| (room_id, resolved_servers))
-        .ok_or_else(|| MatrixError::not_found("No servers could assist in resolving the room alias").into())
+        .ok_or_else(|| {
+            MatrixError::not_found("No servers could assist in resolving the room alias").into()
+        })
 }
 
-async fn remote_request(room_alias: &RoomAliasId, server: &ServerName) -> AppResult<RoomInfoResBody> {
+async fn remote_request(
+    room_alias: &RoomAliasId,
+    server: &ServerName,
+) -> AppResult<RoomInfoResBody> {
     let request = directory_request(&server.origin().await, room_alias)?.into_inner();
     crate::sending::send_federation_request(server, request)
         .await?

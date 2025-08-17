@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
-    EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
+    EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId,
+    UnixMillis, UserId,
     events::{
         BundledMessageLikeRelations, EventContent, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
@@ -426,7 +427,11 @@ impl OriginalRoomRedactionEvent {
     /// Panics if both `redacts` field are `None`, which is only possible if the
     /// event was modified after being deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> &EventId {
-        redacts(room_version, self.redacts.as_deref(), self.content.redacts.as_deref())
+        redacts(
+            room_version,
+            self.redacts.as_deref(),
+            self.content.redacts.as_deref(),
+        )
     }
 }
 
@@ -442,7 +447,11 @@ impl OriginalSyncRoomRedactionEvent {
     /// Panics if both `redacts` field are `None`, which is only possible if the
     /// event was modified after being deserialized.
     pub fn redacts(&self, room_version: &RoomVersionId) -> &EventId {
-        redacts(room_version, self.redacts.as_deref(), self.content.redacts.as_deref())
+        redacts(
+            room_version,
+            self.redacts.as_deref(),
+            self.content.redacts.as_deref(),
+        )
     }
 }
 

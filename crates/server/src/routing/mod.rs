@@ -18,15 +18,16 @@ pub mod prelude {
     pub use crate::core::identifiers::*;
     pub use crate::core::serde::{JsonValue, RawJson};
     pub use crate::{
-        AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, config, empty_ok, hoops,
-        json_ok,
+        AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension,
+        config, empty_ok, hoops, json_ok,
     };
 }
 
-pub fn router() -> Router {
+pub fn root() -> Router {
     Router::new()
         .hoop(hoops::ensure_accept)
         .hoop(hoops::limit_size)
+        .get(index)
         .push(
             Router::with_path("_matrix")
                 .push(client::router())
@@ -44,6 +45,12 @@ pub fn router() -> Router {
         )
         .push(Router::with_path("{*path}").get(StaticDir::new("./static")))
 }
+
+#[handler]
+fn index() -> &'static str {
+    "Hello Palpo"
+}
+
 fn get_origin_host(req: &mut Request) -> Option<String> {
     let origin = req
         .headers()

@@ -3,7 +3,9 @@
 use salvo::prelude::*;
 use serde::Deserialize;
 
-use crate::{OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::StateEventType, serde::StringEnum};
+use crate::{
+    OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, events::StateEventType, serde::StringEnum,
+};
 
 /// An enum of possible room types.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]

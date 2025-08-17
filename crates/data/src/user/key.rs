@@ -228,17 +228,26 @@ pub fn claim_one_time_key(
         .first::<DbOneTimeKey>(&mut connect()?)
         .optional()?;
     if let Some(DbOneTimeKey {
-        id, key_id, key_data, ..
+        id,
+        key_id,
+        key_data,
+        ..
     }) = one_time_key
     {
         diesel::delete(e2e_one_time_keys::table.find(id)).execute(&mut connect()?)?;
-        Ok(Some((key_id, serde_json::from_value::<OneTimeKey>(key_data)?)))
+        Ok(Some((
+            key_id,
+            serde_json::from_value::<OneTimeKey>(key_data)?,
+        )))
     } else {
         Ok(None)
     }
 }
 
-pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> DataResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
+pub fn count_one_time_keys(
+    user_id: &UserId,
+    device_id: &DeviceId,
+) -> DataResult<BTreeMap<DeviceKeyAlgorithm, u64>> {
     let list = e2e_one_time_keys::table
         .filter(e2e_one_time_keys::user_id.eq(user_id))
         .filter(e2e_one_time_keys::device_id.eq(device_id))
@@ -246,11 +255,16 @@ pub fn count_one_time_keys(user_id: &UserId, device_id: &DeviceId) -> DataResult
         .select((e2e_one_time_keys::algorithm, diesel::dsl::count_star()))
         .load::<(String, i64)>(&mut connect()?)?;
     Ok(BTreeMap::from_iter(
-        list.into_iter().map(|(k, v)| (DeviceKeyAlgorithm::from(k), v as u64)),
+        list.into_iter()
+            .map(|(k, v)| (DeviceKeyAlgorithm::from(k), v as u64)),
     ))
 }
 
-pub fn add_device_keys(user_id: &UserId, device_id: &DeviceId, device_keys: &DeviceKeys) -> DataResult<()> {
+pub fn add_device_keys(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    device_keys: &DeviceKeys,
+) -> DataResult<()> {
     let new_device_key = NewDbDeviceKey {
         user_id: user_id.to_owned(),
         device_id: device_id.to_owned(),
@@ -279,7 +293,10 @@ pub fn get_device_keys(user_id: &UserId, device_id: &DeviceId) -> DataResult<Opt
         .transpose()
 }
 
-pub fn get_device_keys_and_sigs(user_id: &UserId, device_id: &DeviceId) -> DataResult<Option<DeviceKeys>> {
+pub fn get_device_keys_and_sigs(
+    user_id: &UserId,
+    device_id: &DeviceId,
+) -> DataResult<Option<DeviceKeys>> {
     let Some(mut device_keys) = get_device_keys(user_id, device_id)? else {
         return Ok(None);
     };

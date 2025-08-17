@@ -122,7 +122,8 @@ pub struct Membership {
 impl Membership {
     /// The application of the membership is "m.call" and the scope is "m.room".
     pub fn is_room_call(&self) -> bool {
-        as_variant!(&self.application, Application::Call).is_some_and(|call| call.scope == CallScope::Room)
+        as_variant!(&self.application, Application::Call)
+            .is_some_and(|call| call.scope == CallScope::Room)
     }
 
     /// The application of the membership is "m.call".
@@ -323,7 +324,8 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        Application, CallApplicationContent, CallMemberEventContent, CallScope, Focus, LivekitFocus, Membership,
+        Application, CallApplicationContent, CallMemberEventContent, CallScope, Focus,
+        LivekitFocus, Membership,
     };
     use crate::UnixMillis as TS;
 
@@ -440,7 +442,8 @@ mod tests {
             ]
         });
 
-        let ev_content: CallMemberEventContent = serde_json::from_value(call_member_ev_json).unwrap();
+        let ev_content: CallMemberEventContent =
+            serde_json::from_value(call_member_ev_json).unwrap();
         assert_eq!(ev_content, call_member_ev);
     }
 
@@ -502,7 +505,10 @@ mod tests {
         );
         assert_eq!(
             content_one_second_ago.active_memberships(None),
-            content_one_second_ago.memberships.iter().collect::<Vec<&Membership>>()
+            content_one_second_ago
+                .memberships
+                .iter()
+                .collect::<Vec<&Membership>>()
         );
 
         // created_ts should not be overwritten.

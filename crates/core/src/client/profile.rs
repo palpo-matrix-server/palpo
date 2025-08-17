@@ -42,7 +42,11 @@ pub struct AvatarUrlResBody {
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(default, rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 impl AvatarUrlResBody {
@@ -74,7 +78,11 @@ impl AvatarUrlResBody {
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct DisplayNameResBody {
     /// The user's display name, if set.
-    #[serde(default, rename = "displayname", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "displayname",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub display_name: Option<String>,
 }
 
@@ -85,12 +93,12 @@ impl DisplayNameResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/profile/{user_id}/avatar_url`
-///
-/// Set the avatar URL of the user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_idavatar_url
+// /// `PUT /_matrix/client/*/profile/{user_id}/avatar_url`
+// ///
+// /// Set the avatar URL of the user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_idavatar_url
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: true,
@@ -115,17 +123,21 @@ pub struct SetAvatarUrlReqBody {
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
     #[cfg(feature = "unstable-msc2448")]
-    #[serde(default, rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 }
 
-/// `PUT /_matrix/client/*/profile/{user_id}/display_name`
-///
-/// Set the display name of the user.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_iddisplay_name
+// /// `PUT /_matrix/client/*/profile/{user_id}/display_name`
+// ///
+// /// Set the display name of the user.
+//
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3profileuser_iddisplay_name
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: true,
@@ -140,6 +152,10 @@ pub struct SetAvatarUrlReqBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct SetDisplayNameReqBody {
     /// The new display name for the user.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "displayname")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "displayname"
+    )]
     pub display_name: Option<String>,
 }

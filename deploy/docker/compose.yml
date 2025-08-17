@@ -1,11 +1,9 @@
 services:
   postgres:
     hostname: postgres
-    image: postgres:16
+    image: postgres:17
     restart: always
     volumes:
-      # This will create a docker volume to persist the database files in.
-      # If you prefer those files to be outside of docker, you'll need to change this.
       - ./data/pgsql:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: changeme
@@ -20,20 +18,14 @@ services:
       - internal
 
   palpo:
-    image: privoce/vocechat-matrix-palpo:main
+    image: ghcr.io/palpo-im/palpo:latest
     ports:
       - 8008:8008
       - 8448:8448
     environment:
       PALPO_CONFIG: '/var/palpo/palpo.toml'
-    # PALPO_SERVER_NAME: 'matrix.palpo.im'
-    # PALPO_DB_URL: 'postgres://palpo:changeme@postgres:5432/palpo'
-    # PALPO_WELL_KNOWN_SERVER: matrix.palpo.im
-    # PALPO_WELL_KNOWN_CLIENT: https://matrix.palpo.im
     volumes:
       - $PWD/palpo.toml:/var/palpo/palpo.toml
-      # The following volumes use docker volumes, change this
-      # if you prefer to have those files outside of docker.
       - $PWD/data/media:/var/palpo/media
     depends_on:
       postgres:

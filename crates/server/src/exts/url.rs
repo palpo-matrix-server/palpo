@@ -24,7 +24,11 @@ impl GetUrlOrigin for OwnedServerName {
 }
 impl GetUrlOrigin for ServerName {
     async fn origin(&self) -> String {
-        let cached_result = crate::ACTUAL_DESTINATION_CACHE.read().unwrap().get(self).cloned();
+        let cached_result = crate::ACTUAL_DESTINATION_CACHE
+            .read()
+            .unwrap()
+            .get(self)
+            .cloned();
 
         let actual_destination = if let Some(DestinationResponse {
             actual_destination,
@@ -38,7 +42,8 @@ impl GetUrlOrigin for ServerName {
                     well_known_backoff_mins,
                 } => {
                     if well_known_retry < Instant::now() {
-                        find_actual_destination(self, None, false, Some(well_known_backoff_mins)).await
+                        find_actual_destination(self, None, false, Some(well_known_backoff_mins))
+                            .await
                     } else {
                         actual_destination
                     }
@@ -70,9 +75,11 @@ impl GetUrlOrigin for ServerName {
                     srv_expires,
                 } => {
                     if well_known_retry < Instant::now() {
-                        find_actual_destination(self, None, false, Some(well_known_backoff_mins)).await
+                        find_actual_destination(self, None, false, Some(well_known_backoff_mins))
+                            .await
                     } else if srv_expires < Instant::now() {
-                        find_actual_destination(self, None, true, Some(well_known_backoff_mins)).await
+                        find_actual_destination(self, None, true, Some(well_known_backoff_mins))
+                            .await
                     } else {
                         actual_destination
                     }
@@ -207,7 +214,8 @@ async fn find_actual_destination(
     let (actual_destination, dest_type) = if only_request_srv {
         let destination_str = well_known_dest.unwrap_or(destination_str);
         let (dest, expires) = get_srv_destination(destination_str).await;
-        let well_known_retry = Instant::now() + Duration::from_secs((60 * next_backoff_mins).into());
+        let well_known_retry =
+            Instant::now() + Duration::from_secs((60 * next_backoff_mins).into());
         (
             dest,
             if let Some(expires) = expires {
@@ -245,7 +253,9 @@ async fn find_actual_destination(
                             debug!("3: A .well-known file is available");
                             match get_ip_with_port(&delegated_hostname) {
                                 // 3.1: IP literal in .well-known file
-                                Some(host_and_port) => (host_and_port, DestType::WellKnown { expires: timestamp }),
+                                Some(host_and_port) => {
+                                    (host_and_port, DestType::WellKnown { expires: timestamp })
+                                }
                                 None => {
                                     if let Some(pos) = delegated_hostname.find(':') {
                                         debug!("3.2: Hostname with port in .well-known file");
@@ -256,7 +266,8 @@ async fn find_actual_destination(
                                         )
                                     } else {
                                         debug!("Delegated hostname has no port in this branch");
-                                        let (dest, srv_expires) = get_srv_destination(delegated_hostname.clone()).await;
+                                        let (dest, srv_expires) =
+                                            get_srv_destination(delegated_hostname.clone()).await;
                                         (
                                             dest,
                                             if let Some(srv_expires) = srv_expires {
@@ -276,8 +287,8 @@ async fn find_actual_destination(
                         None => {
                             debug!("4: No .well-known or an error occured");
                             let (dest, expires) = get_srv_destination(destination_str).await;
-                            let well_known_retry =
-                                Instant::now() + Duration::from_secs((60 * next_backoff_mins).into());
+                            let well_known_retry = Instant::now()
+                                + Duration::from_secs((60 * next_backoff_mins).into());
                             (
                                 dest,
                                 if let Some(expires) = expires {
@@ -322,25 +333,37 @@ async fn get_srv_destination(delegated_hostname: String) -> (FedDest, Option<Ins
         debug!("SRV lookup successful");
         let force_port = hostname_override.port();
 
-        if let Ok(override_ip) = crate::dns_resolver().lookup_ip(hostname_override.hostname()).await {
+        if let Ok(override_ip) = crate::dns_resolver()
+            .lookup_ip(hostname_override.hostname())
+            .await
+        {
             crate::TLS_NAME_OVERRIDE.write().unwrap().insert(
                 delegated_hostname.clone(),
                 (override_ip.iter().collect(), force_port.unwrap_or(8448)),
             );
         } else {
             // Removing in case there was previously a SRV record
-            crate::TLS_NAME_OVERRIDE.write().unwrap().remove(&delegated_hostname);
+            crate::TLS_NAME_OVERRIDE
+                .write()
+                .unwrap()
+                .remove(&delegated_hostname);
             warn!("Using SRV record, but could not resolve to IP");
         }
 
         if let Some(port) = force_port {
-            (FedDest::Named(delegated_hostname, format!(":{port}")), Some(timestamp))
+            (
+                FedDest::Named(delegated_hostname, format!(":{port}")),
+                Some(timestamp),
+            )
         } else {
             (add_port_to_hostname(&delegated_hostname), Some(timestamp))
         }
     } else {
         // Removing in case there was previously a SRV record
-        crate::TLS_NAME_OVERRIDE.write().unwrap().remove(&delegated_hostname);
+        crate::TLS_NAME_OVERRIDE
+            .write()
+            .unwrap()
+            .remove(&delegated_hostname);
         debug!("No SRV records found");
         (add_port_to_hostname(&delegated_hostname), None)
     }
@@ -367,7 +390,8 @@ async fn query_given_srv_record(record: &str) -> Option<(FedDest, Instant)> {
 async fn query_srv_record(hostname: &'_ str) -> Option<(FedDest, Instant)> {
     let hostname = hostname.trim_end_matches('.');
 
-    if let Some(host_port) = query_given_srv_record(&format!("_matrix-fed._tcp.{hostname}.")).await {
+    if let Some(host_port) = query_given_srv_record(&format!("_matrix-fed._tcp.{hostname}.")).await
+    {
         Some(host_port)
     } else {
         query_given_srv_record(&format!("_matrix._tcp.{hostname}.")).await
@@ -376,7 +400,7 @@ async fn query_srv_record(hostname: &'_ str) -> Option<(FedDest, Instant)> {
 
 async fn request_well_known(destination: &str) -> Option<(String, Instant)> {
     let response = sending::default_client()
-        .get(&format!("https://{destination}/.well-known/matrix/server"))
+        .get(format!("https://{destination}/.well-known/matrix/server"))
         .send()
         .await;
     debug!("Got well known response");

@@ -36,7 +36,11 @@ pub struct ToDeviceKeyVerificationMacEventContent {
 impl ToDeviceKeyVerificationMacEventContent {
     /// Creates a new `ToDeviceKeyVerificationMacEventContent` with the given
     /// transaction ID, key ID to MAC map and key MAC.
-    pub fn new(transaction_id: OwnedTransactionId, mac: BTreeMap<String, Base64>, keys: Base64) -> Self {
+    pub fn new(
+        transaction_id: OwnedTransactionId,
+        mac: BTreeMap<String, Base64>,
+        keys: Base64,
+    ) -> Self {
         Self {
             transaction_id,
             mac,
@@ -70,6 +74,10 @@ impl KeyVerificationMacEventContent {
     /// Creates a new `KeyVerificationMacEventContent` with the given key ID to
     /// MAC map, key MAC and reference.
     pub fn new(mac: BTreeMap<String, Base64>, keys: Base64, relates_to: Reference) -> Self {
-        Self { mac, keys, relates_to }
+        Self {
+            mac,
+            keys,
+            relates_to,
+        }
     }
 }

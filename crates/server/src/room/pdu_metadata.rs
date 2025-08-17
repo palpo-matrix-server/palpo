@@ -59,10 +59,13 @@ pub fn paginate_relations_with_filter(
     dir: Direction,
 ) -> AppResult<RelationEventsResBody> {
     let prev_batch = from.map(|from| from.to_string());
-    let from = from.map(|from| from.parse()).transpose()?.unwrap_or_else(|| match dir {
-        Direction::Forward => i64::MIN,
-        Direction::Backward => i64::MAX,
-    });
+    let from = from
+        .map(|from| from.parse())
+        .transpose()?
+        .unwrap_or(match dir {
+            Direction::Forward => i64::MIN,
+            Direction::Backward => i64::MAX,
+        });
     let to: Option<i64> = to.map(|to| to.parse()).transpose()?;
 
     // Use limit or else 10, with maximum 100
@@ -73,8 +76,6 @@ pub fn paginate_relations_with_filter(
 
     // Spec (v1.10) recommends depth of at least 3
     let depth: u8 = if recurse { 3 } else { 1 };
-
-    let next_token;
 
     let events: Vec<_> = crate::room::pdu_metadata::get_relations(
         user_id,
@@ -88,12 +89,15 @@ pub fn paginate_relations_with_filter(
         limit,
     )?;
 
-    next_token = match dir {
+    let next_token = match dir {
         Direction::Forward => events.last().map(|(count, _)| *count + 1),
         Direction::Backward => events.last().map(|(count, _)| *count - 1),
     };
 
-    let events: Vec<_> = events.into_iter().map(|(_, pdu)| pdu.to_message_like_event()).collect();
+    let events: Vec<_> = events
+        .into_iter()
+        .map(|(_, pdu)| pdu.to_message_like_event())
+        .collect();
 
     Ok(RelationEventsResBody {
         chunk: events,
@@ -140,7 +144,9 @@ pub fn get_relations(
             query = query.order_by(event_relations::child_sn.desc());
         }
     }
-    let relations = query.limit(limit as i64).load::<DbEventRelation>(&mut connect()?)?;
+    let relations = query
+        .limit(limit as i64)
+        .load::<DbEventRelation>(&mut connect()?)?;
     let mut pdus = Vec::with_capacity(relations.len());
     for relation in relations {
         if let Ok(mut pdu) = timeline::get_pdu(&relation.child_id) {

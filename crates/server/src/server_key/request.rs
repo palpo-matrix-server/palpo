@@ -4,15 +4,21 @@ use super::{GetUrlOrigin, minimum_valid_ts};
 use crate::AppResult;
 use crate::core::directory::QueryCriteria;
 use crate::core::federation::directory::{
-    RemoteServerKeysBatchReqBody, RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs, RemoteServerKeysResBody,
-    ServerKeysResBody, remote_server_keys_batch_request, remote_server_keys_request, server_keys_request,
+    RemoteServerKeysBatchReqBody, RemoteServerKeysBatchResBody, RemoteServerKeysReqArgs,
+    RemoteServerKeysResBody, ServerKeysResBody, remote_server_keys_batch_request,
+    remote_server_keys_request, server_keys_request,
 };
 use crate::core::federation::discovery::ServerSigningKeys;
-use crate::core::{MatrixError, OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId};
+use crate::core::{
+    MatrixError, OwnedServerName, OwnedServerSigningKeyId, ServerName, ServerSigningKeyId,
+};
 
 type Batch = BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, QueryCriteria>>;
 
-pub(super) async fn batch_notary_request<'a, S, K>(notary: &ServerName, batch: S) -> AppResult<Vec<ServerSigningKeys>>
+pub(super) async fn batch_notary_request<'a, S, K>(
+    notary: &ServerName,
+    batch: S,
+) -> AppResult<Vec<ServerSigningKeys>>
 where
     S: Iterator<Item = (&'a ServerName, K)> + Send,
     K: Iterator<Item = &'a ServerSigningKeyId> + Send,
@@ -37,7 +43,7 @@ where
         .keys()
         .rev()
         .take(crate::config::get().trusted_server_batch_size)
-        .last()
+        .next_back()
         .cloned()
     {
         let origin = batch.origin().await;

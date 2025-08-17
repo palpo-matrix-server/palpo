@@ -69,7 +69,9 @@ where
 
         Ok(MutexMapGuard::<Key, Val> {
             map: Arc::clone(&self.map),
-            val: val.try_lock_owned().map_err(|_| AppError::internal("would yield"))?,
+            val: val
+                .try_lock_owned()
+                .map_err(|_| AppError::internal("would yield"))?,
         })
     }
 
@@ -93,7 +95,9 @@ where
 
         Ok(MutexMapGuard::<Key, Val> {
             map: Arc::clone(&self.map),
-            val: val.try_lock_owned().map_err(|_| AppError::internal("would yield"))?,
+            val: val
+                .try_lock_owned()
+                .map_err(|_| AppError::internal("would yield"))?,
         })
     }
 
@@ -127,10 +131,9 @@ impl<Key, Val> Drop for MutexMapGuard<Key, Val> {
     #[tracing::instrument(name = "unlock", level = "trace", skip_all)]
     fn drop(&mut self) {
         if Arc::strong_count(Omg::mutex(&self.val)) <= 2 {
-            self.map
-                .lock()
-                .expect("locked")
-                .retain(|_, val| !Arc::ptr_eq(val, Omg::mutex(&self.val)) || Arc::strong_count(val) > 2);
+            self.map.lock().expect("locked").retain(|_, val| {
+                !Arc::ptr_eq(val, Omg::mutex(&self.val)) || Arc::strong_count(val) > 2
+            });
         }
     }
 }

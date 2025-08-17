@@ -3,7 +3,9 @@ use std::{cmp::Ordering, fmt, str::FromStr};
 use rand::prelude::*;
 
 use crate::core::OwnedUserId;
-use crate::core::serde::canonical_json::{CanonicalJsonError, CanonicalJsonObject, try_from_json_map};
+use crate::core::serde::canonical_json::{
+    CanonicalJsonError, CanonicalJsonObject, try_from_json_map,
+};
 use crate::core::signatures::Ed25519KeyPair;
 use crate::{AppError, AppResult};
 
@@ -13,13 +15,28 @@ pub use hash::*;
 pub mod time;
 pub use time::*;
 pub mod stream;
+pub mod string;
 pub use stream::*;
 pub mod content_disposition;
 mod mutex_map;
 pub use mutex_map::{MutexMap, MutexMapGuard};
 mod sequm_queue;
 pub use sequm_queue::*;
+mod defer;
 pub mod sys;
+
+#[macro_export]
+macro_rules! join_path {
+    ($($part:expr),+) => {
+        {
+            let mut p = std::path::PathBuf::new();
+            $(
+                p.push($part);
+            )*
+            path_slash::PathBufExt::to_slash_lossy(&p).to_string()
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! extract_variant {
@@ -29,6 +46,22 @@ macro_rules! extract_variant {
             _ => None,
         }
     };
+}
+
+pub fn select_config_path() -> &'static str {
+    if cfg!(windows) {
+        "palpo.toml"
+    } else {
+        const CANDIDATE_PATHS: [&str; 3] = [
+            "palpo.toml",
+            "/etc/palpo/palpo.toml",
+            "/var/palpo/palpo.toml",
+        ];
+        CANDIDATE_PATHS
+            .into_iter()
+            .find(|path| std::fs::exists(path).unwrap_or(false))
+            .unwrap_or("palpo.toml")
+    }
 }
 
 pub fn shuffle<T>(vec: &mut [T]) {
@@ -50,7 +83,8 @@ pub fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
 
 pub fn generate_keypair() -> Ed25519KeyPair {
     let key_content = Ed25519KeyPair::generate().unwrap();
-    Ed25519KeyPair::from_der(&key_content, random_string(8)).unwrap_or_else(|_| panic!("{:?}", &key_content))
+    Ed25519KeyPair::from_der(&key_content, random_string(8))
+        .unwrap_or_else(|_| panic!("{:?}", &key_content))
 }
 
 /// Parses the bytes into an u64.
@@ -70,8 +104,11 @@ pub fn string_from_bytes(bytes: &[u8]) -> Result<String, std::string::FromUtf8Er
 
 /// Parses a OwnedUserId from bytes.
 pub fn user_id_from_bytes(bytes: &[u8]) -> AppResult<OwnedUserId> {
-    OwnedUserId::try_from(string_from_bytes(bytes).map_err(|_| AppError::public("Failed to parse string from bytes"))?)
-        .map_err(|_| AppError::public("Failed to parse user id from bytes"))
+    OwnedUserId::try_from(
+        string_from_bytes(bytes)
+            .map_err(|_| AppError::public("Failed to parse string from bytes"))?,
+    )
+    .map_err(|_| AppError::public("Failed to parse user id from bytes"))
 }
 
 pub fn random_string(length: usize) -> String {
@@ -109,7 +146,9 @@ pub fn common_elements(
 /// Fallible conversion from any value that implements `Serialize` to a `CanonicalJsonObject`.
 ///
 /// `value` must serialize to an `serde_json::Value::Object`.
-pub fn to_canonical_object<T: serde::Serialize>(value: T) -> Result<CanonicalJsonObject, CanonicalJsonError> {
+pub fn to_canonical_object<T: serde::Serialize>(
+    value: T,
+) -> Result<CanonicalJsonObject, CanonicalJsonError> {
     use serde::ser::Error;
 
     match serde_json::to_value(value).map_err(CanonicalJsonError::SerDe)? {
@@ -120,11 +159,18 @@ pub fn to_canonical_object<T: serde::Serialize>(value: T) -> Result<CanonicalJso
     }
 }
 
-pub fn deserialize_from_str<'de, D: serde::de::Deserializer<'de>, T: FromStr<Err = E>, E: std::fmt::Display>(
+pub fn deserialize_from_str<
+    'de,
+    D: serde::de::Deserializer<'de>,
+    T: FromStr<Err = E>,
+    E: std::fmt::Display,
+>(
     deserializer: D,
 ) -> Result<T, D::Error> {
     struct Visitor<T: FromStr<Err = E>, E>(std::marker::PhantomData<T>);
-    impl<'de, T: FromStr<Err = Err>, Err: std::fmt::Display> serde::de::Visitor<'de> for Visitor<T, Err> {
+    impl<'de, T: FromStr<Err = Err>, Err: std::fmt::Display> serde::de::Visitor<'de>
+        for Visitor<T, Err>
+    {
         type Value = T;
         fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(formatter, "a parsable string")

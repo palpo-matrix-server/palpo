@@ -9,8 +9,8 @@ use crate::PduBuilder;
 use crate::core::client::filter::LazyLoadOptions;
 use crate::core::client::redact::{RedactEventReqArgs, RedactEventReqBody, RedactEventResBody};
 use crate::core::client::room::{
-    ContextReqArgs, ContextResBody, EventByTimestampReqArgs, EventByTimestampResBody, ReportContentReqBody,
-    RoomEventResBody,
+    ContextReqArgs, ContextResBody, EventByTimestampReqArgs, EventByTimestampResBody,
+    ReportContentReqBody, RoomEventResBody,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
@@ -26,7 +26,11 @@ use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, 
 ///
 /// - You have to currently be joined to the room (TODO: Respect history visibility)
 #[endpoint]
-pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut Depot) -> JsonResult<RoomEventResBody> {
+pub(super) fn get_room_event(
+    _aa: AuthArgs,
+    args: RoomEventReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<RoomEventResBody> {
     let authed = depot.authed_info()?;
 
     let event = DbEvent::get_by_id(&args.event_id)?;
@@ -54,7 +58,7 @@ pub(super) fn get_room_event(_aa: AuthArgs, args: RoomEventReqArgs, depot: &mut 
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
-pub(super) fn report(
+pub(super) async fn report(
     _aa: AuthArgs,
     args: RoomEventReqArgs,
     body: JsonBody<ReportContentReqBody>,
@@ -63,12 +67,15 @@ pub(super) fn report(
     let authed = depot.authed_info()?;
     let pdu = timeline::get_pdu(&args.event_id)?;
 
-    if let Some(true) = body.score.map(|s| s > 0 || s < -100) {
-        return Err(MatrixError::invalid_param("Invalid score, must be within 0 to -100").into());
+    if let Some(true) = body.score.map(|s| !(-100..=0).contains(&s)) {
+        return Err(MatrixError::invalid_param("invalid score, must be within 0 to -100").into());
     };
 
     if let Some(true) = body.reason.clone().map(|s| s.chars().count() > 250) {
-        return Err(MatrixError::invalid_param("Reason too long, should be 250 characters or fewer").into());
+        return Err(MatrixError::invalid_param(
+            "reason too long, should be 250 characters or fewer",
+        )
+        .into());
     };
 
     let _ = crate::admin::send_message(RoomMessageEventContent::text_html(
@@ -100,7 +107,7 @@ pub(super) fn report(
             body.score,
             HtmlEscape(body.reason.as_deref().unwrap_or(""))
         ),
-    ));
+    )).await;
     empty_ok()
 }
 
@@ -110,7 +117,11 @@ pub(super) fn report(
 /// - Only works if the user is joined (TODO: always allow, but only show events if the user was
 /// joined, depending on history_visibility)
 #[endpoint]
-pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot) -> JsonResult<ContextResBody> {
+pub(super) fn get_context(
+    _aa: AuthArgs,
+    args: ContextReqArgs,
+    depot: &mut Depot,
+) -> JsonResult<ContextResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
 
@@ -122,13 +133,15 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     };
 
     let mut lazy_loaded = HashSet::new();
-    let base_token =
-        crate::event::get_event_sn(&args.event_id).map_err(|_| MatrixError::not_found("Base event id not found."))?;
+    let base_token = crate::event::get_event_sn(&args.event_id)
+        .map_err(|_| MatrixError::not_found("Base event id not found."))?;
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
 
     if !state::user_can_see_event(sender_id, &room_id, &args.event_id)? {
-        return Err(MatrixError::forbidden("You don't have permission to view this event.", None).into());
+        return Err(
+            MatrixError::forbidden("You don't have permission to view this event.", None).into(),
+        );
     }
 
     if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -142,12 +155,15 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
     }
 
     // Use limit with maximum 100
-    let limit = usize::from(args.limit).min(100);
+    let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
-    let events_before = timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
-        .into_iter()
-        .filter(|(_, pdu)| state::user_can_see_event(sender_id, &room_id, &pdu.event_id).unwrap_or(false))
-        .collect::<Vec<_>>();
+    let events_before =
+        timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
+            .into_iter()
+            .filter(|(_, pdu)| {
+                state::user_can_see_event(sender_id, &room_id, &pdu.event_id).unwrap_or(false)
+            })
+            .collect::<Vec<_>>();
 
     for (_, event) in &events_before {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -169,7 +185,8 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
         .collect::<Vec<_>>();
-    let events_after = timeline::get_pdus_forward(sender_id, &room_id, base_token, None, None, limit / 2)?;
+    let events_after =
+        timeline::get_pdus_forward(sender_id, &room_id, base_token, None, None, limit / 2)?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -183,7 +200,11 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         }
     }
 
-    let frame_id = match state::get_pdu_frame_id(events_after.last().map_or(&*args.event_id, |(_, e)| &*e.event_id)) {
+    let frame_id = match state::get_pdu_frame_id(
+        events_after
+            .last()
+            .map_or(&*args.event_id, |(_, e)| &*e.event_id),
+    ) {
         Ok(s) => s,
         Err(_) => crate::room::get_frame_id(&room_id, None)?,
     };
@@ -192,12 +213,17 @@ pub(super) fn get_context(_aa: AuthArgs, args: ContextReqArgs, depot: &mut Depot
         .last()
         .map(|(count, _)| count.to_string())
         .unwrap_or_else(|| base_token.to_string());
-    let events_after: Vec<_> = events_after.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect();
+    let events_after: Vec<_> = events_after
+        .into_iter()
+        .map(|(_, pdu)| pdu.to_room_event())
+        .collect();
     let mut state = Vec::new();
 
     for (field_id, event_id) in state_ids {
         let DbRoomStateField {
-            event_ty, state_key, ..
+            event_ty,
+            state_key,
+            ..
         } = state::get_field(field_id)?;
 
         if event_ty != StateEventType::RoomMember {
@@ -253,13 +279,14 @@ pub(super) async fn send_redact(
                 reason: body.reason.clone(),
             })
             .expect("event is valid, we just created it"),
-            redacts: Some(args.event_id.into()),
+            redacts: Some(args.event_id),
             ..Default::default()
         },
         authed.user_id(),
         &args.room_id,
         &state_lock,
-    )?
+    )
+    .await?
     .pdu
     .event_id;
 
@@ -278,7 +305,8 @@ pub(super) async fn timestamp_to_event(
     if !room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not joined to this room.", None).into());
     }
-    let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
+    let (event_id, origin_server_ts) =
+        crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
     json_ok(EventByTimestampResBody {
         event_id,
         origin_server_ts,

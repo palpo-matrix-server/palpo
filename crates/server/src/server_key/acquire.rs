@@ -7,7 +7,9 @@ use std::{
 use futures_util::{StreamExt, stream::FuturesUnordered};
 use tokio::time::{Instant, timeout_at};
 
-use super::{add_signing_keys, batch_notary_request, key_exists, server_request, verify_key_exists};
+use super::{
+    add_signing_keys, batch_notary_request, key_exists, server_request, verify_key_exists,
+};
 use crate::config;
 use crate::core::federation::discovery::ServerSigningKeys;
 use crate::core::serde::{CanonicalJsonObject, RawJson, RawJsonValue};
@@ -93,7 +95,9 @@ where
             return;
         }
 
-        tracing::warn!("still missing {missing_keys} keys for {missing_servers} servers from all notaries.");
+        tracing::warn!(
+            "still missing {missing_keys} keys for {missing_servers} servers from all notaries."
+        );
     }
 
     if missing_keys > 0 {
@@ -117,7 +121,10 @@ where
     for (server, key_ids) in batch {
         for key_id in key_ids {
             if !verify_key_exists(server, key_id).unwrap_or(false) {
-                missing.entry(server.into()).or_default().push(key_id.into());
+                missing
+                    .entry(server.into())
+                    .or_default()
+                    .push(key_id.into());
             }
         }
     }
@@ -180,7 +187,9 @@ where
     for notary in &conf.trusted_servers {
         let missing_keys = keys_count(&missing);
         let missing_servers = missing.len();
-        debug!("Asking notary {notary} for {missing_keys} missing keys from {missing_servers} servers");
+        debug!(
+            "Asking notary {notary} for {missing_keys} missing keys from {missing_servers} servers"
+        );
 
         let batch = missing
             .iter()

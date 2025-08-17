@@ -98,11 +98,13 @@ pub fn joined_rooms(user_id: &UserId) -> DataResult<Vec<OwnedRoomId>> {
         .load::<(OwnedRoomId, String)>(&mut connect()?)?;
     Ok(room_memeberships
         .into_iter()
-        .filter_map(
-            |(room_id, membership)| {
-                if membership == "join" { Some(room_id) } else { None }
-            },
-        )
+        .filter_map(|(room_id, membership)| {
+            if membership == "join" {
+                Some(room_id)
+            } else {
+                None
+            }
+        })
         .collect::<Vec<_>>())
 }
 /// Returns an iterator over all rooms a user was invited to.
@@ -123,14 +125,9 @@ pub fn invited_rooms(
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
-            if let Some(state_data) = state_data
-                .map(|state_data| serde_json::from_value(state_data).ok())
-                .flatten()
-            {
-                Some((room_id, state_data))
-            } else {
-                None
-            }
+            state_data
+                .and_then(|state_data| serde_json::from_value(state_data).ok())
+                .map(|state_data| (room_id, state_data))
         })
         .collect();
     Ok(list)
@@ -148,14 +145,9 @@ pub fn knocked_rooms(
         .load::<(OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?
         .into_iter()
         .filter_map(|(room_id, state_data)| {
-            if let Some(state_data) = state_data
-                .map(|state_data| serde_json::from_value(state_data).ok())
-                .flatten()
-            {
-                Some((room_id, state_data))
-            } else {
-                None
-            }
+            state_data
+                .and_then(|state_data| serde_json::from_value(state_data).ok())
+                .map(|state_data| (room_id, state_data))
         })
         .collect();
     Ok(list)
@@ -285,8 +277,10 @@ pub fn remove_all_devices(user_id: &UserId) -> DataResult<()> {
     pusher::delete_user_pushers(user_id)
 }
 pub fn delete_dehydrated_devices(user_id: &UserId) -> DataResult<()> {
-    diesel::delete(user_dehydrated_devices::table.filter(user_dehydrated_devices::user_id.eq(user_id)))
-        .execute(&mut connect()?)?;
+    diesel::delete(
+        user_dehydrated_devices::table.filter(user_dehydrated_devices::user_id.eq(user_id)),
+    )
+    .execute(&mut connect()?)?;
     Ok(())
 }
 
@@ -297,13 +291,18 @@ pub fn clean_signatures<F: Fn(&UserId) -> bool>(
     user_id: &UserId,
     allowed_signatures: F,
 ) -> DataResult<()> {
-    if let Some(signatures) = cross_signing_key.get_mut("signatures").and_then(|v| v.as_object_mut()) {
+    if let Some(signatures) = cross_signing_key
+        .get_mut("signatures")
+        .and_then(|v| v.as_object_mut())
+    {
         // Don't allocate for the full size of the current signatures, but require
         // at most one resize if nothing is dropped
         let new_capacity = signatures.len() / 2;
-        for (user, signature) in mem::replace(signatures, serde_json::Map::with_capacity(new_capacity)) {
-            let sid =
-                <&UserId>::try_from(user.as_str()).map_err(|_| DataError::internal("Invalid user ID in database."))?;
+        for (user, signature) in
+            mem::replace(signatures, serde_json::Map::with_capacity(new_capacity))
+        {
+            let sid = <&UserId>::try_from(user.as_str())
+                .map_err(|_| DataError::internal("Invalid user ID in database."))?;
             if sender_id == Some(user_id) || sid == user_id || allowed_signatures(sid) {
                 signatures.insert(user, signature);
             }
@@ -318,7 +317,8 @@ pub fn deactivate(user_id: &UserId) -> DataResult<()> {
         .set((users::deactivated_at.eq(UnixMillis::now()),))
         .execute(&mut connect()?)?;
 
-    diesel::delete(user_threepids::table.filter(user_threepids::user_id.eq(user_id))).execute(&mut connect()?)?;
+    diesel::delete(user_threepids::table.filter(user_threepids::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
     diesel::delete(user_access_tokens::table.filter(user_access_tokens::user_id.eq(user_id)))
         .execute(&mut connect()?)?;
 
@@ -326,7 +326,8 @@ pub fn deactivate(user_id: &UserId) -> DataResult<()> {
 }
 
 pub fn set_ignored_users(user_id: &UserId, ignored_ids: &[OwnedUserId]) -> DataResult<()> {
-    diesel::delete(user_ignores::table.filter(user_ignores::user_id.eq(user_id))).execute(&mut connect()?)?;
+    diesel::delete(user_ignores::table.filter(user_ignores::user_id.eq(user_id)))
+        .execute(&mut connect()?)?;
     for ignored_id in ignored_ids {
         diesel::insert_into(user_ignores::table)
             .values(NewDbUserIgnore {

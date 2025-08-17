@@ -11,7 +11,10 @@ pub fn get_rename_rule(input: &ItemEnum) -> syn::Result<RenameRule> {
         .attrs
         .iter()
         .filter(|attr| attr.path().is_ident("palpo_enum"))
-        .map(|attr| attr.parse_args::<RenameAllAttr>().map(RenameAllAttr::into_inner))
+        .map(|attr| {
+            attr.parse_args::<RenameAllAttr>()
+                .map(RenameAllAttr::into_inner)
+        })
         .collect::<syn::Result<_>>()?;
 
     match rules.len() {

@@ -7,7 +7,9 @@ use salvo::prelude::*;
 use crate::core::OwnedUserId;
 use crate::core::client::presence::{PresenceResBody, SetPresenceReqBody};
 use crate::room::state;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok};
+use crate::{
+    AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops, json_ok,
+};
 
 pub fn authed_router() -> Router {
     Router::with_path("presence/{user_id}/status")
@@ -30,7 +32,9 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
     let user_id = user_id.into_inner();
 
     if !state::user_can_see_user(sender_id, &user_id)? {
-        return Err(MatrixError::unauthorized("You cannot get the presence state of this user").into());
+        return Err(
+            MatrixError::unauthorized("You cannot get the presence state of this user").into(),
+        );
     }
 
     let content = crate::data::user::last_presence(&user_id)?.content;
@@ -39,7 +43,7 @@ fn get_status(user_id: PathParam<OwnedUserId>, depot: &mut Depot) -> JsonResult<
         // TODO: Should just use the presenceeventcontent type here?
         status_msg: content.status_msg,
         currently_active: content.currently_active,
-        last_active_ago: content.last_active_ago.map(|millis| Duration::from_millis(millis)),
+        last_active_ago: content.last_active_ago.map(Duration::from_millis),
         presence: content.presence,
     })
 }
@@ -59,10 +63,17 @@ async fn set_status(
 
     let authed = depot.authed_info()?;
     let user_id = user_id.into_inner();
-    if authed.user_id() != &user_id {
-        return Err(MatrixError::forbidden("You cannot set the presence state of another user", None).into());
+    if authed.user_id() != user_id {
+        return Err(MatrixError::forbidden(
+            "You cannot set the presence state of another user",
+            None,
+        )
+        .into());
     }
-    let SetPresenceReqBody { presence, status_msg } = body.into_inner();
+    let SetPresenceReqBody {
+        presence,
+        status_msg,
+    } = body.into_inner();
     crate::user::set_presence(authed.user_id(), Some(presence), status_msg.clone(), true)?;
 
     empty_ok()

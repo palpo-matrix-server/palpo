@@ -13,7 +13,10 @@ use crate::schema::*;
 use crate::{DataResult, connect};
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
-pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
+pub fn read_receipts(
+    room_id: &RoomId,
+    since_sn: Seqnum,
+) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
     let _list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
         .filter(event_receipts::event_sn.ge(since_sn))
@@ -28,27 +31,35 @@ pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<
 
     let mut grouped: BTreeMap<OwnedUserId, Vec<_>> = BTreeMap::new();
     for mut receipt in receipts {
-        if receipt.thread_id.is_some() {
-            if unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone())) {
-                receipt.thread_id = None;
-            }
+        if receipt.thread_id.is_some()
+            && unthread_receipts.contains(&(receipt.user_id.clone(), receipt.event_id.clone()))
+        {
+            receipt.thread_id = None;
         }
-        grouped.entry(receipt.user_id.clone()).or_default().push(receipt);
+        grouped
+            .entry(receipt.user_id.clone())
+            .or_default()
+            .push(receipt);
     }
 
     let mut receipts = BTreeMap::new();
     for (user_id, items) in grouped {
-        let mut event_content: BTreeMap<OwnedEventId, BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>> =
-            BTreeMap::new();
+        let mut event_content: BTreeMap<
+            OwnedEventId,
+            BTreeMap<ReceiptType, BTreeMap<OwnedUserId, Receipt>>,
+        > = BTreeMap::new();
 
         for item in items {
-            event_content.entry(item.event_id.clone()).or_default().insert(
-                ReceiptType::from(item.ty),
-                BTreeMap::from_iter([(
-                    item.user_id.clone(),
-                    serde_json::from_value(item.json_data).unwrap_or_default(),
-                )]),
-            );
+            event_content
+                .entry(item.event_id.clone())
+                .or_default()
+                .insert(
+                    ReceiptType::from(item.ty),
+                    BTreeMap::from_iter([(
+                        item.user_id.clone(),
+                        serde_json::from_value(item.json_data).unwrap_or_default(),
+                    )]),
+                );
         }
         receipts.insert(user_id.clone(), ReceiptEventContent(event_content));
     }
@@ -58,7 +69,12 @@ pub fn read_receipts(room_id: &RoomId, since_sn: Seqnum) -> DataResult<BTreeMap<
 
 /// Sets a private read marker at `count`.
 #[tracing::instrument]
-pub fn set_private_read(room_id: &RoomId, user_id: &UserId, event_id: &EventId, event_sn: Seqnum) -> DataResult<()> {
+pub fn set_private_read(
+    room_id: &RoomId,
+    user_id: &UserId,
+    event_id: &EventId,
+    event_sn: Seqnum,
+) -> DataResult<()> {
     diesel::insert_into(event_receipts::table)
         .values(&NewDbReceipt {
             ty: ReceiptType::ReadPrivate.to_string(),

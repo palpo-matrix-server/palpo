@@ -31,8 +31,16 @@ impl<E: Ord, K: ?Sized> Signatures<E, K> {
     /// Add a signature for the given server name and key identifier.
     ///
     /// If there was already one, it is returned.
-    pub fn insert(&mut self, entity: E, key_identifier: OwnedSigningKeyId<K>, value: String) -> Option<String> {
-        self.0.entry(entity).or_default().insert(key_identifier, value)
+    pub fn insert(
+        &mut self,
+        entity: E,
+        key_identifier: OwnedSigningKeyId<K>,
+        value: String,
+    ) -> Option<String> {
+        self.0
+            .entry(entity)
+            .or_default()
+            .insert(key_identifier, value)
     }
 
     /// Returns a reference to the signatures corresponding to the entities.

@@ -36,11 +36,17 @@ pub struct AudioEventContent {
     pub file: FileContentBlock,
 
     /// The audio details of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.audio_details", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.audio_details",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub audio_details: Option<AudioDetailsContentBlock>,
 
     /// The caption of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.caption", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.caption",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub caption: Option<CaptionContentBlock>,
 
     /// Whether this message is automated.
@@ -118,7 +124,9 @@ impl AudioDetailsContentBlock {
 /// The amplitude of a waveform sample.
 ///
 /// Must be an integer between 0 and 256.
-#[derive(ToSchema, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(
+    ToSchema, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize,
+)]
 pub struct Amplitude(u64);
 
 impl Amplitude {

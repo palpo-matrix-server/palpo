@@ -91,7 +91,8 @@ pub fn make_content_disposition(
     content_type: Option<&str>,
     filename: Option<&str>,
 ) -> ContentDisposition {
-    let disposition_type = disposition_type.unwrap_or_else(|| content_disposition_type(content_type));
+    let disposition_type =
+        disposition_type.unwrap_or_else(|| content_disposition_type(content_type));
     ContentDisposition::new(disposition_type).with_filename(filename.map(sanitise_filename))
 }
 
@@ -111,7 +112,10 @@ mod tests {
 
         // cargo test -- --nocapture
         println!("{SAMPLE}");
-        println!("{}", sanitize_filename::sanitize_with_options(SAMPLE, options.clone()));
+        println!(
+            "{}",
+            sanitize_filename::sanitize_with_options(SAMPLE, options.clone())
+        );
         println!("{SAMPLE:?}");
         println!(
             "{:?}",

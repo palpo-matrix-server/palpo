@@ -29,13 +29,19 @@ pub fn gen_event_id_canonical_json(
     Ok((event_id, value))
 }
 /// Generates a correct eventId for the incoming pdu.
-pub fn gen_event_id(value: &CanonicalJsonObject, room_version_id: &RoomVersionId) -> AppResult<OwnedEventId> {
+pub fn gen_event_id(
+    value: &CanonicalJsonObject,
+    room_version_id: &RoomVersionId,
+) -> AppResult<OwnedEventId> {
     let reference_hash = signatures::reference_hash(value, room_version_id)?;
     let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
     Ok(event_id)
 }
 
-pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<(Seqnum, Option<SeqnumQueueGuard>)> {
+pub fn ensure_event_sn(
+    room_id: &RoomId,
+    event_id: &EventId,
+) -> AppResult<(Seqnum, Option<SeqnumQueueGuard>)> {
     if let Some(sn) = event_points::table
         .find(event_id)
         .select(event_points::event_sn)
@@ -45,7 +51,10 @@ pub fn ensure_event_sn(room_id: &RoomId, event_id: &EventId) -> AppResult<(Seqnu
         Ok((sn, None))
     } else {
         let sn = diesel::insert_into(event_points::table)
-            .values((event_points::event_id.eq(event_id), event_points::room_id.eq(room_id)))
+            .values((
+                event_points::event_id.eq(event_id),
+                event_points::room_id.eq(room_id),
+            ))
             .on_conflict_do_nothing()
             .returning(event_points::event_sn)
             .get_result::<Seqnum>(&mut connect()?)?;

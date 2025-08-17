@@ -13,7 +13,8 @@ use crate::{
     PrivOwnedStr,
     events::{
         AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
-        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent, StateEventType,
+        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
+        StateEventType,
     },
     identifiers::*,
     serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum},
@@ -87,7 +88,10 @@ pub struct RoomMemberEventContent {
     ///
     /// This uses the unstable prefix in
     /// [MSC2448](https://github.com/matrix-org/matrix-spec-proposals/pull/2448).
-    #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "xyz.amorgan.blurhash",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub blurhash: Option<String>,
 
     /// User-supplied text for why their membership has changed.
@@ -139,7 +143,10 @@ impl<'de> Deserialize<'de> for RoomMemberEventContent {
             #[serde(skip_serializing_if = "Option::is_none")]
             third_party_invite: Option<ThirdPartyInvite>,
 
-            #[serde(rename = "xyz.amorgan.blurhash", skip_serializing_if = "Option::is_none")]
+            #[serde(
+                rename = "xyz.amorgan.blurhash",
+                skip_serializing_if = "Option::is_none"
+            )]
             blurhash: Option<String>,
 
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -278,7 +285,10 @@ pub struct RedactedRoomMemberEventContent {
     ///
     /// This is redacted in room versions 8 and below. It is used for validating
     /// joins when the join rule is restricted.
-    #[serde(rename = "join_authorised_via_users_server", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "join_authorised_via_users_server",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub join_authorized_via_users_server: Option<OwnedUserId>,
 }
 
@@ -412,7 +422,10 @@ impl ThirdPartyInvite {
     /// Creates a new `ThirdPartyInvite` with the given display name and signed
     /// content.
     pub fn new(display_name: String, signed: SignedContent) -> Self {
-        Self { display_name, signed }
+        Self {
+            display_name,
+            signed,
+        }
     }
 
     /// Transform `self` into a redacted form (removing most or all fields)
@@ -432,7 +445,9 @@ impl ThirdPartyInvite {
             | RoomVersionId::V8
             | RoomVersionId::V9
             | RoomVersionId::V10 => None,
-            _ => Some(RedactedThirdPartyInvite { signed: self.signed }),
+            _ => Some(RedactedThirdPartyInvite {
+                signed: self.signed,
+            }),
         }
     }
 }
@@ -506,7 +521,12 @@ impl OriginalRoomMemberEvent {
     ///
     /// [spec]: https://spec.matrix.org/latest/client-server-api/#mroommember
     pub fn membership_change(&self) -> MembershipChange<'_> {
-        membership_change(self.details(), self.prev_details(), &self.sender, &self.state_key)
+        membership_change(
+            self.details(),
+            self.prev_details(),
+            &self.sender,
+            &self.state_key,
+        )
     }
 }
 
@@ -529,7 +549,10 @@ impl RedactedRoomMemberEvent {
     /// Check [the specification][spec] for details.
     ///
     /// [spec]: https://spec.matrix.org/latest/client-server-api/#mroommember
-    pub fn membership_change<'a>(&'a self, prev_details: Option<MembershipDetails<'a>>) -> MembershipChange<'a> {
+    pub fn membership_change<'a>(
+        &'a self,
+        prev_details: Option<MembershipDetails<'a>>,
+    ) -> MembershipChange<'a> {
         membership_change(self.details(), prev_details, &self.sender, &self.state_key)
     }
 }
@@ -561,7 +584,12 @@ impl OriginalSyncRoomMemberEvent {
     ///
     /// [spec]: https://spec.matrix.org/latest/client-server-api/#mroommember
     pub fn membership_change(&self) -> MembershipChange<'_> {
-        membership_change(self.details(), self.prev_details(), &self.sender, &self.state_key)
+        membership_change(
+            self.details(),
+            self.prev_details(),
+            &self.sender,
+            &self.state_key,
+        )
     }
 }
 
@@ -584,7 +612,10 @@ impl RedactedSyncRoomMemberEvent {
     /// Check [the specification][spec] for details.
     ///
     /// [spec]: https://spec.matrix.org/latest/client-server-api/#mroommember
-    pub fn membership_change<'a>(&'a self, prev_details: Option<MembershipDetails<'a>>) -> MembershipChange<'a> {
+    pub fn membership_change<'a>(
+        &'a self,
+        prev_details: Option<MembershipDetails<'a>>,
+    ) -> MembershipChange<'a> {
         membership_change(self.details(), prev_details, &self.sender, &self.state_key)
     }
 }
@@ -608,7 +639,10 @@ impl StrippedRoomMemberEvent {
     /// Check [the specification][spec] for details.
     ///
     /// [spec]: https://spec.matrix.org/latest/client-server-api/#mroommember
-    pub fn membership_change<'a>(&'a self, prev_details: Option<MembershipDetails<'a>>) -> MembershipChange<'a> {
+    pub fn membership_change<'a>(
+        &'a self,
+        prev_details: Option<MembershipDetails<'a>>,
+    ) -> MembershipChange<'a> {
         membership_change(self.details(), prev_details, &self.sender, &self.state_key)
     }
 }

@@ -15,9 +15,9 @@
 ### For more information, see:
 ### https://palpo.im/guide/configuration.html
 
-# The default address (IPv4 or IPv6) and port palpo will listen on.
+# This item is undocumented. Please contribute documentation for it.
 #
-# listen_addr =
+# listeners =
 
 # The server_name is the pretty name of this server. It is used as a
 # suffix for user and room IDs/aliases.
@@ -59,7 +59,7 @@
 #
 # If you are running palpo in a container environment, this config
 # option may need to be enabled. For more details, see:
-# https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
+# https://palpo.im/troubleshooting.html#potential-dns-issues-when-using-docker
 #
 # query_over_tcp_only = false
 
@@ -88,7 +88,7 @@
 
 # Max request size for file uploads in bytes. Defaults to 20MB.
 #
-# max_request_size = 20971520
+# max_upload_size = 20971520
 
 # This item is undocumented. Please contribute documentation for it.
 #
@@ -355,12 +355,12 @@
 # purposes such as recovering/recreating your admin room, or inviting
 # yourself back.
 #
-# See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
+# See https://palpo.im/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
 #
 # Once this password is unset, all sessions will be logged out for
 # security purposes.
 #
-# example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
+# example: "x7k9m2p5#n8w1%q4r6"
 #
 # emergency_password =
 

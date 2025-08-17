@@ -48,7 +48,10 @@ pub use self::{
         PushConditionPowerLevelsCtx, PushConditionRoomCtx, RoomMemberCountIs, ScalarJsonValue,
     },
     iter::{AnyPushRule, AnyPushRuleRef, RulesetIntoIter, RulesetIter},
-    predefined::{PredefinedContentRuleId, PredefinedOverrideRuleId, PredefinedRuleId, PredefinedUnderrideRuleId},
+    predefined::{
+        PredefinedContentRuleId, PredefinedOverrideRuleId, PredefinedRuleId,
+        PredefinedUnderrideRuleId,
+    },
 };
 use crate::{PrivOwnedStr, serde::StringEnum};
 
@@ -87,11 +90,15 @@ where
     let mut to = default_position;
 
     if let Some(rule_id) = after {
-        let idx = set.get_index_of(rule_id).ok_or(InsertPushRuleError::UnknownRuleId)?;
+        let idx = set
+            .get_index_of(rule_id)
+            .ok_or(InsertPushRuleError::UnknownRuleId)?;
         to = idx + 1;
     }
     if let Some(rule_id) = before {
-        let idx = set.get_index_of(rule_id).ok_or(InsertPushRuleError::UnknownRuleId)?;
+        let idx = set
+            .get_index_of(rule_id)
+            .ok_or(InsertPushRuleError::UnknownRuleId)?;
 
         if idx < to {
             return Err(InsertPushRuleError::BeforeHigherThanAfter);

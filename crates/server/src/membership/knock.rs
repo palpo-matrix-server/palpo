@@ -11,7 +11,8 @@ use crate::core::events::room::join_rule::JoinRule;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::federation::event::{EventReqArgs, EventResBody, event_request};
 use crate::core::federation::knock::{
-    MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody, send_knock_request,
+    MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody,
+    send_knock_request,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
@@ -19,7 +20,10 @@ use crate::data::room::NewDbEvent;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent, config};
+use crate::{
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
+    config,
+};
 
 pub async fn knock_room(
     sender_id: &UserId,
@@ -29,14 +33,20 @@ pub async fn knock_room(
 ) -> AppResult<()> {
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
-        return Err(
-            MatrixError::forbidden("You cannot knock on a room you are already invited/accepted to.", None).into(),
-        );
+        return Err(MatrixError::forbidden(
+            "You cannot knock on a room you are already invited/accepted to.",
+            None,
+        )
+        .into());
     }
 
     if room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
-        return Err(MatrixError::forbidden("You cannot knock on a room you are already joined in.", None).into());
+        return Err(MatrixError::forbidden(
+            "You cannot knock on a room you are already joined in.",
+            None,
+        )
+        .into());
     }
 
     if room::user::is_knocked(sender_id, room_id)? {
@@ -47,7 +57,11 @@ pub async fn knock_room(
     if let Ok(memeber) = room::get_member(room_id, sender_id) {
         if memeber.membership == MembershipState::Ban {
             warn!("{sender_id} is banned from {room_id} but attempted to knock");
-            return Err(MatrixError::forbidden("You cannot knock on a room you are banned from.", None).into());
+            return Err(MatrixError::forbidden(
+                "You cannot knock on a room you are banned from.",
+                None,
+            )
+            .into());
         }
     }
 
@@ -56,7 +70,11 @@ pub async fn knock_room(
         info!("We can knock locally");
         let room_version_id = room::get_version(room_id)?;
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
-            return Err(MatrixError::forbidden("This room version does not support knocking.", None).into());
+            return Err(MatrixError::forbidden(
+                "This room version does not support knocking.",
+                None,
+            )
+            .into());
         }
 
         let join_rule = room::get_join_rule(room_id)?;
@@ -64,7 +82,9 @@ pub async fn knock_room(
             join_rule,
             JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
         ) {
-            return Err(MatrixError::forbidden("This room does not support knocking.", None).into());
+            return Err(
+                MatrixError::forbidden("This room does not support knocking.", None).into(),
+            );
         }
 
         let content = RoomMemberEventContent {
@@ -80,8 +100,10 @@ pub async fn knock_room(
             PduBuilder::state(sender_id.to_string(), &content),
             sender_id,
             room_id,
-            &room::lock_state(&room_id).await,
-        ) {
+            &room::lock_state(room_id).await,
+        )
+        .await
+        {
             Ok(_) => {
                 return Ok(());
             }
@@ -95,7 +117,8 @@ pub async fn knock_room(
     }
     info!("Knocking {room_id} over federation.");
 
-    let (make_knock_response, remote_server) = make_knock_request(sender_id, room_id, servers).await?;
+    let (make_knock_response, remote_server) =
+        make_knock_request(sender_id, room_id, servers).await?;
 
     info!("make_knock finished");
 
@@ -110,8 +133,9 @@ pub async fn knock_room(
 
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
-            StatusError::internal_server_error()
-                .brief(format!("Invalid make_knock event json received from server: {e:?}"))
+            StatusError::internal_server_error().brief(format!(
+                "Invalid make_knock event json received from server: {e:?}"
+            ))
         })?;
 
     knock_event_stub.insert(
@@ -163,16 +187,19 @@ pub async fn knock_room(
     )?
     .into_inner();
 
-    let send_knock_body = crate::sending::send_federation_request(&remote_server, send_knock_request)
-        .await?
-        .json::<SendKnockResBody>()
-        .await?;
+    let send_knock_body =
+        crate::sending::send_federation_request(&remote_server, send_knock_request)
+            .await?
+            .json::<SendKnockResBody>()
+            .await?;
 
     info!("send_knock finished");
 
     info!("parsing knock event");
     let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, knock_event.clone())
-        .map_err(|e| StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}")))?;
+        .map_err(|e| {
+            StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
+        })?;
 
     info!("going through send_knock response knock state events");
 
@@ -199,7 +226,8 @@ pub async fn knock_room(
             warn!("send_knock stripped state event has invalid state_key: {value:?}");
             continue;
         };
-        let Ok(_event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into()) else {
+        let Ok(_event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into())
+        else {
             warn!("send_knock stripped state event has invalid event type: {value:?}");
             continue;
         };
@@ -207,7 +235,9 @@ pub async fn knock_room(
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
-            let request = event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?.into_inner();
+            let request =
+                event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?
+                    .into_inner();
             let res_body = crate::sending::send_federation_request(&remote_server, request)
                 .await?
                 .json::<EventResBody>()
@@ -215,7 +245,7 @@ pub async fn knock_room(
             let _ = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
-                &room_id,
+                room_id,
                 &room_version_id,
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
@@ -258,8 +288,9 @@ pub async fn knock_room(
         &knock_pdu,
         knock_event,
         once(event_id.borrow()),
-        &room::lock_state(&room_id).await,
-    )?;
+        &room::lock_state(room_id).await,
+    )
+    .await?;
 
     info!("Compressing state from send_knock");
     let compressed = state_map

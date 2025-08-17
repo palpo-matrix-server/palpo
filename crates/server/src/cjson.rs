@@ -1,7 +1,9 @@
 use palpo_core::serde::CanonicalJsonError;
 use salvo::http::header::{CONTENT_TYPE, HeaderValue};
 use salvo::http::{Response, StatusError};
-use salvo::oapi::{self, Components, Content, EndpointOutRegister, Operation, RefOr, ToResponse, ToSchema};
+use salvo::oapi::{
+    self, Components, Content, EndpointOutRegister, Operation, RefOr, ToResponse, ToSchema,
+};
 use salvo::{Scribe, async_trait};
 use serde::Serialize;
 
@@ -48,7 +50,9 @@ where
 {
     #[inline]
     fn register(components: &mut Components, operation: &mut Operation) {
-        operation.responses.insert("200", Self::to_response(components));
+        operation
+            .responses
+            .insert("200", Self::to_response(components));
     }
 }
 

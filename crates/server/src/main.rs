@@ -48,6 +48,8 @@ pub use event::{PduBuilder, PduEvent, SnPduEvent};
 pub use signing_keys::SigningKeys;
 mod global;
 pub use global::*;
+mod info;
+pub mod logging;
 
 pub mod error;
 pub use core::error::MatrixError;
@@ -57,19 +59,23 @@ pub use palpo_core as core;
 pub use palpo_data as data;
 pub use palpo_server_macros as macros;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
+use clap::Parser;
 pub use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
+use figment::providers::Env;
+pub use jsonwebtoken as jwt;
 use salvo::catcher::Catcher;
 use salvo::compression::{Compression, CompressionLevel};
 use salvo::conn::rustls::{Keycert, RustlsConfig};
+use salvo::conn::tcp::DynTcpAcceptors;
 use salvo::cors::{self, AllowHeaders, Cors};
 use salvo::http::Method;
 use salvo::logging::Logger;
 use salvo::prelude::*;
 use tracing_futures::Instrument;
-use tracing_subscriber::fmt::format::FmtSpan;
 
 use crate::config::ServerConfig;
 
@@ -110,17 +116,25 @@ impl<T> OptionalExtension<T> for AppResult<T> {
     }
 }
 
-#[macro_export]
-macro_rules! join_path {
-    ($($part:expr),+) => {
-        {
-            let mut p = std::path::PathBuf::new();
-            $(
-                p.push($part);
-            )*
-            path_slash::PathBufExt::to_slash_lossy(&p).to_string()
-        }
-    }
+/// Commandline arguments
+#[derive(Parser, Debug)]
+#[clap(
+	about,
+	long_about = None,
+	name = "palpo",
+	version = crate::info::version(),
+)]
+pub(crate) struct Args {
+    #[arg(short, long)]
+    /// Path to the config TOML file (optional)
+    pub(crate) config: Option<PathBuf>,
+
+    /// Activate admin command console automatically after startup.
+    #[arg(long, num_args(0))]
+    pub(crate) console: bool,
+
+    #[arg(long, short, num_args(1), default_value_t = true)]
+    pub(crate) server: bool,
 }
 
 #[tokio::main]
@@ -132,45 +146,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         tracing::info!("dotenv error: {:?}", e);
     }
 
-    crate::config::init();
+    let args = Args::parse();
+    tracing::info!("Args: {:?}", args);
+
+    let config_path = if let Some(config) = &args.config {
+        config
+    } else {
+        &PathBuf::from(
+            Env::var("PALPO_CONFIG").unwrap_or_else(|| utils::select_config_path().into()),
+        )
+    };
+
+    crate::config::init(config_path);
     let conf = crate::config::get();
     conf.check().expect("config is not valid!");
-    match &*conf.logger.format {
-        "json" => {
-            tracing_subscriber::fmt()
-                .json()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-        "compact" => {
-            tracing_subscriber::fmt()
-                .compact()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .without_time()
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-        _ => {
-            tracing_subscriber::fmt()
-                .pretty()
-                .with_env_filter(&conf.logger.level)
-                .with_ansi(conf.logger.ansi_colors)
-                .with_thread_ids(conf.logger.thread_ids)
-                .with_span_events(FmtSpan::CLOSE)
-                .init();
-        }
-    }
+
+    crate::logging::init()?;
 
     crate::data::init(&conf.db.clone().into_data_db_config());
 
+    if args.console {
+        tracing::info!("starting admin console...");
+
+        if !args.server {
+            crate::admin::start()
+                .await
+                .expect("admin console failed to start");
+            tracing::info!("admin console stopped");
+            return Ok(());
+        } else {
+            tokio::spawn(async move {
+                crate::admin::start()
+                    .await
+                    .expect("admin console failed to start");
+                tracing::info!("admin console stopped");
+            });
+        }
+    }
+    if !args.server {
+        tracing::info!("Server is not started, exiting...");
+        return Ok(());
+    }
+
     crate::sending::guard::start();
 
-    let router = routing::router();
+    let router = routing::root();
     // let doc = OpenApi::new("palpo api", "0.0.1").merge_router(&router);
     // let router = router
     //     .unshift(doc.into_router("/api-doc/openapi.json"))
@@ -188,7 +208,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .hoop(
             Cors::new()
                 .allow_origin(cors::Any)
-                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
                 .allow_headers(AllowHeaders::list([
                     salvo::http::header::ACCEPT,
                     salvo::http::header::CONTENT_TYPE,
@@ -214,31 +240,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     } else {
         service
     };
-    crate::admin::supervise();
     let _ = crate::data::user::unset_all_presences();
 
     salvo::http::request::set_global_secure_max_size(8 * 1024 * 1024);
     let conf = crate::config::get();
-    println!("Listening on {}", conf.listen_addr);
-    if let Some(tls_conf) = conf.enabled_tls() {
-        let acceptor = TcpListener::new(&conf.listen_addr)
-            .rustls(RustlsConfig::new(
-                Keycert::new()
-                    .cert_from_path(&tls_conf.cert)?
-                    .key_from_path(&tls_conf.key)?,
-            ))
-            .bind()
-            .await;
-        Server::new(acceptor)
-            .serve(service)
-            .instrument(tracing::info_span!("server.serve"))
-            .await
-    } else {
-        let acceptor = TcpListener::new(&conf.listen_addr).bind().await;
-        Server::new(acceptor)
-            .serve(service)
-            .instrument(tracing::info_span!("server.serve"))
-            .await
-    };
+    let mut acceptors = vec![];
+    for listener_conf in &conf.listeners {
+        if let Some(tls_conf) = listener_conf.enabled_tls() {
+            tracing::info!("Listening on: {} with TLS", listener_conf.address);
+            let acceptor = TcpListener::new(&listener_conf.address)
+                .rustls(RustlsConfig::new(
+                    Keycert::new()
+                        .cert_from_path(&tls_conf.cert)?
+                        .key_from_path(&tls_conf.key)?,
+                ))
+                .bind()
+                .await
+                .into_boxed();
+            acceptors.push(acceptor);
+        } else {
+            tracing::info!("Listening on: {}", listener_conf.address);
+            let acceptor = TcpListener::new(&listener_conf.address).bind().await.into_boxed();
+            acceptors.push(acceptor);
+        }
+    }
+
+    Server::new(DynTcpAcceptors::new(acceptors))
+        .serve(service)
+        .instrument(tracing::info_span!("server.serve"))
+        .await;
     Ok(())
 }

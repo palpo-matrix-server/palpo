@@ -6,7 +6,9 @@ use ulid::Ulid;
 
 use crate::core::device::DirectDeviceContent;
 use crate::core::federation::transaction::Edu;
-use crate::core::to_device::{DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody};
+use crate::core::to_device::{
+    DeviceIdOrAllDevices, SendEventToDeviceReqArgs, SendEventToDeviceReqBody,
+};
 use crate::{AuthArgs, DepotExt, EmptyResult, IsRemoteOrLocal, MatrixError, data, empty_ok};
 
 pub fn authed_router() -> Router {
@@ -24,7 +26,11 @@ fn send_to_device(
 ) -> EmptyResult {
     let authed = depot.authed_info()?;
     // Check if this is a new transaction id
-    if crate::transaction_id::txn_id_exists(&args.txn_id, authed.user_id(), Some(authed.device_id()))? {
+    if crate::transaction_id::txn_id_exists(
+        &args.txn_id,
+        authed.user_id(),
+        Some(authed.device_id()),
+    )? {
         return empty_ok();
     }
 
@@ -52,15 +58,17 @@ fn send_to_device(
             }
 
             match target_device_id_maybe {
-                DeviceIdOrAllDevices::DeviceId(target_device_id) => data::user::device::add_to_device_event(
-                    authed.user_id(),
-                    target_user_id,
-                    target_device_id,
-                    &args.event_type.to_string(),
-                    event
-                        .deserialize_as()
-                        .map_err(|_| MatrixError::invalid_param("Event is invalid"))?,
-                )?,
+                DeviceIdOrAllDevices::DeviceId(target_device_id) => {
+                    data::user::device::add_to_device_event(
+                        authed.user_id(),
+                        target_user_id,
+                        target_device_id,
+                        &args.event_type.to_string(),
+                        event
+                            .deserialize_as()
+                            .map_err(|_| MatrixError::invalid_param("Event is invalid"))?,
+                    )?
+                }
 
                 DeviceIdOrAllDevices::AllDevices => {
                     for target_device_id in data::user::all_device_ids(target_user_id)? {
@@ -80,7 +88,13 @@ fn send_to_device(
     }
 
     // Save transaction id with empty data
-    crate::transaction_id::add_txn_id(&args.txn_id, authed.user_id(), Some(authed.device_id()), None, None)?;
+    crate::transaction_id::add_txn_id(
+        &args.txn_id,
+        authed.user_id(),
+        Some(authed.device_id()),
+        None,
+        None,
+    )?;
 
     empty_ok()
 }

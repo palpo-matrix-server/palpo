@@ -186,7 +186,11 @@ impl TreeSink for Html {
             NodeOrText::AppendNode(node) => parent.append_child(node),
             NodeOrText::AppendText(text) => {
                 // If the previous sibling is also text, add this text to it.
-                if let Some(prev_text) = parent.last_child().as_ref().and_then(|sibling| sibling.as_text()) {
+                if let Some(prev_text) = parent
+                    .last_child()
+                    .as_ref()
+                    .and_then(|sibling| sibling.as_text())
+                {
                     prev_text.borrow_mut().push_tendril(&text);
                 } else {
                     let node = NodeRef::new(NodeData::Text(text.into()));
@@ -209,7 +213,13 @@ impl TreeSink for Html {
         }
     }
 
-    fn append_doctype_to_document(&self, _name: StrTendril, _public_id: StrTendril, _system_id: StrTendril) {}
+    fn append_doctype_to_document(
+        &self,
+        _name: StrTendril,
+        _public_id: StrTendril,
+        _system_id: StrTendril,
+    ) {
+    }
 
     fn get_template_contents(&self, target: &Self::Handle) -> Self::Handle {
         target.clone()
@@ -420,7 +430,9 @@ impl NodeRef {
     pub(crate) fn insert_before_sibling(&self, sibling: &NodeRef) {
         self.detach();
 
-        let (parent, index) = sibling.parent_and_index().expect("sibling should have parent");
+        let (parent, index) = sibling
+            .parent_and_index()
+            .expect("sibling should have parent");
 
         self.0.parent.replace(Some(Rc::downgrade(&parent.0)));
         parent.0.children.borrow_mut().insert(index, self.clone());
@@ -481,8 +493,7 @@ impl NodeRef {
     pub fn next_sibling(&self) -> Option<NodeRef> {
         let (parent, index) = self.parent_and_index()?;
         let index = index.checked_add(1)?;
-        let sibling = parent.0.children.borrow().get(index).cloned();
-        sibling
+        parent.0.children.borrow().get(index).cloned()
     }
 
     /// The previous sibling node of this node.
@@ -491,8 +502,7 @@ impl NodeRef {
     pub fn prev_sibling(&self) -> Option<NodeRef> {
         let (parent, index) = self.parent_and_index()?;
         let index = index.checked_sub(1)?;
-        let sibling = parent.0.children.borrow().get(index).cloned();
-        sibling
+        parent.0.children.borrow().get(index).cloned()
     }
 
     /// Whether this node has children.
@@ -527,7 +537,10 @@ impl NodeRef {
             NodeData::Element(data) => {
                 serializer.start_elem(
                     data.name.clone(),
-                    data.attrs.borrow().iter().map(|attr| (&attr.name, &*attr.value)),
+                    data.attrs
+                        .borrow()
+                        .iter()
+                        .map(|attr| (&attr.name, &*attr.value)),
                 )?;
 
                 for child in self.children() {

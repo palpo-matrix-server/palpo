@@ -505,7 +505,11 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id,
     /// target_user_id, PowerLevelUserAction::ChangePowerLevel`.
-    pub fn user_can_change_user_power_level(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
+    pub fn user_can_change_user_power_level(
+        &self,
+        acting_user_id: &UserId,
+        target_user_id: &UserId,
+    ) -> bool {
         // Check that the user can change the power levels first.
         if !self.user_can_send_state(acting_user_id, StateEventType::RoomPowerLevels) {
             return false;
@@ -535,8 +539,12 @@ impl RoomPowerLevels {
             PowerLevelAction::Kick => self.user_can_kick(user_id),
             PowerLevelAction::RedactOwn => self.user_can_redact_own_event(user_id),
             PowerLevelAction::RedactOther => self.user_can_redact_event_of_other(user_id),
-            PowerLevelAction::SendMessage(message_type) => self.user_can_send_message(user_id, message_type),
-            PowerLevelAction::SendState(state_type) => self.user_can_send_state(user_id, state_type),
+            PowerLevelAction::SendMessage(message_type) => {
+                self.user_can_send_message(user_id, message_type)
+            }
+            PowerLevelAction::SendState(state_type) => {
+                self.user_can_send_state(user_id, state_type)
+            }
             PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room) => {
                 self.user_can_trigger_room_notification(user_id)
             }

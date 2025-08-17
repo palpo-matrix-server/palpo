@@ -34,7 +34,10 @@ pub struct FileEventContent {
     pub file: FileContentBlock,
 
     /// The caption of the message, if any.
-    #[serde(rename = "org.matrix.msc1767.caption", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "org.matrix.msc1767.caption",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub caption: Option<CaptionContentBlock>,
 
     /// Whether this message is automated.
@@ -71,7 +74,11 @@ impl FileEventContent {
 
     /// Creates a new non-encrypted `FileEventContent` with the given plain text
     /// fallback representation, url and name.
-    pub fn plain_with_plain_text(plain_text: impl Into<String>, url: OwnedMxcUri, name: String) -> Self {
+    pub fn plain_with_plain_text(
+        plain_text: impl Into<String>,
+        url: OwnedMxcUri,
+        name: String,
+    ) -> Self {
         Self {
             text: TextContentBlock::plain(plain_text),
             file: FileContentBlock::plain(url, name),
@@ -236,7 +243,9 @@ impl From<EncryptedContentInit> for EncryptedContent {
 
 impl From<&EncryptedFile> for EncryptedContent {
     fn from(encrypted: &EncryptedFile) -> Self {
-        let EncryptedFile { key, iv, hashes, v, .. } = encrypted;
+        let EncryptedFile {
+            key, iv, hashes, v, ..
+        } = encrypted;
         Self {
             key: key.to_owned(),
             iv: iv.to_owned(),

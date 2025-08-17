@@ -26,7 +26,11 @@ pub struct RoomTopicEventContent {
     ///
     /// With the `compat-lax-room-topic-deser` cargo feature, this field is ignored if its
     /// deserialization fails.
-    #[serde(rename = "m.topic", default, skip_serializing_if = "TopicContentBlock::is_empty")]
+    #[serde(
+        rename = "m.topic",
+        default,
+        skip_serializing_if = "TopicContentBlock::is_empty"
+    )]
     pub topic_block: TopicContentBlock,
 }
 
@@ -173,7 +177,10 @@ mod tests {
 
         let content = from_json_value::<RoomTopicEventContent>(json).unwrap();
         assert_eq!(content.topic, "Hot Topic");
-        assert_eq!(content.topic_block.text.find_html(), Some("<strong>Hot</strong> Topic"));
+        assert_eq!(
+            content.topic_block.text.find_html(),
+            Some("<strong>Hot</strong> Topic")
+        );
         assert_eq!(content.topic_block.text.find_plain(), Some("Hot Topic"));
 
         let content = serde_json::from_str::<RoomTopicEventContent>(
@@ -223,9 +230,10 @@ mod tests {
         assert_eq!(content.topic_block.text.find_html(), None);
         assert_eq!(content.topic_block.text.find_plain(), None);
 
-        let content =
-            serde_json::from_str::<RoomTopicEventContent>(r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#)
-                .unwrap();
+        let content = serde_json::from_str::<RoomTopicEventContent>(
+            r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#,
+        )
+        .unwrap();
         assert_eq!(content.topic, "Hot Topic");
         assert_eq!(content.topic_block.text.find_html(), None);
         assert_eq!(content.topic_block.text.find_plain(), None);

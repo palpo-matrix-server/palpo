@@ -91,7 +91,7 @@ chrono = { workspace = true, features = ["serde"] }
 config = { workspace = true }
 cookie = { workspace = true }
 date_header = { workspace = true }
-diesel = { workspace = true }
+diesel = { workspace = true, features = ["postgres", "serde_json", "chrono", "numeric", "r2d2"]}
 dotenvy = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["pkcs8", "rand_core"] }
 form_urlencoded = { workspace = true }
@@ -146,3 +146,6 @@ wildmatch = { workspace = true }
 
 [dev-dependencies]
 assert_matches2 = { workspace = true }
+
+[lints]
+workspace = true

@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::events::room::member::RoomMemberEvent;
 use crate::serde::{JsonValue, RawJson, StringEnum};
 use crate::third_party::Medium;
-use crate::{OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr};
+use crate::{
+    OwnedMxcUri, OwnedRoomId, OwnedServerName, OwnedServerSigningKeyId, OwnedUserId, PrivOwnedStr,
+};
 
 /// A signature of an `m.third_party_invite` token to prove that this user owns
 /// a third party identity which has been invited to the room.
@@ -125,12 +127,12 @@ pub struct BanUserReqBody {
     pub reason: Option<String>,
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/unban`
-///
-/// Unban a user from a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidunban
+// /// `POST /_matrix/client/*/rooms/{room_id}/unban`
+// ///
+// /// Unban a user from a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidunban
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -169,12 +171,12 @@ pub enum InvitationRecipient {
     /// Used to invite user by a third party identifier.
     ThirdPartyId(InviteThreepid),
 }
-/// `POST /_matrix/client/*/rooms/{room_id}/kick`
-///
-/// Kick a user from a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidkick
+// /// `POST /_matrix/client/*/rooms/{room_id}/kick`
+// ///
+// /// Kick a user from a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidkick
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -200,17 +202,17 @@ pub struct KickUserReqBody {
     pub reason: Option<String>,
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/invite`
-///
-/// Invite a user to a room.
-/// `/v3/` ([spec (MXID)][spec-mxid], [spec (3PID)][spec-3pid])
-///
-/// This endpoint has two forms: one to invite a user
-/// [by their Matrix identifier][spec-mxid], and one to invite a user
-/// [by their third party identifier][spec-3pid].
-///
-/// [spec-mxid]: https://spec.matrix.org/v1.9/client-server-api/#post_matrixclientv3roomsroomidinvite
-/// [spec-3pid]: https://spec.matrix.org/v1.9/client-server-api/#post_matrixclientv3roomsroomidinvite-1
+// /// `POST /_matrix/client/*/rooms/{room_id}/invite`
+// ///
+// /// Invite a user to a room.
+// /// `/v3/` ([spec (MXID)][spec-mxid], [spec (3PID)][spec-3pid])
+// ///
+// /// This endpoint has two forms: one to invite a user
+// /// [by their Matrix identifier][spec-mxid], and one to invite a user
+// /// [by their third party identifier][spec-3pid].
+// ///
+// /// [spec-mxid]: https://spec.matrix.org/v1.9/client-server-api/#post_matrixclientv3roomsroomidinvite
+// /// [spec-3pid]: https://spec.matrix.org/v1.9/client-server-api/#post_matrixclientv3roomsroomidinvite-1
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -234,12 +236,12 @@ pub struct InviteUserReqBody {
     pub reason: Option<String>,
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/leave`
-///
-/// Leave a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidleave
+// /// `POST /_matrix/client/*/rooms/{room_id}/leave`
+// ///
+// /// Leave a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidleave
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,
@@ -259,12 +261,12 @@ pub struct LeaveRoomReqBody {
     pub reason: Option<String>,
 }
 
-/// `GET /_matrix/client/*/user/mutual_rooms/{user_id}`
-///
-/// Get mutual rooms with another user.
-/// `/unstable/` ([spec])
-///
-/// [spec]: https://github.com/matrix-org/matrix-spec-proposals/blob/hs/shared-rooms/proposals/2666-get-rooms-in-common.md
+// /// `GET /_matrix/client/*/user/mutual_rooms/{user_id}`
+// ///
+// /// Get mutual rooms with another user.
+// /// `/unstable/` ([spec])
+// ///
+// /// [spec]: https://github.com/matrix-org/matrix-spec-proposals/blob/hs/shared-rooms/proposals/2666-get-rooms-in-common.md
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -318,12 +320,12 @@ impl MutualRoomsResBody {
         }
     }
 }
-/// `GET /_matrix/client/*/joined_rooms`
-///
-/// Get a list of the user's current rooms.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3joined_rooms
+// /// `GET /_matrix/client/*/joined_rooms`
+// ///
+// /// Get a list of the user's current rooms.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3joined_rooms
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -350,12 +352,12 @@ impl JoinedRoomsResBody {
     }
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/forget`
-///
-/// Forget a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidforget
+// /// `POST /_matrix/client/*/rooms/{room_id}/forget`
+// ///
+// /// Forget a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidforget
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,
@@ -366,7 +368,7 @@ impl JoinedRoomsResBody {
 //     }
 // };
 
-/// Request type for the `forget_room` endpoint.
+// /// Request type for the `forget_room` endpoint.
 
 // pub struct ForgetReqBody {
 //     /// The room to forget.
@@ -374,12 +376,12 @@ impl JoinedRoomsResBody {
 //     pub room_id: OwnedRoomId,
 // }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/join`
-///
-/// Join a room using its ID.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidjoin
+// /// `POST /_matrix/client/*/rooms/{room_id}/join`
+// ///
+// /// Join a room using its ID.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidjoin
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: true,
@@ -418,7 +420,7 @@ pub struct JoinRoomReqBody {
 //     }
 // };
 
-/// Request type for the `join_room_by_id_or_alias` endpoint.
+// /// Request type for the `join_room_by_id_or_alias` endpoint.
 // #[derive(ToSchema, Default, Deserialize, Debug)]
 // pub struct JoinRoomByIdOrAliasReqBody {
 //     /// The signature of a `m.third_party_invite` token to prove that this user
@@ -443,12 +445,12 @@ impl JoinRoomResBody {
     }
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/members`
-///
-/// Get membership events for a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmembers
+// /// `GET /_matrix/client/*/rooms/{room_id}/members`
+// ///
+// /// Get membership events for a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmembers
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -532,13 +534,13 @@ pub enum MembershipEventFilter {
     _Custom(PrivOwnedStr),
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/joined_members`
-///
-/// Get a map of user IDs to member info objects for members of the room.
-/// Primarily for use in Application Services.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidjoined_members
+// /// `GET /_matrix/client/*/rooms/{room_id}/joined_members`
+// ///
+// /// Get a map of user IDs to member info objects for members of the room.
+// /// Primarily for use in Application Services.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidjoined_members
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -549,7 +551,7 @@ pub enum MembershipEventFilter {
 //     }
 // };
 
-/// Request type for the `joined_members` endpoint.
+// /// Request type for the `joined_members` endpoint.
 
 // pub struct JoinedMembersReqBody {
 //     /// The room to get the members of.

@@ -9,26 +9,29 @@ pub use summary::*;
 pub use thread::*;
 
 use crate::{
-    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
-    RoomVersionId, UnixMillis,
+    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,
+    PrivOwnedStr, RoomVersionId, UnixMillis,
     client::{filter::RoomEventFilter, membership::InviteThreepid},
     events::{
         AnyInitialStateEvent, AnyRoomAccountDataEvent, AnyStateEvent, AnyTimelineEvent,
-        room::{create::PreviousRoom, member::MembershipState, power_levels::RoomPowerLevelsEventContent},
+        room::{
+            create::PreviousRoom, member::MembershipState,
+            power_levels::RoomPowerLevelsEventContent,
+        },
     },
     room::{RoomType, Visibility},
     serde::{RawJson, StringEnum},
 };
 
-/// `POST /_matrix/client/*/createRoom`
-///
-/// Create a new room.
-
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3createroom
-
-/// Whether or not a newly created room will be listed in the room directory.
+// /// `POST /_matrix/client/*/createRoom`
+// ///
+// /// Create a new room.
+//
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3createroom
+//
+// /// Whether or not a newly created room will be listed in the room directory.
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -198,12 +201,12 @@ pub enum RoomPreset {
     _Custom(PrivOwnedStr),
 }
 
-/// `POST /_matrix/client/*/rooms/{room_id}/upgrade`
-///
-/// Upgrades a room to a particular version.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidupgrade
+// /// `POST /_matrix/client/*/rooms/{room_id}/upgrade`
+// ///
+// /// Upgrades a room to a particular version.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidupgrade
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -233,12 +236,12 @@ pub struct UpgradeRoomResBody {
     pub replacement_room: OwnedRoomId,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/timestamp_to_event`
-///
-/// Get the ID of the event closest to the given timestamp.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidtimestamp_to_event
+// /// `GET /_matrix/client/*/rooms/{room_id}/timestamp_to_event`
+// ///
+// /// Get the ID of the event closest to the given timestamp.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv1roomsroomidtimestamp_to_event
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -276,12 +279,12 @@ pub struct EventByTimestampResBody {
     pub origin_server_ts: UnixMillis,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
-///
-/// Get a single event based on roomId/eventId
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomideventeventid
+// /// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
+// ///
+// /// Get a single event based on roomId/eventId
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomideventeventid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -305,12 +308,13 @@ impl RoomEventResBody {
         Self(event)
     }
 }
-/// `POST /_matrix/client/*/rooms/{room_id}/report/{event_id}`
-///
-/// Report content as inappropriate.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidreporteventid
+
+// /// `POST /_matrix/client/*/rooms/{room_id}/report/{event_id}`
+// ///
+// /// Report content as inappropriate.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3roomsroomidreporteventid
 // const METADATA: Metadata = metadata! {
 //     method: POST,
 //     rate_limited: false,
@@ -372,7 +376,11 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::FullyRead`]: crate::receipt::create_receipt::v3::ReceiptType::FullyRead
-    #[serde(default, rename = "m.fully_read", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.fully_read",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub fully_read: Option<OwnedEventId>,
 
     /// The event ID to set the public read receipt location at.
@@ -392,7 +400,11 @@ pub struct SetReadMarkerReqBody {
     ///
     /// [`create_receipt`]: crate::receipt::create_receipt
     /// [`ReceiptType::ReadPrivate`]: crate::receipt::create_receipt::v3::ReceiptType::ReadPrivate
-    #[serde(default, rename = "m.read.private", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "m.read.private",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub private_read_receipt: Option<OwnedEventId>,
 }
 

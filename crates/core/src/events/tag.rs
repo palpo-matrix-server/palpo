@@ -16,7 +16,7 @@ pub type Tags = BTreeMap<TagName, TagInfo>;
 /// The content of an `m.tag` event.
 ///
 /// Informs the client of tags on a room.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
+#[derive(ToSchema, Default, Deserialize, Serialize, Clone, Debug, EventContent)]
 #[palpo_event(type = "m.tag", kind = RoomAccountData)]
 pub struct TagEventContent {
     /// A map of tag names to tag info.
@@ -222,21 +222,36 @@ mod tests {
     #[test]
     fn deserialize_tag_info() {
         let json = json!({});
-        assert_eq!(from_json_value::<TagInfo>(json).unwrap(), TagInfo::default());
+        assert_eq!(
+            from_json_value::<TagInfo>(json).unwrap(),
+            TagInfo::default()
+        );
 
         let json = json!({ "order": null });
-        assert_eq!(from_json_value::<TagInfo>(json).unwrap(), TagInfo::default());
+        assert_eq!(
+            from_json_value::<TagInfo>(json).unwrap(),
+            TagInfo::default()
+        );
 
         let json = json!({ "order": 0.42 });
-        assert_eq!(from_json_value::<TagInfo>(json).unwrap(), TagInfo { order: Some(0.42) });
+        assert_eq!(
+            from_json_value::<TagInfo>(json).unwrap(),
+            TagInfo { order: Some(0.42) }
+        );
 
         #[cfg(feature = "compat-tag-info")]
         {
             let json = json!({ "order": "0.5" });
-            assert_eq!(from_json_value::<TagInfo>(json).unwrap(), TagInfo { order: Some(0.5) });
+            assert_eq!(
+                from_json_value::<TagInfo>(json).unwrap(),
+                TagInfo { order: Some(0.5) }
+            );
 
             let json = json!({ "order": ".5" });
-            assert_eq!(from_json_value::<TagInfo>(json).unwrap(), TagInfo { order: Some(0.5) });
+            assert_eq!(
+                from_json_value::<TagInfo>(json).unwrap(),
+                TagInfo { order: Some(0.5) }
+            );
         }
 
         #[cfg(not(feature = "compat-tag-info"))]

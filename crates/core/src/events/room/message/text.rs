@@ -19,7 +19,10 @@ impl TextMessageEventContent {
     /// A convenience constructor to create a plain text message.
     pub fn plain(body: impl Into<String>) -> Self {
         let body = body.into();
-        Self { body, formatted: None }
+        Self {
+            body,
+            formatted: None,
+        }
     }
 
     /// A convenience constructor to create an HTML message.

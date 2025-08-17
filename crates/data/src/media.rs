@@ -44,13 +44,24 @@ pub fn get_metadata(server_name: &ServerName, media_id: &str) -> DataResult<Opti
         .map_err(Into::into)
 }
 
+pub fn delete_media(server_name: &ServerName, media_id: &str) -> DataResult<()> {
+    diesel::delete(
+        media_metadatas::table
+            .filter(media_metadatas::media_id.eq(media_id))
+            .filter(media_metadatas::origin_server.eq(server_name)),
+    )
+    .execute(&mut connect()?)?;
+    Ok(())
+}
+
 #[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = media_thumbnails)]
 pub struct DbThumbnail {
     pub id: i64,
     pub media_id: String,
     pub origin_server: OwnedServerName,
-    pub content_type: String,
+    pub content_type: Option<String>,
+    pub disposition_type: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -62,7 +73,8 @@ pub struct DbThumbnail {
 pub struct NewDbThumbnail {
     pub media_id: String,
     pub origin_server: OwnedServerName,
-    pub content_type: String,
+    pub content_type: Option<String>,
+    pub disposition_type: Option<String>,
     pub file_size: i64,
     pub width: i32,
     pub height: i32,
@@ -70,7 +82,7 @@ pub struct NewDbThumbnail {
     pub created_at: UnixMillis,
 }
 
-pub fn get_thumbnail(
+pub fn get_thumbnail_by_dimension(
     origin_server: &ServerName,
     media_id: &str,
     width: u32,

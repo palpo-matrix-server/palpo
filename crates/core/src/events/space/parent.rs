@@ -39,7 +39,10 @@ pub struct SpaceParentEventContent {
 impl SpaceParentEventContent {
     /// Creates a new `SpaceParentEventContent` with the given routing servers.
     pub fn new(via: Vec<OwnedServerName>) -> Self {
-        Self { via, canonical: false }
+        Self {
+            via,
+            canonical: false,
+        }
     }
 }
 

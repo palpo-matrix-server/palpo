@@ -25,9 +25,17 @@ pub fn expand_enum_as_ref_str(input: &ItemEnum) -> syn::Result<TokenStream> {
                 ),
                 (Some(rename), Fields::Unit) => (None, rename.into_token_stream()),
                 (None, Fields::Named(FieldsNamed { named: fields, .. }))
-                | (None, Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. })) => {
+                | (
+                    None,
+                    Fields::Unnamed(FieldsUnnamed {
+                        unnamed: fields, ..
+                    }),
+                ) => {
                     if fields.len() != 1 {
-                        return Err(syn::Error::new_spanned(v, "multiple data fields are not supported"));
+                        return Err(syn::Error::new_spanned(
+                            v,
+                            "multiple data fields are not supported",
+                        ));
                     }
 
                     let capture = match &fields[0].ident {

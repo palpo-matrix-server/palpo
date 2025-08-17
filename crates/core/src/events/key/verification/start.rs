@@ -9,7 +9,9 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use super::{HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString};
+use super::{
+    HashAlgorithm, KeyAgreementProtocol, MessageAuthenticationCode, ShortAuthenticationString,
+};
 use crate::{OwnedDeviceId, OwnedTransactionId, events::relation::Reference, serde::Base64};
 
 /// The content of a to-device `m.key.verification.start` event.
@@ -36,7 +38,11 @@ pub struct ToDeviceKeyVerificationStartEventContent {
 impl ToDeviceKeyVerificationStartEventContent {
     /// Creates a new `ToDeviceKeyVerificationStartEventContent` with the given
     /// device ID, transaction ID and method specific content.
-    pub fn new(from_device: OwnedDeviceId, transaction_id: OwnedTransactionId, method: StartMethod) -> Self {
+    pub fn new(
+        from_device: OwnedDeviceId,
+        transaction_id: OwnedTransactionId,
+        method: StartMethod,
+    ) -> Self {
         Self {
             from_device,
             transaction_id,
@@ -130,7 +136,8 @@ impl ReciprocateV1Content {
 
 impl fmt::Debug for ReciprocateV1Content {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReciprocateV1Content").finish_non_exhaustive()
+        f.debug_struct("ReciprocateV1Content")
+            .finish_non_exhaustive()
     }
 }
 

@@ -7,8 +7,9 @@ use serde::Deserialize;
 use serde::de::IgnoredAny;
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig, LoggerConfig, MediaConfig,
-    OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
+    LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
+    TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
@@ -28,6 +29,35 @@ pub struct WellKnownConfig {
 pub struct KeypairConfig {
     pub document: String,
     pub version: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ListenerConfig {
+    /// The default address (IPv4 or IPv6) and port palpo will listen on.
+    #[serde(default = "default_listen_address")]
+    pub address: String,
+    #[serde(default)]
+    pub x_forwarded: bool,
+    // external structure; separate section
+    pub tls: Option<TlsConfig>,
+}
+impl Default for ListenerConfig {
+    fn default() -> Self {
+        Self {
+            address: default_listen_address(),
+            x_forwarded: false,
+            tls: None,
+        }
+    }
+}
+impl ListenerConfig {
+    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
+        if let Some(tls) = self.tls.as_ref() {
+            if tls.enable { Some(tls) } else { None }
+        } else {
+            None
+        }
+    }
 }
 
 #[config_example(
@@ -56,9 +86,8 @@ pub struct KeypairConfig {
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
-    /// The default address (IPv4 or IPv6) and port palpo will listen on.
-    #[serde(default = "default_listen_addr")]
-    pub listen_addr: String,
+    #[serde(default = "default_listener")]
+    pub listeners: Vec<ListenerConfig>,
 
     /// The server_name is the pretty name of this server. It is used as a
     /// suffix for user and room IDs/aliases.
@@ -115,7 +144,7 @@ pub struct ServerConfig {
     ///
     /// If you are running palpo in a container environment, this config
     /// option may need to be enabled. For more details, see:
-    /// https://palpo.chat/troubleshooting.html#potential-dns-issues-when-using-docker
+    /// https://palpo.im/troubleshooting.html#potential-dns-issues-when-using-docker
     #[serde(default)]
     pub query_over_tcp_only: bool,
 
@@ -147,8 +176,8 @@ pub struct ServerConfig {
     /// Max request size for file uploads in bytes. Defaults to 20MB.
     ///
     /// default: 20971520
-    #[serde(default = "default_max_request_size")]
-    pub max_request_size: u32,
+    #[serde(default = "default_max_upload_size")]
+    pub max_upload_size: u32,
 
     /// default: 192
     #[serde(default = "default_max_fetch_prev_events")]
@@ -439,12 +468,12 @@ pub struct ServerConfig {
     /// purposes such as recovering/recreating your admin room, or inviting
     /// yourself back.
     ///
-    /// See https://palpo.chat/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
+    /// See https://palpo.im/troubleshooting.html#lost-access-to-admin-room for other ways to get back into your admin room.
     ///
     /// Once this password is unset, all sessions will be logged out for
     /// security purposes.
     ///
-    /// example: "F670$2CP@Hw8mG7RY1$%!#Ic7YA"
+    /// example: "x7k9m2p5#n8w1%q4r6"
     ///
     /// display: sensitive
     pub emergency_password: Option<String>,
@@ -612,8 +641,6 @@ pub struct ServerConfig {
     pub logger: LoggerConfig,
 
     // external structure; separate section
-    pub tls: Option<TlsConfig>,
-    // external structure; separate section
     pub jwt: Option<JwtConfig>,
 
     // external structure; separate section
@@ -732,14 +759,6 @@ impl ServerConfig {
         }
     }
 
-    pub fn enabled_tls(&self) -> Option<&TlsConfig> {
-        if let Some(tls) = self.tls.as_ref() {
-            if tls.enable { Some(tls) } else { None }
-        } else {
-            None
-        }
-    }
-
     pub fn enabled_turn(&self) -> Option<&TurnConfig> {
         if let Some(turn) = self.turn.as_ref() {
             if turn.enable { Some(turn) } else { None }
@@ -750,7 +769,11 @@ impl ServerConfig {
 
     pub fn enabled_federation(&self) -> Option<&FederationConfig> {
         if let Some(federation) = self.federation.as_ref() {
-            if federation.enable { Some(federation) } else { None }
+            if federation.enable {
+                Some(federation)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -796,7 +819,7 @@ impl ServerConfig {
         self.warn_unknown_key();
 
         // if self.sentry && self.sentry_endpoint.is_none() {
-        //     return Err!(AppError::internal(
+        //     return Err(AppError::internal(
         //         "sentry_endpoint",
         //         "Sentry cannot be enabled without an endpoint set"
         //     ));
@@ -912,10 +935,10 @@ impl ServerConfig {
         //     ));
         // }
 
-        if self.max_request_size < 10_000_000 {
-            return Err(AppError::internal(
-                "max request size is less than 10MB. Please increase it as this is too low for operable federation",
-            ));
+        if self.max_upload_size < 10_000_000 {
+            tracing::warn!(
+                "max request size is less than 100MB. Please increase it as this is too low for operable federation"
+            );
         }
 
         // check if user specified valid IP CIDR ranges on startup
@@ -1013,7 +1036,10 @@ impl ServerConfig {
         for key in self.catch_others.keys().filter(
             |key| "config".to_owned().ne(key.to_owned()), /* "config" is expected */
         ) {
-            warn!("Config parameter \"{}\" is unknown to palpo, ignoring.", key);
+            warn!(
+                "Config parameter \"{}\" is unknown to palpo, ignoring.",
+                key
+            );
         }
     }
 }
@@ -1057,8 +1083,11 @@ pub struct TlsConfig {
     pub dual_protocol: bool,
 }
 
-fn default_listen_addr() -> String {
-    "127.0.0.1:8008".into()
+fn default_listener() -> Vec<ListenerConfig> {
+    vec![Default::default()]
+}
+fn default_listen_address() -> String {
+    "0.0.0.0:8008".into()
 }
 fn default_server_name() -> OwnedServerName {
     OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
@@ -1115,8 +1144,8 @@ fn default_request_timeout() -> u64 {
     35_000
 }
 
-fn default_max_request_size() -> u32 {
-    20 * 1024 * 1024 // Default to 20 MB
+fn default_max_upload_size() -> u32 {
+    100 * 1024 * 1024 // Default to 20 MB
 }
 
 fn default_max_concurrent_requests() -> u16 {

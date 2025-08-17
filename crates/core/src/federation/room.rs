@@ -35,12 +35,12 @@ pub struct EventByTimestampResBody {
     pub origin_server_ts: UnixMillis,
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
-///
-/// Get a single event based on roomId/eventId
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomideventeventid
+// /// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
+// ///
+// /// Get a single event based on roomId/eventId
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomideventeventid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

@@ -157,7 +157,11 @@ impl RoomVersion {
             RoomVersionId::V9 => Self::V9,
             RoomVersionId::V10 => Self::V10,
             RoomVersionId::V11 => Self::V11,
-            ver => return Err(MatrixError::unsupported_room_version(format!("found version `{ver}`"))),
+            ver => {
+                return Err(MatrixError::unsupported_room_version(format!(
+                    "found version `{ver}`"
+                )));
+            }
         })
     }
 }

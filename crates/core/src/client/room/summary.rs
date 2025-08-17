@@ -2,8 +2,8 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    EventEncryptionAlgorithm, events::room::member::MembershipState, identifiers::*, room::RoomType,
-    space::SpaceRoomJoinRule,
+    EventEncryptionAlgorithm, events::room::member::MembershipState, identifiers::*,
+    room::RoomType, space::SpaceRoomJoinRule,
 };
 
 // const METADATA: Metadata = metadata! {

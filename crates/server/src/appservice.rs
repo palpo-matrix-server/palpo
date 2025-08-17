@@ -87,12 +87,14 @@ pub struct RegistrationInfo {
 impl RegistrationInfo {
     /// Checks if a given user ID matches either the users namespace or the localpart specified in the appservice registration
     pub fn is_user_match(&self, user_id: &UserId) -> bool {
-        self.users.is_match(user_id.as_str()) || self.registration.sender_localpart == user_id.localpart()
+        self.users.is_match(user_id.as_str())
+            || self.registration.sender_localpart == user_id.localpart()
     }
 
     /// Checks if a given user ID exclusively matches either the users namespace or the localpart specified in the appservice registration
     pub fn is_exclusive_user_match(&self, user_id: &UserId) -> bool {
-        self.users.is_exclusive_match(user_id.as_str()) || self.registration.sender_localpart == user_id.localpart()
+        self.users.is_exclusive_match(user_id.as_str())
+            || self.registration.sender_localpart == user_id.localpart()
     }
 }
 impl AsRef<Registration> for RegistrationInfo {
@@ -193,7 +195,8 @@ impl From<Registration> for DbRegistration {
             sender_localpart,
             namespaces: serde_json::to_value(namespaces).unwrap_or_default(),
             rate_limited,
-            protocols: protocols.map(|protocols| serde_json::to_value(protocols).unwrap_or_default()),
+            protocols: protocols
+                .map(|protocols| serde_json::to_value(protocols).unwrap_or_default()),
             receive_ephemeral,
             device_management,
         }
@@ -307,7 +310,7 @@ pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
         .load::<DbRegistration>(&mut connect()?)?
         .into_iter()
         .filter_map(|db_registration| {
-            println!("db_registration: {:?}", db_registration);
+            println!("db_registration: {db_registration:?}");
             let info: RegistrationInfo = match db_registration.try_into() {
                 Ok(registration) => registration,
                 Err(e) => {
@@ -382,7 +385,10 @@ pub(crate) async fn send_request(
     // }); // TODO: handle timeout
 
     if status != 200 {
-        warn!("Appservice returned bad response {} {}\n{}", destination, status, url,);
+        warn!(
+            "Appservice returned bad response {} {}\n{}",
+            destination, status, url,
+        );
     }
 
     // let response = T::IncomingResponse::try_from_http_response(

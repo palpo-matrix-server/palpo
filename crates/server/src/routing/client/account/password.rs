@@ -29,7 +29,11 @@ pub fn authed_router() -> Router {
 /// - Forgets to-device events
 /// - Triggers device list updates
 #[endpoint]
-async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, depot: &mut Depot) -> EmptyResult {
+async fn change_password(
+    _aa: AuthArgs,
+    body: JsonBody<ChangePasswordReqBody>,
+    depot: &mut Depot,
+) -> EmptyResult {
     let authed = depot.authed_info()?;
 
     let mut uiaa_info = UiaaInfo {
@@ -45,7 +49,7 @@ async fn change_password(_aa: AuthArgs, body: JsonBody<ChangePasswordReqBody>, d
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     };
-    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), &auth, &uiaa_info).is_err() {
+    if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), auth, &uiaa_info).is_err() {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
         return Err(uiaa_info.into());
     }

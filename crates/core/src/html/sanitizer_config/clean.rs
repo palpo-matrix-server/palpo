@@ -33,7 +33,8 @@ static ALLOWED_ATTRIBUTES_STRICT: Map<&str, &Set<&str>> = phf_map! {
 static ALLOWED_ATTRIBUTES_SPAN_STRICT: Set<&str> =
     phf_set! { "data-mx-bg-color", "data-mx-color", "data-mx-spoiler", "data-mx-maths" };
 static ALLOWED_ATTRIBUTES_A_STRICT: Set<&str> = phf_set! { "target", "href" };
-static ALLOWED_ATTRIBUTES_IMG_STRICT: Set<&str> = phf_set! { "width", "height", "alt", "title", "src" };
+static ALLOWED_ATTRIBUTES_IMG_STRICT: Set<&str> =
+    phf_set! { "width", "height", "alt", "title", "src" };
 static ALLOWED_ATTRIBUTES_OL_STRICT: Set<&str> = phf_set! { "start" };
 static ALLOWED_ATTRIBUTES_CODE_STRICT: Set<&str> = phf_set! { "class" };
 static ALLOWED_ATTRIBUTES_DIV_STRICT: Set<&str> = phf_set! { "data-mx-maths" };
@@ -53,7 +54,8 @@ static ALLOWED_SCHEMES_STRICT: Map<&str, &Map<&str, &Set<&str>>> = phf_map! {
 static ALLOWED_SCHEMES_A_STRICT: Map<&str, &Set<&str>> = phf_map! {
     "href" => &ALLOWED_SCHEMES_A_HREF_STRICT,
 };
-pub(crate) static ALLOWED_SCHEMES_A_HREF_STRICT: Set<&str> = phf_set! { "http", "https", "ftp", "mailto", "magnet" };
+pub(crate) static ALLOWED_SCHEMES_A_HREF_STRICT: Set<&str> =
+    phf_set! { "http", "https", "ftp", "mailto", "magnet" };
 static ALLOWED_SCHEMES_IMG_STRICT: Map<&str, &Set<&str>> = phf_map! {
     "src" => &ALLOWED_SCHEMES_IMG_SRC_STRICT,
 };
@@ -78,7 +80,8 @@ static ALLOWED_SCHEMES_A_COMPAT: Map<&str, &Set<&str>> = phf_map! {
 pub(crate) static ALLOWED_SCHEMES_A_HREF_COMPAT: Set<&str> = phf_set! { "matrix" };
 
 /// Allowed classes per HTML element according to the Matrix specification.
-static ALLOWED_CLASSES_STRICT: Map<&str, &Set<&str>> = phf_map! { "code" => &ALLOWED_CLASSES_CODE_STRICT };
+static ALLOWED_CLASSES_STRICT: Map<&str, &Set<&str>> =
+    phf_map! { "code" => &ALLOWED_CLASSES_CODE_STRICT };
 static ALLOWED_CLASSES_CODE_STRICT: Set<&str> = phf_set! { "language-*" };
 
 /// Max depth of nested HTML elements allowed by the Matrix specification.
@@ -97,7 +100,8 @@ impl SanitizerConfig {
 
     /// The maximum nesting level allowed by the config.
     fn max_depth_value(&self) -> Option<u32> {
-        self.max_depth.or_else(|| self.use_strict().then_some(MAX_DEPTH_STRICT))
+        self.max_depth
+            .or_else(|| self.use_strict().then_some(MAX_DEPTH_STRICT))
     }
 
     /// Clean the given HTML with this sanitizer.
@@ -242,8 +246,9 @@ impl SanitizerConfig {
                         .as_ref()
                         .map(|list| list.is_override())
                         .unwrap_or_default();
-                    let mode_allowed =
-                        !list_is_override && self.use_strict() && ALLOWED_ELEMENTS_STRICT.contains(element_name);
+                    let mode_allowed = !list_is_override
+                        && self.use_strict()
+                        && ALLOWED_ELEMENTS_STRICT.contains(element_name);
 
                     if !list_allowed && !mode_allowed {
                         return NodeAction::Ignore;
@@ -251,14 +256,21 @@ impl SanitizerConfig {
                 }
 
                 // Check if element contains scheme that should be denied.
-                if let Some(deny_schemes) = self.deny_schemes.as_ref().and_then(|map| map.get(element_name)) {
+                if let Some(deny_schemes) = self
+                    .deny_schemes
+                    .as_ref()
+                    .and_then(|map| map.get(element_name))
+                {
                     for attr in attrs.iter() {
                         let value = &attr.value;
                         let attr_name = attr.name.local.as_ref();
 
                         if let Some(schemes) = deny_schemes.get(attr_name) {
                             // Check if the scheme is denied.
-                            if schemes.iter().any(|scheme| value.starts_with(&format!("{scheme}:"))) {
+                            if schemes
+                                .iter()
+                                .any(|scheme| value.starts_with(&format!("{scheme}:")))
+                            {
                                 return NodeAction::Ignore;
                             }
                         }
@@ -300,8 +312,10 @@ impl SanitizerConfig {
                     let attr_name = attr.name.local.as_ref();
 
                     let list_attr_schemes = list_element_schemes.and_then(|map| map.get(attr_name));
-                    let strict_mode_attr_schemes = strict_mode_element_schemes.and_then(|map| map.get(attr_name));
-                    let compat_mode_attr_schemes = compat_mode_element_schemes.and_then(|map| map.get(attr_name));
+                    let strict_mode_attr_schemes =
+                        strict_mode_element_schemes.and_then(|map| map.get(attr_name));
+                    let compat_mode_attr_schemes =
+                        compat_mode_element_schemes.and_then(|map| map.get(attr_name));
 
                     if list_attr_schemes.is_none()
                         && strict_mode_attr_schemes.is_none()
@@ -314,8 +328,18 @@ impl SanitizerConfig {
                     let mut allowed_schemes = list_attr_schemes
                         .into_iter()
                         .flatten()
-                        .chain(strict_mode_attr_schemes.map(|set| set.iter()).into_iter().flatten())
-                        .chain(compat_mode_attr_schemes.map(|set| set.iter()).into_iter().flatten());
+                        .chain(
+                            strict_mode_attr_schemes
+                                .map(|set| set.iter())
+                                .into_iter()
+                                .flatten(),
+                        )
+                        .chain(
+                            compat_mode_attr_schemes
+                                .map(|set| set.iter())
+                                .into_iter()
+                                .flatten(),
+                        );
 
                     // Check if the scheme is allowed.
                     if !allowed_schemes.any(|scheme| value.starts_with(&format!("{scheme}:"))) {
@@ -335,7 +359,10 @@ impl SanitizerConfig {
         let element_name = name.local.as_ref();
         let mut attrs = attrs.borrow_mut();
 
-        let list_remove_attrs = self.remove_attrs.as_ref().and_then(|map| map.get(element_name));
+        let list_remove_attrs = self
+            .remove_attrs
+            .as_ref()
+            .and_then(|map| map.get(element_name));
 
         let whitelist_attrs = self.allow_attrs.is_some() || self.use_strict();
         let list_allow_attrs = self
@@ -351,7 +378,10 @@ impl SanitizerConfig {
             .then(|| ALLOWED_ATTRIBUTES_STRICT.get(element_name))
             .flatten();
 
-        let list_remove_classes = self.remove_classes.as_ref().and_then(|map| map.get(element_name));
+        let list_remove_classes = self
+            .remove_classes
+            .as_ref()
+            .and_then(|map| map.get(element_name));
 
         let whitelist_classes = self.allow_classes.is_some() || self.use_strict();
         let list_allow_classes = self
@@ -413,7 +443,12 @@ impl SanitizerConfig {
                                 .map(|set| set.iter())
                                 .into_iter()
                                 .flatten()
-                                .chain(mode_allow_classes.map(|set| set.iter()).into_iter().flatten());
+                                .chain(
+                                    mode_allow_classes
+                                        .map(|set| set.iter())
+                                        .into_iter()
+                                        .flatten(),
+                                );
 
                             for allow_class in allow_classes {
                                 if WildMatch::new(allow_class).matches(class) {
@@ -434,7 +469,10 @@ impl SanitizerConfig {
                         return Some(AttributeAction::Remove(attr.to_owned()));
                     } else {
                         let new_class = classes.join(" ");
-                        return Some(AttributeAction::ReplaceValue(attr.to_owned(), new_class.into()));
+                        return Some(AttributeAction::ReplaceValue(
+                            attr.to_owned(),
+                            new_class.into(),
+                        ));
                     }
                 }
 

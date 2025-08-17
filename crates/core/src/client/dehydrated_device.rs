@@ -64,7 +64,9 @@ impl TryFrom<Helper> for DehydratedDeviceData {
             DeviceDehydrationAlgorithm::V1 => Ok(DehydratedDeviceData::V1(DehydratedDeviceV1 {
                 device_pickle: value.device_pickle,
             })),
-            _ => Err(serde::de::Error::custom("Unsupported device dehydration algorithm.")),
+            _ => Err(serde::de::Error::custom(
+                "Unsupported device dehydration algorithm.",
+            )),
         }
     }
 }

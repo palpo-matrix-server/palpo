@@ -14,10 +14,15 @@ pub async fn validate_and_add_event_id(
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, room_version)?;
     if let Err(e) = verify_event(&value, Some(room_version)).await {
-        return Err(AppError::public(format!("Event {event_id} failed verification: {e:?}")));
+        return Err(AppError::public(format!(
+            "Event {event_id} failed verification: {e:?}"
+        )));
     }
 
-    value.insert("event_id".into(), CanonicalJsonValue::String(event_id.as_str().into()));
+    value.insert(
+        "event_id".into(),
+        CanonicalJsonValue::String(event_id.as_str().into()),
+    );
 
     Ok((event_id, value))
 }
@@ -34,21 +39,32 @@ pub async fn validate_and_add_event_id_no_fetch(
     }
 
     if let Err(e) = verify_event(&value, Some(room_version)).await {
-        return Err(AppError::public(format!("Event {event_id} failed verification: {e:?}")));
+        return Err(AppError::public(format!(
+            "Event {event_id} failed verification: {e:?}"
+        )));
     }
 
-    value.insert("event_id".into(), CanonicalJsonValue::String(event_id.as_str().into()));
+    value.insert(
+        "event_id".into(),
+        CanonicalJsonValue::String(event_id.as_str().into()),
+    );
 
     Ok((event_id, value))
 }
 
-pub async fn verify_event(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<Verified> {
+pub async fn verify_event(
+    event: &CanonicalJsonObject,
+    room_version: Option<&RoomVersionId>,
+) -> AppResult<Verified> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
     let keys = get_event_keys(event, room_version).await?;
     signatures::verify_event(&keys, event, room_version).map_err(Into::into)
 }
 
-pub async fn verify_json(event: &CanonicalJsonObject, room_version: Option<&RoomVersionId>) -> AppResult<()> {
+pub async fn verify_json(
+    event: &CanonicalJsonObject,
+    room_version: Option<&RoomVersionId>,
+) -> AppResult<()> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
     let keys = get_event_keys(event, room_version).await?;
     signatures::verify_json(&keys, event).map_err(Into::into)

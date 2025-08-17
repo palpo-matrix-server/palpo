@@ -7,12 +7,12 @@ use crate::{
     serde::RawJson,
 };
 
-/// `GET /_matrix/client/*/rooms/{room_id}/state/{eventType}/{stateKey}`
-///
-/// Get state events associated with a given key.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidstateeventtypestatekey
+// /// `GET /_matrix/client/*/rooms/{room_id}/state/{eventType}/{stateKey}`
+// ///
+// /// Get state events associated with a given key.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidstateeventtypestatekey
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -104,12 +104,12 @@ impl StateEventsForKeyResBody {
     }
 }
 
-/// `GET /_matrix/client/*/rooms/{room_id}/state`
-///
-/// Get state events for a room.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidstate
+// /// `GET /_matrix/client/*/rooms/{room_id}/state`
+// ///
+// /// Get state events for a room.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidstate
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -148,12 +148,12 @@ impl StateEventsResBody {
     }
 }
 
-/// `PUT /_matrix/client/*/rooms/{room_id}/state/{eventType}/{stateKey}`
-///
-/// Send a state event to a room associated with a given state key.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3roomsroomidstateeventtypestatekey
+// /// `PUT /_matrix/client/*/rooms/{room_id}/state/{eventType}/{stateKey}`
+// ///
+// /// Send a state event to a room associated with a given state key.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3roomsroomidstateeventtypestatekey
 // const METADATA: Metadata = metadata! {
 //     method: PUT,
 //     rate_limited: false,

@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use diesel::prelude::*;
 use palpo_core::Seqnum;
 
-use crate::core::client::search::{Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult};
+use crate::core::client::search::{
+    Criteria, EventContextResult, OrderBy, ResultRoomEvents, SearchResult,
+};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::member::RoomMemberEventContent;
@@ -16,7 +18,11 @@ use crate::data::{self, connect};
 use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError, SnPduEvent};
 
-pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&str>) -> AppResult<ResultRoomEvents> {
+pub fn search_pdus(
+    user_id: &UserId,
+    criteria: &Criteria,
+    next_batch: Option<&str>,
+) -> AppResult<ResultRoomEvents> {
     let filter = &criteria.filter;
 
     let room_ids = filter
@@ -25,11 +31,15 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
         .unwrap_or_else(|| data::user::joined_rooms(user_id).unwrap_or_default());
 
     // Use limit or else 10, with maximum 100
-    let limit = filter.limit.unwrap_or(10).min(100) as usize;
+    let limit = filter.limit.unwrap_or(10).min(100);
 
     for room_id in &room_ids {
         if !crate::room::user::is_joined(user_id, room_id)? {
-            return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+            return Err(MatrixError::forbidden(
+                "You don't have permission to view this room.",
+                None,
+            )
+            .into());
         }
     }
 
@@ -46,7 +56,10 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
     }
     let data_query = data_query
         .select((
-            ts_rank_cd(event_searches::vector, websearch_to_tsquery(&criteria.search_term)),
+            ts_rank_cd(
+                event_searches::vector,
+                websearch_to_tsquery(&criteria.search_term),
+            ),
             // event_searches::room_id,
             event_searches::event_id,
             event_searches::event_sn,
@@ -64,7 +77,9 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
             .then_order_by(event_searches::event_sn.desc())
             .load::<(f32, OwnedEventId, i64, i64)>(&mut connect()?)?
     };
-    let _ids: Vec<i64> = event_searches::table.select(event_searches::id).load(&mut connect()?)?;
+    let _ids: Vec<i64> = event_searches::table
+        .select(event_searches::id)
+        .load(&mut connect()?)?;
     let count: i64 = base_query.count().first(&mut connect()?)?;
     let next_batch = if items.len() < limit {
         None
@@ -89,7 +104,8 @@ pub fn search_pdus(user_id: &UserId, criteria: &Criteria, next_batch: Option<&st
             }
         })
         .map(|(rank, pdu)| SearchResult {
-            context: calc_event_context(user_id, &pdu.room_id, pdu.event_sn, 10, 10, false).unwrap_or_default(),
+            context: calc_event_context(user_id, &pdu.room_id, pdu.event_sn, 10, 10, false)
+                .unwrap_or_default(),
             rank: Some(rank as f64),
             result: Some(pdu.to_room_event()),
         })
@@ -118,8 +134,10 @@ fn calc_event_context(
     after_limit: usize,
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
-    let before_pdus = timeline::get_pdus_backward(user_id, room_id, event_sn - 1, None, None, before_limit)?;
-    let after_pdus = timeline::get_pdus_forward(user_id, room_id, event_sn + 1, None, None, after_limit)?;
+    let before_pdus =
+        timeline::get_pdus_backward(user_id, room_id, event_sn - 1, None, None, before_limit)?;
+    let after_pdus =
+        timeline::get_pdus_forward(user_id, room_id, event_sn + 1, None, None, after_limit)?;
     let mut profile = BTreeMap::new();
     if include_profile {
         if let Ok(frame_id) = crate::event::get_frame_id(room_id, event_sn) {
@@ -145,7 +163,10 @@ fn calc_event_context(
             .rev()
             .map(|(_, pdu)| pdu.to_room_event())
             .collect(),
-        events_after: after_pdus.into_iter().map(|(_, pdu)| pdu.to_room_event()).collect(),
+        events_after: after_pdus
+            .into_iter()
+            .map(|(_, pdu)| pdu.to_room_event())
+            .collect(),
         profile_info: BTreeMap::new(),
     };
 
@@ -160,15 +181,15 @@ pub fn save_pdu(pdu: &SnPduEvent, pdu_json: &CanonicalJsonObject) -> AppResult<(
         TimelineEventType::RoomName => content
             .get("name")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.name", v))),
+            .map(|v| ("content.name", v)),
         TimelineEventType::RoomTopic => content
             .get("topic")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.topic", v))),
+            .map(|v| ("content.topic", v)),
         TimelineEventType::RoomMessage => content
             .get("body")
             .and_then(|v| v.as_str())
-            .map(|v| (("content.message", v))),
+            .map(|v| ("content.message", v)),
         TimelineEventType::RoomRedaction => {
             // TODO: Redaction
             return Ok(());

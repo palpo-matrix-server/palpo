@@ -5,10 +5,11 @@ use crate::{
     RoomVersionId,
     events::{
         EphemeralRoomEventContent, EphemeralRoomEventType, EventContent, EventContentFromType,
-        GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent, MessageLikeEventType,
-        MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent, RedactedMessageLikeEventContent,
-        RedactedStateEventContent, RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent,
-        StateEventType, StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
+        GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent,
+        MessageLikeEventType, MessageLikeUnsigned, PossiblyRedactedStateEventContent,
+        RedactContent, RedactedMessageLikeEventContent, RedactedStateEventContent,
+        RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent, StateEventType,
+        StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
     },
     serde::RawJsonValue,
 };
@@ -57,7 +58,10 @@ macro_rules! custom_room_event_content {
     };
 }
 
-custom_event_content!(CustomGlobalAccountDataEventContent, GlobalAccountDataEventType);
+custom_event_content!(
+    CustomGlobalAccountDataEventContent,
+    GlobalAccountDataEventType
+);
 impl GlobalAccountDataEventContent for CustomGlobalAccountDataEventContent {}
 
 custom_event_content!(CustomRoomAccountDataEventContent, RoomAccountDataEventType);

@@ -34,12 +34,12 @@ impl Device {
     }
 }
 
-/// `DELETE /_matrix/client/*/devices/{deviceId}`
-///
-/// Delete a device for authenticated user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3devicesdeviceid
+// /// `DELETE /_matrix/client/*/devices/{deviceId}`
+// ///
+// /// Delete a device for authenticated user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#delete_matrixclientv3devicesdeviceid
 
 // const METADATA: Metadata = metadata! {
 //     method: DELETE,
@@ -60,12 +60,12 @@ pub struct DeleteDeviceReqBody {
     pub auth: Option<AuthData>,
 }
 
-/// `POST /_matrix/client/*/delete_devices`
-///
-/// Delete specified devices.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3delete_devices
+// /// `POST /_matrix/client/*/delete_devices`
+// ///
+// /// Delete specified devices.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3delete_devices
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -89,12 +89,12 @@ pub struct DeleteDevicesReqBody {
     pub auth: Option<AuthData>,
 }
 
-/// `GET /_matrix/client/*/devices/{deviceId}`
-///
-/// Get a device for authenticated user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3devicesdeviceid
+// /// `GET /_matrix/client/*/devices/{deviceId}`
+// ///
+// /// Get a device for authenticated user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3devicesdeviceid
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -106,7 +106,7 @@ pub struct DeleteDevicesReqBody {
 //     }
 // };
 
-/// Request type for the `get_device` endpoint.
+// /// Request type for the `get_device` endpoint.
 
 // pub struct Rexquest {
 //     /// The device to retrieve.
@@ -126,12 +126,12 @@ impl DeviceResBody {
     }
 }
 
-/// `GET /_matrix/client/*/devices`
-///
-/// Get registered devices for authenticated user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3devices
+// /// `GET /_matrix/client/*/devices`
+// ///
+// /// Get registered devices for authenticated user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3devices
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -157,12 +157,12 @@ pub struct DevicesResBody {
 //     }
 // }
 
-/// `PUT /_matrix/client/*/devices/{deviceId}`
-///
-/// Update metadata for a device.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3devicesdeviceid
+// /// `PUT /_matrix/client/*/devices/{deviceId}`
+// ///
+// /// Update metadata for a device.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#put_matrixclientv3devicesdeviceid
 
 // const METADATA: Metadata = metadata! {
 //     method: PUT,

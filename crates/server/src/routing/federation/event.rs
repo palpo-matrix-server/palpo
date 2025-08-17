@@ -2,15 +2,19 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::federation::authorization::{EventAuthorizationReqArgs, EventAuthorizationResBody};
+use crate::core::federation::authorization::{
+    EventAuthorizationReqArgs, EventAuthorizationResBody,
+};
 use crate::core::federation::event::{
-    EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody, MissingEventsReqBody,
-    MissingEventsResBody,
+    EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody,
+    MissingEventsReqBody, MissingEventsResBody,
 };
 use crate::core::identifiers::*;
 use crate::data::room::DbEvent;
 use crate::room::{state, timeline};
-use crate::{AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok};
+use crate::{
+    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, json_ok,
+};
 
 pub fn router() -> Router {
     Router::new()
@@ -18,7 +22,10 @@ pub fn router() -> Router {
         .push(Router::with_path("event_auth/{room_id}/{event_id}").get(auth_chain))
         .push(Router::with_path("timestamp_to_event/{room_id}").get(event_by_timestamp))
         .push(Router::with_path("get_missing_events/{room_id}").post(missing_events))
-        .push(Router::with_path("exchange_third_party_invite/{room_id}").put(exchange_third_party_invite))
+        .push(
+            Router::with_path("exchange_third_party_invite/{room_id}")
+                .put(exchange_third_party_invite),
+        )
 }
 
 /// #GET /_matrix/federation/v1/event/{event_id}
@@ -81,7 +88,8 @@ fn auth_chain(
     let room_id = <&RoomId>::try_from(room_id_str)
         .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
-    let auth_chain_ids = crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
+    let auth_chain_ids =
+        crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
     json_ok(EventAuthorizationResBody {
         auth_chain: auth_chain_ids
@@ -101,7 +109,8 @@ async fn event_by_timestamp(
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
-    let (event_id, origin_server_ts) = crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
+    let (event_id, origin_server_ts) =
+        crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
     json_ok(EventByTimestampResBody {
         event_id,
         origin_server_ts,
@@ -126,7 +135,7 @@ fn missing_events(
     let mut events = Vec::new();
 
     let mut i = 0;
-    while i < queued_events.len() && events.len() < usize::from(body.limit) as usize {
+    while i < queued_events.len() && events.len() < body.limit {
         let event_id = queued_events[i].clone();
         if let Some(pdu) = timeline::get_pdu_json(&event_id)? {
             let room_id_str = pdu
@@ -137,7 +146,7 @@ fn missing_events(
             let event_room_id = <&RoomId>::try_from(room_id_str)
                 .map_err(|_| AppError::internal("invalid room id field in event in database"))?;
 
-            if event_room_id != &room_id {
+            if event_room_id != room_id {
                 warn!(
                     "evil event detected: Event {} found while searching in room {}",
                     event_id, &room_id
@@ -152,17 +161,18 @@ fn missing_events(
 
             queued_events.extend_from_slice(
                 &serde_json::from_value::<Vec<OwnedEventId>>(
-                    serde_json::to_value(
-                        pdu.get("prev_events")
-                            .cloned()
-                            .ok_or_else(|| AppError::internal("Event in db has no prev_events field."))?,
-                    )
+                    serde_json::to_value(pdu.get("prev_events").cloned().ok_or_else(|| {
+                        AppError::internal("Event in db has no prev_events field.")
+                    })?)
                     .expect("canonical json is valid json value"),
                 )
                 .map_err(|_| AppError::internal("invalid prev_events content in pdu in db::"))?,
             );
             if i >= body.latest_events.len() {
-                events.push((event_id, crate::sending::convert_to_outgoing_federation_event(pdu)));
+                events.push((
+                    event_id,
+                    crate::sending::convert_to_outgoing_federation_event(pdu),
+                ));
             }
         } else {
             warn!("event not found, event id: {:?}", event_id);

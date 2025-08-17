@@ -3,7 +3,9 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::user_directory::SearchedUser;
-use crate::core::client::user_directory::{SearchUsersReqArgs, SearchUsersReqBody, SearchUsersResBody};
+use crate::core::client::user_directory::{
+    SearchUsersReqArgs, SearchUsersReqBody, SearchUsersResBody,
+};
 use crate::core::events::StateEventType;
 use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
 use crate::core::identifiers::*;
@@ -48,19 +50,29 @@ fn search(
             avatar_url: data::user::avatar_url(&user_id).ok().flatten(),
         };
 
-        let user_is_in_public_rooms = data::user::joined_rooms(&user_id).ok()?.into_iter().any(|room_id| {
-            room::get_state_content::<RoomJoinRulesEventContent>(&room_id, &StateEventType::RoomJoinRules, "", None)
-                .map(|r| r.join_rule == JoinRule::Public)
-                .unwrap_or(false)
-        });
+        let user_is_in_public_rooms =
+            data::user::joined_rooms(&user_id)
+                .ok()?
+                .into_iter()
+                .any(|room_id| {
+                    room::get_state_content::<RoomJoinRulesEventContent>(
+                        &room_id,
+                        &StateEventType::RoomJoinRules,
+                        "",
+                        None,
+                    )
+                    .map(|r| r.join_rule == JoinRule::Public)
+                    .unwrap_or(false)
+                });
 
         if user_is_in_public_rooms {
             return Some(user);
         }
 
-        let user_is_in_shared_rooms = !room::user::shared_rooms(vec![authed.user_id().to_owned(), user_id])
-            .ok()?
-            .is_empty();
+        let user_is_in_shared_rooms =
+            !room::user::shared_rooms(vec![authed.user_id().to_owned(), user_id])
+                .ok()?
+                .is_empty();
 
         if user_is_in_shared_rooms {
             return Some(user);

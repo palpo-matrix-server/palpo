@@ -60,7 +60,10 @@ impl Deref for CompressedEvent {
     }
 }
 
-pub fn compress_events(room_id: &RoomId, events: impl Iterator<Item = (i64, Seqnum)>) -> AppResult<CompressedState> {
+pub fn compress_events(
+    room_id: &RoomId,
+    events: impl Iterator<Item = (i64, Seqnum)>,
+) -> AppResult<CompressedState> {
     let mut compressed = BTreeSet::new();
     for (field_id, event_sn) in events {
         compressed.insert(compress_event(room_id, field_id, event_sn)?);
@@ -68,7 +71,11 @@ pub fn compress_events(room_id: &RoomId, events: impl Iterator<Item = (i64, Seqn
     Ok(compressed)
 }
 
-pub fn compress_event(_room_id: &RoomId, field_id: i64, event_sn: Seqnum) -> AppResult<CompressedEvent> {
+pub fn compress_event(
+    _room_id: &RoomId,
+    field_id: i64,
+    event_sn: Seqnum,
+) -> AppResult<CompressedEvent> {
     Ok(CompressedEvent::new(field_id, event_sn))
 }
 
@@ -165,7 +172,7 @@ pub fn calc_and_save_state_delta(
         for item in disposed.iter() {
             if !parent_appended.remove(item) {
                 // It was not added in the parent and we removed it
-                parent_disposed.insert(item.clone());
+                parent_disposed.insert(*item);
             }
             // Else it was added in the parent and we removed it again. We can forget this change
         }
@@ -173,7 +180,7 @@ pub fn calc_and_save_state_delta(
         for item in appended.iter() {
             if !parent_disposed.remove(item) {
                 // It was not touched in the parent and we added it
-                parent_appended.insert(item.clone());
+                parent_appended.insert(*item);
             }
             // Else it was removed in the parent and we added it again. We can forget this change
         }
@@ -215,7 +222,7 @@ pub fn calc_and_save_state_delta(
         for item in disposed.iter() {
             if !parent_appended.remove(item) {
                 // It was not added in the parent and we removed it
-                parent_disposed.insert(item.clone());
+                parent_disposed.insert(*item);
             }
             // Else it was added in the parent and we removed it again. We can forget this change
         }
@@ -223,7 +230,7 @@ pub fn calc_and_save_state_delta(
         for item in appended.iter() {
             if !parent_disposed.remove(item) {
                 // It was not touched in the parent and we added it
-                parent_appended.insert(item.clone());
+                parent_appended.insert(*item);
             }
             // Else it was removed in the parent and we added it again. We can forget this change
         }

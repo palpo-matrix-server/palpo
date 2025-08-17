@@ -49,7 +49,8 @@ pub fn init(config: &DbConfig) {
         }))
         .thread_pool(Arc::new(ScheduledThreadPool::new(config.helper_threads)));
 
-    let pool = DieselPool::new(&config.url, &config, builder).expect("diesel pool should be created");
+    let pool =
+        DieselPool::new(&config.url, config, builder).expect("diesel pool should be created");
     DIESEL_POOL.set(pool).expect("diesel pool should be set");
     migrate();
 }
@@ -81,7 +82,11 @@ pub fn connection_url(config: &DbConfig, url: &str) -> String {
 
     // Configure the time it takes for diesel to return an error when there is full packet loss
     // between the application and the database.
-    maybe_append_url_param(&mut url, "tcp_user_timeout", &config.tcp_timeout.to_string());
+    maybe_append_url_param(
+        &mut url,
+        "tcp_user_timeout",
+        &config.tcp_timeout.to_string(),
+    );
 
     url.into()
 }

@@ -20,7 +20,11 @@ use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, member
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
     let all_room_ids = data::user::joined_rooms(user_id)?
         .into_iter()
-        .chain(data::user::invited_rooms(user_id, 0)?.into_iter().map(|t| t.0))
+        .chain(
+            data::user::invited_rooms(user_id, 0)?
+                .into_iter()
+                .map(|t| t.0),
+        )
         .collect::<Vec<_>>();
     for room_id in all_room_ids {
         leave_room(user_id, &room_id, None).await.ok();
@@ -28,13 +32,16 @@ pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
     Ok(())
 }
 
-pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<String>) -> AppResult<()> {
+pub async fn leave_room(
+    user_id: &UserId,
+    room_id: &RoomId,
+    reason: Option<String>,
+) -> AppResult<()> {
     // Ask a remote server if we don't have this room
     if !room::is_server_joined(&config::get().server_name, room_id)?
-        && room_id
-            .server_name()
-            .map_err(|name| AppError::public(format!("Bad room id, server name is invalid: `{name}`.")))?
-            != config::get().server_name
+        && room_id.server_name().map_err(|name| {
+            AppError::public(format!("Bad room id, server name is invalid: `{name}`."))
+        })? != config::get().server_name
         && !room::user::is_knocked(user_id, room_id)?
     {
         match leave_room_remote(user_id, room_id).await {
@@ -57,7 +64,8 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             }
         }
     } else {
-        let member_event = room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
+        let member_event =
+            room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
         // Fix for broken rooms
         let Some(member_event) = member_event else {
@@ -82,7 +90,7 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
                     &event_id,
                     event_sn,
                     room_id,
-                    &user_id,
+                    user_id,
                     MembershipState::Leave,
                     user_id,
                     None,
@@ -108,17 +116,23 @@ pub async fn leave_room(user_id: &UserId, room_id: &RoomId, reason: Option<Strin
             },
             user_id,
             room_id,
-            &room::lock_state(&room_id).await,
-        )?;
+            &room::lock_state(room_id).await,
+        )
+        .await?;
     }
 
     Ok(())
 }
 
-async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(OwnedEventId, Seqnum)> {
-    let mut make_leave_response_and_server = Err(AppError::public("No server available to assist in leaving."));
-    let invite_state =
-        state::get_user_state(user_id, room_id)?.ok_or(MatrixError::bad_state("User is not invited."))?;
+async fn leave_room_remote(
+    user_id: &UserId,
+    room_id: &RoomId,
+) -> AppResult<(OwnedEventId, Seqnum)> {
+    let mut make_leave_response_and_server = Err(AppError::public(
+        "No server available to assist in leaving.",
+    ));
+    let invite_state = state::get_user_state(user_id, room_id)?
+        .ok_or(MatrixError::bad_state("User is not invited."))?;
 
     let servers: HashSet<_> = invite_state
         .iter()
@@ -131,18 +145,26 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
 
     for remote_server in servers {
         let request = make_leave_request(
-            &room_id.server_name().map_err(AppError::internal)?.origin().await,
+            &room_id
+                .server_name()
+                .map_err(AppError::internal)?
+                .origin()
+                .await,
             room_id,
             user_id,
         )?
         .into_inner();
-        let make_leave_response =
-            crate::sending::send_federation_request(&room_id.server_name().map_err(AppError::internal)?, request)
-                .await?
-                .json::<MakeLeaveResBody>()
-                .await;
+        let make_leave_response = crate::sending::send_federation_request(
+            room_id.server_name().map_err(AppError::internal)?,
+            request,
+        )
+        .await?
+        .json::<MakeLeaveResBody>()
+        .await;
 
-        make_leave_response_and_server = make_leave_response.map(|r| (r, remote_server)).map_err(Into::into);
+        make_leave_response_and_server = make_leave_response
+            .map(|r| (r, remote_server))
+            .map_err(Into::into);
 
         if make_leave_response_and_server.is_ok() {
             break;
@@ -156,8 +178,9 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
         _ => return Err(AppError::public("Room version is not supported")),
     };
 
-    let mut leave_event_stub = serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
-        .map_err(|_| AppError::public("Invalid make_leave event json received from server."))?;
+    let mut leave_event_stub =
+        serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
+            .map_err(|_| AppError::public("Invalid make_leave event json received from server."))?;
 
     // TODO: Is origin needed?
     leave_event_stub.insert(
@@ -179,7 +202,7 @@ async fn leave_room_remote(user_id: &UserId, room_id: &RoomId) -> AppResult<(Own
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
     // TODO: event_sn??, outlier but has sn??
-    let (event_sn, event_guard) = ensure_event_sn(&room_id, &event_id)?;
+    let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,

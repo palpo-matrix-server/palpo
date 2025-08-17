@@ -32,7 +32,9 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<BTreeMap<OwnedEventId, Result<(), String>>, D::Error>
+pub(crate) fn deserialize<'de, D>(
+    deserializer: D,
+) -> Result<BTreeMap<OwnedEventId, Result<(), String>>, D::Error>
 where
     D: Deserializer<'de>,
 {

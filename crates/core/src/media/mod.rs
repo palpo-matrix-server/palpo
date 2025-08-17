@@ -15,13 +15,14 @@ use crate::{
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, StringEnum, Clone)]
+#[derive(ToSchema, Default, StringEnum, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum Method {
+pub enum ResizeMethod {
     /// Crop the original to produce the requested image dimensions.
     Crop,
 
+    #[default]
     /// Maintain the original aspect ratio of the source image.
     Scale,
 
@@ -42,12 +43,12 @@ pub(crate) fn is_default_download_timeout(timeout: &Duration) -> bool {
     timeout.as_secs() == 20
 }
 
-/// `POST /_matrix/media/*/create`
-///
-/// Create an MXC URI without content.
-/// `/v1/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixmediav1create
+// /// `POST /_matrix/media/*/create`
+// ///
+// /// Create an MXC URI without content.
+// /// `/v1/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixmediav1create
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -79,12 +80,12 @@ pub struct CreateMxcUriResBody {
 //     }
 // }
 
-/// `GET /_matrix/media/*/config`
-///
-/// Gets the config for the media repository.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3config
+// /// `GET /_matrix/media/*/config`
+// ///
+// /// Gets the config for the media repository.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3config
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -110,12 +111,12 @@ impl ConfigResBody {
         Self { upload_size }
     }
 }
-/// `GET /_matrix/media/*/preview_url`
-///
-/// Get a preview for a URL.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3preview_url
+// /// `GET /_matrix/media/*/preview_url`
+// ///
+// /// Get a preview for a URL.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3preview_url
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: true,
@@ -168,7 +169,11 @@ impl ConfigResBody {
 //         })
 //     }
 // }
-pub fn thumbnail_request(origin: &str, server: &ServerName, args: ThumbnailReqArgs) -> SendResult<SendRequest> {
+pub fn thumbnail_request(
+    origin: &str,
+    server: &ServerName,
+    args: ThumbnailReqArgs,
+) -> SendResult<SendRequest> {
     let mut url = Url::parse(&format!(
         "{origin}/_matrix/media/v3/thumbnail/{server}/{}",
         args.media_id
@@ -198,7 +203,7 @@ pub struct ThumbnailReqArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

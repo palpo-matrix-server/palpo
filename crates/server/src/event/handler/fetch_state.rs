@@ -1,7 +1,9 @@
 use std::collections::{HashMap, hash_map};
 
 use crate::core::ServerName;
-use crate::core::federation::event::{RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request};
+use crate::core::federation::event::{
+    RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request,
+};
 use crate::core::identifiers::*;
 use crate::room::state;
 use crate::{AppError, AppResult, exts::*};
@@ -31,7 +33,8 @@ pub(super) async fn fetch_state(
         .json::<RoomStateIdsResBody>()
         .await?;
     debug!("Fetching state events at event.");
-    let state_vec = super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
+    let state_vec =
+        super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
     let mut state: HashMap<_, OwnedEventId> = HashMap::new();
     for (pdu, _, _event_guard) in state_vec {

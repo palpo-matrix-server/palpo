@@ -57,7 +57,11 @@ impl CallCandidatesEventContent {
 
     /// Convenience method to create a VoIP version 1
     /// `CallCandidatesEventContent` with all the required fields.
-    pub fn version_1(call_id: OwnedVoipId, party_id: OwnedVoipId, candidates: Vec<Candidate>) -> Self {
+    pub fn version_1(
+        call_id: OwnedVoipId,
+        party_id: OwnedVoipId,
+        candidates: Vec<Candidate>,
+    ) -> Self {
         Self {
             call_id,
             party_id: Some(party_id),

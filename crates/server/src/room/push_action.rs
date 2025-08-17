@@ -25,7 +25,10 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.eq(thread_id)),
             )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .set(
+                event_push_summaries::notification_count
+                    .eq(event_push_summaries::notification_count + 1),
+            )
             .execute(&mut connect()?)?
         } else {
             diesel::update(
@@ -34,7 +37,10 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.is_null()),
             )
-            .set(event_push_summaries::notification_count.eq(event_push_summaries::notification_count + 1))
+            .set(
+                event_push_summaries::notification_count
+                    .eq(event_push_summaries::notification_count + 1),
+            )
             .execute(&mut connect()?)?
         };
         if rows == 0 {
@@ -58,7 +64,9 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.eq(thread_id)),
             )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .set(
+                event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1),
+            )
             .execute(&mut connect()?)?
         } else {
             diesel::update(
@@ -67,7 +75,9 @@ pub fn increment_notification_counts(
                     .filter(event_push_summaries::room_id.eq(&room_id))
                     .filter(event_push_summaries::thread_id.is_null()),
             )
-            .set(event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1))
+            .set(
+                event_push_summaries::highlight_count.eq(event_push_summaries::highlight_count + 1),
+            )
             .execute(&mut connect()?)?
         };
         if rows == 0 {
@@ -168,7 +178,7 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
         .distinct()
         .load::<Option<OwnedEventId>>(&mut connect()?)?
         .into_iter()
-        .filter_map(|x| x)
+        .flatten()
         .collect::<Vec<_>>();
     diesel::delete(
         event_push_actions::table
@@ -192,17 +202,14 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
             .filter(event_push_actions::room_id.eq(room_id))
             .filter(event_push_actions::thread_id.eq(thread_id));
         let notification_count = query
-            .clone()
             .filter(event_push_actions::notify.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
         let highlight_count = query
-            .clone()
             .filter(event_push_actions::highlight.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
         let unread_count = query
-            .clone()
             .filter(event_push_actions::unread.eq(true))
             .count()
             .get_result::<i64>(&mut connect()?)?;
@@ -239,17 +246,14 @@ pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<(
         .filter(event_push_actions::room_id.eq(room_id))
         .filter(event_push_actions::thread_id.is_null());
     let notification_count = query
-        .clone()
         .filter(event_push_actions::notify.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;
     let highlight_count = query
-        .clone()
         .filter(event_push_actions::highlight.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;
     let unread_count = query
-        .clone()
         .filter(event_push_actions::unread.eq(true))
         .count()
         .get_result::<i64>(&mut connect()?)?;

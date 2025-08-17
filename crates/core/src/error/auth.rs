@@ -37,6 +37,7 @@ impl AuthenticateError {
     /// Construct an `AuthenticateError` from a string.
     ///
     /// Returns `None` if the string doesn't contain an error.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         if let Some(val) = s.strip_prefix("Bearer").map(str::trim) {
             let mut errcode = None;
@@ -58,7 +59,10 @@ impl AuthenticateError {
             }
 
             if let Some(errcode) = errcode {
-                let error = if let Some(scope) = attrs.get("scope").filter(|_| errcode == "insufficient_scope") {
+                let error = if let Some(scope) = attrs
+                    .get("scope")
+                    .filter(|_| errcode == "insufficient_scope")
+                {
                     AuthenticateError::InsufficientScope {
                         scope: scope.to_owned(),
                     }
@@ -85,7 +89,10 @@ impl TryFrom<&AuthenticateError> for http::HeaderValue {
             AuthenticateError::InsufficientScope { scope } => {
                 format!("Bearer error=\"insufficient_scope\", scope=\"{scope}\"")
             }
-            AuthenticateError::_Custom { errcode, attributes } => {
+            AuthenticateError::_Custom {
+                errcode,
+                attributes,
+            } => {
                 let mut s = format!("Bearer error=\"{}\"", errcode.0);
 
                 for (key, value) in attributes.0.iter() {

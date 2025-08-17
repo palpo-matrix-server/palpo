@@ -7,8 +7,8 @@ use futures_util::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::{Mutex, mpsc};
 
 use super::{
-    EduBuf, EduVec, MPSC_RECEIVER, MPSC_SENDER, OutgoingKind, SELECT_EDU_LIMIT, SELECT_PRESENCE_LIMIT,
-    SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus,
+    EduBuf, EduVec, MPSC_RECEIVER, MPSC_SENDER, OutgoingKind, SELECT_EDU_LIMIT,
+    SELECT_PRESENCE_LIMIT, SELECT_RECEIPT_LIMIT, SendingEventType, TransactionStatus,
 };
 use crate::core::device::DeviceListUpdateContent;
 use crate::core::events::receipt::{ReceiptContent, ReceiptData, ReceiptMap, ReceiptType};
@@ -29,7 +29,11 @@ pub fn start() {
 }
 
 async fn process() -> AppResult<()> {
-    let mut receiver = MPSC_RECEIVER.get().expect("receiver should exist").lock().await;
+    let mut receiver = MPSC_RECEIVER
+        .get()
+        .expect("receiver should exist")
+        .lock()
+        .await;
     let mut futures = FuturesUnordered::new();
     let mut current_transaction_status = HashMap::<OutgoingKind, TransactionStatus>::new();
 
@@ -39,10 +43,13 @@ async fn process() -> AppResult<()> {
     for (id, outgoing_kind, event) in super::active_requests()? {
         let entry = initial_transactions
             .entry(outgoing_kind.clone())
-            .or_insert_with(Vec::new);
+            .or_default();
 
         if entry.len() > 30 {
-            warn!("Dropping some current events: {:?} {:?} {:?}", id, outgoing_kind, event);
+            warn!(
+                "Dropping some current events: {:?} {:?} {:?}",
+                id, outgoing_kind, event
+            );
             super::delete_request(id)?;
             continue;
         }
@@ -201,7 +208,8 @@ fn select_edus_device_changes(
             });
 
             let mut buf = EduBuf::new();
-            serde_json::to_writer(&mut buf, &edu).expect("failed to serialize device list update to JSON");
+            serde_json::to_writer(&mut buf, &edu)
+                .expect("failed to serialize device list update to JSON");
 
             events.push(buf);
             if events_len.fetch_add(1, Ordering::Relaxed) >= SELECT_EDU_LIMIT - 1 {
@@ -215,14 +223,23 @@ fn select_edus_device_changes(
 
 /// Look for read receipts in this room
 #[tracing::instrument(level = "trace", skip(server_name, max_edu_sn))]
-fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
+fn select_edus_receipts(
+    server_name: &ServerName,
+    since_sn: Seqnum,
+    max_edu_sn: &Seqnum,
+) -> AppResult<Option<EduBuf>> {
     let mut num = 0;
     let receipts: BTreeMap<OwnedRoomId, ReceiptMap> = state::server_joined_rooms(server_name)?
         .into_iter()
         .filter_map(|room_id| {
-            let receipt_map = select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
+            let receipt_map =
+                select_edus_receipts_room(&room_id, since_sn, max_edu_sn, &mut num).ok()?;
 
-            receipt_map.read.is_empty().eq(&false).then_some((room_id, receipt_map))
+            receipt_map
+                .read
+                .is_empty()
+                .eq(&false)
+                .then_some((room_id, receipt_map))
         })
         .collect();
 
@@ -233,7 +250,8 @@ fn select_edus_receipts(server_name: &ServerName, since_sn: Seqnum, max_edu_sn: 
     let receipt_content = Edu::Receipt(ReceiptContent::new(receipts));
 
     let mut buf = EduBuf::new();
-    serde_json::to_writer(&mut buf, &receipt_content).expect("Failed to serialize Receipt EDU to JSON vec");
+    serde_json::to_writer(&mut buf, &receipt_content)
+        .expect("Failed to serialize Receipt EDU to JSON vec");
 
     Ok(Some(buf))
 }
@@ -302,7 +320,11 @@ fn select_edus_receipts_room(
 
 /// Look for presence
 #[tracing::instrument(level = "trace", skip(server_name))]
-fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, _max_edu_sn: &Seqnum) -> AppResult<Option<EduBuf>> {
+fn select_edus_presence(
+    server_name: &ServerName,
+    since_sn: Seqnum,
+    _max_edu_sn: &Seqnum,
+) -> AppResult<Option<EduBuf>> {
     let presences_since = crate::data::user::presences_since(since_sn)?;
 
     let mut presence_updates = HashMap::<OwnedUserId, PresenceUpdate>::new();
@@ -339,7 +361,8 @@ fn select_edus_presence(server_name: &ServerName, since_sn: Seqnum, _max_edu_sn:
     });
 
     let mut buf = EduBuf::new();
-    serde_json::to_writer(&mut buf, &presence_content).expect("failed to serialize Presence EDU to JSON");
+    serde_json::to_writer(&mut buf, &presence_content)
+        .expect("failed to serialize Presence EDU to JSON");
 
     Ok(Some(buf))
 }
@@ -352,7 +375,8 @@ pub fn select_edus(server_name: &ServerName) -> AppResult<(EduVec, i64)> {
     let since_sn = data::curr_sn()?;
 
     let events_len = AtomicUsize::default();
-    let device_changes = select_edus_device_changes(server_name, since_sn, &max_edu_sn, &events_len)?;
+    let device_changes =
+        select_edus_device_changes(server_name, since_sn, &max_edu_sn, &events_len)?;
 
     let mut events = device_changes;
     if conf.read_receipt.allow_outgoing {

@@ -6,9 +6,13 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::device::{DeviceListUpdateContent, DirectDeviceContent};
-use crate::core::events::receipt::{ReceiptContent, ReceiptEvent, ReceiptEventContent, ReceiptType};
+use crate::core::events::receipt::{
+    ReceiptContent, ReceiptEvent, ReceiptEventContent, ReceiptType,
+};
 use crate::core::events::typing::TypingContent;
-use crate::core::federation::transaction::{Edu, SendMessageReqBody, SendMessageResBody, SigningKeyUpdateContent};
+use crate::core::federation::transaction::{
+    Edu, SendMessageReqBody, SendMessageResBody, SigningKeyUpdateContent,
+};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceContent;
 use crate::core::serde::RawJsonValue;
@@ -33,7 +37,11 @@ async fn send_message(
     let origin = depot.origin()?;
     let body = body.into_inner();
     if &body.origin != origin {
-        return Err(MatrixError::forbidden("not allowed to send transactions on behalf of other servers", None).into());
+        return Err(MatrixError::forbidden(
+            "not allowed to send transactions on behalf of other servers",
+            None,
+        )
+        .into());
     }
 
     if body.pdus.len() > PDU_LIMIT {
@@ -87,7 +95,15 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        let result = handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, true).await;
+        let result = handler::process_incoming_pdu(
+            origin,
+            &event_id,
+            &room_id,
+            &room_version_id,
+            value,
+            true,
+        )
+        .await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
@@ -188,7 +204,8 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                 .any(|member| member.server_name() == user_id.server_name())
             {
                 for event_id in &user_updates.event_ids {
-                    let user_receipts = BTreeMap::from([(user_id.clone(), user_updates.data.clone())]);
+                    let user_receipts =
+                        BTreeMap::from([(user_id.clone(), user_updates.data.clone())]);
                     let receipts = BTreeMap::from([(ReceiptType::Read, user_receipts)]);
                     let receipt_content = BTreeMap::from([(event_id.to_owned(), receipts)]);
                     let event = ReceiptEvent {
@@ -232,9 +249,12 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
 
     if room::user::is_joined(&typing.user_id, &typing.room_id).unwrap_or(false) {
         if typing.typing {
-            let timeout = UnixMillis::now()
-                .get()
-                .saturating_add(crate::config::get().typing.federation_timeout.saturating_mul(1000));
+            let timeout = UnixMillis::now().get().saturating_add(
+                crate::config::get()
+                    .typing
+                    .federation_timeout
+                    .saturating_mul(1000),
+            );
             let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
         } else {
             let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
@@ -248,7 +268,9 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
 }
 
 async fn process_edu_device_list_update(origin: &ServerName, content: DeviceListUpdateContent) {
-    let DeviceListUpdateContent { user_id, device_id, .. } = content;
+    let DeviceListUpdateContent {
+        user_id, device_id, ..
+    } = content;
 
     if user_id.server_name() != origin {
         warn!(
@@ -342,6 +364,12 @@ async fn process_edu_signing_key_update(origin: &ServerName, content: SigningKey
     }
 
     if let Some(master_key) = master_key {
-        let _ = crate::user::add_cross_signing_keys(&user_id, &master_key, &self_signing_key, &None, true);
+        let _ = crate::user::add_cross_signing_keys(
+            &user_id,
+            &master_key,
+            &self_signing_key,
+            &None,
+            true,
+        );
     }
 }

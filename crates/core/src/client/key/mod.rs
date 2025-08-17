@@ -29,12 +29,12 @@ impl<'a> Iterator for SignedKeysIter<'a> {
     }
 }
 
-/// `POST /_matrix/client/*/keys/query`
-///
-/// Returns the current devices and identity keys for the given users.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysquery
+// /// `POST /_matrix/client/*/keys/query`
+// ///
+// /// Returns the current devices and identity keys for the given users.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysquery
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -92,12 +92,12 @@ pub struct KeysResBody {
     pub user_signing_keys: BTreeMap<OwnedUserId, CrossSigningKey>,
 }
 
-/// `POST /_matrix/client/*/keys/upload`
-///
-/// Publishes end-to-end encryption keys for the device.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysupload
+// /// `POST /_matrix/client/*/keys/upload`
+// ///
+// /// Publishes end-to-end encryption keys for the device.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysupload
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -137,16 +137,18 @@ pub struct UploadKeysResBody {
 impl UploadKeysResBody {
     /// Creates a new `Response` with the given one time key counts.
     pub fn new(one_time_key_counts: BTreeMap<DeviceKeyAlgorithm, u64>) -> Self {
-        Self { one_time_key_counts }
+        Self {
+            one_time_key_counts,
+        }
     }
 }
 
-/// `GET /_matrix/client/*/keys/changes`
-///
-/// Gets a list of users who have updated their device identity keys since a
-/// previous sync token. `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3keyschanges
+// /// `GET /_matrix/client/*/keys/changes`
+// ///
+// /// Gets a list of users who have updated their device identity keys since a
+// /// previous sync token. `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3keyschanges
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -192,12 +194,12 @@ impl KeyChangesResBody {
     }
 }
 
-/// `POST /_matrix/client/*/keys/device_signing/upload`
-///
-/// Publishes cross signing keys for the user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysdevice_signingupload
+// /// `POST /_matrix/client/*/keys/device_signing/upload`
+// ///
+// /// Publishes cross signing keys for the user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keysdevice_signingupload
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -241,12 +243,12 @@ pub struct UploadSigningKeysReqBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_signing_key: Option<CrossSigningKey>,
 }
-/// `POST /_matrix/client/*/keys/signatures/upload`
-///
-/// Publishes cross-signing signatures for the user.
-/// `/v3/` ([spec])
-///
-/// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keyssignaturesupload
+// /// `POST /_matrix/client/*/keys/signatures/upload`
+// ///
+// /// Publishes cross-signing signatures for the user.
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3keyssignaturesupload
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -296,7 +298,8 @@ impl SignedKeys {
 
     /// Add the given device keys.
     pub fn add_device_keys(&mut self, device_id: OwnedDeviceId, device_keys: RawJson<DeviceKeys>) {
-        self.0.insert(device_id.as_str().into(), device_keys.into_inner());
+        self.0
+            .insert(device_id.as_str().into(), device_keys.into_inner());
     }
 
     /// Add the given cross signing keys.
@@ -305,7 +308,8 @@ impl SignedKeys {
         cross_signing_key_id: Box<str>,
         cross_signing_keys: RawJson<CrossSigningKey>,
     ) {
-        self.0.insert(cross_signing_key_id, cross_signing_keys.into_inner());
+        self.0
+            .insert(cross_signing_key_id, cross_signing_keys.into_inner());
     }
 
     /// Returns an iterator over the keys.

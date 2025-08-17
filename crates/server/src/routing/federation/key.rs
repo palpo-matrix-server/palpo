@@ -58,14 +58,21 @@ async fn server_signing_keys(_aa: AuthArgs) -> JsonResult<ServerKeysResBody> {
         verify_keys,
         old_verify_keys: BTreeMap::new(),
         signatures: BTreeMap::new(),
-        valid_until_ts: UnixMillis::from_system_time(SystemTime::now() + Duration::from_secs(86400 * 7))
-            .expect("time is valid"),
+        valid_until_ts: UnixMillis::from_system_time(
+            SystemTime::now() + Duration::from_secs(86400 * 7),
+        )
+        .expect("time is valid"),
     };
     let buf: Vec<u8> = crate::core::serde::json_to_buf(&server_keys)?;
     let mut server_keys: CanonicalJsonObject = serde_json::from_slice(&buf)?;
 
-    crate::core::signatures::sign_json(&conf.server_name.as_str(), config::keypair(), &mut server_keys)?;
-    let server_keys: ServerSigningKeys = serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
+    crate::core::signatures::sign_json(
+        conf.server_name.as_str(),
+        config::keypair(),
+        &mut server_keys,
+    )?;
+    let server_keys: ServerSigningKeys =
+        serde_json::from_slice(&serde_json::to_vec(&server_keys).unwrap())?;
 
     json_ok(ServerKeysResBody::new(server_keys))
 }
