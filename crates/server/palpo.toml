@@ -46,8 +46,8 @@ format = "pretty" # pretty, json, compact
 #level = "warn,state=warn,rocket=off,_=off,sled=off"
 
 [db]
-url = "postgres://postgres:root@127.0.0.1:5432/palpo_local"
-pool_size = 1
+url = "postgres://username:password@localhost:5432/palpo_db"
+pool_size = 10
 
 [federation]
 enable = true
@@ -58,3 +58,14 @@ enable = true
 # If you want to override these defaults, uncomment and edit the following lines accordingly:
 server = "127.0.0.1:6006"
 client = "http://127.0.0.1:6006"
+
+[oidc]
+enable = true
+enable_pkce = true
+session_timeout = 1800
+
+[oidc.providers.google]
+issuer = "https://accounts.google.com"
+client_id = "your-google-client-id.apps.googleusercontent.com"
+client_secret = "GOCSPX-your-google-client-secret"
+redirect_uri = "https://your-domain.com/_matrix/client/oidc/callback"

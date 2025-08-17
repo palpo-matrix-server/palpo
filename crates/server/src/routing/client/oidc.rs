@@ -85,6 +85,7 @@ use cookie::time::Duration;
 use reqwest;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::collections::HashMap;
 use url::Url;
 
@@ -304,14 +305,18 @@ fn generate_random_string(length: usize) -> String {
 /// Generate PKCE code verifier and challenge
 /// 
 /// Returns (code_verifier, code_challenge) tuple
-/// For now, PKCE is simplified without SHA256 hashing due to dependency constraints
+/// Implements proper SHA256 hashing as required by OAuth 2.0 PKCE spec
 fn generate_pkce_challenge() -> (String, String) {
-    // Generate 128-bit random verifier
-    let code_verifier = generate_random_string(96); // ~128 bits when base64 encoded
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     
-    // For now, use the verifier as challenge (would normally be SHA256 hashed)
-    // TODO: Implement proper SHA256 hashing when sha2 dependency is available
-    let code_challenge = code_verifier.clone();
+    // Generate 128-bit random verifier (43-128 characters per RFC 7636)
+    let code_verifier = generate_random_string(96);
+    
+    // Create SHA256 hash of verifier and base64url encode it (RFC 7636)
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(code_verifier.as_bytes());
+    let hash_result = hasher.finalize();
+    let code_challenge = URL_SAFE_NO_PAD.encode(&hash_result[..]);
     
     (code_verifier, code_challenge)
 }
