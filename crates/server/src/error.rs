@@ -79,7 +79,7 @@ pub enum AppError {
     CargoToml(#[from] cargo_toml::Error),
     #[error("YamlError: `{0}`")]
     Yaml(#[from] serde_yaml::Error),
-    #[error("ClapError: `{0}`")]
+    #[error("Command error: `{0}`")]
     Clap(#[from] clap::Error),
     #[error("SystemTimeError: `{0}`")]
     SystemTime(#[from] std::time::SystemTimeError),

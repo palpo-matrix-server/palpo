@@ -4,9 +4,10 @@ use crate::core::serde::default_false;
 use crate::macros::config_example;
 
 #[config_example(filename = "palpo-example.toml", section = "db")]
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DbConfig {
-    /// Settings for the primary database.
+    /// Settings for the primary database. default reade env var PALPO_DB_URL.
+    #[serde(default = "default_db_url")]
     pub url: String,
     #[serde(default = "default_db_pool_size")]
     pub pool_size: u32,
@@ -61,6 +62,25 @@ impl DbConfig {
             enforce_tls,
         }
     }
+}
+
+impl Default for DbConfig {
+    fn default() -> Self {
+        Self {
+            url: default_db_url(),
+            pool_size: default_db_pool_size(),
+            min_idle: None,
+            tcp_timeout: default_tcp_timeout(),
+            connection_timeout: default_connection_timeout(),
+            statement_timeout: default_statement_timeout(),
+            helper_threads: default_helper_threads(),
+            enforce_tls: default_false(),
+        }
+    }
+}
+
+fn default_db_url() -> String {
+    std::env::var("PALPO_DB_URL").unwrap_or_default()
 }
 
 fn default_db_pool_size() -> u32 {

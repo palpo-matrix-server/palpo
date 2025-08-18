@@ -71,15 +71,15 @@ pub type CommandOutput = RoomMessageEventContent;
 pub(crate) enum AdminCommand {
     #[command(subcommand)]
     /// - Commands for managing appservices
-    Appservices(AppserviceCommand),
+    Appservice(AppserviceCommand),
 
     #[command(subcommand)]
     /// - Commands for managing local users
-    Users(UserCommand),
+    User(UserCommand),
 
     #[command(subcommand)]
     /// - Commands for managing rooms
-    Rooms(RoomCommand),
+    Room(RoomCommand),
 
     #[command(subcommand)]
     /// - Commands for managing federation
@@ -150,10 +150,10 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> App
     use AdminCommand::*;
 
     match command {
-        Appservices(command) => appservice::process(command, context).await,
+        Appservice(command) => appservice::process(command, context).await,
         Media(command) => media::process(command, context).await,
-        Users(command) => user::process(command, context).await,
-        Rooms(command) => room::process(command, context).await,
+        User(command) => user::process(command, context).await,
+        Room(command) => room::process(command, context).await,
         Federation(command) => federation::process(command, context).await,
         Server(command) => server::process(command, context).await,
         // Debug(command) => debug::process(command, context).await,

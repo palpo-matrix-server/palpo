@@ -8,8 +8,8 @@ use serde::de::IgnoredAny;
 
 use super::{
     AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
-    LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig, TurnConfig,
-    TypingConfig, UrlPreviewConfig,
+    LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig,
+    TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
 use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
@@ -81,7 +81,7 @@ impl ListenerConfig {
 ### https://palpo.im/guide/configuration.html
 "#,
     ignore = "catch_others federation well_known compression typing read_receipt presence \
-        admin url_preview turn media blurhash keypair ldap proxy jwt logger db appservice"
+        admin url_preview turn media blurhash keypair ldap proxy jwt oidc logger db appservice"
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
@@ -722,8 +722,7 @@ pub struct ServerConfig {
     pub sender_workers: usize,
 
     // external structure; separate section
-    #[serde(default)]
-    pub oidc: OidcConfig,
+    pub oidc: Option<OidcConfig>,
 
     // // external structure; separate section
     // #[serde(default)]
@@ -752,8 +751,8 @@ impl ServerConfig {
     }
 
     pub fn enabled_oidc(&self) -> Option<&OidcConfig> {
-        if self.oidc.enable {
-            Some(&self.oidc)
+        if let Some(oidc) = self.oidc.as_ref() {
+            if oidc.enable { Some(oidc) } else { None }
         } else {
             None
         }
