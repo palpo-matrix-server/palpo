@@ -193,7 +193,7 @@ fn parse(input: &CommandInput) -> Result<(AdminCommand, Vec<String>, Vec<&str>),
     }
 }
 
-fn parse_command(line: &str) -> AppResult<(AdminCommand, Vec<String>)> {
+fn parse_command(line: &str) -> Result<(AdminCommand, Vec<String>), clap::Error> {
     let argv = parse_line(line);
     let command = AdminCommand::try_parse_from(&argv)?;
     Ok((command, argv))

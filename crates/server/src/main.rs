@@ -139,11 +139,11 @@ pub(crate) struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // if dotenvy::from_filename(".env.local").is_err() {
-    //     println!(".env.local file is not found");
-    // }
+    if dotenvy::from_filename(".env.local").is_err() {
+        tracing::debug!(".env.local file is not found");
+    }
     if let Err(e) = dotenv() {
-        tracing::info!("dotenv error: {:?}", e);
+        tracing::info!("dotenv not loaded: {:?}", e);
     }
 
     let args = Args::parse();
@@ -260,7 +260,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             acceptors.push(acceptor);
         } else {
             tracing::info!("Listening on: {}", listener_conf.address);
-            let acceptor = TcpListener::new(&listener_conf.address).bind().await.into_boxed();
+            let acceptor = TcpListener::new(&listener_conf.address)
+                .bind()
+                .await
+                .into_boxed();
             acceptors.push(acceptor);
         }
     }

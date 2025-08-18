@@ -26,7 +26,7 @@ format = "pretty" # pretty, json, compact
 #level = "warn,state=warn,rocket=off,_=off,sled=off"
 
 [db]
-url = "postgres://username:password@localhost:5432/palpo_db"
+url = "postgres://postgres:root@localhost:5432/palpo_local"
 pool_size = 10
 
 [federation]
@@ -38,6 +38,12 @@ enable = true
 # If you want to override these defaults, uncomment and edit the following lines accordingly:
 server = "127.0.0.1:6006"
 client = "http://127.0.0.1:6006"
+
+[turn]
+shared_secret = "n0t4ctuAllymatr1Xd0TorgSshar3d5ecret4obvIousreAsons"
+user_lifetime = 86400000
+allow_guests = true
+uris = ["turn:turn.matrix.org?transport=udp", "turn:turn.matrix.org?transport=tcp"]
 
 [oidc]
 enable = true

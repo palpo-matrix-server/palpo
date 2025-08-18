@@ -3,14 +3,14 @@ use std::{fmt::Write, path::PathBuf};
 use crate::admin::Context;
 use crate::{AppError, AppResult, config, info};
 
-pub(super) async fn uptime(ctx: &Context<'_>) -> AppResult<()> {
-    // TODO: admin
-    // let elapsed = self.services.server.started.elapsed().expect("standard duration");
+// pub(super) async fn uptime(ctx: &Context<'_>) -> AppResult<()> {
+//     // TODO: admin
+//     // let elapsed = self.services.server.started.elapsed().expect("standard duration");
 
-    // let result = time::pretty(elapsed);
-    // ctx.write_str(&format!("{result}.")).await
-    Ok(())
-}
+//     // let result = time::pretty(elapsed);
+//     // ctx.write_str(&format!("{result}.")).await
+//     Ok(())
+// }
 
 pub(super) async fn show_config(ctx: &Context<'_>) -> AppResult<()> {
     ctx.write_str(&format!("{}", config::get())).await
