@@ -1,24 +1,4 @@
-# =============================================================================
-#  This is the official example config for Palpo.
-#  If you use it for your server, you will need to adjust it to your own needs.
-#  At the very least, change the server_name field!
-# =============================================================================
-
-# The server_name is the pretty name of this server. It is used as a suffix for user
-# and room ids. Examples: matrix.org, palpo.im
-
-# The Palpo server needs all /_matrix/ requests to be reachable at
-# https://your.server.name/ on port 443 (client-server) and 8448 (federation).
-
-# If that's not possible for you, you can create /.well-known files to redirect
-# requests. See
-# https://matrix.org/docs/spec/client_server/latest#get-well-known-matrix-client
-# and
-# https://matrix.org/docs/spec/server_server/r0.1.4#get-well-known-matrix-server
-# for more information
-
-# YOU NEED TO EDIT THIS
-server_name = "your.server.name"
+server_name = "127.0.0.1:6006"
 
 # Max size for uploads
 max_upload_size = 128_000_000 # in bytes
@@ -38,7 +18,7 @@ enable_admin_room = true
 
 # The local address that the server listens on.
 [[listeners]]
-address = "127.0.0.1:8008"
+address = "127.0.0.1:6006"
 
 [logger]
 format = "pretty" # pretty, json, compact

@@ -81,8 +81,7 @@ impl ListenerConfig {
 ### https://palpo.im/guide/configuration.html
 "#,
     ignore = "catch_others federation well_known compression typing read_receipt presence \
-            admin url_preview turn media blurhash keypair ldap proxy jwt tls logger db\
-	        appservice"
+        admin url_preview turn media blurhash keypair ldap proxy jwt logger db appservice"
 )]
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerConfig {
@@ -100,6 +99,7 @@ pub struct ServerConfig {
     // display: hidden
     pub db: DbConfig,
 
+    // display: hidden
     #[serde(default = "default_true")]
     pub allow_check_for_updates: bool,
     #[serde(default = "default_max_concurrent_requests")]
