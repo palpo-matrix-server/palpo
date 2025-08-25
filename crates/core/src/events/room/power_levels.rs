@@ -224,7 +224,7 @@ impl StrippedRoomPowerLevelsEvent {
 }
 
 /// Redacted form of [`RoomPowerLevelsEventContent`].
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub struct RedactedRoomPowerLevelsEventContent {
     /// The level required to ban a user.
     #[serde(

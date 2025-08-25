@@ -51,12 +51,12 @@ event_enum! {
         "m.tag" => super::tag,
         "m.marked_unread" => super::marked_unread,
         #[cfg(feature = "unstable-msc2867")]
-        #[ruma_enum(ident = UnstableMarkedUnread)]
+        #[palpo_enum(ident = UnstableMarkedUnread)]
         "com.famedly.marked_unread" => super::marked_unread,
         #[cfg(feature = "unstable-msc4278")]
         "m.media_preview_config" => super::media_preview_config,
         #[cfg(feature = "unstable-msc4278")]
-        #[ruma_enum(ident = UnstableMediaPreviewConfig)]
+        #[palpo_enum(ident = UnstableMediaPreviewConfig)]
         "io.element.msc4278.media_preview_config" => super::media_preview_config,
     }
 

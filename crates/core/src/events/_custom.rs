@@ -2,7 +2,7 @@ use salvo::oapi::ToSchema;
 use serde::Serialize;
 
 use crate::{
-    RoomVersionId,
+    RoomVersionId,room_version_rules::RedactionRules,
     events::{
         EphemeralRoomEventContent, EphemeralRoomEventType, EventContentFromType,
         GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent,
@@ -43,7 +43,7 @@ macro_rules! custom_room_event_content {
         impl RedactContent for $i {
             type Redacted = Self;
 
-            fn redact(self, _: &RoomVersionId) -> Self {
+            fn redact(self, _: &RedactionRules) -> Self {
                 self
             }
         }

@@ -62,7 +62,7 @@ impl UnstablePollStartEventContent {
 impl RedactContent for UnstablePollStartEventContent {
     type Redacted = RedactedUnstablePollStartEventContent;
 
-    fn redact(self, _version: &crate::RoomVersionId) -> Self::Redacted {
+    fn redact(self, _rules: &RedactionRules) -> Self::Redacted {
         RedactedUnstablePollStartEventContent::default()
     }
 }

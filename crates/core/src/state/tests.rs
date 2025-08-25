@@ -48,7 +48,7 @@ fn test_event_sort() {
         })
         .unwrap();
 
-    let resolved_power = super::iterative_auth_checks(
+    let resolved_power = super::iterative_auth_check(
         &AuthorizationRules::V6,
         &sorted_power_events,
         HashMap::new(), // unconflicted events

@@ -9,7 +9,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Represents the various errors that arise when resolving state.
 #[derive(Error, Debug)]
 #[non_exhaustive]
-pub enum Error {
+pub enum StateError {
     /// The given event was not found.
     #[error("Failed to find event {0}")]
     NotFound(OwnedEventId),

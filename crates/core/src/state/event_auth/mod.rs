@@ -189,7 +189,7 @@ where
         incoming_event.sender(),
         incoming_event.state_key(),
         incoming_event.content(),
-        rules,
+        &rules.authorization,
     )?
     .into_iter()
     .map(|(event_type, state_key)| (TimelineEventType::from(event_type), state_key))
@@ -308,7 +308,7 @@ where
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &AuthorizationRules,
+    rules: &RoomVersionRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> MatrixResult<()>
@@ -658,10 +658,10 @@ fn check_room_power_levels(
 /// * `error_fn`: the function to generate an error when the change for the given key is not
 ///   allowed.
 fn check_power_level_maps<K: Ord>(
-    current: Option<&BTreeMap<K, i32>>,
-    new: Option<&BTreeMap<K, i32>>,
+    current: Option<&BTreeMap<K, i64>>,
+    new: Option<&BTreeMap<K, i64>>,
     sender_power_level: &UserPowerLevel,
-    reject_current_power_level_change_fn: impl FnOnce(&K, i32) -> bool + Copy,
+    reject_current_power_level_change_fn: impl FnOnce(&K, i64) -> bool + Copy,
     error_fn: impl FnOnce(&K) -> String,
 ) -> Result<(), String> {
     let keys_to_check = current

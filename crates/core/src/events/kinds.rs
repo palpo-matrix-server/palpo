@@ -13,7 +13,7 @@ use super::{
     RedactionDeHelper, RoomAccountDataEventContent, StateEventContent, StateEventType,
     StaticStateEventContent, ToDeviceEventContent,
 };
-use crate::{
+use crate::{room_version_rules::RedactionRules,
     EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
     events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, receipt::ReceiptEventContent},
     serde::{RawJson, RawJsonValue, from_raw_json_value},
@@ -659,9 +659,9 @@ where
     ///
     /// A small number of events have room-version specific redaction behavior,
     /// so a version has to be specified.
-    pub fn redact(self, version: &RoomVersionId) -> C::Redacted {
+    pub fn redact(self, rules: &RedactionRules) -> C::Redacted {
         match self {
-            FullStateEventContent::Original { content, .. } => content.redact(version),
+            FullStateEventContent::Original { content, .. } => content.redact(rules),
             FullStateEventContent::Redacted(content) => content,
         }
     }

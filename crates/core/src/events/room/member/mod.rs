@@ -12,7 +12,7 @@ use crate::macros::EventContent;
 use crate::serde::JsonValue;
 use crate::state::Event;
 use crate::{
-    PrivOwnedStr,
+    PrivOwnedStr,room_version_rules::RedactionRules,
     events::{StaticEventContent,
         AnyStrippedStateEvent, BundledStateRelations,  EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
@@ -243,21 +243,13 @@ impl RoomMemberEventContent {
 impl RedactContent for RoomMemberEventContent {
     type Redacted = RedactedRoomMemberEventContent;
 
-    fn redact(self, version: &RoomVersionId) -> RedactedRoomMemberEventContent {
+    fn redact(self, rules: &RedactionRules) -> RedactedRoomMemberEventContent {
         RedactedRoomMemberEventContent {
             membership: self.membership,
-            third_party_invite: self.third_party_invite.and_then(|i| i.redact(version)),
-            join_authorized_via_users_server: match version {
-                RoomVersionId::V1
-                | RoomVersionId::V2
-                | RoomVersionId::V3
-                | RoomVersionId::V4
-                | RoomVersionId::V5
-                | RoomVersionId::V6
-                | RoomVersionId::V7
-                | RoomVersionId::V8 => None,
-                _ => self.join_authorized_via_users_server,
-            },
+            third_party_invite: self.third_party_invite.and_then(|i| i.redact(rules)),
+            join_authorized_via_users_server: self
+                .join_authorized_via_users_server
+                .filter(|_| rules.keep_room_member_join_authorised_via_users_server),
         }
     }
 }
@@ -434,22 +426,10 @@ impl ThirdPartyInvite {
     ///
     /// Returns `None` if the field for this object was redacted in the given
     /// room version, otherwise returns the redacted form.
-    fn redact(self, version: &RoomVersionId) -> Option<RedactedThirdPartyInvite> {
-        match version {
-            RoomVersionId::V1
-            | RoomVersionId::V2
-            | RoomVersionId::V3
-            | RoomVersionId::V4
-            | RoomVersionId::V5
-            | RoomVersionId::V6
-            | RoomVersionId::V7
-            | RoomVersionId::V8
-            | RoomVersionId::V9
-            | RoomVersionId::V10 => None,
-            _ => Some(RedactedThirdPartyInvite {
-                signed: self.signed,
-            }),
-        }
+    fn redact(self, rules: &RedactionRules) -> Option<RedactedThirdPartyInvite> {
+        rules
+            .keep_room_member_third_party_invite_signed
+            .then_some(RedactedThirdPartyInvite { signed: self.signed })
     }
 }
 
