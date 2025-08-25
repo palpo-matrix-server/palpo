@@ -16,6 +16,7 @@ use self::parse::{ContentAttrs, ContentMeta, EventContentKind, EventFieldMeta, E
 use super::enums::{
     EventContentTraitVariation, EventContentVariation, EventKind, EventTypes, EventVariation,
 };
+use crate::events::enums::EventType;
 use crate::util::{PrivateField, m_prefix_name_to_type_name};
 
 mod parse;
@@ -40,24 +41,31 @@ pub fn expand_event_content(
         event_types,
         kind,
         state_key_type,
-        unsigned_type
+        unsigned_type,
         is_custom_redacted,
         is_custom_possibly_redacted,
         has_without_relation,
     } = content_meta.try_into()?;
 
+    let variations = kind.event_content_variations();
+
+    let generate_redacted =
+        !is_custom_redacted && variations.contains(&EventContentVariation::Redacted);
+    let generate_possibly_redacted = !is_custom_possibly_redacted
+        && variations.contains(&EventContentVariation::PossiblyRedacted);
+
     let ident = &input.ident;
     let fields = match &input.data {
         syn::Data::Struct(syn::DataStruct { fields, .. }) => Some(fields.iter()),
         _ => {
-            if event_kind.is_some_and(|kind| needs_redacted(is_custom_redacted, kind)) {
+            if generate_redacted {
                 return Err(syn::Error::new(
                     Span::call_site(),
                     "To generate a redacted event content, the event content type needs to be a struct. Disable this with the custom_redacted attribute",
                 ));
             }
 
-            if event_kind.is_some_and(|kind| needs_possibly_redacted(is_custom_redacted, kind)) {
+            if generate_possibly_redacted {
                 return Err(syn::Error::new(
                     Span::call_site(),
                     "To generate a possibly redacted event content, the event content type needs to be a struct. Disable this with the custom_possibly_redacted attribute",
@@ -75,38 +83,39 @@ pub fn expand_event_content(
         }
     };
 
+    let event_type_fragment = EventTypeFragment::try_from_parts(&types.ev_type, fields.clone())?;
+
     // We only generate redacted content structs for state and message-like events
-    let redacted_event_content = event_kind
-        .filter(|kind| needs_redacted(is_custom_redacted, *kind))
-        .map(|kind| {
-            generate_redacted_event_content(
-                ident,
-                &input.vis,
-                fields.clone().unwrap(),
-                &event_types,
-                kind,
-                state_key_type.as_ref(),
-                unsigned_type.clone(),
-                palpo_core,
-            )
-            .unwrap_or_else(syn::Error::into_compile_error)
-        });
+    let redacted_event_content = generate_redacted.then(|| {
+        generate_redacted_event_content(
+            ident,
+            &input.vis,
+            fields.clone().unwrap(),
+            &event_types,
+            kind,
+            event_type_fragment.as_ref(),
+            state_key_type.as_ref(),
+            unsigned_type.clone(),
+            palpo_core,
+        )
+        .unwrap_or_else(syn::Error::into_compile_error)
+    });
 
     // We only generate possibly redacted content structs for state events.
-    let possibly_redacted_event_content = event_kind
-        .filter(|kind| needs_possibly_redacted(is_custom_possibly_redacted, *kind))
-        .map(|_| {
-            generate_possibly_redacted_event_content(
-                ident,
-                &input.vis,
-                fields.clone().unwrap(),
-                &event_types,
-                state_key_type.as_ref(),
-                unsigned_type.clone(),
-                palpo_core,
-            )
-            .unwrap_or_else(syn::Error::into_compile_error)
-        });
+    let possibly_redacted_event_content = generate_possibly_redacted.then(|| {
+        generate_possibly_redacted_event_content(
+            ident,
+            &input.vis,
+            fields.clone().unwrap(),
+            &event_types,
+            event_type_fragment.as_ref(),
+            state_key_type.as_ref(),
+            unsigned_type.clone(),
+            generate_redacted,
+            palpo_core,
+        )
+        .unwrap_or_else(syn::Error::into_compile_error)
+    });
 
     let event_content_without_relation = has_without_relation.then(|| {
         generate_event_content_without_relation(
@@ -122,21 +131,23 @@ pub fn expand_event_content(
         ident,
         &input.vis,
         fields,
-        &event_type,
-        event_kind,
-        EventKindContentVariation::Original,
+        &event_types,
+        kind,
+        EventContentVariation::Original,
+        event_type_fragment.as_ref(),
         state_key_type.as_ref(),
         unsigned_type,
-        &aliases,
         palpo_core,
     )
     .unwrap_or_else(syn::Error::into_compile_error);
     let static_event_content_impl =
         generate_static_event_content_impl(ident, &event_type, palpo_core);
     let type_aliases = event_kind.map(|k| {
-        generate_event_type_aliases(k, ident, &input.vis, &event_type.value(), palpo_core)
+        generate_event_type_aliases(k, ident, &input.vis, &event_types, palpo_core)
             .unwrap_or_else(syn::Error::into_compile_error)
     });
+
+    let json_castable_impl = generate_json_castable_impl(ident, &[], &palpo_core);
 
     Ok(quote! {
         #redacted_event_content
@@ -145,6 +156,7 @@ pub fn expand_event_content(
         #event_content_impl
         #static_event_content_impl
         #type_aliases
+        #json_castable_impl
     })
 }
 
@@ -153,13 +165,14 @@ fn generate_redacted_event_content<'a>(
     vis: &syn::Visibility,
     fields: impl Iterator<Item = &'a Field>,
     event_types: &EventTypes,
-    event_kind: EventKind,
+    kind: EventContentKind,
+    event_type_fragment: Option<&EventTypeFragment<'_>>,
     state_key_type: Option<&TokenStream>,
     unsigned_type: Option<TokenStream>,
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     assert!(
-        !types.is_prefix(),
+        !event_types.is_prefix(),
         "Event type shouldn't contain a `*`, this should have been checked previously"
     );
 
@@ -217,8 +230,9 @@ fn generate_redacted_event_content<'a>(
         vis,
         Some(kept_redacted_fields.iter()),
         event_types,
-        event_kind,
-        EventKindContentVariation::Redacted,
+        kind,
+        EventContentVariation::Redacted,
+        event_type_fragment,
         state_key_type,
         unsigned_type,
         palpo_core,
@@ -226,7 +240,8 @@ fn generate_redacted_event_content<'a>(
     .unwrap_or_else(syn::Error::into_compile_error);
 
     let static_event_content_impl =
-        generate_static_event_content_impl(&redacted_ident, event_type, palpo_core);
+        generate_static_event_content_impl(&redacted_ident, event_types, palpo_core);
+    let json_castable_impl = generate_json_castable_impl(&redacted_ident, &[ident], palpo_core);
 
     Ok(quote! {
         // this is the non redacted event content's impl
@@ -252,6 +267,8 @@ fn generate_redacted_event_content<'a>(
         #redacted_event_content
 
         #static_event_content_impl
+
+        #json_castable_impl
     })
 }
 
@@ -259,10 +276,11 @@ fn generate_possibly_redacted_event_content<'a>(
     ident: &Ident,
     vis: &syn::Visibility,
     fields: impl Iterator<Item = &'a Field>,
-    event_type: &LitStr,
+    event_types: &EventTypes,
+    event_type_fragment: Option<&EventTypeFragment<'_>>,
     state_key_type: Option<&TokenStream>,
     unsigned_type: Option<TokenStream>,
-    aliases: &[LitStr],
+    generate_redacted: bool,
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     assert!(
@@ -379,18 +397,29 @@ fn generate_possibly_redacted_event_content<'a>(
             &possibly_redacted_ident,
             vis,
             Some(possibly_redacted_fields.iter()),
-            event_type,
-            Some(EventKind::State),
-            EventKindContentVariation::PossiblyRedacted,
+            event_types,
+            EventKind::State.into(),
+            EventContentVariation::PossiblyRedacted,
+            event_type_fragment,
             state_key_type,
             unsigned_type,
-            aliases,
             palpo_core,
         )
         .unwrap_or_else(syn::Error::into_compile_error);
 
         let static_event_content_impl =
-            generate_static_event_content_impl(&possibly_redacted_ident, event_type, palpo_core);
+            generate_static_event_content_impl(&possibly_redacted_ident, event_types, palpo_core);
+
+        let json_castable_impl = if generate_redacted {
+            let redacted_ident = format_ident!("Redacted{ident}");
+            generate_json_castable_impl(
+                &possibly_redacted_ident,
+                &[ident, &redacted_ident],
+                &palpo_core,
+            )
+        } else {
+            generate_json_castable_impl(&possibly_redacted_ident, &[ident], &palpo_core)
+        };
 
         Ok(quote! {
             #[doc = #doc]
@@ -402,6 +431,8 @@ fn generate_possibly_redacted_event_content<'a>(
             #possibly_redacted_event_content
 
             #static_event_content_impl
+
+            #json_castable_impl
         })
     } else {
         Ok(quote! {
@@ -463,6 +494,9 @@ fn generate_event_content_without_relation<'a>(
         }
     };
 
+    let json_castable_impl =
+        generate_json_castable_impl(&without_relation_ident, &[ident], palpo_core);
+
     Ok(quote! {
         #[allow(unused_qualifications)]
         #[automatically_derived]
@@ -487,14 +521,16 @@ fn generate_event_content_without_relation<'a>(
                 }
             }
         }
+
+        #json_castable_impl
     })
 }
 
 fn generate_event_type_aliases(
-    event_kind: EventKind,
+    kind: EventContentKind,
     ident: &Ident,
     vis: &syn::Visibility,
-    event_type: &str,
+    event_types: &EventTypes,
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     // The redaction module has its own event types.
@@ -507,64 +543,48 @@ fn generate_event_type_aliases(
         syn::Error::new_spanned(ident, "Expected content struct name ending in `Content`")
     })?;
 
-    let type_aliases = [
-        EventVariation::None,
-        EventVariation::Sync,
-        EventVariation::Original,
-        EventVariation::OriginalSync,
-        EventVariation::Stripped,
-        EventVariation::Initial,
-        EventVariation::Redacted,
-        EventVariation::RedactedSync,
-    ]
-    .iter()
-    .filter_map(|&var| Some((var, event_kind.to_event_ident(var).ok()?)))
-    .map(|(var, ev_struct)| {
-        let ev_type = format_ident!("{var}{ev_type_s}");
+    let type_aliases = kind
+        .event_variations()
+        .iter()
+        .filter_map(|&var| Some((var, kind.to_event_idents(var)?)))
+        .filter_map(|(var, type_prefixes_and_event_idents)| {
+            type_prefixes_and_event_idents
+                .into_iter()
+                .map(move |(type_prefix, ev_struct)| {
+                    let ev_type = format_ident!("{var}{type_prefix}{ev_type_s}");
 
-        let doc_text = match var {
-            EventVariation::None | EventVariation::Original => "",
-            EventVariation::Sync | EventVariation::OriginalSync => " from a `sync_events` response",
-            EventVariation::Stripped => " from an invited room preview",
-            EventVariation::Redacted => " that has been redacted",
-            EventVariation::RedactedSync => " from a `sync_events` response that has been redacted",
-            EventVariation::Initial => " for creating a room",
-        };
-        let ev_type_doc = format!("An `{event_type}` event{doc_text}.");
+                    let doc_text = match var {
+                        EventVariation::None | EventVariation::Original => "",
+                        EventVariation::Sync | EventVariation::OriginalSync => {
+                            " from a `sync_events` response"
+                        }
+                        EventVariation::Stripped => " from an invited room preview",
+                        EventVariation::Redacted => " that has been redacted",
+                        EventVariation::RedactedSync => {
+                            " from a `sync_events` response that has been redacted"
+                        }
+                        EventVariation::Initial => " for creating a room",
+                    };
+                    let ev_type_doc = format!("An `{event_type}` event{doc_text}.");
 
-        let content_struct = if var.is_redacted() {
-            Cow::Owned(format_ident!("Redacted{ident}"))
-        } else if let EventVariation::Stripped = var {
-            Cow::Owned(format_ident!("PossiblyRedacted{ident}"))
-        } else {
-            Cow::Borrowed(ident)
-        };
+                    let content_struct = if var.is_redacted() {
+                        Cow::Owned(format_ident!("Redacted{ident}"))
+                    } else if let EventVariation::Stripped = var {
+                        Cow::Owned(format_ident!("PossiblyRedacted{ident}"))
+                    } else {
+                        Cow::Borrowed(ident)
+                    };
 
-        quote! {
-            #[doc = #ev_type_doc]
-            #vis type #ev_type = #palpo_core::events::#ev_struct<#content_struct>;
-        }
-    })
-    .collect();
+                    quote! {
+                        #[doc = #ev_type_doc]
+                        #vis type #ev_type = #palpo_core::events::#ev_struct<#content_struct>;
+                    }
+                })
+        })
+        .flatten()
+        .collect();
 
     Ok(type_aliases)
-}
-
-#[derive(PartialEq)]
-enum EventKindContentVariation {
-    Original,
-    Redacted,
-    PossiblyRedacted,
-}
-
-impl fmt::Display for EventKindContentVariation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EventKindContentVariation::Original => Ok(()),
-            EventKindContentVariation::Redacted => write!(f, "Redacted"),
-            EventKindContentVariation::PossiblyRedacted => write!(f, "PossiblyRedacted"),
-        }
-    }
 }
 
 fn generate_event_content_impl<'a>(
@@ -572,8 +592,9 @@ fn generate_event_content_impl<'a>(
     vis: &syn::Visibility,
     mut fields: Option<impl Iterator<Item = &'a Field>>,
     event_types: &EventTypes,
-    event_kind: Option<EventKind>,
-    variation: EventKindContentVariation,
+    kind: EventContentKind,
+    variation: EventContentVariation,
+    event_type_fragment: Option<&EventTypeFragment<'_>>,
     state_key_type: Option<&TokenStream>,
     unsigned_type: Option<TokenStream>,
     palpo_core: &TokenStream,
@@ -581,135 +602,40 @@ fn generate_event_content_impl<'a>(
     let serde = quote! { #palpo_core::__private::serde };
     let serde_json = quote! { #palpo_core::__private::serde_json };
 
-    let (event_type_ty_decl, event_type_ty, event_type_fn_impl);
+    let possible_variations = kind.event_content_variations();
 
-    let type_suffix_data = event_type
-        .value()
-        .strip_suffix('*')
-        .map(|type_prefix| {
-            let Some(fields) = &mut fields else {
-                return Err(syn::Error::new_spanned(
-                    event_type,
-                    "event type with a `.*` suffix is required to be a struct",
-                ));
-            };
+    let event_content_kind_trait_impl = generate_event_content_kind_trait_impl(
+        ident,
+        event_types,
+        kind,
+        variation.into(),
+        event_type_fragment,
+        state_key_type,
+        palpo_core,
+    );
 
-            let type_fragment_field = fields
-                .find_map(|f| {
-                    f.attrs
-                        .iter()
-                        .filter(|a| a.path().is_ident("palpo_event"))
-                        .find_map(|attr| match attr.parse_args() {
-                            Ok(EventFieldMeta::TypeFragment) => Some(Ok(f)),
-                            Ok(_) => None,
-                            Err(e) => Some(Err(e)),
-                        })
-                })
-                .transpose()?
-                .ok_or_else(|| {
-                    syn::Error::new_spanned(
-                        event_type,
-                        "event type with a `.*` suffix requires there to be a \
-                         `#[palpo_event(type_fragment)]` field",
-                    )
-                })?
-                .ident
-                .as_ref()
-                .expect("type fragment field needs to have a name");
-
-            <syn::Result<_>>::Ok((type_prefix.to_owned(), type_fragment_field))
-        })
-        .transpose()?;
-
-    match event_kind {
-        Some(kind) => {
-            let i = kind.to_event_type_enum();
-            event_type_ty_decl = None;
-            event_type_ty = quote! { #palpo_core::events::#i };
-            event_type_fn_impl = match &type_suffix_data {
-                Some((type_prefix, type_fragment_field)) => {
-                    let format = type_prefix.to_owned() + "{}";
-
-                    quote! {
-                        ::std::convert::From::from(::std::format!(#format, self.#type_fragment_field))
-                    }
-                }
-                None => quote! { ::std::convert::From::from(#event_type) },
-            };
-        }
-        None => {
-            let camel_case_type_name = m_prefix_name_to_type_name(event_type)?;
-            let i = format_ident!("{}EventType", camel_case_type_name);
-            event_type_ty_decl = Some(quote! {
-                /// Implementation detail, you don't need to care about this.
-                #[doc(hidden)]
-                #vis struct #i {
-                    // Set to None for intended type, Some for a different one
-                    ty: ::std::option::Option<crate::PrivOwnedStr>,
-                }
-
-                impl #serde::Serialize for #i {
-                    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-                    where
-                        S: #serde::Serializer,
-                    {
-                        let s = self.ty.as_ref().map(|t| &t.0[..]).unwrap_or(#event_type);
-                        serializer.serialize_str(s)
-                    }
-                }
-            });
-            event_type_ty = quote! { #i };
-            event_type_fn_impl = quote! { #event_type_ty { ty: ::std::option::Option::None } };
-        }
-    }
-
-    let sub_trait_impl = event_kind.map(|kind| {
-        let trait_name = format_ident!("{variation}{kind}Content");
-
-        let state_key = (kind == EventKind::State).then(|| {
-            assert!(state_key_type.is_some());
-
-            quote! {
-                type StateKey = #state_key_type;
-            }
-        });
-
-        quote! {
-            #[automatically_derived]
-            impl #palpo_core::events::#trait_name for #ident {
-                #state_key
-            }
-        }
-    });
-
-    let static_state_event_content_impl = (event_kind == Some(EventKind::State)
-        && variation == EventKindContentVariation::Original)
+    let static_state_event_content_impl = (possible_variations
+        .contains(&EventContentVariation::PossiblyRedacted)
+        && variation == EventContentVariation::Original)
         .then(|| {
+            let event_content_kind_trait_name =
+                EventKind::State.to_content_kind_trait(EventContentTraitVariation::Static);
             let possibly_redacted_ident = format_ident!("PossiblyRedacted{ident}");
 
-            let unsigned_type = unsigned_type.unwrap_or_else(
-                || quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> },
-            );
+            let unsigned_type = unsigned_type
+                .unwrap_or_else(|| quote! { #palpo_core::StateUnsigned<Self::PossiblyRedacted> });
 
             quote! {
                 #[automatically_derived]
-                impl #palpo_core::events::StaticStateEventContent for #ident {
+                impl #palpo_core::#event_content_kind_trait_name for #ident {
                     type PossiblyRedacted = #possibly_redacted_ident;
                     type Unsigned = #unsigned_type;
                 }
             }
         });
 
-    let event_types = aliases.iter().chain([event_type]);
-
-    let event_content_from_type_impl = if let Some((_, type_fragment_field)) = &type_suffix_data {
-        let type_prefixes = event_types.map(|ev_type| {
-            ev_type
-                .value()
-                .strip_suffix('*')
-                .expect("aliases have already been checked to have the same suffix")
-                .to_owned()
-        });
+    let event_content_from_type_impl = event_type_fragment.map(|type_fragment_field| {
+        let type_prefixes = event_types.iter().map(EventType::without_wildcard);
         let type_prefixes = quote! {
             [#(#type_prefixes,)*]
         };
@@ -717,7 +643,7 @@ fn generate_event_content_impl<'a>(
             .unwrap()
             .filter(|f| {
                 !f.attrs.iter().any(|a| {
-                    a.path().is_ident("palpo_event")
+                    a.path().is_ident("ruma_event")
                         && matches!(a.parse_args(), Ok(EventFieldMeta::TypeFragment))
                 })
             })
@@ -761,46 +687,71 @@ fn generate_event_content_impl<'a>(
                 }
             }
         }
-    } else {
-        quote! {
-            impl #palpo_core::events::EventContentFromType for #ident {
-                fn from_parts(
-                    ev_type: &::std::primitive::str,
-                    content: &#serde_json::value::RawValue,
-                ) -> #serde_json::Result<Self> {
-                    #serde_json::from_str(content.get())
-                }
-            }
-        }
-    };
+    });
 
     Ok(quote! {
-        #event_type_ty_decl
-
-        #[automatically_derived]
-        impl #palpo_core::events::EventContent for #ident {
-            type EventType = #event_type_ty;
-
-            fn event_type(&self) -> Self::EventType {
-                #event_type_fn_impl
-            }
-        }
-
         #event_content_from_type_impl
-        #sub_trait_impl
+        #event_content_kind_trait_impl
         #static_state_event_content_impl
     })
 }
 
+/// Generate the `*EventContent` trait implementation of the type.
+fn generate_event_content_kind_trait_impl(
+    ident: &Ident,
+    event_types: &EventTypes,
+    kind: EventContentKind,
+    variation: EventContentTraitVariation,
+    event_type_fragment: Option<&EventTypeFragment<'_>>,
+    state_key_type: Option<&TokenStream>,
+    palpo_core: &TokenStream,
+) -> TokenStream {
+    let event_type = event_types.ev_type.without_wildcard();
+    let event_type_fn_impl = if let Some(field) = event_type_fragment {
+        let format = event_type.to_owned() + "{}";
+
+        quote! {
+            ::std::convert::From::from(::std::format!(#format, self.#field))
+        }
+    } else {
+        quote! { ::std::convert::From::from(#event_type) }
+    };
+
+    let state_key = kind.is_state().then(|| {
+        assert!(state_key_type.is_some());
+
+        quote! {
+            type StateKey = #state_key_type;
+        }
+    });
+
+    kind.to_content_kind_enums_and_traits(variation)
+        .into_iter()
+        .map(|(event_type_enum, event_content_kind_trait_name)| {
+            quote! {
+                #[automatically_derived]
+                impl #palpo_core::#event_content_kind_trait_name for #ident {
+                    #state_key
+
+                    fn event_type(&self) -> #palpo_core::#event_type_enum {
+                        #event_type_fn_impl
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+/// Generate the `StaticEventContent` trait implementation of the type.
 fn generate_static_event_content_impl(
     ident: &Ident,
     event_types: &EventTypes,
     palpo_core: &TokenStream,
 ) -> TokenStream {
-    let event_type = event_types.event_type.without_wildcard();
+    let event_type = event_types.ev_type.without_wildcard();
     let static_event_type = quote! { #event_type };
 
-    let is_prefix = if types.is_prefix() {
+    let is_prefix = if event_types.is_prefix() {
         quote! { #palpo_core::events::True }
     } else {
         quote! { #palpo_core::events::False }
@@ -813,17 +764,23 @@ fn generate_static_event_content_impl(
         }
     }
 }
+/// Implement `JsonCastable<JsonObject> for {ident}` and `JsonCastable<{ident}> for {other}`.
+fn generate_json_castable_impl(
+    ident: &Ident,
+    others: &[&Ident],
+    palpo_core: &TokenStream,
+) -> TokenStream {
+    let mut json_castable_impls = quote! {
+        #[automatically_derived]
+        impl #palpo_core::serde::JsonCastable<#palpo_core::serde::JsonObject> for #ident {}
+    };
 
-fn needs_redacted(is_custom_redacted: bool, event_kind: EventKind) -> bool {
-    // `is_custom` means that the content struct does not need a generated
-    // redacted struct also. If no `custom_redacted` attrs are found the content
-    // needs a redacted struct generated.
-    !is_custom_redacted && matches!(event_kind, EventKind::MessageLike | EventKind::State)
-}
+    json_castable_impls.extend(others.iter().map(|other| {
+        quote! {
+            #[automatically_derived]
+            impl #palpo_core::serde::JsonCastable<#ident> for #other {}
+        }
+    }));
 
-fn needs_possibly_redacted(is_custom_possibly_redacted: bool, event_kind: EventKind) -> bool {
-    // `is_custom_possibly_redacted` means that the content struct does not need
-    // a generated possibly redacted struct also. If no `custom_possibly_redacted`
-    // attrs are found the content needs a possibly redacted struct generated.
-    !is_custom_possibly_redacted && event_kind == EventKind::State
+    json_castable_impls
 }

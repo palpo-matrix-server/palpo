@@ -23,7 +23,7 @@ use self::{
     events::{
         event::expand_event,
         event_content::expand_event_content,
-        event_enum::{expand_event_enum, EventEnumInput},
+        event_enum::{EventEnumInput, expand_event_enum},
         event_enum_from_event::expand_event_enum_from_event,
     },
     identifiers::IdentifierInput,
@@ -69,10 +69,10 @@ use self::{
 ///// supported:  https://github.com/rust-lang/rust/issues/74563
 #[proc_macro]
 pub fn event_enum(input: TokenStream) -> TokenStream {
-    let event_enum_input = syn::parse_macro_input!(input as EventEnumInput);
-    expand_event_enum(input).unwrap_or_else(syn::Error::into_compile_error).into()
-
-
+    let input = syn::parse_macro_input!(input as EventEnumInput);
+    expand_event_enum(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 /// Generates an implementation of `palpo_core::events::EventContent`.
@@ -113,9 +113,8 @@ pub fn derive_event(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EventEnumFromEvent)]
 pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    expand_from_impls_derived(input).into()
+    expand_event_enum_from_event(input).into()
 }
-
 
 /// Generate methods and trait impl's for DST identifier type.
 ///
@@ -154,7 +153,9 @@ pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(IdDst, attributes(palpo_id))]
 pub fn derive_id_dst(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
-    expand_id_dst(input).unwrap_or_else(syn::Error::into_compile_error).into()
+    expand_id_dst(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 /// Compile-time checked `DeviceKeyId` construction.

@@ -1,9 +1,7 @@
-
 use std::collections::BTreeMap;
 
-
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Ident, LitStr, parse_quote};
 
 use super::{EventEnumEntry, EventEnumInput, EventKind};
@@ -19,10 +17,16 @@ pub fn expand_event_type_enums(
             continue;
         }
 
-        entries_map.entry(event.kind).or_default().push(&event.events);
+        entries_map
+            .entry(event.kind)
+            .or_default()
+            .push(&event.events);
 
         if event.kind.is_timeline() {
-            entries_map.entry(EventKind::Timeline).or_default().push(&event.events);
+            entries_map
+                .entry(EventKind::Timeline)
+                .or_default()
+                .push(&event.events);
         }
     }
 
@@ -30,7 +34,7 @@ pub fn expand_event_type_enums(
 
     for (kind, entries) in entries_map {
         res.extend(
-            generate_enum(kind, &entries, &ruma_events)
+            generate_enum(kind, &entries, &palpo_core)
                 .unwrap_or_else(syn::Error::into_compile_error),
         );
     }
@@ -39,21 +43,20 @@ pub fn expand_event_type_enums(
 }
 
 fn generate_enum(
-    ident: &str,
-    input: &[&Vec<EventEnumEntry>],
+    kind: EventKind,
+    entries: &[&Vec<EventEnumEntry>],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
-    let enum_doc = format!(
-        "The type of `{}` this is.",
-        ident.strip_suffix("Type").unwrap()
-    );
-
-    let ident = Ident::new(ident, Span::call_site());
+    let enum_doc = format!("The type of `{kind}` this is.");
+    let ident = format_ident!("{kind}Type");
 
     let mut deduped: Vec<&EventEnumEntry> = vec![];
-    for item in input.iter().copied().flatten() {
-        if let Some(idx) = deduped.iter().position(|e| e.ev_type == item.ev_type) {
+    for item in entries.iter().copied().flatten() {
+        if let Some(idx) = deduped
+            .iter()
+            .position(|e| e.types.ev_type == item.types.ev_type)
+        {
             // If there is a variant without config attributes use that
             if deduped[idx].attrs != item.attrs && item.attrs.is_empty() {
                 deduped[idx] = item;
@@ -63,43 +66,43 @@ fn generate_enum(
         }
     }
 
-    let event_types = deduped.iter().map(|e| &e.ev_type);
+    let event_types = deduped.iter().map(|e| &e.types.ev_type);
 
     let variants: Vec<_> = deduped
         .iter()
         .map(|e| {
-            let start = e.to_variant()?.decl();
+            let start = e.to_variant().decl();
             let data = e
                 .has_type_fragment()
                 .then(|| quote! { (::std::string::String) });
 
-            Ok(quote! {
+            quote! {
                 #start #data
-            })
+            }
         })
-        .collect::<syn::Result<_>>()?;
+        .collect();
 
     let to_cow_str_match_arms: Vec<_> = deduped
         .iter()
         .map(|e| {
-            let v = e.to_variant()?;
+            let v = e.to_variant();
             let start = v.match_arm(quote! { Self });
-            let ev_type = &e.ev_type;
+            let ev_type = &e.types.ev_type;
 
-            Ok(if let Some(prefix) = ev_type.value().strip_suffix(".*") {
-                let fstr = prefix.to_owned() + ".{}";
+            if ev_type.is_prefix() {
+                let fstr = ev_type.without_wildcard().to_owned() + "{}";
                 quote! { #start(_s) => ::std::borrow::Cow::Owned(::std::format!(#fstr, _s)) }
             } else {
                 quote! { #start => ::std::borrow::Cow::Borrowed(#ev_type) }
-            })
+            }
         })
-        .collect::<syn::Result<_>>()?;
+        .collect();
 
     let mut from_str_match_arms = TokenStream::new();
     for event in &deduped {
-        let v = event.to_variant()?;
+        let v = event.to_variant();
         let ctor = v.ctor(quote! { Self });
-        let ev_types = event.aliases.iter().chain([&event.ev_type]);
+        let ev_types = event.types.iter();
         let attrs = &event.attrs;
 
         if event.has_type_fragment() {
@@ -119,23 +122,21 @@ fn generate_enum(
         }
     }
 
-    let from_ident_for_timeline = if ident == "StateEventType" || ident == "MessageLikeEventType" {
-        let match_arms: Vec<_> = deduped
-            .iter()
-            .map(|e| {
-                let v = e.to_variant()?;
-                let ident_var = v.match_arm(quote! { #ident });
-                let timeline_var = v.ctor(quote! { Self });
+    let from_ident_for_timeline = if kind.is_timeline() && !matches!(kind, EventKind::Timeline) {
+        let match_arms = deduped.iter().map(|e| {
+            let v = e.to_variant();
+            let ident_var = v.match_arm(quote! { #ident });
+            let timeline_var = v.ctor(quote! { Self });
 
-                Ok(if e.has_type_fragment() {
-                    quote! { #ident_var (_s) => #timeline_var (_s) }
-                } else {
-                    quote! { #ident_var => #timeline_var }
-                })
-            })
-            .collect::<syn::Result<_>>()?;
+            if e.has_type_fragment() {
+                quote! { #ident_var (_s) => #timeline_var (_s) }
+            } else {
+                quote! { #ident_var => #timeline_var }
+            }
+        });
 
         Some(quote! {
+            #[allow(deprecated)]
             impl ::std::convert::From<#ident> for TimelineEventType {
                 fn from(s: #ident) -> Self {
                     match s {

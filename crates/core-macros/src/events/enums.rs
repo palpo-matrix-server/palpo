@@ -3,10 +3,10 @@
 use std::fmt;
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, IdentFragment, ToTokens};
+use quote::{IdentFragment, ToTokens, format_ident, quote};
 use syn::{
-    parse::{Parse, ParseStream},
     Ident, LitStr,
+    parse::{Parse, ParseStream},
 };
 
 use crate::util::m_prefix_name_to_type_name;
@@ -34,7 +34,10 @@ impl EventKind {
 
     /// Whether this kind can be found in a room's timeline.
     pub fn is_timeline(self) -> bool {
-        matches!(self, Self::MessageLike | Self::RoomRedaction | Self::State | Self::Timeline)
+        matches!(
+            self,
+            Self::MessageLike | Self::RoomRedaction | Self::State | Self::Timeline
+        )
     }
 
     /// Get the name of the event type (struct or enum) for this kind and the given variation.
@@ -164,9 +167,10 @@ impl EventKind {
             | Self::EphemeralRoom
             | Self::ToDevice
             | Self::HierarchySpaceChild => &[EventContentVariation::Original],
-            Self::MessageLike | Self::RoomRedaction => {
-                &[EventContentVariation::Original, EventContentVariation::Redacted]
-            }
+            Self::MessageLike | Self::RoomRedaction => &[
+                EventContentVariation::Original,
+                EventContentVariation::Redacted,
+            ],
             Self::State => &[
                 EventContentVariation::Original,
                 EventContentVariation::Redacted,
@@ -270,10 +274,16 @@ impl EventVariation {
                 matches!(other, Self::Sync | Self::Stripped)
             }
             Self::Original => {
-                matches!(other, Self::None | Self::Sync | Self::OriginalSync | Self::Stripped)
+                matches!(
+                    other,
+                    Self::None | Self::Sync | Self::OriginalSync | Self::Stripped
+                )
             }
             Self::Redacted => {
-                matches!(other, Self::None | Self::Sync | Self::RedactedSync | Self::Stripped)
+                matches!(
+                    other,
+                    Self::None | Self::Sync | Self::RedactedSync | Self::Stripped
+                )
             }
             Self::Sync | Self::Stripped | Self::Initial => false,
         }
@@ -407,7 +417,11 @@ impl Eq for EventType {}
 impl From<LitStr> for EventType {
     fn from(source: LitStr) -> Self {
         let value = source.value();
-        Self { source, is_prefix: value.ends_with(".*"), value }
+        Self {
+            source,
+            is_prefix: value.ends_with(".*"),
+            value,
+        }
     }
 }
 
@@ -529,7 +543,12 @@ pub enum EventField {
 
 impl EventField {
     /// All the variants of this enum
-    pub const ALL: &[Self] = &[Self::OriginServerTs, Self::RoomId, Self::EventId, Self::Sender];
+    pub const ALL: &[Self] = &[
+        Self::OriginServerTs,
+        Self::RoomId,
+        Self::EventId,
+        Self::Sender,
+    ];
 
     /// Get the string representation of this field.
     pub fn as_str(self) -> &'static str {
@@ -672,15 +691,21 @@ impl EventWithBounds {
                 Some(quote! { <C: #palpo_events::#event_content_trait> }),
                 None,
             ),
-            EventKind::RoomRedaction => {
-                (quote! { #palpo_events::room::redaction::#ident }, None, None)
-            }
+            EventKind::RoomRedaction => (
+                quote! { #palpo_events::room::redaction::#ident },
+                None,
+                None,
+            ),
             // These don't have an event type and will fail in the `to_event_ident()` call above.
             EventKind::HierarchySpaceChild | EventKind::Decrypted | EventKind::Timeline => {
                 unreachable!()
             }
         };
 
-        Ok(Self { impl_generics, type_with_generics, where_clause })
+        Ok(Self {
+            impl_generics,
+            type_with_generics,
+            where_clause,
+        })
     }
 }

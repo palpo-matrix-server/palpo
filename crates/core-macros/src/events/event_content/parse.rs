@@ -1,10 +1,10 @@
 //! Parsing helpers for the `EventContent` derive macro.
 
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{
-    parse::{Parse, ParseStream},
     Field, Ident, Token, Type,
+    parse::{Parse, ParseStream},
 };
 
 use crate::events::enums::{
@@ -121,15 +121,24 @@ impl Parse for ContentMeta {
             let _: Token![=] = input.parse()?;
             let event_type = input.parse()?;
 
-            Ok(Self { event_type: Some(event_type), ..Default::default() })
+            Ok(Self {
+                event_type: Some(event_type),
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::kind) {
             let kind = input.parse()?;
 
-            Ok(Self { kind: Some(kind), ..Default::default() })
+            Ok(Self {
+                kind: Some(kind),
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::custom_redacted) {
             let custom_redacted: kw::custom_redacted = input.parse()?;
 
-            Ok(Self { custom_redacted: Some(custom_redacted), ..Default::default() })
+            Ok(Self {
+                custom_redacted: Some(custom_redacted),
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::custom_possibly_redacted) {
             let custom_possibly_redacted: kw::custom_possibly_redacted = input.parse()?;
 
@@ -142,23 +151,35 @@ impl Parse for ContentMeta {
             let _: Token![=] = input.parse()?;
             let state_key_type = input.parse()?;
 
-            Ok(Self { state_key_type: Some(state_key_type), ..Default::default() })
+            Ok(Self {
+                state_key_type: Some(state_key_type),
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::unsigned_type) {
             let _: kw::unsigned_type = input.parse()?;
             let _: Token![=] = input.parse()?;
             let unsigned_type = input.parse()?;
 
-            Ok(Self { unsigned_type: Some(unsigned_type), ..Default::default() })
+            Ok(Self {
+                unsigned_type: Some(unsigned_type),
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::alias) {
             let _: kw::alias = input.parse()?;
             let _: Token![=] = input.parse()?;
             let alias = input.parse()?;
 
-            Ok(Self { aliases: vec![alias], ..Default::default() })
+            Ok(Self {
+                aliases: vec![alias],
+                ..Default::default()
+            })
         } else if lookahead.peek(kw::without_relation) {
             let without_relation: kw::without_relation = input.parse()?;
 
-            Ok(Self { without_relation: Some(without_relation), ..Default::default() })
+            Ok(Self {
+                without_relation: Some(without_relation),
+                ..Default::default()
+            })
         } else {
             Err(lookahead.error())
         }
@@ -230,11 +251,11 @@ impl TryFrom<ContentMeta> for ContentAttrs {
 
         let unsigned_type = unsigned_type.map(|ty| quote! { #ty });
 
-        let types = EventTypes::try_from_parts(event_type, aliases)?;
+        let event_types = EventTypes::try_from_parts(event_type, aliases)?;
 
-        if types.is_prefix() && !kind.is_account_data() {
+        if event_types.is_prefix() && !kind.is_account_data() {
             return Err(syn::Error::new_spanned(
-                types.ev_type,
+                event_types.ev_type,
                 "only account data events may contain a `.*` suffix",
             ));
         }
@@ -242,7 +263,7 @@ impl TryFrom<ContentMeta> for ContentAttrs {
         let has_without_relation = without_relation.is_some();
 
         Ok(Self {
-            types,
+            event_types,
             kind,
             state_key_type,
             unsigned_type,
@@ -281,13 +302,14 @@ impl<'a> EventTypeFragment<'a> {
 
         let Some(field) = fields
             .find_map(|f| {
-                f.attrs.iter().filter(|a| a.path().is_ident("palpo_event")).find_map(|attr| {
-                    match attr.parse_args() {
+                f.attrs
+                    .iter()
+                    .filter(|a| a.path().is_ident("palpo_event"))
+                    .find_map(|attr| match attr.parse_args() {
                         Ok(EventFieldMeta::TypeFragment) => Some(Ok(f)),
                         Ok(_) => None,
                         Err(e) => Some(Err(e)),
-                    }
-                })
+                    })
             })
             .transpose()?
         else {
@@ -309,7 +331,12 @@ impl<'a> EventTypeFragment<'a> {
             ));
         }
 
-        Ok(Some(Self(field.ident.as_ref().expect("type fragment field needs to have a name"))))
+        Ok(Some(Self(
+            field
+                .ident
+                .as_ref()
+                .expect("type fragment field needs to have a name"),
+        )))
     }
 }
 
@@ -369,9 +396,10 @@ impl EventContentKind {
     /// kinds.
     pub fn to_event_idents(self, variation: EventVariation) -> Option<Vec<(&'static str, Ident)>> {
         match self {
-            Self::Single(event_kind) => {
-                event_kind.to_event_ident(variation).ok().map(|event_ident| vec![("", event_ident)])
-            }
+            Self::Single(event_kind) => event_kind
+                .to_event_ident(variation)
+                .ok()
+                .map(|event_ident| vec![("", event_ident)]),
             Self::DoubleAccountData => {
                 let first_event_ident = EventKind::GlobalAccountData
                     .to_event_ident(variation)
@@ -385,7 +413,12 @@ impl EventContentKind {
                 if first_event_ident.is_none() && second_event_ident.is_none() {
                     None
                 } else {
-                    Some(first_event_ident.into_iter().chain(second_event_ident).collect())
+                    Some(
+                        first_event_ident
+                            .into_iter()
+                            .chain(second_event_ident)
+                            .collect(),
+                    )
                 }
             }
         }
@@ -400,12 +433,18 @@ impl EventContentKind {
     ) -> Vec<(Ident, Ident)> {
         match self {
             Self::Single(event_kind) => {
-                vec![(event_kind.to_event_type_enum(), event_kind.to_content_kind_trait(variation))]
+                vec![(
+                    event_kind.to_event_type_enum(),
+                    event_kind.to_content_kind_trait(variation),
+                )]
             }
             Self::DoubleAccountData => [EventKind::GlobalAccountData, EventKind::RoomAccountData]
                 .iter()
                 .map(|event_kind| {
-                    (event_kind.to_event_type_enum(), event_kind.to_content_kind_trait(variation))
+                    (
+                        event_kind.to_event_type_enum(),
+                        event_kind.to_content_kind_trait(variation),
+                    )
                 })
                 .collect(),
         }
@@ -438,7 +477,10 @@ impl Parse for EventContentKind {
             | (EventKind::RoomAccountData, Some(EventKind::GlobalAccountData)) => {
                 Ok(Self::DoubleAccountData)
             }
-            _ => Err(syn::Error::new(Span::call_site(), "only account data can have two kinds")),
+            _ => Err(syn::Error::new(
+                Span::call_site(),
+                "only account data can have two kinds",
+            )),
         }
     }
 }

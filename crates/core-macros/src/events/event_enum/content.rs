@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident};
 
-use super::{expand_from_impl, EventEnumEntry, EventEnumVariant};
+use super::{EventEnumEntry, EventEnumVariant, expand_from_impl};
 use crate::{
     events::enums::{EventContentTraitVariation, EventKind, EventType},
     import_palpo_core,
@@ -25,10 +25,16 @@ pub fn expand_content_enum(
 
     let event_type_enum = kind.to_event_type_enum();
 
-    let content: Vec<_> = events.iter().map(|event| event.to_event_content_path(kind)).collect();
+    let content: Vec<_> = events
+        .iter()
+        .map(|event| event.to_event_content_path(kind))
+        .collect();
 
     let variant_decls = variants.iter().map(|v| v.decl()).collect::<Vec<_>>();
-    let variant_arms = variants.iter().map(|v| v.match_arm(quote! { Self })).collect::<Vec<_>>();
+    let variant_arms = variants
+        .iter()
+        .map(|v| v.match_arm(quote! { Self }))
+        .collect::<Vec<_>>();
 
     let event_content_kind_trait_name =
         kind.to_content_kind_trait(EventContentTraitVariation::Original);
@@ -148,10 +154,16 @@ pub fn expand_full_content_enum(
 
     let event_type_enum = kind.to_event_type_enum();
 
-    let content: Vec<_> = events.iter().map(|event| event.to_event_content_path(kind)).collect();
+    let content: Vec<_> = events
+        .iter()
+        .map(|event| event.to_event_content_path(kind))
+        .collect();
 
     let variant_decls = variants.iter().map(|v| v.decl()).collect::<Vec<_>>();
-    let variant_arms = variants.iter().map(|v| v.match_arm(quote! { Self })).collect::<Vec<_>>();
+    let variant_arms = variants
+        .iter()
+        .map(|v| v.match_arm(quote! { Self }))
+        .collect::<Vec<_>>();
 
     Ok(quote! {
         #( #attrs )*

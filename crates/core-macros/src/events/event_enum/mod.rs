@@ -7,7 +7,11 @@ use quote::{IdentFragment, ToTokens, format_ident, quote};
 use syn::{Attribute, Data, DataEnum, DeriveInput, Ident, LitStr};
 
 pub use self::parse::EventEnumInput;
-use self::parse::{EventEnumDecl, EventEnumEntry, EventKind};
+use self::{
+    content::{expand_content_enum, expand_full_content_enum},
+    event_type::expand_event_type_enums,
+    parse::{EventEnumDecl, EventEnumEntry, EventEnumVariant},
+};
 use super::enums::{
     EventContentTraitVariation, EventField, EventKind, EventType, EventVariation, EventWithBounds,
 };
@@ -21,7 +25,7 @@ mod parse;
 pub fn expand_event_enum(input: EventEnumInput) -> syn::Result<TokenStream> {
     let palpo_core = import_palpo_core();
 
-    let enums = event_enum_input
+    let mut enums = input
         .enums
         .iter()
         .map(|e| expand_event_kind_enums(e).unwrap_or_else(syn::Error::into_compile_error))
@@ -43,8 +47,8 @@ pub fn expand_event_enum(input: EventEnumInput) -> syn::Result<TokenStream> {
         }
     }
 
-    let event_types = expand_event_type_enums(event_enum_input, &palpo_core)
-        .unwrap_or_else(syn::Error::into_compile_error);
+    let event_types =
+        expand_event_type_enums(input, &palpo_core).unwrap_or_else(syn::Error::into_compile_error);
 
     Ok(quote! {
         #enums
@@ -54,24 +58,18 @@ pub fn expand_event_enum(input: EventEnumInput) -> syn::Result<TokenStream> {
 
 /// Generate `Any*Event(Content)` enums from `EventEnumDecl`.
 pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream> {
-    use EventEnumVariation as V;
-
     let palpo_core = &crate::import_palpo_core();
 
     let mut res = TokenStream::new();
 
     let kind = input.kind;
     let attrs = &input.attrs;
-    let docs: Vec<_> = input
-        .events
-        .iter()
-        .map(EventEnumEntry::docs)
-        .collect::<syn::Result<_>>()?;
+    let docs: Vec<_> = input.events.iter().map(EventEnumEntry::docs).collect();
     let variants: Vec<_> = input
         .events
         .iter()
         .map(EventEnumEntry::to_variant)
-        .collect::<syn::Result<_>>()?;
+        .collect();
 
     let events = &input.events;
     let docs = &docs;
@@ -94,13 +92,13 @@ pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream
 
     for var in variations {
         res.extend(
-            expand_event_kind_enum(kind, *var, events, docs, attrs, variants, ruma_events)
+            expand_event_kind_enum(kind, *var, events, docs, attrs, variants, palpo_core)
                 .unwrap_or_else(syn::Error::into_compile_error),
         );
 
         if var.is_sync() && has_full {
             res.extend(
-                expand_sync_from_into_full(kind, variants, ruma_events)
+                expand_sync_from_into_full(kind, variants, palpo_core)
                     .unwrap_or_else(syn::Error::into_compile_error),
             );
         }
@@ -113,14 +111,16 @@ pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream
             docs,
             attrs,
             variants,
-            ruma_events,
+            palpo_core,
         ));
     }
+    
+    Ok(res)
 }
 
 fn expand_event_kind_enum(
     kind: EventKind,
-    var: EventEnumVariation,
+    var: EventVariation,
     events: &[EventEnumEntry],
     docs: &[TokenStream],
     attrs: &[Attribute],
@@ -175,45 +175,36 @@ fn expand_event_kind_enum(
 
 fn expand_deserialize_impl(
     kind: EventKind,
-    var: EventEnumVariation,
+    var: EventVariation,
     events: &[EventEnumEntry],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
+    let serde_json = quote! { #palpo_core::__private::serde_json };
 
     let ident = kind.to_event_enum_ident(var.into())?;
 
     let match_arms: TokenStream = events
         .iter()
         .map(|event| {
-            let variant = event.to_variant()?;
+            let variant = event.to_variant();
             let variant_attrs = {
                 let attrs = &variant.attrs;
                 quote! { #(#attrs)* }
             };
             let self_variant = variant.ctor(quote! { Self });
             let content = event.to_event_path(kind, var);
-            let ev_types = event.aliases.iter().chain([&event.ev_type]).map(|ev_type| {
-                if event.has_type_fragment() {
-                    let ev_type = ev_type.value();
-                    let prefix = ev_type
-                        .strip_suffix('*')
-                        .expect("event type with type fragment must end with *");
-                    quote! { t if t.starts_with(#prefix) }
-                } else {
-                    quote! { #ev_type }
-                }
-            });
+            let ev_types = event.types.iter().map(EventType::as_match_arm);
 
-            Ok(quote! {
+            quote! {
                 #variant_attrs #(#ev_types)|* => {
-                    let event = #palpo_core::__private::serde_json::from_str::<#content>(json.get())
+                    let event = #serde_json::from_str::<#content>(json.get())
                         .map_err(D::Error::custom)?;
                     Ok(#self_variant(event))
                 },
-            })
+            }
         })
-        .collect::<syn::Result<_>>()?;
+        .collect();
 
     Ok(quote! {
         #[allow(unused_qualifications)]
@@ -268,9 +259,9 @@ fn expand_from_impl(
 fn expand_sync_from_into_full(
     kind: EventKind,
     variants: &[EventEnumVariant],
-    ruma_events: &TokenStream,
+    palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let ruma_common = quote! { #ruma_events::exports::ruma_common };
+    let ruma_common = quote! { #palpo_core::exports::ruma_common };
 
     let sync = kind.to_event_enum_ident(EventVariation::Sync)?;
     let full = kind.to_event_enum_ident(EventVariation::None)?;
@@ -320,7 +311,7 @@ fn expand_sync_from_into_full(
 /// Implement accessors for the common fields of an `Any*Event` enum.
 fn expand_accessor_methods(
     kind: EventKind,
-    var: EventEnumVariation,
+    var: EventVariation,
     variants: &[EventEnumVariant],
     event_struct: &Ident,
     palpo_core: &TokenStream,
@@ -333,7 +324,7 @@ fn expand_accessor_methods(
         .collect();
 
     let maybe_redacted =
-        kind.is_timeline() && matches!(var, EventEnumVariation::None | EventEnumVariation::Sync);
+        kind.is_timeline() && matches!(var, EventVariation::None | EventVariation::Sync);
 
     let event_type_match_arms = if maybe_redacted {
         quote! {
@@ -451,7 +442,7 @@ fn expand_accessor_methods(
         }
 
         accessors
-    } else if var == EventEnumVariation::Stripped {
+    } else if var == EventVariation::Stripped {
         // There is no content enum for possibly-redacted content types (yet)
         TokenStream::new()
     } else {
@@ -474,14 +465,14 @@ fn expand_accessor_methods(
         }
     };
 
-    let methods = EVENT_FIELDS.iter().map(|(name, has_field)| {
-        has_field(kind, var).then(|| {
-            let docs = format!("Returns this event's `{name}` field.");
-            let ident = Ident::new(name, Span::call_site());
-            let field_type = field_return_type(name, palpo_core);
+    let methods = EventField::ALL.iter().map(|field| {
+        field.is_present(kind, var).then(|| {
+            let docs = format!("Returns this event's `{field}` field.");
+            let ident = field.ident();
+            let (field_type, is_ref) = field.ty(palpo_core);
             let variants = variants.iter().map(|v| v.match_arm(quote! { Self }));
             let call_parens = maybe_redacted.then(|| quote! { () });
-            let ampersand = (*name != "origin_server_ts").then(|| quote! { & });
+            let ampersand = is_ref.then(|| quote! { & });
 
             quote! {
                 #[doc = #docs]
@@ -607,7 +598,7 @@ fn expand_json_castable_impl(
                 .chain(event_variations.contains(&var).then_some(&var))
                 .map(|variation| {
                     let EventWithBounds { type_with_generics, impl_generics, where_clause } =
-                        event_kind.to_event_with_bounds(*variation, palpo_core)?;
+                        event_kind.to_event_with_bounds(*variation, &palpo_core)?;
 
                     Ok(quote! {
                         #[automatically_derived]

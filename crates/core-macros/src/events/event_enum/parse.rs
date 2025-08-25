@@ -3,12 +3,11 @@
 use std::collections::BTreeMap;
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    braced,
+    Attribute, Ident, Path, Token, braced,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    Attribute, Ident, Path, Token,
 };
 
 use crate::events::enums::{EventKind, EventType, EventTypes, EventVariation};
@@ -38,7 +37,17 @@ impl Parse for EventEnumInput {
             let events = content.parse_terminated(EventEnumEntry::parse, Token![,])?;
             let events = events.into_iter().collect();
 
-            if enums_map.insert(kind, EventEnumDecl { attrs, kind, events }).is_some() {
+            if enums_map
+                .insert(
+                    kind,
+                    EventEnumDecl {
+                        attrs,
+                        kind,
+                        events,
+                    },
+                )
+                .is_some()
+            {
                 return Err(syn::Error::new(
                     Span::call_site(),
                     format!("duplicate definition for kind `{kind:?}`"),
@@ -49,8 +58,9 @@ impl Parse for EventEnumInput {
         // Mark event types which are declared for both account data kinds, because they use a
         // different name for the event struct.
         let mut room_account_data_enum = enums_map.remove(&EventKind::RoomAccountData);
-        if let Some((global_account_data_enum, room_account_data_enum)) =
-            enums_map.get_mut(&EventKind::GlobalAccountData).zip(room_account_data_enum.as_mut())
+        if let Some((global_account_data_enum, room_account_data_enum)) = enums_map
+            .get_mut(&EventKind::GlobalAccountData)
+            .zip(room_account_data_enum.as_mut())
         {
             for global_event in global_account_data_enum.events.iter_mut() {
                 if let Some(room_event) =
@@ -69,7 +79,9 @@ impl Parse for EventEnumInput {
             enums_map.insert(EventKind::RoomAccountData, room_account_data_enum);
         }
 
-        Ok(EventEnumInput { enums: enums_map.into_values().collect() })
+        Ok(EventEnumInput {
+            enums: enums_map.into_values().collect(),
+        })
     }
 }
 
@@ -165,8 +177,10 @@ impl EventEnumEntry {
         };
 
         if self.types.ev_type != *main_type {
-            let unstable_name =
-                format!("This variant uses the unstable type `{}`.", self.types.ev_type);
+            let unstable_name = format!(
+                "This variant uses the unstable type `{}`.",
+                self.types.ev_type
+            );
 
             doc.extend(quote! {
                 #[doc = ""]
@@ -190,7 +204,11 @@ impl EventEnumEntry {
             _ => {
                 let aliases = format!(
                     "This variant can also be deserialized from the following types: {}.",
-                    aliases.iter().map(|alias| format!("`{alias}`")).collect::<Vec<_>>().join(", ")
+                    aliases
+                        .iter()
+                        .map(|alias| format!("`{alias}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
                 doc.extend(quote! {
                     #[doc = ""]
@@ -242,9 +260,19 @@ impl Parse for EventEnumEntry {
 
         // We will need the name of the event type so compute it right now to make sure that we have
         // enough data for it.
-        let ident = if let Some(ident) = ident { ident } else { types.as_event_ident()? };
+        let ident = if let Some(ident) = ident {
+            ident
+        } else {
+            types.as_event_ident()?
+        };
 
-        Ok(Self { attrs, types, ev_path, ident, both_account_data: false })
+        Ok(Self {
+            attrs,
+            types,
+            ev_path,
+            ident,
+            both_account_data: false,
+        })
     }
 }
 
