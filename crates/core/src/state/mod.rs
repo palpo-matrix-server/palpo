@@ -415,9 +415,9 @@ fn sort_power_events<E: Event>(
 pub fn reverse_topological_power_sort<Id, F>(
     graph: &HashMap<Id, HashSet<Id>>,
     event_details_fn: F,
-) -> Result<Vec<Id>>
+) -> Result<Vec<Id>, Error>
 where
-    F: Fn(&EventId) -> Result<(UserPowerLevel, UnixMillis)>,
+    F: Fn(&EventId) -> Result<(UserPowerLevel, UnixMillis), Error>,
     Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
 {
     #[derive(PartialEq, Eq)]
