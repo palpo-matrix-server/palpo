@@ -12,284 +12,15 @@ use syn::{
     punctuated::Punctuated,
 };
 
-use super::event_parse::{EventKind, EventKindVariation};
+use self::parse::{ContentAttrs, ContentMeta, EventContentKind, EventFieldMeta, EventTypeFragment};
+use super::enums::{
+    EventContentTraitVariation, EventContentVariation, EventKind, EventTypes, EventVariation,
+};
 use crate::util::{PrivateField, m_prefix_name_to_type_name};
 
-mod kw {
-    // This `content` field is kept when the event is redacted.
-    syn::custom_keyword!(skip_redaction);
-    // Do not emit any redacted event code.
-    syn::custom_keyword!(custom_redacted);
-    // Do not emit any possibly redacted event code.
-    syn::custom_keyword!(custom_possibly_redacted);
-    // The kind of event content this is.
-    syn::custom_keyword!(kind);
-    syn::custom_keyword!(type_fragment);
-    // The type to use for a state events' `state_key` field.
-    syn::custom_keyword!(state_key_type);
-    // The type to use for a state events' `unsigned` field.
-    syn::custom_keyword!(unsigned_type);
-    // Another type string accepted for deserialization.
-    syn::custom_keyword!(alias);
-    // The content has a form without relation.
-    syn::custom_keyword!(without_relation);
-}
+mod parse;
 
-/// Parses field attributes for `*EventContent` derives.
-///
-/// `#[palpo_event(skip_redaction)]`
-enum EventFieldMeta {
-    /// Fields marked with `#[palpo_event(skip_redaction)]` are kept when the event is
-    /// redacted.
-    SkipRedaction,
-
-    /// The given field holds a part of the event type (replaces the `*` in a `m.foo.*` event
-    /// type).
-    TypeFragment,
-}
-
-impl Parse for EventFieldMeta {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        if lookahead.peek(kw::skip_redaction) {
-            let _: kw::skip_redaction = input.parse()?;
-            Ok(EventFieldMeta::SkipRedaction)
-        } else if lookahead.peek(kw::type_fragment) {
-            let _: kw::type_fragment = input.parse()?;
-            Ok(EventFieldMeta::TypeFragment)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
-#[derive(Default)]
-struct ContentMeta {
-    event_type: Option<LitStr>,
-    event_kind: Option<EventKind>,
-    custom_redacted: Option<kw::custom_redacted>,
-    custom_possibly_redacted: Option<kw::custom_possibly_redacted>,
-    state_key_type: Option<Box<Type>>,
-    unsigned_type: Option<Box<Type>>,
-    aliases: Vec<LitStr>,
-    without_relation: Option<kw::without_relation>,
-}
-
-impl ContentMeta {
-    fn merge(self, other: ContentMeta) -> syn::Result<Self> {
-        fn either_spanned<T: ToTokens>(a: Option<T>, b: Option<T>) -> syn::Result<Option<T>> {
-            match (a, b) {
-                (None, None) => Ok(None),
-                (Some(val), None) | (None, Some(val)) => Ok(Some(val)),
-                (Some(a), Some(b)) => {
-                    let mut error = syn::Error::new_spanned(a, "redundant attribute argument");
-                    error.combine(syn::Error::new_spanned(b, "note: first one here"));
-                    Err(error)
-                }
-            }
-        }
-
-        fn either_named<T>(name: &str, a: Option<T>, b: Option<T>) -> syn::Result<Option<T>> {
-            match (a, b) {
-                (None, None) => Ok(None),
-                (Some(val), None) | (None, Some(val)) => Ok(Some(val)),
-                (Some(_), Some(_)) => Err(syn::Error::new(
-                    Span::call_site(),
-                    format!("multiple {name} attributes found, there can only be one"),
-                )),
-            }
-        }
-
-        Ok(Self {
-            event_type: either_spanned(self.event_type, other.event_type)?,
-            event_kind: either_named("event_kind", self.event_kind, other.event_kind)?,
-            custom_redacted: either_spanned(self.custom_redacted, other.custom_redacted)?,
-            custom_possibly_redacted: either_spanned(
-                self.custom_possibly_redacted,
-                other.custom_possibly_redacted,
-            )?,
-            state_key_type: either_spanned(self.state_key_type, other.state_key_type)?,
-            unsigned_type: either_spanned(self.unsigned_type, other.unsigned_type)?,
-            aliases: [self.aliases, other.aliases].concat(),
-            without_relation: either_spanned(self.without_relation, other.without_relation)?,
-        })
-    }
-}
-
-impl Parse for ContentMeta {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        if lookahead.peek(Token![type]) {
-            let _: Token![type] = input.parse()?;
-            let _: Token![=] = input.parse()?;
-            let event_type = input.parse()?;
-
-            Ok(Self {
-                event_type: Some(event_type),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::kind) {
-            let _: kw::kind = input.parse()?;
-            let _: Token![=] = input.parse()?;
-            let event_kind = input.parse()?;
-
-            Ok(Self {
-                event_kind: Some(event_kind),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::custom_redacted) {
-            let custom_redacted: kw::custom_redacted = input.parse()?;
-
-            Ok(Self {
-                custom_redacted: Some(custom_redacted),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::custom_possibly_redacted) {
-            let custom_possibly_redacted: kw::custom_possibly_redacted = input.parse()?;
-
-            Ok(Self {
-                custom_possibly_redacted: Some(custom_possibly_redacted),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::state_key_type) {
-            let _: kw::state_key_type = input.parse()?;
-            let _: Token![=] = input.parse()?;
-            let state_key_type = input.parse()?;
-
-            Ok(Self {
-                state_key_type: Some(state_key_type),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::unsigned_type) {
-            let _: kw::unsigned_type = input.parse()?;
-            let _: Token![=] = input.parse()?;
-            let unsigned_type = input.parse()?;
-
-            Ok(Self {
-                unsigned_type: Some(unsigned_type),
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::alias) {
-            let _: kw::alias = input.parse()?;
-            let _: Token![=] = input.parse()?;
-            let alias = input.parse()?;
-
-            Ok(Self {
-                aliases: vec![alias],
-                ..Default::default()
-            })
-        } else if lookahead.peek(kw::without_relation) {
-            let without_relation: kw::without_relation = input.parse()?;
-
-            Ok(Self {
-                without_relation: Some(without_relation),
-                ..Default::default()
-            })
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
-struct ContentAttrs {
-    event_type: LitStr,
-    event_kind: Option<EventKind>,
-    state_key_type: Option<TokenStream>,
-    unsigned_type: Option<TokenStream>,
-    aliases: Vec<LitStr>,
-    is_custom_redacted: bool,
-    is_custom_possibly_redacted: bool,
-    has_without_relation: bool,
-}
-
-impl TryFrom<ContentMeta> for ContentAttrs {
-    type Error = syn::Error;
-
-    fn try_from(value: ContentMeta) -> Result<Self, Self::Error> {
-        let ContentMeta {
-            event_type,
-            event_kind,
-            custom_redacted,
-            custom_possibly_redacted,
-            state_key_type,
-            unsigned_type,
-            aliases,
-            without_relation,
-        } = value;
-
-        let event_type = event_type.ok_or_else(|| {
-            syn::Error::new(
-                Span::call_site(),
-                "no event type attribute found, \
-                add `#[palpo_event(type = \"any.room.event\", kind = Kind)]` \
-                below the event content derive",
-            )
-        })?;
-
-        let state_key_type = match (event_kind, state_key_type) {
-            (Some(EventKind::State), None) => {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "no state_key_type attribute found, please specify one",
-                ));
-            }
-            (Some(EventKind::State), Some(ty)) => Some(quote! { #ty }),
-            (_, None) => None,
-            (_, Some(ty)) => {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "state_key_type attribute is not valid for non-state event kinds",
-                ));
-            }
-        };
-
-        let is_custom_redacted = custom_redacted.is_some();
-        let is_custom_possibly_redacted = custom_possibly_redacted.is_some();
-
-        let unsigned_type = unsigned_type.map(|ty| quote! { #ty });
-
-        let event_type_s = event_type.value();
-        let prefix = event_type_s.strip_suffix(".*");
-
-        if prefix.unwrap_or(&event_type_s).contains('*') {
-            return Err(syn::Error::new_spanned(
-                event_type,
-                "event type may only contain `*` as part of a `.*` suffix",
-            ));
-        }
-
-        if prefix.is_some() && !event_kind.is_some_and(|k| k.is_account_data()) {
-            return Err(syn::Error::new_spanned(
-                event_type,
-                "only account data events may contain a `.*` suffix",
-            ));
-        }
-
-        for alias in &aliases {
-            if alias.value().ends_with(".*") != prefix.is_some() {
-                return Err(syn::Error::new_spanned(
-                    alias,
-                    "aliases should have the same `.*` suffix, or lack thereof, as the main event type",
-                ));
-            }
-        }
-
-        let has_without_relation = without_relation.is_some();
-
-        Ok(Self {
-            event_type,
-            event_kind,
-            state_key_type,
-            unsigned_type,
-            aliases,
-            is_custom_redacted,
-            is_custom_possibly_redacted,
-            has_without_relation,
-        })
-    }
-}
-
-/// Create an `EventContent` implementation for a struct.
+/// `EventContent` derive macro code generation.
 pub fn expand_event_content(
     input: &DeriveInput,
     palpo_core: &TokenStream,
@@ -306,11 +37,10 @@ pub fn expand_event_content(
         })?;
 
     let ContentAttrs {
-        event_type,
-        event_kind,
+        event_types,
+        kind,
         state_key_type,
-        unsigned_type,
-        aliases,
+        unsigned_type
         is_custom_redacted,
         is_custom_possibly_redacted,
         has_without_relation,
@@ -353,11 +83,10 @@ pub fn expand_event_content(
                 ident,
                 &input.vis,
                 fields.clone().unwrap(),
-                &event_type,
+                &event_types,
                 kind,
                 state_key_type.as_ref(),
                 unsigned_type.clone(),
-                &aliases,
                 palpo_core,
             )
             .unwrap_or_else(syn::Error::into_compile_error)
@@ -371,10 +100,9 @@ pub fn expand_event_content(
                 ident,
                 &input.vis,
                 fields.clone().unwrap(),
-                &event_type,
+                &event_types,
                 state_key_type.as_ref(),
                 unsigned_type.clone(),
-                &aliases,
                 palpo_core,
             )
             .unwrap_or_else(syn::Error::into_compile_error)
@@ -424,20 +152,18 @@ fn generate_redacted_event_content<'a>(
     ident: &Ident,
     vis: &syn::Visibility,
     fields: impl Iterator<Item = &'a Field>,
-    event_type: &LitStr,
+    event_types: &EventTypes,
     event_kind: EventKind,
     state_key_type: Option<&TokenStream>,
     unsigned_type: Option<TokenStream>,
-    aliases: &[LitStr],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     assert!(
-        !event_type.value().contains('*'),
+        !types.is_prefix(),
         "Event type shouldn't contain a `*`, this should have been checked previously"
     );
 
     let serde = quote! { #palpo_core::__private::serde };
-    // let serde_json = quote! { #palpo_core::__private::serde_json };
 
     let doc = format!("Redacted form of [`{ident}`]");
     let redacted_ident = format_ident!("Redacted{ident}");
@@ -490,12 +216,11 @@ fn generate_redacted_event_content<'a>(
         &redacted_ident,
         vis,
         Some(kept_redacted_fields.iter()),
-        event_type,
-        Some(event_kind),
+        event_types,
+        event_kind,
         EventKindContentVariation::Redacted,
         state_key_type,
         unsigned_type,
-        aliases,
         palpo_core,
     )
     .unwrap_or_else(syn::Error::into_compile_error);
@@ -783,14 +508,14 @@ fn generate_event_type_aliases(
     })?;
 
     let type_aliases = [
-        EventKindVariation::None,
-        EventKindVariation::Sync,
-        EventKindVariation::Original,
-        EventKindVariation::OriginalSync,
-        EventKindVariation::Stripped,
-        EventKindVariation::Initial,
-        EventKindVariation::Redacted,
-        EventKindVariation::RedactedSync,
+        EventVariation::None,
+        EventVariation::Sync,
+        EventVariation::Original,
+        EventVariation::OriginalSync,
+        EventVariation::Stripped,
+        EventVariation::Initial,
+        EventVariation::Redacted,
+        EventVariation::RedactedSync,
     ]
     .iter()
     .filter_map(|&var| Some((var, event_kind.to_event_ident(var).ok()?)))
@@ -798,22 +523,18 @@ fn generate_event_type_aliases(
         let ev_type = format_ident!("{var}{ev_type_s}");
 
         let doc_text = match var {
-            EventKindVariation::None | EventKindVariation::Original => "",
-            EventKindVariation::Sync | EventKindVariation::OriginalSync => {
-                " from a `sync_events` response"
-            }
-            EventKindVariation::Stripped => " from an invited room preview",
-            EventKindVariation::Redacted => " that has been redacted",
-            EventKindVariation::RedactedSync => {
-                " from a `sync_events` response that has been redacted"
-            }
-            EventKindVariation::Initial => " for creating a room",
+            EventVariation::None | EventVariation::Original => "",
+            EventVariation::Sync | EventVariation::OriginalSync => " from a `sync_events` response",
+            EventVariation::Stripped => " from an invited room preview",
+            EventVariation::Redacted => " that has been redacted",
+            EventVariation::RedactedSync => " from a `sync_events` response that has been redacted",
+            EventVariation::Initial => " for creating a room",
         };
         let ev_type_doc = format!("An `{event_type}` event{doc_text}.");
 
         let content_struct = if var.is_redacted() {
             Cow::Owned(format_ident!("Redacted{ident}"))
-        } else if let EventKindVariation::Stripped = var {
+        } else if let EventVariation::Stripped = var {
             Cow::Owned(format_ident!("PossiblyRedacted{ident}"))
         } else {
             Cow::Borrowed(ident)
@@ -850,12 +571,11 @@ fn generate_event_content_impl<'a>(
     ident: &Ident,
     vis: &syn::Visibility,
     mut fields: Option<impl Iterator<Item = &'a Field>>,
-    event_type: &LitStr,
+    event_types: &EventTypes,
     event_kind: Option<EventKind>,
     variation: EventKindContentVariation,
     state_key_type: Option<&TokenStream>,
     unsigned_type: Option<TokenStream>,
-    aliases: &[LitStr],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
@@ -1074,12 +794,22 @@ fn generate_event_content_impl<'a>(
 
 fn generate_static_event_content_impl(
     ident: &Ident,
-    event_type: &LitStr,
+    event_types: &EventTypes,
     palpo_core: &TokenStream,
 ) -> TokenStream {
+    let event_type = event_types.event_type.without_wildcard();
+    let static_event_type = quote! { #event_type };
+
+    let is_prefix = if types.is_prefix() {
+        quote! { #palpo_core::events::True }
+    } else {
+        quote! { #palpo_core::events::False }
+    };
+
     quote! {
         impl #palpo_core::events::StaticEventContent for #ident {
             const TYPE: &'static ::std::primitive::str = #event_type;
+            type IsPrefix = #is_prefix;
         }
     }
 }

@@ -11,7 +11,6 @@ use palpo_identifiers_validation::{
     user_id,
 };
 use proc_macro::TokenStream;
-use proc_macro2 as pm2;
 use quote::quote;
 use syn::{DeriveInput, ItemEnum, ItemStruct, parse_macro_input};
 
@@ -24,9 +23,8 @@ use self::{
     events::{
         event::expand_event,
         event_content::expand_event_content,
-        event_enum::{expand_event_enums, expand_from_impls_derived},
-        event_parse::EventEnumInput,
-        event_type::expand_event_type_enum,
+        event_enum::{expand_event_enum, EventEnumInput},
+        event_enum_from_event::expand_event_enum_from_event,
     },
     identifiers::IdentifierInput,
     serde::{
@@ -72,24 +70,9 @@ use self::{
 #[proc_macro]
 pub fn event_enum(input: TokenStream) -> TokenStream {
     let event_enum_input = syn::parse_macro_input!(input as EventEnumInput);
+    expand_event_enum(input).unwrap_or_else(syn::Error::into_compile_error).into()
 
-    let palpo_core = import_palpo_core();
 
-    let enums = event_enum_input
-        .enums
-        .iter()
-        .map(|e| expand_event_enums(e).unwrap_or_else(syn::Error::into_compile_error))
-        .collect::<pm2::TokenStream>();
-
-    let event_types = expand_event_type_enum(event_enum_input, &palpo_core)
-        .unwrap_or_else(syn::Error::into_compile_error);
-
-    let tokens = quote! {
-        #enums
-        #event_types
-    };
-
-    tokens.into()
 }
 
 /// Generates an implementation of `palpo_core::events::EventContent`.
