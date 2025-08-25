@@ -1,412 +1,1040 @@
-//! Types to deserialize `m.room.power_levels` events.
+//! Types for the [`m.room.power_levels`] event.
+//!
+//! [`m.room.power_levels`]: https://spec.matrix.org/latest/client-server-api/#mroompower_levels
 
 use std::{
-    collections::{BTreeMap, HashSet},
-    ops::Deref,
-    sync::{Arc, Mutex, OnceLock},
+    cmp::{max, Ordering},
+    collections::BTreeMap,
 };
 
-use serde::de::DeserializeOwned;
-use serde_json::{Error, from_value as from_json_value};
-
-use crate::events::{TimelineEventType, room::power_levels::UserPowerLevel};
-use crate::state::Event;
 use crate::{
+    power_levels::{default_power_level, NotificationPowerLevels},
+    push::PushConditionPowerLevelsCtx,
+    room_version_rules::{AuthorizationRules, RedactionRules, RoomPowerLevelsRules},
     OwnedUserId, UserId,
-    room_version_rules::AuthorizationRules,
-    serde::{
-        DebugAsRefStr, DisplayAsRefStr, JsonObject, OrdAsRefStr, PartialEqAsRefStr,
-        PartialOrdAsRefStr, btreemap_deserialize_v1_powerlevel_values, deserialize_v1_powerlevel,
-        from_raw_json_value,
-    },
 };
+use serde::{Deserialize, Serialize};
 
-/// The default value of the creator's power level.
-const DEFAULT_CREATOR_POWER_LEVEL: i32 = 100;
+use crate::{
+    EmptyStateKey, MessageLikeEventType, RedactContent, RedactedStateEventContent, StateEventType,
+    StaticEventContent, TimelineEventType,
+};
+use crate::macros::EventContent;
 
-/// A helper type for an [`Event`] of type `m.room.power_levels`.
+/// The content of an `m.room.power_levels` event.
 ///
-/// This is a type that deserializes each field lazily, when requested. Some deserialization results
-/// are cached in memory, if they are used often.
-#[derive(Debug, Clone)]
-pub struct RoomPowerLevelsEvent<E: Event> {
-    inner: Arc<RoomPowerLevelsEventInner<E>>,
-}
+/// Defines the power levels (privileges) of users in the room.
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[palpo_event(type = "m.room.power_levels", kind = State, state_key_type = EmptyStateKey, custom_redacted)]
+pub struct RoomPowerLevelsEventContent {
+    /// The level required to ban a user.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub ban: i64,
 
-#[derive(Debug)]
-struct RoomPowerLevelsEventInner<E: Event> {
-    /// The inner `Event`.
-    event: E,
-
-    /// The deserialized content of the event.
-    deserialized_content: OnceLock<JsonObject>,
-
-    /// The values of fields that should contain an integer.
-    int_fields: Mutex<BTreeMap<RoomPowerLevelsIntField, Option<Int>>>,
-
-    /// The power levels of the users, if any.
-    users: OnceLock<Option<BTreeMap<OwnedUserId, Int>>>,
-}
-
-impl<E: Event> RoomPowerLevelsEvent<E> {
-    /// Construct a new `RoomPowerLevelsEvent` around the given event.
-    pub fn new(event: E) -> Self {
-        Self {
-            inner: RoomPowerLevelsEventInner {
-                event,
-                deserialized_content: OnceLock::new(),
-                int_fields: Mutex::new(BTreeMap::new()),
-                users: OnceLock::new(),
-            }
-            .into(),
-        }
-    }
-
-    /// The deserialized content of the event.
-    fn deserialized_content(&self) -> Result<&JsonObject, String> {
-        // TODO: Use OnceLock::get_or_try_init when it is stabilized.
-        if let Some(content) = self.inner.deserialized_content.get() {
-            Ok(content)
-        } else {
-            let content = from_raw_json_value(self.content()).map_err(|error: Error| {
-                format!("malformed `m.room.power_levels` content: {error}")
-            })?;
-            Ok(self.inner.deserialized_content.get_or_init(|| content))
-        }
-    }
-
-    /// Get the value of a field that should contain an integer, if any.
+    /// The level required to send specific event types.
     ///
-    /// The deserialization of this field is cached in memory.
-    pub fn get_as_int(
-        &self,
-        field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
-    ) -> Result<Option<i64>, String> {
-        let mut int_fields = self
-            .inner
-            .int_fields
-            .lock()
-            .expect("we never panic while holding the mutex");
+    /// This is a mapping from event type to power level required.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+    )]
+    pub events: BTreeMap<TimelineEventType, i64>,
 
-        if let Some(power_level) = int_fields.get(&field) {
-            return Ok(*power_level);
+    /// The default level required to send message events.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub events_default: i64,
+
+    /// The level required to invite a user.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub invite: i64,
+
+    /// The level required to kick a user.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub kick: i64,
+
+    /// The level required to redact an event.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub redact: i64,
+
+    /// The default level required to send state events.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub state_default: i64,
+
+    /// The power levels for specific users.
+    ///
+    /// This is a mapping from `user_id` to power level for that user.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+    )]
+    pub users: BTreeMap<OwnedUserId, i64>,
+
+    /// The default power level for every user in the room.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub users_default: i64,
+
+    /// The power level requirements for specific notification types.
+    ///
+    /// This is a mapping from `key` to power level for that notifications key.
+    #[serde(default, skip_serializing_if = "NotificationPowerLevels::is_default")]
+    pub notifications: NotificationPowerLevels,
+}
+
+impl RoomPowerLevelsEventContent {
+    /// Creates a new `RoomPowerLevelsEventContent` with all-default values for the given
+    /// authorization rules.
+    pub fn new(rules: &AuthorizationRules) -> Self {
+        // events_default, users_default and invite having a default of 0 while the others have a
+        // default of 50 is not an oversight, these defaults are from the Matrix specification.
+        let mut pl = Self {
+            ban: default_power_level(),
+            events: BTreeMap::new(),
+            events_default: 0,
+            invite: 0,
+            kick: default_power_level(),
+            redact: default_power_level(),
+            state_default: default_power_level(),
+            users: BTreeMap::new(),
+            users_default: 0,
+            notifications: NotificationPowerLevels::default(),
+        };
+
+        if rules.explicitly_privilege_room_creators {
+            // Since v12, the default power level to send m.room.tombstone events is increased to
+            // PL150.
+            pl.events.insert(TimelineEventType::RoomTombstone, 150);
         }
 
-        let content = self.deserialized_content()?;
+        pl
+    }
+}
 
-        let Some(value) = content.get(field.as_str()) else {
-            int_fields.insert(field, None);
-            return Ok(None);
-        };
+impl RedactContent for RoomPowerLevelsEventContent {
+    type Redacted = RedactedRoomPowerLevelsEventContent;
 
-        let res = if rules.integer_power_levels {
-            from_json_value(value.clone())
-        } else {
-            deserialize_v1_powerlevel(value)
-        };
+    fn redact(self, rules: &RedactionRules) -> Self::Redacted {
+        let Self {
+            ban,
+            events,
+            events_default,
+            invite,
+            kick,
+            redact,
+            state_default,
+            users,
+            users_default,
+            ..
+        } = self;
 
-        let power_level = res.map(Some).map_err(|error| {
-            format!(
-                "unexpected format of `{field}` field in `content` \
-                 of `m.room.power_levels` event: {error}"
-            )
-        })?;
+        let invite = if rules.keep_room_power_levels_invite { invite } else { 0 };
 
-        int_fields.insert(field, power_level);
-        Ok(power_level)
+        RedactedRoomPowerLevelsEventContent {
+            ban,
+            events,
+            events_default,
+            invite,
+            kick,
+            redact,
+            state_default,
+            users,
+            users_default,
+        }
+    }
+}
+
+/// Used with `#[serde(skip_serializing_if)]` to omit default power levels.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_default_power_level(l: &i64) -> bool {
+    *l == 50
+}
+
+impl RoomPowerLevelsEvent {
+    /// Obtain the effective power levels, regardless of whether this event is redacted.
+    pub fn power_levels(
+        &self,
+        rules: &AuthorizationRules,
+        creators: Vec<OwnedUserId>,
+    ) -> RoomPowerLevels {
+        match self {
+            Self::Original(ev) => RoomPowerLevels::new(ev.content.clone().into(), rules, creators),
+            Self::Redacted(ev) => RoomPowerLevels::new(ev.content.clone().into(), rules, creators),
+        }
+    }
+}
+
+impl SyncRoomPowerLevelsEvent {
+    /// Obtain the effective power levels, regardless of whether this event is redacted.
+    pub fn power_levels(
+        &self,
+        rules: &AuthorizationRules,
+        creators: Vec<OwnedUserId>,
+    ) -> RoomPowerLevels {
+        match self {
+            Self::Original(ev) => RoomPowerLevels::new(ev.content.clone().into(), rules, creators),
+            Self::Redacted(ev) => RoomPowerLevels::new(ev.content.clone().into(), rules, creators),
+        }
+    }
+}
+
+impl StrippedRoomPowerLevelsEvent {
+    /// Obtain the effective power levels from this event.
+    pub fn power_levels(
+        &self,
+        rules: &AuthorizationRules,
+        creators: Vec<OwnedUserId>,
+    ) -> RoomPowerLevels {
+        RoomPowerLevels::new(self.content.clone().into(), rules, creators)
+    }
+}
+
+/// Redacted form of [`RoomPowerLevelsEventContent`].
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RedactedRoomPowerLevelsEventContent {
+    /// The level required to ban a user.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub ban: i64,
+
+    /// The level required to send specific event types.
+    ///
+    /// This is a mapping from event type to power level required.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+    )]
+    pub events: BTreeMap<TimelineEventType, i64>,
+
+    /// The default level required to send message events.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub events_default: i64,
+
+    /// The level required to invite a user.
+    ///
+    /// This field was redacted in room versions 1 through 10. Starting from room version 11 it is
+    /// preserved.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub invite: i64,
+
+    /// The level required to kick a user.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub kick: i64,
+
+    /// The level required to redact an event.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub redact: i64,
+
+    /// The default level required to send state events.
+    #[serde(
+        default = "default_power_level",
+        skip_serializing_if = "is_default_power_level",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub state_default: i64,
+
+    /// The power levels for specific users.
+    ///
+    /// This is a mapping from `user_id` to power level for that user.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+    )]
+    pub users: BTreeMap<OwnedUserId, i64>,
+
+    /// The default power level for every user in the room.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde::is_default",
+        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+    )]
+    pub users_default: i64,
+}
+
+impl StaticEventContent for RedactedRoomPowerLevelsEventContent {
+    const TYPE: &'static str = RoomPowerLevelsEventContent::TYPE;
+    type IsPrefix = <RoomPowerLevelsEventContent as StaticEventContent>::IsPrefix;
+}
+
+impl RedactedStateEventContent for RedactedRoomPowerLevelsEventContent {
+    type StateKey = EmptyStateKey;
+
+    fn event_type(&self) -> StateEventType {
+        StateEventType::RoomPowerLevels
+    }
+}
+
+/// The power level of a particular user.
+///
+/// Is either considered "infinite" if that user is a room creator, or an integer if they are not.
+#[derive(PartialEq, Copy, Clone, Eq, Debug)]
+pub enum UserPowerLevel {
+    /// The user is considered to have "infinite" power level, due to being a room creator, from
+    /// room version 12 onwards.
+    Infinite,
+
+    /// The user is either not a creator, or the room version is prior to 12, and hence has an
+    /// integer power level.
+    Int(i64),
+}
+
+impl Ord for UserPowerLevel {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (UserPowerLevel::Infinite, UserPowerLevel::Infinite) => Ordering::Equal,
+            (UserPowerLevel::Infinite, UserPowerLevel::Int(_)) => Ordering::Greater,
+            (UserPowerLevel::Int(_), UserPowerLevel::Infinite) => Ordering::Less,
+            (UserPowerLevel::Int(self_int), UserPowerLevel::Int(other_int)) => {
+                self_int.cmp(other_int)
+            }
+        }
+    }
+}
+
+impl PartialOrd for UserPowerLevel {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq<i64> for UserPowerLevel {
+    fn eq(&self, other: &i64) -> bool {
+        match self {
+            UserPowerLevel::Infinite => false,
+            UserPowerLevel::Int(int) => int.eq(other),
+        }
+    }
+}
+
+impl PartialEq<UserPowerLevel> for i64 {
+    fn eq(&self, other: &UserPowerLevel) -> bool {
+        other.eq(self)
+    }
+}
+
+impl PartialOrd<i64> for UserPowerLevel {
+    fn partial_cmp(&self, other: &i64) -> Option<Ordering> {
+        match self {
+            UserPowerLevel::Infinite => Some(Ordering::Greater),
+            UserPowerLevel::Int(int) => int.partial_cmp(other),
+        }
+    }
+}
+
+impl PartialOrd<UserPowerLevel> for i64 {
+    fn partial_cmp(&self, other: &UserPowerLevel) -> Option<Ordering> {
+        match other {
+            UserPowerLevel::Infinite => Some(Ordering::Less),
+            UserPowerLevel::Int(int) => self.partial_cmp(int),
+        }
+    }
+}
+
+impl From<i64> for UserPowerLevel {
+    fn from(value: i64) -> Self {
+        Self::Int(value)
+    }
+}
+
+/// The effective power levels of a room.
+///
+/// This struct contains all the power levels settings from the specification and can be constructed
+/// from several [`RoomPowerLevelsSource`]s, which means that it can be used when wanting to inspect
+/// the power levels of a room, regardless of whether the most recent power levels event is redacted
+/// or not, or the room has no power levels event.
+///
+/// This can also be used to change the power levels of a room by mutating it and then converting it
+/// to a [`RoomPowerLevelsEventContent`] using `RoomPowerLevelsEventContent::try_from` /
+/// `.try_into()`. This allows to validate the format of the power levels before sending them. Note
+/// that the homeserver might still refuse the power levels changes depending on the current power
+/// level of the sender.
+#[derive(Clone, Debug)]
+pub struct RoomPowerLevels {
+    /// The level required to ban a user.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `50`.
+    pub ban: i64,
+
+    /// The level required to send specific event types.
+    ///
+    /// This is a mapping from event type to power level required.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to an empty map.
+    pub events: BTreeMap<TimelineEventType, i64>,
+
+    /// The default level required to send message events.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `0`.
+    pub events_default: i64,
+
+    /// The level required to invite a user.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `0`.
+    pub invite: i64,
+
+    /// The level required to kick a user.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `50`.
+    pub kick: i64,
+
+    /// The level required to redact an event.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `50`.
+    pub redact: i64,
+
+    /// The default level required to send state events.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `50`.
+    pub state_default: i64,
+
+    /// The power levels for specific users.
+    ///
+    /// This is a mapping from `user_id` to power level for that user.
+    ///
+    /// Must NOT contain creators of the room in room versions where the
+    /// `explicitly_privilege_room_creators` field of [`AuthorizationRules`] is set to `true`. This
+    /// would result in an error when trying to convert this to a [`RoomPowerLevelsEventContent`].
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`]:
+    ///
+    /// * If `explicitly_privilege_room_creators` is set to `false` for the room version, defaults
+    ///   to setting the power level to `100` for the creator(s) of the room.
+    /// * Otherwise, defaults to an empty map.
+    pub users: BTreeMap<OwnedUserId, i64>,
+
+    /// The default power level for every user in the room.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], defaults to `0`.
+    pub users_default: i64,
+
+    /// The power level requirements for specific notification types.
+    ///
+    /// This is a mapping from `key` to power level for that notifications key.
+    ///
+    /// When built from [`RoomPowerLevelsSource::None`], uses its `Default` implementation.
+    pub notifications: NotificationPowerLevels,
+
+    /// The tweaks for determining the power level of a user.
+    pub rules: RoomPowerLevelsRules,
+}
+
+impl RoomPowerLevels {
+    /// Constructs `RoomPowerLevels` from `RoomPowerLevelsSource`, `AuthorizationRules` and the
+    /// creators of a room.
+    pub fn new(
+        power_levels: RoomPowerLevelsSource,
+        rules: &AuthorizationRules,
+        creators: impl IntoIterator<Item = OwnedUserId> + Clone,
+    ) -> Self {
+        match power_levels {
+            RoomPowerLevelsSource::Original(RoomPowerLevelsEventContent {
+                ban,
+                events,
+                events_default,
+                invite,
+                kick,
+                redact,
+                state_default,
+                users,
+                users_default,
+                notifications,
+            }) => Self {
+                ban,
+                events,
+                events_default,
+                invite,
+                kick,
+                redact,
+                state_default,
+                users,
+                users_default,
+                notifications,
+                rules: RoomPowerLevelsRules::new(rules, creators),
+            },
+            RoomPowerLevelsSource::Redacted(RedactedRoomPowerLevelsEventContent {
+                ban,
+                events,
+                events_default,
+                invite,
+                kick,
+                redact,
+                state_default,
+                users,
+                users_default,
+            }) => Self {
+                ban,
+                events,
+                events_default,
+                invite,
+                kick,
+                redact,
+                state_default,
+                users,
+                users_default,
+                notifications: NotificationPowerLevels::new(),
+                rules: RoomPowerLevelsRules::new(rules, creators),
+            },
+            // events_default, users_default and invite having a default of 0 while the others have
+            // a default of 50 is not an oversight, these defaults are from the Matrix
+            // specification.
+            RoomPowerLevelsSource::None => Self {
+                ban: default_power_level(),
+                events: BTreeMap::new(),
+                events_default: 0,
+                invite: 0,
+                kick: default_power_level(),
+                redact: default_power_level(),
+                state_default: default_power_level(),
+                users: if rules.explicitly_privilege_room_creators {
+                    BTreeMap::new()
+                } else {
+                    // If creators are not explicitly privileged, their power level is 100 if there
+                    // is no power levels state.
+                    BTreeMap::from_iter(creators.clone().into_iter().map(|user| (user, 100)))
+                },
+                users_default: 0,
+                notifications: NotificationPowerLevels::default(),
+                rules: RoomPowerLevelsRules::new(rules, creators),
+            },
+        }
     }
 
-    /// Get the value of a field that should contain an integer, or its default value if it is
-    /// absent.
-    pub fn get_as_int_or_default(
-        &self,
-        field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
-    ) -> Result<i64, String> {
-        Ok(self
-            .get_as_int(field, rules)?
-            .unwrap_or_else(|| field.default_value()))
+    /// Whether the given user ID is a privileged creator.
+    fn is_privileged_creator(&self, user_id: &UserId) -> bool {
+        self.rules.privileged_creators.as_ref().is_some_and(|creators| creators.contains(user_id))
     }
 
-    /// Get the value of a field that should contain a map of any value to integer, if any.
-    fn get_as_int_map<T: Ord + DeserializeOwned>(
+    /// Get the power level of a specific user.
+    pub fn for_user(&self, user_id: &UserId) -> UserPowerLevel {
+        if self.is_privileged_creator(user_id) {
+            return UserPowerLevel::Infinite;
+        }
+
+        self.users.get(user_id).map_or(self.users_default, |pl| *pl).into()
+    }
+
+    /// Get the power level required to perform a given action.
+    pub fn for_action(&self, action: PowerLevelAction) -> i64 {
+        match action {
+            PowerLevelAction::Ban => self.ban,
+            PowerLevelAction::Unban => self.ban.max(self.kick),
+            PowerLevelAction::Invite => self.invite,
+            PowerLevelAction::Kick => self.kick,
+            PowerLevelAction::RedactOwn => self.for_message(MessageLikeEventType::RoomRedaction),
+            PowerLevelAction::RedactOther => {
+                self.redact.max(self.for_message(MessageLikeEventType::RoomRedaction))
+            }
+            PowerLevelAction::SendMessage(msg_type) => self.for_message(msg_type),
+            PowerLevelAction::SendState(state_type) => self.for_state(state_type),
+            PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room) => {
+                self.notifications.room
+            }
+        }
+    }
+
+    /// Get the power level required to send the given message type.
+    pub fn for_message(&self, msg_type: MessageLikeEventType) -> i64 {
+        self.events.get(&msg_type.into()).copied().unwrap_or(self.events_default)
+    }
+
+    /// Get the power level required to send the given state event type.
+    pub fn for_state(&self, state_type: StateEventType) -> i64 {
+        self.events.get(&state_type.into()).copied().unwrap_or(self.state_default)
+    }
+
+    /// Whether the given user can ban other users based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Ban)`.
+    pub fn user_can_ban(&self, user_id: &UserId) -> bool {
+        self.for_user(user_id) >= self.ban
+    }
+
+    /// Whether the acting user can ban the target user based on the power levels.
+    ///
+    /// On top of `power_levels.user_can_ban(acting_user_id)`, this performs an extra check
+    /// to make sure the acting user has at greater power level than the target user.
+    ///
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
+    /// PowerLevelUserAction::Ban)`.
+    pub fn user_can_ban_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
+        let acting_pl = self.for_user(acting_user_id);
+        let target_pl = self.for_user(target_user_id);
+        acting_pl >= self.ban && target_pl < acting_pl
+    }
+
+    /// Whether the given user can unban other users based on the power levels.
+    ///
+    /// This action requires to be allowed to ban and to kick.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Unban)`.
+    pub fn user_can_unban(&self, user_id: &UserId) -> bool {
+        let pl = self.for_user(user_id);
+        pl >= self.ban && pl >= self.kick
+    }
+
+    /// Whether the acting user can unban the target user based on the power levels.
+    ///
+    /// This action requires to be allowed to ban and to kick.
+    ///
+    /// On top of `power_levels.user_can_unban(acting_user_id)`, this performs an extra check
+    /// to make sure the acting user has at greater power level than the target user.
+    ///
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
+    /// PowerLevelUserAction::Unban)`.
+    pub fn user_can_unban_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
+        let acting_pl = self.for_user(acting_user_id);
+        let target_pl = self.for_user(target_user_id);
+        acting_pl >= self.ban && acting_pl >= self.kick && target_pl < acting_pl
+    }
+
+    /// Whether the given user can invite other users based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
+    pub fn user_can_invite(&self, user_id: &UserId) -> bool {
+        self.for_user(user_id) >= self.invite
+    }
+
+    /// Whether the given user can kick other users based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Kick)`.
+    pub fn user_can_kick(&self, user_id: &UserId) -> bool {
+        self.for_user(user_id) >= self.kick
+    }
+
+    /// Whether the acting user can kick the target user based on the power levels.
+    ///
+    /// On top of `power_levels.user_can_kick(acting_user_id)`, this performs an extra check
+    /// to make sure the acting user has at least the same power level as the target user.
+    ///
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
+    /// PowerLevelUserAction::Kick)`.
+    pub fn user_can_kick_user(&self, acting_user_id: &UserId, target_user_id: &UserId) -> bool {
+        let acting_pl = self.for_user(acting_user_id);
+        let target_pl = self.for_user(target_user_id);
+        acting_pl >= self.kick && target_pl < acting_pl
+    }
+
+    /// Whether the given user can redact their own events based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::RedactOwn)`.
+    pub fn user_can_redact_own_event(&self, user_id: &UserId) -> bool {
+        self.user_can_send_message(user_id, MessageLikeEventType::RoomRedaction)
+    }
+
+    /// Whether the given user can redact events of other users based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::RedactOthers)`.
+    pub fn user_can_redact_event_of_other(&self, user_id: &UserId) -> bool {
+        self.user_can_redact_own_event(user_id) && self.for_user(user_id) >= self.redact
+    }
+
+    /// Whether the given user can send message events based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendMessage(msg_type))`.
+    pub fn user_can_send_message(&self, user_id: &UserId, msg_type: MessageLikeEventType) -> bool {
+        self.for_user(user_id) >= self.for_message(msg_type)
+    }
+
+    /// Whether the given user can send state events based on the power levels.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendState(state_type))`.
+    pub fn user_can_send_state(&self, user_id: &UserId, state_type: StateEventType) -> bool {
+        self.for_user(user_id) >= self.for_state(state_type)
+    }
+
+    /// Whether the given user can notify everybody in the room by writing `@room` in a message.
+    ///
+    /// Shorthand for `power_levels.user_can_do(user_id,
+    /// PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room))`.
+    pub fn user_can_trigger_room_notification(&self, user_id: &UserId) -> bool {
+        self.for_user(user_id) >= self.notifications.room
+    }
+
+    /// Whether the acting user can change the power level of the target user.
+    ///
+    /// Shorthand for `power_levels.user_can_do_to_user(acting_user_id, target_user_id,
+    /// PowerLevelUserAction::ChangePowerLevel`.
+    pub fn user_can_change_user_power_level(
         &self,
-        field: &str,
-        rules: &AuthorizationRules,
-    ) -> Result<Option<BTreeMap<T, i64>>, String> {
-        let content = self.deserialized_content()?;
+        acting_user_id: &UserId,
+        target_user_id: &UserId,
+    ) -> bool {
+        // Check that the user can change the power levels first.
+        if !self.user_can_send_state(acting_user_id, StateEventType::RoomPowerLevels) {
+            return false;
+        }
 
-        let Some(value) = content.get(field) else {
-            return Ok(None);
-        };
+        // No one can change the power level of a privileged creator.
+        if self.is_privileged_creator(target_user_id) {
+            return false;
+        }
 
-        let res = if rules.integer_power_levels {
-            from_json_value(value.clone())
+        // A user can change their own power level.
+        if acting_user_id == target_user_id {
+            return true;
+        }
+
+        // The permission is different whether the target user is added or changed/removed, so
+        // we need to check that.
+        if let Some(target_pl) = self.users.get(target_user_id).copied() {
+            self.for_user(acting_user_id) > target_pl
         } else {
-            btreemap_deserialize_v1_powerlevel_values(value)
-        };
+            true
+        }
+    }
 
-        res.map(Some).map_err(|error| {
-            format!(
-                "unexpected format of `{field}` field in `content` \
-                 of `m.room.power_levels` event: {error}"
-            )
+    /// Whether the given user can do the given action based on the power levels.
+    pub fn user_can_do(&self, user_id: &UserId, action: PowerLevelAction) -> bool {
+        match action {
+            PowerLevelAction::Ban => self.user_can_ban(user_id),
+            PowerLevelAction::Unban => self.user_can_unban(user_id),
+            PowerLevelAction::Invite => self.user_can_invite(user_id),
+            PowerLevelAction::Kick => self.user_can_kick(user_id),
+            PowerLevelAction::RedactOwn => self.user_can_redact_own_event(user_id),
+            PowerLevelAction::RedactOther => self.user_can_redact_event_of_other(user_id),
+            PowerLevelAction::SendMessage(message_type) => {
+                self.user_can_send_message(user_id, message_type)
+            }
+            PowerLevelAction::SendState(state_type) => {
+                self.user_can_send_state(user_id, state_type)
+            }
+            PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room) => {
+                self.user_can_trigger_room_notification(user_id)
+            }
+        }
+    }
+
+    /// Whether the acting user can do the given action to the target user based on the power
+    /// levels.
+    pub fn user_can_do_to_user(
+        &self,
+        acting_user_id: &UserId,
+        target_user_id: &UserId,
+        action: PowerLevelUserAction,
+    ) -> bool {
+        match action {
+            PowerLevelUserAction::Ban => self.user_can_ban_user(acting_user_id, target_user_id),
+            PowerLevelUserAction::Unban => self.user_can_unban_user(acting_user_id, target_user_id),
+            PowerLevelUserAction::Invite => self.user_can_invite(acting_user_id),
+            PowerLevelUserAction::Kick => self.user_can_kick_user(acting_user_id, target_user_id),
+            PowerLevelUserAction::ChangePowerLevel => {
+                self.user_can_change_user_power_level(acting_user_id, target_user_id)
+            }
+        }
+    }
+
+    /// Get the maximum power level of any user.
+    pub fn max(&self) -> i64 {
+        self.users.values().fold(self.users_default, |max_pl, user_pl| max(max_pl, *user_pl))
+    }
+}
+
+/// An error encountered when trying to build a [`RoomPowerLevelsEventContent`] from
+/// [`RoomPowerLevels`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum PowerLevelsError {
+    /// A creator is in the `users` map, and it is not allowed by the current room version.
+    #[error("a creator is in the `users` map, and it is not allowed by the current room version")]
+    CreatorInUsersMap,
+}
+
+impl TryFrom<RoomPowerLevels> for RoomPowerLevelsEventContent {
+    type Error = PowerLevelsError;
+
+    fn try_from(c: RoomPowerLevels) -> Result<Self, Self::Error> {
+        if c.rules.privileged_creators.as_ref().is_some_and(|creators| {
+            !c.users.is_empty() && creators.iter().any(|user_id| c.users.contains_key(user_id))
+        }) {
+            return Err(PowerLevelsError::CreatorInUsersMap);
+        }
+
+        Ok(Self {
+            ban: c.ban,
+            events: c.events,
+            events_default: c.events_default,
+            invite: c.invite,
+            kick: c.kick,
+            redact: c.redact,
+            state_default: c.state_default,
+            users: c.users,
+            users_default: c.users_default,
+            notifications: c.notifications,
         })
     }
+}
 
-    /// Get the power levels required to send events, if any.
-    pub fn events(
-        &self,
-        rules: &AuthorizationRules,
-    ) -> Result<Option<BTreeMap<TimelineEventType, i64>>, String> {
-        self.get_as_int_map("events", rules)
+impl From<RoomPowerLevels> for PushConditionPowerLevelsCtx {
+    fn from(c: RoomPowerLevels) -> Self {
+        Self::new(c.users, c.users_default, c.notifications, c.rules)
     }
+}
 
-    /// Get the power levels required to trigger notifications, if any.
-    pub fn notifications(
-        &self,
-        rules: &AuthorizationRules,
-    ) -> Result<Option<BTreeMap<String, i64>>, String> {
-        self.get_as_int_map("notifications", rules)
-    }
-
-    /// Get the power levels of the users, if any.
+/// The possible power level sources for [`RoomPowerLevels`].
+#[derive(Default)]
+pub enum RoomPowerLevelsSource {
+    /// Construct `RoomPowerLevels` from the non-redacted `m.room.power_levels` event content.
+    Original(RoomPowerLevelsEventContent),
+    /// Construct `RoomPowerLevels` from the redacted `m.room.power_levels` event content.
+    Redacted(RedactedRoomPowerLevelsEventContent),
+    /// Use the default values defined in the specification.
     ///
-    /// The deserialization of this field is cached in memory.
-    pub fn users(
-        &self,
-        rules: &AuthorizationRules,
-    ) -> Result<Option<&BTreeMap<OwnedUserId, i64>>, String> {
-        // TODO: Use OnceLock::get_or_try_init when it is stabilized.
-        if let Some(users) = self.inner.users.get() {
-            Ok(users.as_ref())
-        } else {
-            let users = self.get_as_int_map("users", rules)?;
-            Ok(self.inner.users.get_or_init(|| users).as_ref())
-        }
-    }
+    /// Should only be used when there is no power levels state in a room.
+    #[default]
+    None,
+}
 
-    /// Get the power level of the user with the given ID.
-    ///
-    /// Calling this method several times should be cheap because the necessary deserialization
-    /// results are cached.
-    pub fn user_power_level(
-        &self,
-        user_id: &UserId,
-        rules: &AuthorizationRules,
-    ) -> Result<i64, String> {
-        if let Some(power_level) = self
-            .users(rules)?
-            .as_ref()
-            .and_then(|users| users.get(user_id))
-        {
-            return Ok(*power_level);
-        }
-
-        self.get_as_int_or_default(RoomPowerLevelsIntField::UsersDefault, rules)
-    }
-
-    /// Get the power level required to send an event of the given type.
-    pub fn event_power_level(
-        &self,
-        event_type: &TimelineEventType,
-        state_key: Option<&str>,
-        rules: &AuthorizationRules,
-    ) -> Result<i64, String> {
-        let events = self.events(rules)?;
-
-        if let Some(power_level) = events.as_ref().and_then(|events| events.get(event_type)) {
-            return Ok(*power_level);
-        }
-
-        let default_field = if state_key.is_some() {
-            RoomPowerLevelsIntField::StateDefault
-        } else {
-            RoomPowerLevelsIntField::EventsDefault
-        };
-
-        self.get_as_int_or_default(default_field, rules)
-    }
-
-    /// Get a map of all the fields with an integer value in the `content` of an
-    /// `m.room.power_levels` event.
-    pub(crate) fn int_fields_map(
-        &self,
-        rules: &AuthorizationRules,
-    ) -> Result<BTreeMap<RoomPowerLevelsIntField, i64>, String> {
-        RoomPowerLevelsIntField::ALL
-            .iter()
-            .copied()
-            .filter_map(|field| match self.get_as_int(field, rules) {
-                Ok(value) => value.map(|value| Ok((field, value))),
-                Err(error) => Some(Err(error)),
-            })
-            .collect()
+impl From<Option<RoomPowerLevelsEventContent>> for RoomPowerLevelsSource {
+    fn from(value: Option<RoomPowerLevelsEventContent>) -> Self {
+        value.map(Self::Original).unwrap_or_default()
     }
 }
 
-impl<E: Event> Deref for RoomPowerLevelsEvent<E> {
-    type Target = E;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner.event
+impl From<Option<RedactedRoomPowerLevelsEventContent>> for RoomPowerLevelsSource {
+    fn from(value: Option<RedactedRoomPowerLevelsEventContent>) -> Self {
+        value.map(Self::Redacted).unwrap_or_default()
     }
 }
 
-/// Helper trait for `Option<RoomPowerLevelsEvent<E>>`.
-pub(crate) trait RoomPowerLevelsEventOptionExt {
-    /// Get the power level of the user with the given ID.
-    fn user_power_level(
-        &self,
-        user_id: &UserId,
-        creators: &HashSet<OwnedUserId>,
-        rules: &AuthorizationRules,
-    ) -> Result<UserPowerLevel, String>;
-
-    /// Get the value of a field that should contain an integer, or its default value if it is
-    /// absent.
-    fn get_as_int_or_default(
-        &self,
-        field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
-    ) -> Result<i32, String>;
-
-    /// Get the power level required to send an event of the given type.
-    fn event_power_level(
-        &self,
-        event_type: &TimelineEventType,
-        state_key: Option<&str>,
-        rules: &AuthorizationRules,
-    ) -> Result<i32, String>;
-}
-
-impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>> {
-    fn user_power_level(
-        &self,
-        user_id: &UserId,
-        creators: &HashSet<OwnedUserId>,
-        rules: &AuthorizationRules,
-    ) -> Result<UserPowerLevel, String> {
-        if rules.explicitly_privilege_room_creators && creators.contains(user_id) {
-            Ok(UserPowerLevel::Infinite)
-        } else if let Some(room_power_levels_event) = self {
-            room_power_levels_event
-                .user_power_level(user_id, rules)
-                .map(Into::into)
-        } else {
-            let power_level = if creators.contains(user_id) {
-                DEFAULT_CREATOR_POWER_LEVEL.into()
-            } else {
-                RoomPowerLevelsIntField::UsersDefault.default_value()
-            };
-            Ok(power_level.into())
-        }
-    }
-
-    fn get_as_int_or_default(
-        &self,
-        field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
-    ) -> Result<i32, String> {
-        if let Some(room_power_levels_event) = self {
-            room_power_levels_event.get_as_int_or_default(field, rules)
-        } else {
-            Ok(field.default_value())
-        }
-    }
-
-    fn event_power_level(
-        &self,
-        event_type: &TimelineEventType,
-        state_key: Option<&str>,
-        rules: &AuthorizationRules,
-    ) -> Result<i32, String> {
-        if let Some(room_power_levels_event) = self {
-            room_power_levels_event.event_power_level(event_type, state_key, rules)
-        } else {
-            let default_field = if state_key.is_some() {
-                RoomPowerLevelsIntField::StateDefault
-            } else {
-                RoomPowerLevelsIntField::EventsDefault
-            };
-
-            Ok(default_field.default_value())
-        }
+impl From<RoomPowerLevelsEventContent> for RoomPowerLevelsSource {
+    fn from(value: RoomPowerLevelsEventContent) -> Self {
+        Self::Original(value)
     }
 }
 
-/// Fields in the `content` of an `m.room.power_levels` event with an integer value.
-#[derive(
-    DebugAsRefStr,
-    Clone,
-    Copy,
-    DisplayAsRefStr,
-    PartialEqAsRefStr,
-    Eq,
-    PartialOrdAsRefStr,
-    OrdAsRefStr,
-)]
+impl From<RedactedRoomPowerLevelsEventContent> for RoomPowerLevelsSource {
+    fn from(value: RedactedRoomPowerLevelsEventContent) -> Self {
+        Self::Redacted(value)
+    }
+}
+
+/// The actions that can be limited by power levels.
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum RoomPowerLevelsIntField {
-    /// `users_default`
-    UsersDefault,
-
-    /// `events_default`
-    EventsDefault,
-
-    /// `state_default`
-    StateDefault,
-
-    /// `ban`
+pub enum PowerLevelAction {
+    /// Ban a user.
     Ban,
 
-    /// `redact`
-    Redact,
+    /// Unban a user.
+    Unban,
 
-    /// `kick`
+    /// Invite a user.
+    Invite,
+
+    /// Kick a user.
     Kick,
 
-    /// `invite`
+    /// Redact one's own event.
+    RedactOwn,
+
+    /// Redact the event of another user.
+    RedactOther,
+
+    /// Send a message-like event.
+    SendMessage(MessageLikeEventType),
+
+    /// Send a state event.
+    SendState(StateEventType),
+
+    /// Trigger a notification.
+    TriggerNotification(NotificationPowerLevelType),
+}
+
+/// The notification types that can be limited by power levels.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum NotificationPowerLevelType {
+    /// `@room` notifications.
+    Room,
+}
+
+/// The actions to other users that can be limited by power levels.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PowerLevelUserAction {
+    /// Ban a user.
+    Ban,
+
+    /// Unban a user.
+    Unban,
+
+    /// Invite a user.
     Invite,
+
+    /// Kick a user.
+    Kick,
+
+    /// Change a user's power level.
+    ChangePowerLevel,
 }
 
-impl RoomPowerLevelsIntField {
-    /// A slice containing all the variants.
-    pub(crate) const ALL: &[RoomPowerLevelsIntField] = &[
-        Self::UsersDefault,
-        Self::EventsDefault,
-        Self::StateDefault,
-        Self::Ban,
-        Self::Redact,
-        Self::Kick,
-        Self::Invite,
-    ];
+// #[cfg(test)]
+// mod tests {
+//     use std::collections::BTreeMap;
 
-    /// The string representation of this field.
-    pub fn as_str(&self) -> &str {
-        self.as_ref()
-    }
+//     use assign::assign;
+//     use maplit::btreemap;
+//     use crate::{owned_user_id, room_version_rules::AuthorizationRules, user_id};
+//     use serde_json::{json, to_value as to_json_value};
 
-    /// The default value for this field if it is absent.
-    pub fn default_value(&self) -> i32 {
-        match self {
-            Self::UsersDefault | Self::EventsDefault | Self::Invite => int!(0),
-            Self::StateDefault | Self::Kick | Self::Ban | Self::Redact => int!(50),
-        }
-    }
-}
+//     use super::{
+//         default_power_level, NotificationPowerLevels, RoomPowerLevels, RoomPowerLevelsEventContent,
+//         RoomPowerLevelsSource,
+//     };
 
-impl AsRef<str> for RoomPowerLevelsIntField {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::UsersDefault => "users_default",
-            Self::EventsDefault => "events_default",
-            Self::StateDefault => "state_default",
-            Self::Ban => "ban",
-            Self::Redact => "redact",
-            Self::Kick => "kick",
-            Self::Invite => "invite",
-        }
-    }
-}
+//     #[test]
+//     fn serialization_with_optional_fields_as_none() {
+//         let default = default_power_level();
+
+//         let power_levels = RoomPowerLevelsEventContent {
+//             ban: default,
+//             events: BTreeMap::new(),
+//             events_default: 0,
+//             invite: 0,
+//             kick: default,
+//             redact: default,
+//             state_default: default,
+//             users: BTreeMap::new(),
+//             users_default: 0,
+//             notifications: NotificationPowerLevels::default(),
+//         };
+
+//         let actual = to_json_value(&power_levels).unwrap();
+//         let expected = json!({});
+
+//         assert_eq!(actual, expected);
+//     }
+
+//     #[test]
+//     fn serialization_with_all_fields() {
+//         let user = user_id!("@carl:example.com");
+//         let power_levels_event = RoomPowerLevelsEventContent {
+//             ban: 23,
+//             events: btreemap! {
+//                 "m.dummy".into() => 23
+//             },
+//             events_default: 23,
+//             invite: 23,
+//             kick: 23,
+//             redact: 23,
+//             state_default: 23,
+//             users: btreemap! {
+//                 user.to_owned() => 23
+//             },
+//             users_default: 23,
+//             notifications: assign!(NotificationPowerLevels::new(), { room: 23 }),
+//         };
+
+//         let actual = to_json_value(&power_levels_event).unwrap();
+//         let expected = json!({
+//             "ban": 23,
+//             "events": {
+//                 "m.dummy": 23
+//             },
+//             "events_default": 23,
+//             "invite": 23,
+//             "kick": 23,
+//             "redact": 23,
+//             "state_default": 23,
+//             "users": {
+//                 "@carl:example.com": 23
+//             },
+//             "users_default": 23,
+//             "notifications": {
+//                 "room": 23
+//             },
+//         });
+
+//         assert_eq!(actual, expected);
+//     }
+
+//     #[test]
+//     fn cannot_change_power_level_of_privileged_creator() {
+//         let creator = user_id!("@lola:localhost");
+
+//         let v1_power_levels = RoomPowerLevels::new(
+//             RoomPowerLevelsSource::None,
+//             &AuthorizationRules::V1,
+//             vec![creator.to_owned()],
+//         );
+//         assert!(v1_power_levels.user_can_change_user_power_level(creator, creator));
+
+//         let v12_power_levels = RoomPowerLevels::new(
+//             RoomPowerLevelsSource::None,
+//             &AuthorizationRules::V12,
+//             vec![creator.to_owned()],
+//         );
+//         assert!(!v12_power_levels.user_can_change_user_power_level(creator, creator));
+//     }
+
+//     #[test]
+//     fn cannot_convert_to_event_content_with_creator_in_users() {
+//         let creator = owned_user_id!("@lola:localhost");
+
+//         let mut v1_power_levels = RoomPowerLevels::new(
+//             RoomPowerLevelsSource::None,
+//             &AuthorizationRules::V1,
+//             vec![creator.clone()],
+//         );
+//         v1_power_levels.users.insert(creator.clone(), 75);
+//         let v1_event_content = RoomPowerLevelsEventContent::try_from(v1_power_levels).unwrap();
+//         assert_eq!(*v1_event_content.users.get(&creator).unwrap(), 75);
+
+//         let mut v12_power_levels = RoomPowerLevels::new(
+//             RoomPowerLevelsSource::None,
+//             &AuthorizationRules::V12,
+//             vec![creator.to_owned()],
+//         );
+//         v12_power_levels.users.insert(creator.clone(), 75);
+//         RoomPowerLevelsEventContent::try_from(v12_power_levels).unwrap_err();
+//     }
+// }

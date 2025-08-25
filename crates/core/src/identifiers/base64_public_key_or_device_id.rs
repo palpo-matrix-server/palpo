@@ -16,7 +16,7 @@ use super::{
 /// # Example
 ///
 /// ```
-/// use ruma_common::{Base64PublicKeyOrDeviceId, OwnedBase64PublicKeyOrDeviceId};
+/// use crate::{Base64PublicKeyOrDeviceId, OwnedBase64PublicKeyOrDeviceId};
 ///
 /// let ref_id: &Base64PublicKeyOrDeviceId = "abcdefghi".into();
 /// assert_eq!(ref_id.as_str(), "abcdefghi");

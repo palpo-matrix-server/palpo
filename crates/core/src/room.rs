@@ -495,7 +495,7 @@ impl<'de> Deserialize<'de> for RoomSummary {
 
 /// The rule used for users wishing to join a room.
 ///
-/// In contrast to the regular `JoinRule` in `ruma_events`, this enum holds only simplified
+/// In contrast to the regular `JoinRule` in `palpo_events`, this enum holds only simplified
 /// conditions for joining restricted rooms.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(tag = "join_rule", rename_all = "snake_case")]
@@ -639,7 +639,7 @@ mod tests {
 
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use ruma_common::{OwnedRoomId, owned_room_id};
+    use crate::{OwnedRoomId, owned_room_id};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{

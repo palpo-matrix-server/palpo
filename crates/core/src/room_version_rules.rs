@@ -598,7 +598,6 @@ impl EventFormatRules {
 
 /// The tweaks for determining the power level of a user.
 #[derive(Clone, Debug)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct RoomPowerLevelsRules {
     /// The creator(s) of the room which are considered to have "infinite" power level, introduced
     /// in room version 12.

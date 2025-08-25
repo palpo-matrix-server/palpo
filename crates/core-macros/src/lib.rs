@@ -138,7 +138,7 @@ pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
 ///
 /// This macro generates an `Owned*` wrapper type for the identifier type. This wrapper type is
 /// variable, by default it'll use [`Box`], but it can be changed at compile time
-/// by setting `--cfg=ruma_identifiers_storage=...` using `RUSTFLAGS` or `.cargo/config.toml` (under
+/// by setting `--cfg=palpo_identifiers_storage=...` using `RUSTFLAGS` or `.cargo/config.toml` (under
 /// `[build]` -> `rustflags = ["..."]`). Currently the only supported value is `Arc`, that uses
 /// [`Arc`](std::sync::Arc) as a wrapper type.
 ///
@@ -165,10 +165,10 @@ pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
 /// use palpo_core_macros::IdDst;
 ///
 /// #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
-/// #[palpo_id(validate = ruma_identifiers_validation::user_id::validate)]
+/// #[palpo_id(validate = palpo_identifiers_validation::user_id::validate)]
 /// pub struct UserId(str);
 /// ```
-#[proc_macro_derive(IdDst, attributes(ruma_id))]
+#[proc_macro_derive(IdDst, attributes(palpo_id))]
 pub fn derive_id_dst(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
     expand_id_dst(input).unwrap_or_else(syn::Error::into_compile_error).into()

@@ -22,6 +22,7 @@ pub mod serde;
 pub mod signatures;
 pub mod space;
 pub mod third_party;
+pub mod third_party_invite;
 mod time;
 pub mod to_device;
 pub mod version;

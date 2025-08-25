@@ -8,9 +8,12 @@ mod tests;
 use super::FetchStateExt;
 use crate::events::{StateEventType, room::member::MembershipState};
 use crate::state::{
-    Event, RoomPowerLevelsIntField,
-    events::{RoomCreateEvent, RoomMemberEvent, power_levels::RoomPowerLevelsEventOptionExt},
-    member::ThirdPartyInvite,
+    Event,
+    events::{
+        RoomCreateEvent, RoomMemberEvent,
+        member::ThirdPartyInvite,
+        power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
+    },
 };
 use crate::{
     AnyKeyName, SigningKeyId, UserId,

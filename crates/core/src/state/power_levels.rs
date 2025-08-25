@@ -1,246 +1,413 @@
-use std::collections::BTreeMap;
+//! Types to deserialize `m.room.power_levels` events.
 
-use serde::Deserialize;
-use serde_json::{Error, from_str as from_json_str};
-use tracing::error;
+use std::{
+    collections::{BTreeMap, HashSet},
+    ops::Deref,
+    sync::{Arc, Mutex, OnceLock},
+};
 
+use serde::de::DeserializeOwned;
+use serde_json::{Error, from_value as from_json_value};
+
+use crate::events::{TimelineEventType, room::power_levels::UserPowerLevel};
 use crate::{
-    OwnedUserId, RoomVersion, UserId,
-    events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent},
-    power_levels::{NotificationPowerLevels, default_power_level},
+    OwnedUserId, UserId,
+    room_version_rules::AuthorizationRules,
     serde::{
-        deserialize_v1_powerlevel, vec_deserialize_int_powerlevel_values,
-        vec_deserialize_v1_powerlevel_values,
+        DebugAsRefStr, DisplayAsRefStr, JsonObject, OrdAsRefStr, PartialEqAsRefStr,
+        PartialOrdAsRefStr, btreemap_deserialize_v1_powerlevel_values, deserialize_v1_powerlevel,
+        from_raw_json_value,
     },
 };
 
-#[derive(Deserialize, Default)]
-struct IntRoomPowerLevelsEventContent {
-    #[serde(default = "default_power_level")]
-    ban: i64,
+use super::Event;
 
-    #[serde(default)]
-    events: BTreeMap<TimelineEventType, i64>,
+/// The default value of the creator's power level.
+const DEFAULT_CREATOR_POWER_LEVEL: i32 = 100;
 
-    #[serde(default)]
-    events_default: i64,
-
-    #[serde(default)]
-    invite: i64,
-
-    #[serde(default = "default_power_level")]
-    kick: i64,
-
-    #[serde(default = "default_power_level")]
-    redact: i64,
-
-    #[serde(default = "default_power_level")]
-    state_default: i64,
-
-    #[serde(default)]
-    users: BTreeMap<OwnedUserId, i64>,
-
-    #[serde(default)]
-    users_default: i64,
-
-    #[serde(default)]
-    notifications: IntNotificationPowerLevels,
+/// A helper type for an [`Event`] of type `m.room.power_levels`.
+///
+/// This is a type that deserializes each field lazily, when requested. Some deserialization results
+/// are cached in memory, if they are used often.
+#[derive(Debug, Clone)]
+pub struct RoomPowerLevelsEvent<E: Event> {
+    inner: Arc<RoomPowerLevelsEventInner<E>>,
 }
 
-impl From<IntRoomPowerLevelsEventContent> for RoomPowerLevelsEventContent {
-    fn from(int_pl: IntRoomPowerLevelsEventContent) -> Self {
-        let IntRoomPowerLevelsEventContent {
-            ban,
-            events,
-            events_default,
-            invite,
-            kick,
-            redact,
-            state_default,
-            users,
-            users_default,
-            notifications,
-        } = int_pl;
+#[derive(Debug)]
+struct RoomPowerLevelsEventInner<E: Event> {
+    /// The inner `Event`.
+    event: E,
 
-        let mut pl = Self::new();
-        pl.ban = ban;
-        pl.events = events;
-        pl.events_default = events_default;
-        pl.invite = invite;
-        pl.kick = kick;
-        pl.redact = redact;
-        pl.state_default = state_default;
-        pl.users = users;
-        pl.users_default = users_default;
-        pl.notifications = notifications.into();
+    /// The deserialized content of the event.
+    deserialized_content: OnceLock<JsonObject>,
 
-        pl
-    }
+    /// The values of fields that should contain an integer.
+    int_fields: Mutex<BTreeMap<RoomPowerLevelsIntField, Option<i64>>>,
+
+    /// The power levels of the users, if any.
+    users: OnceLock<Option<BTreeMap<OwnedUserId, i64>>>,
 }
 
-#[derive(Deserialize)]
-struct IntNotificationPowerLevels {
-    #[serde(default = "default_power_level")]
-    room: i64,
-}
-
-impl Default for IntNotificationPowerLevels {
-    fn default() -> Self {
+impl<E: Event> RoomPowerLevelsEvent<E> {
+    /// Construct a new `RoomPowerLevelsEvent` around the given event.
+    pub fn new(event: E) -> Self {
         Self {
-            room: default_power_level(),
-        }
-    }
-}
-
-impl From<IntNotificationPowerLevels> for NotificationPowerLevels {
-    fn from(int_notif: IntNotificationPowerLevels) -> Self {
-        let mut notif = Self::new();
-        notif.room = int_notif.room;
-
-        notif
-    }
-}
-
-pub(crate) fn deserialize_power_levels(
-    content: &str,
-    room_version: &RoomVersion,
-) -> Option<RoomPowerLevelsEventContent> {
-    if room_version.integer_power_levels {
-        match from_json_str::<IntRoomPowerLevelsEventContent>(content) {
-            Ok(content) => Some(content.into()),
-            Err(_) => {
-                error!("m.room.power_levels event is not valid with integer values");
-                None
+            inner: RoomPowerLevelsEventInner {
+                event,
+                deserialized_content: OnceLock::new(),
+                int_fields: Mutex::new(BTreeMap::new()),
+                users: OnceLock::new(),
             }
-        }
-    } else {
-        match from_json_str(content) {
-            Ok(content) => Some(content),
-            Err(_) => {
-                error!(
-                    "m.room.power_levels event is not valid with integer or string integer values"
-                );
-                None
-            }
+            .into(),
         }
     }
-}
 
-#[derive(Deserialize)]
-pub(crate) struct PowerLevelsContentFields {
-    #[serde(default, deserialize_with = "vec_deserialize_v1_powerlevel_values")]
-    pub(crate) users: Vec<(OwnedUserId, i64)>,
+    /// The deserialized content of the event.
+    fn deserialized_content(&self) -> Result<&JsonObject, String> {
+        // TODO: Use OnceLock::get_or_try_init when it is stabilized.
+        if let Some(content) = self.inner.deserialized_content.get() {
+            Ok(content)
+        } else {
+            let content = from_raw_json_value(self.content()).map_err(|error: Error| {
+                format!("malformed `m.room.power_levels` content: {error}")
+            })?;
+            Ok(self.inner.deserialized_content.get_or_init(|| content))
+        }
+    }
 
-    #[serde(default, deserialize_with = "deserialize_v1_powerlevel")]
-    pub(crate) users_default: i64,
-}
+    /// Get the value of a field that should contain an integer, if any.
+    ///
+    /// The deserialization of this field is cached in memory.
+    pub fn get_as_int(
+        &self,
+        field: RoomPowerLevelsIntField,
+        rules: &AuthorizationRules,
+    ) -> Result<Option<i64>, String> {
+        let mut int_fields = self
+            .inner
+            .int_fields
+            .lock()
+            .expect("we never panic while holding the mutex");
 
-impl PowerLevelsContentFields {
-    pub(crate) fn get_user_power(&self, user_id: &UserId) -> Option<i64> {
-        let comparator = |item: &(OwnedUserId, i64)| {
-            let item: &UserId = &item.0;
-            item.cmp(user_id)
+        if let Some(power_level) = int_fields.get(&field) {
+            return Ok(*power_level);
+        }
+
+        let content = self.deserialized_content()?;
+
+        let Some(value) = content.get(field.as_str()) else {
+            int_fields.insert(field, None);
+            return Ok(None);
         };
 
-        self.users
-            .binary_search_by(comparator)
-            .ok()
-            .and_then(|idx| self.users.get(idx).map(|item| item.1))
+        let res = if rules.integer_power_levels {
+            from_json_value(value.clone())
+        } else {
+            deserialize_v1_powerlevel(value)
+        };
+
+        let power_level = res.map(Some).map_err(|error| {
+            format!(
+                "unexpected format of `{field}` field in `content` \
+                 of `m.room.power_levels` event: {error}"
+            )
+        })?;
+
+        int_fields.insert(field, power_level);
+        Ok(power_level)
+    }
+
+    /// Get the value of a field that should contain an integer, or its default value if it is
+    /// absent.
+    pub fn get_as_int_or_default(
+        &self,
+        field: RoomPowerLevelsIntField,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String> {
+        Ok(self
+            .get_as_int(field, rules)?
+            .unwrap_or_else(|| field.default_value()))
+    }
+
+    /// Get the value of a field that should contain a map of any value to integer, if any.
+    fn get_as_int_map<T: Ord + DeserializeOwned>(
+        &self,
+        field: &str,
+        rules: &AuthorizationRules,
+    ) -> Result<Option<BTreeMap<T, i64>>, String> {
+        let content = self.deserialized_content()?;
+
+        let Some(value) = content.get(field) else {
+            return Ok(None);
+        };
+
+        let res = if rules.integer_power_levels {
+            from_json_value(value.clone())
+        } else {
+            btreemap_deserialize_v1_powerlevel_values(value)
+        };
+
+        res.map(Some).map_err(|error| {
+            format!(
+                "unexpected format of `{field}` field in `content` \
+                 of `m.room.power_levels` event: {error}"
+            )
+        })
+    }
+
+    /// Get the power levels required to send events, if any.
+    pub fn events(
+        &self,
+        rules: &AuthorizationRules,
+    ) -> Result<Option<BTreeMap<TimelineEventType, i64>>, String> {
+        self.get_as_int_map("events", rules)
+    }
+
+    /// Get the power levels required to trigger notifications, if any.
+    pub fn notifications(
+        &self,
+        rules: &AuthorizationRules,
+    ) -> Result<Option<BTreeMap<String, i64>>, String> {
+        self.get_as_int_map("notifications", rules)
+    }
+
+    /// Get the power levels of the users, if any.
+    ///
+    /// The deserialization of this field is cached in memory.
+    pub fn users(
+        &self,
+        rules: &AuthorizationRules,
+    ) -> Result<Option<&BTreeMap<OwnedUserId, i64>>, String> {
+        // TODO: Use OnceLock::get_or_try_init when it is stabilized.
+        if let Some(users) = self.inner.users.get() {
+            Ok(users.as_ref())
+        } else {
+            let users = self.get_as_int_map("users", rules)?;
+            Ok(self.inner.users.get_or_init(|| users).as_ref())
+        }
+    }
+
+    /// Get the power level of the user with the given ID.
+    ///
+    /// Calling this method several times should be cheap because the necessary deserialization
+    /// results are cached.
+    pub fn user_power_level(
+        &self,
+        user_id: &UserId,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String> {
+        if let Some(power_level) = self
+            .users(rules)?
+            .as_ref()
+            .and_then(|users| users.get(user_id))
+        {
+            return Ok(*power_level);
+        }
+
+        self.get_as_int_or_default(RoomPowerLevelsIntField::UsersDefault, rules)
+    }
+
+    /// Get the power level required to send an event of the given type.
+    pub fn event_power_level(
+        &self,
+        event_type: &TimelineEventType,
+        state_key: Option<&str>,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String> {
+        let events = self.events(rules)?;
+
+        if let Some(power_level) = events.as_ref().and_then(|events| events.get(event_type)) {
+            return Ok(*power_level);
+        }
+
+        let default_field = if state_key.is_some() {
+            RoomPowerLevelsIntField::StateDefault
+        } else {
+            RoomPowerLevelsIntField::EventsDefault
+        };
+
+        self.get_as_int_or_default(default_field, rules)
+    }
+
+    /// Get a map of all the fields with an integer value in the `content` of an
+    /// `m.room.power_levels` event.
+    pub(crate) fn int_fields_map(
+        &self,
+        rules: &AuthorizationRules,
+    ) -> Result<BTreeMap<RoomPowerLevelsIntField, i64>, String> {
+        RoomPowerLevelsIntField::ALL
+            .iter()
+            .copied()
+            .filter_map(|field| match self.get_as_int(field, rules) {
+                Ok(value) => value.map(|value| Ok((field, value))),
+                Err(error) => Some(Err(error)),
+            })
+            .collect()
     }
 }
 
-#[derive(Deserialize)]
-struct IntPowerLevelsContentFields {
-    #[serde(default, deserialize_with = "vec_deserialize_int_powerlevel_values")]
-    users: Vec<(OwnedUserId, i64)>,
+impl<E: Event> Deref for RoomPowerLevelsEvent<E> {
+    type Target = E;
 
-    #[serde(default)]
-    users_default: i64,
+    fn deref(&self) -> &Self::Target {
+        &self.inner.event
+    }
 }
 
-impl From<IntPowerLevelsContentFields> for PowerLevelsContentFields {
-    fn from(pl: IntPowerLevelsContentFields) -> Self {
-        let IntPowerLevelsContentFields {
-            users,
-            users_default,
-        } = pl;
-        Self {
-            users,
-            users_default,
+/// Helper trait for `Option<RoomPowerLevelsEvent<E>>`.
+pub(crate) trait RoomPowerLevelsEventOptionExt {
+    /// Get the power level of the user with the given ID.
+    fn user_power_level(
+        &self,
+        user_id: &UserId,
+        creators: &HashSet<OwnedUserId>,
+        rules: &AuthorizationRules,
+    ) -> Result<UserPowerLevel, String>;
+
+    /// Get the value of a field that should contain an integer, or its default value if it is
+    /// absent.
+    fn get_as_int_or_default(
+        &self,
+        field: RoomPowerLevelsIntField,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String>;
+
+    /// Get the power level required to send an event of the given type.
+    fn event_power_level(
+        &self,
+        event_type: &TimelineEventType,
+        state_key: Option<&str>,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String>;
+}
+
+impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>> {
+    fn user_power_level(
+        &self,
+        user_id: &UserId,
+        creators: &HashSet<OwnedUserId>,
+        rules: &AuthorizationRules,
+    ) -> Result<UserPowerLevel, String> {
+        if rules.explicitly_privilege_room_creators && creators.contains(user_id) {
+            Ok(UserPowerLevel::Infinite)
+        } else if let Some(room_power_levels_event) = self {
+            room_power_levels_event
+                .user_power_level(user_id, rules)
+                .map(Into::into)
+        } else {
+            let power_level = if creators.contains(user_id) {
+                DEFAULT_CREATOR_POWER_LEVEL.into()
+            } else {
+                RoomPowerLevelsIntField::UsersDefault.default_value()
+            };
+            Ok(power_level.into())
+        }
+    }
+
+    fn get_as_int_or_default(
+        &self,
+        field: RoomPowerLevelsIntField,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String> {
+        if let Some(room_power_levels_event) = self {
+            room_power_levels_event.get_as_int_or_default(field, rules)
+        } else {
+            Ok(field.default_value())
+        }
+    }
+
+    fn event_power_level(
+        &self,
+        event_type: &TimelineEventType,
+        state_key: Option<&str>,
+        rules: &AuthorizationRules,
+    ) -> Result<i64, String> {
+        if let Some(room_power_levels_event) = self {
+            room_power_levels_event.event_power_level(event_type, state_key, rules)
+        } else {
+            let default_field = if state_key.is_some() {
+                RoomPowerLevelsIntField::StateDefault
+            } else {
+                RoomPowerLevelsIntField::EventsDefault
+            };
+
+            Ok(default_field.default_value())
         }
     }
 }
 
-pub(crate) fn deserialize_power_levels_content_fields(
-    content: &str,
-    room_version: &RoomVersion,
-) -> Result<PowerLevelsContentFields, Error> {
-    if room_version.integer_power_levels {
-        from_json_str::<IntPowerLevelsContentFields>(content).map(|r| r.into())
-    } else {
-        from_json_str(content)
+/// Fields in the `content` of an `m.room.power_levels` event with an integer value.
+#[derive(
+    DebugAsRefStr,
+    Clone,
+    Copy,
+    DisplayAsRefStr,
+    PartialEqAsRefStr,
+    Eq,
+    PartialOrdAsRefStr,
+    OrdAsRefStr,
+)]
+#[non_exhaustive]
+pub enum RoomPowerLevelsIntField {
+    /// `users_default`
+    UsersDefault,
+
+    /// `events_default`
+    EventsDefault,
+
+    /// `state_default`
+    StateDefault,
+
+    /// `ban`
+    Ban,
+
+    /// `redact`
+    Redact,
+
+    /// `kick`
+    Kick,
+
+    /// `invite`
+    Invite,
+}
+
+impl RoomPowerLevelsIntField {
+    /// A slice containing all the variants.
+    pub(crate) const ALL: &[RoomPowerLevelsIntField] = &[
+        Self::UsersDefault,
+        Self::EventsDefault,
+        Self::StateDefault,
+        Self::Ban,
+        Self::Redact,
+        Self::Kick,
+        Self::Invite,
+    ];
+
+    /// The string representation of this field.
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+
+    /// The default value for this field if it is absent.
+    pub fn default_value(&self) -> i64 {
+        match self {
+            Self::UsersDefault | Self::EventsDefault | Self::Invite => 0,
+            Self::StateDefault | Self::Kick | Self::Ban | Self::Redact => 50,
+        }
     }
 }
 
-#[derive(Deserialize)]
-pub(crate) struct PowerLevelsContentInvite {
-    #[serde(default, deserialize_with = "deserialize_v1_powerlevel")]
-    pub(crate) invite: i64,
-}
-
-#[derive(Deserialize)]
-struct IntPowerLevelsContentInvite {
-    #[serde(default)]
-    invite: i64,
-}
-
-impl From<IntPowerLevelsContentInvite> for PowerLevelsContentInvite {
-    fn from(pl: IntPowerLevelsContentInvite) -> Self {
-        let IntPowerLevelsContentInvite { invite } = pl;
-        Self { invite }
-    }
-}
-
-pub(crate) fn deserialize_power_levels_content_invite(
-    content: &str,
-    room_version: &RoomVersion,
-) -> Result<PowerLevelsContentInvite, Error> {
-    if room_version.integer_power_levels {
-        from_json_str::<IntPowerLevelsContentInvite>(content).map(|r| r.into())
-    } else {
-        from_json_str(content)
-    }
-}
-
-#[derive(Deserialize)]
-pub(crate) struct PowerLevelsContentRedact {
-    #[serde(
-        default = "default_power_level",
-        deserialize_with = "deserialize_v1_powerlevel"
-    )]
-    pub(crate) redact: i64,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct IntPowerLevelsContentRedact {
-    #[serde(default = "default_power_level")]
-    redact: i64,
-}
-
-impl From<IntPowerLevelsContentRedact> for PowerLevelsContentRedact {
-    fn from(pl: IntPowerLevelsContentRedact) -> Self {
-        let IntPowerLevelsContentRedact { redact } = pl;
-        Self { redact }
-    }
-}
-
-pub(crate) fn deserialize_power_levels_content_redact(
-    content: &str,
-    room_version: &RoomVersion,
-) -> Result<PowerLevelsContentRedact, Error> {
-    if room_version.integer_power_levels {
-        from_json_str::<IntPowerLevelsContentRedact>(content).map(|r| r.into())
-    } else {
-        from_json_str(content)
+impl AsRef<str> for RoomPowerLevelsIntField {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::UsersDefault => "users_default",
+            Self::EventsDefault => "events_default",
+            Self::StateDefault => "state_default",
+            Self::Ban => "ban",
+            Self::Redact => "redact",
+            Self::Kick => "kick",
+            Self::Invite => "invite",
+        }
     }
 }

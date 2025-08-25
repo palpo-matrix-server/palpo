@@ -226,7 +226,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     pub(crate) fn int_fields_map(
         &self,
         rules: &AuthorizationRules,
-    ) -> Result<BTreeMap<RoomPowerLevelsIntField, i32>, String> {
+    ) -> Result<BTreeMap<RoomPowerLevelsIntField, i64>, String> {
         RoomPowerLevelsIntField::ALL
             .iter()
             .copied()
@@ -325,6 +325,7 @@ impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>>
         }
     }
 }
+
 
 /// Fields in the `content` of an `m.room.power_levels` event with an integer value.
 #[derive(

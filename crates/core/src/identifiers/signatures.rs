@@ -173,7 +173,7 @@ impl<E: Clone, K: KeyName + ?Sized> Iterator for IntoIter<E, K> {
 mod tests {
     #[test]
     fn signatures_into_iter() {
-        use ruma_common::{
+        use crate::{
             ServerSigningKeyId, Signatures, SigningKeyAlgorithm, owned_server_name,
             server_signing_key_version,
         };

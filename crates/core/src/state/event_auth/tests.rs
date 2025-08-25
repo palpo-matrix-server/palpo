@@ -198,7 +198,7 @@ fn redact_higher_power_level() {
         incoming_event,
         room_power_levels_event,
         &AuthorizationRules::V1,
-        int!(0).into(),
+        0.into(),
     )
     .unwrap_err();
 }
@@ -231,7 +231,7 @@ fn redact_same_power_level() {
         incoming_event,
         room_power_levels_event,
         &AuthorizationRules::V1,
-        int!(50).into(),
+        50.into(),
     )
     .unwrap();
 }
@@ -256,7 +256,7 @@ fn redact_same_server() {
         incoming_event,
         room_power_levels_event,
         &AuthorizationRules::V1,
-        int!(0).into(),
+        0.into(),
     )
     .unwrap();
 }
@@ -649,7 +649,7 @@ fn auth_event_in_different_room() {
         unsigned: BTreeMap::new(),
         auth_events: vec![event_id("CREATE"), event_id("IMA")],
         prev_events: vec![event_id("IMA")],
-        depth: uint!(0),
+        depth: u0,
         hashes: EventHash {
             sha256: "".to_owned(),
         },
@@ -764,7 +764,7 @@ fn rejected_auth_event() {
         unsigned: BTreeMap::new(),
         auth_events: vec![event_id("CREATE"), event_id("IMA")],
         prev_events: vec![event_id("IMA")],
-        depth: uint!(0),
+        depth: u0,
         hashes: EventHash {
             sha256: "".to_owned(),
         },
@@ -857,7 +857,7 @@ fn event_without_room_id() {
             owned_event_id!("$IPOWER"),
         ],
         prev_events: vec![owned_event_id!("$IPOWER")],
-        depth: uint!(0),
+        depth: u0,
         hashes: EventHash {
             sha256: "".to_owned(),
         },

@@ -76,7 +76,7 @@ fn not_int_or_string_int_in_content() {
                 RoomPowerLevelsEvent::new(&incoming_event),
                 current_room_power_levels_event.clone(),
                 &AuthorizationRules::V6,
-                int!(100).into(),
+                100.into(),
                 &HashSet::new(),
             );
 
@@ -91,7 +91,7 @@ fn not_int_or_string_int_in_content() {
                 RoomPowerLevelsEvent::new(&incoming_event),
                 current_room_power_levels_event.clone(),
                 &AuthorizationRules::V10,
-                int!(100).into(),
+                100.into(),
                 &HashSet::new(),
             );
 
@@ -148,7 +148,7 @@ fn not_int_or_string_int_in_events() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V6,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -163,7 +163,7 @@ fn not_int_or_string_int_in_events() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V10,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -219,7 +219,7 @@ fn not_int_or_string_int_in_notifications() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V6,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -234,7 +234,7 @@ fn not_int_or_string_int_in_notifications() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V10,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -273,7 +273,7 @@ fn not_user_id_in_users() {
         RoomPowerLevelsEvent::new(&incoming_event),
         current_room_power_levels_event,
         &AuthorizationRules::V6,
-        int!(100).into(),
+        100.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -324,7 +324,7 @@ fn not_int_or_string_int_in_users() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V6,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -339,7 +339,7 @@ fn not_int_or_string_int_in_users() {
             RoomPowerLevelsEvent::new(&incoming_event),
             current_room_power_levels_event.clone(),
             &AuthorizationRules::V10,
-            int!(100).into(),
+            100.into(),
             &HashSet::new(),
         );
 
@@ -377,7 +377,7 @@ fn first_power_levels_event() {
         RoomPowerLevelsEvent::new(&incoming_event),
         current_room_power_levels_event,
         &AuthorizationRules::V6,
-        int!(100).into(),
+        100.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -434,7 +434,7 @@ fn change_content_level_with_current_higher_power_level() {
             RoomPowerLevelsEvent::new(&incoming_event),
             Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
             &AuthorizationRules::V6,
-            int!(40).into(),
+            40.into(),
             &HashSet::new(),
         )
         .unwrap_err();
@@ -492,7 +492,7 @@ fn change_content_level_with_new_higher_power_level() {
             RoomPowerLevelsEvent::new(&incoming_event),
             Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
             &AuthorizationRules::V6,
-            int!(40).into(),
+            40.into(),
             &HashSet::new(),
         )
         .unwrap_err();
@@ -550,7 +550,7 @@ fn change_content_level_with_same_power_level() {
             RoomPowerLevelsEvent::new(&incoming_event),
             Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
             &AuthorizationRules::V6,
-            int!(40).into(),
+            40.into(),
             &HashSet::new(),
         )
         .unwrap();
@@ -604,7 +604,7 @@ fn change_events_level_with_current_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -657,7 +657,7 @@ fn change_events_level_with_new_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -710,7 +710,7 @@ fn change_events_level_with_same_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -763,7 +763,7 @@ fn change_notifications_level_with_current_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V3,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -773,7 +773,7 @@ fn change_notifications_level_with_current_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -826,7 +826,7 @@ fn change_notifications_level_with_new_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V3,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -836,7 +836,7 @@ fn change_notifications_level_with_new_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -889,7 +889,7 @@ fn change_notifications_level_with_same_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V3,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -899,7 +899,7 @@ fn change_notifications_level_with_same_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -947,7 +947,7 @@ fn change_other_user_level_with_current_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -996,7 +996,7 @@ fn change_other_user_level_with_new_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -1045,7 +1045,7 @@ fn change_other_user_level_with_same_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
@@ -1092,7 +1092,7 @@ fn change_own_user_level_to_new_higher_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap_err();
@@ -1139,7 +1139,7 @@ fn change_own_user_level_to_lower_power_level() {
         RoomPowerLevelsEvent::new(&incoming_event),
         Some(RoomPowerLevelsEvent::new(&current_room_power_levels_event)),
         &AuthorizationRules::V6,
-        int!(40).into(),
+        40.into(),
         &HashSet::new(),
     )
     .unwrap();
