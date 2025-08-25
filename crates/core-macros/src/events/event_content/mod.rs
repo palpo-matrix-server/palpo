@@ -83,7 +83,8 @@ pub fn expand_event_content(
         }
     };
 
-    let event_type_fragment = EventTypeFragment::try_from_parts(&types.ev_type, fields.clone())?;
+    let event_type_fragment =
+        EventTypeFragment::try_from_parts(&event_types.ev_type, fields.clone())?;
 
     // We only generate redacted content structs for state and message-like events
     let redacted_event_content = generate_redacted.then(|| {
@@ -141,11 +142,9 @@ pub fn expand_event_content(
     )
     .unwrap_or_else(syn::Error::into_compile_error);
     let static_event_content_impl =
-        generate_static_event_content_impl(ident, &event_type, palpo_core);
-    let type_aliases = event_kind.map(|k| {
-        generate_event_type_aliases(k, ident, &input.vis, &event_types, palpo_core)
-            .unwrap_or_else(syn::Error::into_compile_error)
-    });
+        generate_static_event_content_impl(ident, &event_types, palpo_core);
+    let type_aliases = generate_event_type_aliases(kind, ident, &input.vis, &event_types, palpo_core)
+        .unwrap_or_else(syn::Error::into_compile_error);
 
     let json_castable_impl = generate_json_castable_impl(ident, &[], &palpo_core);
 
@@ -284,7 +283,7 @@ fn generate_possibly_redacted_event_content<'a>(
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     assert!(
-        !event_type.value().contains('*'),
+        !event_types.is_prefix(),
         "Event type shouldn't contain a `*`, this should have been checked previously"
     );
 
@@ -538,6 +537,7 @@ fn generate_event_type_aliases(
         return Ok(quote! {});
     }
 
+    let event_type = &event_types.ev_type;
     let ident_s = ident.to_string();
     let ev_type_s = ident_s.strip_suffix("Content").ok_or_else(|| {
         syn::Error::new_spanned(ident, "Expected content struct name ending in `Content`")
@@ -547,7 +547,7 @@ fn generate_event_type_aliases(
         .event_variations()
         .iter()
         .filter_map(|&var| Some((var, kind.to_event_idents(var)?)))
-        .filter_map(|(var, type_prefixes_and_event_idents)| {
+        .flat_map(|(var, type_prefixes_and_event_idents)| {
             type_prefixes_and_event_idents
                 .into_iter()
                 .map(move |(type_prefix, ev_struct)| {
@@ -565,7 +565,15 @@ fn generate_event_type_aliases(
                         }
                         EventVariation::Initial => " for creating a room",
                     };
-                    let ev_type_doc = format!("An `{event_type}` event{doc_text}.");
+
+                    let ev_type_doc = if type_prefix.is_empty() {
+                        format!("An `{event_type}` event{doc_text}.")
+                    } else {
+                        format!(
+                            "A {} `{event_type}` event{doc_text}.",
+                            type_prefix.to_lowercase()
+                        )
+                    };
 
                     let content_struct = if var.is_redacted() {
                         Cow::Owned(format_ident!("Redacted{ident}"))
