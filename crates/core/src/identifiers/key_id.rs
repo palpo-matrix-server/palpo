@@ -13,10 +13,10 @@ use super::{
 /// A key algorithm and key name delimited by a colon.
 #[repr(transparent)]
 #[derive(IdDst)]
-#[palpo_id(validate = palpo_identifiers_validation::key_id::validate)]
-pub struct KeyId<A, K: ?Sized>(PhantomData<(A, K)>, str);
+#[palpo_id(validate = palpo_identifiers_validation::key_id::validate::<K>)]
+pub struct KeyId<A: KeyAlgorithm, K: ?Sized>(PhantomData<(A, K)>, str);
 
-impl<A, K: ?Sized> KeyId<A, K> {
+impl<A: KeyAlgorithm, K: ?Sized> KeyId<A, K> {
     /// Creates a new `KeyId` from an algorithm and key name.
     pub fn from_parts(algorithm: A, key_name: &K) -> OwnedKeyId<A, K>
     where

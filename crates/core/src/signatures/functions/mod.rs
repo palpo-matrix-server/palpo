@@ -13,15 +13,17 @@ use sha2::{Sha256, digest::Digest};
 #[cfg(test)]
 mod tests;
 
+use crate::signatures::{Error, JsonError,
+    verification::{Verified, Verifier, verifier_from_algorithm}, keys::{KeyPair, PublicKeyMap},ParseError, VerificationError};
 use crate::{
-    AnyKeyName, CanonicalJsonObject, CanonicalJsonValue, Error, JsonError, OwnedEventId,
-    OwnedServerName, OwnedServerSigningKeyId, ParseError, SigningKeyAlgorithm, SigningKeyId,
-    UserId, VerificationError,RoomVersionId,
-    canonical_json::{JsonType, redact},
-    keys::{KeyPair, PublicKeyMap},
+    AnyKeyName, OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId,
+    SigningKeyAlgorithm, SigningKeyId, UserId,
     room_version_rules::{EventIdFormatVersion, RedactionRules, RoomVersionRules, SignaturesRules},
-    serde::{Base64, base64::Standard},
-    verification::{Verified, Verifier, verifier_from_algorithm},
+    serde::{
+        Base64, CanonicalJsonObject, CanonicalJsonValue,
+        base64::Standard,
+        canonical_json::{JsonType, redact},
+    },
 };
 
 /// The [maximum size allowed] for a PDU.

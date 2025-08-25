@@ -94,8 +94,8 @@ salvo = { version = "0.82.0" }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.10.3"
-serde = { version = "1.0.118", features = ["derive"] }
-serde_json = { version = "1.0.142" }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.143" }
 serde_yaml = { version = "0.9.32" }
 serde_regex = { version = "1.1.0" }
 smallvec = { version = "1.15.1" }

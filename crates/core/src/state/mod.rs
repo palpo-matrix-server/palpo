@@ -14,16 +14,16 @@ use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::{EventId, MatrixError, MatrixResult, RoomVersionId, UnixMillis};
 
 pub mod event_auth;
+pub mod events;
 mod power_levels;
 pub mod room_version;
-mod state_event;
 // #[cfg(test)]
 // mod test_utils;
 
 pub use event_auth::{auth_check, auth_types_for_event};
+pub use events::Event;
 use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
-pub use state_event::Event;
 
 /// A mapping of event type and state_key to some value `T`, usually an
 /// `EventId`.

@@ -12,7 +12,7 @@ mod tests;
 
 use self::room_member::check_room_member;
 use crate::{
-    EventId, OwnedUserId, UserId,
+    EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
     events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
         RoomThirdPartyInviteEvent, StateEventType, TimelineEventType,
@@ -21,8 +21,8 @@ use crate::{
         room::{member::MembershipState, power_levels::UserPowerLevel},
     },
     room::JoinRuleKind,
-    room_version_rules::AuthorizationRules,
-    state::Event,
+    room_version_rules::{AuthorizationRules, RoomVersionRules},
+    state::{Event, StateKey},
     utils::RoomIdExt,
 };
 
@@ -132,7 +132,7 @@ pub fn auth_types_for_event(
 /// The `fetch_state` closure should gather state from a state snapshot. We need
 /// to know if the event passes auth against some state not a recursive
 /// collection of auth_events fields.
-pub fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
+pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
     rules: &RoomVersionRules,
     incoming_event: &Pdu,
     fetch_event: &FetchEvent,
@@ -140,14 +140,14 @@ pub fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
 ) -> MatrixResult<()>
 where
     FetchEvent: Fn(OwnedEventId) -> EventFut + Sync,
-    EventFut: Future<Output = Result<Pdu>> + Send,
+    EventFut: Future<Output = MatrixResult<Pdu>> + Send,
     FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
-    StateFut: Future<Output = Result<Pdu>> + Send,
+    StateFut: Future<Output = MatrixResult<Pdu>> + Send,
     Pdu: Event,
 {
-    check_state_dependent_auth_rules(rules, incoming_event, fetch_state)?;
+    check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
 
-    check_state_independent_auth_rules(rules, incoming_event, fetch_event)
+    check_state_independent_auth_rules(rules, incoming_event, fetch_event).await
 }
 /// Check whether the incoming event passes the state-independent [authorization rules] for the
 /// given room version rules.
@@ -195,7 +195,7 @@ where
     .collect::<HashSet<_>>();
 
     let Some(room_id) = incoming_event.room_id() else {
-        return Err("missing `room_id` field for event".to_owned());
+        return Err(MatrixError::bad_state("missing `room_id` field for event"));
     };
 
     let mut seen_auth_types: HashSet<(TimelineEventType, String)> =
@@ -206,7 +206,9 @@ where
         let event_id = auth_event_id.borrow();
 
         let Some(auth_event) = fetch_event(event_id) else {
-            return Err(format!("failed to find auth event {event_id}"));
+            return Err(MatrixError::bad_state(format!(
+                "failed to find auth event {event_id}"
+            )));
         };
 
         // The auth event must be in the same room as the incoming event.
@@ -214,7 +216,9 @@ where
             .room_id()
             .is_none_or(|auth_room_id| auth_room_id != room_id)
         {
-            return Err(format!("auth event {event_id} not in the same room"));
+            return Err(MatrixError::bad_state(format!(
+                "auth event {event_id} not in the same room"
+            )));
         }
 
         let event_type = auth_event.event_type();
@@ -225,23 +229,25 @@ where
 
         // Since v1, if there are duplicate entries for a given type and state_key pair, reject.
         if seen_auth_types.contains(&key) {
-            return Err(format!(
+            return Err(MatrixError::bad_state(format!(
                 "duplicate auth event {event_id} for ({event_type}, {state_key}) pair"
-            ));
+            )));
         }
 
         // Since v1, if there are entries whose type and state_key don’t match those specified by
         // the auth events selection algorithm described in the server specification, reject.
         if !expected_auth_types.contains(&key) {
-            return Err(format!(
+            return Err(MatrixError::bad_state(format!(
                 "unexpected auth event {event_id} with ({event_type}, {state_key}) pair"
-            ));
+            )));
         }
 
         // Since v1, if there are entries which were themselves rejected under the checks performed
         // on receipt of a PDU, reject.
         if auth_event.rejected() {
-            return Err(format!("rejected auth event {event_id}"));
+            return Err(MatrixError::bad_state(format!(
+                "rejected auth event {event_id}"
+            )));
         }
 
         seen_auth_types.insert(key);
@@ -253,7 +259,9 @@ where
             .iter()
             .any(|(event_type, _)| *event_type == TimelineEventType::RoomCreate)
     {
-        return Err("no `m.room.create` event in auth events".to_owned());
+        return Err(MatrixError::bad_state(
+            "no `m.room.create` event in auth events".to_owned(),
+        ));
     }
 
     // Since v12, the room_id must be the reference hash of an accepted m.room.create event.
@@ -267,9 +275,9 @@ where
         })?;
 
         if room_create_event.rejected() {
-            return Err(format!(
+            return Err(MatrixError::bad_state(format!(
                 "rejected `m.room.create` event {room_create_event_id}"
-            ));
+            )));
         }
     }
 
@@ -324,10 +332,10 @@ where
     if !federate
         && room_create_event.sender().server_name() != incoming_event.sender().server_name()
     {
-        return Err("\
-            room is not federated and event's sender domain \
-            does not match `m.room.create` event's sender domain"
-            .to_owned());
+        return Err(MatrixError::bad_state(
+            "room is not federated and event's sender domain \
+            does not match `m.room.create` event's sender domain",
+        ));
     }
 
     let sender = incoming_event.sender();
@@ -341,10 +349,10 @@ where
         //
         // v1-v5, if sender's domain doesn't match state_key, reject.
         if incoming_event.state_key() != Some(sender.server_name().as_str()) {
-            return Err("\
-                server name of the `state_key` of `m.room.aliases` event \
-                does not match the server name of the sender"
-                .to_owned());
+            return Err(MatrixError::bad_state(
+                "server name of the `state_key` of `m.room.aliases` event \
+                does not match the server name of the sender",
+            ));
         }
 
         // Otherwise, allow.
@@ -362,7 +370,7 @@ where
     let sender_membership = fetch_state.user_membership(sender)?;
 
     if sender_membership != MembershipState::Join {
-        return Err("sender's membership is not `join`".to_owned());
+        return Err(MatrixError::bad_state("sender's membership is not `join`"));
     }
 
     let creators = room_create_event.creators(rules)?;
@@ -379,9 +387,9 @@ where
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 
         if sender_power_level < invite_power_level {
-            return Err(
-                "sender does not have enough power to send invites in this room".to_owned(),
-            );
+            return Err(MatrixError::bad_state(
+                "sender does not have enough power to send invites in this room",
+            ));
         }
 
         info!("`m.room.third_party_invite` event was allowed");
@@ -396,10 +404,10 @@ where
         rules,
     )?;
     if sender_power_level < event_type_power_level {
-        return Err(format!(
+        return Err(MatrixError::bad_state(format!(
             "sender does not have enough power to send event of type `{}`",
             incoming_event.event_type()
-        ));
+        )));
     }
 
     // Since v1, if the event has a state_key that starts with an @ and does not match the sender,
@@ -409,9 +417,9 @@ where
         .is_some_and(|k| k.starts_with('@'))
         && incoming_event.state_key() != Some(incoming_event.sender().as_str())
     {
-        return Err(
-            "sender cannot send event with `state_key` matching another user's ID".to_owned(),
-        );
+        return Err(MatrixError::bad_state(
+            "sender cannot send event with `state_key` matching another user's ID",
+        ));
     }
 
     // If type is m.room.power_levels

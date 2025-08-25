@@ -1,9 +1,9 @@
 //! Matrix event identifiers.
 
-use crate::macros::IdDst;
 use diesel::expression::AsExpression;
 
 use super::ServerName;
+use crate::macros::IdDst;
 
 /// A Matrix [event ID].
 ///

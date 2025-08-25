@@ -1,3 +1,19 @@
+//! Helper traits and types to work with events (aka PDUs).
+
+mod create;
+mod join_rules;
+pub(crate) mod member;
+pub(crate) mod power_levels;
+mod third_party_invite;
+
+pub use self::{
+    create::RoomCreateEvent,
+    join_rules::RoomJoinRulesEvent,
+    member::RoomMemberEvent,
+    power_levels::{RoomPowerLevelsEvent, RoomPowerLevelsIntField},
+    third_party_invite::RoomThirdPartyInviteEvent,
+};
+
 use std::{
     borrow::Borrow,
     fmt::{Debug, Display},

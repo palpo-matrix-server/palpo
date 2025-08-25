@@ -1,15 +1,20 @@
 //! Common types for rooms.
-use std::{borrow::Cow, collections::BTreeMap};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::BTreeMap,
+};
 
-use serde::{de, Deserialize, Serialize};
-use serde_json::{value::RawValue as RawJsonValue, Value as JsonValue};
-use salvo::prelude::*;
 use as_variant::as_variant;
+use salvo::prelude::*;
+use serde::de::Error as _;
+use serde::{Deserialize, Serialize, de};
+use serde_json::{Value as JsonValue, value::RawValue as RawJsonValue};
 
 use crate::{
-    serde::{from_raw_json_value, StringEnum},
-    EventEncryptionAlgorithm,OwnedEventId, OwnedRoomId, RoomId, OwnedMxcUri,OwnedRoomAliasId, OwnedUserId, PrivOwnedStr, events::StateEventType,
-    RoomVersionId,
+    EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
+    OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId,
+    events::StateEventType,
+    serde::{StringEnum, from_raw_json_value},
 };
 
 /// An enum of possible room types.
@@ -634,7 +639,7 @@ mod tests {
 
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use ruma_common::{owned_room_id, OwnedRoomId};
+    use ruma_common::{OwnedRoomId, owned_room_id};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{

@@ -6,14 +6,12 @@ use tracing::debug;
 mod tests;
 
 use super::FetchStateExt;
-use crate::{
-    state::Event,
-    events::{
-        RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsIntField, member::ThirdPartyInvite,
-        power_levels::RoomPowerLevelsEventOptionExt,
-    },
-};
 use crate::events::{StateEventType, room::member::MembershipState};
+use crate::state::{
+    Event, RoomPowerLevelsIntField,
+    events::{RoomCreateEvent, RoomMemberEvent, power_levels::RoomPowerLevelsEventOptionExt},
+    member::ThirdPartyInvite,
+};
 use crate::{
     AnyKeyName, SigningKeyId, UserId,
     room::JoinRuleKind,
