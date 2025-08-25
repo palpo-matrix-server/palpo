@@ -11,7 +11,7 @@ use crate::events::{
     room::member::{MembershipState, ThirdPartyInvite},
 };
 use crate::state::{
-    Error, Error, Event,
+    StateError, Event,
     events::{
         RoomCreateEvent, RoomMemberEvent,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
@@ -37,7 +37,7 @@ pub(super) async fn check_room_member<Fetch, Fut, Pdu>(
 ) -> Result<(), String>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, Error>> + Send,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
     debug!("starting m.room.member check");
@@ -399,7 +399,7 @@ async fn check_room_member_leave<Fetch, Fut, Pdu>(
 ) -> Result<(), String>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu>> + Send,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
     let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
@@ -471,7 +471,7 @@ async fn check_room_member_ban<Fetch, Fut, Pdu>(
 ) -> Result<(), String>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StatusError>> + Send,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
     let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
@@ -512,7 +512,7 @@ async fn check_room_member_knock<Fetch, Fut, Pdu>(
 ) -> Result<(), String>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, Error>> + Send,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
     let join_rule = fetch_state.join_rule()?;

@@ -4,7 +4,7 @@ use thiserror::Error;
 use crate::OwnedEventId;
 
 /// Result type for state resolution.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type StateResult<T> = std::result::Result<T, StateError>;
 
 /// Represents the various errors that arise when resolving state.
 #[derive(Error, Debug)]

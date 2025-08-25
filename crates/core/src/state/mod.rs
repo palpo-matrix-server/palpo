@@ -11,7 +11,6 @@ use tracing::{debug, info, instrument, trace, warn};
 mod error;
 pub mod event_auth;
 pub mod events;
-mod power_levels;
 pub mod room_version;
 
 // #[cfg(test)]
@@ -415,9 +414,9 @@ fn sort_power_events<E: Event>(
 pub fn reverse_topological_power_sort<Id, F>(
     graph: &HashMap<Id, HashSet<Id>>,
     event_details_fn: F,
-) -> Result<Vec<Id>, Error>
+) -> Result<Vec<Id>, StateError>
 where
-    F: Fn(&EventId) -> Result<(UserPowerLevel, UnixMillis), Error>,
+    F: Fn(&EventId) -> Result<(UserPowerLevel, UnixMillis), StateError>,
     Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
 {
     #[derive(PartialEq, Eq)]
@@ -637,12 +636,12 @@ fn power_level_for_sender<E: Event>(
 ///
 /// Returns the partially resolved state, or an `Err(_)` if one of the state events in the room has
 /// an unexpected format.
-fn iterative_auth_check<'b, SortedPowerEvents, Fetch, Fut, Pdu>(
+async fn iterative_auth_check<'b, SortedPowerEvents, Fetch, Fut, Pdu>(
     rules: &RoomVersionRules,
     events: SortedPowerEvents,
     mut state: StateMap<OwnedEventId>,
     fetch_event: &Fetch,
-) -> Result<StateMap<OwnedEventId>, Error>
+) -> Result<StateMap<OwnedEventId>, StateError>
 where
     SortedPowerEvents: Stream<Item = &'b EventId> + Send,
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
@@ -652,8 +651,8 @@ where
     debug!("starting iterative auth checks");
     for event_id in events {
         let event = fetch_event(event_id.borrow())
-            .ok_or_else(|| StatusError::NotFound(event_id.borrow().to_owned()))?;
-        let state_key = event.state_key().ok_or(StatusError::MissingStateKey)?;
+            .ok_or_else(|| StateError::NotFound(event_id.borrow().to_owned()))?;
+        let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();
         for auth_event_id in event.auth_events() {
@@ -661,7 +660,7 @@ where
                 if !auth_event.rejected() {
                     auth_events.insert(
                         auth_event.event_type().with_state_key(
-                            auth_event.state_key().ok_or(StatusError::MissingStateKey)?,
+                            auth_event.state_key().ok_or(StateError::MissingStateKey)?,
                         ),
                         auth_event,
                     );
@@ -771,7 +770,7 @@ fn mainline_sort<E: Event>(
     events: &[E::Id],
     mut power_level: Option<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<Vec<E::Id>, Error> {
+) -> Result<Vec<E::Id>, StateError> {
     debug!("mainline sort of events");
 
     // There are no events to sort, bail.
@@ -786,13 +785,13 @@ fn mainline_sort<E: Event>(
         mainline.push(power_level_event_id.clone());
 
         let power_level_event = fetch_event(power_level_event_id.borrow())
-            .ok_or_else(|| StatusError::NotFound(power_level_event_id.borrow().to_owned()))?;
+            .ok_or_else(|| StateError::NotFound(power_level_event_id.borrow().to_owned()))?;
 
         power_level = None;
 
         for auth_event_id in power_level_event.auth_events() {
             let auth_event = fetch_event(auth_event_id.borrow())
-                .ok_or_else(|| StatusError::NotFound(power_level_event_id.borrow().to_owned()))?;
+                .ok_or_else(|| StateError::NotFound(power_level_event_id.borrow().to_owned()))?;
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 power_level = Some(auth_event_id.to_owned());
                 break;
@@ -875,7 +874,7 @@ fn mainline_position<E: Event>(
     event: E,
     mainline_map: &HashMap<E::Id, usize>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<usize, Error> {
+) -> Result<usize, StateError> {
     let mut current_event = Some(event);
 
     while let Some(event) = current_event {
@@ -892,7 +891,7 @@ fn mainline_position<E: Event>(
         // Look for the power levels event in the auth events.
         for auth_event_id in event.auth_events() {
             let auth_event = fetch_event(auth_event_id.borrow())
-                .ok_or_else(|| Error::NotFound(auth_event_id.borrow().to_owned()))?;
+                .ok_or_else(|| StateError::NotFound(auth_event_id.borrow().to_owned()))?;
 
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 current_event = Some(auth_event);

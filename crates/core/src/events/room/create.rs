@@ -10,7 +10,7 @@ use crate::{
     OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
     events::{EmptyStateKey, StateEventType, RedactContent, RedactedStateEventContent},
     room::RoomType,
-};
+};use crate::room_version_rules::RedactionRules;
 
 /// The content of an `m.room.create` event.
 ///

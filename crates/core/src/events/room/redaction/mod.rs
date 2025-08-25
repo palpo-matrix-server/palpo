@@ -16,7 +16,7 @@ use crate::{
         RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
     },
     serde::{CanBeEmpty, canonical_json::RedactionEvent},
-};
+};use crate::room_version_rules::RedactionRules;
 
 mod event_serde;
 

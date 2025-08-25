@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedRoomAliasId, OwnedServerName, RoomVersionId,
-    events::{StaticEventContent,
-        EventContentFromType, RedactContent, RedactedStateEventContent,
-        StateEventType,
+    events::{
+        EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType,
+        StaticEventContent,
     },
+    room_version_rules::RedactionRules,
     serde::RawJsonValue,
 };
 
@@ -33,7 +34,7 @@ impl RoomAliasesEventContent {
 impl RedactContent for RoomAliasesEventContent {
     type Redacted = RedactedRoomAliasesEventContent;
 
-    fn redact(self,  rules: &RedactionRules) -> RedactedRoomAliasesEventContent {
+    fn redact(self, rules: &RedactionRules) -> RedactedRoomAliasesEventContent {
         let aliases = rules.keep_room_aliases_aliases.then_some(self.aliases);
         RedactedRoomAliasesEventContent { aliases }
     }

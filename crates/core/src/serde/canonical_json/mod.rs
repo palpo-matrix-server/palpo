@@ -233,7 +233,7 @@ pub fn redact_in_place(
 ///
 /// Edits the `object` in-place.
 pub fn redact_content_in_place(
-    object: &mut CanonicalJsonObject,
+    content: &mut CanonicalJsonObject,
     rules: &RedactionRules,
     event_type: impl AsRef<str>,
 ) -> Result<(), RedactionError> {
