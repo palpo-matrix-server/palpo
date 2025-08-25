@@ -13,12 +13,13 @@ mod tests;
 use self::room_member::check_room_member;
 use crate::{
     EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
-    events::{
+    events::StateEventType,
+    state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
-        RoomThirdPartyInviteEvent, StateEventType, TimelineEventType,
+        RoomThirdPartyInviteEvent,  TimelineEventType,
         member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
-        room::{member::MembershipState, power_levels::UserPowerLevel},
+        member::MembershipState, power_levels::UserPowerLevel,
     },
     room::JoinRuleKind,
     room_version_rules::{AuthorizationRules, RoomVersionRules},
@@ -363,7 +364,7 @@ where
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(room_member_event, rules, room_create_event, fetch_state);
+        return check_room_member(room_member_event, &rules.authorization, room_create_event, fetch_state);
     }
 
     // Since v1, if the sender's current membership state is not join, reject.
@@ -694,9 +695,9 @@ fn check_power_level_maps<K: Ord>(
 }
 
 /// Check whether the given event passes the `m.room.redaction` authorization rules.
-fn check_room_redaction(
-    room_redaction_event: impl Event,
-    current_room_power_levels_event: Option<RoomPowerLevelsEvent<impl Event>>,
+fn check_room_redactionn<Pdu>(
+    room_redaction_event: &Pdu,
+    current_room_power_levels_event: Option<RoomPowerLevelsEvent<Pdu>>,
     rules: &AuthorizationRules,
     sender_level: UserPowerLevel,
 ) -> Result<(), String> {

@@ -51,14 +51,14 @@ pub(super) fn parse_event_struct_ident_to_kind_variation(
 }
 
 pub(super) trait EventFieldExt {
-    /// Whether the given field as the `#[ruma_event(default)]` attribute.
+    /// Whether the given field as the `#[palpo_event(default)]` attribute.
     fn has_default_attr(&self) -> Result<bool, syn::Error>;
 }
 
 impl EventFieldExt for Field {
     fn has_default_attr(&self) -> Result<bool, syn::Error> {
         for attr in &self.attrs {
-            if !attr.path().is_ident("ruma_event") {
+            if !attr.path().is_ident("palpo_event") {
                 continue;
             }
 

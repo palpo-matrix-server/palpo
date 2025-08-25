@@ -223,18 +223,18 @@ impl EventEnumEntry {
 
 impl Parse for EventEnumEntry {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let (ruma_enum_attrs, attrs) = input
+        let (palpo_enum_attrs, attrs) = input
             .call(Attribute::parse_outer)?
             .into_iter()
-            .partition::<Vec<_>, _>(|attr| attr.path().is_ident("ruma_enum"));
+            .partition::<Vec<_>, _>(|attr| attr.path().is_ident("palpo_enum"));
         let ev_type: EventType = input.parse()?;
         let _: Token![=>] = input.parse()?;
         let ev_path = input.call(Path::parse_mod_style)?;
 
-        let mut aliases = Vec::with_capacity(ruma_enum_attrs.len());
+        let mut aliases = Vec::with_capacity(palpo_enum_attrs.len());
         let mut ident = None;
 
-        for attr_list in ruma_enum_attrs {
+        for attr_list in palpo_enum_attrs {
             for attr in attr_list
                 .parse_args_with(Punctuated::<EventEnumAttr, Token![,]>::parse_terminated)?
             {

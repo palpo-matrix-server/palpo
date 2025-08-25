@@ -40,6 +40,10 @@ impl EventContent for PossiblyRedactedPolicyRuleServerEventContent {
 
 impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleServerEventContent {
     type StateKey = String;
+
+    fn event_type(&self) -> StateEventType {
+        StateEventType::PolicyRuleServer
+    }
 }
 
 impl EventContentFromType for PossiblyRedactedPolicyRuleServerEventContent {

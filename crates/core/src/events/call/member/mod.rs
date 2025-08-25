@@ -4,15 +4,22 @@
 //!
 //! [MSC3401]: https://github.com/matrix-org/matrix-spec-proposals/pull/3401
 
+mod focus;
+mod member_data;
+mod member_state_key;
+pub use focus::*;
+pub use member_data::*;
+pub use member_state_key::*;
+
 use std::time::Duration;
 
-use crate::macros::EventContent;
 use as_variant::as_variant;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::{OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum};
+use crate::{OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum, events::{StateEventType, StaticStateEventContent}};
+use crate::macros::EventContent;
 
 /// The member state event for a matrixRTC session.
 ///
@@ -20,7 +27,7 @@ use crate::{OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum};
 /// participation in a matrixRTC session. It consists of memberships / sessions.
 #[derive(ToSchema, Clone, Debug, PartialEq, Serialize, Deserialize, EventContent)]
 #[cfg_attr(test, derive(PartialEq))]
-#[palpo_event(type = "org.matrix.msc3401.call.member", kind = State, state_key_type = OwnedUserId)]
+#[palpo_event(type = "org.matrix.msc3401.call.member", kind = State, state_key_type = CallMemberStateKey, custom_redacted, custom_possibly_redacted)]
 #[serde(untagged)]
 pub enum CallMemberEventContent {
     /// The legacy format for m.call.member events. (An array of memberships. The devices of one
@@ -105,15 +112,15 @@ impl CallMemberEventContent {
         }
     }
 
-
-
     /// All the memberships for this event. Can only contain multiple elements in the case of legacy
     /// `m.call.member` state events.
     pub fn memberships(&self) -> Vec<MembershipData<'_>> {
         match self {
-            CallMemberEventContent::LegacyContent(content) => {
-                content.memberships.iter().map(MembershipData::Legacy).collect()
-            }
+            CallMemberEventContent::LegacyContent(content) => content
+                .memberships
+                .iter()
+                .map(MembershipData::Legacy)
+                .collect(),
             CallMemberEventContent::SessionContent(content) => {
                 [content].map(MembershipData::Session).to_vec()
             }
@@ -132,9 +139,12 @@ impl CallMemberEventContent {
     pub fn set_created_ts_if_none(&mut self, origin_server_ts: MilliSecondsSinceUnixEpoch) {
         match self {
             CallMemberEventContent::LegacyContent(content) => {
-                content.memberships.iter_mut().for_each(|m: &mut LegacyMembershipData| {
-                    m.created_ts.get_or_insert(origin_server_ts);
-                });
+                content
+                    .memberships
+                    .iter_mut()
+                    .for_each(|m: &mut LegacyMembershipData| {
+                        m.created_ts.get_or_insert(origin_server_ts);
+                    });
             }
             CallMemberEventContent::SessionContent(m) => {
                 m.created_ts.get_or_insert(origin_server_ts);
@@ -146,7 +156,6 @@ impl CallMemberEventContent {
 
 /// This describes the CallMember event if the user is not part of the current session.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct EmptyMembershipData {
     /// An empty call member state event can optionally contain a leave reason.
     /// If it is `None` the user has left the call ordinarily. (Intentional hangup)
@@ -160,8 +169,7 @@ pub struct EmptyMembershipData {
 /// It is used when the user disconnected and a Future ([MSC4140](https://github.com/matrix-org/matrix-spec-proposals/pull/4140))
 /// was used to update the membership after the client was not reachable anymore.
 #[derive(Clone, PartialEq, StringEnum)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
-#[ruma_enum(rename_all = "m.snake_case")]
+#[palpo_enum(rename_all = "m.snake_case")]
 pub enum LeaveReason {
     /// The user left the call by losing network connection or closing
     /// the client before it was able to send the leave event.
@@ -212,7 +220,6 @@ impl StaticEventContent for RedactedCallMemberEventContent {
 
 /// Legacy content with an array of memberships. See also: [`CallMemberEventContent`]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct LegacyMembershipContent {
     /// A list of all the memberships that user currently has in this room.
     ///
@@ -361,44 +368,6 @@ impl From<MembershipInit> for Membership {
             foci_active,
             membership_id,
         }
-    }
-}
-
-/// Description of the SFU/Focus a membership can be connected to.
-///
-/// A focus can be any server powering the matrixRTC session (SFU,
-/// MCU). It serves as a node to redistribute RTC streams.
-#[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum Focus {
-    /// Livekit is one possible type of SFU/Focus that can be used for a
-    /// matrixRTC session.
-    Livekit(LivekitFocus),
-}
-
-/// The fields to describe livekit as an `active_foci`.
-#[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct LivekitFocus {
-    /// The alias where the livekit sessions can be reached.
-    #[serde(rename = "livekit_alias")]
-    pub alias: String,
-
-    /// The url of the jwt server for the livekit instance.
-    #[serde(rename = "livekit_service_url")]
-    pub service_url: String,
-}
-
-impl LivekitFocus {
-    /// Initialize a [`LivekitFocus`].
-    ///
-    /// # Arguments
-    ///
-    /// * `alias` - The alias where the livekit sessions can be reached.
-    /// * `service_url` - The url of the jwt server for the livekit instance.
-    pub fn new(alias: String, service_url: String) -> Self {
-        Self { alias, service_url }
     }
 }
 

@@ -607,14 +607,12 @@ impl EventField {
     /// Get the type of this field.
     ///
     /// Returns a `(type, is_reference)` tuple.
-    pub fn ty(self, palpo_events: &TokenStream) -> (TokenStream, bool) {
-        let ruma_common = quote! { #palpo_events::exports::ruma_common };
-
+    pub fn ty(self, palpo_core: &TokenStream) -> (TokenStream, bool) {
         match self {
-            Self::OriginServerTs => (quote! { #ruma_common::MilliSecondsSinceUnixEpoch }, false),
-            Self::RoomId => (quote! { &#ruma_common::RoomId }, true),
-            Self::EventId => (quote! { &#ruma_common::EventId }, true),
-            Self::Sender => (quote! { &#ruma_common::UserId }, true),
+            Self::OriginServerTs => (quote! { #palpo_core::UnixMillis }, false),
+            Self::RoomId => (quote! { &#palpo_core::RoomId }, true),
+            Self::EventId => (quote! { &#palpo_core::EventId }, true),
+            Self::Sender => (quote! { &#palpo_core::UserId }, true),
         }
     }
 }

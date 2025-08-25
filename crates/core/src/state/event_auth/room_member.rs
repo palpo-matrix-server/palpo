@@ -6,12 +6,11 @@ use tracing::debug;
 mod tests;
 
 use super::FetchStateExt;
-use crate::events::{StateEventType, room::member::MembershipState};
+use crate::events::{StateEventType, StateKey, room::member::{ThirdPartyInvite, MembershipState}};
 use crate::state::{
-    Event,
+    Event, Error,
     events::{
         RoomCreateEvent, RoomMemberEvent,
-        member::ThirdPartyInvite,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
 };
@@ -27,12 +26,17 @@ use crate::{
 ///
 /// This assumes that `palpo_core::signatures::verify_event()` was called previously, as some authorization
 /// rules depend on the signatures being valid on the event.
-pub(super) fn check_room_member<E: Event>(
-    room_member_event: RoomMemberEvent<impl Event>,
+pub(super) fn check_room_member<Fetch, Fut, Pdu>(
+    room_member_event: RoomMemberEvent<Pdu>,
     rules: &AuthorizationRules,
-    room_create_event: RoomCreateEvent<E>,
-    fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
-) -> Result<(), String> {
+    room_create_event: &RoomCreateEvent<Pdu>,
+    fetch_state: &Fetch,
+) -> Result<(), String>
+where
+    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fut: Future<Output = Result<Pdu, Error>> + Send,
+    Pdu: Event,
+{
     debug!("starting m.room.member check");
 
     // Since v1, if there is no state_key property, or no membership property in content,

@@ -72,7 +72,8 @@ impl PossiblyRedactedStateEventContent for PossiblyRedactedRoomTombstoneEventCon
 }
 
 impl StaticEventContent for PossiblyRedactedRoomTombstoneEventContent {
-    const TYPE: &'static str = "m.room.tombstone";
+    const TYPE: &'static str = RoomTombstoneEventContent::TYPE;
+    type IsPrefix = <RoomTombstoneEventContent as StaticEventContent>::IsPrefix;
 }
 
 impl EventContentFromType for PossiblyRedactedRoomTombstoneEventContent {

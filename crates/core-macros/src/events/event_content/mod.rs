@@ -631,11 +631,11 @@ fn generate_event_content_impl<'a>(
             let possibly_redacted_ident = format_ident!("PossiblyRedacted{ident}");
 
             let unsigned_type = unsigned_type
-                .unwrap_or_else(|| quote! { #palpo_core::StateUnsigned<Self::PossiblyRedacted> });
+                .unwrap_or_else(|| quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> });
 
             quote! {
                 #[automatically_derived]
-                impl #palpo_core::#event_content_kind_trait_name for #ident {
+                impl #palpo_core::events::#event_content_kind_trait_name for #ident {
                     type PossiblyRedacted = #possibly_redacted_ident;
                     type Unsigned = #unsigned_type;
                 }
@@ -651,7 +651,7 @@ fn generate_event_content_impl<'a>(
             .unwrap()
             .filter(|f| {
                 !f.attrs.iter().any(|a| {
-                    a.path().is_ident("ruma_event")
+                    a.path().is_ident("palpo_event")
                         && matches!(a.parse_args(), Ok(EventFieldMeta::TypeFragment))
                 })
             })
@@ -738,10 +738,10 @@ fn generate_event_content_kind_trait_impl(
         .map(|(event_type_enum, event_content_kind_trait_name)| {
             quote! {
                 #[automatically_derived]
-                impl #palpo_core::#event_content_kind_trait_name for #ident {
+                impl #palpo_core::events::#event_content_kind_trait_name for #ident {
                     #state_key
 
-                    fn event_type(&self) -> #palpo_core::#event_type_enum {
+                    fn event_type(&self) -> #palpo_core::events::#event_type_enum {
                         #event_type_fn_impl
                     }
                 }

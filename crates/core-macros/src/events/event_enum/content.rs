@@ -19,7 +19,7 @@ pub fn expand_content_enum(
     variants: &[EventEnumVariant],
     palpo_events: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let serde = quote! { #palpo_events::exports::serde };
+    let serde = quote! { #palpo_events::__private::serde };
 
     let ident = kind.to_content_enum();
 
@@ -51,7 +51,7 @@ pub fn expand_content_enum(
         quote! { #palpo_events::serialize_custom_event_error }.to_string();
 
     // Generate an `EventContentFromType` implementation.
-    let serde_json = quote! { #palpo_events::exports::serde_json };
+    let serde_json = quote! { #palpo_events::__private::serde_json };
     let event_type_match_arms: TokenStream = events
         .iter()
         .map(|event| {
@@ -94,7 +94,6 @@ pub fn expand_content_enum(
         #[derive(Clone, Debug, #serde::Serialize)]
         #[serde(untagged)]
         #[allow(clippy::large_enum_variant)]
-        #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
         pub enum #ident {
             #(
                 #docs
@@ -148,7 +147,7 @@ pub fn expand_full_content_enum(
     docs: &[TokenStream],
     attrs: &[Attribute],
     variants: &[EventEnumVariant],
-    palpo_events: &TokenStream,
+    palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let ident = kind.to_full_content_enum();
 
@@ -169,11 +168,10 @@ pub fn expand_full_content_enum(
         #( #attrs )*
         #[derive(Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
-        #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
         pub enum #ident {
             #(
                 #docs
-                #variant_decls(#palpo_events::FullStateEventContent<#content>),
+                #variant_decls(#palpo_core::events::FullStateEventContent<#content>),
             )*
             #[doc(hidden)]
             _Custom {
@@ -184,7 +182,7 @@ pub fn expand_full_content_enum(
 
         impl #ident {
             /// Get the event’s type, like `m.room.create`.
-            pub fn event_type(&self) -> #palpo_events::#event_type_enum {
+            pub fn event_type(&self) -> #palpo_core::events::#event_type_enum {
                 match self {
                     #( #variant_arms(content) => content.event_type(), )*
                     Self::_Custom { event_type, .. } => ::std::convert::From::from(&event_type.0[..]),

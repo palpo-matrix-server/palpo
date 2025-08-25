@@ -16,7 +16,7 @@ pub mod room_version;
 // #[cfg(test)]
 // mod tests;
 
-pub use event_auth::{auth_check, auth_types_for_event};
+pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_auth_rules};
 pub use events::Event;
 use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
@@ -25,7 +25,7 @@ use crate::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::state::{
-    Error,  check_state_dependent_auth_rules,
+    Error, 
     events::{
         RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
         power_levels::RoomPowerLevelsEventOptionExt,
@@ -85,7 +85,7 @@ pub fn resolve<'a, E, MapsIter>(
     auth_chains: Vec<HashSet<E::Id>>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
     fetch_conflicted_state_subgraph: impl Fn(&StateMap<Vec<E::Id>>) -> Option<HashSet<E::Id>>,
-) -> Result<StateMap<E::Id>>
+) -> Result<StateMap<E::Id>, Error>
 where
     E: Event + Clone,
     E::Id: 'a,
@@ -330,7 +330,7 @@ fn sort_power_events<E: Event>(
     full_conflicted_set: &HashSet<E::Id>,
     rules: &AuthorizationRules,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<Vec<E::Id>> {
+) -> Result<Vec<E::Id>, Error> {
     debug!("reverse topological sort of power events");
 
     // A representation of the DAG, a map of event ID to its list of auth events that are in the
@@ -642,7 +642,7 @@ fn iterative_auth_checks<E: Event + Clone>(
     events: &[E::Id],
     mut state: StateMap<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<StateMap<E::Id>> {
+) -> Result<StateMap<E::Id>, Error> {
     debug!("starting iterative auth checks");
 
     trace!(list = ?events, "events to check");
@@ -768,7 +768,7 @@ fn mainline_sort<E: Event>(
     events: &[E::Id],
     mut power_level: Option<E::Id>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<Vec<E::Id>> {
+) -> Result<Vec<E::Id>, Error> {
     debug!("mainline sort of events");
 
     // There are no events to sort, bail.

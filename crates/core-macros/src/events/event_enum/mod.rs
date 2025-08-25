@@ -114,7 +114,7 @@ pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream
             palpo_core,
         ));
     }
-    
+
     Ok(res)
 }
 
@@ -261,8 +261,6 @@ fn expand_sync_from_into_full(
     variants: &[EventEnumVariant],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let ruma_common = quote! { #palpo_core::exports::ruma_common };
-
     let sync = kind.to_event_enum_ident(EventVariation::Sync)?;
     let full = kind.to_event_enum_ident(EventVariation::None)?;
     let self_ident = quote! { Self };
@@ -292,7 +290,7 @@ fn expand_sync_from_into_full(
         #[automatically_derived]
         impl #sync {
             /// Convert this sync event into a full event (one with a `room_id` field).
-            pub fn into_full_event(self, room_id: #ruma_common::OwnedRoomId) -> #full {
+            pub fn into_full_event(self, room_id: #palpo_core::OwnedRoomId) -> #full {
                 match self {
                     #(
                         #self_match_variants(event) => {
@@ -573,8 +571,6 @@ fn expand_json_castable_impl(
     var: EventVariation,
     palpo_core: &TokenStream,
 ) -> syn::Result<Option<TokenStream>> {
-    let palpo_core = quote! { #palpo_core::exports::palpo_core };
-
     // All event types are represented as objects in JSON.
     let mut json_castable_impls = vec![quote! {
         #[automatically_derived]
