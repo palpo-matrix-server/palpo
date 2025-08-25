@@ -1,10 +1,13 @@
 use std::str::FromStr;
 
-use ruma_common::{OwnedUserId, UserId};
 use serde::{
     de::{self, Deserialize, Deserializer, Unexpected},
     Serialize, Serializer,
 };
+
+
+use crate::{OwnedUserId, UserId};
+
 /// A type that can be used as the `state_key` for call member state events.
 /// Those state keys can be a combination of UserId and DeviceId.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -73,7 +76,7 @@ impl<'de> Deserialize<'de> for CallMemberStateKey {
     where
         D: Deserializer<'de>,
     {
-        let s = ruma_common::serde::deserialize_cow_str(deserializer)?;
+        let s = crate::serde::deserialize_cow_str(deserializer)?;
         Self::from_str(&s).map_err(|err| de::Error::invalid_value(Unexpected::Str(&s), &err))
     }
 }
@@ -132,7 +135,7 @@ impl FromStr for CallMemberStateKeyEnum {
         let Some(colon_idx) = state_key.find(':') else {
             return Err(KeyParseError::InvalidUser {
                 user_id: state_key.to_owned(),
-                error: ruma_common::IdParseError::MissingColon,
+                error: crate::IdParseError::MissingColon,
             });
         };
 
@@ -179,7 +182,7 @@ pub enum KeyParseError {
         /// The user Id that the parser thinks it should have parsed.
         user_id: String,
         /// The user Id parse error why if failed to parse it.
-        error: ruma_common::IdParseError,
+        error: crate::IdParseError,
     },
     /// Uses a leading underscore but no trailing device id. The part after the underscore is a
     /// valid user id.
@@ -202,7 +205,7 @@ impl de::Expected for KeyParseError {
 mod tests {
     use std::str::FromStr;
 
-    use ruma_common::user_id;
+    use crate::user_id;
 
     use crate::call::member::{member_state_key::CallMemberStateKeyEnum, CallMemberStateKey};
 

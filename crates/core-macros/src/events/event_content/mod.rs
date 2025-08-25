@@ -143,8 +143,9 @@ pub fn expand_event_content(
     .unwrap_or_else(syn::Error::into_compile_error);
     let static_event_content_impl =
         generate_static_event_content_impl(ident, &event_types, palpo_core);
-    let type_aliases = generate_event_type_aliases(kind, ident, &input.vis, &event_types, palpo_core)
-        .unwrap_or_else(syn::Error::into_compile_error);
+    let type_aliases =
+        generate_event_type_aliases(kind, ident, &input.vis, &event_types, palpo_core)
+            .unwrap_or_else(syn::Error::into_compile_error);
 
     let json_castable_impl = generate_json_castable_impl(ident, &[], &palpo_core);
 
@@ -434,14 +435,21 @@ fn generate_possibly_redacted_event_content<'a>(
             #json_castable_impl
         })
     } else {
+        let event_content_kind_trait_impl = generate_event_content_kind_trait_impl(
+            ident,
+            event_types,
+            EventKind::State.into(),
+            EventContentTraitVariation::PossiblyRedacted,
+            event_type_fragment,
+            state_key_type,
+            palpo_core,
+        );
+
         Ok(quote! {
             #[doc = #doc]
             #vis type #possibly_redacted_ident = #ident;
 
-            #[automatically_derived]
-            impl #palpo_core::events::PossiblyRedactedStateEventContent for #ident {
-                type StateKey = #state_key_type;
-            }
+            #event_content_kind_trait_impl
         })
     }
 }
@@ -630,8 +638,9 @@ fn generate_event_content_impl<'a>(
                 EventKind::State.to_content_kind_trait(EventContentTraitVariation::Static);
             let possibly_redacted_ident = format_ident!("PossiblyRedacted{ident}");
 
-            let unsigned_type = unsigned_type
-                .unwrap_or_else(|| quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> });
+            let unsigned_type = unsigned_type.unwrap_or_else(
+                || quote! { #palpo_core::events::StateUnsigned<Self::PossiblyRedacted> },
+            );
 
             quote! {
                 #[automatically_derived]

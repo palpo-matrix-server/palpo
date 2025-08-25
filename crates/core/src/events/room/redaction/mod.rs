@@ -268,20 +268,16 @@ pub struct RedactedRoomRedactionEventContent {
     pub redacts: Option<OwnedEventId>,
 }
 
-impl EventContent for RedactedRoomRedactionEventContent {
-    type EventType = MessageLikeEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        MessageLikeEventType::RoomRedaction
-    }
-}
-
 impl StaticEventContent for RedactedRoomRedactionEventContent {
     const TYPE: &'static str = RoomRedactionEventContent::TYPE;
     type IsPrefix = <RoomRedactionEventContent as StaticEventContent>::IsPrefix;
 }
 
-impl RedactedMessageLikeEventContent for RedactedRoomRedactionEventContent {}
+impl RedactedMessageLikeEventContent for RedactedRoomRedactionEventContent {
+    fn event_type(&self) -> MessageLikeEventType {
+        MessageLikeEventType::RoomRedaction
+    }
+}
 
 impl RoomRedactionEvent {
     /// Returns the `type` of this event.

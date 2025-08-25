@@ -10,33 +10,18 @@ use crate::{
     serde::{CanBeEmpty, RawJson, RawJsonValue},
 };
 
-/// The base trait that all event content types implement.
-///
-/// Use [`macros::EventContent`] to derive this traits. It is not meant to be
-/// implemented manually.
-///
-/// [`macros::EventContent`]: super::macros::EventContent
-pub trait EventContent: Sized + Serialize {
-    /// The Rust enum for the event kind's known types.
-    type EventType;
-
-    /// Get the event's type, like `m.room.message`.
-    fn event_type(&self) -> Self::EventType;
-}
-
 /// Extension trait for [`RawJson<T>`].
 pub trait RawJsonExt<T: EventContentFromType> {
     /// Try to deserialize the JSON as an event's content with the given event
     /// type.
-    fn deserialize_with_type(&self, event_type: T::EventType) -> serde_json::Result<T>;
+    fn deserialize_with_type(&self, event_type: &str) -> serde_json::Result<T>;
 }
 
 impl<T> RawJsonExt<T> for RawJson<T>
 where
     T: EventContentFromType,
-    T::EventType: fmt::Display,
 {
-    fn deserialize_with_type(&self, event_type: T::EventType) -> serde_json::Result<T> {
+    fn deserialize_with_type(&self, event_type: &str) -> serde_json::Result<T> {
         T::from_parts(&event_type.to_string(), self.inner())
     }
 }
@@ -94,15 +79,15 @@ impl BooleanType for False {
 }
 
 /// Content of a global account-data event.
-pub trait GlobalAccountDataEventContent:
-    EventContent<EventType = GlobalAccountDataEventType>
-{
+pub trait GlobalAccountDataEventContent: Sized + Serialize {
+    /// Get the event's type, like `m.push_rules`.
+    fn event_type(&self) -> GlobalAccountDataEventType;
 }
 
 /// Content of a room-specific account-data event.
 pub trait RoomAccountDataEventContent: Sized + Serialize {
     /// Get the event's type, like `m.receipt`.
-    fn event_type(&self) -> EphemeralRoomEventType;
+    fn event_type(&self) -> RoomAccountDataEventType;
 }
 
 /// Content of an ephemeral room event.
@@ -152,7 +137,7 @@ pub trait RedactedStateEventContent: Sized + Serialize {
 }
 
 /// Content of a state event.
-pub trait PossiblyRedactedStateEventContent: EventContent<EventType = StateEventType> {
+pub trait PossiblyRedactedStateEventContent: Sized + Serialize {
     /// The type of the event's `state_key` field.
     type StateKey: AsRef<str> + Clone + fmt::Debug + DeserializeOwned + Serialize;
 
@@ -161,13 +146,13 @@ pub trait PossiblyRedactedStateEventContent: EventContent<EventType = StateEvent
 }
 
 /// Content of a to-device event.
-pub trait ToDeviceEventContent: EventContent<EventType = ToDeviceEventType> {
+pub trait ToDeviceEventContent: Sized + Serialize {
     /// Get the event's type, like `m.room_key`.
     fn event_type(&self) -> ToDeviceEventType;
 }
 
 /// Event content that can be deserialized with its event type.
-pub trait EventContentFromType: EventContent {
+pub trait EventContentFromType: Sized {
     /// Constructs this event content from the given event type and JSON.
     #[doc(hidden)]
     fn from_parts(event_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {

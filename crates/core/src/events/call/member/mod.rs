@@ -18,8 +18,16 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::{OwnedUserId, PrivOwnedStr, UnixMillis, serde::StringEnum, events::{StateEventType, StaticStateEventContent}};
 use crate::macros::EventContent;
+use crate::room_version_rules::RedactionRules;
+use crate::{
+    OwnedDeviceId, OwnedUserId, PrivOwnedStr, UnixMillis,
+    events::{RedactedStateEventContent,
+        PossiblyRedactedStateEventContent, RedactContent, StateEventType, StaticEventContent,
+        StaticStateEventContent,
+    },
+    serde::StringEnum,
+};
 
 /// The member state event for a matrixRTC session.
 ///
@@ -64,7 +72,7 @@ impl CallMemberEventContent {
         device_id: OwnedDeviceId,
         focus_active: ActiveFocus,
         foci_preferred: Vec<Focus>,
-        created_ts: Option<MilliSecondsSinceUnixEpoch>,
+        created_ts: Option<UnixMillis>,
         expires: Option<Duration>,
     ) -> Self {
         Self::SessionContent(SessionMembershipData {
@@ -136,7 +144,7 @@ impl CallMemberEventContent {
     /// In the rust sdk we want to copy over the `origin_server_ts` of the event into the content.
     /// (This allows to use `MinimalStateEvents` and still be able to determine if a membership is
     /// expired)
-    pub fn set_created_ts_if_none(&mut self, origin_server_ts: MilliSecondsSinceUnixEpoch) {
+    pub fn set_created_ts_if_none(&mut self, origin_server_ts: UnixMillis) {
         match self {
             CallMemberEventContent::LegacyContent(content) => {
                 content

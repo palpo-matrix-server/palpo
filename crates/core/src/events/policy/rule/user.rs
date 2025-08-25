@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
 use crate::{
-    events::{
-        EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+    events::{StaticEventContent,
+         EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
     },
     serde::RawJsonValue,
 };
@@ -30,13 +30,6 @@ pub struct PolicyRuleUserEventContent(pub PolicyRuleEventContent);
 #[allow(clippy::exhaustive_structs)]
 pub struct PossiblyRedactedPolicyRuleUserEventContent(pub PossiblyRedactedPolicyRuleEventContent);
 
-impl EventContent for PossiblyRedactedPolicyRuleUserEventContent {
-    type EventType = StateEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        StateEventType::PolicyRuleUser
-    }
-}
 
 impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleUserEventContent {
     type StateKey = String;
@@ -46,8 +39,7 @@ impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleUserEventCo
     }
 }
 
-impl EventContentFromType for PossiblyRedactedPolicyRuleUserEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
-    }
+impl StaticEventContent for PossiblyRedactedPolicyRuleUserEventContent {
+    const TYPE: &'static str = PolicyRuleUserEventContent::TYPE;
+    type IsPrefix = <PolicyRuleUserEventContent as StaticEventContent>::IsPrefix;
 }

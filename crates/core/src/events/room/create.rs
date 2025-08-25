@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
-    events::{EmptyStateKey, RedactContent, RedactedStateEventContent},
+    events::{EmptyStateKey, StateEventType, RedactContent, RedactedStateEventContent},
     room::RoomType,
 };
 
@@ -142,6 +142,10 @@ pub type RedactedRoomCreateEventContent = RoomCreateEventContent;
 
 impl RedactedStateEventContent for RedactedRoomCreateEventContent {
     type StateKey = EmptyStateKey;
+
+    fn event_type(&self) -> StateEventType {
+        StateEventType::RoomCreate
+    }
 }
 
 // #[cfg(test)]

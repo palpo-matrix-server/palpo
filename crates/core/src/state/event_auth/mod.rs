@@ -181,7 +181,7 @@ where
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
         let room_create_event = RoomCreateEvent::new(incoming_event);
 
-        return check_room_create(room_create_event, rules);
+        return check_room_create(room_create_event, &rules.authorization);
     }
 
     let expected_auth_types = auth_types_for_event(
@@ -308,7 +308,7 @@ where
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &RoomVersionRules,
+    rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> MatrixResult<()>

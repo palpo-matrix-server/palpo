@@ -13,7 +13,7 @@ use crate::serde::JsonValue;
 use crate::state::Event;
 use crate::{
     PrivOwnedStr,
-    events::{
+    events::{StaticEventContent,
         AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
         StateEventType,
@@ -270,6 +270,10 @@ pub type PossiblyRedactedRoomMemberEventContent = RoomMemberEventContent;
 
 impl PossiblyRedactedStateEventContent for RoomMemberEventContent {
     type StateKey = OwnedUserId;
+
+    fn event_type(&self) -> StateEventType {
+        StateEventType::RoomMember
+    }
 }
 
 /// A member event that has been redacted.
@@ -341,22 +345,17 @@ impl RedactedRoomMemberEventContent {
     }
 }
 
-impl EventContent for RedactedRoomMemberEventContent {
-    type EventType = StateEventType;
+impl RedactedStateEventContent for RedactedRoomMemberEventContent {
+    type StateKey = OwnedUserId;
 
     fn event_type(&self) -> StateEventType {
         StateEventType::RoomMember
     }
 }
 
-impl RedactedStateEventContent for RedactedRoomMemberEventContent {
-    type StateKey = OwnedUserId;
-}
-
-impl EventContentFromType for RedactedRoomMemberEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
-    }
+impl StaticEventContent for RedactedRoomMemberEventContent {
+    const TYPE: &'static str = RoomMemberEventContent::TYPE;
+    type IsPrefix = <RoomMemberEventContent as StaticEventContent>::IsPrefix;
 }
 
 impl RoomMemberEvent {

@@ -150,14 +150,6 @@ impl NewUnstablePollStartEventContent {
     }
 }
 
-impl EventContent for NewUnstablePollStartEventContent {
-    type EventType = MessageLikeEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        MessageLikeEventType::UnstablePollStart
-    }
-}
-
 impl StaticEventContent for NewUnstablePollStartEventContent {
     const TYPE: &'static str = UnstablePollStartEventContent::TYPE;
     type IsPrefix = <UnstablePollStartEventContent as StaticEventContent>::IsPrefix;
@@ -240,21 +232,15 @@ impl ReplacementUnstablePollStartEventContent {
         }
     }
 }
-
-impl EventContent for ReplacementUnstablePollStartEventContent {
-    type EventType = MessageLikeEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        MessageLikeEventType::UnstablePollStart
-    }
-}
-
 impl StaticEventContent for ReplacementUnstablePollStartEventContent {
     const TYPE: &'static str = UnstablePollStartEventContent::TYPE;
     type IsPrefix = <UnstablePollStartEventContent as StaticEventContent>::IsPrefix;
 }
-
-impl MessageLikeEventContent for ReplacementUnstablePollStartEventContent {}
+impl MessageLikeEventContent for ReplacementUnstablePollStartEventContent {
+    fn event_type(&self) -> MessageLikeEventType {
+        MessageLikeEventType::UnstablePollStart
+    }
+}
 
 /// Redacted form of UnstablePollStartEventContent
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
@@ -267,24 +253,14 @@ impl RedactedUnstablePollStartEventContent {
     }
 }
 
-impl EventContent for RedactedUnstablePollStartEventContent {
-    type EventType = MessageLikeEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        MessageLikeEventType::UnstablePollStart
-    }
-}
-
 impl StaticEventContent for RedactedUnstablePollStartEventContent {
     const TYPE: &'static str = UnstablePollStartEventContent::TYPE;
     type IsPrefix = <UnstablePollStartEventContent as StaticEventContent>::IsPrefix;
 }
 
-impl RedactedMessageLikeEventContent for RedactedUnstablePollStartEventContent {}
-
-impl EventContentFromType for RedactedUnstablePollStartEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
+impl RedactedMessageLikeEventContent for RedactedUnstablePollStartEventContent {
+    fn event_type(&self) -> MessageLikeEventType {
+        MessageLikeEventType::UnstablePollStart
     }
 }
 

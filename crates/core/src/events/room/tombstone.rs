@@ -59,25 +59,15 @@ pub struct PossiblyRedactedRoomTombstoneEventContent {
     pub replacement_room: Option<OwnedRoomId>,
 }
 
-impl EventContent for PossiblyRedactedRoomTombstoneEventContent {
-    type EventType = StateEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        StateEventType::RoomTombstone
-    }
-}
-
 impl PossiblyRedactedStateEventContent for PossiblyRedactedRoomTombstoneEventContent {
     type StateKey = EmptyStateKey;
+
+    fn event_type(&self) -> StateEventType {
+        StateEventType::RoomTombstone
+    }
 }
 
 impl StaticEventContent for PossiblyRedactedRoomTombstoneEventContent {
     const TYPE: &'static str = RoomTombstoneEventContent::TYPE;
     type IsPrefix = <RoomTombstoneEventContent as StaticEventContent>::IsPrefix;
-}
-
-impl EventContentFromType for PossiblyRedactedRoomTombstoneEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
-    }
 }

@@ -2,17 +2,17 @@
 //!
 //! [`m.policy.rule.room`]: https://spec.matrix.org/latest/client-server-api/#mpolicyruleroom
 
-use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
 use crate::{
-    events::{
-        EventContent, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+    events::{StaticEventContent,
+         EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
     },
     serde::RawJsonValue,
 };
+use crate::macros::EventContent;
 
 /// The content of an `m.policy.rule.room` event.
 ///
@@ -30,14 +30,6 @@ pub struct PolicyRuleRoomEventContent(pub PolicyRuleEventContent);
 #[allow(clippy::exhaustive_structs)]
 pub struct PossiblyRedactedPolicyRuleRoomEventContent(pub PossiblyRedactedPolicyRuleEventContent);
 
-impl EventContent for PossiblyRedactedPolicyRuleRoomEventContent {
-    type EventType = StateEventType;
-
-    fn event_type(&self) -> Self::EventType {
-        StateEventType::PolicyRuleRoom
-    }
-}
-
 impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleRoomEventContent {
     type StateKey = String;
 
@@ -46,10 +38,9 @@ impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleRoomEventCo
     }
 }
 
-impl EventContentFromType for PossiblyRedactedPolicyRuleRoomEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
-    }
+impl StaticEventContent for PossiblyRedactedPolicyRuleRoomEventContent {
+    const TYPE: &'static str = PolicyRuleRoomEventContent::TYPE;
+    type IsPrefix = <PolicyRuleRoomEventContent as StaticEventContent>::IsPrefix;
 }
 
 // #[cfg(test)]

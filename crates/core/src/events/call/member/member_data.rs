@@ -88,7 +88,7 @@ impl MembershipData<'_> {
     /// For legacy events this can either be the origin server ts or a copy from the
     /// `origin_server_ts` since we expect legacy events to get updated (when a new device
     /// joins/leaves).
-    pub fn created_ts(&self) -> Option<MilliSecondsSinceUnixEpoch> {
+    pub fn created_ts(&self) -> Option<UnixMillis> {
         match self {
             MembershipData::Legacy(data) => data.created_ts,
             MembershipData::Session(data) => data.created_ts,
@@ -107,9 +107,9 @@ impl MembershipData<'_> {
     /// # Arguments
     ///
     /// * `origin_server_ts` - a fallback if [`MembershipData::created_ts`] is not present
-    pub fn is_expired(&self, origin_server_ts: Option<MilliSecondsSinceUnixEpoch>) -> bool {
+    pub fn is_expired(&self, origin_server_ts: Option<UnixMillis>) -> bool {
         if let Some(expire_ts) = self.expires_ts(origin_server_ts) {
-            MilliSecondsSinceUnixEpoch::now() > expire_ts
+            UnixMillis::now() > expire_ts
         } else {
             // This should not be reached since we only allow events that have copied over
             // the origin server ts. `set_created_ts_if_none`
@@ -132,14 +132,14 @@ impl MembershipData<'_> {
     /// * `origin_server_ts` - a fallback if [`MembershipData::created_ts`] is not present
     pub fn expires_ts(
         &self,
-        origin_server_ts: Option<MilliSecondsSinceUnixEpoch>,
-    ) -> Option<MilliSecondsSinceUnixEpoch> {
+        origin_server_ts: Option<UnixMillis>,
+    ) -> Option<UnixMillis> {
         let expires = match &self {
             MembershipData::Legacy(data) => data.expires,
             MembershipData::Session(data) => data.expires,
         };
         let ev_created_ts = self.created_ts().or(origin_server_ts)?.to_system_time();
-        ev_created_ts.and_then(|t| MilliSecondsSinceUnixEpoch::from_system_time(t + expires))
+        ev_created_ts.and_then(|t| UnixMillis::from_system_time(t + expires))
     }
 }
 
@@ -164,7 +164,7 @@ pub struct LegacyMembershipData {
     ///
     /// The time a member has joined is defined as:
     /// `MIN(content.created_ts, event.origin_server_ts)`
-    #[serde(with = "ruma_common::serde::duration::ms")]
+    #[serde(with = "crate::serde::duration::ms")]
     pub expires: Duration,
 
     /// Stores a copy of the `origin_server_ts` of the initial session event.
@@ -172,7 +172,7 @@ pub struct LegacyMembershipData {
     /// If the membership is updated this field will be used to track the
     /// original `origin_server_ts`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_ts: Option<MilliSecondsSinceUnixEpoch>,
+    pub created_ts: Option<UnixMillis>,
 
     /// A list of the foci in use for this membership.
     pub foci_active: Vec<Focus>,
@@ -212,14 +212,14 @@ pub struct SessionMembershipData {
     /// If the membership is updated this field will be used to track the
     /// original `origin_server_ts`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_ts: Option<MilliSecondsSinceUnixEpoch>,
+    pub created_ts: Option<UnixMillis>,
 
     /// The duration in milliseconds relative to the time this membership joined
     /// during which the membership is valid.
     ///
     /// The time a member has joined is defined as:
     /// `MIN(content.created_ts, event.origin_server_ts)`
-    #[serde(with = "ruma_common::serde::duration::ms")]
+    #[serde(with = "crate::serde::duration::ms")]
     pub expires: Duration,
 }
 

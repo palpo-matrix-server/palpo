@@ -12,6 +12,7 @@ pub mod event_auth;
 pub mod events;
 mod power_levels;
 pub mod room_version;
+mod error;
 
 // #[cfg(test)]
 // mod tests;
@@ -20,12 +21,12 @@ pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_aut
 pub use events::Event;
 use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
+pub use error::Error;
 
 use crate::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::state::{
-    Error, 
     events::{
         RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
         power_levels::RoomPowerLevelsEventOptionExt,
@@ -872,7 +873,7 @@ fn mainline_position<E: Event>(
     event: E,
     mainline_map: &HashMap<E::Id, usize>,
     fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<usize> {
+) -> Result<usize, Error> {
     let mut current_event = Some(event);
 
     while let Some(event) = current_event {

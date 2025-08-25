@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedRoomAliasId, OwnedServerName, RoomVersionId,
-    events::{
+    events::{StaticEventContent,
         EventContent, EventContentFromType, RedactContent, RedactedStateEventContent,
         StateEventType,
     },
@@ -78,14 +78,6 @@ impl RedactedRoomAliasesEventContent {
     }
 }
 
-impl EventContent for RedactedRoomAliasesEventContent {
-    type EventType = StateEventType;
-
-    fn event_type(&self) -> StateEventType {
-        StateEventType::RoomAliases
-    }
-}
-
 impl RedactedStateEventContent for RedactedRoomAliasesEventContent {
     type StateKey = OwnedServerName;
 
@@ -94,8 +86,7 @@ impl RedactedStateEventContent for RedactedRoomAliasesEventContent {
     }
 }
 
-impl EventContentFromType for RedactedRoomAliasesEventContent {
-    fn from_parts(_ev_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
-        serde_json::from_str(content.get())
-    }
+impl StaticEventContent for RedactedRoomAliasesEventContent {
+    const TYPE: &'static str = RoomAliasesEventContent::TYPE;
+    type IsPrefix = <RoomAliasesEventContent as StaticEventContent>::IsPrefix;
 }
