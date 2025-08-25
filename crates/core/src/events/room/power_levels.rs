@@ -3,19 +3,19 @@
 //! [`m.room.power_levels`]: https://spec.matrix.org/latest/client-server-api/#mroompower_levels
 
 use std::{
-    cmp::{max, Ordering},
+    cmp::{Ordering, max},
     collections::BTreeMap,
 };
 
 use crate::{
-    power_levels::{default_power_level, NotificationPowerLevels},
+    OwnedUserId, UserId,
+    power_levels::{NotificationPowerLevels, default_power_level},
     push::PushConditionPowerLevelsCtx,
     room_version_rules::{AuthorizationRules, RedactionRules, RoomPowerLevelsRules},
-    OwnedUserId, UserId,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use crate::events::{
     EmptyStateKey, MessageLikeEventType, RedactContent, RedactedStateEventContent, StateEventType,
     StaticEventContent, TimelineEventType,
 };
@@ -156,7 +156,11 @@ impl RedactContent for RoomPowerLevelsEventContent {
             ..
         } = self;
 
-        let invite = if rules.keep_room_power_levels_invite { invite } else { 0 };
+        let invite = if rules.keep_room_power_levels_invite {
+            invite
+        } else {
+            0
+        };
 
         RedactedRoomPowerLevelsEventContent {
             ban,
@@ -550,7 +554,10 @@ impl RoomPowerLevels {
 
     /// Whether the given user ID is a privileged creator.
     fn is_privileged_creator(&self, user_id: &UserId) -> bool {
-        self.rules.privileged_creators.as_ref().is_some_and(|creators| creators.contains(user_id))
+        self.rules
+            .privileged_creators
+            .as_ref()
+            .is_some_and(|creators| creators.contains(user_id))
     }
 
     /// Get the power level of a specific user.
@@ -559,7 +566,10 @@ impl RoomPowerLevels {
             return UserPowerLevel::Infinite;
         }
 
-        self.users.get(user_id).map_or(self.users_default, |pl| *pl).into()
+        self.users
+            .get(user_id)
+            .map_or(self.users_default, |pl| *pl)
+            .into()
     }
 
     /// Get the power level required to perform a given action.
@@ -570,9 +580,9 @@ impl RoomPowerLevels {
             PowerLevelAction::Invite => self.invite,
             PowerLevelAction::Kick => self.kick,
             PowerLevelAction::RedactOwn => self.for_message(MessageLikeEventType::RoomRedaction),
-            PowerLevelAction::RedactOther => {
-                self.redact.max(self.for_message(MessageLikeEventType::RoomRedaction))
-            }
+            PowerLevelAction::RedactOther => self
+                .redact
+                .max(self.for_message(MessageLikeEventType::RoomRedaction)),
             PowerLevelAction::SendMessage(msg_type) => self.for_message(msg_type),
             PowerLevelAction::SendState(state_type) => self.for_state(state_type),
             PowerLevelAction::TriggerNotification(NotificationPowerLevelType::Room) => {
@@ -583,12 +593,18 @@ impl RoomPowerLevels {
 
     /// Get the power level required to send the given message type.
     pub fn for_message(&self, msg_type: MessageLikeEventType) -> i64 {
-        self.events.get(&msg_type.into()).copied().unwrap_or(self.events_default)
+        self.events
+            .get(&msg_type.into())
+            .copied()
+            .unwrap_or(self.events_default)
     }
 
     /// Get the power level required to send the given state event type.
     pub fn for_state(&self, state_type: StateEventType) -> i64 {
-        self.events.get(&state_type.into()).copied().unwrap_or(self.state_default)
+        self.events
+            .get(&state_type.into())
+            .copied()
+            .unwrap_or(self.state_default)
     }
 
     /// Whether the given user can ban other users based on the power levels.
@@ -774,7 +790,9 @@ impl RoomPowerLevels {
 
     /// Get the maximum power level of any user.
     pub fn max(&self) -> i64 {
-        self.users.values().fold(self.users_default, |max_pl, user_pl| max(max_pl, *user_pl))
+        self.users
+            .values()
+            .fold(self.users_default, |max_pl, user_pl| max(max_pl, *user_pl))
     }
 }
 
@@ -792,9 +810,13 @@ impl TryFrom<RoomPowerLevels> for RoomPowerLevelsEventContent {
     type Error = PowerLevelsError;
 
     fn try_from(c: RoomPowerLevels) -> Result<Self, Self::Error> {
-        if c.rules.privileged_creators.as_ref().is_some_and(|creators| {
-            !c.users.is_empty() && creators.iter().any(|user_id| c.users.contains_key(user_id))
-        }) {
+        if c.rules
+            .privileged_creators
+            .as_ref()
+            .is_some_and(|creators| {
+                !c.users.is_empty() && creators.iter().any(|user_id| c.users.contains_key(user_id))
+            })
+        {
             return Err(PowerLevelsError::CreatorInUsersMap);
         }
 
@@ -813,7 +835,7 @@ impl TryFrom<RoomPowerLevels> for RoomPowerLevelsEventContent {
     }
 }
 
-impl From<RoomPowerLevels> for PushConditionPowerLevelsCtx {
+impl From<RoomPowerLevels> for PushConditionPowerLevvelsCtx {
     fn from(c: RoomPowerLevels) -> Self {
         Self::new(c.users, c.users_default, c.notifications, c.rules)
     }

@@ -165,7 +165,7 @@ where
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_independent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &AuthorizationRules,
+    rules: &RoomVersionRules,
     incoming_event: &Pdu,
     fetch_event: &Fetch,
 ) -> MatrixResult<()>
@@ -307,7 +307,7 @@ where
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &AuthorizationRules,
+    rules: &RoomVersionRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> MatrixResult<()>

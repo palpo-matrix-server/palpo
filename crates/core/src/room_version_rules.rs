@@ -133,7 +133,7 @@ impl RoomVersionRules {
     };
 
     /// Rules for room version `org.matrix.hydra.11`.
-    #[cfg(feature = "unstable-hydra")]
+    // #[cfg(feature = "unstable-hydra")]
     pub const HYDRA_V11: Self = Self { disposition: RoomVersionDisposition::Unstable, ..Self::V12 };
 
     /// Rules for room version 12.

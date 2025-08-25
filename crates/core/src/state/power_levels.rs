@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-use super::Event;
+use crate::state::Event;
 
 /// The default value of the creator's power level.
 const DEFAULT_CREATOR_POWER_LEVEL: i32 = 100;

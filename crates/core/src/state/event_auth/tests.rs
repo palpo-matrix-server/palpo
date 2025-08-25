@@ -7,7 +7,7 @@ mod room_power_levels;
 use self::room_power_levels::default_room_power_levels;
 use super::check_room_create;
 use crate::{
-    MilliSecondsSinceUnixEpoch, ServerSignatures, check_state_dependent_auth_rules,
+    UnixMillis, ServerSignatures, check_state_dependent_auth_rules,
     check_state_independent_auth_rules,
     event_auth::check_room_redaction,
     events::{
@@ -641,7 +641,7 @@ fn auth_event_in_different_room() {
         event_id: event_id("IPOWER"),
         room_id: Some(owned_room_id!("!wrongroom:foo")),
         sender: alice().to_owned(),
-        origin_server_ts: MilliSecondsSinceUnixEpoch(uint!(3)),
+        origin_server_ts: UnixMillis(uint!(3)),
         state_key: Some(String::new()),
         kind: TimelineEventType::RoomPowerLevels,
         content: to_raw_json_value(&json!({ "users": { alice(): 100 } })).unwrap(),
@@ -756,7 +756,7 @@ fn rejected_auth_event() {
         event_id: event_id("IPOWER"),
         room_id: Some(room_id().to_owned()),
         sender: alice().to_owned(),
-        origin_server_ts: MilliSecondsSinceUnixEpoch(uint!(3)),
+        origin_server_ts: UnixMillis(uint!(3)),
         state_key: Some(String::new()),
         kind: TimelineEventType::RoomPowerLevels,
         content: to_raw_json_value(&json!({ "users": { alice(): 100 } })).unwrap(),
@@ -845,7 +845,7 @@ fn event_without_room_id() {
         event_id: owned_event_id!("$HELLO"),
         room_id: None,
         sender: alice().to_owned(),
-        origin_server_ts: MilliSecondsSinceUnixEpoch(uint!(3)),
+        origin_server_ts: UnixMillis(uint!(3)),
         state_key: None,
         kind: TimelineEventType::RoomMessage,
         content: to_raw_json_value(&RoomMessageEventContent::text_plain("Hi!")).unwrap(),

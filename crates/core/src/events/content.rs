@@ -42,9 +42,29 @@ where
 }
 
 /// An event content type with a statically-known event `type` value.
+///
+/// Note that the `TYPE` might not be the full event type. If `IsPrefix` is set to `True`, it only
+/// contains the statically-known prefix of the event type.
+///
+/// To only support full event types, the bound `StaticEventContent<IsPrefix = False>` can be used.
 pub trait StaticEventContent: EventContent {
-    /// The event type.
+    /// The statically-known part of the event type.
+    ///
+    /// If this is only the prefix of the event type, it should end with `.`, which is usually used
+    /// a separator in Matrix event types.
     const TYPE: &'static str;
+    /// Whether the statically-known part of the event type is the prefix.
+    ///
+    /// Should be set to the [`True`] or [`False`] types.
+    ///
+    /// Ideally this should be a boolean associated constant, but [associated constant equality is
+    /// unstable], so this field could not be used as a bound. Instead we use an associated type so
+    /// we can rely on associated type equality.
+    ///
+    /// If this is set to [`False`], the `TYPE` is the full event type.
+    ///
+    /// [associated constant equality is unstable]: https://github.com/rust-lang/rust/issues/92827
+    type IsPrefix: BooleanType;
 }
 
 /// Content of a global account-data event.
