@@ -1,4 +1,4 @@
-use crate::macros::IdZst;
+use crate::macros::IdDst;
 
 /// The version of a [homeserver signing key].
 ///
@@ -10,7 +10,7 @@ use crate::macros::IdZst;
 ///
 /// [homeserver signing key]: https://spec.matrix.org/latest/server-server-api/#retrieving-server-keys
 #[repr(transparent)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
 #[palpo_id(
     validate = palpo_identifiers_validation::server_signing_key_version::validate,
 )]

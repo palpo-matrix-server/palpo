@@ -6,7 +6,7 @@ use super::{
     MatrixToUri, MatrixUri, OwnedEventId, OwnedServerName, ServerName, matrix_uri::UriAction,
 };
 use crate::RoomOrAliasId;
-use crate::macros::IdZst;
+use crate::macros::IdDst;
 
 /// A Matrix [room ID].
 ///
@@ -20,7 +20,7 @@ use crate::macros::IdZst;
 ///
 /// [room ID]: https://spec.matrix.org/latest/appendices/#room-ids
 #[repr(transparent)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst, AsExpression)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst, AsExpression)]
 #[diesel(not_sized, sql_type = diesel::sql_types::Text)]
 #[palpo_id(validate = palpo_identifiers_validation::room_id::validate)]
 pub struct RoomId(str);

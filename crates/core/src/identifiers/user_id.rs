@@ -19,7 +19,7 @@ use palpo_identifiers_validation::MAX_BYTES;
 ///
 /// [user ID]: https://spec.matrix.org/latest/appendices/#user-identifiers
 #[repr(transparent)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst, AsExpression)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst, AsExpression)]
 #[diesel(not_sized, sql_type = diesel::sql_types::Text)]
 #[palpo_id(validate = palpo_identifiers_validation::user_id::validate)]
 pub struct UserId(str);
@@ -202,7 +202,7 @@ impl UserId {
     }
 }
 
-use crate::macros::IdZst;
+use crate::macros::IdDst;
 pub use palpo_identifiers_validation::user_id::localpart_is_fully_conforming;
 
 #[cfg(test)]

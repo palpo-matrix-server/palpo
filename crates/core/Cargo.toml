@@ -16,6 +16,7 @@ html-matrix = []
 markdown = ["dep:pulldown-cmark"]
 
 ring-compat = ["dep:subslice"]
+compat-empty-string-null = []
 
 # unstable: by using any of these, you opt out of all semver guarantees Ruma
 #           otherwise provides!

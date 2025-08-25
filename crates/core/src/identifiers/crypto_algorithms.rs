@@ -65,6 +65,22 @@ pub enum KeyDerivationAlgorithm {
     _Custom(PrivOwnedStr),
 }
 
+/// The algorithms for [one-time and fallback keys] defined in the Matrix spec.
+///
+/// [one-time and fallback keys]: https://spec.matrix.org/latest/client-server-api/#one-time-and-fallback-keys
+#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[non_exhaustive]
+#[palpo_enum(rename_all = "snake_case")]
+pub enum OneTimeKeyAlgorithm {
+    /// The Curve25519 ECDH algorithm, but the key also contains signatures.
+    SignedCurve25519,
+
+    #[doc(hidden)]
+    _Custom(PrivOwnedStr),
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::{DeviceKeyAlgorithm, SigningKeyAlgorithm};

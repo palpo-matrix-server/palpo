@@ -61,23 +61,6 @@ fn add_signing_keys(new_keys: ServerSigningKeys) -> AppResult<()> {
     Ok(())
 }
 
-pub fn required_keys_exist(object: &CanonicalJsonObject, version: &RoomVersionId) -> bool {
-    use signatures::required_keys;
-
-    let Ok(required_keys) = required_keys(object, version) else {
-        return false;
-    };
-
-    let key_ids = required_keys
-        .iter()
-        .flat_map(|(server, key_ids)| key_ids.iter().map(move |key_id| (server, key_id)));
-    for (server, key_id) in key_ids {
-        if !verify_key_exists(server, key_id).unwrap_or(false) {
-            return false;
-        }
-    }
-    true
-}
 
 pub fn verify_key_exists(server: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<bool> {
     type KeysMap<'a> = BTreeMap<&'a str, &'a RawJsonValue>;

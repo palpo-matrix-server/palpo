@@ -5,7 +5,7 @@
 // https://github.com/rust-lang/rust-clippy/issues/9029
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use identifiers::expand_id_zst;
+use identifiers::expand_id_dst;
 use palpo_identifiers_validation::{
     device_key_id, event_id, key_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
     user_id,
@@ -133,13 +133,45 @@ pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
     expand_from_impls_derived(input).into()
 }
 
-/// Generate methods and trait impl's for ZST identifier type.
-#[proc_macro_derive(IdZst, attributes(palpo_id))]
-pub fn derive_id_zst(input: TokenStream) -> TokenStream {
+
+/// Generate methods and trait impl's for DST identifier type.
+///
+/// This macro generates an `Owned*` wrapper type for the identifier type. This wrapper type is
+/// variable, by default it'll use [`Box`], but it can be changed at compile time
+/// by setting `--cfg=ruma_identifiers_storage=...` using `RUSTFLAGS` or `.cargo/config.toml` (under
+/// `[build]` -> `rustflags = ["..."]`). Currently the only supported value is `Arc`, that uses
+/// [`Arc`](std::sync::Arc) as a wrapper type.
+///
+/// This macro implements:
+///
+/// * Conversions to and from string types, `AsRef<[u8]>` and `AsRef<str>`, as well as `as_str()`
+///   and `as_bytes()` methods. The borrowed type can be converted from a borrowed string without
+///   allocation.
+/// * Conversions to and from borrowed and owned type.
+/// * `Deref`, `AsRef` and `Borrow` to the borrowed type for the owned type.
+/// * `PartialEq` implementations for testing equality with string types and owned and borrowed
+///   types.
+///
+/// # Attributes
+///
+/// * `#[palpo_api(validate = PATH)]`: the path to a function to validate the string during parsing
+///   and deserialization. By default, the types implement `From` string types, when this is set
+///   they implement `TryFrom`.
+///
+/// # Examples
+///
+/// ```ignore
+/// # // HACK: This is "ignore" because of cyclical dependency drama.
+/// use palpo_core_macros::IdDst;
+///
+/// #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
+/// #[palpo_id(validate = ruma_identifiers_validation::user_id::validate)]
+/// pub struct UserId(str);
+/// ```
+#[proc_macro_derive(IdDst, attributes(ruma_id))]
+pub fn derive_id_dst(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
-    expand_id_zst(input)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+    expand_id_dst(input).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 /// Compile-time checked `DeviceKeyId` construction.
