@@ -5,19 +5,21 @@ use std::ops::Deref;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::events::room::member::{ThirdPartyInvite, MembershipState};
+use crate::events::room::member::MembershipState;
 use crate::macros::EventContent;
-use crate::serde::JsonValue;
+use crate::serde::{
+    CanBeEmpty, CanonicalJsonObject, JsonValue, RawJson, RawJsonValue, StringEnum,
+    from_raw_json_value,
+};
 use crate::state::Event;
 use crate::{
     PrivOwnedStr,
     events::{
-        AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
+        AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
         StateEventType,
     },
     identifiers::*,
-    serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum},
 };
 
 /// A helper type for an [`Event`] of type `m.room.member`.
@@ -73,7 +75,6 @@ impl<E: Event> RoomMemberEventOptionExt for Option<RoomMemberEvent<E>> {
         }
     }
 }
-
 
 /// A helper type for the raw JSON content of an event of type `m.room.member`.
 pub(crate) struct RoomMemberEventContent<'a>(&'a RawJsonValue);

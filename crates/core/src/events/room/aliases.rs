@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     OwnedRoomAliasId, OwnedServerName, RoomVersionId,
     events::{StaticEventContent,
-        EventContent, EventContentFromType, RedactContent, RedactedStateEventContent,
+        EventContentFromType, RedactContent, RedactedStateEventContent,
         StateEventType,
     },
     serde::RawJsonValue,

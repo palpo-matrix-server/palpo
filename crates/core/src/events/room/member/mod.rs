@@ -14,7 +14,7 @@ use crate::state::Event;
 use crate::{
     PrivOwnedStr,
     events::{StaticEventContent,
-        AnyStrippedStateEvent, BundledStateRelations, EventContent, EventContentFromType,
+        AnyStrippedStateEvent, BundledStateRelations,  EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
         StateEventType,
     },

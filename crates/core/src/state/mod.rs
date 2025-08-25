@@ -19,7 +19,6 @@ mod error;
 
 pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_auth_rules};
 pub use events::Event;
-use power_levels::PowerLevelsContentFields;
 pub use room_version::RoomVersion;
 pub use error::Error;
 

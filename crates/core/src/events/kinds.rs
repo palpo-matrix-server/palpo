@@ -6,7 +6,7 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{
-    AnyInitialStateEvent, EmptyStateKey, EphemeralRoomEventContent, EventContent,
+    AnyInitialStateEvent, EmptyStateKey, EphemeralRoomEventContent, 
     EventContentFromType, GlobalAccountDataEventContent, MessageLikeEventContent,
     MessageLikeEventType, MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent,
     RedactedMessageLikeEventContent, RedactedStateEventContent, RedactedUnsigned,

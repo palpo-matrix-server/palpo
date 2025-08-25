@@ -12,7 +12,7 @@ use crate::{
     EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId,
     UnixMillis, UserId,
     events::{
-        BundledMessageLikeRelations, EventContent, MessageLikeEventType, RedactContent,
+        BundledMessageLikeRelations, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
     },
     serde::{CanBeEmpty, canonical_json::RedactionEvent},

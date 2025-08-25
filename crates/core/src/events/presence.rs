@@ -6,7 +6,6 @@ use crate::macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
-use super::EventContent;
 use crate::{OwnedMxcUri, OwnedUserId, presence::PresenceState};
 
 /// Presence event.
