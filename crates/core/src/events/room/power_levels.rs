@@ -7,14 +7,16 @@ use std::{
     collections::BTreeMap,
 };
 
+
+use serde::{Deserialize, Serialize};
+use salvo::oapi::ToSchema;
+
 use crate::{
     OwnedUserId, UserId,
     power_levels::{NotificationPowerLevels, default_power_level},
     push::PushConditionPowerLevelsCtx,
     room_version_rules::{AuthorizationRules, RedactionRules, RoomPowerLevelsRules},
 };
-use serde::{Deserialize, Serialize};
-
 use crate::events::{
     EmptyStateKey, MessageLikeEventType, RedactContent, RedactedStateEventContent, StateEventType,
     StaticEventContent, TimelineEventType,
@@ -24,7 +26,7 @@ use crate::macros::EventContent;
 /// The content of an `m.room.power_levels` event.
 ///
 /// Defines the power levels (privileges) of users in the room.
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "m.room.power_levels", kind = State, state_key_type = EmptyStateKey, custom_redacted)]
 pub struct RoomPowerLevelsEventContent {
     /// The level required to ban a user.
@@ -835,7 +837,7 @@ impl TryFrom<RoomPowerLevels> for RoomPowerLevelsEventContent {
     }
 }
 
-impl From<RoomPowerLevels> for PushConditionPowerLevvelsCtx {
+impl From<RoomPowerLevels> for PushConditionPowerLevelsCtx {
     fn from(c: RoomPowerLevels) -> Self {
         Self::new(c.users, c.users_default, c.notifications, c.rules)
     }

@@ -15,6 +15,7 @@ use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
 use crate::core::{
     OwnedServerSigningKeyId, RoomVersionId, ServerName, ServerSigningKeyId, UnixMillis,
+    room_version_rules::RoomVersionRules,
 };
 use crate::data::connect;
 use crate::data::misc::DbServerSigningKeys;
@@ -60,7 +61,6 @@ fn add_signing_keys(new_keys: ServerSigningKeys) -> AppResult<()> {
         .execute(&mut connect()?)?;
     Ok(())
 }
-
 
 pub fn verify_key_exists(server: &ServerName, key_id: &ServerSigningKeyId) -> AppResult<bool> {
     type KeysMap<'a> = BTreeMap<&'a str, &'a RawJsonValue>;
@@ -150,9 +150,9 @@ fn key_exists(keys: &ServerSigningKeys, key_id: &ServerSigningKeyId) -> bool {
 
 pub async fn get_event_keys(
     object: &CanonicalJsonObject,
-    version: &RoomVersionId,
+    version: &RoomVersionRules,
 ) -> AppResult<PubKeyMap> {
-    let required = match signatures::required_keys(object, version) {
+    let required = match signatures::required_keys(object, &version.signatures) {
         Ok(required) => required,
         Err(e) => {
             return Err(AppError::public(format!(

@@ -13,10 +13,10 @@ mod tests;
 use self::room_member::check_room_member;
 use crate::{
     EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
-    events::StateEventType,
+    events::{TimelineEventType, StateEventType},
     state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
-        RoomThirdPartyInviteEvent,  TimelineEventType,
+        RoomThirdPartyInviteEvent,
         member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
         member::MembershipState, power_levels::UserPowerLevel,

@@ -106,12 +106,7 @@ pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream
 
     if matches!(kind, EventKind::State) {
         res.extend(expand_full_content_enum(
-            kind,
-            events,
-            docs,
-            attrs,
-            variants,
-            palpo_core,
+            kind, events, docs, attrs, variants, palpo_core,
         ));
     }
 
@@ -320,6 +315,8 @@ fn expand_accessor_methods(
         .iter()
         .map(|v| v.match_arm(quote! { Self }))
         .collect();
+    let original_event_content_kind_trait_name =
+        kind.to_content_kind_trait(EventContentTraitVariation::Original);
 
     let maybe_redacted =
         kind.is_timeline() && matches!(var, EventVariation::None | EventVariation::Sync);
@@ -329,12 +326,22 @@ fn expand_accessor_methods(
             #( #self_variants(event) => event.event_type(), )*
             Self::_Custom(event) => event.event_type(),
         }
+    } else if var == EventVariation::Stripped {
+        let possibly_redacted_event_content_kind_trait_name =
+            kind.to_content_kind_trait(EventContentTraitVariation::PossiblyRedacted);
+        quote! {
+            #( #self_variants(event) =>
+                #palpo_core::events::#possibly_redacted_event_content_kind_trait_name::event_type(&event.content), )*
+            Self::_Custom(event) => ::std::convert::From::from(
+                #palpo_core::events::#possibly_redacted_event_content_kind_trait_name::event_type(&event.content),
+            ),
+        }
     } else {
         quote! {
             #( #self_variants(event) =>
-                #palpo_core::events::EventContent::event_type(&event.content), )*
+                #palpo_core::events::#original_event_content_kind_trait_name::event_type(&event.content), )*
             Self::_Custom(event) => ::std::convert::From::from(
-                #palpo_core::events::EventContent::event_type(&event.content),
+                #palpo_core::events::#original_event_content_kind_trait_name::event_type(&event.content),
             ),
         }
     };
@@ -354,9 +361,9 @@ fn expand_accessor_methods(
                     Self::_Custom(event) => event.as_original().map(|ev| {
                         #content_enum::_Custom {
                             event_type: crate::PrivOwnedStr(
-                                ::std::convert::From::from(
+                                  ::std::convert::From::from(
                                     ::std::string::ToString::to_string(
-                                        &#palpo_core::events::EventContent::event_type(
+                                        &#palpo_core::events::#original_event_content_kind_trait_name::event_type(
                                             &ev.content,
                                         ),
                                     ),
@@ -386,6 +393,8 @@ fn expand_accessor_methods(
                 .iter()
                 .map(|v| v.ctor(&full_content_enum))
                 .collect();
+            let redacted_event_content_kind_trait_name =
+                kind.to_content_kind_trait(EventContentTraitVariation::Redacted);
 
             accessors = quote! {
                 #accessors
@@ -413,7 +422,7 @@ fn expand_accessor_methods(
                                 #full_content_enum::_Custom {
                                     event_type: crate::PrivOwnedStr(
                                         ::std::string::ToString::to_string(
-                                            &#palpo_core::events::EventContent::event_type(
+                                            &#palpo_core::events::#original_event_content_kind_trait_name::event_type(
                                                 &ev.content,
                                             ),
                                         ).into_boxed_str(),
@@ -425,7 +434,7 @@ fn expand_accessor_methods(
                                 #full_content_enum::_Custom {
                                     event_type: crate::PrivOwnedStr(
                                         ::std::string::ToString::to_string(
-                                            &#palpo_core::events::EventContent::event_type(
+                                            &#palpo_core::events::#redacted_event_content_kind_trait_name::event_type(
                                                 &ev.content,
                                             ),
                                         ).into_boxed_str(),
@@ -453,7 +462,7 @@ fn expand_accessor_methods(
                         event_type: crate::PrivOwnedStr(
                             ::std::convert::From::from(
                                 ::std::string::ToString::to_string(
-                                    &#palpo_core::events::EventContent::event_type(&event.content)
+                                    &#palpo_core::events::#original_event_content_kind_trait_name::event_type(&event.content)
                                 )
                             ),
                         ),

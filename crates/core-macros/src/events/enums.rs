@@ -634,7 +634,7 @@ impl EventWithBounds {
     pub fn new(
         kind: EventKind,
         var: EventVariation,
-        palpo_events: &TokenStream,
+        palpo_core: &TokenStream,
     ) -> syn::Result<Self> {
         let ident = kind.to_event_ident(var)?;
 
@@ -669,13 +669,13 @@ impl EventWithBounds {
                     kind.to_content_kind_trait(EventContentTraitVariation::Redacted);
 
                 (
-                    quote! { #palpo_events::#ident<C> },
+                    quote! { #palpo_core::events::#ident<C> },
                     Some(
-                        quote! { <C: #palpo_events::#event_content_trait + #palpo_events::RedactContent> },
+                        quote! { <C: #palpo_core::events::#event_content_trait + #palpo_core::events::RedactContent> },
                     ),
                     Some(quote! {
                         where
-                            C::Redacted: #palpo_events::#redacted_trait,
+                            C::Redacted: #palpo_core::events::#redacted_trait,
                     }),
                 )
             }
@@ -685,12 +685,12 @@ impl EventWithBounds {
             | EventKind::MessageLike
             | EventKind::State
             | EventKind::ToDevice => (
-                quote! { #palpo_events::#ident<C> },
-                Some(quote! { <C: #palpo_events::#event_content_trait> }),
+                quote! { #palpo_core::events::#ident<C> },
+                Some(quote! { <C: #palpo_core::events::#event_content_trait> }),
                 None,
             ),
             EventKind::RoomRedaction => (
-                quote! { #palpo_events::room::redaction::#ident },
+                quote! { #palpo_core::events::room::redaction::#ident },
                 None,
                 None,
             ),

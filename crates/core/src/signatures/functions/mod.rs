@@ -13,8 +13,11 @@ use sha2::{Sha256, digest::Digest};
 #[cfg(test)]
 mod tests;
 
-use crate::signatures::{Error, JsonError,
-    verification::{Verified, Verifier, verifier_from_algorithm}, keys::{KeyPair, PublicKeyMap},ParseError, VerificationError};
+use crate::signatures::{
+    Error, JsonError, ParseError, VerificationError,
+    keys::{KeyPair, PublicKeyMap},
+    verification::{Verified, Verifier, verifier_from_algorithm},
+};
 use crate::{
     AnyKeyName, OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId,
     SigningKeyAlgorithm, SigningKeyId, UserId,
@@ -729,7 +732,7 @@ fn canonical_json_with_fields_to_remove(
 /// Extracts the server names and key ids to check signatures for given event.
 pub fn required_keys(
     object: &CanonicalJsonObject,
-    version: &RoomVersionId,
+    version: &RoomVersionRules,
 ) -> Result<BTreeMap<OwnedServerName, Vec<OwnedServerSigningKeyId>>, Error> {
     use CanonicalJsonValue::Object;
 
@@ -738,7 +741,7 @@ pub fn required_keys(
         return Ok(map);
     };
 
-    for server in servers_to_check_signatures(object, version)? {
+    for server in servers_to_check_signatures(object, &version.signatures)? {
         let Some(Object(set)) = signatures.get(server.as_str()) else {
             continue;
         };

@@ -182,6 +182,7 @@ pub use self::{
     state_key::EmptyStateKey,
     unsigned::{MessageLikeUnsigned, RedactedUnsigned, StateUnsigned, UnsignedRoomRedactionEvent},
 };
+use crate::room_version_rules::RedactionRules;
 use crate::{EventEncryptionAlgorithm, OwnedUserId, RoomVersionId};
 
 pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
@@ -192,12 +193,11 @@ pub trait RedactContent {
     /// The redacted form of the event's content.
     type Redacted;
 
-    /// Transform `self` into a redacted form (removing most or all fields)
-    /// according to the spec.
+    /// Transform `self` into a redacted form (removing most or all fields) according to the spec.
     ///
-    /// A small number of events have room-version specific redaction behavior,
-    /// so a version has to be specified.
-    fn redact(self, version: &RoomVersionId) -> Self::Redacted;
+    /// A small number of events have room-version specific redaction behavior, so a
+    /// [`RedactionRules`] has to be specified.
+    fn redact(self, rules: &RedactionRules) -> Self::Redacted;
 }
 
 /// Helper struct to determine the event kind from a

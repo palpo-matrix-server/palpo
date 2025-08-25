@@ -17,9 +17,9 @@ pub fn expand_content_enum(
     docs: &[TokenStream],
     attrs: &[Attribute],
     variants: &[EventEnumVariant],
-    palpo_events: &TokenStream,
+    palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let serde = quote! { #palpo_events::__private::serde };
+    let serde = quote! { #palpo_core::__private::serde };
 
     let ident = kind.to_content_enum();
 
@@ -48,10 +48,10 @@ pub fn expand_content_enum(
     let json_castable_impl = expand_json_castable_impl(&ident, &content, variants);
 
     let serialize_custom_event_error_path =
-        quote! { #palpo_events::serialize_custom_event_error }.to_string();
+        quote! { #palpo_core::events::serialize_custom_event_error }.to_string();
 
     // Generate an `EventContentFromType` implementation.
-    let serde_json = quote! { #palpo_events::__private::serde_json };
+    let serde_json = quote! { #palpo_core::__private::serde_json };
     let event_type_match_arms: TokenStream = events
         .iter()
         .map(|event| {
@@ -107,7 +107,7 @@ pub fn expand_content_enum(
         }
 
         #[automatically_derived]
-        impl #palpo_events::EventContentFromType for #ident {
+        impl #palpo_core::events::EventContentFromType for #ident {
             fn from_parts(event_type: &str, json: &#serde_json::value::RawValue) -> serde_json::Result<Self> {
                 match event_type {
                     #event_type_match_arms
@@ -124,10 +124,10 @@ pub fn expand_content_enum(
         }
 
         #[automatically_derived]
-        impl #palpo_events::#event_content_kind_trait_name for #ident {
+        impl #palpo_core::events::#event_content_kind_trait_name for #ident {
             #state_event_content_impl
 
-            fn event_type(&self) -> #palpo_events::#event_type_enum {
+            fn event_type(&self) -> #palpo_core::events::#event_type_enum {
                 match self {
                     #( #variant_arms(content) => content.event_type(), )*
                     Self::_Custom { event_type } => ::std::convert::From::from(&event_type.0[..]),

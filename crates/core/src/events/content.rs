@@ -159,3 +159,12 @@ pub trait EventContentFromType: Sized {
         serde_json::from_str(content.get())
     }
 }
+
+impl<T> EventContentFromType for T
+where
+    T: StaticEventContent + DeserializeOwned,
+{
+    fn from_parts(_event_type: &str, content: &RawJsonValue) -> serde_json::Result<Self> {
+        serde_json::from_str(content.get())
+    }
+}

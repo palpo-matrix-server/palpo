@@ -18,7 +18,7 @@ use crate::{
         AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
         StateEventType,
-    },
+    },signatures::canonical_json,
     identifiers::*,
 };
 
