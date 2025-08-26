@@ -4,9 +4,9 @@
 
 use std::borrow::Cow;
 
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, de};
 use serde_json::value::RawValue as RawJsonValue;
-use salvo::oapi::ToSchema;
 
 use crate::PrivOwnedStr;
 use crate::macros::{EventContent, StringEnum};
@@ -172,7 +172,7 @@ impl<'de> Deserialize<'de> for RoomKeyWithheldCodeInfo {
 }
 
 /// The session data associated to a withheld room key.
-#[derive(ToSchema,Debug, Clone, Serialize, Deserialize)]
+#[derive(ToSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct RoomKeyWithheldSessionData {
     /// The room for the key.
     pub room_id: OwnedRoomId,

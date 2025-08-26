@@ -91,7 +91,7 @@ pub fn expand_content_enum(
 
     Ok(quote! {
         #( #attrs )*
-        #[derive(Clone, Debug, #serde::Serialize)]
+        #[derive(salvo::oapi::ToSchema, Clone, Debug, #serde::Serialize)]
         #[serde(untagged)]
         #[allow(clippy::large_enum_variant)]
         pub enum #ident {
@@ -166,7 +166,7 @@ pub fn expand_full_content_enum(
 
     Ok(quote! {
         #( #attrs )*
-        #[derive(Clone, Debug)]
+        #[derive(salvo::oapi::ToSchema,Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum #ident {
             #(

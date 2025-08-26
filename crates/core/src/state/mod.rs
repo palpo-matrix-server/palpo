@@ -368,7 +368,8 @@ where
     // Get the power level of the sender of each event in the graph.
     for event_id in graph.keys() {
         let sender_power_level =
-            power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event).await
+            power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event)
+                .await
                 .map_err(StateError::AuthEvent)?;
         debug!(
             event_id = event_id.borrow().as_str(),
@@ -522,7 +523,8 @@ where
 
             // Push on the heap once all the outgoing edges have been removed.
             if outgoing_edges.is_empty() {
-                let (power_level, origin_server_ts) = event_details_fn(parent_id.to_owned()).await?;
+                let (power_level, origin_server_ts) =
+                    event_details_fn(parent_id.to_owned()).await?;
                 heap.push(Reverse(TieBreaker {
                     power_level,
                     origin_server_ts,
@@ -961,7 +963,8 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
         graph.entry(event_id.clone()).or_default();
 
         // Iterate through the auth events of this event.
-        for auth_event_id in fetch_event(event_id.to_owned()).await
+        for auth_event_id in fetch_event(event_id.to_owned())
+            .await
             .as_ref()
             .map(|event| event.auth_events())
             .into_iter()
