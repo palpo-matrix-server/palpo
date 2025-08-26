@@ -113,7 +113,7 @@ impl<E: Ord, K: KeyName + ?Sized> FromIterator<(E, OwnedSigningKeyId<K>, String)
     fn from_iter<T: IntoIterator<Item = (E, OwnedSigningKeyId<K>, String)>>(iter: T) -> Self {
         iter.into_iter()
             .fold(Self::new(), |mut acc, (entity, key_identifier, value)| {
-                acc.insert_signature(entity, key_identifier, value);
+                acc.insert(entity, key_identifier, value);
                 acc
             })
     }
@@ -122,7 +122,7 @@ impl<E: Ord, K: KeyName + ?Sized> FromIterator<(E, OwnedSigningKeyId<K>, String)
 impl<E: Ord, K: KeyName + ?Sized> Extend<(E, OwnedSigningKeyId<K>, String)> for Signatures<E, K> {
     fn extend<T: IntoIterator<Item = (E, OwnedSigningKeyId<K>, String)>>(&mut self, iter: T) {
         for (entity, key_identifier, value) in iter {
-            self.insert_signature(entity, key_identifier, value);
+            self.insert(entity, key_identifier, value);
         }
     }
 }

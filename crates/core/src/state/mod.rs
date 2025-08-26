@@ -88,7 +88,7 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
     ) -> Option<HashSet<OwnedEventId>>,
 ) -> Result<StateMap<OwnedEventId>, StateError>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event + Clone,
     Pdu::Id: 'a,
@@ -341,7 +341,7 @@ async fn sort_power_events<Pdu, Fetch, Fut>(
     fetch_event: &Fetch,
 ) -> Result<Vec<OwnedEventId>, StateError>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event + Clone,
 {
@@ -571,7 +571,7 @@ async fn power_level_for_sender<Pdu, Fetch, Fut>(
     fetch_event: &Fetch,
 ) -> std::result::Result<UserPowerLevel, String>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -597,7 +597,7 @@ where
         .into_iter()
         .flatten()
     {
-        if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
+        if let Ok(auth_event) = fetch_event(&auth_event_id).await {
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 room_power_levels_event = Some(RoomPowerLevelsEvent::new(auth_event));
             } else if !rules.room_create_event_id_as_room_id
@@ -670,7 +670,7 @@ async fn iterative_auth_check<'b, Pdu, Fetch, Fut>(
     fetch_event: &Fetch,
 ) -> StateResult<StateMap<OwnedEventId>>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone,
 {
@@ -679,12 +679,12 @@ where
     trace!(list = ?events, "events to check");
 
     for event_id in events {
-        let event = fetch_event(event_id.to_owned()).await?;
+        let event = fetch_event(event_id).await?;
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();
         for auth_event_id in event.auth_events() {
-            if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
+            if let Ok(auth_event) = fetch_event(auth_event_id).await {
                 if !auth_event.rejected() {
                     auth_events.insert(
                         auth_event.event_type().with_state_key(
@@ -707,7 +707,7 @@ where
                 .room_id()
                 .and_then(|room_id| room_id.room_create_event_id().ok())
             {
-                let room_create_event = fetch_event(room_create_event_id).await?;
+                let room_create_event = fetch_event(&room_create_event_id).await?;
                 auth_events.insert(
                     (StateEventType::RoomCreate, String::new()),
                     room_create_event,
@@ -733,7 +733,7 @@ where
 
         for key in auth_types {
             if let Some(auth_event_id) = state.get(&key) {
-                if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
+                if let Ok(auth_event) = fetch_event(auth_event_id).await {
                     if !auth_event.rejected() {
                         auth_events.insert(key.to_owned(), auth_event);
                     }
@@ -797,14 +797,14 @@ where
 /// Returns the sorted list of event IDs, or an `Err(_)` if one the event in the room has an
 /// unexpected format.
 async fn mainline_sort<Pdu, Fetch, Fut>(
-    events: &[OwnedEventId],
-    mut power_level: Option<OwnedEventId>,
+    events: &[Pdu::Id],
+    mut power_level: Option<Pdu::Id>,
     fetch_event: &Fetch,
-) -> StateResult<Vec<OwnedEventId>>
+) -> StateResult<Vec<Pdu::Id>>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
     debug!("mainline sort of events");
 
@@ -824,7 +824,7 @@ where
         power_level = None;
 
         for auth_event_id in power_level_event.auth_events() {
-            let auth_event = fetch_event(auth_event_id.to_owned()).await?;
+            let auth_event = fetch_event(auth_event_id).await?;
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 power_level = Some(auth_event_id.to_owned());
                 break;
@@ -845,15 +845,15 @@ where
 
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
-        if let Ok(event) = fetch_event(event_id.to_owned()).await {
+        if let Ok(event) = fetch_event(event_id).await {
             if let Ok(position) = mainline_position(&event, &mainline_map, fetch_event).await {
                 order_map.insert(
                     event_id,
                     (
                         position,
-                        fetch_event(event_id.to_owned())
-                            .map(|event| event.origin_server_ts())
-                            .await,
+                        fetch_event(event_id.borrow())
+                            .await
+                            .map(|event| event.origin_server_ts()),
                         event_id,
                     ),
                 );
@@ -907,15 +907,15 @@ where
 /// chain of the event was not found.
 async fn mainline_position<Pdu, Fetch, Fut>(
     event: &Pdu,
-    mainline_map: &HashMap<OwnedEventId, usize>,
+    mainline_map: &HashMap<Pdu::Id, usize>,
     fetch_event: &Fetch,
 ) -> StateResult<usize>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
-    let mut current_event = Some(event);
+    let mut current_event = Some(event.to_owned());
 
     while let Some(event) = current_event {
         let event_id = event.event_id();
@@ -930,7 +930,7 @@ where
 
         // Look for the power levels event in the auth events.
         for auth_event_id in event.auth_events() {
-            let auth_event = fetch_event(auth_event_id.to_owned()).await?;
+            let auth_event = fetch_event(auth_event_id.borrow()).await?;
 
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 current_event = Some(auth_event);
@@ -946,12 +946,12 @@ where
 /// Add the event with the given event ID and all the events in its auth chain that are in the full
 /// conflicted set to the graph.
 async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
-    graph: &mut HashMap<OwnedEventId, HashSet<OwnedEventId>>,
-    event_id: OwnedEventId,
-    full_conflicted_set: &HashSet<OwnedEventId>,
+    graph: &mut HashMap<Pdu::Id, HashSet<Pdu::Id>>,
+    event_id: Pdu::Id,
+    full_conflicted_set: &HashSet<Pdu::Id>,
     fetch_event: &Fetch,
 ) where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -963,7 +963,7 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
         graph.entry(event_id.clone()).or_default();
 
         // Iterate through the auth events of this event.
-        for auth_event_id in fetch_event(event_id.to_owned())
+        for auth_event_id in fetch_event(event_id.borrow())
             .await
             .as_ref()
             .map(|event| event.auth_events())
@@ -992,11 +992,11 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
 /// See the docs of `is_power_event()` for the definition of a power event.
 async fn is_power_event_id<Pdu, Fetch, Fut>(event_id: &EventId, fetch_event: &Fetch) -> bool
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    match fetch_event(event_id.to_owned()).await {
+    match fetch_event(event_id).await {
         Ok(state) => is_power_event(state),
         _ => false,
     }

@@ -173,7 +173,7 @@ pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
     fetch_event: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -273,7 +273,7 @@ where
             ))
         })?;
 
-        let room_create_event = fetch_event(room_create_event_id).await?;
+        let room_create_event = fetch_event(room_create_event_id.clone()).await?;
 
         if room_create_event.rejected() {
             return Err(StateError::other(format!(
