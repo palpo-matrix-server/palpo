@@ -7,6 +7,7 @@ use std::time::Duration;
 use as_variant::as_variant;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
+use salvo::oapi::ToSchema;
 
 use super::focus::{ActiveFocus, ActiveLivekitFocus, Focus};
 use crate::PrivOwnedStr;
@@ -146,7 +147,7 @@ impl MembershipData<'_> {
 /// A membership describes one of the sessions this user currently partakes.
 ///
 /// The application defines the type of the session.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LegacyMembershipData {
     /// The type of the MatrixRTC session the membership belongs to.
     ///
@@ -188,7 +189,7 @@ pub struct LegacyMembershipData {
 
 
 /// Stores all the information for a MatrixRTC membership. (one for each device)
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SessionMembershipData {
     /// The type of the MatrixRTC session the membership belongs to.
     ///
@@ -228,7 +229,7 @@ pub struct SessionMembershipData {
 /// This is not the application/client used by the user but the
 /// type of MatrixRTC session e.g. calling (`m.call`), third-room, whiteboard could be
 /// possible applications.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "application")]
 pub enum Application {
     /// The rtc application (session type) for VoIP call.
@@ -237,7 +238,7 @@ pub enum Application {
 }
 
 /// Call specific parameters of a `m.call.member` event.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema,Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CallApplicationContent {
     /// An identifier for calls.
     ///
@@ -267,7 +268,7 @@ impl CallApplicationContent {
 
 /// The call scope defines different call ownership models.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, StringEnum)]
+#[derive(ToSchema,  Clone, PartialEq, StringEnum)]
 #[palpo_enum(rename_all = "m.snake_case")]
 pub enum CallScope {
     /// A call which every user of a room can join and create.

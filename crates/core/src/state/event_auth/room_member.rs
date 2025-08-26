@@ -11,7 +11,7 @@ use crate::events::{
     room::member::{MembershipState, ThirdPartyInvite},
 };
 use crate::state::{
-    StateError, Event,
+    Event, StateError,
     events::{
         RoomCreateEvent, RoomMemberEvent,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
@@ -119,7 +119,7 @@ async fn check_room_member_join<Fetch, Fut, Pdu>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: RoomCreateEvent<Pdu>,
+    room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
 ) -> Result<(), String>
 where
@@ -248,10 +248,10 @@ where
     if let Some(third_party_invite) = third_party_invite {
         return check_third_party_invite(
             room_member_event,
-            third_party_invite,
+            &third_party_invite,
             target_user,
             fetch_state,
-        );
+        ).await;
     }
 
     let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
@@ -292,12 +292,17 @@ where
 
 /// Check whether the `third_party_invite` from the `m.room.member` event passes the authorization
 /// rules.
-fn check_third_party_invite<E: Event>(
-    room_member_event: &RoomMemberEvent<impl Event>,
-    third_party_invite: ThirdPartyInvite,
+async fn check_third_party_invite<Fetch, Fut, Pdu>(
+    room_member_event: &RoomMemberEvent<Pdu>,
+    third_party_invite: &ThirdPartyInvite,
     target_user: &UserId,
-    fetch_state: impl Fn(&StateEventType, &str) -> Option<E>,
-) -> Result<(), String> {
+    fetch_state: &Fetch,
+) -> Result<(), String>
+where
+    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fut: Future<Output = Result<Pdu>> + Send,
+    Pdu: Event,
+{
     let current_target_user_membership = fetch_state.user_membership(target_user)?;
 
     // Since v1, if target user is banned, reject.

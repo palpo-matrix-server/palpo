@@ -45,7 +45,7 @@ impl LivekitFocus {
 ///
 /// A focus can be any server powering the MatrixRTC session (SFU,
 /// MCU). It serves as a node to redistribute RTC streams.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ActiveFocus {
     /// LiveKit is one possible type of SFU/Focus that can be used for a MatrixRTC session.
@@ -53,7 +53,7 @@ pub enum ActiveFocus {
 }
 
 /// The fields to describe the `active_foci`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ActiveLivekitFocus {
     /// The selection method used to select the LiveKit focus for the rtc session.
     pub focus_selection: FocusSelection,
@@ -73,7 +73,7 @@ impl ActiveLivekitFocus {
 
 /// How to select the active focus for LiveKit
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, StringEnum)]
+#[derive(ToSchema, Clone, PartialEq, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum FocusSelection {
     /// Select the active focus by using the oldest membership and the oldest focus.

@@ -270,6 +270,9 @@ pub struct PushConditionPowerLevelsCtx {
 
     /// The notification power levels of the room.
     pub notifications: NotificationPowerLevels,
+
+    /// The tweaks for determining the power level of a user.
+    pub rules: RoomPowerLevelsRules,
 }
 
 impl PushConditionPowerLevelsCtx {
@@ -278,11 +281,13 @@ impl PushConditionPowerLevelsCtx {
         users: BTreeMap<OwnedUserId, i64>,
         users_default: i64,
         notifications: NotificationPowerLevels,
+        rules: RoomPowerLevelsRules,
     ) -> Self {
         Self {
             users,
             users_default,
             notifications,
+            rules,
         }
     }
 }

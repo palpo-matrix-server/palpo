@@ -11,7 +11,7 @@ use tracing::error;
 use crate::{
     EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId,
     UnixMillis, UserId,
-    events::{
+    events::{MessageLikeEventContent,
         BundledMessageLikeRelations, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
     },

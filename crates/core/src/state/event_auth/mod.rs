@@ -13,16 +13,18 @@ mod tests;
 use self::room_member::check_room_member;
 use crate::{
     EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
-    events::{TimelineEventType, StateEventType},
+    events::{
+        StateEventType, TimelineEventType, member::MembershipState,
+        room::power_levels::UserPowerLevel,
+    },
+    room::JoinRuleKind,
+    room_version_rules::{AuthorizationRules, RoomVersionRules},
     state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
         RoomThirdPartyInviteEvent,
         member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
-        member::MembershipState, power_levels::UserPowerLevel,
     },
-    room::JoinRuleKind,
-    room_version_rules::{AuthorizationRules, RoomVersionRules},
     state::{Event, StateKey},
     utils::RoomIdExt,
 };
@@ -206,7 +208,7 @@ where
     for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
-        let Some(auth_event) = fetch_event(event_id) else {
+        let Ok(auth_event) = fetch_event(event_id).await else {
             return Err(MatrixError::bad_state(format!(
                 "failed to find auth event {event_id}"
             )));
@@ -308,7 +310,7 @@ where
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &RoomVersionRules,
+    rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> MatrixResult<()>
@@ -364,7 +366,12 @@ where
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(room_member_event, &rules.authorization, room_create_event, fetch_state);
+        return check_room_member(
+            room_member_event,
+            &rules.authorization,
+            room_create_event,
+            fetch_state,
+        );
     }
 
     // Since v1, if the sender's current membership state is not join, reject.

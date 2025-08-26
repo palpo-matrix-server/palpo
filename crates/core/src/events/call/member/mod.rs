@@ -163,7 +163,7 @@ impl CallMemberEventContent {
 }
 
 /// This describes the CallMember event if the user is not part of the current session.
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(ToSchema, Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct EmptyMembershipData {
     /// An empty call member state event can optionally contain a leave reason.
     /// If it is `None` the user has left the call ordinarily. (Intentional hangup)
@@ -176,7 +176,7 @@ pub struct EmptyMembershipData {
 ///
 /// It is used when the user disconnected and a Future ([MSC4140](https://github.com/matrix-org/matrix-spec-proposals/pull/4140))
 /// was used to update the membership after the client was not reachable anymore.
-#[derive(Clone, PartialEq, StringEnum)]
+#[derive(ToSchema, Clone, PartialEq, StringEnum)]
 #[palpo_enum(rename_all = "m.snake_case")]
 pub enum LeaveReason {
     /// The user left the call by losing network connection or closing
@@ -227,7 +227,7 @@ impl StaticEventContent for RedactedCallMemberEventContent {
 }
 
 /// Legacy content with an array of memberships. See also: [`CallMemberEventContent`]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LegacyMembershipContent {
     /// A list of all the memberships that user currently has in this room.
     ///
