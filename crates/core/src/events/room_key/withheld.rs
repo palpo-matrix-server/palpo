@@ -6,6 +6,7 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize, de};
 use serde_json::value::RawValue as RawJsonValue;
+use salvo::oapi::ToSchema;
 
 use crate::PrivOwnedStr;
 use crate::macros::{EventContent, StringEnum};
@@ -89,7 +90,7 @@ impl<'de> Deserialize<'de> for ToDeviceRoomKeyWithheldEventContent {
 }
 
 /// The possible codes for why a megolm key was not sent, and the associated session data.
-#[derive(Debug, Clone, Serialize)]
+#[derive(ToSchema, Debug, Clone, Serialize)]
 #[serde(tag = "code")]
 pub enum RoomKeyWithheldCodeInfo {
     /// `m.blacklisted`
@@ -171,7 +172,7 @@ impl<'de> Deserialize<'de> for RoomKeyWithheldCodeInfo {
 }
 
 /// The session data associated to a withheld room key.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(ToSchema,Debug, Clone, Serialize, Deserialize)]
 pub struct RoomKeyWithheldSessionData {
     /// The room for the key.
     pub room_id: OwnedRoomId,
@@ -192,7 +193,7 @@ impl RoomKeyWithheldSessionData {
 
 /// The payload for a custom room key withheld code.
 #[doc(hidden)]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 pub struct CustomRoomKeyWithheldCodeInfo {
     /// A custom code.
     code: String,

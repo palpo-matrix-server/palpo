@@ -167,7 +167,7 @@ where
 ///
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
-pub async fn check_state_independent_auth_rules<Fetch, Fut, Pdu>(
+pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_event: &Fetch,
@@ -273,7 +273,7 @@ where
             format!("could not construct `m.room.create` event ID from room ID: {error}")
         })?;
 
-        let room_create_event = fetch_event(&room_create_event_id)
+        let room_create_event = fetch_event(room_create_event_id)
             .await
             .or_else(|| format!("failed to find `m.room.create` event {room_create_event_id}"))?;
 
@@ -482,7 +482,7 @@ fn check_room_create(
         let Some(room_id) = room_create_event.room_id() else {
             return Err("missing `room_id` field in `m.room.create` event".into());
         };
-        let Some(room_id_server_name) = room_id.server_name() else {
+        let Ok(room_id_server_name) = room_id.server_name() else {
             return Err(
                 "invalid `room_id` field in `m.room.create` event: could not parse server name"
                     .into(),
@@ -703,7 +703,7 @@ fn check_power_level_maps<K: Ord>(
 }
 
 /// Check whether the given event passes the `m.room.redaction` authorization rules.
-fn check_room_redactionn<Pdu>(
+fn check_room_redaction<Pdu>(
     room_redaction_event: &Pdu,
     current_room_power_levels_event: Option<RoomPowerLevelsEvent<Pdu>>,
     rules: &AuthorizationRules,
