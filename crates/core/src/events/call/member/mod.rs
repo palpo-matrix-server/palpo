@@ -22,9 +22,9 @@ use crate::macros::EventContent;
 use crate::room_version_rules::RedactionRules;
 use crate::{
     OwnedDeviceId, OwnedUserId, PrivOwnedStr, UnixMillis,
-    events::{RedactedStateEventContent,
-        PossiblyRedactedStateEventContent, RedactContent, StateEventType, StaticEventContent,
-        StaticStateEventContent,
+    events::{
+        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
+        StateEventType, StaticEventContent, StaticStateEventContent,
     },
     serde::StringEnum,
 };

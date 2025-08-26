@@ -4,14 +4,14 @@
 
 use std::borrow::Cow;
 
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use serde_json::value::RawValue as RawJsonValue;
 
 use crate::PrivOwnedStr;
 use crate::macros::{EventContent, StringEnum};
 use crate::{
-    serde::{from_raw_json_value, Base64, JsonObject},
     EventEncryptionAlgorithm, OwnedRoomId,
+    serde::{Base64, JsonObject, from_raw_json_value},
 };
 
 /// The content of an [`m.room_key.withheld`] event.
@@ -49,7 +49,12 @@ impl ToDeviceRoomKeyWithheldEventContent {
         code: RoomKeyWithheldCodeInfo,
         sender_key: Base64,
     ) -> Self {
-        Self { algorithm, code, reason: None, sender_key }
+        Self {
+            algorithm,
+            code,
+            reason: None,
+            sender_key,
+        }
     }
 }
 
@@ -67,11 +72,19 @@ impl<'de> Deserialize<'de> for ToDeviceRoomKeyWithheldEventContent {
 
         let json = Box::<RawJsonValue>::deserialize(deserializer)?;
 
-        let ToDeviceRoomKeyWithheldEventContentDeHelper { algorithm, reason, sender_key } =
-            from_raw_json_value(&json)?;
+        let ToDeviceRoomKeyWithheldEventContentDeHelper {
+            algorithm,
+            reason,
+            sender_key,
+        } = from_raw_json_value(&json)?;
         let code = from_raw_json_value(&json)?;
 
-        Ok(Self { algorithm, code, reason, sender_key })
+        Ok(Self {
+            algorithm,
+            code,
+            reason,
+            sender_key,
+        })
     }
 }
 
@@ -170,7 +183,10 @@ pub struct RoomKeyWithheldSessionData {
 impl RoomKeyWithheldSessionData {
     /// Construct a new `RoomKeyWithheldSessionData` with the given room ID and session ID.
     pub fn new(room_id: OwnedRoomId, session_id: String) -> Self {
-        Self { room_id, session_id }
+        Self {
+            room_id,
+            session_id,
+        }
     }
 }
 
@@ -228,7 +244,7 @@ pub enum RoomKeyWithheldCode {
 #[cfg(test)]
 mod tests {
     use assert_matches2::assert_matches;
-    use palpo_common::{owned_room_id, serde::Base64, EventEncryptionAlgorithm};
+    use palpo_common::{EventEncryptionAlgorithm, owned_room_id, serde::Base64};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{
@@ -291,7 +307,10 @@ mod tests {
         let content = from_json_value::<ToDeviceRoomKeyWithheldEventContent>(json).unwrap();
         assert_eq!(content.algorithm, EventEncryptionAlgorithm::MegolmV1AesSha2);
         assert_eq!(content.sender_key, Base64::new(PUBLIC_KEY.to_owned()));
-        assert_eq!(content.reason.as_deref(), Some("Could not find an olm session"));
+        assert_eq!(
+            content.reason.as_deref(),
+            Some("Could not find an olm session")
+        );
         assert_matches!(content.code, RoomKeyWithheldCodeInfo::NoOlm);
     }
 
@@ -310,7 +329,10 @@ mod tests {
         assert_eq!(content.algorithm, EventEncryptionAlgorithm::MegolmV1AesSha2);
         assert_eq!(content.sender_key, Base64::new(PUBLIC_KEY.to_owned()));
         assert_eq!(content.reason, None);
-        assert_matches!(content.code, RoomKeyWithheldCodeInfo::Blacklisted(session_data));
+        assert_matches!(
+            content.code,
+            RoomKeyWithheldCodeInfo::Blacklisted(session_data)
+        );
         assert_eq!(session_data.room_id, room_id);
         assert_eq!(session_data.session_id, "unique_id");
     }

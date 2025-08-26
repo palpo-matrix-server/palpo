@@ -13,12 +13,13 @@ use serde::{
     de::{Deserializer, Error},
 };
 
+use crate::macros::EventContent;
 use crate::{
-    OwnedRoomId, PrivOwnedStr, RoomId, room::{AllowRule, Restricted, JoinRule},
+    OwnedRoomId, PrivOwnedStr, RoomId,
     events::EmptyStateKey,
+    room::{AllowRule, JoinRule, Restricted},
     serde::{JsonValue, RawJsonValue, from_raw_json_value},
 };
-use crate::macros::EventContent;
 
 /// The content of an `m.room.join_rules` event.
 ///

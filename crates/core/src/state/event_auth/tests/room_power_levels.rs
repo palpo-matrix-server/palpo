@@ -1,20 +1,19 @@
 use std::{collections::HashSet, sync::Arc};
 
+use crate::events::{TimelineEventType, room::power_levels::UserPowerLevel};
 use as_variant::as_variant;
 use js_int::int;
 use palpo_core::room_version_rules::AuthorizationRules;
-use crate::events::{room::power_levels::UserPowerLevel, TimelineEventType};
 use serde_json::{
-    json,
-    value::{to_raw_value as to_raw_json_value, Map as JsonMap},
-    Value as JsonValue,
+    Value as JsonValue, json,
+    value::{Map as JsonMap, to_raw_value as to_raw_json_value},
 };
 use tracing::info;
 
 use crate::{
     event_auth::check_room_power_levels,
     events::RoomPowerLevelsEvent,
-    test_utils::{alice, bob, init_subscriber, to_pdu_event, zara, PduEvent},
+    test_utils::{PduEvent, alice, bob, init_subscriber, to_pdu_event, zara},
 };
 
 /// The default `m.room.power_levels` event when creating a public room.
@@ -41,8 +40,15 @@ fn not_int_or_string_int_in_content() {
 
     let current_room_power_levels_event = Some(default_room_power_levels());
 
-    let int_fields =
-        &["users_default", "events_default", "state_default", "ban", "redact", "kick", "invite"];
+    let int_fields = &[
+        "users_default",
+        "events_default",
+        "state_default",
+        "ban",
+        "redact",
+        "kick",
+        "invite",
+    ];
 
     // Tuples of (is_string, is_int) booleans.
     let combinations = &[(true, false), (true, true), (false, true)];
@@ -306,7 +312,11 @@ fn not_int_or_string_int_in_users() {
         };
 
         let mut content_object = original_content_object.clone();
-        let users_object = content_object.get_mut("users").unwrap().as_object_mut().unwrap();
+        let users_object = content_object
+            .get_mut("users")
+            .unwrap()
+            .as_object_mut()
+            .unwrap();
         users_object.insert("@bar:baz".to_owned(), value);
 
         let incoming_event = to_pdu_event(
@@ -395,8 +405,15 @@ fn change_content_level_with_current_higher_power_level() {
     });
     let original_content_object = as_variant!(original_content, JsonValue::Object).unwrap();
 
-    let int_fields =
-        &["users_default", "events_default", "state_default", "ban", "redact", "kick", "invite"];
+    let int_fields = &[
+        "users_default",
+        "events_default",
+        "state_default",
+        "ban",
+        "redact",
+        "kick",
+        "invite",
+    ];
 
     for field in int_fields {
         info!(?field, "checking field");
@@ -453,8 +470,15 @@ fn change_content_level_with_new_higher_power_level() {
     });
     let original_content_object = as_variant!(original_content, JsonValue::Object).unwrap();
 
-    let int_fields =
-        &["users_default", "events_default", "state_default", "ban", "redact", "kick", "invite"];
+    let int_fields = &[
+        "users_default",
+        "events_default",
+        "state_default",
+        "ban",
+        "redact",
+        "kick",
+        "invite",
+    ];
 
     for field in int_fields {
         info!(?field, "checking field");
@@ -511,8 +535,15 @@ fn change_content_level_with_same_power_level() {
     });
     let original_content_object = as_variant!(original_content, JsonValue::Object).unwrap();
 
-    let int_fields =
-        &["users_default", "events_default", "state_default", "ban", "redact", "kick", "invite"];
+    let int_fields = &[
+        "users_default",
+        "events_default",
+        "state_default",
+        "ban",
+        "redact",
+        "kick",
+        "invite",
+    ];
 
     for field in int_fields {
         info!(?field, "checking field");

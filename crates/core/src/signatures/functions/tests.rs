@@ -11,9 +11,10 @@ use crate::signatures::{
     Ed25519KeyPair, Error, KeyPair, PublicKeyMap, PublicKeySet, VerificationError, Verified,
 };
 use crate::{
-    serde::CanonicalJsonValue, ServerSigningKeyId, SigningKeyAlgorithm,
+    ServerSigningKeyId, SigningKeyAlgorithm,
     room_version_rules::{RoomVersionRules, SignaturesRules},
     serde::Base64,
+    serde::CanonicalJsonValue,
     server_name,
 };
 

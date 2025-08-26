@@ -637,9 +637,9 @@ impl From<Restricted> for RestrictedSummary {
 mod tests {
     use std::collections::BTreeMap;
 
+    use crate::{OwnedRoomId, owned_room_id};
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use crate::{OwnedRoomId, owned_room_id};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{

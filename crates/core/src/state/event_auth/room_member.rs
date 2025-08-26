@@ -251,7 +251,8 @@ where
             &third_party_invite,
             target_user,
             fetch_state,
-        ).await;
+        )
+        .await;
     }
 
     let sender_membership = fetch_state.user_membership(room_member_event.sender())?;

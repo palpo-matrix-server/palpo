@@ -8,15 +8,16 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
+use crate::room_version_rules::RedactionRules;
 use crate::{
     EventId, OwnedEventId, OwnedRoomId, OwnedTransactionId, OwnedUserId, RoomId, RoomVersionId,
     UnixMillis, UserId,
-    events::{MessageLikeEventContent,
-        BundledMessageLikeRelations, MessageLikeEventType, RedactContent,
+    events::{
+        BundledMessageLikeRelations, MessageLikeEventContent, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, RedactedUnsigned, StaticEventContent,
     },
     serde::{CanBeEmpty, canonical_json::RedactionEvent},
-};use crate::room_version_rules::RedactionRules;
+};
 
 mod event_serde;
 

@@ -1,10 +1,9 @@
 use std::str::FromStr;
 
 use serde::{
-    de::{self, Deserialize, Deserializer, Unexpected},
     Serialize, Serializer,
+    de::{self, Deserialize, Deserializer, Unexpected},
 };
-
 
 use crate::{OwnedUserId, UserId};
 
@@ -67,7 +66,10 @@ impl FromStr for CallMemberStateKey {
     fn from_str(state_key: &str) -> Result<Self, Self::Err> {
         // Intentionally do not use CallMemberStateKeyEnum.into since this would reconstruct the
         // state key string.
-        Ok(Self { key: CallMemberStateKeyEnum::from_str(state_key)?, raw: state_key.into() })
+        Ok(Self {
+            key: CallMemberStateKeyEnum::from_str(state_key)?,
+            raw: state_key.into(),
+        })
     }
 }
 
@@ -155,9 +157,10 @@ impl FromStr for CallMemberStateKeyEnum {
                     }),
                 };
             }
-            Some(suffix_idx) => {
-                (&state_key[..colon_idx + 1 + suffix_idx], &state_key[colon_idx + 2 + suffix_idx..])
-            }
+            Some(suffix_idx) => (
+                &state_key[..colon_idx + 1 + suffix_idx],
+                &state_key[colon_idx + 2 + suffix_idx..],
+            ),
         };
 
         match UserId::parse(user_id) {
@@ -165,9 +168,16 @@ impl FromStr for CallMemberStateKeyEnum {
                 if member_id.is_empty() {
                     return Err(KeyParseError::EmptyMemberId);
                 }
-                Ok(CallMemberStateKeyEnum::new(user_id, Some(member_id.to_owned()), has_underscore))
+                Ok(CallMemberStateKeyEnum::new(
+                    user_id,
+                    Some(member_id.to_owned()),
+                    has_underscore,
+                ))
             }
-            Err(err) => Err(KeyParseError::InvalidUser { user_id: user_id.to_owned(), error: err }),
+            Err(err) => Err(KeyParseError::InvalidUser {
+                user_id: user_id.to_owned(),
+                error: err,
+            }),
         }
     }
 }
@@ -197,7 +207,10 @@ pub enum KeyParseError {
 
 impl de::Expected for KeyParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "correct call member event key format. The provided string, {self})")
+        write!(
+            f,
+            "correct call member event key format. The provided string, {self})"
+        )
     }
 }
 
@@ -207,7 +220,7 @@ mod tests {
 
     use crate::user_id;
 
-    use crate::call::member::{member_state_key::CallMemberStateKeyEnum, CallMemberStateKey};
+    use crate::call::member::{CallMemberStateKey, member_state_key::CallMemberStateKeyEnum};
 
     #[test]
     fn convert_state_key_enum_to_state_key() {

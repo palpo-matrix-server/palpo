@@ -80,7 +80,6 @@ pub enum OneTimeKeyAlgorithm {
     _Custom(PrivOwnedStr),
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::{DeviceKeyAlgorithm, SigningKeyAlgorithm};

@@ -24,9 +24,9 @@ pub use self::{
     device_id::{DeviceId, OwnedDeviceId},
     device_key_id::{DeviceKeyId, OwnedDeviceKeyId},
     event_id::{EventId, OwnedEventId},
-    key_id::{AnyKeyName,
-        DeviceSigningKeyId, KeyId, OwnedDeviceSigningKeyId, OwnedKeyId, OwnedServerSigningKeyId,
-        OwnedSigningKeyId, ServerSigningKeyId, SigningKeyId,
+    key_id::{
+        AnyKeyName, DeviceSigningKeyId, KeyId, OwnedDeviceSigningKeyId, OwnedKeyId,
+        OwnedServerSigningKeyId, OwnedSigningKeyId, ServerSigningKeyId, SigningKeyId,
     },
     matrix_uri::{MatrixToUri, MatrixUri},
     mxc_uri::{Mxc, MxcUri, OwnedMxcUri},

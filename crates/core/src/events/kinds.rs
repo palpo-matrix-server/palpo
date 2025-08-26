@@ -6,16 +6,17 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize, ser::SerializeStruct};
 
 use super::{
-    AnyInitialStateEvent, EmptyStateKey, EphemeralRoomEventContent, 
-    EventContentFromType, GlobalAccountDataEventContent, MessageLikeEventContent,
-    MessageLikeEventType, MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent,
+    AnyInitialStateEvent, EmptyStateKey, EphemeralRoomEventContent, EventContentFromType,
+    GlobalAccountDataEventContent, MessageLikeEventContent, MessageLikeEventType,
+    MessageLikeUnsigned, PossiblyRedactedStateEventContent, RedactContent,
     RedactedMessageLikeEventContent, RedactedStateEventContent, RedactedUnsigned,
     RedactionDeHelper, RoomAccountDataEventContent, StateEventContent, StateEventType,
     StaticStateEventContent, ToDeviceEventContent,
 };
-use crate::{room_version_rules::RedactionRules,
+use crate::{
     EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
     events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, receipt::ReceiptEventContent},
+    room_version_rules::RedactionRules,
     serde::{RawJson, RawJsonValue, from_raw_json_value},
 };
 

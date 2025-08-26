@@ -7,7 +7,7 @@ mod room_power_levels;
 use self::room_power_levels::default_room_power_levels;
 use super::check_room_create;
 use crate::{
-    UnixMillis, ServerSignatures, check_state_dependent_auth_rules,
+    ServerSignatures, UnixMillis, check_state_dependent_auth_rules,
     check_state_independent_auth_rules,
     event_auth::check_room_redaction,
     events::{

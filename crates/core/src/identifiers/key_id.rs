@@ -5,11 +5,12 @@ use std::{
     str::FromStr,
 };
 
-use crate::macros::IdDst;
 use super::{
-    crypto_algorithms::SigningKeyAlgorithm, Base64PublicKey, Base64PublicKeyOrDeviceId, DeviceId,
-    DeviceKeyAlgorithm, KeyName, OneTimeKeyAlgorithm, OneTimeKeyName, ServerSigningKeyVersion,
+    Base64PublicKey, Base64PublicKeyOrDeviceId, DeviceId, DeviceKeyAlgorithm, KeyName,
+    OneTimeKeyAlgorithm, OneTimeKeyName, ServerSigningKeyVersion,
+    crypto_algorithms::SigningKeyAlgorithm,
 };
+use crate::macros::IdDst;
 /// A key algorithm and key name delimited by a colon.
 #[repr(transparent)]
 #[derive(IdDst)]
@@ -54,7 +55,6 @@ impl<A: KeyAlgorithm, K: ?Sized> KeyId<A, K> {
         self.as_str().find(':').unwrap()
     }
 }
-
 
 /// Algorithm + key name for signing keys.
 pub type SigningKeyId<K> = KeyId<SigningKeyAlgorithm, K>;

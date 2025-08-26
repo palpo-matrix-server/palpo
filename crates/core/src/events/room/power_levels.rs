@@ -7,21 +7,20 @@ use std::{
     collections::BTreeMap,
 };
 
-
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
+use crate::events::{
+    EmptyStateKey, MessageLikeEventType, RedactContent, RedactedStateEventContent, StateEventType,
+    StaticEventContent, TimelineEventType,
+};
+use crate::macros::EventContent;
 use crate::{
     OwnedUserId, UserId,
     power_levels::{NotificationPowerLevels, default_power_level},
     push::PushConditionPowerLevelsCtx,
     room_version_rules::{AuthorizationRules, RedactionRules, RoomPowerLevelsRules},
 };
-use crate::events::{
-    EmptyStateKey, MessageLikeEventType, RedactContent, RedactedStateEventContent, StateEventType,
-    StaticEventContent, TimelineEventType,
-};
-use crate::macros::EventContent;
 
 /// The content of an `m.room.power_levels` event.
 ///

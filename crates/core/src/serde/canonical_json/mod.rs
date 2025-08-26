@@ -9,7 +9,7 @@ use serde_json::Value as JsonValue;
 mod value;
 
 pub use self::value::{CanonicalJsonObject, CanonicalJsonValue};
-use crate::{room_version_rules::RedactionRules, RoomVersionId, serde::RawJson};
+use crate::{RoomVersionId, room_version_rules::RedactionRules, serde::RawJson};
 
 /// The set of possible errors when serializing to canonical JSON.
 #[derive(Debug)]
@@ -338,7 +338,10 @@ fn is_room_member_content_key_retained(
         }
         "third_party_invite" if rules.keep_room_member_third_party_invite_signed => {
             let Some(third_party_invite) = value.as_object_mut() else {
-                return Err(RedactionError::not_of_type("third_party_invite", JsonType::Object));
+                return Err(RedactionError::not_of_type(
+                    "third_party_invite",
+                    JsonType::Object,
+                ));
             };
 
             third_party_invite.retain(|key, _| key == "signed");
@@ -512,7 +515,10 @@ mod tests {
             foo: String,
             bar: Vec<u8>,
         }
-        let t = Thing { foo: "string".into(), bar: vec![0, 1, 2] };
+        let t = Thing {
+            foo: "string".into(),
+            bar: vec![0, 1, 2],
+        };
 
         let mut expected = BTreeMap::new();
         expected.insert("foo".into(), CanonicalJsonValue::String("string".into()));
@@ -525,7 +531,10 @@ mod tests {
             ]),
         );
 
-        assert_eq!(to_canonical_value(t).unwrap(), CanonicalJsonValue::Object(expected));
+        assert_eq!(
+            to_canonical_value(t).unwrap(),
+            CanonicalJsonValue::Object(expected)
+        );
     }
 
     #[test]

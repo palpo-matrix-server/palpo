@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     OwnedRoomId,
     events::{
-        EmptyStateKey, EventContentFromType, PossiblyRedactedStateEventContent,
-        StateEventType, StaticEventContent,
+        EmptyStateKey, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+        StaticEventContent,
     },
     serde::RawJsonValue,
 };

@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
 use crate::{
-    events::{StaticEventContent,
-        EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+    events::{
+        EventContentFromType, PossiblyRedactedStateEventContent, StateEventType, StaticEventContent,
     },
     serde::RawJsonValue,
 };

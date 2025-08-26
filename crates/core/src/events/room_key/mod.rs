@@ -7,8 +7,8 @@ pub mod withheld;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{EventEncryptionAlgorithm, OwnedRoomId};
 use crate::macros::EventContent;
+use crate::{EventEncryptionAlgorithm, OwnedRoomId};
 
 /// The content of an `m.room_key` event.
 ///

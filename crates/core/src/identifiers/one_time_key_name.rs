@@ -1,6 +1,5 @@
-
-use crate::macros::IdDst;
 use super::{IdParseError, KeyName};
+use crate::macros::IdDst;
 
 /// The name of a [one-time or fallback key].
 ///

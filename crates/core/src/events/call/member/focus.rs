@@ -1,7 +1,7 @@
 //! Types for MatrixRTC Focus/SFU configurations.
 
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::PrivOwnedStr;
 use crate::macros::StringEnum;
@@ -67,7 +67,9 @@ impl ActiveLivekitFocus {
     /// * `focus_selection` - The selection method used to select the LiveKit focus for the rtc
     ///   session.
     pub fn new() -> Self {
-        Self { focus_selection: FocusSelection::OldestMembership }
+        Self {
+            focus_selection: FocusSelection::OldestMembership,
+        }
     }
 }
 

@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolicyRuleEventContent, PossiblyRedactedPolicyRuleEventContent};
 use crate::{
-    events::{StaticEventContent,
-         EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
+    events::{
+        EventContentFromType, PossiblyRedactedStateEventContent, StateEventType, StaticEventContent,
     },
     serde::RawJsonValue,
 };
@@ -29,7 +29,6 @@ pub struct PolicyRuleUserEventContent(pub PolicyRuleEventContent);
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PossiblyRedactedPolicyRuleUserEventContent(pub PossiblyRedactedPolicyRuleEventContent);
-
 
 impl PossiblyRedactedStateEventContent for PossiblyRedactedPolicyRuleUserEventContent {
     type StateKey = String;

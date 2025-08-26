@@ -81,16 +81,18 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
     auth_rules: &AuthorizationRules,
     state_res_rules: &StateResolutionV2Rules,
     state_maps: impl IntoIterator<IntoIter = MapsIter>,
-    auth_chains: Vec<HashSet<Pdu::Id>>,
+    auth_chains: Vec<HashSet<OwnedEventId>>,
     fetch_event: &Fetch,
-    fetch_conflicted_state_subgraph: impl Fn(&StateMap<Vec<Pdu::Id>>) -> Option<HashSet<Pdu::Id>>,
-) -> Result<StateMap<Pdu::Id>, StateError>
+    fetch_conflicted_state_subgraph: impl Fn(
+        &StateMap<Vec<OwnedEventId>>,
+    ) -> Option<HashSet<OwnedEventId>>,
+) -> Result<StateMap<OwnedEventId>, StateError>
 where
-    Fetch: Fn(Pdu::Id) -> Fut + Sync,
+    Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event + Clone,
     Pdu::Id: 'a,
-    MapsIter: Iterator<Item = &'a StateMap<Pdu::Id>> + Clone,
+    MapsIter: Iterator<Item = &'a StateMap<OwnedEventId>> + Clone,
 {
     info!("state resolution starting");
 
@@ -150,7 +152,7 @@ where
         conflicted_power_events,
         &full_conflicted_set,
         auth_rules,
-        &fetch_event,
+        fetch_event,
     )?;
 
     debug!(count = sorted_power_events.len(), "power events");
@@ -170,7 +172,7 @@ where
         auth_rules,
         &sorted_power_events,
         initial_state_map,
-        &fetch_event,
+        fetch_event,
     )
     .await?;
 
@@ -328,12 +330,17 @@ where
 ///
 /// Returns the ordered list of event IDs from earliest to latest.
 #[instrument(skip_all)]
-fn sort_power_events<E: Event>(
-    conflicted_power_events: Vec<E::Id>,
-    full_conflicted_set: &HashSet<E::Id>,
+async fn sort_power_events<Pdu, Fetch, Fut>(
+    conflicted_power_events: Vec<OwnedEventId>,
+    full_conflicted_set: &HashSet<OwnedEventId>,
     rules: &AuthorizationRules,
-    fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> Result<Vec<E::Id>, StateError> {
+    fetch_event: &Fetch,
+) -> Result<Vec<OwnedEventId>, StateError>
+where
+    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Pdu: Event + Clone,
+{
     debug!("reverse topological sort of power events");
 
     // A representation of the DAG, a map of event ID to its list of auth events that are in the

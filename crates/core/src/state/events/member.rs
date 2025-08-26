@@ -18,8 +18,9 @@ use crate::{
         AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
         StateEventType,
-    },signatures::canonical_json,
+    },
     identifiers::*,
+    signatures::canonical_json,
 };
 
 /// A helper type for an [`Event`] of type `m.room.member`.

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use crate::{OwnedMxcUri, OwnedUserId, presence::PresenceState};
 
 /// Presence event.
-#[derive(ToSchema,  Serialize, Deserialize, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]
 #[allow(clippy::exhaustive_structs)]
 #[serde(tag = "type", rename = "m.presence")]
 pub struct PresenceEvent {

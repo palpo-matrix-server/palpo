@@ -2,7 +2,7 @@ use salvo::oapi::ToSchema;
 use serde::Serialize;
 
 use crate::{
-    RoomVersionId,room_version_rules::RedactionRules,
+    RoomVersionId,
     events::{
         EphemeralRoomEventContent, EphemeralRoomEventType, EventContentFromType,
         GlobalAccountDataEventContent, GlobalAccountDataEventType, MessageLikeEventContent,
@@ -11,6 +11,7 @@ use crate::{
         RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent, StateEventType,
         StaticStateEventContent, ToDeviceEventContent, ToDeviceEventType,
     },
+    room_version_rules::RedactionRules,
     serde::RawJsonValue,
 };
 

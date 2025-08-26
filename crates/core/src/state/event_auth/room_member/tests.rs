@@ -1,14 +1,14 @@
-use palpo_core::{
-    room_version_rules::AuthorizationRules, serde::Raw,
-    third_party_invite::IdentityServerBase64PublicKey, Signatures,
-};
 use crate::events::{
+    TimelineEventType,
     room::{
         join_rules::{JoinRule, Restricted, RoomJoinRulesEventContent},
         member::{MembershipState, RoomMemberEventContent, SignedContent, ThirdPartyInvite},
         third_party_invite::RoomThirdPartyInviteEventContent,
     },
-    TimelineEventType,
+};
+use palpo_core::{
+    Signatures, room_version_rules::AuthorizationRules, serde::Raw,
+    third_party_invite::IdentityServerBase64PublicKey,
 };
 use serde_json::{json, value::to_raw_value as to_raw_json_value};
 
@@ -16,9 +16,9 @@ use super::check_room_member;
 use crate::{
     events::RoomMemberEvent,
     test_utils::{
-        alice, bob, charlie, ella, event_id, init_subscriber, member_content_ban,
-        member_content_join, room_third_party_invite, to_pdu_event, zara, TestStateMap,
-        INITIAL_EVENTS, INITIAL_EVENTS_CREATE_ROOM,
+        INITIAL_EVENTS, INITIAL_EVENTS_CREATE_ROOM, TestStateMap, alice, bob, charlie, ella,
+        event_id, init_subscriber, member_content_ban, member_content_join,
+        room_third_party_invite, to_pdu_event, zara,
     },
 };
 
@@ -413,9 +413,9 @@ fn join_restricted_join_rule_not_supported() {
         alice(),
         TimelineEventType::RoomJoinRules,
         Some(""),
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         &["CREATE", "IMA", "IPOWER"],
         &["IPOWER"],
@@ -501,9 +501,9 @@ fn join_restricted_join_rule_already_joined() {
         alice(),
         TimelineEventType::RoomJoinRules,
         Some(""),
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         &["CREATE", "IMA", "IPOWER"],
         &["IPOWER"],
@@ -596,9 +596,9 @@ fn join_restricted_join_rule_missing_join_authorised_via_users_server() {
         alice(),
         TimelineEventType::RoomJoinRules,
         Some(""),
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         &["CREATE", "IMA", "IPOWER"],
         &["IPOWER"],
@@ -642,9 +642,9 @@ fn join_restricted_join_rule_authorised_via_user_not_in_room() {
         alice(),
         TimelineEventType::RoomJoinRules,
         Some(""),
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         &["CREATE", "IMA", "IPOWER"],
         &["IPOWER"],
@@ -697,9 +697,9 @@ fn join_restricted_join_rule_authorised_via_user_with_not_enough_power() {
         alice(),
         TimelineEventType::RoomJoinRules,
         Some(""),
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         &["CREATE", "IMA", "IPOWER"],
         &["IPOWER"],
@@ -728,9 +728,9 @@ fn join_restricted_join_rule_authorised_via_user() {
     // spec, to ensure that we only care about the `join_rule` field.
     let join_rules_to_check = [
         // Valid content, but we don't care about the allow rules.
-        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(Restricted::new(
-            vec![],
-        ))))
+        to_raw_json_value(&RoomJoinRulesEventContent::new(JoinRule::Restricted(
+            Restricted::new(vec![]),
+        )))
         .unwrap(),
         // Invalid room ID, real-life example from <https://github.com/ruma/ruma/issues/1867>.
         to_raw_json_value(&json!({

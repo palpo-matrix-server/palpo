@@ -68,8 +68,10 @@ impl RoomVersionRules {
     /// Rules for [room version 2].
     ///
     /// [room version 2]: https://spec.matrix.org/latest/rooms/v2/
-    pub const V2: Self =
-        Self { state_res: StateResolutionVersion::V2(StateResolutionV2Rules::V2_0), ..Self::V1 };
+    pub const V2: Self = Self {
+        state_res: StateResolutionVersion::V2(StateResolutionV2Rules::V2_0),
+        ..Self::V1
+    };
 
     /// Rules for [room version 3].
     ///
@@ -85,23 +87,35 @@ impl RoomVersionRules {
     /// Rules for [room version 4].
     ///
     /// [room version 4]: https://spec.matrix.org/latest/rooms/v4/
-    pub const V4: Self = Self { event_id_format: EventIdFormatVersion::V3, ..Self::V3 };
+    pub const V4: Self = Self {
+        event_id_format: EventIdFormatVersion::V3,
+        ..Self::V3
+    };
 
     /// Rules for [room version 5].
     ///
     /// [room version 5]: https://spec.matrix.org/latest/rooms/v5/
-    pub const V5: Self = Self { enforce_key_validity: true, ..Self::V4 };
+    pub const V5: Self = Self {
+        enforce_key_validity: true,
+        ..Self::V4
+    };
 
     /// Rules for [room version 6].
     ///
     /// [room version 6]: https://spec.matrix.org/latest/rooms/v6/
-    pub const V6: Self =
-        Self { authorization: AuthorizationRules::V6, redaction: RedactionRules::V6, ..Self::V5 };
+    pub const V6: Self = Self {
+        authorization: AuthorizationRules::V6,
+        redaction: RedactionRules::V6,
+        ..Self::V5
+    };
 
     /// Rules for [room version 7].
     ///
     /// [room version 7]: https://spec.matrix.org/latest/rooms/v7/
-    pub const V7: Self = Self { authorization: AuthorizationRules::V7, ..Self::V6 };
+    pub const V7: Self = Self {
+        authorization: AuthorizationRules::V7,
+        ..Self::V6
+    };
 
     /// Rules for [room version 8].
     ///
@@ -116,12 +130,18 @@ impl RoomVersionRules {
     /// Rules for [room version 9].
     ///
     /// [room version 9]: https://spec.matrix.org/latest/rooms/v9/
-    pub const V9: Self = Self { redaction: RedactionRules::V9, ..Self::V8 };
+    pub const V9: Self = Self {
+        redaction: RedactionRules::V9,
+        ..Self::V8
+    };
 
     /// Rules for [room version 10].
     ///
     /// [room version 10]: https://spec.matrix.org/latest/rooms/v10/
-    pub const V10: Self = Self { authorization: AuthorizationRules::V10, ..Self::V9 };
+    pub const V10: Self = Self {
+        authorization: AuthorizationRules::V10,
+        ..Self::V9
+    };
 
     /// Rules for [room version 11].
     ///
@@ -134,7 +154,10 @@ impl RoomVersionRules {
 
     /// Rules for room version `org.matrix.hydra.11`.
     // #[cfg(feature = "unstable-hydra")]
-    pub const HYDRA_V11: Self = Self { disposition: RoomVersionDisposition::Unstable, ..Self::V12 };
+    pub const HYDRA_V11: Self = Self {
+        disposition: RoomVersionDisposition::Unstable,
+        ..Self::V12
+    };
 
     /// Rules for room version 12.
     pub const V12: Self = Self {
@@ -361,7 +384,10 @@ impl AuthorizationRules {
     /// Authorization rules with tweaks introduced in room version 3 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/latest/rooms/v3/#authorization-rules
-    pub const V3: Self = Self { special_case_room_redaction: false, ..Self::V1 };
+    pub const V3: Self = Self {
+        special_case_room_redaction: false,
+        ..Self::V1
+    };
 
     /// Authorization rules with tweaks introduced in room version 6 ([spec]).
     ///
@@ -376,23 +402,35 @@ impl AuthorizationRules {
     /// Authorization rules with tweaks introduced in room version 7 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/latest/rooms/v7/#authorization-rules
-    pub const V7: Self = Self { knocking: true, ..Self::V6 };
+    pub const V7: Self = Self {
+        knocking: true,
+        ..Self::V6
+    };
 
     /// Authorization rules with tweaks introduced in room version 8 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/latest/rooms/v8/#authorization-rules
-    pub const V8: Self = Self { restricted_join_rule: true, ..Self::V7 };
+    pub const V8: Self = Self {
+        restricted_join_rule: true,
+        ..Self::V7
+    };
 
     /// Authorization rules with tweaks introduced in room version 10 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/latest/rooms/v10/#authorization-rules
-    pub const V10: Self =
-        Self { knock_restricted_join_rule: true, integer_power_levels: true, ..Self::V8 };
+    pub const V10: Self = Self {
+        knock_restricted_join_rule: true,
+        integer_power_levels: true,
+        ..Self::V8
+    };
 
     /// Authorization rules with tweaks introduced in room version 11 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/latest/rooms/v11/#authorization-rules
-    pub const V11: Self = Self { use_room_create_sender: true, ..Self::V10 };
+    pub const V11: Self = Self {
+        use_room_create_sender: true,
+        ..Self::V10
+    };
 
     /// Authorization rules with tweaks introduced in room version 12.
     pub const V12: Self = Self {
@@ -495,18 +533,26 @@ impl RedactionRules {
     /// Redaction rules with tweaks introduced in room version 6 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/v1.15/rooms/v6/#redactions
-    pub const V6: Self = Self { keep_room_aliases_aliases: false, ..Self::V1 };
+    pub const V6: Self = Self {
+        keep_room_aliases_aliases: false,
+        ..Self::V1
+    };
 
     /// Redaction rules with tweaks introduced in room version 8 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/v1.15/rooms/v8/#redactions
-    pub const V8: Self = Self { keep_room_join_rules_allow: true, ..Self::V6 };
+    pub const V8: Self = Self {
+        keep_room_join_rules_allow: true,
+        ..Self::V6
+    };
 
     /// Redaction rules with tweaks introduced in room version 9 ([spec]).
     ///
     /// [spec]: https://spec.matrix.org/v1.15/rooms/v9/#redactions
-    pub const V9: Self =
-        Self { keep_room_member_join_authorised_via_users_server: true, ..Self::V8 };
+    pub const V9: Self = Self {
+        keep_room_member_join_authorised_via_users_server: true,
+        ..Self::V8
+    };
 
     /// Redaction rules with tweaks introduced in room version 11 ([spec]).
     ///
@@ -525,8 +571,10 @@ impl RedactionRules {
     ///
     /// [MSC2870]: https://github.com/matrix-org/matrix-spec-proposals/pull/2870
     #[cfg(feature = "unstable-msc2870")]
-    pub const MSC2870: Self =
-        Self { keep_room_server_acl_allow_deny_allow_ip_literals: true, ..Self::V11 };
+    pub const MSC2870: Self = Self {
+        keep_room_server_acl_allow_deny_allow_ip_literals: true,
+        ..Self::V11
+    };
 }
 
 /// The tweaks for [verifying the signatures] for a room version.
@@ -549,14 +597,22 @@ pub struct SignaturesRules {
 
 impl SignaturesRules {
     /// Signatures verification rules as introduced in room version 1.
-    pub const V1: Self =
-        Self { check_event_id_server: true, check_join_authorised_via_users_server: false };
+    pub const V1: Self = Self {
+        check_event_id_server: true,
+        check_join_authorised_via_users_server: false,
+    };
 
     /// Signatures verification rules with tweaks introduced in room version 3.
-    pub const V3: Self = Self { check_event_id_server: false, ..Self::V1 };
+    pub const V3: Self = Self {
+        check_event_id_server: false,
+        ..Self::V1
+    };
 
     /// Signatures verification rules with tweaks introduced in room version 8.
-    pub const V8: Self = Self { check_join_authorised_via_users_server: true, ..Self::V3 };
+    pub const V8: Self = Self {
+        check_join_authorised_via_users_server: true,
+        ..Self::V3
+    };
 }
 
 /// The tweaks for verifying the event format for a room version.
@@ -586,7 +642,10 @@ impl EventFormatRules {
     };
 
     /// Event format rules with tweaks introduced in room version 3.
-    pub const V3: Self = Self { require_event_id: false, ..Self::V1 };
+    pub const V3: Self = Self {
+        require_event_id: false,
+        ..Self::V1
+    };
 
     /// Event format rules with tweaks introduced in room version 12.
     pub const V12: Self = Self {

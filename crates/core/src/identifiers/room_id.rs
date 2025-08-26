@@ -5,8 +5,8 @@ use diesel::expression::AsExpression;
 use super::{
     MatrixToUri, MatrixUri, OwnedEventId, OwnedServerName, ServerName, matrix_uri::UriAction,
 };
-use crate::{IdParseError, RoomOrAliasId};
 use crate::macros::IdDst;
+use crate::{IdParseError, RoomOrAliasId};
 
 /// A Matrix [room ID].
 ///
@@ -63,9 +63,10 @@ impl RoomId {
     ///
     /// [`RoomIdFormatVersion::V2`]: crate::room_version_rules::RoomIdFormatVersion::V2
     pub fn strip_sigil(&self) -> &str {
-        self.as_str().strip_prefix('!').expect("sigil should be checked during construction")
+        self.as_str()
+            .strip_prefix('!')
+            .expect("sigil should be checked during construction")
     }
-
 
     /// Returns the server name of the room ID.
     pub fn server_name(&self) -> Result<&ServerName, &str> {

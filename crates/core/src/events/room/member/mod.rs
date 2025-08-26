@@ -12,13 +12,14 @@ use crate::macros::EventContent;
 use crate::serde::JsonValue;
 use crate::state::Event;
 use crate::{
-    PrivOwnedStr,room_version_rules::RedactionRules,
-    events::{StaticEventContent,
-        AnyStrippedStateEvent, BundledStateRelations,  EventContentFromType,
+    PrivOwnedStr,
+    events::{
+        AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
-        StateEventType,
+        StateEventType, StaticEventContent,
     },
     identifiers::*,
+    room_version_rules::RedactionRules,
     serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum},
 };
 
@@ -429,7 +430,9 @@ impl ThirdPartyInvite {
     fn redact(self, rules: &RedactionRules) -> Option<RedactedThirdPartyInvite> {
         rules
             .keep_room_member_third_party_invite_signed
-            .then_some(RedactedThirdPartyInvite { signed: self.signed })
+            .then_some(RedactedThirdPartyInvite {
+                signed: self.signed,
+            })
     }
 }
 

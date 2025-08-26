@@ -5,14 +5,14 @@
 use std::time::Duration;
 
 use as_variant::as_variant;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
-use salvo::oapi::ToSchema;
 
 use super::focus::{ActiveFocus, ActiveLivekitFocus, Focus};
 use crate::PrivOwnedStr;
-use crate::{DeviceId, UnixMillis, OwnedDeviceId};
 use crate::macros::StringEnum;
+use crate::{DeviceId, OwnedDeviceId, UnixMillis};
 
 /// The data object that contains the information for one membership.
 ///
@@ -114,7 +114,9 @@ impl MembershipData<'_> {
         } else {
             // This should not be reached since we only allow events that have copied over
             // the origin server ts. `set_created_ts_if_none`
-            warn!("Encountered a Call Member state event where the expire_ts could not be constructed.");
+            warn!(
+                "Encountered a Call Member state event where the expire_ts could not be constructed."
+            );
             false
         }
     }
@@ -131,10 +133,7 @@ impl MembershipData<'_> {
     /// # Arguments
     ///
     /// * `origin_server_ts` - a fallback if [`MembershipData::created_ts`] is not present
-    pub fn expires_ts(
-        &self,
-        origin_server_ts: Option<UnixMillis>,
-    ) -> Option<UnixMillis> {
+    pub fn expires_ts(&self, origin_server_ts: Option<UnixMillis>) -> Option<UnixMillis> {
         let expires = match &self {
             MembershipData::Legacy(data) => data.expires,
             MembershipData::Session(data) => data.expires,
@@ -186,7 +185,6 @@ pub struct LegacyMembershipData {
     #[serde(rename = "membershipID")]
     pub membership_id: String,
 }
-
 
 /// Stores all the information for a MatrixRTC membership. (one for each device)
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]

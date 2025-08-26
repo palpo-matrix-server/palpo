@@ -25,7 +25,7 @@ use crate::{
         member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
-    state::{Event, StateKey},
+    state::{Event, StateKey, StateResult},
     utils::RoomIdExt,
 };
 
@@ -313,10 +313,10 @@ pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
     rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
-) -> MatrixResult<()>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = MatrixResult<Pdu>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     debug!("starting state-dependent auth check");
@@ -371,7 +371,8 @@ where
             &rules.authorization,
             room_create_event,
             fetch_state,
-        ).await;
+        )
+        .await;
     }
 
     // Since v1, if the sender's current membership state is not join, reject.

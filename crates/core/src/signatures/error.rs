@@ -187,7 +187,10 @@ pub enum VerificationError {
 }
 
 impl VerificationError {
-    pub(crate) fn public_key_not_found(entity: impl Into<String>, key_id: impl Into<String>) -> Self {
+    pub(crate) fn public_key_not_found(
+        entity: impl Into<String>,
+        key_id: impl Into<String>,
+    ) -> Self {
         Self::PublicKeyNotFound {
             entity: entity.into(),
             key_id: key_id.into(),
