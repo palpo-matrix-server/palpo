@@ -26,11 +26,11 @@ use crate::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::room_version_rules::RoomVersionRules;
+use crate::state::StateResult;
 use crate::state::events::{
     RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
     power_levels::RoomPowerLevelsEventOptionExt,
 };
-use crate::state::StateResult;
 use crate::{
     EventId, OwnedEventId, OwnedUserId, UnixMillis,
     room_version_rules::{AuthorizationRules, StateResolutionV2Rules},
@@ -134,7 +134,7 @@ where
         .chain(conflicted_state_set.into_values().flatten())
         .chain(conflicted_state_subgraph)
         // Don't honor events we cannot "verify"
-        .filter(|id| fetch_event(id.borrow().to_owned()).is_some())
+        .filter(|id| fetch_event(id.to_owned()).is_some())
         .collect();
 
     info!(count = full_conflicted_set.len(), "full conflicted set");
@@ -382,9 +382,10 @@ where
         // tasks can make progress
     }
 
-    reverse_topological_power_sort(&graph, |event_id| {
-        let event =
-            fetch_event(event_id).ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
+    reverse_topological_power_sort(&graph, |event_id| async move {
+        let event = fetch_event(event_id)
+            .await
+            .ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
         let power_level = *event_to_power_level
             .get(event_id)
             .ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
@@ -425,12 +426,13 @@ where
 ///
 /// Returns the ordered list of event IDs from earliest to latest.
 #[instrument(skip_all)]
-pub fn reverse_topological_power_sort<Id, F>(
+pub fn reverse_topological_power_sort<Id, F, Fut>(
     graph: &HashMap<Id, HashSet<Id>>,
     event_details_fn: F,
-) -> Result<Vec<Id>, StateError>
+) -> StateResult<Vec<Id>>
 where
-    F: Fn(&EventId) -> Result<(UserPowerLevel, UnixMillis), StateError>,
+    F: Fn(&EventId) -> Fut,
+    Fut: Future<Output = StateResult<(UserPowerLevel, UnixMillis)>>,
     Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
 {
     #[derive(PartialEq, Eq)]
@@ -558,12 +560,17 @@ where
 ///
 /// Returns the power level of the sender of the event or an `Err(_)` if one of the auth events if
 /// malformed.
-fn power_level_for_sender<E: Event>(
+fn power_level_for_sender<Pdu, Fetch, Fut>(
     event_id: &EventId,
     rules: &AuthorizationRules,
     creators_lock: &OnceLock<HashSet<OwnedUserId>>,
-    fetch_event: impl Fn(&EventId) -> Option<E>,
-) -> std::result::Result<UserPowerLevel, String> {
+    fetch_event: &Fetch,
+) -> std::result::Result<UserPowerLevel, String>
+where
+    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
+    Pdu: Event,
+{
     let event = fetch_event(event_id);
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
@@ -666,9 +673,9 @@ where
     trace!(list = ?events, "events to check");
 
     for event_id in events {
-        let event = fetch_event(event_id.borrow().to_owned())
+        let event = fetch_event(event_id.to_owned())
             .await
-            .or_else(|_| StateError::NotFound(event_id.borrow().to_owned()))?;
+            .or_else(|_| StateError::NotFound(event_id.to_owned()))?;
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();

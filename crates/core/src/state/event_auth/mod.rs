@@ -273,9 +273,9 @@ where
             format!("could not construct `m.room.create` event ID from room ID: {error}")
         })?;
 
-        let room_create_event = fetch_event(&room_create_event_id).await.or_else(|| {
-            format!("failed to find `m.room.create` event {room_create_event_id}")
-        })?;
+        let room_create_event = fetch_event(&room_create_event_id)
+            .await
+            .or_else(|| format!("failed to find `m.room.create` event {room_create_event_id}"))?;
 
         if room_create_event.rejected() {
             return Err(MatrixError::bad_state(format!(
