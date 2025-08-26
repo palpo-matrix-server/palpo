@@ -27,9 +27,9 @@ pub type EntitySignatures<K> = BTreeMap<OwnedSigningKeyId<K>, String>;
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct Signatures<E: Ord, K: ?Sized>(BTreeMap<E, EntitySignatures<K>>);
+pub struct Signatures<E: Ord, K: KeyName + ?Sized>(BTreeMap<E, EntitySignatures<K>>);
 
-impl<E: Ord, K: ?Sized> Signatures<E, K> {
+impl<E: Ord, K: KeyName + ?Sized> Signatures<E, K> {
     /// Creates an empty signature map.
     pub fn new() -> Self {
         Self(BTreeMap::new())

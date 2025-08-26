@@ -14,8 +14,8 @@ use self::room_member::check_room_member;
 use crate::{
     EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
     events::{
-        StateEventType, TimelineEventType, member::MembershipState,
-        room::power_levels::UserPowerLevel,
+        StateEventType, TimelineEventType,
+        room::{member::MembershipState, power_levels::UserPowerLevel},
     },
     room::JoinRuleKind,
     room_version_rules::{AuthorizationRules, RoomVersionRules},
@@ -25,7 +25,7 @@ use crate::{
         member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
-    state::{Event, StateKey, StateResult},
+    state::{Event, StateError, StateKey, StateResult},
     utils::RoomIdExt,
 };
 
@@ -140,12 +140,12 @@ pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
     incoming_event: &Pdu,
     fetch_event: &FetchEvent,
     fetch_state: &FetchState,
-) -> MatrixResult<()>
+) -> StateResult<()>
 where
     FetchEvent: Fn(OwnedEventId) -> EventFut + Sync,
-    EventFut: Future<Output = MatrixResult<Pdu>> + Send,
+    EventFut: Future<Output = StateResult<Pdu>> + Send,
     FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
-    StateFut: Future<Output = MatrixResult<Pdu>> + Send,
+    StateFut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
@@ -183,7 +183,7 @@ where
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
         let room_create_event = RoomCreateEvent::new(incoming_event);
 
-        return check_room_create(room_create_event, &rules.authorization);
+        return check_room_create(room_create_event, rules);
     }
 
     let expected_auth_types = auth_types_for_event(
@@ -191,14 +191,14 @@ where
         incoming_event.sender(),
         incoming_event.state_key(),
         incoming_event.content(),
-        &rules.authorization,
+        rules,
     )?
     .into_iter()
     .map(|(event_type, state_key)| (TimelineEventType::from(event_type), state_key))
     .collect::<HashSet<_>>();
 
     let Some(room_id) = incoming_event.room_id() else {
-        return Err(MatrixError::bad_state("missing `room_id` field for event"));
+        return Err(StateError::other("missing `room_id` field for event"));
     };
 
     let mut seen_auth_types: HashSet<(TimelineEventType, String)> =
@@ -209,7 +209,7 @@ where
         let event_id = auth_event_id.borrow();
 
         let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
-            return Err(MatrixError::bad_state(format!(
+            return Err(StateError::other(format!(
                 "failed to find auth event {event_id}"
             )));
         };
@@ -219,7 +219,7 @@ where
             .room_id()
             .is_none_or(|auth_room_id| auth_room_id != room_id)
         {
-            return Err(MatrixError::bad_state(format!(
+            return Err(StateError::other(format!(
                 "auth event {event_id} not in the same room"
             )));
         }
@@ -232,7 +232,7 @@ where
 
         // Since v1, if there are duplicate entries for a given type and state_key pair, reject.
         if seen_auth_types.contains(&key) {
-            return Err(MatrixError::bad_state(format!(
+            return Err(StateError::other(format!(
                 "duplicate auth event {event_id} for ({event_type}, {state_key}) pair"
             )));
         }
@@ -240,7 +240,7 @@ where
         // Since v1, if there are entries whose type and state_key don’t match those specified by
         // the auth events selection algorithm described in the server specification, reject.
         if !expected_auth_types.contains(&key) {
-            return Err(MatrixError::bad_state(format!(
+            return Err(StateError::other(format!(
                 "unexpected auth event {event_id} with ({event_type}, {state_key}) pair"
             )));
         }
@@ -248,9 +248,7 @@ where
         // Since v1, if there are entries which were themselves rejected under the checks performed
         // on receipt of a PDU, reject.
         if auth_event.rejected() {
-            return Err(MatrixError::bad_state(format!(
-                "rejected auth event {event_id}"
-            )));
+            return Err(StateError::other(format!("rejected auth event {event_id}")));
         }
 
         seen_auth_types.insert(key);
@@ -262,7 +260,7 @@ where
             .iter()
             .any(|(event_type, _)| *event_type == TimelineEventType::RoomCreate)
     {
-        return Err(MatrixError::bad_state(
+        return Err(StateError::other(
             "no `m.room.create` event in auth events".to_owned(),
         ));
     }
@@ -270,15 +268,15 @@ where
     // Since v12, the room_id must be the reference hash of an accepted m.room.create event.
     if rules.room_create_event_id_as_room_id {
         let room_create_event_id = room_id.room_create_event_id().map_err(|error| {
-            format!("could not construct `m.room.create` event ID from room ID: {error}")
+            StateError::other(format!(
+                "could not construct `m.room.create` event ID from room ID: {error}"
+            ))
         })?;
 
-        let room_create_event = fetch_event(room_create_event_id)
-            .await
-            .or_else(|| format!("failed to find `m.room.create` event {room_create_event_id}"))?;
+        let room_create_event = fetch_event(room_create_event_id).await?;
 
         if room_create_event.rejected() {
-            return Err(MatrixError::bad_state(format!(
+            return Err(StateError::other(format!(
                 "rejected `m.room.create` event {room_create_event_id}"
             )));
         }
@@ -309,7 +307,7 @@ where
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
-pub async fn check_state_dependent_auth_rules<Fetch, Fut, Pdu>(
+pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
@@ -327,7 +325,7 @@ where
         return Ok(());
     }
 
-    let room_create_event = fetch_state.room_create_event()?;
+    let room_create_event = fetch_state.room_create_event().await?;
 
     // Since v1, if the create event content has the field m.federate set to false and the sender
     // domain of the event does not match the sender domain of the create event, reject.
@@ -335,7 +333,7 @@ where
     if !federate
         && room_create_event.sender().server_name() != incoming_event.sender().server_name()
     {
-        return Err(MatrixError::bad_state(
+        return Err(StateError::other(
             "room is not federated and event's sender domain \
             does not match `m.room.create` event's sender domain",
         ));
@@ -352,7 +350,7 @@ where
         //
         // v1-v5, if sender's domain doesn't match state_key, reject.
         if incoming_event.state_key() != Some(sender.server_name().as_str()) {
-            return Err(MatrixError::bad_state(
+            return Err(StateError::other(
                 "server name of the `state_key` of `m.room.aliases` event \
                 does not match the server name of the sender",
             ));
@@ -366,24 +364,18 @@ where
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(
-            room_member_event,
-            &rules.authorization,
-            room_create_event,
-            fetch_state,
-        )
-        .await;
+        return check_room_member(room_member_event, rules, room_create_event, fetch_state).await;
     }
 
     // Since v1, if the sender's current membership state is not join, reject.
     let sender_membership = fetch_state.user_membership(sender).await?;
 
     if sender_membership != MembershipState::Join {
-        return Err(MatrixError::bad_state("sender's membership is not `join`"));
+        return Err(StateError::other("sender's membership is not `join`"));
     }
 
     let creators = room_create_event.creators(rules)?;
-    let current_room_power_levels_event = fetch_state.room_power_levels_event();
+    let current_room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
         current_room_power_levels_event.user_power_level(sender, &creators, rules)?;
@@ -396,7 +388,7 @@ where
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 
         if sender_power_level < invite_power_level {
-            return Err(MatrixError::bad_state(
+            return Err(StateError::other(
                 "sender does not have enough power to send invites in this room",
             ));
         }
@@ -413,7 +405,7 @@ where
         rules,
     )?;
     if sender_power_level < event_type_power_level {
-        return Err(MatrixError::bad_state(format!(
+        return Err(StateError::other(format!(
             "sender does not have enough power to send event of type `{}`",
             incoming_event.event_type()
         )));
@@ -426,7 +418,7 @@ where
         .is_some_and(|k| k.starts_with('@'))
         && incoming_event.state_key() != Some(incoming_event.sender().as_str())
     {
-        return Err(MatrixError::bad_state(
+        return Err(StateError::other(
             "sender cannot send event with `state_key` matching another user's ID",
         ));
     }
@@ -464,33 +456,40 @@ where
 fn check_room_create(
     room_create_event: RoomCreateEvent<impl Event>,
     rules: &AuthorizationRules,
-) -> Result<(), String> {
+) -> StateResult<()> {
     debug!("start `m.room.create` check");
 
     // Since v1, if it has any previous events, reject.
     if room_create_event.prev_events().next().is_some() {
-        return Err("`m.room.create` event cannot have previous events".into());
+        return Err(StateError::other(
+            "`m.room.create` event cannot have previous events",
+        ));
     }
 
     if rules.room_create_event_id_as_room_id {
         // Since v12, if the create event has a room_id, reject.
         if room_create_event.room_id().is_some() {
-            return Err("`m.room.create` event cannot have a `room_id` field".into());
+            return Err(StateError::other(
+                "`m.room.create` event cannot have a `room_id` field",
+            ));
         }
     } else {
         // v1-v11, if the domain of the room_id does not match the domain of the sender, reject.
         let Some(room_id) = room_create_event.room_id() else {
-            return Err("missing `room_id` field in `m.room.create` event".into());
+            return Err(StateError::other(
+                "missing `room_id` field in `m.room.create` event",
+            ));
         };
         let Ok(room_id_server_name) = room_id.server_name() else {
-            return Err(
-                "invalid `room_id` field in `m.room.create` event: could not parse server name"
-                    .into(),
-            );
+            return Err(StateError::other(
+                "invalid `room_id` field in `m.room.create` event: could not parse server name",
+            ));
         };
 
         if room_id_server_name != room_create_event.sender().server_name() {
-            return Err("invalid `room_id` field in `m.room.create` event: server name does not match sender's server name".into());
+            return Err(StateError::other(
+                "invalid `room_id` field in `m.room.create` event: server name does not match sender's server name",
+            ));
         }
     }
 
@@ -501,7 +500,9 @@ fn check_room_create(
 
     // v1-v10, if content has no creator field, reject.
     if !rules.use_room_create_sender && !room_create_event.has_creator()? {
-        return Err("missing `creator` field in `m.room.create` event".into());
+        return Err(StateError::other(
+            "missing `creator` field in `m.room.create` event",
+        ));
     }
 
     // Since v12, if the `additional_creators` field is present and is not an array of strings
@@ -520,7 +521,7 @@ fn check_room_power_levels(
     rules: &AuthorizationRules,
     sender_power_level: UserPowerLevel,
     room_creators: &HashSet<OwnedUserId>,
-) -> Result<(), String> {
+) -> StateResult<()> {
     debug!("starting m.room.power_levels check");
 
     // Since v10, if any of the properties users_default, events_default, state_default, ban,
@@ -547,7 +548,9 @@ fn check_room_power_levels(
                 .any(|creator| new_users.contains_key(creator))
         })
     {
-        return Err("creator user IDs are not allowed in the `users` field".to_owned());
+        return Err(StateError::other(
+            "creator user IDs are not allowed in the `users` field",
+        ));
     }
 
     debug!("validation of power event finished");
@@ -577,9 +580,9 @@ fn check_room_power_levels(
             new_power_level.unwrap_or_else(|| field.default_value()) > sender_power_level;
 
         if current_power_level_too_big || new_power_level_too_big {
-            return Err(format!(
+            return Err(StateError::other(format!(
                 "sender does not have enough power to change the power level of `{field}`"
-            ));
+            )));
         }
     }
 
@@ -708,7 +711,7 @@ fn check_room_redaction<Pdu>(
     current_room_power_levels_event: Option<RoomPowerLevelsEvent<Pdu>>,
     rules: &AuthorizationRules,
     sender_level: UserPowerLevel,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Pdu: Event,
 {
@@ -734,7 +737,9 @@ where
     }
 
     // Otherwise, reject.
-    Err("`m.room.redaction` event did not pass any of the allow rules".to_owned())
+    Err(StateError::other(
+        "`m.room.redaction` event did not pass any of the allow rules",
+    ))
 }
 
 trait FetchStateExt<E: Event> {
@@ -758,29 +763,31 @@ trait FetchStateExt<E: Event> {
 impl<E, F, Fut> FetchStateExt<E> for F
 where
     F: Fn(StateEventType, StateKey) -> Fut,
-    Fut: Future<Output = Result<Event, StateError>> + Send,
+    Fut: Future<Output = StateResult<Event>> + Send,
     E: Event,
 {
     async fn room_create_event(&self) -> Result<RoomCreateEvent<E>, String> {
-        self(&StateEventType::RoomCreate, "")
+        self(StateEventType::RoomCreate, "".into())
             .await
             .map(RoomCreateEvent::new)
             .ok_or_else(|| "no `m.room.create` event in current state".to_owned())
     }
 
     async fn user_membership(&self, user_id: &UserId) -> Result<MembershipState, String> {
-        self(&StateEventType::RoomMember, user_id.as_str())
+        self(StateEventType::RoomMember, user_id.as_str().into())
             .await
             .map(RoomMemberEvent::new)
             .membership()
     }
 
     async fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<E>> {
-        self(&StateEventType::RoomPowerLevels, "").map(RoomPowerLevelsEvent::new)
+        self(StateEventType::RoomPowerLevels, "".into())
+            .await
+            .map(RoomPowerLevelsEvent::new)
     }
 
     async fn join_rule(&self) -> Result<JoinRuleKind, String> {
-        self(&StateEventType::RoomJoinRules, "")
+        self(StateEventType::RoomJoinRules, "".into())
             .await
             .map(RoomJoinRulesEvent::new)
             .ok_or_else(|| "no `m.room.join_rules` event in current state".to_owned())?
@@ -791,7 +798,7 @@ where
         &self,
         token: &str,
     ) -> Option<RoomThirdPartyInviteEvent<E>> {
-        self(&StateEventType::RoomThirdPartyInvite, token)
+        self(StateEventType::RoomThirdPartyInvite, token.into())
             .await
             .map(RoomThirdPartyInviteEvent::new)
     }

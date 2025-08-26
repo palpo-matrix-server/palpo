@@ -1,4 +1,5 @@
 use crate::macros::IdDst;
+use crate::{IdParseError, KeyName};
 
 /// The version of a [homeserver signing key].
 ///

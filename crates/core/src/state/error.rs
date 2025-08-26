@@ -24,4 +24,22 @@ pub enum StateError {
     /// Provided `fetch_conflicted_state_subgraph` function failed.
     #[error("`fetch_conflicted_state_subgraph` failed")]
     FetchConflictedStateSubgraphFailed,
+
+    #[error("Other state error: {0}")]
+    Other(String),
+}
+
+impl StateError {
+    pub fn auth_event(error: impl Into<String>) -> Self {
+        StateError::AuthEvent(error.into())
+    }
+    pub fn other(error: impl Into<String>) -> Self {
+        StateError::Other(error.into())
+    }
+}
+
+impl From<String> for StateError {
+    fn from(error: String) -> Self {
+        StateError::Other(error)
+    }
 }

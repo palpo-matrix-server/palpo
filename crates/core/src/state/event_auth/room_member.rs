@@ -8,7 +8,7 @@ mod tests;
 use super::FetchStateExt;
 use crate::events::{StateEventType, StateKey, room::member::MembershipState};
 use crate::state::{
-    Event, StateError,
+    Event, StateError, StateResult,
     events::{
         RoomCreateEvent, RoomMemberEvent,
         member::ThirdPartyInvite,
@@ -27,15 +27,15 @@ use crate::{
 ///
 /// This assumes that `palpo_core::signatures::verify_event()` was called previously, as some authorization
 /// rules depend on the signatures being valid on the event.
-pub(super) async fn check_room_member<Fetch, Fut, Pdu>(
+pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<Pdu>,
     rules: &AuthorizationRules,
     room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     debug!("starting m.room.member check");
@@ -43,10 +43,15 @@ where
     // Since v1, if there is no state_key property, or no membership property in content,
     // reject.
     let Some(state_key) = room_member_event.state_key() else {
-        return Err("missing `state_key` field in `m.room.member` event".to_owned());
+        return Err(StateError::other(
+            "missing `state_key` field in `m.room.member` event",
+        ));
     };
-    let target_user = <&UserId>::try_from(state_key)
-        .map_err(|e| format!("invalid `state_key` field in `m.room.member` event: {e}"))?;
+    let target_user = <&UserId>::try_from(state_key).map_err(|e| {
+        StateError::other(format!(
+            "invalid `state_key` field in `m.room.member` event: {e}"
+        ))
+    })?;
 
     let target_membership = room_member_event.membership()?;
 
@@ -107,19 +112,19 @@ where
             check_room_member_knock(&room_member_event, target_user, rules, fetch_state).await
         }
         // Since v1, otherwise, the membership is unknown. Reject.
-        _ => Err("unknown membership".to_owned()),
+        _ => Err(StateError::other("unknown membership")),
     }
 }
 
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `join`.
-async fn check_room_member_join<Fetch, Fut, Pdu>(
+async fn check_room_member_join<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
@@ -145,17 +150,19 @@ where
 
     // Since v1, if the sender does not match state_key, reject.
     if room_member_event.sender() != target_user {
-        return Err("sender of join event must match target user".to_owned());
+        return Err(StateError::other(
+            "sender of join event must match target user",
+        ));
     }
 
     let current_membership = fetch_state.user_membership(target_user).await?;
 
     // Since v1, if the sender is banned, reject.
     if current_membership == MembershipState::Ban {
-        return Err("banned user cannot join room".to_owned());
+        return Err(StateError::other("banned user cannot join room"));
     }
 
-    let join_rule = fetch_state.join_rule()?;
+    let join_rule = fetch_state.join_rule().await?;
 
     // v1-v6, if the join_rule is invite then allow if membership state is invite or
     // join.
@@ -190,30 +197,35 @@ where
         let Some(authorized_via_user) = room_member_event.join_authorised_via_users_server()?
         else {
             // The field is absent, we cannot authorize.
-            return Err(
+            return Err(StateError::other(
                 "cannot join restricted room without `join_authorised_via_users_server` field \
-                 if not invited"
-                    .to_owned(),
-            );
+                 if not invited",
+            ));
         };
 
         // The member needs to be in the room to have any kind of permission.
-        let authorized_via_user_membership = fetch_state.user_membership(&authorized_via_user).await?;
+        let authorized_via_user_membership =
+            fetch_state.user_membership(&authorized_via_user).await?;
         if authorized_via_user_membership != MembershipState::Join {
-            return Err("`join_authorised_via_users_server` is not joined".to_owned());
+            return Err(StateError::other(
+                "`join_authorised_via_users_server` is not joined",
+            ));
         }
 
-        let room_power_levels_event = fetch_state.room_power_levels_event();
+        let room_power_levels_event = fetch_state.room_power_levels_event().await?;
 
-        let authorized_via_user_power_level =
-            room_power_levels_event.user_power_level(&authorized_via_user, &creators, rules)?;
+        let authorized_via_user_power_level = room_power_levels_event
+            .user_power_level(&authorized_via_user, &creators, rules)
+            .await?;
         let invite_power_level = room_power_levels_event
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 
         return if authorized_via_user_power_level >= invite_power_level {
             Ok(())
         } else {
-            Err("`join_authorised_via_users_server` does not have enough power".to_owned())
+            Err(StateError::other(
+                "`join_authorised_via_users_server` does not have enough power",
+            ))
         };
     }
 
@@ -222,19 +234,19 @@ where
     if join_rule == JoinRuleKind::Public {
         Ok(())
     } else {
-        Err("cannot join a room that is not `public`".to_owned())
+        Err(StateError::other("cannot join a room that is not `public`"))
     }
 }
 
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `invite`.
-async fn check_room_member_invite<Fetch, Fut, Pdu>(
+async fn check_room_member_invite<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
@@ -253,11 +265,15 @@ where
         .await;
     }
 
-    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
+    let sender_membership = fetch_state
+        .user_membership(room_member_event.sender())
+        .await?;
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err("cannot invite user if sender is not joined".to_owned());
+        return Err(StateError::other(
+            "cannot invite user if sender is not joined",
+        ));
     }
 
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
@@ -267,11 +283,13 @@ where
         current_target_user_membership,
         MembershipState::Join | MembershipState::Ban
     ) {
-        return Err("cannot invite user that is joined or banned".to_owned());
+        return Err(StateError::other(
+            "cannot invite user that is joined or banned",
+        ));
     }
 
     let creators = room_create_event.creators(rules)?;
-    let room_power_levels_event = fetch_state.room_power_levels_event();
+    let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
         room_power_levels_event.user_power_level(room_member_event.sender(), &creators, rules)?;
@@ -285,28 +303,30 @@ where
     if sender_power_level >= invite_power_level {
         Ok(())
     } else {
-        Err("sender does not have enough power to invite".to_owned())
+        Err(StateError::other(
+            "sender does not have enough power to invite",
+        ))
     }
 }
 
 /// Check whether the `third_party_invite` from the `m.room.member` event passes the authorization
 /// rules.
-async fn check_third_party_invite<Fetch, Fut, Pdu>(
+async fn check_third_party_invite<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     third_party_invite: &ThirdPartyInvite,
     target_user: &UserId,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
 
     // Since v1, if target user is banned, reject.
     if current_target_user_membership == MembershipState::Ban {
-        return Err("cannot invite user that is banned".to_owned());
+        return Err(StateError::other("cannot invite user that is banned"));
     }
 
     // Since v1, if content.third_party_invite does not have a signed property, reject.
@@ -316,23 +336,27 @@ where
 
     // Since v1, if mxid does not match state_key, reject.
     if target_user != third_party_invite_mxid {
-        return Err("third-party invite mxid does not match target user".to_owned());
+        return Err(StateError::other(
+            "third-party invite mxid does not match target user",
+        ));
     }
 
     // Since v1, if there is no m.room.third_party_invite event in the current room state with
     // state_key matching token, reject.
-    let Some(room_third_party_invite_event) =
-        fetch_state.room_third_party_invite_event(third_party_invite_token)
+    let Some(room_third_party_invite_event) = fetch_state
+        .room_third_party_invite_event(third_party_invite_token)
+        .await
     else {
-        return Err("no `m.room.third_party_invite` in room state matches the token".to_owned());
+        return Err(StateError::other(
+            "no `m.room.third_party_invite` in room state matches the token",
+        ));
     };
 
     // Since v1, if sender does not match sender of the m.room.third_party_invite, reject.
     if room_member_event.sender() != room_third_party_invite_event.sender() {
-        return Err(
-            "sender of `m.room.third_party_invite` does not match sender of `m.room.member`"
-                .to_owned(),
-        );
+        return Err(StateError::other(
+            "sender of `m.room.third_party_invite` does not match sender of `m.room.member`",
+        ));
     }
 
     let public_keys = room_third_party_invite_event.public_keys()?;
@@ -343,10 +367,10 @@ where
     // event, allow.
     for entity_signatures_value in signatures.values() {
         let Some(entity_signatures) = entity_signatures_value.as_object() else {
-            return Err(format!(
+            return Err(StateError::other(format!(
                 "unexpected format of `signatures` field in `third_party_invite.signed` \
                  of `m.room.member` event: expected a map of string to object, got {entity_signatures_value:?}"
-            ));
+            )));
         };
 
         // We will ignore any error from now on, we just want to find a signature that can be
@@ -386,27 +410,29 @@ where
     }
 
     // Otherwise, reject.
-    Err("\
-        no signature on third-party invite matches a public key \
-        in `m.room.third_party_invite` event"
-        .to_owned())
+    Err(StateError::other(
+        "no signature on third-party invite matches a public key \
+        in `m.room.third_party_invite` event",
+    ))
 }
 
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `leave`.
-async fn check_room_member_leave<Fetch, Fut, Pdu>(
+async fn check_room_member_leave<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
-    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
+    let sender_membership = fetch_state
+        .user_membership(room_member_event.sender())
+        .await?;
 
     // v1-v6, if the sender matches state_key, allow if and only if that user’s current
     // membership state is invite or join.
@@ -422,17 +448,19 @@ where
         return if membership_is_invite_or_join || membership_is_knock {
             Ok(())
         } else {
-            Err("cannot leave if not joined, invited or knocked".to_owned())
+            Err(StateError::other(
+                "cannot leave if not joined, invited or knocked",
+            ))
         };
     }
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err("cannot kick if sender is not joined".to_owned());
+        return Err(StateError::other("cannot kick if sender is not joined"));
     }
 
     let creators = room_create_event.creators(rules)?;
-    let room_power_levels_event = fetch_state.room_power_levels_event();
+    let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
     let sender_power_level =
@@ -445,7 +473,9 @@ where
     if current_target_user_membership == MembershipState::Ban
         && sender_power_level < ban_power_level
     {
-        return Err("sender does not have enough power to unban".to_owned());
+        return Err(StateError::other(
+            "sender does not have enough power to unban",
+        ));
     }
 
     let kick_power_level =
@@ -460,33 +490,37 @@ where
     if sender_power_level >= kick_power_level && target_user_power_level < sender_power_level {
         Ok(())
     } else {
-        Err("sender does not have enough power to kick target user".to_owned())
+        Err(StateError::other(
+            "sender does not have enough power to kick target user",
+        ))
     }
 }
 
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `ban`.
-async fn check_room_member_ban<Fetch, Fut, Pdu>(
+async fn check_room_member_ban<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     room_create_event: &RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
-    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
+    let sender_membership = fetch_state
+        .user_membership(room_member_event.sender())
+        .await?;
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err("cannot ban if sender is not joined".to_owned());
+        return Err(StateError::other("cannot ban if sender is not joined"));
     }
 
     let creators = room_create_event.creators(rules)?;
-    let room_power_levels_event = fetch_state.room_power_levels_event();
+    let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
         room_power_levels_event.user_power_level(room_member_event.sender(), &creators, rules)?;
@@ -502,24 +536,26 @@ where
     if sender_power_level >= ban_power_level && target_user_power_level < sender_power_level {
         Ok(())
     } else {
-        Err("sender does not have enough power to ban target user".to_owned())
+        Err(StateError::other(
+            "sender does not have enough power to ban target user",
+        ))
     }
 }
 
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `knock`.
-async fn check_room_member_knock<Fetch, Fut, Pdu>(
+async fn check_room_member_knock<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     fetch_state: &Fetch,
-) -> Result<(), String>
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
-    let join_rule = fetch_state.join_rule()?;
+    let join_rule = fetch_state.join_rule().await?;
 
     // v7-v9, if the join_rule is anything other than knock, reject.
     // Since v10, if the join_rule is anything other than knock or knock_restricted,
@@ -527,17 +563,21 @@ where
     if join_rule != JoinRuleKind::Knock
         && (rules.knock_restricted_join_rule && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
-        return Err(
-            "join rule is not set to knock or knock_restricted, knocking is not allowed".to_owned(),
-        );
+        return Err(StateError::other(
+            "join rule is not set to knock or knock_restricted, knocking is not allowed",
+        ));
     }
 
     // Since v7, if sender does not match state_key, reject.
     if room_member_event.sender() != target_user {
-        return Err("cannot make another user knock, sender does not match target user".to_owned());
+        return Err(StateError::other(
+            "cannot make another user knock, sender does not match target user",
+        ));
     }
 
-    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
+    let sender_membership = fetch_state
+        .user_membership(room_member_event.sender())
+        .await?;
 
     // Since v7, if the sender’s current membership is not ban, invite, or join, allow.
     // Otherwise, reject.
@@ -547,6 +587,8 @@ where
     ) {
         Ok(())
     } else {
-        Err("cannot knock if user is banned, invited or joined".to_owned())
+        Err(StateError::other(
+            "cannot knock if user is banned, invited or joined",
+        ))
     }
 }

@@ -10,6 +10,7 @@ use futures_util::{FutureExt, Stream, StreamExt, TryFutureExt, future::OptionFut
 use tracing::{debug, info, instrument, trace, warn};
 
 mod error;
+pub use error::{StateError, StateResult};
 pub mod event_auth;
 pub mod events;
 pub mod room_version;
@@ -17,7 +18,6 @@ pub mod room_version;
 // #[cfg(test)]
 // mod tests;
 
-pub use error::StateError;
 pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_auth_rules};
 pub use events::Event;
 pub use room_version::RoomVersion;
@@ -26,7 +26,6 @@ use crate::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::room_version_rules::RoomVersionRules;
-use crate::state::StateResult;
 use crate::state::events::{
     RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
     power_levels::RoomPowerLevelsEventOptionExt,
@@ -130,12 +129,15 @@ where
 
     // The full conflicted set is the union of the conflicted state set and the auth difference,
     // and since v12, the conflicted state subgraph.
-    let full_conflicted_set: HashSet<_> = auth_difference(auth_chains)
-        .chain(conflicted_state_set.into_values().flatten())
-        .chain(conflicted_state_subgraph)
-        // Don't honor events we cannot "verify"
-        .filter(|id| fetch_event(id.to_owned()).is_some())
-        .collect();
+    let full_conflicted_set: HashSet<_> = stream::iter(
+        auth_difference(auth_chains)
+            .chain(conflicted_state_set.into_values().flatten())
+            .chain(conflicted_state_subgraph),
+    )
+    // Don't honor events we cannot "verify"
+    .filter(|id| async move { fetch_event(id.to_owned()).await.is_ok() })
+    .collect()
+    .await;
 
     info!(count = full_conflicted_set.len(), "full conflicted set");
     trace!(set = ?full_conflicted_set, "full conflicted set");
@@ -144,7 +146,7 @@ where
     //    power event P, enlarge X by adding the events in the auth chain of P which also belong to
     //    the full conflicted set. Sort X into a list using the reverse topological power ordering.
     let conflicted_power_events = stream::iter(&full_conflicted_set)
-        .filter(|&id| async move { is_power_event_id(id.borrow(), fetch_event).await })
+        .filter(|id| async move { is_power_event_id(id.borrow(), fetch_event).await })
         .cloned()
         .collect::<Vec<_>>()
         .await;
@@ -584,7 +586,7 @@ where
                 .room_id()
                 .and_then(|room_id| room_id.room_create_event_id().ok())
             {
-                room_create_event = fetch_event(&room_create_event_id.to_owned()).await.ok();
+                room_create_event = fetch_event(room_create_event_id.to_owned()).await.ok();
             }
         }
     }
@@ -595,7 +597,7 @@ where
         .into_iter()
         .flatten()
     {
-        if let Some(auth_event) = fetch_event(auth_event_id.to_owned()).await {
+        if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 room_power_levels_event = Some(RoomPowerLevelsEvent::new(auth_event));
             } else if !rules.room_create_event_id_as_room_id
@@ -677,14 +679,12 @@ where
     trace!(list = ?events, "events to check");
 
     for event_id in events {
-        let event = fetch_event(event_id.to_owned())
-            .await
-            .or_else(|_| StateError::NotFound(event_id.to_owned()))?;
+        let event = fetch_event(event_id.to_owned()).await?;
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();
         for auth_event_id in event.auth_events() {
-            if let Ok(auth_event) = fetch_event(auth_event_id).await {
+            if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
                 if !auth_event.rejected() {
                     auth_events.insert(
                         auth_event.event_type().with_state_key(
@@ -703,11 +703,11 @@ where
         if rules.room_create_event_id_as_room_id
             && *event.event_type() != TimelineEventType::RoomCreate
         {
-            if let Some(room_create_event) = event
+            if let Some(room_create_event_id) = event
                 .room_id()
                 .and_then(|room_id| room_id.room_create_event_id().ok())
-                .and_then(|room_create_event_id| fetch_event(room_create_event_id))
             {
+                let room_create_event = fetch_event(room_create_event_id).await?;
                 auth_events.insert(
                     (StateEventType::RoomCreate, String::new()),
                     room_create_event,
@@ -824,7 +824,7 @@ where
         power_level = None;
 
         for auth_event_id in power_level_event.auth_events() {
-            let auth_event = fetch_event(auth_event_id.borrow()).await?;
+            let auth_event = fetch_event(auth_event_id.to_owned()).await?;
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 power_level = Some(auth_event_id.to_owned());
                 break;
@@ -846,7 +846,7 @@ where
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
         if let Ok(event) = fetch_event(event_id.to_owned()).await {
-            if let Ok(position) = mainline_position(event, &mainline_map, fetch_event).await {
+            if let Ok(position) = mainline_position(&event, &mainline_map, fetch_event).await {
                 order_map.insert(
                     event_id,
                     (
@@ -990,14 +990,14 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
 /// Whether the given event ID belongs to a power event.
 ///
 /// See the docs of `is_power_event()` for the definition of a power event.
-async fn is_power_event_id<Fetch, Fut, Pdu>(event_id: &EventId, fetch: &Fetch) -> bool
+async fn is_power_event_id<Pdu, Fetch, Fut>(event_id: &EventId, fetch_event: &Fetch) -> bool
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    match fetch(event_id.to_owned()).await {
-        Some(state) => is_power_event(state),
+    match fetch_event(event_id.to_owned()).await {
+        Ok(state) => is_power_event(state),
         _ => false,
     }
 }

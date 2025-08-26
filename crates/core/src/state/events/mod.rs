@@ -153,7 +153,7 @@ impl<T: Event> Event for Arc<T> {
     fn redacts(&self) -> Option<&Self::Id> {
         (**self).redacts()
     }
-    
+
     fn rejected(&self) -> bool {
         (**self).rejected()
     }

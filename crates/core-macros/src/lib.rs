@@ -235,22 +235,6 @@ pub fn room_version_id(input: TokenStream) -> TokenStream {
     output.into()
 }
 
-/// Compile-time checked `ServerSigningKeyId` construction.
-#[proc_macro]
-pub fn server_signing_key_id(input: TokenStream) -> TokenStream {
-    let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
-    assert!(
-        key_id::validate(&id.value()).is_ok(),
-        "Invalid server_signing_key_id"
-    );
-
-    let output = quote! {
-        <&#dollar_crate::ServerSigningKeyId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
-    };
-
-    output.into()
-}
-
 /// Compile-time checked `ServerName` construction.
 #[proc_macro]
 pub fn server_name(input: TokenStream) -> TokenStream {
