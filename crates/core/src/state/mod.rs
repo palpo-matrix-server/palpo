@@ -6,7 +6,7 @@ use std::{
     sync::OnceLock,
 };
 
-use futures_util::{FutureExt, Stream, StreamExt, TryFutureExt, future::OptionFuture};
+use futures_util::{FutureExt, Stream, StreamExt, TryFutureExt, future::OptionFuture, stream};
 use tracing::{debug, info, instrument, trace, warn};
 
 mod error;
@@ -30,6 +30,7 @@ use crate::state::events::{
     RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
     power_levels::RoomPowerLevelsEventOptionExt,
 };
+use crate::state::StateResult;
 use crate::{
     EventId, OwnedEventId, OwnedUserId, UnixMillis,
     room_version_rules::{AuthorizationRules, StateResolutionV2Rules},
@@ -133,7 +134,7 @@ where
         .chain(conflicted_state_set.into_values().flatten())
         .chain(conflicted_state_subgraph)
         // Don't honor events we cannot "verify"
-        .filter(|id| fetch_event(id.borrow()).is_some())
+        .filter(|id| fetch_event(id.borrow().to_owned()).is_some())
         .collect();
 
     info!(count = full_conflicted_set.len(), "full conflicted set");
@@ -142,9 +143,9 @@ where
     // 1. Select the set X of all power events that appear in the full conflicted set. For each such
     //    power event P, enlarge X by adding the events in the auth chain of P which also belong to
     //    the full conflicted set. Sort X into a list using the reverse topological power ordering.
-    let conflicted_power_events = full_conflicted_set
-        .iter()
-        .filter(|&id| is_power_event_id(id.borrow(), &fetch_event))
+    let conflicted_power_events = stream::iter(&full_conflicted_set)
+        .filter(|&id| async move { is_power_event_id(id.borrow(), fetch_event).await })
+        .await
         .cloned()
         .collect::<Vec<_>>();
 
@@ -153,7 +154,8 @@ where
         &full_conflicted_set,
         auth_rules,
         fetch_event,
-    )?;
+    )
+    .await?;
 
     debug!(count = sorted_power_events.len(), "power events");
     trace!(list = ?sorted_power_events, "sorted power events");
@@ -200,7 +202,7 @@ where
     debug!(event_id = ?power_event, "power event");
 
     let sorted_remaining_events =
-        mainline_sort(&remaining_events, power_event.cloned(), &fetch_event)?;
+        mainline_sort(&remaining_events, power_event.cloned(), fetch_event)?;
 
     trace!(list = ?sorted_remaining_events, "events left, sorted");
 
@@ -349,7 +351,7 @@ where
 
     // Fill the graph.
     for event_id in conflicted_power_events {
-        add_event_and_auth_chain_to_graph(&mut graph, event_id, full_conflicted_set, &fetch_event);
+        add_event_and_auth_chain_to_graph(&mut graph, event_id, full_conflicted_set, fetch_event);
 
         // TODO: if these functions are ever made async here
         // is a good place to yield every once in a while so other
@@ -365,7 +367,7 @@ where
     // Get the power level of the sender of each event in the graph.
     for event_id in graph.keys() {
         let sender_power_level =
-            power_level_for_sender(event_id.borrow(), rules, &creators_lock, &fetch_event)
+            power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event)
                 .map_err(StateError::AuthEvent)?;
         debug!(
             event_id = event_id.borrow().as_str(),
@@ -650,13 +652,13 @@ fn power_level_for_sender<E: Event>(
 /// an unexpected format.
 async fn iterative_auth_check<'b, Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
-    events: &[Pdu::Id],
+    events: &[OwnedEventId],
     mut state: StateMap<OwnedEventId>,
     fetch_event: &Fetch,
-) -> Result<StateMap<OwnedEventId>, StateError>
+) -> StateResult<StateMap<OwnedEventId>>
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone,
 {
     debug!("starting iterative auth checks");
@@ -720,7 +722,7 @@ where
 
         for key in auth_types {
             if let Some(auth_event_id) = state.get(&key) {
-                if let Ok(auth_event) = fetch_event(auth_event_id.borrow().to_owned()).await {
+                if let Ok(auth_event) = fetch_event(auth_event_id.to_owned()).await {
                     if !auth_event.rejected() {
                         auth_events.insert(key.to_owned(), auth_event);
                     }
@@ -963,8 +965,13 @@ fn add_event_and_auth_chain_to_graph<E: Event>(
 /// Whether the given event ID belongs to a power event.
 ///
 /// See the docs of `is_power_event()` for the definition of a power event.
-fn is_power_event_id<E: Event>(event_id: &EventId, fetch: impl Fn(&EventId) -> Option<E>) -> bool {
-    match fetch(event_id).as_ref() {
+async fn is_power_event_id<Fetch, Fut, Pdu>(event_id: &EventId, fetch: &Fetch) -> bool
+where
+    Fetch: Fn(OwnedEventId) -> Fut + Sync,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
+    Pdu: Event,
+{
+    match fetch(event_id.to_owned()).await {
         Some(state) => is_power_event(state),
         _ => false,
     }

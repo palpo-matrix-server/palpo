@@ -19,7 +19,7 @@ use crate::{
 /// Typically encrypted as an `m.room.encrypted` event, then sent as a to-device event.
 ///
 /// [`m.room_key.withheld`]: https://spec.matrix.org/latest/client-server-api/#mroom_keywithheld
-#[derive(Clone, Debug, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Serialize, EventContent)]
 #[palpo_event(type = "m.room_key.withheld", kind = ToDevice)]
 pub struct ToDeviceRoomKeyWithheldEventContent {
     /// The encryption algorithm the key in this event is to be used with.

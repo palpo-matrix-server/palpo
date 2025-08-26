@@ -136,7 +136,7 @@ pub fn auth_types_for_event(
 /// to know if the event passes auth against some state not a recursive
 /// collection of auth_events fields.
 pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
-    rules: &RoomVersionRules,
+    rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_event: &FetchEvent,
     fetch_state: &FetchState,
@@ -168,13 +168,13 @@ where
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_independent_auth_rules<Fetch, Fut, Pdu>(
-    rules: &RoomVersionRules,
+    rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_event: &Fetch,
-) -> MatrixResult<()>
+) -> StateResult<()>
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
-    Fut: Future<Output = MatrixResult<Pdu>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     debug!("starting state-independent auth check");
@@ -208,7 +208,7 @@ where
     for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
-        let Ok(auth_event) = fetch_event(event_id).await else {
+        let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
             return Err(MatrixError::bad_state(format!(
                 "failed to find auth event {event_id}"
             )));
@@ -273,7 +273,7 @@ where
             format!("could not construct `m.room.create` event ID from room ID: {error}")
         })?;
 
-        let room_create_event = fetch_event(&room_create_event_id).ok_or_else(|| {
+        let room_create_event = fetch_event(&room_create_event_id).await.or_else(|| {
             format!("failed to find `m.room.create` event {room_create_event_id}")
         })?;
 
