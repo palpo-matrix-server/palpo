@@ -77,18 +77,20 @@ pub type TypeStateKey = (StateEventType, StateKey);
 ///
 /// [state resolution]: https://spec.matrix.org/latest/rooms/v2/#state-resolution
 #[instrument(skip_all)]
-pub async fn resolve<'a, E, MapsIter>(
+pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
     auth_rules: &AuthorizationRules,
     state_res_rules: &StateResolutionV2Rules,
     state_maps: impl IntoIterator<IntoIter = MapsIter>,
-    auth_chains: Vec<HashSet<E::Id>>,
-    fetch_event: impl Fn(&EventId) -> Option<E>,
-    fetch_conflicted_state_subgraph: impl Fn(&StateMap<Vec<E::Id>>) -> Option<HashSet<E::Id>>,
-) -> Result<StateMap<E::Id>, StateError>
+    auth_chains: Vec<HashSet<Pdu::Id>>,
+    fetch_event: &Fetch,
+    fetch_conflicted_state_subgraph: impl Fn(&StateMap<Vec<Pdu::Id>>) -> Option<HashSet<Pdu::Id>>,
+) -> Result<StateMap<Pdu::Id>, StateError>
 where
-    E: Event + Clone,
-    E::Id: 'a,
-    MapsIter: Iterator<Item = &'a StateMap<E::Id>> + Clone,
+    Fetch: Fn(Pdu::Id) -> Fut + Sync,
+    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Pdu: Event + Clone,
+    Pdu::Id: 'a,
+    MapsIter: Iterator<Item = &'a StateMap<Pdu::Id>> + Clone,
 {
     info!("state resolution starting");
 
@@ -112,7 +114,10 @@ where
         let conflicted_state_subgraph = fetch_conflicted_state_subgraph(&conflicted_state_set)
             .ok_or(StateError::FetchConflictedStateSubgraphFailed)?;
 
-        info!(count = conflicted_state_subgraph.len(), "events in conflicted state subgraph");
+        info!(
+            count = conflicted_state_subgraph.len(),
+            "events in conflicted state subgraph"
+        );
         trace!(set = ?conflicted_state_subgraph, "conflicted state subgraph");
 
         conflicted_state_subgraph
@@ -141,8 +146,12 @@ where
         .cloned()
         .collect::<Vec<_>>();
 
-    let sorted_power_events =
-        sort_power_events(conflicted_power_events, &full_conflicted_set, auth_rules, &fetch_event)?;
+    let sorted_power_events = sort_power_events(
+        conflicted_power_events,
+        &full_conflicted_set,
+        auth_rules,
+        &fetch_event,
+    )?;
 
     debug!(count = sorted_power_events.len(), "power events");
     trace!(list = ?sorted_power_events, "sorted power events");
@@ -157,10 +166,18 @@ where
         unconflicted_state_map.clone()
     };
 
-    let partially_resolved_state =
-        iterative_auth_check(auth_rules, &sorted_power_events, initial_state_map, &fetch_event)?;
+    let partially_resolved_state = iterative_auth_check(
+        auth_rules,
+        &sorted_power_events,
+        initial_state_map,
+        &fetch_event,
+    )
+    .await?;
 
-    debug!(count = partially_resolved_state.len(), "resolved power events");
+    debug!(
+        count = partially_resolved_state.len(),
+        "resolved power events"
+    );
     trace!(map = ?partially_resolved_state, "resolved power events");
 
     // 3. Take all remaining events that weren’t picked in step 1 and order them by the mainline
@@ -192,7 +209,8 @@ where
         &sorted_remaining_events,
         partially_resolved_state,
         &fetch_event,
-    )?;
+    )
+    .await?;
 
     // 5. Update the result by replacing any event with the event with the same key from the
     //    unconflicted state map, if such an event exists, to get the final resolved state.
@@ -639,8 +657,9 @@ where
     trace!(list = ?events, "events to check");
 
     for event_id in events {
-        let event = fetch_event(event_id.borrow().to_owned()).await
-            .ok_or_else(|| StateError::NotFound(event_id.borrow().to_owned()))?;
+        let event = fetch_event(event_id.borrow().to_owned())
+            .await
+            .or_else(|_| StateError::NotFound(event_id.borrow().to_owned()))?;
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();
@@ -648,9 +667,9 @@ where
             if let Ok(auth_event) = fetch_event(auth_event_id).await {
                 if !auth_event.rejected() {
                     auth_events.insert(
-                        auth_event
-                            .event_type()
-                            .with_state_key(auth_event.state_key().ok_or(StateError::MissingStateKey)?),
+                        auth_event.event_type().with_state_key(
+                            auth_event.state_key().ok_or(StateError::MissingStateKey)?,
+                        ),
                         auth_event,
                     );
                 }
@@ -694,7 +713,7 @@ where
 
         for key in auth_types {
             if let Some(auth_event_id) = state.get(&key) {
-                if let Ok(auth_event) = fetch_event(auth_event_id.borrow()).await {
+                if let Ok(auth_event) = fetch_event(auth_event_id.borrow().to_owned()).await {
                     if !auth_event.rejected() {
                         auth_events.insert(key.to_owned(), auth_event);
                     }

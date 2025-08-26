@@ -371,7 +371,7 @@ where
             &rules.authorization,
             room_create_event,
             fetch_state,
-        );
+        ).await;
     }
 
     // Since v1, if the sender's current membership state is not join, reject.

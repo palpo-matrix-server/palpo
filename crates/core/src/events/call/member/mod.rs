@@ -388,8 +388,8 @@ impl From<MembershipInit> for Membership {
 #[cfg_attr(test, derive(PartialEq))]
 #[serde(tag = "application")]
 pub enum Application {
+    /// The rtc application (session type) for VoIP call.
     #[serde(rename = "m.call")]
-    /// A VoIP call.
     Call(CallApplicationContent),
 }
 
