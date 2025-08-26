@@ -16,14 +16,14 @@ use crate::macros::IdDst;
 )]
 pub struct ServerSigningKeyVersion(str);
 
-// impl KeyName for ServerSigningKeyVersion {
-//     fn validate(s: &str) -> Result<(), IdParseError> {
-//         palpo_identifiers_validation::server_signing_key_version::validate(s)
-//     }
-// }
+impl KeyName for ServerSigningKeyVersion {
+    fn validate(s: &str) -> Result<(), IdParseError> {
+        palpo_identifiers_validation::server_signing_key_version::validate(s)
+    }
+}
 
-// impl KeyName for OwnedServerSigningKeyVersion {
-//     fn validate(s: &str) -> Result<(), IdParseError> {
-//         palpo_identifiers_validation::server_signing_key_version::validate(s)
-//     }
-// }
+impl KeyName for OwnedServerSigningKeyVersion {
+    fn validate(s: &str) -> Result<(), IdParseError> {
+        palpo_identifiers_validation::server_signing_key_version::validate(s)
+    }
+}

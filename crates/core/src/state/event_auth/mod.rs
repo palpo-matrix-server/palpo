@@ -376,7 +376,7 @@ where
     }
 
     // Since v1, if the sender's current membership state is not join, reject.
-    let sender_membership = fetch_state.user_membership(sender)?;
+    let sender_membership = fetch_state.user_membership(sender).await?;
 
     if sender_membership != MembershipState::Join {
         return Err(MatrixError::bad_state("sender's membership is not `join`"));
@@ -708,7 +708,10 @@ fn check_room_redaction<Pdu>(
     current_room_power_levels_event: Option<RoomPowerLevelsEvent<Pdu>>,
     rules: &AuthorizationRules,
     sender_level: UserPowerLevel,
-) -> Result<(), String> {
+) -> Result<(), String>
+where
+    Pdu: Event,
+{
     let redact_level = current_room_power_levels_event
         .get_as_int_or_default(RoomPowerLevelsIntField::Redact, rules)?;
 
@@ -735,46 +738,61 @@ fn check_room_redaction<Pdu>(
 }
 
 trait FetchStateExt<E: Event> {
-    fn room_create_event(&self) -> Result<RoomCreateEvent<E>, String>;
+    fn room_create_event(&self) -> impl Future<Output = Result<RoomCreateEvent<E>, String>>;
 
-    fn user_membership(&self, user_id: &UserId) -> Result<MembershipState, String>;
+    fn user_membership(
+        &self,
+        user_id: &UserId,
+    ) -> impl Future<Output = Result<MembershipState, String>>;
 
-    fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<E>>;
+    fn room_power_levels_event(&self) -> impl Future<Output = Option<RoomPowerLevelsEvent<E>>>;
 
-    fn join_rule(&self) -> Result<JoinRuleKind, String>;
+    fn join_rule(&self) -> impl Future<Output = Result<JoinRuleKind, String>>;
 
-    fn room_third_party_invite_event(&self, token: &str) -> Option<RoomThirdPartyInviteEvent<E>>;
+    fn room_third_party_invite_event(
+        &self,
+        token: &str,
+    ) -> impl Future<Output = Option<RoomThirdPartyInviteEvent<E>>>;
 }
 
-impl<E, F> FetchStateExt<E> for F
+impl<E, F, Fut> FetchStateExt<E> for F
 where
-    F: Fn(&StateEventType, &str) -> Option<E>,
+    F: Fn(StateEventType, StateKey) -> Fut,
+    Fut: Future<Output = Result<Event, StateError>> + Send,
     E: Event,
 {
-    fn room_create_event(&self) -> Result<RoomCreateEvent<E>, String> {
+    async fn room_create_event(&self) -> Result<RoomCreateEvent<E>, String> {
         self(&StateEventType::RoomCreate, "")
+            .await
             .map(RoomCreateEvent::new)
             .ok_or_else(|| "no `m.room.create` event in current state".to_owned())
     }
 
-    fn user_membership(&self, user_id: &UserId) -> Result<MembershipState, String> {
+    async fn user_membership(&self, user_id: &UserId) -> Result<MembershipState, String> {
         self(&StateEventType::RoomMember, user_id.as_str())
+            .await
             .map(RoomMemberEvent::new)
             .membership()
     }
 
-    fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<E>> {
+    async fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<E>> {
         self(&StateEventType::RoomPowerLevels, "").map(RoomPowerLevelsEvent::new)
     }
 
-    fn join_rule(&self) -> Result<JoinRuleKind, String> {
+    async fn join_rule(&self) -> Result<JoinRuleKind, String> {
         self(&StateEventType::RoomJoinRules, "")
+            .await
             .map(RoomJoinRulesEvent::new)
             .ok_or_else(|| "no `m.room.join_rules` event in current state".to_owned())?
             .join_rule()
     }
 
-    fn room_third_party_invite_event(&self, token: &str) -> Option<RoomThirdPartyInviteEvent<E>> {
-        self(&StateEventType::RoomThirdPartyInvite, token).map(RoomThirdPartyInviteEvent::new)
+    async fn room_third_party_invite_event(
+        &self,
+        token: &str,
+    ) -> Option<RoomThirdPartyInviteEvent<E>> {
+        self(&StateEventType::RoomThirdPartyInvite, token)
+            .await
+            .map(RoomThirdPartyInviteEvent::new)
     }
 }

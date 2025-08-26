@@ -6,14 +6,12 @@ use tracing::debug;
 mod tests;
 
 use super::FetchStateExt;
-use crate::events::{
-    StateEventType, StateKey,
-    room::member::{MembershipState, ThirdPartyInvite},
-};
+use crate::events::{StateEventType, StateKey, room::member::MembershipState};
 use crate::state::{
     Event, StateError,
     events::{
         RoomCreateEvent, RoomMemberEvent,
+        member::ThirdPartyInvite,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
 };
@@ -150,7 +148,7 @@ where
         return Err("sender of join event must match target user".to_owned());
     }
 
-    let current_membership = fetch_state.user_membership(target_user)?;
+    let current_membership = fetch_state.user_membership(target_user).await?;
 
     // Since v1, if the sender is banned, reject.
     if current_membership == MembershipState::Ban {
@@ -200,7 +198,7 @@ where
         };
 
         // The member needs to be in the room to have any kind of permission.
-        let authorized_via_user_membership = fetch_state.user_membership(&authorized_via_user)?;
+        let authorized_via_user_membership = fetch_state.user_membership(&authorized_via_user).await?;
         if authorized_via_user_membership != MembershipState::Join {
             return Err("`join_authorised_via_users_server` is not joined".to_owned());
         }
@@ -239,7 +237,7 @@ async fn check_room_member_invite<Fetch, Fut, Pdu>(
 ) -> Result<(), String>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     let third_party_invite = room_member_event.third_party_invite()?;
@@ -255,14 +253,14 @@ where
         .await;
     }
 
-    let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
+    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
         return Err("cannot invite user if sender is not joined".to_owned());
     }
 
-    let current_target_user_membership = fetch_state.user_membership(target_user)?;
+    let current_target_user_membership = fetch_state.user_membership(target_user).await?;
 
     // Since v1, if target user’s current membership state is join or ban, reject.
     if matches!(
@@ -304,7 +302,7 @@ where
     Fut: Future<Output = Result<Pdu>> + Send,
     Pdu: Event,
 {
-    let current_target_user_membership = fetch_state.user_membership(target_user)?;
+    let current_target_user_membership = fetch_state.user_membership(target_user).await?;
 
     // Since v1, if target user is banned, reject.
     if current_target_user_membership == MembershipState::Ban {
@@ -408,7 +406,7 @@ where
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
-    let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
+    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
 
     // v1-v6, if the sender matches state_key, allow if and only if that user’s current
     // membership state is invite or join.
@@ -436,7 +434,7 @@ where
     let creators = room_create_event.creators(rules)?;
     let room_power_levels_event = fetch_state.room_power_levels_event();
 
-    let current_target_user_membership = fetch_state.user_membership(target_user)?;
+    let current_target_user_membership = fetch_state.user_membership(target_user).await?;
     let sender_power_level =
         room_power_levels_event.user_power_level(room_member_event.sender(), &creators, rules)?;
     let ban_power_level =
@@ -480,7 +478,7 @@ where
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
-    let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
+    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
@@ -539,7 +537,7 @@ where
         return Err("cannot make another user knock, sender does not match target user".to_owned());
     }
 
-    let sender_membership = fetch_state.user_membership(room_member_event.sender())?;
+    let sender_membership = fetch_state.user_membership(room_member_event.sender()).await?;
 
     // Since v7, if the sender’s current membership is not ban, invite, or join, allow.
     // Otherwise, reject.

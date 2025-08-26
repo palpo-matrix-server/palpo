@@ -145,9 +145,9 @@ where
     //    the full conflicted set. Sort X into a list using the reverse topological power ordering.
     let conflicted_power_events = stream::iter(&full_conflicted_set)
         .filter(|&id| async move { is_power_event_id(id.borrow(), fetch_event).await })
-        .await
         .cloned()
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>()
+        .await;
 
     let sorted_power_events = sort_power_events(
         conflicted_power_events,
