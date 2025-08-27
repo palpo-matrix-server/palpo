@@ -7,7 +7,7 @@
 
 use identifiers::expand_id_dst;
 use palpo_identifiers_validation::{
-    device_key_id, event_id, key_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
+    device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
     user_id,
 };
 use proc_macro::TokenStream;

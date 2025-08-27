@@ -6,7 +6,7 @@ use std::{
     sync::OnceLock,
 };
 
-use futures_util::{FutureExt, StreamExt, TryFutureExt, stream};
+use futures_util::{StreamExt, stream};
 use tracing::{debug, info, instrument, trace, warn};
 
 mod error;
@@ -22,7 +22,7 @@ pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_aut
 pub use events::Event;
 pub use room_version::RoomVersion;
 
-use crate::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::events::room::member::MembershipState;
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, StateKey, TimelineEventType};
 use crate::room_version_rules::RoomVersionRules;
@@ -31,7 +31,7 @@ use crate::state::events::{
     power_levels::RoomPowerLevelsEventOptionExt,
 };
 use crate::{
-    EventId, OwnedEventId, OwnedUserId, UnixMillis,
+    EventId, OwnedUserId, UnixMillis,
     room_version_rules::{AuthorizationRules, StateResolutionV2Rules},
     utils::RoomIdExt,
 };
@@ -88,7 +88,7 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
     Pdu::Id: 'a,
     MapsIter: Iterator<Item = &'a StateMap<Pdu::Id>> + Clone,
 {
@@ -582,7 +582,7 @@ where
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    let event = fetch_event(event_id.borrow()).await.ok();
+    let event = fetch_event(event_id).await.ok();
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
 
@@ -679,7 +679,7 @@ async fn iterative_auth_check<'b, Pdu, Fetch, Fut>(
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("starting iterative auth checks");
 
@@ -750,8 +750,12 @@ where
             }
         }
 
-        match check_state_dependent_auth_rules(rules, &event, |ty, key| {
-            auth_events.get(&ty.with_state_key(key))
+        match check_state_dependent_auth_rules(rules, &event, &|ty, key| {
+            let pdu = auth_events
+                .get(&ty.with_state_key(&*key))
+                .map(|pdu| pdu.to_owned())
+                .ok_or_else(|| StateError::other("not found"));
+            async move { pdu }
         })
         .await
         {
@@ -860,7 +864,7 @@ where
                         position,
                         fetch_event(event_id.borrow())
                             .await
-                            .map(|event| event.origin_server_ts()),
+                            .map(|event| event.origin_server_ts()).ok(),
                         event_id,
                     ),
                 );

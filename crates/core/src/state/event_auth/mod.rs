@@ -22,7 +22,7 @@ use crate::{
     state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
         RoomThirdPartyInviteEvent,
-        member::{RoomMemberEventContent, RoomMemberEventOptionExt},
+        member::RoomMemberEventContent,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
     state::{Event, StateError, StateKey, StateResult},
@@ -148,7 +148,7 @@ where
     EventFut: Future<Output = StateResult<Pdu>> + Send,
     FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
     StateFut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
 
@@ -177,7 +177,7 @@ pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("starting state-independent auth check");
 
@@ -210,7 +210,7 @@ where
     for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
-        let Ok(auth_event) = fetch_event(event_id.borrow()).await else {
+        let Ok(auth_event) = fetch_event(event_id).await else {
             return Err(StateError::other(format!(
                 "failed to find auth event {event_id}"
             )));
@@ -317,7 +317,7 @@ pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("starting state-dependent auth check");
 

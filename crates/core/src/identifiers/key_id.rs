@@ -2,7 +2,6 @@ use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
     marker::PhantomData,
-    str::FromStr,
 };
 
 use super::{

@@ -1,12 +1,12 @@
 //! Implementations of the EventContent derive macro.
 #![allow(clippy::too_many_arguments)] // FIXME
 
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, };
 
 use proc_macro2::{Span, TokenStream};
-use quote::{ToTokens, format_ident, quote};
+use quote::{ format_ident, quote};
 use syn::{
-    DeriveInput, Field, Ident, LitStr, Meta, Token, Type,
+    DeriveInput, Field, Ident, Meta, Token, Type,
     parse::{Parse, ParseStream},
     parse_quote,
     punctuated::Punctuated,

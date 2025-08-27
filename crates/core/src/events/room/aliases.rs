@@ -8,7 +8,6 @@ use crate::{
     OwnedRoomAliasId, OwnedServerName,
     events::{RedactContent, RedactedStateEventContent, StateEventType, StaticEventContent},
     room_version_rules::RedactionRules,
-    serde::RawJsonValue,
 };
 
 /// The content of an `m.room.aliases` event.

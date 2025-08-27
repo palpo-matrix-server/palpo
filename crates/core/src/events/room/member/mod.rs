@@ -3,20 +3,17 @@
 //! [`m.room.member`]: https://spec.matrix.org/latest/client-server-api/#mroommember
 
 use std::collections::BTreeMap;
-use std::ops::Deref;
 
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::macros::EventContent;
 use crate::serde::JsonValue;
-use crate::state::Event;
 use crate::{
     PrivOwnedStr,
     events::{
-        AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
-        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
-        StateEventType, StaticEventContent,
+        AnyStrippedStateEvent, BundledStateRelations, PossiblyRedactedStateEventContent,
+        RedactContent, RedactedStateEventContent, StateEventType, StaticEventContent,
     },
     identifiers::*,
     room_version_rules::RedactionRules,

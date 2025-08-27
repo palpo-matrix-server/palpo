@@ -1,8 +1,6 @@
 //! A presence event is represented by a struct with a set content field.
 //!
 //! The only content valid for this event is `PresenceEventContent`.
-
-use crate::macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
