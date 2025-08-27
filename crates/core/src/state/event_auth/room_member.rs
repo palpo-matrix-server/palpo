@@ -30,13 +30,13 @@ use crate::{
 pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<Pdu>,
     rules: &AuthorizationRules,
-    room_create_event: &RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
     debug!("starting m.room.member check");
 
@@ -122,7 +122,7 @@ async fn check_room_member_join<Pdu, Fetch, Fut>(
     room_member_event: &RoomMemberEvent<Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: &RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -212,11 +212,10 @@ where
             ));
         }
 
-        let room_power_levels_event = fetch_state.room_power_levels_event().await?;
+        let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
         let authorized_via_user_power_level = room_power_levels_event
-            .user_power_level(&authorized_via_user, &creators, rules)
-            .await?;
+            .user_power_level(&authorized_via_user, &creators, rules)?;
         let invite_power_level = room_power_levels_event
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 

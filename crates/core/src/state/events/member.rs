@@ -11,7 +11,7 @@ use crate::serde::{
     CanBeEmpty, CanonicalJsonObject, JsonValue, RawJson, RawJsonValue, StringEnum,
     from_raw_json_value,
 };
-use crate::state::Event;
+use crate::state::{StateResult, StateError, Event};
 use crate::{
     PrivOwnedStr,
     events::{
@@ -36,18 +36,18 @@ impl<E: Event> RoomMemberEvent<E> {
     }
 
     /// The membership of the user.
-    pub fn membership(&self) -> Result<MembershipState, String> {
+    pub fn membership(&self) -> StateResult<MembershipState> {
         RoomMemberEventContent(self.content()).membership()
     }
 
     /// If this is a `join` event, the ID of a user on the homeserver that authorized it.
-    pub fn join_authorised_via_users_server(&self) -> Result<Option<OwnedUserId>, String> {
+    pub fn join_authorised_via_users_server(&self) -> StateResult<Option<OwnedUserId>> {
         RoomMemberEventContent(self.content()).join_authorised_via_users_server()
     }
 
     /// If this is an `invite` event, details about the third-party invite that resulted in this
     /// event.
-    pub(crate) fn third_party_invite(&self) -> Result<Option<ThirdPartyInvite>, String> {
+    pub(crate) fn third_party_invite(&self) -> StateResult<Option<ThirdPartyInvite>> {
         RoomMemberEventContent(self.content()).third_party_invite()
     }
 }
@@ -65,11 +65,11 @@ pub(crate) trait RoomMemberEventOptionExt {
     /// The membership of the user.
     ///
     /// Defaults to `leave` if there is no `m.room.member` event.
-    fn membership(&self) -> Result<MembershipState, String>;
+    fn membership(&self) -> StateResult<MembershipState>;
 }
 
 impl<E: Event> RoomMemberEventOptionExt for Option<RoomMemberEvent<E>> {
-    fn membership(&self) -> Result<MembershipState, String> {
+    fn membership(&self) -> StateResult<MembershipState> {
         match self {
             Some(event) => event.membership(),
             None => Ok(MembershipState::Leave),
@@ -89,7 +89,7 @@ impl<'a> RoomMemberEventContent<'a> {
 
 impl RoomMemberEventContent<'_> {
     /// The membership of the user.
-    pub(crate) fn membership(&self) -> Result<MembershipState, String> {
+    pub(crate) fn membership(&self) -> StateResult<MembershipState> {
         #[derive(Deserialize)]
         struct RoomMemberContentMembership {
             membership: MembershipState,
@@ -103,7 +103,7 @@ impl RoomMemberEventContent<'_> {
     }
 
     /// If this is a `join` event, the ID of a user on the homeserver that authorized it.
-    pub(crate) fn join_authorised_via_users_server(&self) -> Result<Option<OwnedUserId>, String> {
+    pub(crate) fn join_authorised_via_users_server(&self) -> StateResult<Option<OwnedUserId>> {
         #[derive(Deserialize)]
         struct RoomMemberContentJoinAuthorizedViaUsersServer {
             join_authorised_via_users_server: Option<OwnedUserId>,
@@ -120,7 +120,7 @@ impl RoomMemberEventContent<'_> {
 
     /// If this is an `invite` event, details about the third-party invite that resulted in this
     /// event.
-    pub(crate) fn third_party_invite(&self) -> Result<Option<ThirdPartyInvite>, String> {
+    pub(crate) fn third_party_invite(&self) -> StateResult<Option<ThirdPartyInvite>> {
         #[derive(Deserialize)]
         struct RoomMemberContentThirdPartyInvite {
             third_party_invite: Option<ThirdPartyInvite>,

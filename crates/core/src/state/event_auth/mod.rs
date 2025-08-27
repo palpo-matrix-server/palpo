@@ -45,7 +45,7 @@ pub fn auth_types_for_event(
     state_key: Option<&str>,
     content: &RawJsonValue,
     rules: &AuthorizationRules,
-) -> Result<Vec<(StateEventType, String)>, String> {
+) -> StateResult<Vec<(StateEventType, String)>> {
     // The `auth_events` for the `m.room.create` event in a room is empty.
     if event_type == &TimelineEventType::RoomCreate {
         return Ok(vec![]);
@@ -69,7 +69,7 @@ pub fn auth_types_for_event(
     if event_type == &TimelineEventType::RoomMember {
         // The target’s current `m.room.member` event, if any.
         let Some(state_key) = state_key else {
-            return Err("missing `state_key` field for `m.room.member` event".to_owned());
+            return Err(StateError::other("missing `state_key` field for `m.room.member` event"));
         };
         let key = (StateEventType::RoomMember, state_key.to_owned());
         if !auth_types.contains(&key) {
@@ -142,7 +142,7 @@ pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
     fetch_state: &FetchState,
 ) -> StateResult<()>
 where
-    FetchEvent: Fn(OwnedEventId) -> EventFut + Sync,
+    FetchEvent: Fn(&EventId) -> EventFut + Sync,
     EventFut: Future<Output = StateResult<Pdu>> + Send,
     FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
     StateFut: Future<Output = StateResult<Pdu>> + Send,
@@ -208,7 +208,7 @@ where
     for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
-        let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
+        let Ok(auth_event) = fetch_event(event_id.borrow()).await else {
             return Err(StateError::other(format!(
                 "failed to find auth event {event_id}"
             )));
@@ -273,7 +273,7 @@ where
             ))
         })?;
 
-        let room_create_event = fetch_event(room_create_event_id.clone()).await?;
+        let room_create_event = fetch_event(room_create_event_id.borrow()).await?;
 
         if room_create_event.rejected() {
             return Err(StateError::other(format!(
@@ -309,7 +309,7 @@ where
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
-    incoming_event: &Pdu,
+    incoming_event: Pdu,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -743,16 +743,16 @@ where
 }
 
 trait FetchStateExt<E: Event> {
-    fn room_create_event(&self) -> impl Future<Output = Result<RoomCreateEvent<E>, String>>;
+    fn room_create_event(&self) -> impl Future<Output = StateResult<RoomCreateEvent<E>>>;
 
     fn user_membership(
         &self,
         user_id: &UserId,
-    ) -> impl Future<Output = Result<MembershipState, String>>;
+    ) -> impl Future<Output = StateResult<MembershipState>>;
 
     fn room_power_levels_event(&self) -> impl Future<Output = Option<RoomPowerLevelsEvent<E>>>;
 
-    fn join_rule(&self) -> impl Future<Output = Result<JoinRuleKind, String>>;
+    fn join_rule(&self) -> impl Future<Output = StateResult<JoinRuleKind>>;
 
     fn room_third_party_invite_event(
         &self,
@@ -760,46 +760,42 @@ trait FetchStateExt<E: Event> {
     ) -> impl Future<Output = Option<RoomThirdPartyInviteEvent<E>>>;
 }
 
-impl<E, F, Fut> FetchStateExt<E> for F
+impl<Pdu, F, Fut> FetchStateExt<Pdu> for F
 where
     F: Fn(StateEventType, StateKey) -> Fut,
-    Fut: Future<Output = StateResult<Event>> + Send,
-    E: Event,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
+    Pdu: Event,
 {
-    async fn room_create_event(&self) -> Result<RoomCreateEvent<E>, String> {
+    async fn room_create_event(&self) -> StateResult<RoomCreateEvent<Pdu>> {
         self(StateEventType::RoomCreate, "".into())
             .await
             .map(RoomCreateEvent::new)
-            .ok_or_else(|| "no `m.room.create` event in current state".to_owned())
     }
 
-    async fn user_membership(&self, user_id: &UserId) -> Result<MembershipState, String> {
+    async fn user_membership(&self, user_id: &UserId) -> StateResult<MembershipState> {
         self(StateEventType::RoomMember, user_id.as_str().into())
             .await
-            .map(RoomMemberEvent::new)
-            .membership()
+            .map(RoomMemberEvent::new)?.membership()
     }
 
-    async fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<E>> {
+    async fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<Pdu>> {
         self(StateEventType::RoomPowerLevels, "".into())
-            .await
+            .await.ok()
             .map(RoomPowerLevelsEvent::new)
     }
 
-    async fn join_rule(&self) -> Result<JoinRuleKind, String> {
+    async fn join_rule(&self) -> StateResult<JoinRuleKind> {
         self(StateEventType::RoomJoinRules, "".into())
             .await
-            .map(RoomJoinRulesEvent::new)
-            .ok_or_else(|| "no `m.room.join_rules` event in current state".to_owned())?
-            .join_rule()
+            .map(RoomJoinRulesEvent::new)?.join_rule()
     }
 
     async fn room_third_party_invite_event(
         &self,
         token: &str,
-    ) -> Option<RoomThirdPartyInviteEvent<E>> {
+    ) -> Option<RoomThirdPartyInviteEvent<Pdu>> {
         self(StateEventType::RoomThirdPartyInvite, token.into())
-            .await
+            .await.ok()
             .map(RoomThirdPartyInviteEvent::new)
     }
 }

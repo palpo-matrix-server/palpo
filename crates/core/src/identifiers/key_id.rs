@@ -11,7 +11,41 @@ use super::{
     crypto_algorithms::SigningKeyAlgorithm,
 };
 use crate::macros::IdDst;
+
 /// A key algorithm and key name delimited by a colon.
+///
+/// Examples of the use of this struct are [`DeviceKeyId`], which identifies a Ed25519 or Curve25519
+/// [device key](https://spec.matrix.org/latest/client-server-api/#device-keys), and
+/// [`CrossSigningKeyId`], which identifies a user's
+/// [cross signing key](https://spec.matrix.org/latest/client-server-api/#cross-signing).
+///
+/// This format of identifier is often used in the `signatures` field of
+/// [signed JSON](https://spec.matrix.org/latest/appendices/#signing-details)
+/// where it is referred to as a "signing key identifier".
+///
+/// This struct is rarely used directly - instead you should expect to use one of the type aliases
+/// that rely on it like [`CrossSigningKeyId`] or [`DeviceSigningKeyId`].
+///
+/// # Examples
+///
+/// To parse a colon-separated identifier:
+///
+/// ```
+/// use ruma_common::DeviceKeyId;
+///
+/// let k = DeviceKeyId::parse("ed25519:1").unwrap();
+/// assert_eq!(k.algorithm().as_str(), "ed25519");
+/// assert_eq!(k.key_name(), "1");
+/// ```
+///
+/// To construct a colon-separated identifier from its parts:
+///
+/// ```
+/// use ruma_common::{DeviceKeyAlgorithm, DeviceKeyId};
+///
+/// let k = DeviceKeyId::from_parts(DeviceKeyAlgorithm::Curve25519, "MYDEVICE".into());
+/// assert_eq!(k.as_str(), "curve25519:MYDEVICE");
+/// ```
 #[repr(transparent)]
 #[derive(IdDst)]
 #[palpo_id(validate = palpo_identifiers_validation::key_id::validate::<K>)]
@@ -35,20 +69,36 @@ impl<A: KeyAlgorithm, K: KeyName + ?Sized> KeyId<A, K> {
         Self::from_borrowed(&res).to_owned()
     }
 
-    /// Returns key algorithm of the key ID.
-    pub fn algorithm(&self) -> A
-    where
-        A: FromStr,
-    {
-        A::from_str(&self.as_str()[..self.colon_idx()]).unwrap_or_else(|_| unreachable!())
+    /// Returns key algorithm of the key ID - the part that comes before the colon.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ruma_common::{DeviceKeyAlgorithm, DeviceKeyId};
+    ///
+    /// let k = DeviceKeyId::parse("ed25519:1").unwrap();
+    /// assert_eq!(k.algorithm(), DeviceKeyAlgorithm::Ed25519);
+    /// ```
+    pub fn algorithm(&self) -> A {
+        A::from(&self.as_str()[..self.colon_idx()])
     }
 
-    /// Returns the key name of the key ID.
+    /// Returns the key name of the key ID - the part that comes after the colon.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ruma_common::{device_id, DeviceKeyId};
+    ///
+    /// let k = DeviceKeyId::parse("ed25519:DEV1").unwrap();
+    /// assert_eq!(k.key_name(), device_id!("DEV1"));
+    /// ```
     pub fn key_name<'a>(&'a self) -> &'a K
     where
-        &'a K: From<&'a str>,
+        &'a K: TryFrom<&'a str>,
     {
-        self.as_str()[self.colon_idx() + 1..].into()
+        <&'a K>::try_from(&self.as_str()[(self.colon_idx() + 1)..])
+            .unwrap_or_else(|_| unreachable!())
     }
 
     fn colon_idx(&self) -> usize {

@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 use super::Event;
 use crate::{room::JoinRuleKind, serde::from_raw_json_value};
+use crate::state::StateResult;
 
 /// A helper type for an [`Event`] of type `m.room.join_rules`.
 ///
@@ -20,7 +21,7 @@ impl<E: Event> RoomJoinRulesEvent<E> {
     }
 
     /// The join rule of the room.
-    pub fn join_rule(&self) -> Result<JoinRuleKind, String> {
+    pub fn join_rule(&self) -> StateResult<JoinRuleKind> {
         #[derive(Deserialize)]
         struct RoomJoinRulesContentJoinRule {
             join_rule: JoinRuleKind,

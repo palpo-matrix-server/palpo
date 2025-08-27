@@ -81,18 +81,18 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
     auth_rules: &AuthorizationRules,
     state_res_rules: &StateResolutionV2Rules,
     state_maps: impl IntoIterator<IntoIter = MapsIter>,
-    auth_chains: Vec<HashSet<OwnedEventId>>,
+    auth_chains: Vec<HashSet<Pdu::Id>>,
     fetch_event: &Fetch,
     fetch_conflicted_state_subgraph: impl Fn(
-        &StateMap<Vec<OwnedEventId>>,
-    ) -> Option<HashSet<OwnedEventId>>,
-) -> Result<StateMap<OwnedEventId>, StateError>
+        &StateMap<Vec<Pdu::Id>>,
+    ) -> Option<HashSet<Pdu::Id>>,
+) -> Result<StateMap<Pdu::Id>, StateError>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event + Clone,
     Pdu::Id: 'a,
-    MapsIter: Iterator<Item = &'a StateMap<OwnedEventId>> + Clone,
+    MapsIter: Iterator<Item = &'a StateMap<Pdu::Id>> + Clone,
 {
     info!("state resolution starting");
 
@@ -135,7 +135,7 @@ where
             .chain(conflicted_state_subgraph),
     )
     // Don't honor events we cannot "verify"
-    .filter(|id| async move { fetch_event(id.to_owned()).await.is_ok() })
+    .filter(|id| async move { fetch_event(id.borrow()).await.is_ok() })
     .collect()
     .await;
 
@@ -335,11 +335,11 @@ where
 /// Returns the ordered list of event IDs from earliest to latest.
 #[instrument(skip_all)]
 async fn sort_power_events<Pdu, Fetch, Fut>(
-    conflicted_power_events: Vec<OwnedEventId>,
-    full_conflicted_set: &HashSet<OwnedEventId>,
+    conflicted_power_events: Vec<Pdu::Id>,
+    full_conflicted_set: &HashSet<Pdu::Id>,
     rules: &AuthorizationRules,
     fetch_event: &Fetch,
-) -> Result<Vec<OwnedEventId>, StateError>
+) -> Result<Vec<Pdu::Id>, StateError>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
@@ -371,8 +371,7 @@ where
     for event_id in graph.keys() {
         let sender_power_level =
             power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event)
-                .await
-                .map_err(StateError::AuthEvent)?;
+                .await?;
         debug!(
             event_id = event_id.borrow().as_str(),
             power_level = ?sender_power_level,
@@ -387,7 +386,7 @@ where
     }
 
     reverse_topological_power_sort(&graph, |event_id| async move {
-        let event = fetch_event(event_id.to_owned()).await?;
+        let event = fetch_event(event_id).await?;
         let power_level = *event_to_power_level
             .get(event_id)
             .ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
@@ -429,14 +428,14 @@ where
 ///
 /// Returns the ordered list of event IDs from earliest to latest.
 #[instrument(skip_all)]
-pub async fn reverse_topological_power_sort<F, Fut>(
-    graph: &HashMap<OwnedEventId, HashSet<OwnedEventId>>,
+pub async fn reverse_topological_power_sort<Id, F, Fut>(
+    graph: &HashMap<Id, HashSet<Id>>,
     event_details_fn: F,
-) -> StateResult<Vec<OwnedEventId>>
+) -> StateResult<Vec<Id>>
 where
-    F: Fn(OwnedEventId) -> Fut,
+    F: Fn(&EventId) -> Fut,
     Fut: Future<Output = StateResult<(UserPowerLevel, UnixMillis)>>,
-    // Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
+    Id: Clone + Eq + Ord + Hash + Borrow<EventId>,
 {
     #[derive(PartialEq, Eq)]
     struct TieBreaker<'a, Id> {
@@ -483,7 +482,7 @@ where
     // Populate the list of events with an outdegree of zero, and the map of incoming edges.
     for (event_id, outgoing_edges) in graph {
         if outgoing_edges.is_empty() {
-            let (power_level, origin_server_ts) = event_details_fn(event_id.to_owned()).await?;
+            let (power_level, origin_server_ts) = event_details_fn(event_id.borrow()).await?;
 
             // `Reverse` because `BinaryHeap` sorts largest -> smallest and we need
             // smallest -> largest.
@@ -526,7 +525,7 @@ where
             // Push on the heap once all the outgoing edges have been removed.
             if outgoing_edges.is_empty() {
                 let (power_level, origin_server_ts) =
-                    event_details_fn(parent_id.to_owned()).await?;
+                    event_details_fn(parent_id.borrow()).await?;
                 heap.push(Reverse(TieBreaker {
                     power_level,
                     origin_server_ts,
@@ -569,13 +568,13 @@ async fn power_level_for_sender<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     creators_lock: &OnceLock<HashSet<OwnedUserId>>,
     fetch_event: &Fetch,
-) -> std::result::Result<UserPowerLevel, String>
+) -> StateResult<UserPowerLevel>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    let event = fetch_event(event_id.to_owned()).await;
+    let event = fetch_event(event_id.borrow()).await;
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
 
@@ -586,7 +585,7 @@ where
                 .room_id()
                 .and_then(|room_id| room_id.room_create_event_id().ok())
             {
-                room_create_event = fetch_event(room_create_event_id.to_owned()).await.ok();
+                room_create_event = fetch_event(room_create_event_id.borrow()).await.ok();
             }
         }
     }
@@ -597,7 +596,7 @@ where
         .into_iter()
         .flatten()
     {
-        if let Ok(auth_event) = fetch_event(&auth_event_id).await {
+        if let Ok(auth_event) = fetch_event(auth_event_id.borrow()).await {
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 room_power_levels_event = Some(RoomPowerLevelsEvent::new(auth_event));
             } else if !rules.room_create_event_id_as_room_id
@@ -665,10 +664,10 @@ where
 /// an unexpected format.
 async fn iterative_auth_check<'b, Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
-    events: &[OwnedEventId],
-    mut state: StateMap<OwnedEventId>,
+    events: &[Pdu::Id],
+    mut state: StateMap<Pdu::Id>,
     fetch_event: &Fetch,
-) -> StateResult<StateMap<OwnedEventId>>
+) -> StateResult<StateMap<Pdu::Id>>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
@@ -679,12 +678,12 @@ where
     trace!(list = ?events, "events to check");
 
     for event_id in events {
-        let event = fetch_event(event_id).await?;
+        let event = fetch_event(event_id.borrow()).await?;
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
 
         let mut auth_events = StateMap::new();
         for auth_event_id in event.auth_events() {
-            if let Ok(auth_event) = fetch_event(auth_event_id).await {
+            if let Ok(auth_event) = fetch_event(auth_event_id.borrow()).await {
                 if !auth_event.rejected() {
                     auth_events.insert(
                         auth_event.event_type().with_state_key(
@@ -733,7 +732,7 @@ where
 
         for key in auth_types {
             if let Some(auth_event_id) = state.get(&key) {
-                if let Ok(auth_event) = fetch_event(auth_event_id).await {
+                if let Ok(auth_event) = fetch_event(auth_event_id.borrow()).await {
                     if !auth_event.rejected() {
                         auth_events.insert(key.to_owned(), auth_event);
                     }
@@ -819,12 +818,12 @@ where
     while let Some(power_level_event_id) = power_level {
         mainline.push(power_level_event_id.clone());
 
-        let power_level_event = fetch_event(power_level_event_id.to_owned()).await?;
+        let power_level_event = fetch_event(power_level_event_id.borrow()).await?;
 
         power_level = None;
 
         for auth_event_id in power_level_event.auth_events() {
-            let auth_event = fetch_event(auth_event_id).await?;
+            let auth_event = fetch_event(auth_event_id.borrow()).await?;
             if is_type_and_key(&auth_event, &TimelineEventType::RoomPowerLevels, "") {
                 power_level = Some(auth_event_id.to_owned());
                 break;
@@ -845,7 +844,7 @@ where
 
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
-        if let Ok(event) = fetch_event(event_id).await {
+        if let Ok(event) = fetch_event(event_id.borrow()).await {
             if let Ok(position) = mainline_position(&event, &mainline_map, fetch_event).await {
                 order_map.insert(
                     event_id,
