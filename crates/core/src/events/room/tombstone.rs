@@ -9,10 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     OwnedRoomId,
     events::{
-        EmptyStateKey, EventContentFromType, PossiblyRedactedStateEventContent, StateEventType,
-        StaticEventContent,
+        EmptyStateKey, PossiblyRedactedStateEventContent, StateEventType, StaticEventContent,
     },
-    serde::RawJsonValue,
 };
 
 /// The content of an `m.room.tombstone` event.

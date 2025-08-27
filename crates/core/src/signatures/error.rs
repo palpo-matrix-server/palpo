@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::{
-    EventId, OwnedEventId, OwnedServerName, RoomVersionId,
+    EventId, OwnedEventId, RoomVersionId,
     serde::{
         Base64DecodeError,
         canonical_json::{JsonType, RedactionError},

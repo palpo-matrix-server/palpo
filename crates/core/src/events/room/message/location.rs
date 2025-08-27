@@ -1,10 +1,7 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    UnixMillis,
-    events::room::{MediaSource, ThumbnailInfo},
-};
+use crate::events::room::{MediaSource, ThumbnailInfo};
 #[cfg(feature = "unstable-msc3488")]
 use crate::{
     events::location::{AssetContent, AssetType, LocationContent},

@@ -1,27 +1,12 @@
 //! Types to deserialize `m.room.member` events.
-use std::collections::BTreeMap;
 use std::ops::Deref;
 
-use salvo::oapi::ToSchema;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Deserialize;
 
 use crate::events::room::member::MembershipState;
-use crate::macros::EventContent;
-use crate::serde::{
-    CanBeEmpty, CanonicalJsonObject, JsonValue, RawJson, RawJsonValue, StringEnum,
-    from_raw_json_value,
-};
-use crate::state::{StateResult, StateError, Event};
-use crate::{
-    PrivOwnedStr,
-    events::{
-        AnyStrippedStateEvent, BundledStateRelations, EventContentFromType,
-        PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
-        StateEventType,
-    },
-    identifiers::*,
-    signatures::canonical_json,
-};
+use crate::serde::{CanonicalJsonObject, RawJsonValue, from_raw_json_value};
+use crate::state::{Event, StateResult};
+use crate::{identifiers::*, signatures::canonical_json};
 
 /// A helper type for an [`Event`] of type `m.room.member`.
 ///

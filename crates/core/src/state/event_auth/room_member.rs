@@ -28,9 +28,9 @@ use crate::{
 /// This assumes that `palpo_core::signatures::verify_event()` was called previously, as some authorization
 /// rules depend on the signatures being valid on the event.
 pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
-    room_member_event: RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     rules: &AuthorizationRules,
-    room_create_event: RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -66,7 +66,7 @@ where
         // Since v1, if membership is join:
         MembershipState::Join => {
             check_room_member_join(
-                &room_member_event,
+                room_member_event,
                 target_user,
                 rules,
                 room_create_event,
@@ -77,7 +77,7 @@ where
         // Since v1, if membership is invite:
         MembershipState::Invite => {
             check_room_member_invite(
-                &room_member_event,
+                room_member_event,
                 target_user,
                 rules,
                 room_create_event,
@@ -88,7 +88,7 @@ where
         // Since v1, if membership is leave:
         MembershipState::Leave => {
             check_room_member_leave(
-                &room_member_event,
+                room_member_event,
                 target_user,
                 rules,
                 room_create_event,
@@ -99,7 +99,7 @@ where
         // Since v1, if membership is ban:
         MembershipState::Ban => {
             check_room_member_ban(
-                &room_member_event,
+                room_member_event,
                 target_user,
                 rules,
                 room_create_event,
@@ -109,7 +109,7 @@ where
         }
         // Since v7, if membership is knock:
         MembershipState::Knock if rules.knocking => {
-            check_room_member_knock(&room_member_event, target_user, rules, fetch_state).await
+            check_room_member_knock(room_member_event, target_user, rules, fetch_state).await
         }
         // Since v1, otherwise, the membership is unknown. Reject.
         _ => Err(StateError::other("unknown membership")),
@@ -119,10 +119,10 @@ where
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `join`.
 async fn check_room_member_join<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -214,8 +214,8 @@ where
 
         let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
-        let authorized_via_user_power_level = room_power_levels_event
-            .user_power_level(&authorized_via_user, &creators, rules)?;
+        let authorized_via_user_power_level =
+            room_power_levels_event.user_power_level(&authorized_via_user, &creators, rules)?;
         let invite_power_level = room_power_levels_event
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 
@@ -240,10 +240,10 @@ where
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `invite`.
 async fn check_room_member_invite<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: &RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -311,7 +311,7 @@ where
 /// Check whether the `third_party_invite` from the `m.room.member` event passes the authorization
 /// rules.
 async fn check_third_party_invite<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     third_party_invite: &ThirdPartyInvite,
     target_user: &UserId,
     fetch_state: &Fetch,
@@ -418,10 +418,10 @@ where
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `leave`.
 async fn check_room_member_leave<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: &RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -498,10 +498,10 @@ where
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `ban`.
 async fn check_room_member_ban<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
-    room_create_event: &RoomCreateEvent<Pdu>,
+    room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -544,7 +544,7 @@ where
 /// Check whether the given event passes the `m.room.member` authorization rules with a membership
 /// of `knock`.
 async fn check_room_member_knock<Pdu, Fetch, Fut>(
-    room_member_event: &RoomMemberEvent<Pdu>,
+    room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
     rules: &AuthorizationRules,
     fetch_state: &Fetch,

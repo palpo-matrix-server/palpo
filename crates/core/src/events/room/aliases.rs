@@ -5,11 +5,8 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedRoomAliasId, OwnedServerName, RoomVersionId,
-    events::{
-        EventContentFromType, RedactContent, RedactedStateEventContent, StateEventType,
-        StaticEventContent,
-    },
+    OwnedRoomAliasId, OwnedServerName,
+    events::{RedactContent, RedactedStateEventContent, StateEventType, StaticEventContent},
     room_version_rules::RedactionRules,
     serde::RawJsonValue,
 };

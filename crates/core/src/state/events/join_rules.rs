@@ -5,8 +5,8 @@ use std::ops::Deref;
 use serde::Deserialize;
 
 use super::Event;
-use crate::{room::JoinRuleKind, serde::from_raw_json_value};
 use crate::state::StateResult;
+use crate::{room::JoinRuleKind, serde::from_raw_json_value};
 
 /// A helper type for an [`Event`] of type `m.room.join_rules`.
 ///

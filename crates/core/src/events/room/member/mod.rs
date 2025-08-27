@@ -20,7 +20,7 @@ use crate::{
     },
     identifiers::*,
     room_version_rules::RedactionRules,
-    serde::{CanBeEmpty, RawJson, RawJsonValue, StringEnum},
+    serde::{CanBeEmpty, RawJson, StringEnum},
 };
 
 mod change;

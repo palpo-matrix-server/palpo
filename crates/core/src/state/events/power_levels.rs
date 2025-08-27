@@ -11,6 +11,7 @@ use serde_json::{Error, from_value as from_json_value};
 
 use super::Event;
 use crate::events::{TimelineEventType, room::power_levels::UserPowerLevel};
+use crate::state::{StateError, StateResult};
 use crate::{
     OwnedUserId, UserId,
     room_version_rules::AuthorizationRules,
@@ -20,7 +21,6 @@ use crate::{
         from_raw_json_value,
     },
 };
-use crate::state::{StateResult, StateError};
 
 /// The default value of the creator's power level.
 const DEFAULT_CREATOR_POWER_LEVEL: i32 = 100;
@@ -149,10 +149,10 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
         };
 
         res.map(Some).map_err(|error| {
-            format!(
+            StateError::other(format!(
                 "unexpected format of `{field}` field in `content` \
                  of `m.room.power_levels` event: {error}"
-            )
+            ))
         })
     }
 
@@ -195,7 +195,6 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     pub fn user_power_level(
         &self,
         user_id: &UserId,
-        creators: &HashSet<OwnedUserId>,
         rules: &AuthorizationRules,
     ) -> StateResult<i64> {
         if let Some(power_level) = self

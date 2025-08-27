@@ -14,7 +14,7 @@ use super::{
     StaticStateEventContent, ToDeviceEventContent,
 };
 use crate::{
-    EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, RoomVersionId, UnixMillis, UserId,
+    EventId, OwnedEventId, OwnedRoomId, OwnedUserId, RoomId, UnixMillis, UserId,
     events::{AnyGlobalAccountDataEvent, AnyRoomAccountDataEvent, receipt::ReceiptEventContent},
     room_version_rules::RedactionRules,
     serde::{RawJson, RawJsonValue, from_raw_json_value},

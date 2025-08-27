@@ -1,24 +1,13 @@
 //! Types for the [`m.room.join_rules`] event.
 //!
 //! [`m.room.join_rules`]: https://spec.matrix.org/latest/client-server-api/#mroomjoin_rules
-
-use std::{
-    borrow::{Borrow, Cow},
-    collections::BTreeMap,
-};
-
 use salvo::oapi::ToSchema;
-use serde::{
-    Deserialize, Serialize,
-    de::{Deserializer, Error},
-};
+use serde::{Deserialize, Serialize, de::Deserializer};
 
 use crate::macros::EventContent;
 use crate::{
-    OwnedRoomId, PrivOwnedStr, RoomId,
     events::EmptyStateKey,
     room::{AllowRule, JoinRule, Restricted},
-    serde::{JsonValue, RawJsonValue, from_raw_json_value},
 };
 
 /// The content of an `m.room.join_rules` event.

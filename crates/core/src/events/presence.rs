@@ -4,7 +4,7 @@
 
 use crate::macros::{Event, EventContent};
 use salvo::oapi::ToSchema;
-use serde::{Deserialize, Serialize, ser::SerializeStruct};
+use serde::{Deserialize, Serialize};
 
 use crate::{OwnedMxcUri, OwnedUserId, presence::PresenceState};
 

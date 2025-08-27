@@ -4,7 +4,7 @@ use std::{
 };
 
 use serde_json::value::RawValue as RawJsonValue;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, info, instrument};
 
 mod room_member;
 #[cfg(test)]
@@ -12,13 +12,13 @@ mod tests;
 
 use self::room_member::check_room_member;
 use crate::{
-    EventId, MatrixError, MatrixResult, OwnedEventId, OwnedUserId, UserId,
+    EventId, OwnedUserId, UserId,
     events::{
         StateEventType, TimelineEventType,
         room::{member::MembershipState, power_levels::UserPowerLevel},
     },
     room::JoinRuleKind,
-    room_version_rules::{AuthorizationRules, RoomVersionRules},
+    room_version_rules::AuthorizationRules,
     state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
         RoomThirdPartyInviteEvent,
@@ -69,7 +69,9 @@ pub fn auth_types_for_event(
     if event_type == &TimelineEventType::RoomMember {
         // The target’s current `m.room.member` event, if any.
         let Some(state_key) = state_key else {
-            return Err(StateError::other("missing `state_key` field for `m.room.member` event"));
+            return Err(StateError::other(
+                "missing `state_key` field for `m.room.member` event",
+            ));
         };
         let key = (StateEventType::RoomMember, state_key.to_owned());
         if !auth_types.contains(&key) {
@@ -146,7 +148,7 @@ where
     EventFut: Future<Output = StateResult<Pdu>> + Send,
     FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
     StateFut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
     check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
 
@@ -175,7 +177,7 @@ pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
     debug!("starting state-independent auth check");
 
@@ -309,13 +311,13 @@ where
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
-    incoming_event: Pdu,
+    incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone,
 {
     debug!("starting state-dependent auth check");
 
@@ -326,6 +328,7 @@ where
     }
 
     let room_create_event = fetch_state.room_create_event().await?;
+    let room_create_event = RoomCreateEvent::new(&room_create_event);
 
     // Since v1, if the create event content has the field m.federate set to false and the sender
     // domain of the event does not match the sender domain of the create event, reject.
@@ -743,7 +746,7 @@ where
 }
 
 trait FetchStateExt<E: Event> {
-    fn room_create_event(&self) -> impl Future<Output = StateResult<RoomCreateEvent<E>>>;
+    fn room_create_event(&self) -> impl Future<Output = StateResult<E>>;
 
     fn user_membership(
         &self,
@@ -766,28 +769,29 @@ where
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    async fn room_create_event(&self) -> StateResult<RoomCreateEvent<Pdu>> {
-        self(StateEventType::RoomCreate, "".into())
-            .await
-            .map(RoomCreateEvent::new)
+    async fn room_create_event(&self) -> StateResult<Pdu> {
+        self(StateEventType::RoomCreate, "".into()).await
     }
 
     async fn user_membership(&self, user_id: &UserId) -> StateResult<MembershipState> {
         self(StateEventType::RoomMember, user_id.as_str().into())
             .await
-            .map(RoomMemberEvent::new)?.membership()
+            .map(RoomMemberEvent::new)?
+            .membership()
     }
 
     async fn room_power_levels_event(&self) -> Option<RoomPowerLevelsEvent<Pdu>> {
         self(StateEventType::RoomPowerLevels, "".into())
-            .await.ok()
+            .await
+            .ok()
             .map(RoomPowerLevelsEvent::new)
     }
 
     async fn join_rule(&self) -> StateResult<JoinRuleKind> {
         self(StateEventType::RoomJoinRules, "".into())
             .await
-            .map(RoomJoinRulesEvent::new)?.join_rule()
+            .map(RoomJoinRulesEvent::new)?
+            .join_rule()
     }
 
     async fn room_third_party_invite_event(
@@ -795,7 +799,8 @@ where
         token: &str,
     ) -> Option<RoomThirdPartyInviteEvent<Pdu>> {
         self(StateEventType::RoomThirdPartyInvite, token.into())
-            .await.ok()
+            .await
+            .ok()
             .map(RoomThirdPartyInviteEvent::new)
     }
 }

@@ -23,7 +23,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::push::{
     Action, FlattenedJson, PredefinedOverrideRuleId, PushCondition, PushConditionRoomCtx, PushRule,
-    condition::RoomVersionFeature,
 };
 
 /// Like `SimplePushRule`, but with an additional `conditions` field.

@@ -7,9 +7,7 @@ use palpo_identifiers_validation::MAX_BYTES;
 
 pub use palpo_identifiers_validation::user_id::localpart_is_fully_conforming;
 
-use super::{
-    IdParseError, MatrixToUri, MatrixUri, OwnedEventId, ServerName, matrix_uri::UriAction,
-};
+use super::{IdParseError, MatrixToUri, MatrixUri, ServerName, matrix_uri::UriAction};
 use crate::macros::IdDst;
 
 /// A Matrix [user ID].

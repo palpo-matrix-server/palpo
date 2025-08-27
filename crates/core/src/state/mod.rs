@@ -6,7 +6,7 @@ use std::{
     sync::OnceLock,
 };
 
-use futures_util::{FutureExt, Stream, StreamExt, TryFutureExt, future::OptionFuture, stream};
+use futures_util::{FutureExt, StreamExt, TryFutureExt, stream};
 use tracing::{debug, info, instrument, trace, warn};
 
 mod error;
@@ -83,9 +83,7 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
     state_maps: impl IntoIterator<IntoIter = MapsIter>,
     auth_chains: Vec<HashSet<Pdu::Id>>,
     fetch_event: &Fetch,
-    fetch_conflicted_state_subgraph: impl Fn(
-        &StateMap<Vec<Pdu::Id>>,
-    ) -> Option<HashSet<Pdu::Id>>,
+    fetch_conflicted_state_subgraph: impl Fn(&StateMap<Vec<Pdu::Id>>) -> Option<HashSet<Pdu::Id>>,
 ) -> Result<StateMap<Pdu::Id>, StateError>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
@@ -135,7 +133,16 @@ where
             .chain(conflicted_state_subgraph),
     )
     // Don't honor events we cannot "verify"
-    .filter(|id| async move { fetch_event(id.borrow()).await.is_ok() })
+    .filter_map(|id| {
+        let id = id.to_owned();
+        async move {
+            if fetch_event(id.borrow()).await.is_ok() {
+                Some(id)
+            } else {
+                None
+            }
+        }
+    })
     .collect()
     .await;
 
@@ -146,8 +153,8 @@ where
     //    power event P, enlarge X by adding the events in the auth chain of P which also belong to
     //    the full conflicted set. Sort X into a list using the reverse topological power ordering.
     let conflicted_power_events = stream::iter(&full_conflicted_set)
-        .filter(|id| async move { is_power_event_id(id.borrow(), fetch_event).await })
-        .cloned()
+        .filter(|&id| async move { is_power_event_id(id.borrow(), fetch_event).await })
+        .map(|id| id.to_owned())
         .collect::<Vec<_>>()
         .await;
 
@@ -370,8 +377,7 @@ where
     // Get the power level of the sender of each event in the graph.
     for event_id in graph.keys() {
         let sender_power_level =
-            power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event)
-                .await?;
+            power_level_for_sender(event_id.borrow(), rules, &creators_lock, fetch_event).await?;
         debug!(
             event_id = event_id.borrow().as_str(),
             power_level = ?sender_power_level,
@@ -385,12 +391,15 @@ where
         // tasks can make progress
     }
 
-    reverse_topological_power_sort(&graph, |event_id| async move {
-        let event = fetch_event(event_id).await?;
-        let power_level = *event_to_power_level
-            .get(event_id)
-            .ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
-        Ok((power_level, event.origin_server_ts()))
+    reverse_topological_power_sort(&graph, |event_id| {
+        let event_id = event_id.to_owned();
+        let power_level = event_to_power_level.get(&event_id).cloned();
+        async move {
+            let power_level =
+                power_level.ok_or_else(|| StateError::NotFound(event_id.to_owned()))?;
+            let event = fetch_event(&event_id).await?;
+            Ok((power_level, event.origin_server_ts()))
+        }
     })
     .await
 }
@@ -524,8 +533,7 @@ where
 
             // Push on the heap once all the outgoing edges have been removed.
             if outgoing_edges.is_empty() {
-                let (power_level, origin_server_ts) =
-                    event_details_fn(parent_id.borrow()).await?;
+                let (power_level, origin_server_ts) = event_details_fn(parent_id.borrow()).await?;
                 heap.push(Reverse(TieBreaker {
                     power_level,
                     origin_server_ts,
@@ -574,11 +582,11 @@ where
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
-    let event = fetch_event(event_id.borrow()).await;
+    let event = fetch_event(event_id.borrow()).await.ok();
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
 
-    if let Ok(event) = &event {
+    if let Some(event) = &event {
         if rules.room_create_event_id_as_room_id && creators_lock.get().is_none() {
             // The m.room.create event is not in the auth events, we can get its ID via the room ID.
             if let Some(room_create_event_id) = event

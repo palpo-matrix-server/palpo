@@ -71,7 +71,9 @@ pub enum Verified {
 }
 
 /// Get the verifier for the given algorithm, if it is supported.
-pub(crate) fn verifier_from_algorithm(algorithm: &SigningKeyAlgorithm) -> Option<impl Verifier + use<>> {
+pub(crate) fn verifier_from_algorithm(
+    algorithm: &SigningKeyAlgorithm,
+) -> Option<impl Verifier + use<>> {
     match algorithm {
         SigningKeyAlgorithm::Ed25519 => Some(Ed25519Verifier),
         _ => None,

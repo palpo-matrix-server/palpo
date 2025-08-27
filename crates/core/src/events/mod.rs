@@ -183,7 +183,7 @@ pub use self::{
     unsigned::{MessageLikeUnsigned, RedactedUnsigned, StateUnsigned, UnsignedRoomRedactionEvent},
 };
 use crate::room_version_rules::RedactionRules;
-use crate::{EventEncryptionAlgorithm, OwnedUserId, RoomVersionId};
+use crate::{EventEncryptionAlgorithm, OwnedUserId};
 
 pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
 const INLINE_SIZE: usize = 48;

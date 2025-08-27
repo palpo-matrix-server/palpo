@@ -3,10 +3,8 @@
 use std::{borrow::Cow, collections::HashSet, ops::Deref};
 
 use crate::{
-    OwnedUserId, RoomVersionId, UserId,
-    room_version_rules::AuthorizationRules,
-    serde::from_raw_json_value,
-    state::{StateError, StateResult},
+    OwnedUserId, RoomVersionId, UserId, room_version_rules::AuthorizationRules,
+    serde::from_raw_json_value, state::StateResult,
 };
 use serde::{Deserialize, de::IgnoredAny};
 

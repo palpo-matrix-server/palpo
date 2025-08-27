@@ -9,8 +9,7 @@ use wildmatch::WildMatch;
 use crate::macros::StringEnum;
 use crate::{
     OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId,
-    power_levels::NotificationPowerLevels,
-    room_version_rules::{AuthorizationRules, RoomPowerLevelsRules},
+    power_levels::NotificationPowerLevels, room_version_rules::RoomPowerLevelsRules,
 };
 
 mod flattened_json;

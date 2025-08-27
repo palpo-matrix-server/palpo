@@ -19,8 +19,8 @@ use crate::signatures::{
     verification::{Verified, Verifier, verifier_from_algorithm},
 };
 use crate::{
-    AnyKeyName, OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, RoomVersionId,
-    SigningKeyAlgorithm, SigningKeyId, UserId,
+    AnyKeyName, OwnedEventId, OwnedServerName, OwnedServerSigningKeyId, SigningKeyAlgorithm,
+    SigningKeyId, UserId,
     room_version_rules::{EventIdFormatVersion, RedactionRules, RoomVersionRules, SignaturesRules},
     serde::{
         Base64, CanonicalJsonObject, CanonicalJsonValue,
