@@ -18,9 +18,9 @@ use super::{
     unstable_end::UnstablePollEndEventContent,
 };
 use crate::{
-    OwnedEventId, UnixMillis,
+    OwnedEventId, UnixMillis,room_version_rules::RedactionRules,
     events::{
-        EventContent, EventContentFromType, MessageLikeEventContent, MessageLikeEventType,
+       EventContentFromType, MessageLikeEventContent, MessageLikeEventType,
         RedactContent, RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
         room::message::RelationWithoutReplacement,
     },
@@ -155,7 +155,11 @@ impl StaticEventContent for NewUnstablePollStartEventContent {
     type IsPrefix = <UnstablePollStartEventContent as StaticEventContent>::IsPrefix;
 }
 
-impl MessageLikeEventContent for NewUnstablePollStartEventContent {}
+impl MessageLikeEventContent for NewUnstablePollStartEventContent {
+    fn event_type(&self) -> MessageLikeEventType {
+        MessageLikeEventType::UnstablePollStart
+    }
+}
 
 /// Form of [`NewUnstablePollStartEventContent`] without relation.
 ///

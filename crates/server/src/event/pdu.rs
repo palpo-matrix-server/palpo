@@ -14,8 +14,8 @@ use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
     AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent,
-    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, EventContent, MessageLikeEventType,
-    StateEvent, StateEventType, TimelineEventType,
+    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventType, StateEvent,
+    StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -202,8 +202,8 @@ impl crate::core::state::Event for SnPduEvent {
         &self.event_id
     }
 
-    fn room_id(&self) -> &RoomId {
-        &self.room_id
+    fn room_id(&self) -> Option<&RoomId> {
+        self.room_id.as_deref()
     }
 
     fn sender(&self) -> &UserId {
@@ -237,6 +237,10 @@ impl crate::core::state::Event for SnPduEvent {
     fn redacts(&self) -> Option<&Self::Id> {
         self.redacts.as_ref()
     }
+
+    fn rejected(&self) -> bool {
+        self.rejection_reason.is_some()
+    }
 }
 
 // These impl's allow us to dedup state snapshots when resolving state
@@ -264,7 +268,7 @@ pub struct PduEvent {
     pub event_id: OwnedEventId,
     #[serde(rename = "type")]
     pub event_ty: TimelineEventType,
-    pub room_id: OwnedRoomId,
+    pub room_id: Option<OwnedRoomId>,
     pub sender: OwnedUserId,
     pub origin_server_ts: UnixMillis,
     pub content: Box<RawJsonValue>,
@@ -640,8 +644,8 @@ impl crate::core::state::Event for PduEvent {
         &self.event_id
     }
 
-    fn room_id(&self) -> &RoomId {
-        &self.room_id
+    fn room_id(&self) -> Option<&RoomId> {
+        self.room_id.as_deref()
     }
 
     fn sender(&self) -> &UserId {
@@ -674,6 +678,10 @@ impl crate::core::state::Event for PduEvent {
 
     fn redacts(&self) -> Option<&Self::Id> {
         self.redacts.as_ref()
+    }
+
+    fn rejected(&self) -> bool {
+        self.rejection_reason.is_some()
     }
 }
 

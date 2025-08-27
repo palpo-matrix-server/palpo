@@ -101,7 +101,7 @@ impl CallMemberEventContent {
     /// * `origin_server_ts` - optionally the `origin_server_ts` can be passed
     ///   as a fallback in case the Membership does not contain `created_ts`.
     ///   (`origin_server_ts` will be ignored if `created_ts` is `Some`)
-    pub fn active_memberships(&self, origin_server_ts: Option<UnixMillis>) -> Vec<&Membership> {
+    pub fn active_memberships(&self, origin_server_ts: Option<UnixMillis>) -> Vec<MembershipData<'_>> {
         match self {
             CallMemberEventContent::LegacyContent(content) => content
                 .memberships
@@ -209,7 +209,7 @@ impl PossiblyRedactedStateEventContent for PossiblyRedactedCallMemberEventConten
 }
 
 /// The Redacted version of [`CallMemberEventContent`].
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
 #[allow(clippy::exhaustive_structs)]
 pub struct RedactedCallMemberEventContent {}
 

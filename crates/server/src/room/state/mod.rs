@@ -16,11 +16,11 @@ mod graph;
 pub use graph::*;
 
 use crate::core::events::room::history_visibility::HistoryVisibility;
-use crate::core::events::room::join_rule::{AllowRule, JoinRule, RoomMembership};
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::core::room::{AllowRule, JoinRule, RoomMembership};
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, UserId};

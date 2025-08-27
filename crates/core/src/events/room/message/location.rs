@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::room::{MediaSource, ThumbnailInfo};
 #[cfg(feature = "unstable-msc3488")]
-use crate::{
+use crate::{UnixMillis,
     events::location::{AssetContent, AssetType, LocationContent},
     events::message::{TextContentBlock, TextRepresentation},
 };

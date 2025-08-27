@@ -3,13 +3,13 @@ use std::str::FromStr;
 use serde::{
     Serialize, Serializer,
     de::{self, Deserialize, Deserializer, Unexpected},
-};
+};use salvo::oapi::ToSchema;
 
 use crate::{OwnedUserId, UserId};
 
 /// A type that can be used as the `state_key` for call member state events.
 /// Those state keys can be a combination of UserId and DeviceId.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(ToSchema, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(clippy::exhaustive_structs)]
 pub struct CallMemberStateKey {
     key: CallMemberStateKeyEnum,
@@ -93,7 +93,7 @@ impl Serialize for CallMemberStateKey {
 }
 
 /// This enum represents all possible formats for a call member event state key.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(ToSchema, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum CallMemberStateKeyEnum {
     UnderscoreMemberId(OwnedUserId, String),
     MemberId(OwnedUserId, String),

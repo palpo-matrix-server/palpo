@@ -5,7 +5,6 @@ use crate::core::identifiers::*;
 use crate::core::serde::canonical_json::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::core::signatures::{self, Verified};
 use crate::event::gen_event_id_canonical_json;
-use crate::server_key::required_keys_exist;
 use crate::{AppError, AppResult};
 
 pub async fn validate_and_add_event_id(
@@ -32,11 +31,6 @@ pub async fn validate_and_add_event_id_no_fetch(
     room_version: &RoomVersionId,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, room_version)?;
-    if !required_keys_exist(&value, room_version) {
-        return Err(AppError::public(format!(
-            "Event {event_id} cannot be verified: missing keys."
-        )));
-    }
 
     if let Err(e) = verify_event(&value, Some(room_version)).await {
         return Err(AppError::public(format!(

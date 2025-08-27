@@ -142,6 +142,8 @@ pub mod key;
 #[cfg(feature = "unstable-msc3488")]
 pub mod location;
 pub mod marked_unread;
+#[cfg(feature = "unstable-msc4278")]
+pub mod media_preview_config;
 #[cfg(feature = "unstable-msc4171")]
 pub mod member_hints;
 pub mod message;
@@ -156,6 +158,8 @@ pub mod receipt;
 pub mod relation;
 pub mod room;
 pub mod room_key;
+#[cfg(feature = "unstable-msc4268")]
+pub mod room_key_bundle;
 pub mod room_key_request;
 pub mod secret;
 pub mod secret_storage;

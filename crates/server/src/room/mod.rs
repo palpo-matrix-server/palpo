@@ -15,12 +15,12 @@ use crate::core::events::room::guest_access::{GuestAccess, RoomGuestAccessEventC
 use crate::core::events::room::history_visibility::{
     HistoryVisibility, RoomHistoryVisibilityEventContent,
 };
-use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::RoomJoinRulesEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::identifiers::*;
-use crate::core::room::RoomType;
+use crate::core::room::{JoinRule,RoomType};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::{DbRoomCurrent, NewDbRoom};
 use crate::data::schema::*;

@@ -3,8 +3,9 @@ use crate::core::directory::{
     PublicRoomFilter, PublicRoomJoinRule, PublicRoomsChunk, PublicRoomsResBody, RoomNetwork,
 };
 use crate::core::events::StateEventType;
-use crate::core::events::room::join_rule::{JoinRule, RoomJoinRulesEventContent};
+use crate::core::events::room::join_rule::RoomJoinRulesEventContent;
 use crate::core::federation::directory::{PublicRoomsReqBody, public_rooms_request};
+use crate::core::room::JoinRule;
 use crate::exts::*;
 use crate::{AppError, AppResult, MatrixError, config, room};
 
