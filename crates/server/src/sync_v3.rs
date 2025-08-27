@@ -810,7 +810,7 @@ async fn load_left_room(
             state_key: Some(sender_id.to_string()),
             unsigned: Default::default(),
             // The following keys are dropped on conversion
-            room_id: room_id.to_owned(),
+            room_id: Some(room_id.to_owned()),
             prev_events: vec![],
             depth: 1,
             auth_events: vec![],

@@ -101,7 +101,10 @@ impl CallMemberEventContent {
     /// * `origin_server_ts` - optionally the `origin_server_ts` can be passed
     ///   as a fallback in case the Membership does not contain `created_ts`.
     ///   (`origin_server_ts` will be ignored if `created_ts` is `Some`)
-    pub fn active_memberships(&self, origin_server_ts: Option<UnixMillis>) -> Vec<MembershipData<'_>> {
+    pub fn active_memberships(
+        &self,
+        origin_server_ts: Option<UnixMillis>,
+    ) -> Vec<MembershipData<'_>> {
         match self {
             CallMemberEventContent::LegacyContent(content) => content
                 .memberships

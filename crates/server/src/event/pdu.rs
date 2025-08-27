@@ -12,7 +12,7 @@ use crate::core::events::room::history_visibility::{
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
-use crate::core::events::{
+use crate::core::events::{StateEventContent,MessageLikeEventContent,
     AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent,
     AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventType, StateEvent,
     StateEventType, TimelineEventType,
@@ -202,7 +202,7 @@ impl crate::core::state::Event for SnPduEvent {
         &self.event_id
     }
 
-    fn room_id(&self) -> Option<&RoomId> {
+    fn room_id(&self) -> &RoomId {
         self.room_id.as_deref()
     }
 
@@ -268,7 +268,7 @@ pub struct PduEvent {
     pub event_id: OwnedEventId,
     #[serde(rename = "type")]
     pub event_ty: TimelineEventType,
-    pub room_id: Option<OwnedRoomId>,
+    pub room_id: OwnedRoomId,
     pub sender: OwnedUserId,
     pub origin_server_ts: UnixMillis,
     pub content: Box<RawJsonValue>,
@@ -644,7 +644,7 @@ impl crate::core::state::Event for PduEvent {
         &self.event_id
     }
 
-    fn room_id(&self) -> Option<&RoomId> {
+    fn room_id(&self) -> &RoomId {
         self.room_id.as_deref()
     }
 
@@ -721,7 +721,7 @@ pub struct PduBuilder {
 impl PduBuilder {
     pub fn state<T>(state_key: String, content: &T) -> Self
     where
-        T: EventContent<EventType = StateEventType>,
+        T: StateEventContent,
     {
         Self {
             event_type: content.event_type().into(),
@@ -734,7 +734,7 @@ impl PduBuilder {
 
     pub fn timeline<T>(content: &T) -> Self
     where
-        T: EventContent<EventType = MessageLikeEventType>,
+        T: MessageLikeEventContent,
     {
         Self {
             event_type: content.event_type().into(),

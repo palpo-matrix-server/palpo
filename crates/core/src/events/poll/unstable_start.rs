@@ -18,12 +18,13 @@ use super::{
     unstable_end::UnstablePollEndEventContent,
 };
 use crate::{
-    OwnedEventId, UnixMillis,room_version_rules::RedactionRules,
+    OwnedEventId, UnixMillis,
     events::{
-       EventContentFromType, MessageLikeEventContent, MessageLikeEventType,
-        RedactContent, RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
+        EventContentFromType, MessageLikeEventContent, MessageLikeEventType, RedactContent,
+        RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
         room::message::RelationWithoutReplacement,
     },
+    room_version_rules::RedactionRules,
     serde::RawJsonValue,
 };
 

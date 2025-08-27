@@ -21,7 +21,9 @@ use indexmap::Equivalent;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::push::{RoomVersionFeature,
+#[cfg(feature = "unstable-msc3932")]
+use crate::push::RoomVersionFeature;
+use crate::push::{
     Action, FlattenedJson, PredefinedOverrideRuleId, PushCondition, PushConditionRoomCtx, PushRule,
 };
 

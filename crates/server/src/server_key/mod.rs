@@ -276,12 +276,12 @@ pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
 
 pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
-    room_version: &RoomVersionId,
+    redaction_rules: &RedactionRules,
 ) -> Result<(), crate::core::signatures::Error> {
     signatures::hash_and_sign_event(
         config::get().server_name.as_str(),
         config::keypair(),
         object,
-        room_version,
+        redaction_rules,
     )
 }

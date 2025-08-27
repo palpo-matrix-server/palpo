@@ -199,9 +199,10 @@ where
     .map(|(event_type, state_key)| (TimelineEventType::from(event_type), state_key))
     .collect::<HashSet<_>>();
 
-    let Some(room_id) = incoming_event.room_id() else {
-        return Err(StateError::other("missing `room_id` field for event"));
-    };
+    // let Some(room_id) = incoming_event.room_id() else {
+    //     return Err(StateError::other("missing `room_id` field for event"));
+    // };
+    let room_id = incoming_event.room_id();
 
     let mut seen_auth_types: HashSet<(TimelineEventType, String)> =
         HashSet::with_capacity(expected_auth_types.len());
@@ -217,10 +218,15 @@ where
         };
 
         // The auth event must be in the same room as the incoming event.
-        if auth_event
-            .room_id()
-            .is_none_or(|auth_room_id| auth_room_id != room_id)
-        {
+        // if auth_event
+        //     .room_id()
+        //     .is_none_or(|auth_room_id| auth_room_id != room_id)
+        // {
+        //     return Err(StateError::other(format!(
+        //         "auth event {event_id} not in the same room"
+        //     )));
+        // }
+        if auth_event.room_id() != room_id {
             return Err(StateError::other(format!(
                 "auth event {event_id} not in the same room"
             )));
@@ -470,20 +476,21 @@ fn check_room_create(
     }
 
     if rules.room_create_event_id_as_room_id {
-        // Since v12, if the create event has a room_id, reject.
-        if room_create_event.room_id().is_some() {
-            return Err(StateError::other(
-                "`m.room.create` event cannot have a `room_id` field",
-            ));
-        }
+        // TODO
+        // // Since v12, if the create event has a room_id, reject.
+        // if room_create_event.room_id().is_some() {
+        //     return Err(StateError::other(
+        //         "`m.room.create` event cannot have a `room_id` field",
+        //     ));
+        // }
     } else {
-        // v1-v11, if the domain of the room_id does not match the domain of the sender, reject.
-        let Some(room_id) = room_create_event.room_id() else {
-            return Err(StateError::other(
-                "missing `room_id` field in `m.room.create` event",
-            ));
-        };
-        let Ok(room_id_server_name) = room_id.server_name() else {
+        // // v1-v11, if the domain of the room_id does not match the domain of the sender, reject.
+        // let Some(room_id) = room_create_event.room_id() else {
+        //     return Err(StateError::other(
+        //         "missing `room_id` field in `m.room.create` event",
+        //     ));
+        // };
+        let Ok(room_id_server_name) = room_create_event.room_id().server_name() else {
             return Err(StateError::other(
                 "invalid `room_id` field in `m.room.create` event: could not parse server name",
             ));

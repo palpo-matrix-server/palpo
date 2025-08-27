@@ -610,7 +610,7 @@ pub fn create_hash_and_sign_event(
     let mut pdu = PduEvent {
         event_id: temp_event_id.clone(),
         event_ty: event_type,
-        room_id: room_id.to_owned(),
+        room_id: room_id.cloned(),
         sender: sender_id.to_owned(),
         origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
         content,

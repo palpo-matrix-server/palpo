@@ -589,10 +589,13 @@ where
     if let Some(event) = &event {
         if rules.room_create_event_id_as_room_id && creators_lock.get().is_none() {
             // The m.room.create event is not in the auth events, we can get its ID via the room ID.
-            if let Some(room_create_event_id) = event
-                .room_id()
-                .and_then(|room_id| room_id.room_create_event_id().ok())
-            {
+            // if let Some(room_create_event_id) = event
+            //     .room_id()
+            //     .and_then(|room_id| room_id.room_create_event_id().ok())
+            // {
+            //     room_create_event = fetch_event(room_create_event_id.borrow()).await.ok();
+            // }
+            if let Some(room_create_event_id) = event.room_id().room_create_event_id().ok() {
                 room_create_event = fetch_event(room_create_event_id.borrow()).await.ok();
             }
         }
@@ -710,10 +713,19 @@ where
         if rules.room_create_event_id_as_room_id
             && *event.event_type() != TimelineEventType::RoomCreate
         {
-            if let Some(room_create_event_id) = event
-                .room_id()
-                .and_then(|room_id| room_id.room_create_event_id().ok())
-            {
+            // if let Some(room_create_event_id) = event
+            //     .room_id()
+            //     .and_then(|room_id| room_id.room_create_event_id().ok())
+            // {
+            //     let room_create_event = fetch_event(&room_create_event_id).await?;
+            //     auth_events.insert(
+            //         (StateEventType::RoomCreate, String::new()),
+            //         room_create_event,
+            //     );
+            // } else {
+            //     warn!("missing m.room.create event");
+            // }
+            if let Some(room_create_event_id) = event.room_id().room_create_event_id().ok() {
                 let room_create_event = fetch_event(&room_create_event_id).await?;
                 auth_events.insert(
                     (StateEventType::RoomCreate, String::new()),
@@ -864,7 +876,8 @@ where
                         position,
                         fetch_event(event_id.borrow())
                             .await
-                            .map(|event| event.origin_server_ts()).ok(),
+                            .map(|event| event.origin_server_ts())
+                            .ok(),
                         event_id,
                     ),
                 );

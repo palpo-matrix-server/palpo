@@ -45,7 +45,7 @@ pub(super) fn get_room_event(
 
     let event = timeline::get_pdu(&args.event_id)?;
 
-    if !state::user_can_see_event(authed.user_id(), &event.room_id, &args.event_id)? {
+    if !state::user_can_see_event(authed.user_id(), &args.event_id)? {
         return Err(MatrixError::not_found("event not found").into());
     }
 
@@ -138,7 +138,7 @@ pub(super) fn get_context(
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
 
-    if !state::user_can_see_event(sender_id, &room_id, &args.event_id)? {
+    if !state::user_can_see_event(sender_id, &args.event_id)? {
         return Err(
             MatrixError::forbidden("You don't have permission to view this event.", None).into(),
         );

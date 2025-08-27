@@ -35,7 +35,7 @@ pub use leave::*;
 
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,
-    room_version: &RoomVersionId,
+    rules: &RoomVersionRules,
     _pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let mut value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
@@ -44,7 +44,7 @@ async fn validate_and_add_event_id(
     })?;
     let event_id = EventId::parse(format!(
         "${}",
-        crate::core::signatures::reference_hash(&value, room_version)
+        crate::core::signatures::reference_hash(&value, rules)
             .expect("palpo can calculate reference hashes")
     ))
     .expect("palpo's reference hash~es are valid event ids");

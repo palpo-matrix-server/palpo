@@ -4,9 +4,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::room::EncryptedFile;
 use crate::OwnedRoomId;
 use crate::macros::EventContent;
+use crate::room::EncryptedFile;
 
 /// The content of an `m.room_key_bundle` event.
 ///

@@ -590,7 +590,6 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 #[tracing::instrument(skip(user_id, event_id))]
 pub fn user_can_see_event(
     user_id: &UserId,
-    _room_id: &RoomId,
     event_id: &EventId,
 ) -> AppResult<bool> {
     let pdu = timeline::get_pdu(event_id)?;
