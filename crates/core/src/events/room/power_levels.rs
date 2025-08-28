@@ -25,7 +25,7 @@ use crate::{
 /// The content of an `m.room.power_levels` event.
 ///
 /// Defines the power levels (privileges) of users in the room.
-#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "m.room.power_levels", kind = State, state_key_type = EmptyStateKey, custom_redacted)]
 pub struct RoomPowerLevelsEventContent {
     /// The level required to ban a user.

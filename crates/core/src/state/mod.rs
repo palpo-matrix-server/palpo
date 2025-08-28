@@ -24,7 +24,7 @@ pub use room_version::RoomVersion;
 
 use crate::events::room::member::MembershipState;
 use crate::events::room::power_levels::UserPowerLevel;
-use crate::events::{StateEventType, StateKey, TimelineEventType};
+use crate::events::{StateEventType, TimelineEventType};
 use crate::room_version_rules::RoomVersionRules;
 use crate::state::events::{
     RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
@@ -44,7 +44,7 @@ use crate::{
 /// [state resolution]: https://spec.matrix.org/latest/rooms/v2/#state-resolution
 pub type StateMap<T> = HashMap<(StateEventType, String), T>;
 pub type StateMapItem<T> = (TypeStateKey, T);
-pub type TypeStateKey = (StateEventType, StateKey);
+pub type TypeStateKey = (StateEventType, String);
 
 /// Apply the [state resolution] algorithm introduced in room version 2 to resolve the state of a
 /// room.

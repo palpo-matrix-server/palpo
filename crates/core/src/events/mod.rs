@@ -189,7 +189,6 @@ pub use self::{
 use crate::room_version_rules::RedactionRules;
 use crate::{EventEncryptionAlgorithm, OwnedUserId};
 
-pub type StateKey = SmallString<[u8; INLINE_SIZE]>;
 const INLINE_SIZE: usize = 48;
 
 /// Trait to define the behavior of redact an event's content object.

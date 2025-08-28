@@ -24,7 +24,7 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
 };
-use crate::core::state::Event;
+use crate::core::state::{Event, StateError};
 use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -249,7 +249,6 @@ where
         relates_to: ExtractEventId,
     }
     let mut relates_added = false;
-    // let thread_id;
     if let Ok(content) = pdu.get_content::<ExtractRelatesTo>() {
         let rel_type = content.relates_to.rel_type();
         match content.relates_to {
@@ -566,6 +565,7 @@ pub async fn create_hash_and_sign_event(
         )));
     };
     let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
+    let room_rules = crate::room::room_rules(&room_version_id)?;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -573,7 +573,7 @@ pub async fn create_hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
-        &version_rules.authorization,
+        &room_rules.authorization,
         true,
     )?;
 
@@ -630,10 +630,19 @@ pub async fn create_hash_and_sign_event(
     };
 
     crate::core::state::event_auth::auth_check(
-        &room_version,
+        &room_rules.authorization,
         &pdu,
-        None::<PduEvent>, // TODO: third_party_invite
-        |k, s| auth_events.get(&(k.clone(), s.to_owned())),
+        &async |event_id| {
+            timeline::get_pdu(&event_id)
+                .map(|s| s.pdu)
+                .map_err(|_| StateError::other("missing PDU"))
+        },
+        &async |k, s| {
+            auth_events
+                .get(&(k, s.to_owned()))
+                .map(|s| s.pdu.clone())
+                .ok_or_else(|| StateError::other("missing auth events"))
+        },
     )
     .await?;
 
@@ -653,8 +662,8 @@ pub async fn create_hash_and_sign_event(
         Ok(_) => {}
         Err(e) => {
             return match e {
-                crate::core::signatures::Error::PduSize => {
-                    Err(MatrixError::too_large("Message is too long").into())
+                AppError::Signatures(crate::core::signatures::Error::PduSize) => {
+                    Err(MatrixError::unknown("Message is too long").into())
                 }
                 _ => Err(MatrixError::unknown("Signing event failed").into()),
             };

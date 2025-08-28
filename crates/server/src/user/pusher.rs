@@ -136,18 +136,16 @@ pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
 // }
 
 #[tracing::instrument(skip(user, unread, pusher, ruleset, pdu))]
-pub async fn send_push_notice<Pdu: Event>(
+pub async fn send_push_notice(
     user: &UserId,
     unread: u64,
     pusher: &Pusher,
     ruleset: Ruleset,
-    pdu: &Pdu,
+    pdu: &PduEvent,
 ) -> AppResult<()> {
     let mut notify = None;
     let mut tweaks = Vec::new();
-    let power_levels = room::get_power_levels(&pdu.room_id)
-        .await
-        .unwrap_or_default();
+    let power_levels = room::get_power_levels(&pdu.room_id).await?;
 
     for action in data::user::pusher::get_actions(
         user,

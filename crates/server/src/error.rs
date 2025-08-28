@@ -12,6 +12,7 @@ use thiserror::Error;
 
 use crate::core::MatrixError;
 use crate::core::state::StateError;
+use crate::core::events::room::power_levels::PowerLevelsError;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -21,6 +22,8 @@ pub enum AppError {
     Internal(String),
     #[error("state: `{0}`")]
     State(#[from] StateError),
+    #[error("power levels: `{0}`")]
+    PowerLevels(#[from] PowerLevelsError),
     // #[error("local unable process: `{0}`")]
     // LocalUnableProcess(String),
     #[error("salvo internal error: `{0}`")]

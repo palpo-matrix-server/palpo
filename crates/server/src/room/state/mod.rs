@@ -496,15 +496,9 @@ pub async fn user_can_redact(
         .into());
     }
 
-    if let Ok(pl_event_content) = super::get_state_content::<RoomPowerLevelsEventContent>(
-        room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    ) {
-        let pl_event: RoomPowerLevels = pl_event_content.into();
-        Ok(pl_event.user_can_redact_event_of_other(sender)
-            || pl_event.user_can_redact_own_event(sender)
+    if let Ok(power_levels) = super::get_power_levels(room_id).await {
+        Ok(power_levels.user_can_redact_event_of_other(sender)
+            || power_levels.user_can_redact_own_event(sender)
                 && if let Ok(redacting_event) = redacting_event {
                     if federation {
                         redacting_event.sender.server_name() == sender.server_name()

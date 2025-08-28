@@ -543,7 +543,7 @@ pub async fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
     let rules = crate::room::room_rules(&room_version)?;
     let creators = create.creators(&rules.authorization)?;
 
-    let content = get_power_levels_event_content(room_id);
+    let content = get_power_levels_event_content(room_id)?;
     Ok(RoomPowerLevels::new(
         content.into(),
         &rules.authorization,

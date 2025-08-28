@@ -399,12 +399,11 @@ fn process_to_outlier_pdu<'a>(
         if let Err(e) = event_auth::auth_check(
             &room_version,
             &incoming_pdu,
-            None::<PduEvent>, // TODO: third party invite
+            None::<SnPduEvent>, // TODO: third party invite
             &async |k, s| {
-                auth_events.get(
-                    &(k.to_string().into(), s.to_owned())
-                        .ok_or_else(|| StateError::other("Auth event not found")),
-                )
+                auth_events
+                    .get(&(k.to_string().into(), s.to_owned())).map(|s|s.pdu.clone())
+                    .ok_or_else(|| StateError::other("auth event not found"))
             },
         )
         .await
@@ -480,12 +479,13 @@ pub async fn process_to_timeline_pdu(
     event_auth::auth_check(
         &room_version,
         &incoming_pdu,
-        None::<PduEvent>, // TODO: third party invite
-        |k, s| {
+        None::<SnPduEvent>, // TODO: third party invite
+        &async |k, s| {
             state::ensure_field_id(&k.to_string().into(), s)
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
                 .and_then(|event_id| timeline::get_pdu(event_id).ok())
+                .ok_or_else(|| StateError::other(format!("failed to get PDU")))
         },
     )
     .await?;
@@ -493,7 +493,7 @@ pub async fn process_to_timeline_pdu(
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
-    let room_rules = crate::room::room_rules(&room_version)?;
+    let room_rules = crate::room::room_rules(&room_version_id)?;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
@@ -507,7 +507,7 @@ pub async fn process_to_timeline_pdu(
     event_auth::auth_check(
         &room_version,
         &incoming_pdu,
-        None::<PduEvent>,
+        None::<SnPduEvent>,
         &async |k, s| {
             auth_events
                 .get(&(k.clone(), s.to_string()))

@@ -6,7 +6,7 @@ use tracing::debug;
 mod tests;
 
 use super::FetchStateExt;
-use crate::events::{StateEventType, StateKey, room::member::MembershipState};
+use crate::events::{StateEventType, room::member::MembershipState};
 use crate::state::{
     Event, StateError, StateResult,
     events::{
@@ -34,7 +34,7 @@ pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone,
 {
@@ -126,7 +126,7 @@ async fn check_room_member_join<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -247,7 +247,7 @@ async fn check_room_member_invite<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -317,7 +317,7 @@ async fn check_third_party_invite<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
@@ -425,7 +425,7 @@ async fn check_room_member_leave<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
@@ -505,7 +505,7 @@ async fn check_room_member_ban<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {
@@ -550,7 +550,7 @@ async fn check_room_member_knock<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
     Pdu: Event,
 {

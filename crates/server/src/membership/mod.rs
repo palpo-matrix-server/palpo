@@ -39,7 +39,7 @@ async fn validate_and_add_event_id(
     room_version: &RoomVersionId,
     _pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
-    let (event_id, value) = crate::event::gen_event_id_canonical_json(pdu, room_version)?;
+    let (event_id, mut value) = crate::event::gen_event_id_canonical_json(pdu, room_version)?;
 
     // TODO
     // let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {

@@ -13,9 +13,9 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
-    AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent,
-    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent,
-    MessageLikeEventType, StateEvent, StateEventContent, StateEventType, TimelineEventType,
+    AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
+    AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent, MessageLikeEventType,
+    StateEvent, StateEventContent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -389,31 +389,6 @@ impl PduEvent {
         }
 
         serde_json::from_value(json).expect("RawJson::from_value always works")
-    }
-
-    /// This only works for events that are also AnyRoomEvents.
-    #[tracing::instrument]
-    pub fn to_any_event(&self) -> RawJson<AnyEphemeralRoomEvent> {
-        let mut data = json!({
-            "content": self.content,
-            "type": self.event_ty,
-            "event_id": *self.event_id,
-            "sender": self.sender,
-            "origin_server_ts": self.origin_server_ts,
-            "room_id": self.room_id,
-        });
-
-        if !self.unsigned.is_empty() {
-            data["unsigned"] = json!(self.unsigned);
-        }
-        if let Some(state_key) = &self.state_key {
-            data["state_key"] = json!(state_key);
-        }
-        if let Some(redacts) = &self.redacts {
-            data["redacts"] = json!(redacts);
-        }
-
-        serde_json::from_value(data).expect("RawJson::from_value always works")
     }
 
     #[tracing::instrument]

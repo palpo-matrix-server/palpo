@@ -137,25 +137,17 @@ pub async fn full_user_deactivate(
     for room_id in all_joined_rooms {
         let state_lock = room::lock_state(room_id).await;
 
-        let room_power_levels = room::get_state_content::<RoomPowerLevelsEventContent>(
-            room_id,
-            &StateEventType::RoomPowerLevels,
-            "",
-            None,
-        )
-        .ok();
+        let room_power_levels = room::get_power_levels(room_id).await.ok();
 
-        let user_can_demote_self = room_power_levels
-            .as_ref()
-            .is_some_and(|power_levels_content| {
-                RoomPowerLevels::from(power_levels_content.clone())
-                    .user_can_change_user_power_level(user_id, user_id)
-            })
-            || room::get_state(room_id, &StateEventType::RoomCreate, "", None)
-                .is_ok_and(|event| event.sender == user_id);
+        let user_can_change_self = room_power_levels.as_ref().is_some_and(|power_levels| {
+            power_levels.user_can_change_user_power_level(user_id, user_id)
+        });
+
+        let user_can_demote_self = user_can_change_self
+            || room::get_create(room_id).is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
-            let mut power_levels_content = room_power_levels
+            let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
                 .map(TryInto::try_into)
                 .transpose()?
                 .unwrap_or_default();

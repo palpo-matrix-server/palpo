@@ -25,7 +25,7 @@ use crate::{
         member::RoomMemberEventContent,
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
-    state::{Event, StateError, StateKey, StateResult},
+    state::{Event, StateError, StateResult},
     utils::RoomIdExt,
 };
 
@@ -146,7 +146,7 @@ pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
 where
     FetchEvent: Fn(&EventId) -> EventFut + Sync,
     EventFut: Future<Output = StateResult<Pdu>> + Send,
-    FetchState: Fn(StateEventType, StateKey) -> StateFut + Sync,
+    FetchState: Fn(StateEventType, &str) -> StateFut + Sync,
     StateFut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
@@ -321,7 +321,7 @@ pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
+    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
@@ -772,7 +772,7 @@ trait FetchStateExt<E: Event> {
 
 impl<Pdu, F, Fut> FetchStateExt<Pdu> for F
 where
-    F: Fn(StateEventType, StateKey) -> Fut,
+    F: Fn(StateEventType, &str) -> Fut,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
