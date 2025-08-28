@@ -58,7 +58,7 @@ user_prefix = ""
 issuer = "https://accounts.google.com"
 client_id = "your-google-client-id.apps.googleusercontent.com"
 client_secret = "GOCSPX-your-google-client-secret"
-redirect_uri = "http://localhost:6006/_matrix/client/oidc/callback"  # 修正为本地地址
+redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
 
 [oidc.providers.github]
 issuer = "https://github.com"
