@@ -72,7 +72,7 @@ pub async fn join_room(
 
     // Ask a remote server if we are not participating in this room
     let (should_remote, servers) =
-        room::should_join_on_remote_servers(sender_id, room_id, servers)?;
+        room::should_join_on_remote_servers(sender_id, room_id, servers).await?;
 
     if !should_remote {
         info!("We can join locally");
@@ -91,6 +91,7 @@ pub async fn join_room(
                 sender_id,
                 &join_rule.restriction_rooms(),
             )
+            .await
             .ok(),
             extra_data: extra_data.clone(),
         };
@@ -483,7 +484,7 @@ pub async fn join_room(
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 
-pub fn get_first_user_can_issue_invite(
+pub async fn get_first_user_can_issue_invite(
     room_id: &RoomId,
     invitee_id: &UserId,
     restriction_rooms: &[OwnedRoomId],
@@ -493,7 +494,7 @@ pub fn get_first_user_can_issue_invite(
     }) {
         for joined_user in room::joined_users(room_id, None)? {
             if joined_user.server_name() == config::get().server_name
-                && room::user_can_invite(room_id, &joined_user, invitee_id)
+                && room::user_can_invite(room_id, &joined_user, invitee_id).await
             {
                 return Ok(joined_user);
             }
@@ -501,7 +502,7 @@ pub fn get_first_user_can_issue_invite(
     }
     Err(MatrixError::not_found("No user can issue invite in this room.").into())
 }
-pub fn get_users_can_issue_invite(
+pub async fn get_users_can_issue_invite(
     room_id: &RoomId,
     invitee_id: &UserId,
     restriction_rooms: &[OwnedRoomId],
@@ -512,7 +513,7 @@ pub fn get_users_can_issue_invite(
     }) {
         for joined_user in room::joined_users(room_id, None)? {
             if joined_user.server_name() == config::get().server_name
-                && room::user_can_invite(room_id, &joined_user, invitee_id)
+                && room::user_can_invite(room_id, &joined_user, invitee_id).await
             {
                 users.push(joined_user);
             }

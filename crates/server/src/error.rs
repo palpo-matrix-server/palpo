@@ -3,7 +3,6 @@ use std::io;
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
-use palpo_core::MatrixError;
 use salvo::http::{StatusCode, StatusError};
 use salvo::oapi::{self, EndpointOutRegister, ToSchema};
 use salvo::prelude::{Depot, Request, Response, Writer};
@@ -11,12 +10,17 @@ use thiserror::Error;
 // use crate::User;
 // use crate::DepotExt;
 
+use crate::core::MatrixError;
+use crate::core::state::StateError;
+
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("public: `{0}`")]
     Public(String),
     #[error("internal: `{0}`")]
     Internal(String),
+    #[error("state: `{0}`")]
+    State(#[from] StateError),
     // #[error("local unable process: `{0}`")]
     // LocalUnableProcess(String),
     #[error("salvo internal error: `{0}`")]

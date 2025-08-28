@@ -21,6 +21,7 @@ use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEv
 use crate::core::events::{AnyStrippedStateEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{AllowRule, JoinRule, RoomMembership};
+use crate::core::room_version_rules::AuthorizationRules;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::state::StateMap;
 use crate::core::{EventId, OwnedEventId, RoomId, UserId};
@@ -318,6 +319,8 @@ pub fn get_auth_events(
     sender: &UserId,
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
+    auth_rules: &AuthorizationRules,
+    include_create: bool,
 ) -> AppResult<StateMap<SnPduEvent>> {
     let frame_id = if let Ok(current_frame_id) = get_room_frame_id(room_id, None) {
         current_frame_id
@@ -325,7 +328,8 @@ pub fn get_auth_events(
         return Ok(HashMap::new());
     };
 
-    let auth_types = crate::core::state::auth_types_for_event(kind, sender, state_key, content)?;
+    let auth_types =
+        crate::core::state::auth_types_for_event(kind, sender, state_key, content, auth_rules)?;
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -588,10 +592,7 @@ pub fn user_can_see_user(sender_id: &UserId, user_id: &UserId) -> AppResult<bool
 /// Whether a user is allowed to see an event, based on
 /// the room's history_visibility at that event's state.
 #[tracing::instrument(skip(user_id, event_id))]
-pub fn user_can_see_event(
-    user_id: &UserId,
-    event_id: &EventId,
-) -> AppResult<bool> {
+pub fn user_can_see_event(user_id: &UserId, event_id: &EventId) -> AppResult<bool> {
     let pdu = timeline::get_pdu(event_id)?;
     pdu.user_can_see(user_id)
 }

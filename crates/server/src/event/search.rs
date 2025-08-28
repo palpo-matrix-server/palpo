@@ -97,7 +97,7 @@ pub fn search_pdus(
         .into_iter()
         .filter_map(|(rank, event_id, _, _)| {
             let pdu = timeline::get_pdu(&event_id).ok()?;
-            if state::user_can_see_event(user_id, &pdu.room_id, &pdu.event_id).unwrap_or(false) {
+            if state::user_can_see_event(user_id, &pdu.event_id).unwrap_or(false) {
                 Some((rank, pdu))
             } else {
                 None

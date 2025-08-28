@@ -155,7 +155,10 @@ pub async fn full_user_deactivate(
                 .is_ok_and(|event| event.sender == user_id);
 
         if user_can_demote_self {
-            let mut power_levels_content = room_power_levels.unwrap_or_default();
+            let mut power_levels_content = room_power_levels
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default();
             power_levels_content.users.remove(user_id);
 
             // ignore errors so deactivation doesn't fail

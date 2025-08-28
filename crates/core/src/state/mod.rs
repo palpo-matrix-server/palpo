@@ -87,7 +87,7 @@ pub async fn resolve<'a, MapsIter, Pdu, Fetch, Fut>(
 ) -> Result<StateMap<Pdu::Id>, StateError>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
     Pdu::Id: 'a,
     MapsIter: Iterator<Item = &'a StateMap<Pdu::Id>> + Clone,
@@ -349,7 +349,7 @@ async fn sort_power_events<Pdu, Fetch, Fut>(
 ) -> Result<Vec<Pdu::Id>, StateError>
 where
     Fetch: Fn(&EventId) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone,
 {
     debug!("reverse topological sort of power events");

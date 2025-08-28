@@ -160,9 +160,7 @@ pub(super) fn get_context(
     let events_before =
         timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
             .into_iter()
-            .filter(|(_, pdu)| {
-                state::user_can_see_event(sender_id, &room_id, &pdu.event_id).unwrap_or(false)
-            })
+            .filter(|(_, pdu)| state::user_can_see_event(sender_id, &pdu.event_id).unwrap_or(false))
             .collect::<Vec<_>>();
 
     for (_, event) in &events_before {

@@ -235,13 +235,9 @@ where
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
 
     // See if the event matches any known pushers
-    let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
-        &pdu.room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )
-    .unwrap_or_default();
+    let power_levels = super::get_power_levels(&pdu.room_id)
+        .await
+        .unwrap_or_default();
 
     #[derive(Deserialize, Clone, Debug)]
     struct ExtractEventId {
@@ -535,7 +531,7 @@ where
     Ok(())
 }
 
-pub fn create_hash_and_sign_event(
+pub async fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
@@ -577,6 +573,8 @@ pub fn create_hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
+        &version_rules.authorization,
+        true,
     )?;
 
     // Our depth is the maximum depth of prev_events + 1
@@ -610,7 +608,7 @@ pub fn create_hash_and_sign_event(
     let mut pdu = PduEvent {
         event_id: temp_event_id.clone(),
         event_ty: event_type,
-        room_id: room_id.cloned(),
+        room_id: room_id.to_owned(),
         sender: sender_id.to_owned(),
         origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
         content,
@@ -636,7 +634,8 @@ pub fn create_hash_and_sign_event(
         &pdu,
         None::<PduEvent>, // TODO: third_party_invite
         |k, s| auth_events.get(&(k.clone(), s.to_owned())),
-    )?;
+    )
+    .await?;
 
     // Hash and sign
     let mut pdu_json =
@@ -808,7 +807,7 @@ pub async fn build_and_append_pdu(
     }
 
     let (pdu, pdu_json, _event_guard) =
-        create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock)?;
+        create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock).await?;
 
     let conf = crate::config::get();
     // let admin_room = super::resolve_local_alias(

@@ -11,6 +11,7 @@ use crate::core::push::push_gateway::{
     Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,
 };
 use crate::core::push::{Action, PushFormat, Pusher, PusherKind, Ruleset, Tweak};
+use crate::core::state::Event;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::pusher::NewDbPusher;
@@ -135,22 +136,18 @@ pub fn set_pusher(authed: &AuthedInfo, pusher: PusherAction) -> AppResult<()> {
 // }
 
 #[tracing::instrument(skip(user, unread, pusher, ruleset, pdu))]
-pub async fn send_push_notice(
+pub async fn send_push_notice<Pdu: Event>(
     user: &UserId,
     unread: u64,
     pusher: &Pusher,
     ruleset: Ruleset,
-    pdu: &PduEvent,
+    pdu: &Pdu,
 ) -> AppResult<()> {
     let mut notify = None;
     let mut tweaks = Vec::new();
-    let power_levels = room::get_state_content::<RoomPowerLevelsEventContent>(
-        &pdu.room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )
-    .unwrap_or_default();
+    let power_levels = room::get_power_levels(&pdu.room_id)
+        .await
+        .unwrap_or_default();
 
     for action in data::user::pusher::get_actions(
         user,

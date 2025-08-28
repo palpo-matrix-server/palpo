@@ -127,7 +127,7 @@ async fn check_room_member_join<Pdu, Fetch, Fut>(
 ) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, StateKey) -> Fut + Sync,
-    Fut: Future<Output = Result<Pdu, StateError>> + Send,
+    Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {
     let creator = room_create_event.creator(rules)?;

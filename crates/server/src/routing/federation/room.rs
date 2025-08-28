@@ -318,7 +318,8 @@ async fn make_knock(
         &args.user_id,
         &args.room_id,
         &state_lock,
-    )?;
+    )
+    .await?;
     drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format

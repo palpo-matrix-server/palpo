@@ -11,6 +11,7 @@ use serde_json::value::RawValue as RawJsonValue;
 pub use verify::*;
 
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
+use crate::core::room_version_rules::RedactionRules;
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
 use crate::core::{
@@ -152,7 +153,7 @@ pub async fn get_event_keys(
     object: &CanonicalJsonObject,
     version: &RoomVersionRules,
 ) -> AppResult<PubKeyMap> {
-    let required = match signatures::required_keys(object, &version.signatures) {
+    let required = match signatures::required_keys(object, version) {
         Ok(required) => required,
         Err(e) => {
             return Err(AppError::public(format!(
@@ -276,12 +277,14 @@ pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
 
 pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
-    redaction_rules: &RedactionRules,
-) -> Result<(), crate::core::signatures::Error> {
+    room_version: &RoomVersionId,
+) -> AppResult<()> {
+    let room_rules = crate::room::room_rules(room_version)?;
     signatures::hash_and_sign_event(
         config::get().server_name.as_str(),
         config::keypair(),
         object,
-        redaction_rules,
-    )
+        &room_rules.redaction,
+    )?;
+    Ok(())
 }

@@ -12,10 +12,10 @@ use crate::core::events::room::history_visibility::{
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
-use crate::core::events::{StateEventContent,MessageLikeEventContent,
+use crate::core::events::{
     AnyEphemeralRoomEvent, AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent,
-    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventType, StateEvent,
-    StateEventType, TimelineEventType,
+    AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent,
+    MessageLikeEventType, StateEvent, StateEventContent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -203,7 +203,7 @@ impl crate::core::state::Event for SnPduEvent {
     }
 
     fn room_id(&self) -> &RoomId {
-        self.room_id.as_deref()
+        &self.room_id
     }
 
     fn sender(&self) -> &UserId {
@@ -645,7 +645,7 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn room_id(&self) -> &RoomId {
-        self.room_id.as_deref()
+        &self.room_id
     }
 
     fn sender(&self) -> &UserId {

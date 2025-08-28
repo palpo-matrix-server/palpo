@@ -114,14 +114,15 @@ pub(super) async fn state_at_incoming_resolved(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        |id| {
+        &async |id| {
             let res = timeline::get_pdu(id);
             if let Err(e) = &res {
                 error!("LOOK AT ME Failed to fetch event: {}", e);
             }
             res.ok()
         },
-    );
+    )
+    .await;
     drop(state_lock);
 
     match result {

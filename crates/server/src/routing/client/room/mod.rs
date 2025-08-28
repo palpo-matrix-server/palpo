@@ -318,7 +318,7 @@ async fn upgrade(
 
     let conf = config::get();
     // Create a replacement room
-    let replacement_room = RoomId::new(&conf.server_name);
+    let replacement_room = RoomId::new_v1(&conf.server_name);
     room::ensure_room(&replacement_room, &conf.default_room_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
@@ -563,7 +563,7 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let room_id = RoomId::new(&config::get().server_name);
+    let room_id = RoomId::new_v1(&config::get().server_name);
 
     let conf = config::get();
     let state_lock = room::lock_state(&room_id).await;

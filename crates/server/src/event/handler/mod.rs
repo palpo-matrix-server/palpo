@@ -27,6 +27,7 @@ use crate::core::federation::event::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
+use crate::core::state::StateError;
 use crate::core::state::{RoomVersion, StateMap, event_auth};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -278,7 +279,8 @@ fn process_to_outlier_pdu<'a>(
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
-                let obj = match canonical_json::redact(value, room_version_id, None) {
+                let rules = crate::room::room_rules(room_version_id)?;
+                let obj = match canonical_json::redact(value, &rules.redaction, None) {
                     Ok(obj) => obj,
                     Err(_) => return Err(MatrixError::invalid_param("redaction failed").into()),
                 };
@@ -398,8 +400,15 @@ fn process_to_outlier_pdu<'a>(
             &room_version,
             &incoming_pdu,
             None::<PduEvent>, // TODO: third party invite
-            |k, s| auth_events.get(&(k.to_string().into(), s.to_owned())),
-        ) {
+            &async |k, s| {
+                auth_events.get(
+                    &(k.to_string().into(), s.to_owned())
+                        .ok_or_else(|| StateError::other("Auth event not found")),
+                )
+            },
+        )
+        .await
+        {
             if rejection_reason.is_none() {
                 rejection_reason = Some(e.to_string())
             }
@@ -478,22 +487,35 @@ pub async fn process_to_timeline_pdu(
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
                 .and_then(|event_id| timeline::get_pdu(event_id).ok())
         },
-    )?;
+    )
+    .await?;
 
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
+    let room_rules = crate::room::room_rules(&room_version)?;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
         &incoming_pdu.sender,
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
+        &room_rules.authorization,
+        true,
     )?;
 
-    event_auth::auth_check(&room_version, &incoming_pdu, None::<PduEvent>, |k, s| {
-        auth_events.get(&(k.clone(), s.to_owned()))
-    })?;
+    event_auth::auth_check(
+        &room_version,
+        &incoming_pdu,
+        None::<PduEvent>,
+        &async |k, s| {
+            auth_events
+                .get(&(k.clone(), s.to_string()))
+                .cloned()
+                .ok_or_else(|| StateError::other("Auth event not found"))
+        },
+    )
+    .await?;
 
     // Soft fail check before doing state res
     debug!("Performing soft-fail check");
@@ -650,20 +672,22 @@ async fn resolve_state(
     debug!("Resolving state");
 
     let state = match crate::core::state::resolve(
-        room_version_id,
+        &crate::room::room_rules(room_version_id)?.authorization,
         &fork_states,
         auth_chain_sets
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        |id| match timeline::get_pdu(id) {
+        &async |id| match timeline::get_pdu(id) {
             Err(e) => {
                 error!("LOOK AT ME Failed to fetch event: {}", e);
                 None
             }
             Ok(pdu) => Some(pdu),
         },
-    ) {
+    )
+    .await
+    {
         Ok(new_state) => new_state,
         Err(_) => {
             return Err(AppError::internal(

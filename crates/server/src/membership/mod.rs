@@ -11,6 +11,7 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
+use crate::core::room_version_rules::{AuthorizationRules, RoomVersionRules};
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
 };
@@ -35,19 +36,10 @@ pub use leave::*;
 
 async fn validate_and_add_event_id(
     pdu: &RawJsonValue,
-    rules: &RoomVersionRules,
+    room_version: &RoomVersionId,
     _pub_key_map: &RwLock<BTreeMap<String, SigningKeys>>,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
-    let mut value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        error!("Invalid PDU in server response: {:?}: {:?}", pdu, e);
-        AppError::public("Invalid PDU in server response")
-    })?;
-    let event_id = EventId::parse(format!(
-        "${}",
-        crate::core::signatures::reference_hash(&value, rules)
-            .expect("palpo can calculate reference hashes")
-    ))
-    .expect("palpo's reference hash~es are valid event ids");
+    let (event_id, value) = crate::event::gen_event_id_canonical_json(pdu, room_version)?;
 
     // TODO
     // let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
