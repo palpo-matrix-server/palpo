@@ -182,7 +182,6 @@ pub(super) async fn deactivate(
         let all_joined_rooms: Vec<OwnedRoomId> = data::user::joined_rooms(&user_id)?;
 
         full_user_deactivate(&user_id, &all_joined_rooms)
-            .boxed()
             .await?;
 
         data::user::set_display_name(&user_id, None)?;
@@ -295,9 +294,7 @@ pub(super) async fn deactivate_all(
                     info!("Forcing user {user_id} to leave all rooms apart of deactivate-all");
                     let all_joined_rooms = data::user::joined_rooms(&user_id)?;
 
-                    full_user_deactivate(&user_id, &all_joined_rooms)
-                        .boxed()
-                        .await?;
+                    full_user_deactivate(&user_id, &all_joined_rooms).await?;
 
                     data::user::set_display_name(&user_id, None)?;
                     data::user::set_avatar_url(&user_id, None)?;
